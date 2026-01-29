@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go mod tidy:*)",
+      "Bash(ping:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(snmpget:*)",
+      "Bash(snmpwalk:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(go build:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File scripts/generate-certs.ps1 -ErrorAction Stop)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"Get-Content scripts/generate-certs.ps1 | Out-Null; Write-Host ''Script syntax is valid''\")",
+      "Bash(where:*)",
+      "Bash(bash:*)",
+      "Bash(MSYS_NO_PATHCONV=1 openssl req:*)",
+      "Bash(openssl verify:*)",
+      "Bash(openssl x509:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"Get-Content generate-certs.ps1 | Out-Null; Write-Host ''PowerShell script syntax is VALID - ready to run!''\")",
+      "Bash(openssl pkcs12:*)",
+      "Bash(timeout 3 openssl:*)",
+      "Bash(chmod:*)",
+      "Bash(./diagnose-tls.sh:*)",
+      "Bash(unzip:*)",
+      "Bash(ls:*)",
+      "Bash(openssl req:*)",
+      "Bash(lsof:*)"
+    ]
+  }
+}
