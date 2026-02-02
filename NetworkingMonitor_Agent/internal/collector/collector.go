@@ -3,8 +3,14 @@ package collector
 import (
 	"fmt"
 	"runtime"
+	"sync"
 	"time"
 
+	"github.com/faber/network-monitor-agent/internal/hardware"
+	"github.com/faber/network-monitor-agent/internal/hyperv"
+	"github.com/faber/network-monitor-agent/internal/network"
+	"github.com/faber/network-monitor-agent/internal/os"
+	"github.com/faber/network-monitor-agent/internal/sensors"
 	"github.com/faber/network-monitor-agent/internal/storage"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -16,6 +22,11 @@ import (
 
 type Collector struct {
 	storage *storage.Storage
+
+	// Previous metrics for delta calculations
+	prevDiskIO map[string]*disk.IOCountersStat
+	prevTime   time.Time
+	mu         sync.Mutex
 }
 
 type SystemMetrics struct {
@@ -30,6 +41,23 @@ type SystemMetrics struct {
 	Temperature    []TempMetrics
 	Uptime         uint64
 	ProcessCount   int
+
+	// Phase 1: Enhanced NIC Details
+	NetworkInterfaces []*network.NetworkInterfaceDetail
+
+	// Phase 2: Firmware & Hardware Info
+	BIOSInfo         *hardware.BIOSInfo
+	MotherboardInfo  *hardware.MotherboardInfo
+	ComponentFirmware []*hardware.ComponentFirmware
+
+	// Phase 3: OS Patch Level
+	PatchLevel       *os.PatchLevel
+
+	// Phase 4: Hardware Sensors (Temperature, Voltage, Fans, Power)
+	SensorData       *sensors.SensorData
+
+	// Phase 5: Advanced Monitoring (Hyper-V)
+	HyperVInfo       *hyperv.HyperVInfo
 }
 
 type CPUMetrics struct {
@@ -71,11 +99,22 @@ type DiskMetrics struct {
 }
 
 type DiskIOMetrics struct {
-	Device      string
-	ReadBytes   uint64
-	WriteBytes  uint64
-	ReadCount   uint64
-	WriteCount  uint64
+	Device       string
+	ReadBytes    uint64
+	WriteBytes   uint64
+	ReadCount    uint64
+	WriteCount   uint64
+	ReadTime     uint64 // milliseconds
+	WriteTime    uint64 // milliseconds
+	IOTime       uint64 // milliseconds
+	WeightedIO   uint64 // weighted time
+	IOPS         float64 // I/O operations per second
+	ReadIOPS     float64
+	WriteIOPS    float64
+	Throughput   float64 // MB/s
+	AvgLatency   float64 // milliseconds
+	QueueDepth   float64
+	Utilization  float64 // percentage
 }
 
 type NetworkMetrics struct {
@@ -110,7 +149,9 @@ type TempMetrics struct {
 
 func New(store *storage.Storage) *Collector {
 	return &Collector{
-		storage: store,
+		storage:    store,
+		prevDiskIO: make(map[string]*disk.IOCountersStat),
+		prevTime:   time.Now(),
 	}
 }
 
@@ -190,17 +231,69 @@ func (c *Collector) Collect() (*SystemMetrics, error) {
 		}
 	}
 
-	// Collect disk I/O statistics
+	// Collect disk I/O statistics with advanced metrics
 	if diskIO, err := disk.IOCounters(); err == nil {
+		c.mu.Lock()
+		currentTime := time.Now()
+		timeDelta := currentTime.Sub(c.prevTime).Seconds()
+
 		for device, stats := range diskIO {
-			metrics.DiskIO = append(metrics.DiskIO, DiskIOMetrics{
+			ioMetric := DiskIOMetrics{
 				Device:     device,
 				ReadBytes:  stats.ReadBytes,
 				WriteBytes: stats.WriteBytes,
 				ReadCount:  stats.ReadCount,
 				WriteCount: stats.WriteCount,
-			})
+				ReadTime:   stats.ReadTime,
+				WriteTime:  stats.WriteTime,
+				IOTime:     stats.IoTime,
+				WeightedIO: stats.WeightedIO,
+			}
+
+			// Calculate rate-based metrics if we have previous data
+			if prev, exists := c.prevDiskIO[device]; exists && timeDelta > 0 {
+				// Calculate IOPS
+				readOps := float64(stats.ReadCount - prev.ReadCount)
+				writeOps := float64(stats.WriteCount - prev.WriteCount)
+				ioMetric.ReadIOPS = readOps / timeDelta
+				ioMetric.WriteIOPS = writeOps / timeDelta
+				ioMetric.IOPS = ioMetric.ReadIOPS + ioMetric.WriteIOPS
+
+				// Calculate throughput (MB/s)
+				readBytes := float64(stats.ReadBytes - prev.ReadBytes)
+				writeBytes := float64(stats.WriteBytes - prev.WriteBytes)
+				totalBytes := readBytes + writeBytes
+				ioMetric.Throughput = (totalBytes / timeDelta) / (1024 * 1024)
+
+				// Calculate average latency (ms)
+				totalOps := readOps + writeOps
+				if totalOps > 0 {
+					readTimeMs := float64(stats.ReadTime - prev.ReadTime)
+					writeTimeMs := float64(stats.WriteTime - prev.WriteTime)
+					ioMetric.AvgLatency = (readTimeMs + writeTimeMs) / totalOps
+				}
+
+				// Calculate queue depth (weighted I/O time / total time)
+				weightedIODelta := float64(stats.WeightedIO - prev.WeightedIO)
+				ioMetric.QueueDepth = weightedIODelta / (timeDelta * 1000) // Convert to ms
+
+				// Calculate utilization (percentage of time disk was busy)
+				ioTimeDelta := float64(stats.IoTime - prev.IoTime)
+				ioMetric.Utilization = (ioTimeDelta / (timeDelta * 1000)) * 100
+				if ioMetric.Utilization > 100 {
+					ioMetric.Utilization = 100
+				}
+			}
+
+			metrics.DiskIO = append(metrics.DiskIO, ioMetric)
+
+			// Store current stats for next iteration
+			statsCopy := stats
+			c.prevDiskIO[device] = &statsCopy
 		}
+
+		c.prevTime = currentTime
+		c.mu.Unlock()
 	}
 
 	// Collect overall network metrics
@@ -252,6 +345,39 @@ func (c *Collector) Collect() (*SystemMetrics, error) {
 	// Collect process count
 	if hostInfo, err := host.Info(); err == nil {
 		metrics.ProcessCount = int(hostInfo.Procs)
+	}
+
+	// Phase 1: Collect enhanced NIC details
+	if nicDetails, err := network.GetAllInterfaceDetails(); err == nil {
+		metrics.NetworkInterfaces = nicDetails
+	}
+
+	// Phase 2: Collect firmware and hardware info
+	if biosInfo, err := hardware.GetBIOSInfo(); err == nil {
+		metrics.BIOSInfo = biosInfo
+	}
+	if moboInfo, err := hardware.GetMotherboardInfo(); err == nil {
+		metrics.MotherboardInfo = moboInfo
+	}
+	if firmware, err := hardware.GetComponentFirmware(); err == nil {
+		metrics.ComponentFirmware = firmware
+	}
+
+	// Phase 3: Collect OS patch level
+	if patchLevel, err := os.GetPatchLevel(); err == nil {
+		metrics.PatchLevel = patchLevel
+	}
+
+	// Phase 4: Collect hardware sensors (temperature, voltage, fans, power)
+	if sensorData, err := sensors.GetAllSensors(); err == nil {
+		metrics.SensorData = sensorData
+	}
+
+	// Phase 5: Collect Hyper-V information (Windows only)
+	if hyperv.IsHyperVEnabled() {
+		if hypervInfo, err := hyperv.GetHyperVInfo(); err == nil {
+			metrics.HyperVInfo = hypervInfo
+		}
 	}
 
 	return metrics, nil
@@ -469,6 +595,109 @@ func (c *Collector) Store(metrics *SystemMetrics) error {
 		Value:      float64(metrics.ProcessCount),
 		Unit:       "count",
 	})
+
+	// Store hardware sensor data
+	if metrics.SensorData != nil {
+		// Store temperature sensors
+		for _, temp := range metrics.SensorData.Temperatures {
+			c.storage.SaveMetric(&storage.Metric{
+				Timestamp:  metrics.Timestamp,
+				MetricType: "sensor.temperature",
+				Value:      temp.Current,
+				Unit:       "celsius",
+				Metadata: map[string]interface{}{
+					"name":      temp.Name,
+					"component": temp.Component,
+					"label":     temp.Label,
+					"high":      temp.High,
+					"critical":  temp.Critical,
+				},
+			})
+		}
+
+		// Store voltage sensors
+		for _, volt := range metrics.SensorData.Voltages {
+			c.storage.SaveMetric(&storage.Metric{
+				Timestamp:  metrics.Timestamp,
+				MetricType: "sensor.voltage",
+				Value:      volt.Current,
+				Unit:       "volts",
+				Metadata: map[string]interface{}{
+					"name":    volt.Name,
+					"label":   volt.Label,
+					"min":     volt.Min,
+					"max":     volt.Max,
+					"nominal": volt.Nominal,
+				},
+			})
+		}
+
+		// Store fan sensors
+		for _, fan := range metrics.SensorData.Fans {
+			c.storage.SaveMetric(&storage.Metric{
+				Timestamp:  metrics.Timestamp,
+				MetricType: "sensor.fan",
+				Value:      float64(fan.Current),
+				Unit:       "rpm",
+				Metadata: map[string]interface{}{
+					"name":    fan.Name,
+					"label":   fan.Label,
+					"min":     fan.Min,
+					"max":     fan.Max,
+					"percent": fan.Percent,
+				},
+			})
+		}
+
+		// Store power consumption
+		if metrics.SensorData.PowerConsumption != nil {
+			pc := metrics.SensorData.PowerConsumption
+			c.storage.SaveMetric(&storage.Metric{
+				Timestamp:  metrics.Timestamp,
+				MetricType: "sensor.power.total",
+				Value:      pc.TotalWatts,
+				Unit:       "watts",
+				Metadata: map[string]interface{}{
+					"cpu_watts":       pc.CPUWatts,
+					"gpu_watts":       pc.GPUWatts,
+					"battery_percent": pc.BatteryPercent,
+					"battery_status":  pc.BatteryStatus,
+					"ac_connected":    pc.ACConnected,
+				},
+			})
+
+			// Store per-component power
+			for component, watts := range pc.ComponentWatts {
+				c.storage.SaveMetric(&storage.Metric{
+					Timestamp:  metrics.Timestamp,
+					MetricType: "sensor.power.component",
+					Value:      watts,
+					Unit:       "watts",
+					Metadata: map[string]interface{}{
+						"component": component,
+					},
+				})
+			}
+		}
+
+		// Store water cooling info
+		if metrics.SensorData.WaterCooling != nil && metrics.SensorData.WaterCooling.Detected {
+			wc := metrics.SensorData.WaterCooling
+			c.storage.SaveMetric(&storage.Metric{
+				Timestamp:  metrics.Timestamp,
+				MetricType: "sensor.watercooling",
+				Value:      float64(wc.PumpSpeed),
+				Unit:       "rpm",
+				Metadata: map[string]interface{}{
+					"type":          wc.Type,
+					"manufacturer":  wc.Manufacturer,
+					"model":         wc.Model,
+					"coolant_temp":  wc.CoolantTemp,
+					"flow_rate":     wc.FlowRate,
+				},
+			})
+		}
+	}
 
 	return nil
 }

@@ -3,9 +3,11 @@ module github.com/faber/network-monitor-agent
 go 1.21
 
 require (
+	github.com/StackExchange/wmi v1.2.1
 	github.com/gosnmp/gosnmp v1.37.0
 	github.com/kardianos/service v1.2.2
 	github.com/shirou/gopsutil/v3 v3.23.12
+	golang.org/x/sys v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.28.0
 )
@@ -24,7 +26,6 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/mod v0.3.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/tools v0.0.0-20201124115921-2c860bdd6e78 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect

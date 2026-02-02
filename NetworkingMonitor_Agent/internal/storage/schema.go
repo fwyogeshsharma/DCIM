@@ -1,6 +1,69 @@
 package storage
 
 const schemaSQL = `
+-- Datacenter metadata
+CREATE TABLE IF NOT EXISTS datacenter_info (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	agent_id TEXT UNIQUE,
+
+	-- Physical location
+	location TEXT,
+	datacenter TEXT,
+	building TEXT,
+	floor TEXT,
+	room TEXT,
+	row TEXT,
+	rack TEXT,
+	position TEXT,
+	side TEXT,
+
+	-- Asset information
+	asset_tag TEXT,
+	serial_number TEXT,
+	barcode TEXT,
+	owner_tag TEXT,
+
+	-- Organizational
+	owner TEXT,
+	department TEXT,
+	cost_center TEXT,
+	project TEXT,
+	service_tag TEXT,
+
+	-- Environment
+	environment TEXT,
+	purpose TEXT,
+	criticality TEXT,
+	tier TEXT,
+
+	-- Networking
+	network_zone TEXT,
+	vlans TEXT,
+	subnet TEXT,
+
+	-- Dates
+	purchase_date INTEGER,
+	warranty_expiry INTEGER,
+	install_date INTEGER,
+
+	-- Additional
+	notes TEXT,
+	tags TEXT,
+
+	-- Contact
+	primary_contact TEXT,
+	contact_email TEXT,
+	contact_phone TEXT,
+
+	created_at INTEGER,
+	updated_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_datacenter_agent ON datacenter_info(agent_id);
+CREATE INDEX IF NOT EXISTS idx_datacenter_location ON datacenter_info(location);
+CREATE INDEX IF NOT EXISTS idx_datacenter_rack ON datacenter_info(rack);
+CREATE INDEX IF NOT EXISTS idx_datacenter_environment ON datacenter_info(environment);
+
 -- Metrics table stores all collected system metrics
 CREATE TABLE IF NOT EXISTS metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

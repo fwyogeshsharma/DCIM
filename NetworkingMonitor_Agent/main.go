@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/faber/network-monitor-agent/internal/agent"
 	"github.com/faber/network-monitor-agent/internal/config"
@@ -111,10 +115,48 @@ func main() {
 		return
 	}
 
-	// Run service
-	err = s.Run()
-	if err != nil {
-		log.Errorf("Service failed: %v", err)
-		os.Exit(1)
+	// Check if running interactively (not as a service)
+	isInteractive := service.Interactive()
+
+	if isInteractive {
+		// Run interactively with signal handling
+		log.Infof("Running in interactive mode. Press Ctrl+C to stop.")
+
+		// Start agent
+		go agentInstance.Run()
+
+		// Setup signal handling
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+		// Wait for signal
+		sig := <-sigChan
+		log.Infof("Received signal: %v. Initiating graceful shutdown...", sig)
+
+		// Create shutdown context with timeout
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// Stop agent in a goroutine
+		done := make(chan struct{})
+		go func() {
+			agentInstance.Stop()
+			close(done)
+		}()
+
+		// Wait for shutdown or timeout
+		select {
+		case <-done:
+			log.Infof("Agent stopped gracefully")
+		case <-shutdownCtx.Done():
+			log.Warnf("Shutdown timeout reached, forcing exit")
+		}
+	} else {
+		// Run as a service
+		err = s.Run()
+		if err != nil {
+			log.Errorf("Service failed: %v", err)
+			os.Exit(1)
+		}
 	}
 }
