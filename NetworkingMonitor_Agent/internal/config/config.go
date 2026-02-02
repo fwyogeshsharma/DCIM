@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Server      ServerConfig      `yaml:"server"`
 	Agent       AgentConfig       `yaml:"agent"`
+	Datacenter  DatacenterConfig  `yaml:"datacenter"`
 	SNMPManager SNMPManagerConfig `yaml:"snmp_manager"`
 	Database    DatabaseConfig    `yaml:"database"`
 	Alerts      AlertsConfig      `yaml:"alerts"`
