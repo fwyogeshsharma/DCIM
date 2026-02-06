@@ -1,0 +1,50 @@
+﻿# Certificate Information
+# Generated: 2026-02-04 17:48:33
+
+## Certificate Authority (CA)
+- Valid for: 1 year
+- Expires: 2027-02-04
+- File: ca.crt
+
+## Server Certificate
+- Hostname: localhost
+- Valid for: 365 days
+- Expires: 2027-02-04
+- Files: server.crt, server.key
+
+## Client Certificate
+- Client ID: faber
+- Valid for: 365 days
+- Expires: 2027-02-04
+- Files: client.crt, client.key
+
+## Renewal Reminders
+Set calendar reminders to renew certificates at least 30 days before expiry:
+- CA: Renew by 2027-01-05
+- Server: Renew by 2027-01-05
+- Client: Renew by 2027-01-05
+
+## Verification Commands
+View CA certificate details:
+  openssl x509 -in certs/ca.crt -text -noout
+
+View server certificate details:
+  openssl x509 -in certs/server.crt -text -noout
+
+View client certificate details:
+  openssl x509 -in certs/client.crt -text -noout
+
+Verify server certificate chain:
+  openssl verify -CAfile certs/ca.crt certs/server.crt
+
+Verify client certificate chain:
+  openssl verify -CAfile certs/ca.crt certs/client.crt
+
+## Security Best Practices
+1. Store private keys (.key files) securely
+2. Never commit private keys to version control
+3. Use proper file permissions (restrict access to keys)
+4. Back up CA key in a secure location
+5. Implement certificate rotation before expiry
+6. Monitor certificate expiration dates
+7. Use strong passphrases for production CA keys

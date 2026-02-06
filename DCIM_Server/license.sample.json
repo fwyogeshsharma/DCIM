@@ -1,0 +1,17 @@
+{
+  "license_key": "DCIM-SAMPLE-LICENSE-1234567890",
+  "company_name": "Example Company",
+  "email": "admin@example.com",
+  "max_agents": 10,
+  "max_snmp_devices": 50,
+  "features": [
+    "basic_monitoring",
+    "alerting",
+    "snmp_monitoring",
+    "advanced_analytics",
+    "dashboard"
+  ],
+  "issued_at": "2024-02-03T00:00:00Z",
+  "expires_at": "2025-02-03T00:00:00Z",
+  "signature": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+}
