@@ -513,16 +513,30 @@ func (d *Database) getMySQLSchema() []string {
 // Agent operations
 
 // RegisterAgent registers a new agent or updates existing one
+// It first checks if an agent with the same hostname already exists
+// If yes, it updates that agent instead of creating a new one
 func (d *Database) RegisterAgent(agent *models.Agent) error {
 	now := time.Now()
+
+	// First, check if an agent with this hostname already exists
+	existingAgent, err := d.GetAgentByHostname(agent.Hostname)
+	if err == nil && existingAgent != nil {
+		// Agent with same hostname exists - update it instead
+		// Use the existing agent's ID but update other fields
+		agent.AgentID = existingAgent.AgentID
+		agent.FirstSeen = existingAgent.FirstSeen
+		agent.RegisteredAt = existingAgent.RegisteredAt
+	}
 
 	query := `
 		INSERT INTO agents (agent_id, certificate_cn, hostname, ip_address, status, group_name,
 			first_seen, last_seen, registered_at, approved, metadata, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(agent_id) DO UPDATE SET
+			certificate_cn = excluded.certificate_cn,
 			hostname = excluded.hostname,
 			ip_address = excluded.ip_address,
+			status = excluded.status,
 			last_seen = excluded.last_seen,
 			updated_at = excluded.updated_at
 	`
@@ -530,7 +544,7 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 	// Convert placeholders for the current database type
 	query = d.preparePlaceholders(query)
 
-	_, err := d.db.Exec(query,
+	_, err = d.db.Exec(query,
 		agent.AgentID,
 		agent.CertificateCN,
 		agent.Hostname,
@@ -578,6 +592,38 @@ func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("agent not found: %s", agentID)
 		}
+		return nil, err
+	}
+
+	return &agent, nil
+}
+
+// GetAgentByHostname retrieves an agent by hostname
+func (d *Database) GetAgentByHostname(hostname string) (*models.Agent, error) {
+	query := d.preparePlaceholders(`SELECT * FROM agents WHERE hostname = ? LIMIT 1`)
+
+	var agent models.Agent
+	err := d.db.QueryRow(query, hostname).Scan(
+		&agent.ID,
+		&agent.AgentID,
+		&agent.CertificateCN,
+		&agent.Hostname,
+		&agent.IPAddress,
+		&agent.Status,
+		&agent.Group,
+		&agent.LastSeen,
+		&agent.FirstSeen,
+		&agent.RegisteredAt,
+		&agent.ApprovedAt,
+		&agent.Approved,
+		&agent.TotalMetrics,
+		&agent.TotalAlerts,
+		&agent.Metadata,
+		&agent.CreatedAt,
+		&agent.UpdatedAt,
+	)
+
+	if err != nil {
 		return nil, err
 	}
 
