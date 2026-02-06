@@ -1,0 +1,39 @@
+﻿# Certificate Information
+# Generated: 2026-02-06 13:15:31
+
+## Certificate Authority (CA)
+- Valid for: 5 years
+- Expires: 2031-02-05
+- Files: ca.crt, ca.key
+
+## Server Certificate
+- Hostname: Faber
+- Valid for: 5 years
+- Expires: 2031-02-05
+- Files: server.crt, server.key
+
+## Client Certificate
+- Client ID: Agent1
+- Valid for: 365 days
+- Expires: 2027-02-06
+- Files: client.crt, client.key
+
+## Renewal Reminders
+Set calendar reminders to renew certificates at least 30 days before expiry:
+- CA: Renew by 2031-01-06
+- Server: Renew by 2031-01-06
+- Client: Renew by 2027-01-07
+
+## Verification Commands
+View CA certificate:
+  openssl x509 -in certs/ca.crt -text -noout
+
+View server certificate:
+  openssl x509 -in certs/server.crt -text -noout
+
+View client certificate:
+  openssl x509 -in certs/client.crt -text -noout
+
+Verify certificate chains:
+  openssl verify -CAfile certs/ca.crt certs/server.crt
+  openssl verify -CAfile certs/ca.crt certs/client.crt

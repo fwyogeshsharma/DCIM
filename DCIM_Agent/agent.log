@@ -1,0 +1,131 @@
+2026/02/04 17:59:28.800538 [INFO] TLS is disabled - using standard HTTP client
+2026/02/04 17:59:28.801632 [INFO] SNMP Manager enabled with 2 devices
+2026/02/04 17:59:28.871708 [INFO] System info: Faber (windows x86_64) - 8 cores, 7834 MB RAM
+2026/02/04 17:59:28.871708 [INFO] Running in interactive mode. Press Ctrl+C to stop.
+2026/02/04 17:59:28.871708 [INFO] Agent starting (ID: Faber-1770208168, Name: Faber)
+2026/02/04 17:59:28.872279 [INFO] Agent running. Collection interval: 30s, Send interval: 2m0s
+2026/02/04 17:59:28.872279 [INFO] Starting SNMP polling (interval: 30s)
+2026/02/04 17:59:28.872279 [INFO] ========================================
+2026/02/04 17:59:28.872279 [INFO] 📡 SNMP DEVICE MONITORING
+2026/02/04 17:59:28.872801 [INFO] ========================================
+2026/02/04 17:59:28.872801 [INFO] Polling 2 SNMP devices...
+2026/02/04 17:59:28.872801 [INFO] 
+2026/02/04 17:59:28.872801 [INFO] Processing 1 unsent alerts
+2026/02/04 17:59:28.883925 [WARN] Retrying alert send (attempt 1/3)
+2026/02/04 17:59:33.887498 [WARN] Retrying alert send (attempt 2/3)
+2026/02/04 17:59:38.892302 [WARN] Retrying alert send (attempt 3/3)
+2026/02/04 17:59:43.411657 [INFO] ========================================
+2026/02/04 17:59:43.412776 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/02/04 17:59:43.412776 [INFO] ========================================
+2026/02/04 17:59:43.412776 [INFO] ✅ CPU: 5.47% (8 cores) - ✅ NORMAL
+2026/02/04 17:59:43.412776 [INFO]    Cores: C0:6.2% C1:7.7% C2:7.8% C3:15.4% 
+2026/02/04 17:59:43.412776 [INFO]           C4:17.2% C5:6.2% C6:6.2% C7:3.1% 
+2026/02/04 17:59:43.412776 [INFO] ✅ Memory: 84.00% (6.47 GB / 7.65 GB, 1.18 GB available) - ✅ NORMAL
+2026/02/04 17:59:43.412776 [INFO]    Swap: 59.95% (18.38 GB / 30.65 GB)
+2026/02/04 17:59:43.412776 [INFO] 💾 Disk Usage:
+2026/02/04 17:59:43.412776 [INFO]    ✅ C:: 77.21% (367.35 GB / 475.76 GB, 108.41 GB free) - ✅ OK
+2026/02/04 17:59:43.412776 [INFO] 💿 Disk I/O Performance:
+2026/02/04 17:59:43.412776 [INFO]    ✅ C:: Read: 58363947 ops (1888477998080 bytes), Write: 16750037 ops (763069832704 bytes)
+2026/02/04 17:59:43.413289 [INFO]       ℹ️  Rate metrics available after next collection cycle
+2026/02/04 17:59:43.413289 [INFO] 🌐 Network: ↑ 914.46 MB sent, ↓ 1091.40 MB received
+2026/02/04 17:59:43.413289 [WARN]    ⚠️  Network Errors: 0 in, 9 out
+2026/02/04 17:59:43.413289 [INFO] ⏱️  Uptime: 472.32 hours | Processes: 295
+2026/02/04 17:59:43.413289 [INFO] ========================================
+2026/02/04 17:59:43.413289 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/02/04 17:59:43.413289 [INFO] ========================================
+2026/02/04 17:59:43.413289 [INFO] Interface: Ethernet 2
+2026/02/04 17:59:43.413289 [INFO]    MAC: 00:ff:a0:88:c0:20
+2026/02/04 17:59:43.413289 [INFO]    IPv4: [169.254.226.149]
+2026/02/04 17:59:43.413289 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/02/04 17:59:43.413289 [INFO]    Duplex: full | Auto-Neg: false
+2026/02/04 17:59:43.413289 [INFO]    Link State: down
+2026/02/04 17:59:43.413289 [INFO]    Driver: tapexpressvpn v9.24.2.45
+2026/02/04 17:59:43.413289 [INFO] 
+2026/02/04 17:59:43.413289 [INFO] Interface: vEthernet (WSL (Hyper-V firewall))
+2026/02/04 17:59:43.413289 [INFO]    MAC: 00:15:5d:8c:0b:b7
+2026/02/04 17:59:43.413289 [INFO]    IPv4: [172.20.16.1]
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Local Area Connection* 1
+2026/02/04 17:59:43.414293 [INFO]    MAC: 62:a4:b7:83:04:a6
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [169.254.61.38]
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Local Area Connection* 12
+2026/02/04 17:59:43.414293 [INFO]    MAC: 60:a4:b7:83:04:a6
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [169.254.61.161]
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Wi-Fi
+2026/02/04 17:59:43.414293 [INFO]    MAC: 90:0f:0c:92:62:c5
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [192.168.0.52 192.168.0.52]
+2026/02/04 17:59:43.414293 [INFO]    Speed: 780 Mbps (780 Mbps)
+2026/02/04 17:59:43.414293 [INFO]    Duplex: full | Auto-Neg: false
+2026/02/04 17:59:43.414293 [INFO]    Link State: up
+2026/02/04 17:59:43.414293 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Wi-Fi 3
+2026/02/04 17:59:43.414293 [INFO]    MAC: 60:a4:b7:83:04:a6
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [192.168.1.5 192.168.1.5]
+2026/02/04 17:59:43.415301 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/02/04 17:59:43.415301 [INFO]    Duplex: full | Auto-Neg: false
+2026/02/04 17:59:43.415301 [INFO]    Link State: up
+2026/02/04 17:59:43.415301 [INFO]    Driver: RtlWlanu v1030.52.731.2025
+2026/02/04 17:59:43.415301 [INFO] 
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] BIOS: AMI vF.33 (2023-10-04)
+2026/02/04 17:59:43.415301 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/02/04 17:59:43.415301 [INFO] Motherboard: HP 87FE
+2026/02/04 17:59:43.415301 [INFO]    UUID: 31444335-3033-4233-445A-5A4230334435
+2026/02/04 17:59:43.415301 [INFO] Component Firmware:
+2026/02/04 17:59:43.415301 [INFO]    GPU Intel(R) Iris(R) Xe Graphics: 
+2026/02/04 17:59:43.415301 [INFO]    USB Intel(R) USB 3.10 eXtensible Host Controller - 1.20 (Microsoft): 
+2026/02/04 17:59:43.415301 [INFO] 
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 🔧 OS PATCH LEVEL
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.7623)
+2026/02/04 17:59:43.415301 [INFO] Windows Edition: Unknown SKU (100)
+2026/02/04 17:59:43.415301 [INFO] Updates Installed: 0
+2026/02/04 17:59:43.415301 [INFO] 
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 🔬 HARDWARE SENSORS
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 🌡️  Temperatures:
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/02/04 17:59:43.415301 [INFO] ⚡ Voltages:
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/02/04 17:59:43.415301 [INFO] 💨 Fans:
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Cooling Device
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Cooling Device
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Cooling Device
+2026/02/04 17:59:43.416299 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/02/04 17:59:43.416299 [INFO] 🔌 Power Supply:
+2026/02/04 17:59:43.416299 [INFO]    Status: ✅ OK
+2026/02/04 17:59:43.416299 [INFO] ⚡ Power Consumption:
+2026/02/04 17:59:43.416299 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/02/04 17:59:43.416299 [INFO] 💧 Water Cooling / AIO:
+2026/02/04 17:59:43.416299 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] 🔍 ANOMALY DETECTION
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/02/04 17:59:43.416299 [INFO]    Collecting data for anomaly detection...
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] ✅ No critical issues identified - System operating normally
+2026/02/04 17:59:43.416299 [INFO]    RCA actively monitoring metric correlations
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] ✅ ALL SYSTEMS NORMAL - No Active Alerts
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.932520 [ERROR] Failed to send alerts: failed to send alerts after 3 attempts: send request: Post "http://localhost:8443/api/v1/alerts": dial tcp [::1]:8443: connectex: No connection could be made because the target machine actively refused it.
+2026/02/04 17:59:43.933862 [INFO] Processing 57 unsent metrics
+2026/02/04 17:59:45.200480 [INFO] Received signal: interrupt. Initiating graceful shutdown...
+2026/02/04 17:59:45.200480 [INFO] Agent stopping...
+2026/02/04 17:59:50.199805 [WARN] Shutdown timeout reached, some goroutines may still be running
