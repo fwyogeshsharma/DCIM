@@ -411,6 +411,11 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Populate agent_id in each metric from the request
+	for i := range req.Metrics {
+		req.Metrics[i].AgentID = req.AgentID
+	}
+
 	// Insert metrics into database
 	if err := s.db.InsertMetrics(req.Metrics); err != nil {
 		s.logger.Printf("Failed to insert metrics: %v", err)
@@ -459,6 +464,11 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Populate agent_id in each alert from the request
+	for i := range req.Alerts {
+		req.Alerts[i].AgentID = req.AgentID
+	}
+
 	// Insert alerts into database
 	if err := s.db.InsertAlerts(req.Alerts); err != nil {
 		s.logger.Printf("Failed to insert alerts: %v", err)
@@ -490,6 +500,11 @@ func (s *Server) handleSNMPMetrics(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(body, &req); err != nil {
 		s.sendError(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
 		return
+	}
+
+	// Populate agent_id in each SNMP metric from the request
+	for i := range req.SNMPMetrics {
+		req.SNMPMetrics[i].AgentID = req.AgentID
 	}
 
 	// Insert SNMP metrics into database

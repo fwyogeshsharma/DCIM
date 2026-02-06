@@ -106,7 +106,7 @@ func Load(path string) (*Config, error) {
 
 	// Set defaults
 	if cfg.Agent.ID == "" {
-		cfg.Agent.ID = generateAgentID()
+		cfg.Agent.ID = getOrCreateAgentID(cfg.Database.Path)
 	}
 	if cfg.Agent.Name == "" {
 		hostname, _ := os.Hostname()
@@ -116,7 +116,29 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-func generateAgentID() string {
+// getOrCreateAgentID returns a persistent agent ID
+// It stores the ID in a file next to the database to survive restarts
+func getOrCreateAgentID(dbPath string) string {
+	// Determine ID file path (same directory as database)
+	idFilePath := dbPath + ".agent_id"
+
+	// Try to read existing ID
+	if data, err := os.ReadFile(idFilePath); err == nil {
+		agentID := string(data)
+		if agentID != "" {
+			return agentID
+		}
+	}
+
+	// Generate new ID based on hostname only (no timestamp)
 	hostname, _ := os.Hostname()
-	return fmt.Sprintf("%s-%d", hostname, time.Now().Unix())
+	agentID := hostname
+	if agentID == "" {
+		agentID = "agent-unknown"
+	}
+
+	// Save ID to file for persistence
+	os.WriteFile(idFilePath, []byte(agentID), 0600)
+
+	return agentID
 }
