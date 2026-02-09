@@ -882,6 +882,238 @@ func (d *Database) InsertSNMPMetrics(metrics []models.SNMPMetric) error {
 	return tx.Commit()
 }
 
+// GetAllMetrics retrieves all metrics with optional filters
+func (d *Database) GetAllMetrics(agentID string, metricType string, timeRange time.Duration, limit int) ([]models.Metric, error) {
+	since := time.Now().Add(-timeRange)
+
+	query := `SELECT id, agent_id, timestamp, metric_type, value, unit, metadata, created_at
+			  FROM metrics WHERE 1=1`
+	args := []interface{}{}
+
+	if agentID != "" {
+		query += " AND agent_id = ?"
+		args = append(args, agentID)
+	}
+
+	if metricType != "" {
+		query += " AND metric_type = ?"
+		args = append(args, metricType)
+	}
+
+	if timeRange > 0 {
+		query += " AND timestamp >= ?"
+		args = append(args, since)
+	}
+
+	query += " ORDER BY timestamp DESC LIMIT ?"
+	args = append(args, limit)
+
+	query = d.preparePlaceholders(query)
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var metrics []models.Metric
+	for rows.Next() {
+		var metric models.Metric
+		err := rows.Scan(
+			&metric.ID,
+			&metric.AgentID,
+			&metric.Timestamp,
+			&metric.MetricType,
+			&metric.Value,
+			&metric.Unit,
+			&metric.Metadata,
+			&metric.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		metrics = append(metrics, metric)
+	}
+
+	return metrics, nil
+}
+
+// GetAllAlerts retrieves all alerts with optional filters
+func (d *Database) GetAllAlerts(agentID string, severity string, resolved *bool, timeRange time.Duration, limit int) ([]models.Alert, error) {
+	since := time.Now().Add(-timeRange)
+
+	query := `SELECT id, agent_id, timestamp, severity, metric_type, value, threshold,
+			  message, retry_count, resolved, resolved_at, created_at
+			  FROM alerts WHERE 1=1`
+	args := []interface{}{}
+
+	if agentID != "" {
+		query += " AND agent_id = ?"
+		args = append(args, agentID)
+	}
+
+	if severity != "" {
+		query += " AND severity = ?"
+		args = append(args, severity)
+	}
+
+	if resolved != nil {
+		query += " AND resolved = ?"
+		args = append(args, *resolved)
+	}
+
+	if timeRange > 0 {
+		query += " AND timestamp >= ?"
+		args = append(args, since)
+	}
+
+	query += " ORDER BY timestamp DESC LIMIT ?"
+	args = append(args, limit)
+
+	query = d.preparePlaceholders(query)
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var alerts []models.Alert
+	for rows.Next() {
+		var alert models.Alert
+		err := rows.Scan(
+			&alert.ID,
+			&alert.AgentID,
+			&alert.Timestamp,
+			&alert.Severity,
+			&alert.MetricType,
+			&alert.Value,
+			&alert.Threshold,
+			&alert.Message,
+			&alert.RetryCount,
+			&alert.Resolved,
+			&alert.ResolvedAt,
+			&alert.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, nil
+}
+
+// GetAllSNMPMetrics retrieves all SNMP metrics with optional filters
+func (d *Database) GetAllSNMPMetrics(agentID string, deviceName string, metricName string, timeRange time.Duration, limit int) ([]models.SNMPMetric, error) {
+	since := time.Now().Add(-timeRange)
+
+	query := `SELECT id, agent_id, timestamp, device_name, device_host, oid,
+			  metric_name, value, value_type, metadata, created_at
+			  FROM snmp_metrics WHERE 1=1`
+	args := []interface{}{}
+
+	if agentID != "" {
+		query += " AND agent_id = ?"
+		args = append(args, agentID)
+	}
+
+	if deviceName != "" {
+		query += " AND device_name = ?"
+		args = append(args, deviceName)
+	}
+
+	if metricName != "" {
+		query += " AND metric_name = ?"
+		args = append(args, metricName)
+	}
+
+	if timeRange > 0 {
+		query += " AND timestamp >= ?"
+		args = append(args, since)
+	}
+
+	query += " ORDER BY timestamp DESC LIMIT ?"
+	args = append(args, limit)
+
+	query = d.preparePlaceholders(query)
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var metrics []models.SNMPMetric
+	for rows.Next() {
+		var metric models.SNMPMetric
+		err := rows.Scan(
+			&metric.ID,
+			&metric.AgentID,
+			&metric.Timestamp,
+			&metric.DeviceName,
+			&metric.DeviceHost,
+			&metric.OID,
+			&metric.MetricName,
+			&metric.Value,
+			&metric.ValueType,
+			&metric.Metadata,
+			&metric.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		metrics = append(metrics, metric)
+	}
+
+	return metrics, nil
+}
+
+// GetAgentStatusHistory retrieves agent status history
+func (d *Database) GetAgentStatusHistory(agentID string, timeRange time.Duration, limit int) ([]models.AgentStatus, error) {
+	since := time.Now().Add(-timeRange)
+
+	query := `SELECT id, agent_id, status, timestamp, reason, created_at
+			  FROM agent_status_history WHERE 1=1`
+	args := []interface{}{}
+
+	if agentID != "" {
+		query += " AND agent_id = ?"
+		args = append(args, agentID)
+	}
+
+	if timeRange > 0 {
+		query += " AND timestamp >= ?"
+		args = append(args, since)
+	}
+
+	query += " ORDER BY timestamp DESC LIMIT ?"
+	args = append(args, limit)
+
+	query = d.preparePlaceholders(query)
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []models.AgentStatus
+	for rows.Next() {
+		var status models.AgentStatus
+		err := rows.Scan(
+			&status.ID,
+			&status.AgentID,
+			&status.Status,
+			&status.Timestamp,
+			&status.Reason,
+			&status.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		history = append(history, status)
+	}
+
+	return history, nil
+}
+
 // CleanupOldData removes data older than retention period
 func (d *Database) CleanupOldData(metricsDays, alertsDays, agentStatusDays int) error {
 	now := time.Now()
