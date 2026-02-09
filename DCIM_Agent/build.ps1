@@ -29,15 +29,60 @@ function InstallDeps {
     go mod tidy
 }
 
+function Verify-Binary {
+    param(
+        [string]$Path,
+        [string]$ExpectedOS,
+        [string]$ExpectedArch
+    )
+
+    if (!(Test-Path $Path)) {
+        Write-Host "  [X] Binary not found: $Path" -ForegroundColor Red
+        return $false
+    }
+
+    # Get file info
+    $fileInfo = Get-Item $Path
+    $sizeMB = [math]::Round($fileInfo.Length/1MB, 2)
+
+    Write-Host "  [OK] Built: $($fileInfo.Name) ($sizeMB MB)" -ForegroundColor Green
+    Write-Host "     Target: $ExpectedOS/$ExpectedArch" -ForegroundColor Gray
+
+    # Verify it's a valid executable by checking magic bytes
+    $absolutePath = $fileInfo.FullName
+    $bytes = [System.IO.File]::ReadAllBytes($absolutePath)
+    if ($ExpectedOS -eq "windows") {
+        if ($bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A) {
+            Write-Host "     Format: PE (Windows Executable)" -ForegroundColor Gray
+        } else {
+            Write-Host "     WARNING: Not a valid Windows PE executable!" -ForegroundColor Yellow
+        }
+    } elseif ($ExpectedOS -eq "linux") {
+        if ($bytes[0] -eq 0x7F -and $bytes[1] -eq 0x45 -and $bytes[2] -eq 0x4C -and $bytes[3] -eq 0x46) {
+            Write-Host "     Format: ELF (Linux Executable)" -ForegroundColor Gray
+        }
+    } elseif ($ExpectedOS -eq "darwin") {
+        if (($bytes[0] -eq 0xCF -and $bytes[1] -eq 0xFA) -or ($bytes[0] -eq 0xCE -and $bytes[1] -eq 0xFA)) {
+            Write-Host "     Format: Mach-O (macOS Executable)" -ForegroundColor Gray
+        }
+    }
+
+    return $true
+}
+
 function Build-Windows {
     Write-Host "Building for Windows amd64..." -ForegroundColor Green
     $env:GOOS = "windows"
     $env:GOARCH = "amd64"
+    $env:CGO_ENABLED = "0"
 
     $outDir = "$BuildDir\windows"
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
-    go build -ldflags $LDFlags -o "$outDir\$BinaryName.exe" .
+    go build -ldflags "$LDFlags -s -w" -o "$outDir\$BinaryName.exe" .
+
+    # Verify the build
+    Verify-Binary "$outDir\$BinaryName.exe" "windows" "amd64"
 
     Write-Host "Copying installer scripts..." -ForegroundColor Gray
     Copy-Item "scripts\install-windows.bat" $outDir
@@ -58,11 +103,13 @@ function Build-Linux {
     Write-Host "Building for Linux amd64..." -ForegroundColor Green
     $env:GOOS = "linux"
     $env:GOARCH = "amd64"
+    $env:CGO_ENABLED = "0"
 
     $outDir = "$BuildDir\linux"
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
-    go build -ldflags $LDFlags -o "$outDir\$BinaryName" .
+    Write-Host "  Target: linux/amd64" -ForegroundColor Gray
+    go build -v -ldflags "$LDFlags -s -w" -o "$outDir\$BinaryName" .
 
     Write-Host "Copying installer scripts..." -ForegroundColor Gray
     Copy-Item "scripts\install-linux.sh" $outDir
@@ -100,11 +147,13 @@ function Build-MacOS-AMD64 {
     Write-Host "Building for macOS amd64..." -ForegroundColor Green
     $env:GOOS = "darwin"
     $env:GOARCH = "amd64"
+    $env:CGO_ENABLED = "0"
 
     $outDir = "$BuildDir\macos-amd64"
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
-    go build -ldflags $LDFlags -o "$outDir\$BinaryName" .
+    Write-Host "  Target: darwin/amd64" -ForegroundColor Gray
+    go build -v -ldflags "$LDFlags -s -w" -o "$outDir\$BinaryName" .
 
     Write-Host "Copying installer scripts..." -ForegroundColor Gray
     Copy-Item "scripts\install-macos.sh" $outDir
@@ -142,11 +191,13 @@ function Build-MacOS-ARM64 {
     Write-Host "Building for macOS arm64 Apple Silicon..." -ForegroundColor Green
     $env:GOOS = "darwin"
     $env:GOARCH = "arm64"
+    $env:CGO_ENABLED = "0"
 
     $outDir = "$BuildDir\macos-arm64"
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
-    go build -ldflags $LDFlags -o "$outDir\$BinaryName" .
+    Write-Host "  Target: darwin/arm64" -ForegroundColor Gray
+    go build -v -ldflags "$LDFlags -s -w" -o "$outDir\$BinaryName" .
 
     Write-Host "Copying installer scripts..." -ForegroundColor Gray
     Copy-Item "scripts\install-macos.sh" $outDir
@@ -268,7 +319,7 @@ switch ($Target) {
         Write-Host "  dist         - Create distribution packages"
         Write-Host "  test         - Run tests"
         Write-Host ""
-        Write-Host "Usage: .\build.ps1 -Target <target> -Version <version>"
+        Write-Host 'Usage: .\build.ps1 -Target <target> -Version <version>'
         exit 1
     }
 }
