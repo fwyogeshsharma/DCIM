@@ -17,7 +17,12 @@
       "Bash(curl:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(go version:*)",
+      "Bash(powershell.exe -Command \"go version\":*)",
+      "Bash(\"C:/Program Files/Go/bin/go.exe\" version:*)",
+      "Bash(\"C:/Program Files/Go/bin/go.exe\" env:*)",
+      "Bash(./dcim-agent.exe --version:*)"
     ]
   }
 }

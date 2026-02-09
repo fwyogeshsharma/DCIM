@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from 'three';
 import {
   Activity,
   Server,
@@ -19,6 +22,7 @@ export default function LandingOptimized() {
     <div className="min-h-screen bg-slate-950 text-white">
       <Navigation />
       <HeroSection />
+      <Model3DSection />
       <FeaturesSection />
       <BenefitsSection />
       <CTASection />
@@ -182,8 +186,6 @@ function HeroSection() {
   useEffect(() => {
     if (!imagesLoaded || !canvasRef.current) return;
 
-    const canvas = canvasRef.current;
-
     const handleScroll = () => {
       if (!containerRef.current) return;
 
@@ -310,6 +312,83 @@ function HeroSection() {
               </div>
             </motion.div>
           </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// 3D Model Component
+function Model3D() {
+  const meshRef = useRef<THREE.Group>(null);
+  const scrollRef = useRef(0);
+
+  // Load the GLB model
+  const gltf = useLoader(GLTFLoader, '/sample_2026-02-09T130052.563.glb');
+
+  // Update scroll position
+  useEffect(() => {
+    const handleScroll = () => {
+      // Calculate scroll position relative to the window height
+      const scrollTop = window.scrollY;
+      // Start rotation after hero section (roughly 300vh from hero)
+      const scrollStart = window.innerHeight * 3; // After hero section
+      const scrollProgress = Math.max(0, scrollTop - scrollStart);
+      scrollRef.current = scrollProgress;
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Animate rotation based on scroll
+  useFrame(() => {
+    if (meshRef.current) {
+      // Rotate on Y axis based on scroll position
+      // Full rotation every 500 pixels of scroll
+      meshRef.current.rotation.y = (scrollRef.current / 500) * Math.PI * 2;
+    }
+  });
+
+  return (
+    <group ref={meshRef}>
+      <primitive object={gltf.scene} scale={5} />
+    </group>
+  );
+}
+
+function Model3DSection() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <section ref={sectionRef} className="relative h-screen bg-slate-950">
+      <div className="absolute inset-0">
+        <Canvas
+          camera={{ position: [0, 0, 5], fov: 50 }}
+          style={{ background: 'linear-gradient(to bottom, #0f172a, #1e293b, #334155)' }}
+        >
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[10, 10, 5]} intensity={1} />
+          <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+          <Model3D />
+        </Canvas>
+      </div>
+
+      {/* Overlay content */}
+      <div className="relative z-10 h-full flex items-center justify-center px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="text-center max-w-3xl"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            Infrastructure at Scale
+          </h2>
+          <p className="text-xl text-white">
+            Monitor and manage thousands of devices with real-time 3D visualization
+          </p>
         </motion.div>
       </div>
     </section>

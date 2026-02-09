@@ -204,6 +204,7 @@ export interface MetricFilter {
   time_range?: TimeRange
   start_time?: string
   end_time?: string
+  limit?: number
 }
 
 export interface AlertFilter {
