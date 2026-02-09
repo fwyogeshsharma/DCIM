@@ -52,13 +52,14 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 
 	// Register API routes
 	basePath := cfg.API.BasePath
-	mux.HandleFunc(basePath+"/metrics", server.handleMetrics)
-	mux.HandleFunc(basePath+"/alerts", server.handleAlerts)
-	mux.HandleFunc(basePath+"/snmp-metrics", server.handleSNMPMetrics)
+	mux.HandleFunc(basePath+"/metrics", server.handleMetrics)            // POST: submit metrics, GET: query metrics
+	mux.HandleFunc(basePath+"/alerts", server.handleAlerts)              // POST: submit alerts, GET: query alerts
+	mux.HandleFunc(basePath+"/snmp-metrics", server.handleSNMPMetrics)   // POST: submit SNMP metrics, GET: query SNMP metrics
+	mux.HandleFunc(basePath+"/agent-status-history", server.handleAgentStatusHistory) // GET: query agent status history
 	mux.HandleFunc(basePath+"/register", server.handleRegister)
-	mux.HandleFunc(basePath+"/agents/", server.handleGetAgentMetrics) // Trailing slash for path params
+	mux.HandleFunc(basePath+"/agents/", server.handleGetAgentMetrics)    // Trailing slash for path params
 	mux.HandleFunc(basePath+"/agents", server.handleGetAgents)
-	mux.HandleFunc(basePath+"/events", server.handleSSEEvents) // SSE endpoint for real-time updates
+	mux.HandleFunc(basePath+"/events", server.handleSSEEvents)           // SSE endpoint for real-time updates
 
 	// Health check endpoint
 	if cfg.Health.Enabled {
@@ -177,9 +178,16 @@ func (s *Server) Start() error {
 	s.logger.Println("API Endpoints:")
 	basePath := s.config.API.BasePath
 	s.logger.Printf("  POST %s/metrics", basePath)
+	s.logger.Printf("  GET  %s/metrics", basePath)
 	s.logger.Printf("  POST %s/alerts", basePath)
+	s.logger.Printf("  GET  %s/alerts", basePath)
 	s.logger.Printf("  POST %s/snmp-metrics", basePath)
+	s.logger.Printf("  GET  %s/snmp-metrics", basePath)
+	s.logger.Printf("  GET  %s/agent-status-history", basePath)
 	s.logger.Printf("  POST %s/register", basePath)
+	s.logger.Printf("  GET  %s/agents", basePath)
+	s.logger.Printf("  GET  %s/agents/{id}/metrics", basePath)
+	s.logger.Printf("  GET  %s/events", basePath)
 	if s.config.Health.Enabled {
 		s.logger.Printf("  GET  %s", s.config.Health.Path)
 	}
@@ -385,8 +393,13 @@ func (s *Server) autoRegisterAgent(r *http.Request, agentID string) error {
 
 // API Handlers
 
-// handleMetrics handles incoming metrics
+// handleMetrics handles incoming metrics (POST) and metric queries (GET)
 func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		s.handleGetMetrics(w, r)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -438,8 +451,13 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	s.sendSuccess(w, fmt.Sprintf("Received %d metrics", len(req.Metrics)), len(req.Metrics), 0)
 }
 
-// handleAlerts handles incoming alerts
+// handleAlerts handles incoming alerts (POST) and alert queries (GET)
 func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		s.handleGetAlerts(w, r)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -482,8 +500,13 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 	s.sendSuccess(w, fmt.Sprintf("Received %d alerts", len(req.Alerts)), len(req.Alerts), 0)
 }
 
-// handleSNMPMetrics handles incoming SNMP metrics
+// handleSNMPMetrics handles incoming SNMP metrics (POST) and SNMP metric queries (GET)
 func (s *Server) handleSNMPMetrics(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		s.handleGetSNMPMetrics(w, r)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
@@ -800,6 +823,231 @@ func (s *Server) handleSSEEvents(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 	}
+}
+
+// handleGetMetrics handles GET requests for querying metrics
+func (s *Server) handleGetMetrics(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
+	// Parse query parameters
+	agentID := query.Get("agent_id")
+	metricType := query.Get("metric_type")
+	timeRangeStr := query.Get("time_range")
+	limitStr := query.Get("limit")
+
+	// Parse time_range (default 24h)
+	var timeRange time.Duration
+	switch timeRangeStr {
+	case "1h":
+		timeRange = 1 * time.Hour
+	case "7d":
+		timeRange = 7 * 24 * time.Hour
+	case "30d":
+		timeRange = 30 * 24 * time.Hour
+	case "", "24h":
+		timeRange = 24 * time.Hour
+	default:
+		s.sendError(w, http.StatusBadRequest, "Invalid time_range. Valid values: 1h, 24h, 7d, 30d")
+		return
+	}
+
+	// Parse limit (default 100, max 1000)
+	limit := 100
+	if limitStr != "" {
+		fmt.Sscanf(limitStr, "%d", &limit)
+		if limit < 1 || limit > 1000 {
+			limit = 100
+		}
+	}
+
+	// Get metrics from database
+	metrics, err := s.db.GetAllMetrics(agentID, metricType, timeRange, limit)
+	if err != nil {
+		s.logger.Printf("Failed to get metrics: %v", err)
+		s.sendError(w, http.StatusInternalServerError, "Failed to retrieve metrics")
+		return
+	}
+
+	// Return metrics in APIResponse format
+	response := models.APIResponse{
+		Success: true,
+		Data:    metrics,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleGetAlerts handles GET requests for querying alerts
+func (s *Server) handleGetAlerts(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
+	// Parse query parameters
+	agentID := query.Get("agent_id")
+	severity := query.Get("severity")
+	resolvedStr := query.Get("resolved")
+	timeRangeStr := query.Get("time_range")
+	limitStr := query.Get("limit")
+
+	// Parse resolved filter
+	var resolved *bool
+	if resolvedStr != "" {
+		val := resolvedStr == "true"
+		resolved = &val
+	}
+
+	// Parse time_range (default 24h)
+	var timeRange time.Duration
+	switch timeRangeStr {
+	case "1h":
+		timeRange = 1 * time.Hour
+	case "7d":
+		timeRange = 7 * 24 * time.Hour
+	case "30d":
+		timeRange = 30 * 24 * time.Hour
+	case "", "24h":
+		timeRange = 24 * time.Hour
+	default:
+		s.sendError(w, http.StatusBadRequest, "Invalid time_range. Valid values: 1h, 24h, 7d, 30d")
+		return
+	}
+
+	// Parse limit (default 100, max 1000)
+	limit := 100
+	if limitStr != "" {
+		fmt.Sscanf(limitStr, "%d", &limit)
+		if limit < 1 || limit > 1000 {
+			limit = 100
+		}
+	}
+
+	// Get alerts from database
+	alerts, err := s.db.GetAllAlerts(agentID, severity, resolved, timeRange, limit)
+	if err != nil {
+		s.logger.Printf("Failed to get alerts: %v", err)
+		s.sendError(w, http.StatusInternalServerError, "Failed to retrieve alerts")
+		return
+	}
+
+	// Return alerts in APIResponse format
+	response := models.APIResponse{
+		Success: true,
+		Data:    alerts,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleGetSNMPMetrics handles GET requests for querying SNMP metrics
+func (s *Server) handleGetSNMPMetrics(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
+	// Parse query parameters
+	agentID := query.Get("agent_id")
+	deviceName := query.Get("device_name")
+	metricName := query.Get("metric_name")
+	timeRangeStr := query.Get("time_range")
+	limitStr := query.Get("limit")
+
+	// Parse time_range (default 24h)
+	var timeRange time.Duration
+	switch timeRangeStr {
+	case "1h":
+		timeRange = 1 * time.Hour
+	case "7d":
+		timeRange = 7 * 24 * time.Hour
+	case "30d":
+		timeRange = 30 * 24 * time.Hour
+	case "", "24h":
+		timeRange = 24 * time.Hour
+	default:
+		s.sendError(w, http.StatusBadRequest, "Invalid time_range. Valid values: 1h, 24h, 7d, 30d")
+		return
+	}
+
+	// Parse limit (default 100, max 1000)
+	limit := 100
+	if limitStr != "" {
+		fmt.Sscanf(limitStr, "%d", &limit)
+		if limit < 1 || limit > 1000 {
+			limit = 100
+		}
+	}
+
+	// Get SNMP metrics from database
+	metrics, err := s.db.GetAllSNMPMetrics(agentID, deviceName, metricName, timeRange, limit)
+	if err != nil {
+		s.logger.Printf("Failed to get SNMP metrics: %v", err)
+		s.sendError(w, http.StatusInternalServerError, "Failed to retrieve SNMP metrics")
+		return
+	}
+
+	// Return SNMP metrics in APIResponse format
+	response := models.APIResponse{
+		Success: true,
+		Data:    metrics,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleAgentStatusHistory handles GET requests for agent status history
+func (s *Server) handleAgentStatusHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	query := r.URL.Query()
+
+	// Parse query parameters
+	agentID := query.Get("agent_id")
+	timeRangeStr := query.Get("time_range")
+	limitStr := query.Get("limit")
+
+	// Parse time_range (default 7d)
+	var timeRange time.Duration
+	switch timeRangeStr {
+	case "1h":
+		timeRange = 1 * time.Hour
+	case "24h":
+		timeRange = 24 * time.Hour
+	case "30d":
+		timeRange = 30 * 24 * time.Hour
+	case "", "7d":
+		timeRange = 7 * 24 * time.Hour
+	default:
+		s.sendError(w, http.StatusBadRequest, "Invalid time_range. Valid values: 1h, 24h, 7d, 30d")
+		return
+	}
+
+	// Parse limit (default 100, max 1000)
+	limit := 100
+	if limitStr != "" {
+		fmt.Sscanf(limitStr, "%d", &limit)
+		if limit < 1 || limit > 1000 {
+			limit = 100
+		}
+	}
+
+	// Get status history from database
+	history, err := s.db.GetAgentStatusHistory(agentID, timeRange, limit)
+	if err != nil {
+		s.logger.Printf("Failed to get agent status history: %v", err)
+		s.sendError(w, http.StatusInternalServerError, "Failed to retrieve status history")
+		return
+	}
+
+	// Return history in APIResponse format
+	response := models.APIResponse{
+		Success: true,
+		Data:    history,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // SSE Broadcasting
