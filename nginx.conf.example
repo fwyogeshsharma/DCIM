@@ -1,0 +1,93 @@
+# Nginx Configuration for DCIM UI
+# Place this in /etc/nginx/sites-available/dcim-ui
+
+upstream dcim_backend {
+    server 192.168.1.100:8443;  # Replace with your DCIM_Server IP
+}
+
+upstream ai_service {
+    server localhost:5000;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name dcim.example.com;  # Replace with your domain
+
+    # SSL Configuration
+    ssl_certificate /path/to/ssl/server.crt;
+    ssl_certificate_key /path/to/ssl/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Serve frontend static files
+    location / {
+        root /var/www/dcim-ui/dist;
+        try_files $uri $uri/ /index.html;
+
+        # Cache static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+
+    # Proxy API requests to DCIM_Server (with mTLS)
+    location /api/ {
+        proxy_pass https://dcim_backend;
+
+        # mTLS client certificate
+        proxy_ssl_certificate /path/to/client/client.crt;
+        proxy_ssl_certificate_key /path/to/client/client.key;
+        proxy_ssl_trusted_certificate /path/to/ca/ca.crt;
+        proxy_ssl_verify on;
+        proxy_ssl_verify_depth 2;
+
+        # Proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # SSE support
+        proxy_set_header Connection '';
+        proxy_http_version 1.1;
+        chunked_transfer_encoding off;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 86400s;
+
+        # CORS (if needed)
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+        add_header Access-Control-Allow-Headers "Authorization, Content-Type";
+    }
+
+    # Proxy AI service requests
+    location /ai/ {
+        proxy_pass http://ai_service/api/;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeouts for AI processing
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_read_timeout 30s;
+    }
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+}
+
+# HTTP to HTTPS redirect
+server {
+    listen 80;
+    server_name dcim.example.com;
+    return 301 https://$server_name$request_uri;
+}

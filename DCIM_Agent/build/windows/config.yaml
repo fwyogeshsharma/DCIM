@@ -3,7 +3,7 @@
 
 # Server settings
 server:
-  url: "https://Faber:8443/api/v1"  # Use HTTPS for secure mTLS connection
+  url: "https://localhost:8443/api/v1"  # Use HTTPS for secure mTLS connection
   timeout: 30s
   retry_attempts: 3
   retry_delay: 5s
