@@ -1,7 +1,7 @@
 DCIM Server - windows/amd64 Build
 
 Version: 1.0.0
-Built: 2026-02-09 15:50:15
+Built: 2026-02-09 16:10:47
 
 Files Included:
 - dcim-server.exe (server executable)
