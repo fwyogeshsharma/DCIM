@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node create_presentation.mjs:*)",
+      "Bash(npm install:*)",
+      "Bash(python:*)",
+      "Bash(where:*)",
+      "Bash(dir:*)",
+      "Bash(powershell:*)",
+      "Bash(node:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm create:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(cmd /c \"dir /b node_modules\\\\.bin\\\\tailwind*\")",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run dev:*)"
+    ]
+  }
+}
