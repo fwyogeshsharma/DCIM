@@ -14,29 +14,29 @@ type Storage struct {
 }
 
 type Metric struct {
-	ID         int64
-	Timestamp  time.Time
-	MetricType string
-	Value      float64
-	Unit       string
-	Metadata   map[string]interface{}
-	Sent       bool
-	CreatedAt  time.Time
-	SentAt     *time.Time
+	ID         int64                  `json:"id,omitempty"`
+	Timestamp  time.Time              `json:"timestamp"`
+	MetricType string                 `json:"metric_type"`
+	Value      float64                `json:"value"`
+	Unit       string                 `json:"unit"`
+	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	Sent       bool                   `json:"-"`
+	CreatedAt  time.Time              `json:"-"`
+	SentAt     *time.Time             `json:"-"`
 }
 
 type Alert struct {
-	ID         int64
-	Timestamp  time.Time
-	Severity   string
-	MetricType string
-	Value      float64
-	Threshold  float64
-	Message    string
-	Sent       bool
-	CreatedAt  time.Time
-	SentAt     *time.Time
-	RetryCount int
+	ID         int64      `json:"id,omitempty"`
+	Timestamp  time.Time  `json:"timestamp"`
+	Severity   string     `json:"severity"`
+	MetricType string     `json:"metric_type"`
+	Value      float64    `json:"value"`
+	Threshold  float64    `json:"threshold"`
+	Message    string     `json:"message"`
+	Sent       bool       `json:"-"`
+	CreatedAt  time.Time  `json:"-"`
+	SentAt     *time.Time `json:"-"`
+	RetryCount int        `json:"retry_count,omitempty"`
 }
 
 type SystemInfo struct {
