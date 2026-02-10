@@ -42,16 +42,16 @@ export default function NaturalLanguageQuery() {
   return (
     <div className="space-y-6 h-full flex flex-col">
       <div>
-        <h1 className="text-3xl font-bold">Natural Language Query</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-3xl font-bold text-white">Natural Language Query</h1>
+        <p className="text-slate-400 mt-2">
           Ask questions about your infrastructure in plain English
         </p>
       </div>
 
-      <div className="flex-1 bg-card border border-border rounded-lg p-6 overflow-y-auto">
+      <div className="flex-1 bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="text-muted-foreground text-center py-12">
-            <p className="text-lg mb-4">Ask me anything about your infrastructure</p>
+          <div className="text-slate-400 text-center py-12">
+            <p className="text-lg mb-4 text-white">Ask me anything about your infrastructure</p>
             <div className="space-y-2 text-sm">
               <p>Try: "Show me agents with CPU above 80% in the last hour"</p>
               <p>Or: "Which agents have the most alerts this week?"</p>
@@ -68,8 +68,8 @@ export default function NaturalLanguageQuery() {
                 <div
                   className={`max-w-[80%] rounded-lg p-4 ${
                     message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-slate-700/50 text-white'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -86,7 +86,7 @@ export default function NaturalLanguageQuery() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Ask a question..."
-          className="flex-1 px-4 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          className="flex-1 px-4 py-2 rounded-lg border border-white/10 bg-slate-800/50 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={nlQuery.isPending}
         />
         <Button type="submit" disabled={nlQuery.isPending || !query.trim()}>

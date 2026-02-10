@@ -96,6 +96,7 @@ export default function TopologyEditor() {
 
     // Create new node objects to ensure React detects changes
     let updatedNodes = nodeList.map(n => ({ ...n }))
+    let updatedLinks: Link[] = []
 
     switch (layoutType) {
       case 'star': {
@@ -116,6 +117,13 @@ export default function TopologyEditor() {
           node.y = y
           node.fx = x
           node.fy = y
+
+          // Create star links - all nodes connect to center
+          updatedLinks.push({
+            source: node.id,
+            target: center.id,
+            id: `${node.id}-${center.id}`,
+          })
         })
         break
       }
@@ -129,6 +137,15 @@ export default function TopologyEditor() {
           node.y = y
           node.fx = x
           node.fy = y
+
+          // Create chain links - connect each node to the next
+          if (i < updatedNodes.length - 1) {
+            updatedLinks.push({
+              source: node.id,
+              target: updatedNodes[i + 1].id,
+              id: `${node.id}-${updatedNodes[i + 1].id}`,
+            })
+          }
         })
         break
       }
@@ -138,28 +155,34 @@ export default function TopologyEditor() {
         const levels: Node[][] = []
         const visited = new Set<string>()
         const root = updatedNodes.find(n => n.type === 'server') || updatedNodes[0]
+        const childrenMap = new Map<string, Node[]>()
 
-        const buildLevels = (node: Node, level: number) => {
+        const buildLevels = (node: Node, level: number, parent?: Node) => {
           if (visited.has(node.id)) return
           visited.add(node.id)
 
           if (!levels[level]) levels[level] = []
           levels[level].push(node)
 
-          const connected = linkList
-            .filter(l =>
-              (typeof l.source === 'string' ? l.source : l.source.id) === node.id ||
-              (typeof l.target === 'string' ? l.target : l.target.id) === node.id
-            )
-            .map(l => {
-              const targetId = (typeof l.target === 'string' ? l.target : l.target.id)
-              const sourceId = (typeof l.source === 'string' ? l.source : l.source.id)
-              return targetId === node.id ? sourceId : targetId
+          // Create link from parent to this node
+          if (parent) {
+            updatedLinks.push({
+              source: parent.id,
+              target: node.id,
+              id: `${parent.id}-${node.id}`,
             })
-            .map(id => updatedNodes.find(n => n.id === id))
-            .filter((n): n is Node => n !== undefined && !visited.has(n.id))
+          }
 
-          connected.forEach(n => buildLevels(n, level + 1))
+          // Get unvisited children
+          const children = updatedNodes.filter(n =>
+            !visited.has(n.id) && n.id !== node.id
+          )
+
+          // Distribute children across levels
+          const childrenPerLevel = Math.ceil(children.length / (updatedNodes.length - level - 1 || 1))
+          const childrenForThisLevel = children.slice(0, Math.min(childrenPerLevel, 3))
+
+          childrenForThisLevel.forEach(child => buildLevels(child, level + 1, node))
         }
 
         buildLevels(root, 0)
@@ -190,6 +213,14 @@ export default function TopologyEditor() {
           node.y = y
           node.fx = x
           node.fy = y
+
+          // Create circle links - connect each node to the next (forming a ring)
+          const nextNode = updatedNodes[(i + 1) % updatedNodes.length]
+          updatedLinks.push({
+            source: node.id,
+            target: nextNode.id,
+            id: `${node.id}-${nextNode.id}`,
+          })
         })
         break
       }
@@ -198,11 +229,13 @@ export default function TopologyEditor() {
         const maxRadius = Math.min(width, height) * 0.4
         const types = Array.from(new Set(updatedNodes.map(n => n.type)))
         const ringRadius = maxRadius / types.length
+        const rings: Node[][] = []
 
         types.forEach((type, ringIndex) => {
           const nodesInRing = updatedNodes.filter(n => n.type === type)
           const angleStep = (2 * Math.PI) / nodesInRing.length
           const radius = ringRadius * (ringIndex + 1)
+          rings[ringIndex] = nodesInRing
 
           nodesInRing.forEach((node, i) => {
             const x = centerX + radius * Math.cos(i * angleStep)
@@ -211,6 +244,27 @@ export default function TopologyEditor() {
             node.y = y
             node.fx = x
             node.fy = y
+
+            // Connect nodes within the same ring
+            const nextNode = nodesInRing[(i + 1) % nodesInRing.length]
+            updatedLinks.push({
+              source: node.id,
+              target: nextNode.id,
+              id: `${node.id}-${nextNode.id}`,
+            })
+
+            // Connect to inner ring (if exists)
+            if (ringIndex > 0 && rings[ringIndex - 1]) {
+              const innerRing = rings[ringIndex - 1]
+              const closestInnerNode = innerRing[i % innerRing.length]
+              if (closestInnerNode) {
+                updatedLinks.push({
+                  source: node.id,
+                  target: closestInnerNode.id,
+                  id: `${node.id}-${closestInnerNode.id}`,
+                })
+              }
+            }
           })
         })
         break
@@ -231,6 +285,30 @@ export default function TopologyEditor() {
           node.y = y
           node.fx = x
           node.fy = y
+
+          // Create grid links - connect to right and bottom neighbors
+          // Connect to right neighbor
+          if (col < cols - 1 && i + 1 < updatedNodes.length) {
+            const rightNeighbor = updatedNodes[i + 1]
+            if (Math.floor((i + 1) / cols) === row) {
+              updatedLinks.push({
+                source: node.id,
+                target: rightNeighbor.id,
+                id: `${node.id}-${rightNeighbor.id}`,
+              })
+            }
+          }
+
+          // Connect to bottom neighbor
+          const bottomIndex = i + cols
+          if (bottomIndex < updatedNodes.length) {
+            const bottomNeighbor = updatedNodes[bottomIndex]
+            updatedLinks.push({
+              source: node.id,
+              target: bottomNeighbor.id,
+              id: `${node.id}-${bottomNeighbor.id}`,
+            })
+          }
         })
         break
       }
@@ -241,11 +319,14 @@ export default function TopologyEditor() {
           node.fx = null
           node.fy = null
         })
+        // For force layout, keep existing links
+        updatedLinks = linkList
         break
       }
     }
 
     setNodes(updatedNodes)
+    setLinks(updatedLinks)
   }
 
   // Render visualization
