@@ -26,7 +26,12 @@
       "Bash(sqlite3:*)",
       "Bash(start \"\" node proxy-server.js)",
       "Bash(del:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Bash(\".\\\\test-ai-endpoint.bat\")",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(start \"\" dcim-server.exe)",
+      "Bash(timeout:*)"
     ]
   }
 }
