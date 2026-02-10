@@ -59,7 +59,7 @@ database:
     host: "localhost"
     port: 5432
     user: "postgres"
-    password: "admin"
+    password: "postgres"
     database: "dcim_db"
     sslmode: "disable"
     max_open_conns: 50

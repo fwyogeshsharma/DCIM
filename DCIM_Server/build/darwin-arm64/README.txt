@@ -1,7 +1,7 @@
 DCIM Server - darwin/arm64 Build
 
 Version: 1.0.0
-Built: 2026-02-06 13:26:50
+Built: 2026-02-10 16:52:39
 
 Files Included:
 - dcim-server (server executable)
