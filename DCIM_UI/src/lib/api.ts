@@ -8,9 +8,11 @@ import type {
   AgentFilter,
   MetricFilter,
   AlertFilter,
+  ServerConfig,
 } from './types'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+// Use aggregator service URL if available, otherwise fall back to direct server URL
+const API_BASE_URL = import.meta.env.VITE_AGGREGATOR_URL || import.meta.env.VITE_API_URL || '/api/v1'
 
 class APIClient {
   private baseURL: string
@@ -196,6 +198,55 @@ class APIClient {
       method: 'POST',
       body: JSON.stringify({ query }),
     })
+  }
+
+  // Server Management endpoints (for aggregator)
+  async getServers(): Promise<ServerConfig[]> {
+    return this.request<ServerConfig[]>('/servers')
+  }
+
+  async getServer(id: string): Promise<ServerConfig> {
+    return this.request<ServerConfig>(`/servers/${id}`)
+  }
+
+  async addServer(server: Omit<ServerConfig, 'id' | 'created_at' | 'updated_at'>): Promise<ServerConfig> {
+    return this.request<ServerConfig>('/servers', {
+      method: 'POST',
+      body: JSON.stringify(server),
+    })
+  }
+
+  async updateServer(id: string, updates: Partial<ServerConfig>): Promise<ServerConfig> {
+    return this.request<ServerConfig>(`/servers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    })
+  }
+
+  async deleteServer(id: string): Promise<void> {
+    await this.request<void>(`/servers/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async testServerConnection(id: string): Promise<{ status: string; responseTime?: number; error?: string }> {
+    return this.request(`/servers/${id}/health`)
+  }
+
+  async toggleServerStatus(id: string, enabled: boolean): Promise<void> {
+    await this.request<void>(`/servers/${id}/toggle`, {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    })
+  }
+
+  // Dashboard stats (aggregated)
+  async getDashboardStats(): Promise<{
+    servers: number
+    agents: { total: number; online: number; offline: number }
+    activeAlerts: number
+  }> {
+    return this.request('/dashboard/stats')
   }
 }
 

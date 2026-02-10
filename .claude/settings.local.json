@@ -31,7 +31,8 @@
       "Bash(tasklist:*)",
       "Bash(taskkill:*)",
       "Bash(start \"\" dcim-server.exe)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(grep:*)"
     ]
   }
 }

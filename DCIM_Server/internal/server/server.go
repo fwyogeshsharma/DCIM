@@ -60,6 +60,7 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 	mux.HandleFunc(basePath+"/agents/", server.handleGetAgentMetrics)    // Trailing slash for path params
 	mux.HandleFunc(basePath+"/agents", server.handleGetAgents)
 	mux.HandleFunc(basePath+"/events", server.handleSSEEvents)           // SSE endpoint for real-time updates
+	mux.HandleFunc(basePath+"/ai/query", server.handleAIQuery)           // POST: AI-powered query processing
 
 	// Health check endpoint
 	if cfg.Health.Enabled {
@@ -1098,6 +1099,57 @@ func (s *Server) sendSuccess(w http.ResponseWriter, message string, accepted, re
 		Accepted: accepted,
 		Rejected: rejected,
 	})
+}
+
+// handleAIQuery proxies AI requests to Nvidia API
+func (s *Server) handleAIQuery(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.sendError(w, http.StatusMethodNotAllowed, "Only POST requests are allowed")
+		return
+	}
+
+	// Read request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		s.sendError(w, http.StatusBadRequest, "Failed to read request body")
+		return
+	}
+	defer r.Body.Close()
+
+	// Create request to Nvidia API
+	nvidiaURL := "https://integrate.api.nvidia.com/v1/chat/completions"
+	nvidiaAPIKey := "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"
+
+	req, err := http.NewRequest("POST", nvidiaURL, strings.NewReader(string(body)))
+	if err != nil {
+		s.sendError(w, http.StatusInternalServerError, "Failed to create request")
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+nvidiaAPIKey)
+
+	// Send request to Nvidia
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		s.logger.Printf("Nvidia API error: %v", err)
+		s.sendError(w, http.StatusBadGateway, "Failed to connect to AI service")
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		s.sendError(w, http.StatusInternalServerError, "Failed to read AI response")
+		return
+	}
+
+	// Forward response to client
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	w.Write(respBody)
 }
 
 func (s *Server) sendError(w http.ResponseWriter, status int, errorMsg string) {

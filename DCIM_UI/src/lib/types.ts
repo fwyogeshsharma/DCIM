@@ -1,5 +1,28 @@
 // TypeScript types mirroring Go models
 
+export interface ServerConfig {
+  id?: string
+  name: string
+  url: string
+  enabled?: boolean
+  auth_type?: string
+  auth_credentials?: any
+  metadata?: {
+    location?: string
+    environment?: string
+    color?: string
+    [key: string]: any
+  }
+  health?: {
+    status: 'healthy' | 'offline'
+    responseTime?: number
+    error?: string
+    timestamp?: string
+  }
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Agent {
   id: number
   agent_id: string
