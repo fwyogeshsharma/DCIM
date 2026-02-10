@@ -711,7 +711,7 @@ func (s *Server) handleGetAgentMetrics(w http.ResponseWriter, r *http.Request) {
 	// Parse metric_type (optional)
 	metricType := query.Get("metric_type")
 
-	// Parse limit (default 100, max 1000)
+	// Parse limit (default 100, max 100000)
 	limitStr := query.Get("limit")
 	limit := 100
 	if limitStr != "" {
@@ -721,8 +721,8 @@ func (s *Server) handleGetAgentMetrics(w http.ResponseWriter, r *http.Request) {
 			s.sendError(w, http.StatusBadRequest, "Invalid limit")
 			return
 		}
-		if limit > 1000 {
-			limit = 1000
+		if limit > 100000 {
+			limit = 100000
 		}
 	}
 

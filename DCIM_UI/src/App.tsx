@@ -8,7 +8,10 @@ import LandingOptimized from './pages/LandingOptimized'
 import Dashboard from './pages/Dashboard'
 import Agents from './pages/Agents'
 import AgentDetail from './pages/AgentDetail'
+import AgentAnalytics from './pages/AgentAnalytics'
 import Alerts from './pages/Alerts'
+import Topology from './pages/Topology'
+import TopologyEditor from './pages/TopologyEditor'
 import AIAnalytics from './pages/AIAnalytics'
 import NaturalLanguageQuery from './pages/NaturalLanguageQuery'
 import Settings from './pages/Settings'
@@ -45,7 +48,10 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="agents" element={<Agents />} />
               <Route path="agents/:agentId" element={<AgentDetail />} />
+              <Route path="agents/:agentId/analytics" element={<AgentAnalytics />} />
               <Route path="alerts" element={<Alerts />} />
+              <Route path="topology" element={<Topology />} />
+              <Route path="topology-editor" element={<TopologyEditor />} />
               <Route path="ai-analytics" element={<AIAnalytics />} />
               <Route path="nl-query" element={<NaturalLanguageQuery />} />
               <Route path="settings" element={<Settings />} />

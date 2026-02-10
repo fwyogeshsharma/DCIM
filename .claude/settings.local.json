@@ -22,7 +22,11 @@
       "Bash(powershell.exe -Command \"go version\":*)",
       "Bash(\"C:/Program Files/Go/bin/go.exe\" version:*)",
       "Bash(\"C:/Program Files/Go/bin/go.exe\" env:*)",
-      "Bash(./dcim-agent.exe --version:*)"
+      "Bash(./dcim-agent.exe --version:*)",
+      "Bash(sqlite3:*)",
+      "Bash(start \"\" node proxy-server.js)",
+      "Bash(del:*)",
+      "Bash(go build:*)"
     ]
   }
 }

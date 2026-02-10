@@ -2,6 +2,8 @@ import { useAgents } from '@/hooks/useAgents'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { formatDistanceToNow } from 'date-fns'
+import { BarChart3 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function Agents() {
   const { data: agents, isLoading } = useAgents()
@@ -36,6 +38,8 @@ export default function Agents() {
               <th className="text-left p-4 font-medium text-slate-300">Status</th>
               <th className="text-left p-4 font-medium text-slate-300">Last Seen</th>
               <th className="text-left p-4 font-medium text-slate-300">Metrics</th>
+              <th className="text-left p-4 font-medium text-slate-300">Alerts</th>
+              <th className="text-right p-4 font-medium text-slate-300">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -69,6 +73,30 @@ export default function Agents() {
                 </td>
                 <td className="p-4 font-mono text-white">
                   {agent.total_metrics.toLocaleString()}
+                </td>
+                <td className="p-4">
+                  {agent.total_alerts > 0 ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                      {agent.total_alerts}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 text-sm">0</span>
+                  )}
+                </td>
+                <td className="p-4">
+                  <div className="flex items-center justify-end">
+                    <Link to={`/app/agents/${agent.agent_id}/analytics`}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300"
+                        title="View Analytics"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        Analytics
+                      </Button>
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}

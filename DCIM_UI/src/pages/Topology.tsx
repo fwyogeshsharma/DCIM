@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAgents } from '@/hooks/useAgents'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import * as d3 from 'd3'
-import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3 } from 'lucide-react'
+import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 
 interface Node extends d3.SimulationNodeDatum {
@@ -20,12 +22,64 @@ interface Link extends d3.SimulationLinkDatum<Node> {
   strength: number
 }
 
+type TimeFilter = 'today' | '30days' | 'all'
+
 export default function Topology() {
   const { data: agents, isLoading } = useAgents()
   const navigate = useNavigate()
   const svgRef = useRef<SVGSVGElement>(null)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null)
+
+  // Fetch filtered metrics and alerts for each agent
+  const { data: filteredData } = useQuery({
+    queryKey: ['topology-filtered-data', timeFilter, agents?.map(a => a.agent_id).join(',')],
+    queryFn: async () => {
+      if (!agents) return null
+
+      const timeRangeMap = {
+        today: '24h',
+        '30days': '30d',
+        all: undefined,
+      }
+
+      const timeRange = timeRangeMap[timeFilter]
+
+      // Fetch metrics and alerts count for each agent
+      const results = await Promise.all(
+        agents.map(async (agent) => {
+          try {
+            const [metrics, alerts] = await Promise.all([
+              timeRange
+                ? api.getMetrics({ agent_id: agent.agent_id, time_range: timeRange, limit: 999999 })
+                : Promise.resolve([]),
+              timeRange
+                ? api.getAlerts({ agent_id: agent.agent_id, time_range: timeRange })
+                : Promise.resolve([]),
+            ])
+
+            return {
+              agent_id: agent.agent_id,
+              metrics_count: timeRange ? metrics.length : agent.total_metrics,
+              alerts_count: timeRange ? alerts.filter(a => !a.resolved).length : agent.total_alerts,
+            }
+          } catch (error) {
+            console.error(`Error fetching data for agent ${agent.agent_id}:`, error)
+            return {
+              agent_id: agent.agent_id,
+              metrics_count: timeFilter === 'all' ? agent.total_metrics : 0,
+              alerts_count: timeFilter === 'all' ? agent.total_alerts : 0,
+            }
+          }
+        })
+      )
+
+      return results
+    },
+    enabled: !!agents && agents.length > 0,
+    refetchInterval: 30000,
+  })
 
   useEffect(() => {
     if (!agents || !svgRef.current) return
@@ -51,7 +105,7 @@ export default function Topology() {
 
     svg.call(zoom)
 
-    // Create nodes
+    // Create nodes with filtered data
     const nodes: Node[] = [
       {
         id: 'server',
@@ -61,15 +115,18 @@ export default function Topology() {
         x: width / 2,
         y: height / 2,
       },
-      ...agents.map((agent) => ({
-        id: agent.agent_id,
-        name: agent.hostname,
-        type: 'agent' as const,
-        status: agent.status as 'online' | 'offline',
-        metrics: agent.total_metrics,
-        alerts: agent.total_alerts,
-        ip: agent.ip_address,
-      })),
+      ...agents.map((agent) => {
+        const filtered = filteredData?.find(f => f.agent_id === agent.agent_id)
+        return {
+          id: agent.agent_id,
+          name: agent.hostname,
+          type: 'agent' as const,
+          status: agent.status as 'online' | 'offline',
+          metrics: filtered?.metrics_count ?? agent.total_metrics,
+          alerts: filtered?.alerts_count ?? agent.total_alerts,
+          ip: agent.ip_address,
+        }
+      }),
     ]
 
     // Create links (all agents connect to server)
@@ -272,7 +329,7 @@ export default function Topology() {
     return () => {
       simulation.stop()
     }
-  }, [agents])
+  }, [agents, filteredData])
 
   const handleZoomIn = () => {
     d3.select(svgRef.current).transition().call(
@@ -314,11 +371,49 @@ export default function Topology() {
     <div className="h-full flex flex-col space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex-1">
           <h1 className="text-4xl font-bold text-white">Network Topology</h1>
           <p className="text-slate-400 mt-2 text-lg">
             Interactive visualization of your infrastructure
           </p>
+
+          {/* Time Filter */}
+          <div className="flex items-center gap-2 mt-4">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <span className="text-sm text-slate-400">Time Period:</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTimeFilter('today')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  timeFilter === 'today'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 border border-white/10'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setTimeFilter('30days')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  timeFilter === '30days'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 border border-white/10'
+                }`}
+              >
+                30 Days
+              </button>
+              <button
+                onClick={() => setTimeFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  timeFilter === 'all'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 border border-white/10'
+                }`}
+              >
+                All Time
+              </button>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -1,0 +1,3 @@
+@echo off
+echo Stopping proxy server...
+powershell -ExecutionPolicy Bypass -File "%~dp0stop-proxy.ps1"

@@ -39,7 +39,14 @@ class APIClient {
         throw new Error(error.message || `API request failed: ${response.status}`)
       }
 
-      return response.json()
+      const json = await response.json()
+
+      // Handle server response format: { success: boolean, data: T, message: string }
+      if (json && typeof json === 'object' && 'data' in json) {
+        return json.data as T
+      }
+
+      return json as T
     } catch (error) {
       console.error('API request error:', error)
       throw error
@@ -89,6 +96,7 @@ class APIClient {
     if (filter.start_time) params.append('start_time', filter.start_time)
     if (filter.end_time) params.append('end_time', filter.end_time)
     if (filter.time_range) params.append('time_range', filter.time_range)
+    if (filter.limit) params.append('limit', filter.limit.toString())
 
     return this.request<Metric[]>(`/metrics?${params.toString()}`)
   }

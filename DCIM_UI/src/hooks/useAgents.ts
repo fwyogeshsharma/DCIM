@@ -11,12 +11,13 @@ export function useAgents(filter?: AgentFilter) {
 }
 
 export function useAgent(agentId: string) {
-  return useQuery({
-    queryKey: ['agents', agentId],
-    queryFn: () => api.getAgent(agentId),
-    enabled: !!agentId,
-    staleTime: 30000,
-  })
+  // Get agent from the agents list instead of individual endpoint
+  const { data: agents, ...rest } = useAgents()
+
+  return {
+    ...rest,
+    data: agents?.find(agent => agent.agent_id === agentId),
+  }
 }
 
 export function useApproveAgent() {
@@ -58,7 +59,27 @@ export function useUpdateAgentGroup() {
 export function useLatestMetrics(agentId: string) {
   return useQuery({
     queryKey: ['agents', agentId, 'latest-metrics'],
-    queryFn: () => api.getLatestMetrics(agentId),
+    queryFn: async () => {
+      // Get recent metrics and extract latest values per type
+      const metrics = await api.getMetrics({ agent_id: agentId, limit: 100 })
+
+      if (!metrics || metrics.length === 0) return {}
+
+      // Group by metric_type and get the latest (first) value for each
+      const latest: Record<string, any> = {}
+      metrics.forEach(metric => {
+        const key = metric.metric_type
+        if (!latest[key]) {
+          latest[key] = {
+            value: metric.value,
+            unit: metric.unit,
+            timestamp: metric.timestamp,
+          }
+        }
+      })
+
+      return latest
+    },
     enabled: !!agentId,
     staleTime: 10000, // 10 seconds
     refetchInterval: 30000, // Refetch every 30 seconds

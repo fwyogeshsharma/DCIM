@@ -12,18 +12,22 @@ export default function AgentAnalytics() {
   const { data: agent, isLoading: agentLoading } = useAgent(agentId!)
 
   // Fetch metrics for different time ranges
-  const { data: metrics1h } = useQuery({
-    queryKey: ['metrics', agentId, '1h'],
-    queryFn: () => api.getMetrics({ agent_id: agentId, time_range: '1h', limit: 100 }),
+  const { data: metricsRecent } = useQuery({
+    queryKey: ['metrics', agentId, 'recent'],
+    queryFn: () => api.getMetrics({ agent_id: agentId, limit: 500 }),
     enabled: !!agentId,
     refetchInterval: 30000,
   })
 
-  const { data: metrics24h } = useQuery({
-    queryKey: ['metrics', agentId, '24h'],
-    queryFn: () => api.getMetrics({ agent_id: agentId, time_range: '24h', limit: 100 }),
+  const { data: metricsAll } = useQuery({
+    queryKey: ['metrics', agentId, 'all'],
+    queryFn: () => api.getMetrics({ agent_id: agentId, limit: 1000 }),
     enabled: !!agentId,
   })
+
+  // Fallback: if time_range doesn't work, use all available metrics
+  const metrics1h = metricsRecent || []
+  const metrics24h = metricsAll || []
 
   if (agentLoading) {
     return (
@@ -363,11 +367,11 @@ export default function AgentAnalytics() {
                         dataKey="timestamp"
                         tickFormatter={formatTimestamp}
                         stroke="#64748b"
-                        style={{ fontSize: '12px' }}
+                        style={{ fontSize: '12px', fill: '#fff' }}
                       />
                       <YAxis
                         stroke="#64748b"
-                        style={{ fontSize: '12px' }}
+                        style={{ fontSize: '12px', fill: '#fff' }}
                         domain={isPercent ? [0, 100] : ['auto', 'auto']}
                       />
                       <Tooltip content={<CustomTooltip />} />
@@ -417,14 +421,14 @@ export default function AgentAnalytics() {
                         hour: '2-digit'
                       })}
                       stroke="#64748b"
-                      style={{ fontSize: '12px' }}
+                      style={{ fontSize: '12px', fill: '#fff' }}
                     />
                     <YAxis
                       stroke="#64748b"
-                      style={{ fontSize: '12px' }}
+                      style={{ fontSize: '12px', fill: '#fff' }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend />
+                    <Legend wrapperStyle={{ color: '#fff' }} />
                     <Line
                       type="monotone"
                       dataKey="value"
