@@ -77,6 +77,34 @@ func (a *AlertEngine) EvaluateMetrics(metrics *collector.SystemMetrics) ([]*stor
 		}
 	}
 
+	// Check network interface status
+	for _, nic := range metrics.NetworkInterfaces {
+		// Skip loopback interfaces
+		if nic.Name == "lo" || nic.Name == "Loopback Pseudo-Interface 1" {
+			continue
+		}
+
+		// Skip virtual interfaces (common patterns)
+		if len(nic.HardwareAddr) == 0 || nic.HardwareAddr == "" {
+			continue
+		}
+
+		// Check if interface is down
+		if !nic.IsUp() || nic.LinkState == "down" || nic.OperState == "DOWN" {
+			alert := &storage.Alert{
+				Timestamp:  metrics.Timestamp,
+				Severity:   SeverityCritical,
+				MetricType: fmt.Sprintf("network.interface.%s", nic.Name),
+				Value:      0, // 0 = down, 1 = up
+				Threshold:  1,
+				Message: fmt.Sprintf("Network interface %s is DOWN (LinkState: %s, OperState: %s, MAC: %s)",
+					nic.Name, nic.LinkState, nic.OperState, nic.HardwareAddr),
+				CreatedAt: time.Now(),
+			}
+			alerts = append(alerts, alert)
+		}
+	}
+
 	// Store all generated alerts
 	for _, alert := range alerts {
 		if err := a.storage.SaveAlert(alert); err != nil {
