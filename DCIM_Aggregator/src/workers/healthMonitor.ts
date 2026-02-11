@@ -3,6 +3,7 @@ import axios from 'axios'
 import { Pool } from 'pg'
 import { RedisClientType } from 'redis'
 import { CacheService } from '../services/CacheService'
+import { getAgentForServer } from '../utils/certManager'
 import { logger } from '../utils/logger'
 
 let dbPool: Pool
@@ -24,7 +25,9 @@ export function startHealthMonitorWorker() {
       for (const server of servers) {
         try {
           const startTime = Date.now()
-          await axios.get(`${server.url}/agents`, { timeout: 5000 })
+          const baseUrl = server.url.replace(/\/api\/v\d+\/?$/, '')
+          const httpsAgent = getAgentForServer(server.id)
+          await axios.get(`${baseUrl}/health`, { timeout: 5000, httpsAgent })
           const responseTime = Date.now() - startTime
 
           await cacheService.setServerHealth(server.id, {

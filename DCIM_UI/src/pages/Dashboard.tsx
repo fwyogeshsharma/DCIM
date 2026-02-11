@@ -1,48 +1,87 @@
 import { useAgents } from '@/hooks/useAgents'
 import { useAlerts } from '@/hooks/useAlerts'
-import { Server, Activity, AlertTriangle, ThermometerSun } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
+import { Server, Activity, AlertTriangle, ThermometerSun, ServerCog, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 export default function Dashboard() {
   const { data: agents, isLoading: agentsLoading } = useAgents()
   const { data: alerts, isLoading: alertsLoading } = useAlerts()
+  const { data: servers, isLoading: serversLoading } = useQuery({
+    queryKey: ['servers'],
+    queryFn: () => api.getServers(),
+    staleTime: 30000,
+    refetchInterval: 30000,
+  })
 
   const totalAgents = agents?.length || 0
   const onlineAgents = agents?.filter((a) => a.status === 'online').length || 0
   const criticalAlerts = alerts?.filter((a) => a.severity === 'CRITICAL' && !a.resolved).length || 0
   const totalAlerts = alerts?.filter((a) => !a.resolved).length || 0
+  const totalServers = servers?.length || 0
+  const healthyServers = servers?.filter((s) => s.health?.status === 'healthy').length || 0
+
+  // Group agents by server
+  const agentsByServer: Record<string, { name: string; online: number; offline: number; total: number; color: string }> = {}
+  agents?.forEach((agent) => {
+    const key = agent.server_name || 'Unknown'
+    if (!agentsByServer[key]) {
+      agentsByServer[key] = { name: key, online: 0, offline: 0, total: 0, color: '#3b82f6' }
+    }
+    agentsByServer[key].total++
+    if (agent.status === 'online') agentsByServer[key].online++
+    else agentsByServer[key].offline++
+  })
+
+  // Try to assign server colors from server metadata
+  servers?.forEach((s) => {
+    if (agentsByServer[s.name] && s.metadata?.color) {
+      agentsByServer[s.name].color = s.metadata.color
+    }
+  })
 
   const stats = [
     {
+      name: 'Servers',
+      value: `${healthyServers}/${totalServers}`,
+      subtitle: 'healthy',
+      icon: ServerCog,
+      color: 'text-cyan-500',
+      bgColor: 'bg-cyan-500/10',
+      link: '/app/servers',
+    },
+    {
       name: 'Total Agents',
       value: totalAgents,
+      subtitle: `${onlineAgents} online`,
       icon: Server,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
+      link: '/app/agents',
     },
     {
       name: 'Online Agents',
       value: onlineAgents,
+      subtitle: `${totalAgents - onlineAgents} offline`,
       icon: Activity,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
+      link: '/app/agents',
     },
     {
-      name: 'Critical Alerts',
-      value: criticalAlerts,
-      icon: AlertTriangle,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10',
-    },
-    {
-      name: 'Total Alerts',
+      name: 'Active Alerts',
       value: totalAlerts,
-      icon: ThermometerSun,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10',
+      subtitle: `${criticalAlerts} critical`,
+      icon: AlertTriangle,
+      color: criticalAlerts > 0 ? 'text-red-500' : 'text-yellow-500',
+      bgColor: criticalAlerts > 0 ? 'bg-red-500/10' : 'bg-yellow-500/10',
+      link: '/app/alerts',
     },
   ]
 
-  if (agentsLoading || alertsLoading) {
+  if (agentsLoading || alertsLoading || serversLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4">
@@ -67,8 +106,9 @@ export default function Dashboard() {
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
-            <div
+            <Link
               key={stat.name}
+              to={stat.link}
               className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300 group cursor-pointer"
             >
               <div className="flex items-center justify-between">
@@ -77,39 +117,140 @@ export default function Dashboard() {
                     {stat.name}
                   </p>
                   <p className="text-3xl font-bold mt-2 text-white">{stat.value}</p>
+                  <p className="text-xs text-slate-500 mt-1">{stat.subtitle}</p>
                 </div>
                 <div className={`${stat.bgColor} p-3 rounded-lg group-hover:scale-110 transition-transform duration-300`}>
                   <Icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>
 
-      {/* Charts and Tables */}
+      {/* Server Health + Agent Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Server Health */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
-          <h3 className="text-xl font-semibold mb-4 text-white">Agent Status</h3>
-          <div className="text-slate-400 text-sm">
-            Agent status visualization will appear here
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Server Health</h3>
+            <Link to="/app/servers" className="text-sm text-blue-400 hover:text-blue-300">View All</Link>
           </div>
+          {servers && servers.length > 0 ? (
+            <div className="space-y-3">
+              {servers.map((server) => (
+                <div key={server.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-2 h-8 rounded-full"
+                      style={{ backgroundColor: server.metadata?.color || '#3b82f6' }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-white">{server.name}</p>
+                      <p className="text-xs text-slate-500 font-mono">{server.url}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {server.health?.status === 'healthy' ? (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span className="text-xs text-green-400">{server.health.responseTime}ms</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-xs text-red-400">Offline</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <ServerCog className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">No servers configured</p>
+              <Link to="/app/servers" className="text-sm text-blue-400 hover:text-blue-300 mt-2 inline-block">
+                Add a server
+              </Link>
+            </div>
+          )}
         </div>
 
+        {/* Agents by Server */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
-          <h3 className="text-xl font-semibold mb-4 text-white">Recent Alerts</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Agents by Server</h3>
+            <Link to="/app/agents" className="text-sm text-blue-400 hover:text-blue-300">View All</Link>
+          </div>
+          {Object.keys(agentsByServer).length > 0 ? (
+            <div className="space-y-4">
+              {Object.values(agentsByServer).map((group) => {
+                const onlinePct = group.total > 0 ? (group.online / group.total) * 100 : 0
+                return (
+                  <div key={group.name} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: group.color }} />
+                        <span className="text-sm font-medium text-white">{group.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-green-400">{group.online} online</span>
+                        {group.offline > 0 && <span className="text-red-400">{group.offline} offline</span>}
+                        <span className="text-slate-500">{group.total} total</span>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${onlinePct}%`,
+                          backgroundColor: group.color,
+                          opacity: 0.8,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Server className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">No agents synced yet</p>
+              <p className="text-xs text-slate-500 mt-1">Agents appear after servers start syncing</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Alerts + Recent Agents */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Alerts */}
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Recent Alerts</h3>
+            <Link to="/app/alerts" className="text-sm text-blue-400 hover:text-blue-300">View All</Link>
+          </div>
           <div className="space-y-3">
-            {alerts?.slice(0, 5).map((alert) => (
+            {alerts?.filter(a => !a.resolved).slice(0, 5).map((alert) => (
               <div
                 key={alert.id}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors"
               >
-                <div>
-                  <p className="text-sm font-medium text-white">{alert.message}</p>
-                  <p className="text-xs text-slate-400 mt-1">{alert.agent_id}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{alert.message}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-slate-500 font-mono">{alert.agent_id}</p>
+                    {alert.server_name && (
+                      <span className="text-xs text-slate-500">
+                        &middot; {alert.server_name}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span
-                  className={`text-xs px-3 py-1.5 rounded-full font-medium ${
+                  className={`text-xs px-3 py-1.5 rounded-full font-medium ml-3 whitespace-nowrap ${
                     alert.severity === 'CRITICAL'
                       ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                       : alert.severity === 'WARNING'
@@ -121,19 +262,57 @@ export default function Dashboard() {
                 </span>
               </div>
             ))}
-            {(!alerts || alerts.length === 0) && (
+            {(!alerts || alerts.filter(a => !a.resolved).length === 0) && (
               <div className="text-center py-8 text-slate-400">
-                No recent alerts
+                <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-slate-600" />
+                No active alerts
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
-        <h3 className="text-xl font-semibold mb-4 text-white">System Metrics</h3>
-        <div className="text-slate-400 text-sm">
-          Real-time metrics charts will appear here
+        {/* Recently Seen Agents */}
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Recently Active Agents</h3>
+            <Link to="/app/agents" className="text-sm text-blue-400 hover:text-blue-300">View All</Link>
+          </div>
+          <div className="space-y-3">
+            {agents
+              ?.slice()
+              .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
+              .slice(0, 6)
+              .map((agent) => (
+                <Link
+                  key={agent.id}
+                  to={`/app/agents/${agent.agent_id}`}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div>
+                      <p className="text-sm font-medium text-white">{agent.hostname}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-slate-500 font-mono">{agent.ip_address}</p>
+                        {agent.server_name && (
+                          <span className="text-xs text-slate-500">&middot; {agent.server_name}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Clock className="w-3 h-3" />
+                    {formatDistanceToNow(new Date(agent.last_seen), { addSuffix: true })}
+                  </div>
+                </Link>
+              ))}
+            {(!agents || agents.length === 0) && (
+              <div className="text-center py-8 text-slate-400">
+                <Server className="w-10 h-10 mx-auto mb-3 text-slate-600" />
+                No agents found
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

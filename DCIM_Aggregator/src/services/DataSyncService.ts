@@ -1,13 +1,46 @@
 import { Pool } from 'pg'
 import { HttpClient } from '../utils/httpClient'
+import { getAgentForServer } from '../utils/certManager'
 import { logger } from '../utils/logger'
 
 export class DataSyncService {
   constructor(private dbPool: Pool) {}
 
+  /**
+   * Get a known agent_id for a server (needed for authenticated endpoints).
+   * The Go server requires X-Agent-ID header for /metrics, /alerts, /snmp-metrics.
+   */
+  private async getAgentIdForServer(serverId: string): Promise<string | null> {
+    try {
+      const result = await this.dbPool.query(
+        `SELECT agent_id FROM agents WHERE server_id = $1 LIMIT 1`,
+        [serverId]
+      )
+      return result.rows.length > 0 ? result.rows[0].agent_id : null
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Get ALL agent_ids for a server (for per-agent metric fetching).
+   */
+  private async getAllAgentIdsForServer(serverId: string): Promise<string[]> {
+    try {
+      const result = await this.dbPool.query(
+        `SELECT agent_id FROM agents WHERE server_id = $1`,
+        [serverId]
+      )
+      return result.rows.map((r: any) => r.agent_id)
+    } catch {
+      return []
+    }
+  }
+
   async syncAgentsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
-      const client = new HttpClient(serverUrl)
+      const agent = getAgentForServer(serverId)
+      const client = new HttpClient(serverUrl, 5000, agent)
       const response: any = await client.get('/agents')
       const agents = response.data || response
 
@@ -41,7 +74,7 @@ export class DataSyncService {
               agent.ip_address,
               agent.status,
               agent.certificate_cn,
-              agent.agent_group,
+              agent.group,
               agent.approved,
               agent.last_seen || new Date(),
             ]
@@ -59,14 +92,40 @@ export class DataSyncService {
 
   async syncMetricsFromServer(serverId: string, serverUrl: string, agentId?: string): Promise<void> {
     try {
-      const client = new HttpClient(serverUrl)
-      const params = new URLSearchParams()
-      if (agentId) params.append('agent_id', agentId)
-      params.append('limit', '1000')
+      const agent = getAgentForServer(serverId)
+      const client = new HttpClient(serverUrl, 15000, agent)
 
-      const url = `/metrics?${params.toString()}`
-      const response: any = await client.get(url)
-      const metrics = response.data || response
+      // Get agent IDs for this server — we need to pass X-Agent-ID header
+      const agentIds = agentId ? [agentId] : await this.getAllAgentIdsForServer(serverId)
+      if (agentIds.length === 0) {
+        logger.debug(`No agents known for server ${serverId}, skipping metrics sync`)
+        return
+      }
+
+      // Fetch metrics per agent using /metrics?agent_id=X endpoint
+      // (the /agents/{id}/metrics endpoint has a PostgreSQL bug on the Go server)
+      // We request 7d window since the Go server defaults to 24h which may miss older data
+      let allMetrics: any[] = []
+      for (const aid of agentIds) {
+        try {
+          const params = new URLSearchParams()
+          params.append('agent_id', aid)
+          params.append('time_range', '7d')
+          params.append('limit', '1000')
+          const url = `/metrics?${params.toString()}`
+          const response: any = await client.get(url, {
+            headers: { 'X-Agent-ID': aid },
+          })
+          const data = response.data || response
+          if (Array.isArray(data)) {
+            allMetrics = allMetrics.concat(data)
+          }
+        } catch (err: any) {
+          logger.debug(`Failed to fetch metrics for agent ${aid}: ${err.message}`)
+        }
+      }
+
+      const metrics = allMetrics
 
       if (!Array.isArray(metrics) || metrics.length === 0) {
         return
@@ -107,8 +166,19 @@ export class DataSyncService {
 
   async syncAlertsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
-      const client = new HttpClient(serverUrl)
-      const response: any = await client.get('/alerts')
+      const agent = getAgentForServer(serverId)
+      const client = new HttpClient(serverUrl, 5000, agent)
+
+      // Get a known agent_id for authenticated access
+      const agentId = await this.getAgentIdForServer(serverId)
+      if (!agentId) {
+        logger.debug(`No agents known for server ${serverId}, skipping alerts sync`)
+        return
+      }
+
+      const response: any = await client.get('/alerts?time_range=7d&limit=1000', {
+        headers: { 'X-Agent-ID': agentId },
+      })
       const alerts = response.data || response
 
       if (!Array.isArray(alerts)) {
@@ -129,8 +199,8 @@ export class DataSyncService {
               alert.severity,
               alert.message,
               alert.metric_type,
-              alert.threshold_value,
-              alert.actual_value,
+              alert.threshold,
+              alert.value,
               alert.resolved || false,
               alert.resolved_at,
               alert.timestamp || new Date(),
@@ -149,8 +219,19 @@ export class DataSyncService {
 
   async syncSNMPMetricsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
-      const client = new HttpClient(serverUrl)
-      const response: any = await client.get('/snmp/metrics')
+      const agent = getAgentForServer(serverId)
+      const client = new HttpClient(serverUrl, 5000, agent)
+
+      // Get a known agent_id for authenticated access
+      const agentId = await this.getAgentIdForServer(serverId)
+      if (!agentId) {
+        logger.debug(`No agents known for server ${serverId}, skipping SNMP sync`)
+        return
+      }
+
+      const response: any = await client.get('/snmp-metrics?time_range=7d&limit=1000', {
+        headers: { 'X-Agent-ID': agentId },
+      })
       const metrics = response.data || response
 
       if (!Array.isArray(metrics) || metrics.length === 0) {
@@ -174,9 +255,9 @@ export class DataSyncService {
           serverId,
           m.agent_id,
           m.device_name,
-          m.device_ip,
+          m.device_host || m.device_ip,
           m.metric_name,
-          m.metric_value,
+          String(m.value ?? m.metric_value ?? ''),
           m.oid,
           m.timestamp || new Date()
         )

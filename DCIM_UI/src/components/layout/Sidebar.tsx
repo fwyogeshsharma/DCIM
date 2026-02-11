@@ -10,7 +10,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Servers
+  ServerCog
 } from 'lucide-react'
 import { useUIStore } from '@/stores/useUIStore'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,7 @@ const navigation = [
   { name: 'Topology', href: '/topology', icon: Network },
   { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit },
   { name: 'NL Query', href: '/nl-query', icon: MessageSquareText },
-  { name: 'Servers', href: '/servers', icon: Servers },
+  { name: 'Servers', href: '/servers', icon: ServerCog },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

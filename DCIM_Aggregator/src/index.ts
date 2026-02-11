@@ -54,7 +54,7 @@ app.get('/health', (req, res) => {
 })
 
 // API routes
-setupRoutes(app, dbPool, redisClient)
+setupRoutes(app, dbPool, redisClient as any)
 
 // Error handlers
 app.use(notFoundHandler)
@@ -73,7 +73,7 @@ async function start() {
     logger.info('Redis connected')
 
     // Start background workers
-    startWorkers(dbPool, redisClient)
+    startWorkers(dbPool, redisClient as any)
 
     // Start HTTP server
     app.listen(port, () => {

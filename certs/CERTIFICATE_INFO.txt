@@ -1,0 +1,39 @@
+﻿# Certificate Information
+# Generated: 2026-02-10 18:40:47
+
+## Certificate Authority (CA)
+- Valid for: 1 year
+- Expires: 2027-02-10
+- Files: ca.crt, ca.key
+
+## Server Certificate
+- Hostname: Aman-PC
+- Valid for: 1 year
+- Expires: 2027-02-10
+- Files: server.crt, server.key
+
+## Client Certificate
+- Client ID: FABER
+- Valid for: 1 year
+- Expires: 2027-02-10
+- Files: client.crt, client.key
+
+## Renewal Reminders
+Set calendar reminders to renew certificates at least 30 days before expiry:
+- CA: Renew by 2027-01-11
+- Server: Renew by 2027-01-11
+- Client: Renew by 2027-01-11
+
+## Verification Commands
+View CA certificate:
+  openssl x509 -in certs/ca.crt -text -noout
+
+View server certificate:
+  openssl x509 -in certs/server.crt -text -noout
+
+View client certificate:
+  openssl x509 -in certs/client.crt -text -noout
+
+Verify certificate chains:
+  openssl verify -CAfile certs/ca.crt certs/server.crt
+  openssl verify -CAfile certs/ca.crt certs/client.crt

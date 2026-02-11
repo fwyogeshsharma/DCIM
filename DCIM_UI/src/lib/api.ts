@@ -209,18 +209,58 @@ class APIClient {
     return this.request<ServerConfig>(`/servers/${id}`)
   }
 
-  async addServer(server: Omit<ServerConfig, 'id' | 'created_at' | 'updated_at'>): Promise<ServerConfig> {
+  async addServer(
+    server: Omit<ServerConfig, 'id' | 'created_at' | 'updated_at'>,
+    certFiles?: { caCert?: File; clientCert?: File; clientKey?: File }
+  ): Promise<ServerConfig> {
+    if (certFiles && (certFiles.caCert || certFiles.clientCert || certFiles.clientKey)) {
+      return this.sendWithCerts('/servers', 'POST', server, certFiles)
+    }
     return this.request<ServerConfig>('/servers', {
       method: 'POST',
       body: JSON.stringify(server),
     })
   }
 
-  async updateServer(id: string, updates: Partial<ServerConfig>): Promise<ServerConfig> {
+  async updateServer(
+    id: string,
+    updates: Partial<ServerConfig>,
+    certFiles?: { caCert?: File; clientCert?: File; clientKey?: File }
+  ): Promise<ServerConfig> {
+    if (certFiles && (certFiles.caCert || certFiles.clientCert || certFiles.clientKey)) {
+      return this.sendWithCerts(`/servers/${id}`, 'PUT', updates, certFiles)
+    }
     return this.request<ServerConfig>(`/servers/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),
     })
+  }
+
+  private async sendWithCerts<T>(
+    endpoint: string,
+    method: string,
+    data: any,
+    certFiles: { caCert?: File; clientCert?: File; clientKey?: File }
+  ): Promise<T> {
+    const formData = new FormData()
+    formData.append('data', JSON.stringify(data))
+    if (certFiles.caCert) formData.append('caCert', certFiles.caCert)
+    if (certFiles.clientCert) formData.append('clientCert', certFiles.clientCert)
+    if (certFiles.clientKey) formData.append('clientKey', certFiles.clientKey)
+
+    const url = `${this.baseURL}${endpoint}`
+    const response = await fetch(url, { method, body: formData })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }))
+      throw new Error(error.message || `API request failed: ${response.status}`)
+    }
+
+    const json = await response.json()
+    if (json && typeof json === 'object' && 'data' in json) {
+      return json.data as T
+    }
+    return json as T
   }
 
   async deleteServer(id: string): Promise<void> {

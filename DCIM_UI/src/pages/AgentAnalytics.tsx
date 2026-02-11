@@ -227,7 +227,12 @@ export default function AgentAnalytics() {
             <span className="text-white">Analytics</span>
           </div>
           <h1 className="text-4xl font-bold text-white">Metrics Analytics</h1>
-          <p className="text-slate-400 mt-2 text-lg">Real-time performance monitoring and historical analysis</p>
+          <p className="text-slate-400 mt-2 text-lg">
+            Real-time performance monitoring and historical analysis
+            {agent.server_name && (
+              <span className="text-slate-500"> &middot; Server: <span className="text-slate-300">{agent.server_name}</span></span>
+            )}
+          </p>
         </div>
         <div>
           <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border ${

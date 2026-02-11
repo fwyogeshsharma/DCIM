@@ -151,11 +151,37 @@ if ($ValidityDays -eq 0) {
 
 Write-Host ""
 
+# Clear any problematic OpenSSL config
+$env:OPENSSL_CONF = $null
+
+# Find OpenSSL
+$opensslCmd = (Get-Command openssl -ErrorAction SilentlyContinue).Source
+if (-not $opensslCmd) {
+    # Check common install locations
+    $searchPaths = @(
+        "C:\Program Files\Git\mingw64\bin\openssl.exe",
+        "C:\Program Files\Git\usr\bin\openssl.exe",
+        "C:\Program Files\OpenSSL-Win64\bin\openssl.exe",
+        "C:\OpenSSL-Win64\bin\openssl.exe"
+    )
+    foreach ($p in $searchPaths) {
+        if (Test-Path $p) { $opensslCmd = $p; break }
+    }
+}
+if (-not $opensslCmd) {
+    Write-Host "[ERROR] OpenSSL not found! Install OpenSSL or add it to PATH." -ForegroundColor Red
+    exit 1
+}
+Write-Host "Using OpenSSL: $opensslCmd" -ForegroundColor Green
+
 # Generate private key
 Write-Host "1. Generating private key..." -ForegroundColor Cyan
-cmd /c "openssl genrsa -out `"$agentDir\client.key`" 2048 2>nul"
+$keyPath = "$agentDir\client.key"
+$ErrorActionPreference = "Continue"
+& $opensslCmd genrsa -out $keyPath 2048 2>&1 | Out-Null
+$ErrorActionPreference = "Stop"
 
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-Path $keyPath) -or (Get-Item $keyPath).Length -lt 50) {
     Write-Host "   [ERROR] Failed to generate private key" -ForegroundColor Red
     exit 1
 }
@@ -188,9 +214,12 @@ $config | Out-File -FilePath $configFile -Encoding ASCII
 
 # Generate CSR
 Write-Host "2. Generating certificate signing request..." -ForegroundColor Cyan
-cmd /c "openssl req -new -key `"$agentDir\client.key`" -out `"$agentDir\client.csr`" -config `"$configFile`" 2>nul"
+$csrPath = "$agentDir\client.csr"
+$ErrorActionPreference = "Continue"
+& $opensslCmd req -new -key $keyPath -out $csrPath -config $configFile 2>&1 | Out-Null
+$ErrorActionPreference = "Stop"
 
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-Path $csrPath) -or (Get-Item $csrPath).Length -lt 50) {
     Write-Host "   [ERROR] Failed to generate CSR" -ForegroundColor Red
     exit 1
 }
@@ -198,9 +227,14 @@ Write-Host "   [OK] CSR generated" -ForegroundColor Green
 
 # Sign with CA
 Write-Host "3. Signing certificate with CA (valid for $validityDisplay)..." -ForegroundColor Cyan
-cmd /c "openssl x509 -req -in `"$agentDir\client.csr`" -CA `"$certsDir\ca.crt`" -CAkey `"$certsDir\ca.key`" -CAcreateserial -out `"$agentDir\client.crt`" -days $ValidityDays -sha256 -extfile `"$configFile`" -extensions v3_req 2>nul"
+$crtPath = "$agentDir\client.crt"
+$caCrt = "$certsDir\ca.crt"
+$caKey = "$certsDir\ca.key"
+$ErrorActionPreference = "Continue"
+& $opensslCmd x509 -req -in $csrPath -CA $caCrt -CAkey $caKey -CAcreateserial -out $crtPath -days $ValidityDays -sha256 -extfile $configFile -extensions v3_req 2>&1 | Out-Null
+$ErrorActionPreference = "Stop"
 
-if ($LASTEXITCODE -ne 0) {
+if (-not (Test-Path $crtPath) -or (Get-Item $crtPath).Length -lt 50) {
     Write-Host "   [ERROR] Failed to sign certificate" -ForegroundColor Red
     exit 1
 }
@@ -240,7 +274,7 @@ Write-Host ""
 
 # Verify certificate
 Write-Host "Certificate verification:" -ForegroundColor Cyan
-openssl x509 -in "$agentDir\client.crt" -noout -subject -issuer -dates
+& $opensslCmd x509 -in "$agentDir\client.crt" -noout -subject -issuer -dates
 
 Write-Host ""
 Write-Host "Done!" -ForegroundColor Green

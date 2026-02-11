@@ -2,6 +2,19 @@ import { Router } from 'express'
 import { Pool } from 'pg'
 import { CacheService } from '../../services/CacheService'
 
+const VALID_TIME_RANGES = new Set([
+  '1h', '6h', '12h', '24h', '48h', '7 days', '14 days', '30 days', '90 days',
+  '1 hour', '6 hours', '12 hours', '24 hours', '48 hours',
+])
+
+function validateTimeRange(input: string): string {
+  if (VALID_TIME_RANGES.has(input)) return input
+  // Try to parse as a simple number+unit pattern
+  const match = input.match(/^(\d+)\s*(h|hours?|d|days?|m|minutes?)$/)
+  if (match) return input
+  return '24h'
+}
+
 export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): Router {
   const router = Router()
 
@@ -16,8 +29,11 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
         limit = 1000,
       } = req.query
 
+      const safeTimeRange = validateTimeRange(String(time_range))
+      const safeLimit = Math.max(1, Math.min(parseInt(String(limit), 10) || 1000, 10000))
+
       // Build cache key
-      const cacheKey = `metrics:${server_id || 'all'}:${agent_id || 'all'}:${metric_type || 'all'}:${time_range}`
+      const cacheKey = `metrics:${server_id || 'all'}:${agent_id || 'all'}:${metric_type || 'all'}:${safeTimeRange}`
 
       // Check cache first
       const cached = await cacheService.get(cacheKey)
@@ -30,10 +46,10 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
         SELECT m.*, s.name as server_name
         FROM metrics m
         JOIN servers s ON m.server_id = s.id
-        WHERE m.timestamp >= NOW() - INTERVAL '${time_range}'
+        WHERE m.timestamp >= NOW() - $1::interval
       `
-      const params: any[] = []
-      let paramIndex = 1
+      const params: any[] = [safeTimeRange]
+      let paramIndex = 2
 
       if (server_id) {
         params.push(server_id)
@@ -50,7 +66,8 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
         query += ` AND m.metric_type = $${paramIndex++}`
       }
 
-      query += ` ORDER BY m.timestamp DESC LIMIT ${limit}`
+      params.push(safeLimit)
+      query += ` ORDER BY m.timestamp DESC LIMIT $${paramIndex++}`
 
       const { rows } = await dbPool.query(query, params)
 
@@ -76,6 +93,8 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
         time_range = '7 days',
       } = req.query
 
+      const safeTimeRange = validateTimeRange(String(time_range))
+
       let query = `
         SELECT
           time_bucket($1::interval, timestamp) AS bucket,
@@ -87,10 +106,10 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
           MIN(value) as min_value,
           COUNT(*) as sample_count
         FROM metrics
-        WHERE timestamp >= NOW() - INTERVAL '${time_range}'
+        WHERE timestamp >= NOW() - $2::interval
       `
-      const params: any[] = [interval]
-      let paramIndex = 2
+      const params: any[] = [interval, safeTimeRange]
+      let paramIndex = 3
 
       if (server_id) {
         params.push(server_id)
@@ -149,6 +168,8 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
     try {
       const { server_id, agent_id, device_name, limit = 1000 } = req.query
 
+      const safeLimit = Math.max(1, Math.min(parseInt(String(limit), 10) || 1000, 10000))
+
       let query = `
         SELECT sm.*, s.name as server_name
         FROM snmp_metrics sm
@@ -173,7 +194,8 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
         query += ` AND sm.device_name = $${paramIndex++}`
       }
 
-      query += ` ORDER BY sm.timestamp DESC LIMIT ${limit}`
+      params.push(safeLimit)
+      query += ` ORDER BY sm.timestamp DESC LIMIT $${paramIndex++}`
 
       const { rows } = await dbPool.query(query, params)
 

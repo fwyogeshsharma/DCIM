@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { ServerConfig } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,8 @@ import {
   XCircle,
   RefreshCw,
   AlertCircle,
+  ShieldCheck,
+  Upload,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -43,6 +45,16 @@ export default function ServerManagement() {
     environment: 'production',
     color: '#3b82f6',
   })
+
+  const [certFiles, setCertFiles] = useState<{
+    caCert: File | null
+    clientCert: File | null
+    clientKey: File | null
+  }>({ caCert: null, clientCert: null, clientKey: null })
+
+  const caRef = useRef<HTMLInputElement>(null)
+  const certRef = useRef<HTMLInputElement>(null)
+  const keyRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadServers()
@@ -74,11 +86,19 @@ export default function ServerManagement() {
         },
       }
 
+      const certs = (certFiles.caCert || certFiles.clientCert || certFiles.clientKey)
+        ? {
+            caCert: certFiles.caCert || undefined,
+            clientCert: certFiles.clientCert || undefined,
+            clientKey: certFiles.clientKey || undefined,
+          }
+        : undefined
+
       if (editingServer) {
-        await api.updateServer(editingServer.id!, serverData)
+        await api.updateServer(editingServer.id!, serverData, certs)
         toast.success('Server updated successfully')
       } else {
-        await api.addServer(serverData)
+        await api.addServer(serverData, certs)
         toast.success('Server added successfully')
       }
 
@@ -100,6 +120,7 @@ export default function ServerManagement() {
       environment: server.metadata?.environment || 'production',
       color: server.metadata?.color || '#3b82f6',
     })
+    setCertFiles({ caCert: null, clientCert: null, clientKey: null })
     setShowDialog(true)
   }
 
@@ -151,7 +172,11 @@ export default function ServerManagement() {
       environment: 'production',
       color: '#3b82f6',
     })
+    setCertFiles({ caCert: null, clientCert: null, clientKey: null })
     setEditingServer(null)
+    if (caRef.current) caRef.current.value = ''
+    if (certRef.current) certRef.current.value = ''
+    if (keyRef.current) keyRef.current.value = ''
   }
 
   const openAddDialog = () => {
@@ -171,15 +196,15 @@ export default function ServerManagement() {
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
+          <h1 className="text-3xl font-bold flex items-center gap-3 text-white">
             <Server className="w-8 h-8" />
             Server Management
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-400 mt-2">
             Manage DCIM backend servers for multi-datacenter monitoring
           </p>
         </div>
-        <Button onClick={openAddDialog} className="gap-2">
+        <Button onClick={openAddDialog} className="gap-2 bg-blue-600 text-white hover:bg-blue-700">
           <Plus className="w-4 h-4" />
           Add Server
         </Button>
@@ -188,9 +213,9 @@ export default function ServerManagement() {
       {servers.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
-            <Server className="w-16 h-16 text-gray-300 mb-4" />
-            <p className="text-gray-600 text-lg mb-4">No servers configured</p>
-            <Button onClick={openAddDialog} className="gap-2">
+            <Server className="w-16 h-16 text-gray-500 mb-4" />
+            <p className="text-gray-400 text-lg mb-4">No servers configured</p>
+            <Button onClick={openAddDialog} className="gap-2 bg-blue-600 text-white hover:bg-blue-700">
               <Plus className="w-4 h-4" />
               Add Your First Server
             </Button>
@@ -207,7 +232,7 @@ export default function ServerManagement() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-xl flex items-center gap-2">
+                    <CardTitle className="text-xl flex items-center gap-2 text-white">
                       {server.name}
                       {server.health?.status === 'healthy' ? (
                         <CheckCircle className="w-5 h-5 text-green-500" />
@@ -228,17 +253,23 @@ export default function ServerManagement() {
               <CardContent>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm text-gray-500">URL</p>
-                    <p className="text-sm font-mono truncate">{server.url}</p>
+                    <p className="text-sm text-gray-400">URL</p>
+                    <p className="text-sm font-mono truncate text-white">{server.url}</p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={server.metadata?.environment === 'production' ? 'default' : 'secondary'}>
                       {server.metadata?.environment || 'production'}
                     </Badge>
                     <Badge variant={server.enabled ? 'default' : 'secondary'}>
                       {server.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
+                    {server.hasCerts && (
+                      <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1">
+                        <ShieldCheck className="w-3 h-3" />
+                        TLS
+                      </Badge>
+                    )}
                   </div>
 
                   {server.health && (
@@ -246,14 +277,14 @@ export default function ServerManagement() {
                       {server.health.status === 'healthy' ? (
                         <>
                           <CheckCircle className="w-4 h-4 text-green-500" />
-                          <span className="text-green-600">
+                          <span className="text-green-400">
                             Healthy ({server.health.responseTime}ms)
                           </span>
                         </>
                       ) : (
                         <>
                           <AlertCircle className="w-4 h-4 text-red-500" />
-                          <span className="text-red-600">Offline</span>
+                          <span className="text-red-400">Offline</span>
                         </>
                       )}
                     </div>
@@ -265,7 +296,7 @@ export default function ServerManagement() {
                       size="sm"
                       onClick={() => handleTestConnection(server.id!)}
                       disabled={testingServer === server.id}
-                      className="flex-1"
+                      className="flex-1 border-gray-500 text-white hover:bg-gray-700"
                     >
                       {testingServer === server.id ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />
@@ -280,7 +311,7 @@ export default function ServerManagement() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(server)}
-                      className="flex-1"
+                      className="flex-1 border-gray-500 text-white hover:bg-gray-700"
                     >
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
@@ -289,6 +320,7 @@ export default function ServerManagement() {
                       variant="destructive"
                       size="sm"
                       onClick={() => handleDelete(server.id!)}
+                      className="bg-red-600 text-white hover:bg-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -301,54 +333,57 @@ export default function ServerManagement() {
       )}
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-white text-gray-900 border-gray-200">
           <DialogHeader>
-            <DialogTitle>{editingServer ? 'Edit Server' : 'Add Server'}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-gray-900">{editingServer ? 'Edit Server' : 'Add Server'}</DialogTitle>
+            <DialogDescription className="text-gray-500">
               {editingServer
                 ? 'Update the server configuration'
                 : 'Add a new DCIM backend server to monitor'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
+            <div className="max-h-[70vh] overflow-y-auto space-y-4 py-4 pr-1">
               <div className="space-y-2">
-                <Label htmlFor="name">Server Name *</Label>
+                <Label htmlFor="name" className="text-gray-700">Server Name *</Label>
                 <Input
                   id="name"
                   placeholder="DC-East"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="url">Server URL *</Label>
+                <Label htmlFor="url" className="text-gray-700">Server URL *</Label>
                 <Input
                   id="url"
                   placeholder="http://192.168.1.100:8080/api/v1"
                   value={formData.url}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                   required
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location" className="text-gray-700">Location</Label>
                 <Input
                   id="location"
                   placeholder="New York"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="environment">Environment</Label>
+                <Label htmlFor="environment" className="text-gray-700">Environment</Label>
                 <select
                   id="environment"
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900"
                   value={formData.environment}
                   onChange={(e) => setFormData({ ...formData, environment: e.target.value })}
                 >
@@ -359,20 +394,20 @@ export default function ServerManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="color">Color Tag</Label>
+                <Label htmlFor="color" className="text-gray-700">Color Tag</Label>
                 <div className="flex gap-2">
                   <Input
                     id="color"
                     type="color"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-20 h-10"
+                    className="w-20 h-10 bg-white border-gray-300"
                   />
                   <Input
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                     placeholder="#3b82f6"
-                    className="flex-1"
+                    className="flex-1 bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                   />
                 </div>
               </div>
@@ -383,15 +418,66 @@ export default function ServerManagement() {
                   checked={formData.enabled}
                   onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
                 />
-                <Label htmlFor="enabled">Enable server</Label>
+                <Label htmlFor="enabled" className="text-gray-700">Enable server</Label>
+              </div>
+
+              {/* TLS Certificates Section */}
+              <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <Label className="text-gray-700 font-semibold text-sm">TLS Certificates</Label>
+                  <span className="text-xs text-gray-400">(optional)</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Upload per-server TLS certificates for mTLS connections.
+                  {editingServer?.hasCerts && (
+                    <span className="text-emerald-600 font-medium"> This server already has certificates uploaded. Uploading new files will overwrite them.</span>
+                  )}
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="caCert" className="text-gray-600 text-xs">CA Certificate (ca.crt)</Label>
+                  <Input
+                    ref={caRef}
+                    id="caCert"
+                    type="file"
+                    accept=".crt,.pem,.cer"
+                    onChange={(e) => setCertFiles({ ...certFiles, caCert: e.target.files?.[0] || null })}
+                    className="bg-white border-gray-300 text-gray-700 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clientCert" className="text-gray-600 text-xs">Client Certificate (client.crt)</Label>
+                  <Input
+                    ref={certRef}
+                    id="clientCert"
+                    type="file"
+                    accept=".crt,.pem,.cer"
+                    onChange={(e) => setCertFiles({ ...certFiles, clientCert: e.target.files?.[0] || null })}
+                    className="bg-white border-gray-300 text-gray-700 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="clientKey" className="text-gray-600 text-xs">Client Key (client.key)</Label>
+                  <Input
+                    ref={keyRef}
+                    id="clientKey"
+                    type="file"
+                    accept=".key,.pem"
+                    onChange={(e) => setCertFiles({ ...certFiles, clientKey: e.target.files?.[0] || null })}
+                    className="bg-white border-gray-300 text-gray-700 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
+                  />
+                </div>
               </div>
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)} className="border-gray-300 text-gray-700 hover:bg-gray-100">
                 Cancel
               </Button>
-              <Button type="submit">{editingServer ? 'Update' : 'Add'} Server</Button>
+              <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700">{editingServer ? 'Update' : 'Add'} Server</Button>
             </DialogFooter>
           </form>
         </DialogContent>

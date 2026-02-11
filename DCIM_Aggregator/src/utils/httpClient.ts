@@ -1,16 +1,62 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+import https from 'https'
+import fs from 'fs'
+import path from 'path'
 import { logger } from './logger'
+
+// Try to load client certificates for mTLS
+function loadCerts(): { cert?: Buffer; key?: Buffer; ca?: Buffer } {
+  const certPaths = [
+    // Aggregator's own certs
+    path.resolve(__dirname, '../../certs'),
+    // DCIM_Server certs (sibling directory)
+    path.resolve(__dirname, '../../../DCIM_Server/certs'),
+  ]
+
+  for (const dir of certPaths) {
+    try {
+      const certFile = path.join(dir, 'client.crt')
+      const keyFile = path.join(dir, 'client.key')
+      const caFile = path.join(dir, 'ca.crt')
+
+      if (fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+        logger.info(`Loaded mTLS client certificates from ${dir}`)
+        return {
+          cert: fs.readFileSync(certFile),
+          key: fs.readFileSync(keyFile),
+          ca: fs.existsSync(caFile) ? fs.readFileSync(caFile) : undefined,
+        }
+      }
+    } catch (e) {
+      // continue to next path
+    }
+  }
+
+  logger.warn('No client certificates found — mTLS connections may fail')
+  return {}
+}
+
+const certs = loadCerts()
+
+// Shared HTTPS agent with mTLS support and self-signed cert acceptance
+export const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+  ...(certs.cert && { cert: certs.cert }),
+  ...(certs.key && { key: certs.key }),
+  ...(certs.ca && { ca: certs.ca }),
+})
 
 export class HttpClient {
   private client: AxiosInstance
 
-  constructor(baseURL: string, timeout: number = 5000) {
+  constructor(baseURL: string, timeout: number = 5000, customAgent?: https.Agent) {
     this.client = axios.create({
       baseURL,
       timeout,
       headers: {
         'Content-Type': 'application/json',
       },
+      httpsAgent: customAgent || httpsAgent,
     })
 
     // Request interceptor

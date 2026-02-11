@@ -40,7 +40,13 @@ export default function AgentDetail() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {agent.server_name && (
+          <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+            <p className="text-sm text-slate-400">Server</p>
+            <p className="text-lg font-semibold mt-1 text-white">{agent.server_name}</p>
+          </div>
+        )}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-4">
           <p className="text-sm text-slate-400">IP Address</p>
           <p className="text-lg font-mono mt-1 text-white">{agent.ip_address}</p>

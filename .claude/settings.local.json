@@ -32,7 +32,30 @@
       "Bash(taskkill:*)",
       "Bash(start \"\" dcim-server.exe)",
       "Bash(timeout:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(powershell.exe -Command \"Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned\")",
+      "Bash(powershell.exe:*)",
+      "Bash(where.exe:*)",
+      "Bash(D:Aman_K_ProjectDCIMDCIM_Serverbuildwindows-amd64dcim-server.exe)",
+      "Bash(xargs:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pushd:*)",
+      "Bash(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(cmd.exe /c start \"\" \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(docker info:*)",
+      "Bash(docker run:*)",
+      "Bash(docker start:*)",
+      "Bash(docker ps:*)",
+      "Bash(PGPASSWORD=dcim_password psql:*)",
+      "Bash(\"/c/Program Files/PostgreSQL/17/bin/psql.exe\" -h localhost -p 5432 -U dcim -d dcim_aggregator -c \"SELECT 1\")",
+      "Bash(PGPASSWORD=dcim_password \"/c/Program Files/PostgreSQL/17/bin/psql.exe\":*)",
+      "Bash(cmd.exe:*)",
+      "Bash(wmic process where processid=13296 get name,commandline)",
+      "Bash(npx ts-node:*)",
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(echo:*)",
+      "Bash(PGPASSWORD=admin psql:*)"
     ]
   }
 }

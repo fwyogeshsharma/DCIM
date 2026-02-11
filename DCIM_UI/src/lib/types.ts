@@ -13,6 +13,7 @@ export interface ServerConfig {
     color?: string
     [key: string]: any
   }
+  hasCerts?: boolean
   health?: {
     status: 'healthy' | 'offline'
     responseTime?: number
@@ -26,6 +27,9 @@ export interface ServerConfig {
 export interface Agent {
   id: number
   agent_id: string
+  server_id?: string
+  server_name?: string
+  server_url?: string
   certificate_cn: string
   hostname: string
   ip_address: string
@@ -46,6 +50,8 @@ export interface Agent {
 export interface Metric {
   id: number
   agent_id: string
+  server_id?: string
+  server_name?: string
   timestamp: string
   metric_type: string
   value: number
@@ -57,6 +63,8 @@ export interface Metric {
 export interface Alert {
   id: number
   agent_id: string
+  server_id?: string
+  server_name?: string
   timestamp: string
   severity: 'INFO' | 'WARNING' | 'CRITICAL'
   metric_type: string
