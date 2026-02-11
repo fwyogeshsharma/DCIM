@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="dropGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#e0e7ff;stop-opacity:0.9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded rectangle -->
+  <rect x="0" y="0" width="400" height="100" rx="15" fill="url(#logoGradient)"/>
+
+  <!-- Icon Circle Background -->
+  <circle cx="50" cy="50" r="35" fill="rgba(255, 255, 255, 0.15)" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2"/>
+
+  <!-- Main Cooling Drop -->
+  <path d="M 50 22 Q 38 35 38 48 Q 38 62 50 70 Q 62 62 62 48 Q 62 35 50 22 Z"
+        fill="url(#dropGradient)"
+        stroke="rgba(255, 255, 255, 0.5)"
+        stroke-width="1.5"/>
+
+  <!-- Cooling symbol inside drop -->
+  <circle cx="50" cy="48" r="4" fill="#667eea"/>
+  <line x1="50" y1="42" x2="50" y2="54" stroke="#667eea" stroke-width="2" stroke-linecap="round"/>
+  <line x1="44" y1="48" x2="56" y2="48" stroke="#667eea" stroke-width="2" stroke-linecap="round"/>
+  <line x1="45.5" y1="43.5" x2="54.5" y2="52.5" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  <line x1="54.5" y1="43.5" x2="45.5" y2="52.5" stroke="#667eea" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Temperature indicators (perfectly inside circle at bottom) -->
+  <line x1="30" y1="71" x2="38" y2="71" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <line x1="62" y1="71" x2="70" y2="71" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  <line x1="32" y1="76" x2="37" y2="76" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  <line x1="63" y1="76" x2="69" y2="76" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- Text: AI Data Center -->
+  <text x="100" y="40" font-family="'Segoe UI', Arial, sans-serif" font-size="24" font-weight="700" fill="#ffffff" letter-spacing="0.5">
+    AI DATA CENTER
+  </text>
+
+  <!-- Text: Liquid Cooling Simulator -->
+  <text x="100" y="65" font-family="'Segoe UI', Arial, sans-serif" font-size="16" font-weight="400" fill="rgba(255, 255, 255, 0.9)" letter-spacing="1">
+    LIQUID COOLING SIMULATOR
+  </text>
+
+  <!-- Small IoT indicator -->
+  <text x="355" y="24" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="600" fill="rgba(255, 255, 255, 0.7)">
+    IoT
+  </text>
+  <circle cx="378" cy="20" r="3" fill="#4ade80" opacity="0.8">
+    <animate attributeName="opacity" values="0.4;1;0.4" dur="2s" repeatCount="indefinite"/>
+  </circle>
+</svg>

@@ -1,0 +1,208 @@
+<div class="simulator-container">
+  <!-- Control Panel -->
+  <div class="control-panel">
+    <h2>Control Panel</h2>
+    <div class="agent-info">
+      <span class="agent-badge">🤖 Agent: {{ agentName }}</span>
+      <span class="agent-id">ID: {{ agentId }}</span>
+    </div>
+    <div class="controls-grid">
+      <div class="control-item">
+        <label>Pump</label>
+        <button
+          [class.active]="pumpOn"
+          (click)="togglePump()"
+          class="control-btn pump-btn">
+          {{ pumpOn ? 'ON' : 'OFF' }}
+        </button>
+      </div>
+
+      <div class="control-item">
+        <label>Server (CPU)</label>
+        <button
+          [class.active]="cpuOn"
+          (click)="toggleCPU()"
+          class="control-btn cpu-btn">
+          {{ cpuOn ? 'ON' : 'OFF' }}
+        </button>
+      </div>
+
+      <div class="control-item">
+        <label>Condenser</label>
+        <button
+          [class.active]="condenserOn"
+          (click)="toggleCondenser()"
+          class="control-btn condenser-btn">
+          {{ condenserOn ? 'ON' : 'OFF' }}
+        </button>
+      </div>
+
+      <div class="control-item">
+        <label>Inlet Leak</label>
+        <button
+          [class.active]="inletLeakOn"
+          [class.danger]="inletLeakOn"
+          (click)="toggleInletLeak()"
+          class="control-btn leak-btn">
+          {{ inletLeakOn ? 'LEAK' : 'SAFE' }}
+        </button>
+      </div>
+
+      <div class="control-item">
+        <label>Outlet Leak</label>
+        <button
+          [class.active]="outletLeakOn"
+          [class.danger]="outletLeakOn"
+          (click)="toggleOutletLeak()"
+          class="control-btn leak-btn">
+          {{ outletLeakOn ? 'LEAK' : 'SAFE' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="status-message" [class.flowing]="pumpOn">
+      <span class="status-icon">{{ pumpOn ? '💧' : '⏸️' }}</span>
+      {{ statusMessage }}
+    </div>
+  </div>
+
+  <!-- Flow Diagram -->
+  <div class="flow-diagram">
+    <h2>Liquid Cooling System Flow</h2>
+
+    <div class="flow-container">
+      <!-- Pump -->
+      <div class="component pump" [class.active]="pumpOn">
+        <div class="component-icon">⚙️</div>
+        <div class="component-label">PUMP</div>
+        <div class="component-status">{{ pumpOn ? 'RUNNING' : 'STOPPED' }}</div>
+      </div>
+
+      <!-- Flow Arrow 1 -->
+      <div class="flow-arrow" [class.flowing]="pumpOn">→</div>
+
+      <!-- Inlet Sensors -->
+      <div class="sensor-group inlet">
+        <div class="sensor-label">INLET (IN)</div>
+
+        <div class="sensor-card" [style.border-color]="getInletTemperatureColor()">
+          <div class="sensor-icon">🌡️</div>
+          <div class="sensor-value">{{ inletTemperature }}°C</div>
+          <div class="sensor-name">Temperature</div>
+          <div class="sensor-threshold">Alert: &gt;10°C</div>
+        </div>
+
+        <div class="sensor-card" [style.border-color]="getInletPressureColor()">
+          <div class="sensor-icon">📊</div>
+          <div class="sensor-value">{{ inletPressure }} PSI</div>
+          <div class="sensor-name">Pressure</div>
+          <div class="sensor-threshold">Range: 40-60 PSI</div>
+        </div>
+
+        <div class="sensor-card" [style.border-color]="getInletFlowRateColor()">
+          <div class="sensor-icon">🌊</div>
+          <div class="sensor-value">{{ inletFlowRate }} LPM</div>
+          <div class="sensor-name">Flow Rate</div>
+          <div class="sensor-threshold">Normal: 15 LPM</div>
+        </div>
+
+        <div class="sensor-card" [class.leak-detected]="inletLeakOn">
+          <div class="sensor-icon">💧</div>
+          <div class="sensor-value">{{ inletLeakOn ? 'LEAK!' : 'SAFE' }}</div>
+          <div class="sensor-name">Leak Detection</div>
+          <div class="sensor-threshold">Alert: ON LEAK</div>
+        </div>
+      </div>
+
+      <!-- Flow Arrow 2 -->
+      <div class="flow-arrow" [class.flowing]="pumpOn">→</div>
+
+      <!-- Server (with CPU) -->
+      <div class="component cpu" [class.active]="cpuOn">
+        <div class="component-icon">🖥️</div>
+        <div class="component-label">SERVER</div>
+        <div class="component-sublabel">(CPU + Agent)</div>
+        <div class="component-status">{{ cpuOn ? 'ACTIVE' : 'IDLE' }}</div>
+      </div>
+
+      <!-- Flow Arrow 3 -->
+      <div class="flow-arrow" [class.flowing]="pumpOn">→</div>
+
+      <!-- Outlet Sensors -->
+      <div class="sensor-group outlet">
+        <div class="sensor-label">OUTLET (OUT)</div>
+
+        <div class="sensor-card" [style.border-color]="getOutletTemperatureColor()">
+          <div class="sensor-icon">🌡️</div>
+          <div class="sensor-value">{{ outletTemperature }}°C</div>
+          <div class="sensor-name">Temperature</div>
+          <div class="sensor-threshold">Alert: &lt;50°C</div>
+        </div>
+
+        <div class="sensor-card" [style.border-color]="getOutletPressureColor()">
+          <div class="sensor-icon">📊</div>
+          <div class="sensor-value">{{ outletPressure }} PSI</div>
+          <div class="sensor-name">Pressure</div>
+          <div class="sensor-threshold">Range: 40-60 PSI</div>
+        </div>
+
+        <div class="sensor-card" [style.border-color]="getOutletFlowRateColor()">
+          <div class="sensor-icon">🌊</div>
+          <div class="sensor-value">{{ outletFlowRate }} LPM</div>
+          <div class="sensor-name">Flow Rate</div>
+          <div class="sensor-threshold">Normal: 15 LPM</div>
+        </div>
+
+        <div class="sensor-card" [class.leak-detected]="outletLeakOn">
+          <div class="sensor-icon">💧</div>
+          <div class="sensor-value">{{ outletLeakOn ? 'LEAK!' : 'SAFE' }}</div>
+          <div class="sensor-name">Leak Detection</div>
+          <div class="sensor-threshold">Alert: ON LEAK</div>
+        </div>
+      </div>
+
+      <!-- Flow Arrow 4 -->
+      <div class="flow-arrow" [class.flowing]="pumpOn">→</div>
+
+      <!-- Condenser -->
+      <div class="component condenser" [class.active]="condenserOn">
+        <div class="component-icon">❄️</div>
+        <div class="component-label">CONDENSER</div>
+        <div class="component-status">{{ condenserOn ? 'COOLING' : 'BYPASSED' }}</div>
+      </div>
+
+      <!-- Flow Arrow 5 (back to pump) -->
+      <div class="flow-arrow return" [class.flowing]="pumpOn">↺</div>
+    </div>
+  </div>
+
+  <!-- Alerts Section -->
+  <div class="alerts-section">
+    <h2>System Alerts</h2>
+    <div class="alerts-container" [class.no-alerts]="alerts.length === 0">
+      <div *ngIf="alerts.length === 0" class="no-alerts-message">
+        ✅ All systems operating normally
+      </div>
+      <div *ngFor="let alert of alerts" class="alert-item"
+           [class.critical]="alert.includes('CRITICAL')"
+           [class.warning]="alert.includes('⚠️')"
+           [class.info]="alert.includes('ℹ️')">
+        {{ alert }}
+      </div>
+    </div>
+  </div>
+
+  <!-- JSON Output Section -->
+  <div class="json-section">
+    <h2>JSON Data Output</h2>
+    <div class="json-actions">
+      <button (click)="sendToAPI()" class="action-btn send-btn">
+        📤 Send to API
+      </button>
+      <button (click)="copyJSON()" class="action-btn copy-btn">
+        📋 Copy JSON
+      </button>
+    </div>
+    <pre class="json-output">{{ jsonOutput }}</pre>
+  </div>
+</div>
