@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="coolGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#coolGradient)" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Cooling Drop -->
+  <path d="M 50 25 Q 40 35 40 45 Q 40 55 50 60 Q 60 55 60 45 Q 60 35 50 25 Z"
+        fill="#ffffff" opacity="0.9"/>
+
+  <!-- Temperature Lines -->
+  <line x1="30" y1="70" x2="40" y2="70" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="60" y1="70" x2="70" y2="70" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="35" y1="78" x2="42" y2="78" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  <line x1="58" y1="78" x2="65" y2="78" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Snowflake/Cooling symbol in center of drop -->
+  <circle cx="50" cy="45" r="3" fill="#667eea"/>
+  <line x1="50" y1="40" x2="50" y2="50" stroke="#667eea" stroke-width="1.5"/>
+  <line x1="45" y1="45" x2="55" y2="45" stroke="#667eea" stroke-width="1.5"/>
+</svg>
