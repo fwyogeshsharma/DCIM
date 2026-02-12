@@ -7,7 +7,8 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class CoolingApiService {
-  private apiUrl = environment.apiUrl + '/api/v1/cooling-metrics';
+  // Use proxy server to handle mTLS with curl
+  private apiUrl = 'http://localhost:3000/api/proxy/cooling-metrics';
 
   constructor(private http: HttpClient) {}
 
@@ -34,8 +35,8 @@ export class CoolingApiService {
     });
 
     return this.http.post(this.apiUrl, data, {
-      headers,
-      withCredentials: true  // Include credentials/certificates in request
+      headers
+      // No credentials needed - proxy handles mTLS
     });
   }
 
@@ -43,8 +44,6 @@ export class CoolingApiService {
    * Test API connection
    */
   testConnection(): Observable<any> {
-    return this.http.get(this.apiUrl, {
-      withCredentials: true
-    });
+    return this.http.get(this.apiUrl);
   }
 }

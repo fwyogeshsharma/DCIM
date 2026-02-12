@@ -196,13 +196,22 @@
   <div class="json-section">
     <h2>JSON Data Output</h2>
     <div class="json-actions">
-      <button (click)="sendToAPI()" class="action-btn send-btn">
-        📤 Send to API
+      <button (click)="sendToAPI()" class="action-btn send-btn" [disabled]="isSending">
+        <span *ngIf="!isSending">📤 Send to API</span>
+        <span *ngIf="isSending">⏳ Sending...</span>
       </button>
       <button (click)="copyJSON()" class="action-btn copy-btn">
         📋 Copy JSON
       </button>
     </div>
+
+    <!-- API Response Message -->
+    <div *ngIf="apiMessage" class="api-message" [class.success]="apiMessageType === 'success'" [class.error]="apiMessageType === 'error'">
+      <span *ngIf="apiMessageType === 'success'">✅</span>
+      <span *ngIf="apiMessageType === 'error'">❌</span>
+      {{ apiMessage }}
+    </div>
+
     <pre class="json-output">{{ jsonOutput }}</pre>
   </div>
 </div>
