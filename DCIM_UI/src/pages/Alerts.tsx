@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAlerts, useResolveAlert, useBulkResolveAlerts } from '@/hooks/useAlerts'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { Filter, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -160,7 +160,8 @@ export default function Alerts() {
                     {typeof alert.threshold === 'number' ? alert.threshold.toFixed(2) : alert.threshold}
                   </td>
                   <td className="p-4 text-sm text-slate-400">
-                    {formatDistanceToNow(new Date(alert.timestamp), { addSuffix: true })}
+                    <div>{format(new Date(alert.timestamp), 'MMM dd, yyyy')}</div>
+                    <div className="text-xs text-slate-500">{format(new Date(alert.timestamp), 'hh:mm:ss a')}</div>
                   </td>
                   <td className="p-4">
                     {alert.resolved ? (

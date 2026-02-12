@@ -6,7 +6,7 @@ import * as d3 from 'd3'
 import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 
-interface Node extends d3.SimulationNodeDatum {
+interface TopoNode extends d3.SimulationNodeDatum {
   id: string
   name: string
   type: 'server' | 'agent' | 'network'
@@ -14,11 +14,13 @@ interface Node extends d3.SimulationNodeDatum {
   metrics?: number
   alerts?: number
   ip?: string
+  color?: string
+  serverId?: string
 }
 
-interface Link extends d3.SimulationLinkDatum<Node> {
-  source: string | Node
-  target: string | Node
+interface TopoLink extends d3.SimulationLinkDatum<TopoNode> {
+  source: string | TopoNode
+  target: string | TopoNode
   strength: number
 }
 
@@ -26,11 +28,16 @@ type TimeFilter = 'today' | '30days' | 'all'
 
 export default function Topology() {
   const { data: agents, isLoading } = useAgents()
+  const { data: servers } = useQuery({
+    queryKey: ['servers'],
+    queryFn: () => api.getServers(),
+    staleTime: 60000,
+  })
   const navigate = useNavigate()
   const svgRef = useRef<SVGSVGElement>(null)
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
-  const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null)
+  const simulationRef = useRef<d3.Simulation<TopoNode, TopoLink> | null>(null)
 
   // Fetch filtered metrics and alerts for each agent
   const { data: filteredData } = useQuery({
@@ -105,52 +112,92 @@ export default function Topology() {
 
     svg.call(zoom)
 
-    // Create nodes with filtered data
-    const nodes: Node[] = [
-      {
-        id: 'server',
-        name: 'DCIM Server',
-        type: 'server',
-        status: 'online',
-        x: width / 2,
-        y: height / 2,
-      },
-      ...agents.map((agent) => {
-        const filtered = filteredData?.find(f => f.agent_id === agent.agent_id)
-        return {
-          id: agent.agent_id,
-          name: agent.hostname,
-          type: 'agent' as const,
-          status: agent.status as 'online' | 'offline',
-          metrics: filtered?.metrics_count ?? agent.total_metrics,
-          alerts: filtered?.alerts_count ?? agent.total_alerts,
-          ip: agent.ip_address,
-        }
-      }),
-    ]
-
-    // Create links (all agents connect to server)
-    const links: Link[] = agents.map(agent => ({
-      source: agent.agent_id,
-      target: 'server',
-      strength: agent.status === 'online' ? 1 : 0.3,
+    // Build server nodes from actual servers data
+    const enabledServers = servers?.filter(s => s.enabled) || []
+    const serverNodes: TopoNode[] = enabledServers.map((s, i) => ({
+      id: `server-${s.id}`,
+      name: s.name,
+      type: 'server' as const,
+      status: (s.health?.status === 'healthy' ? 'online' : 'offline') as 'online' | 'offline',
+      color: s.metadata?.color || '#8b5cf6',
+      ip: s.url,
     }))
 
+    // If no servers found, use a fallback based on agent data
+    if (serverNodes.length === 0) {
+      const uniqueServers = [...new Set(agents.map(a => a.server_id).filter(Boolean))]
+      uniqueServers.forEach((sid, i) => {
+        const agentForServer = agents.find(a => a.server_id === sid)
+        serverNodes.push({
+          id: `server-${sid}`,
+          name: agentForServer?.server_name || `Server ${i + 1}`,
+          type: 'server',
+          status: 'online',
+          color: '#8b5cf6',
+        })
+      })
+    }
+
+    // Create agent nodes with filtered data
+    const agentNodes: TopoNode[] = agents.map((agent) => {
+      const filtered = filteredData?.find(f => f.agent_id === agent.agent_id)
+      return {
+        id: agent.agent_id,
+        name: agent.hostname,
+        type: 'agent' as const,
+        status: agent.status as 'online' | 'offline',
+        metrics: filtered?.metrics_count ?? agent.total_metrics,
+        alerts: filtered?.alerts_count ?? agent.total_alerts,
+        ip: agent.ip_address,
+        serverId: agent.server_id,
+      }
+    })
+
+    const nodes: TopoNode[] = [...serverNodes, ...agentNodes]
+
+    // Create links — each agent connects to its own server
+    const links: TopoLink[] = agents.map(agent => {
+      // Find the matching server node
+      const serverNodeId = serverNodes.find(s => s.id === `server-${agent.server_id}`)?.id || serverNodes[0]?.id
+      return {
+        source: agent.agent_id,
+        target: serverNodeId || 'server-unknown',
+        strength: agent.status === 'online' ? 1 : 0.3,
+      }
+    }).filter(l => l.target !== 'server-unknown')
+
     // Create force simulation
-    const simulation = d3.forceSimulation<Node>(nodes)
-      .force('link', d3.forceLink<Node, Link>(links)
+    const simulation = d3.forceSimulation<TopoNode>(nodes)
+      .force('link', d3.forceLink<TopoNode, TopoLink>(links)
         .id(d => d.id)
         .distance(200)
         .strength(d => d.strength))
-      .force('charge', d3.forceManyBody().strength(-1000))
+      .force('charge', d3.forceManyBody().strength(-1200))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(60))
+      .force('collision', d3.forceCollide().radius(70))
 
     simulationRef.current = simulation
 
-    // Create arrow markers for links
-    svg.append('defs').selectAll('marker')
-      .data(['online', 'offline'])
+    // Build a set of offline server IDs for quick lookup
+    const offlineServerIds = new Set(
+      serverNodes.filter(s => s.status === 'offline').map(s => s.id)
+    )
+
+    // Helper: is link disconnected? (agent offline OR its server offline)
+    const isLinkDisconnected = (d: TopoLink) => {
+      const sourceId = typeof d.source === 'string' ? d.source : d.source.id
+      const targetId = typeof d.target === 'string' ? d.target : d.target.id
+      const sourceNode = nodes.find(n => n.id === sourceId)
+      const targetNode = nodes.find(n => n.id === targetId)
+      return sourceNode?.status === 'offline' || targetNode?.status === 'offline'
+    }
+
+    // Create defs for markers and animated dash pattern
+    const defs = svg.append('defs')
+
+    // Arrow markers
+    defs.selectAll('marker')
+      .data(['online', 'offline', 'disconnected'])
       .enter().append('marker')
       .attr('id', d => `arrow-${d}`)
       .attr('viewBox', '0 -5 10 10')
@@ -161,30 +208,55 @@ export default function Topology() {
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', d => d === 'online' ? '#10b981' : '#64748b')
+      .attr('fill', d => d === 'online' ? '#10b981' : d === 'disconnected' ? '#ef4444' : '#64748b')
 
-    // Create links
+    // Glow filter for offline/alert nodes
+    const glowFilter = defs.append('filter')
+      .attr('id', 'glow-red')
+      .attr('x', '-50%').attr('y', '-50%')
+      .attr('width', '200%').attr('height', '200%')
+    glowFilter.append('feGaussianBlur')
+      .attr('stdDeviation', '4')
+      .attr('result', 'blur')
+    glowFilter.append('feFlood')
+      .attr('flood-color', '#ef4444')
+      .attr('flood-opacity', '0.6')
+      .attr('result', 'color')
+    glowFilter.append('feComposite')
+      .attr('in', 'color')
+      .attr('in2', 'blur')
+      .attr('operator', 'in')
+      .attr('result', 'glow')
+    const glowMerge = glowFilter.append('feMerge')
+    glowMerge.append('feMergeNode').attr('in', 'glow')
+    glowMerge.append('feMergeNode').attr('in', 'SourceGraphic')
+
+    // Create links — solid green for healthy, dashed red for disconnected
     const link = g.append('g')
       .selectAll('line')
       .data(links)
       .enter().append('line')
-      .attr('stroke', d => {
-        const sourceNode = nodes.find(n => n.id === (typeof d.source === 'string' ? d.source : d.source.id))
-        return sourceNode?.status === 'online' ? '#10b981' : '#64748b'
-      })
-      .attr('stroke-width', 2)
-      .attr('stroke-opacity', 0.6)
-      .attr('marker-end', d => {
-        const sourceNode = nodes.find(n => n.id === (typeof d.source === 'string' ? d.source : d.source.id))
-        return `url(#arrow-${sourceNode?.status || 'offline'})`
-      })
+      .attr('stroke', d => isLinkDisconnected(d) ? '#ef4444' : '#10b981')
+      .attr('stroke-width', d => isLinkDisconnected(d) ? 2.5 : 2)
+      .attr('stroke-opacity', d => isLinkDisconnected(d) ? 0.8 : 0.6)
+      .attr('stroke-dasharray', d => isLinkDisconnected(d) ? '8,6' : 'none')
+      .attr('marker-end', d => isLinkDisconnected(d) ? 'url(#arrow-disconnected)' : 'url(#arrow-online)')
+
+    // Animate dashed lines for disconnected links (marching ants)
+    link.filter(d => isLinkDisconnected(d))
+      .append('animate')
+      .attr('attributeName', 'stroke-dashoffset')
+      .attr('from', '0')
+      .attr('to', '28')
+      .attr('dur', '1.5s')
+      .attr('repeatCount', 'indefinite')
 
     // Create node groups
     const node = g.append('g')
       .selectAll('g')
       .data(nodes)
       .enter().append('g')
-      .call(d3.drag<SVGGElement, Node>()
+      .call(d3.drag<SVGGElement, TopoNode>()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended) as any)
@@ -193,21 +265,28 @@ export default function Topology() {
         setSelectedNode(d)
       })
 
-    // Add circles for nodes
+    // Add circles for nodes — server nodes use their own color
     node.append('circle')
       .attr('r', d => d.type === 'server' ? 40 : 30)
       .attr('fill', d => {
-        if (d.type === 'server') return '#8b5cf6'
+        if (d.type === 'server') {
+          return d.status === 'offline' ? '#991b1b' : (d.color || '#8b5cf6')
+        }
         return d.status === 'online' ? '#10b981' : '#ef4444'
       })
       .attr('stroke', d => {
-        if (d.type === 'server') return '#a78bfa'
+        if (d.type === 'server') {
+          if (d.status === 'offline') return '#ef4444'
+          const c = d3.color(d.color || '#8b5cf6')
+          return c ? c.brighter(0.5).toString() : '#a78bfa'
+        }
         return d.status === 'online' ? '#34d399' : '#f87171'
       })
-      .attr('stroke-width', 3)
+      .attr('stroke-width', d => d.status === 'offline' ? 4 : 3)
       .style('cursor', 'pointer')
+      .attr('filter', d => d.status === 'offline' ? 'url(#glow-red)' : null)
 
-    // Add status pulse animation for online nodes
+    // Add green pulse for ONLINE agents
     node.filter(d => d.status === 'online' && d.type === 'agent')
       .append('circle')
       .attr('r', 30)
@@ -215,7 +294,37 @@ export default function Topology() {
       .attr('stroke', '#10b981')
       .attr('stroke-width', 2)
       .attr('opacity', 0)
-      .call(pulse)
+      .call(pulseGreen)
+
+    // Add red danger pulse for OFFLINE servers
+    node.filter(d => d.status === 'offline' && d.type === 'server')
+      .append('circle')
+      .attr('r', 40)
+      .attr('fill', 'none')
+      .attr('stroke', '#ef4444')
+      .attr('stroke-width', 3)
+      .attr('opacity', 0)
+      .call(pulseRed)
+
+    // Add red danger pulse for OFFLINE agents
+    node.filter(d => d.status === 'offline' && d.type === 'agent')
+      .append('circle')
+      .attr('r', 30)
+      .attr('fill', 'none')
+      .attr('stroke', '#ef4444')
+      .attr('stroke-width', 2)
+      .attr('opacity', 0)
+      .call(pulseRed)
+
+    // Add warning ring for agents connected to an offline server
+    node.filter(d => d.type === 'agent' && d.status === 'online' && d.serverId && offlineServerIds.has(`server-${d.serverId}`))
+      .append('circle')
+      .attr('r', 36)
+      .attr('fill', 'none')
+      .attr('stroke', '#f59e0b')
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', '4,4')
+      .attr('opacity', 0.8)
 
     // Add icons
     node.append('text')
@@ -234,8 +343,60 @@ export default function Topology() {
       .attr('font-weight', 'bold')
       .text(d => d.name)
 
-    // Add metrics badge
-    node.filter(d => d.type === 'agent' && !!d.metrics)
+    // Add "OFFLINE" label under name for offline servers
+    node.filter(d => d.type === 'server' && d.status === 'offline')
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 70)
+      .attr('font-size', '11px')
+      .attr('fill', '#ef4444')
+      .attr('font-weight', 'bold')
+      .text('DISCONNECTED')
+
+    // Add warning badge (⚠) on offline server nodes
+    node.filter(d => d.type === 'server' && d.status === 'offline')
+      .append('circle')
+      .attr('cx', 0)
+      .attr('cy', -45)
+      .attr('r', 14)
+      .attr('fill', '#ef4444')
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 2)
+
+    node.filter(d => d.type === 'server' && d.status === 'offline')
+      .append('text')
+      .attr('x', 0)
+      .attr('y', -45)
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.4em')
+      .attr('font-size', '14px')
+      .attr('fill', 'white')
+      .attr('font-weight', 'bold')
+      .text('!')
+
+    // Add warning badge on offline agents
+    node.filter(d => d.type === 'agent' && d.status === 'offline')
+      .append('circle')
+      .attr('cx', 0)
+      .attr('cy', -35)
+      .attr('r', 10)
+      .attr('fill', '#ef4444')
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 2)
+
+    node.filter(d => d.type === 'agent' && d.status === 'offline')
+      .append('text')
+      .attr('x', 0)
+      .attr('y', -35)
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.4em')
+      .attr('font-size', '10px')
+      .attr('fill', 'white')
+      .attr('font-weight', 'bold')
+      .text('!')
+
+    // Add metrics badge (for online agents)
+    node.filter(d => d.type === 'agent' && d.status === 'online' && !!d.metrics)
       .append('circle')
       .attr('cx', 20)
       .attr('cy', -20)
@@ -244,7 +405,7 @@ export default function Topology() {
       .attr('stroke', '#1e293b')
       .attr('stroke-width', 2)
 
-    node.filter(d => d.type === 'agent' && !!d.metrics)
+    node.filter(d => d.type === 'agent' && d.status === 'online' && !!d.metrics)
       .append('text')
       .attr('x', 20)
       .attr('y', -20)
@@ -283,44 +444,60 @@ export default function Topology() {
     // Update positions on simulation tick
     simulation.on('tick', () => {
       link
-        .attr('x1', d => (d.source as Node).x || 0)
-        .attr('y1', d => (d.source as Node).y || 0)
-        .attr('x2', d => (d.target as Node).x || 0)
-        .attr('y2', d => (d.target as Node).y || 0)
+        .attr('x1', d => (d.source as TopoNode).x || 0)
+        .attr('y1', d => (d.source as TopoNode).y || 0)
+        .attr('x2', d => (d.target as TopoNode).x || 0)
+        .attr('y2', d => (d.target as TopoNode).y || 0)
 
       node.attr('transform', d => `translate(${d.x},${d.y})`)
     })
 
     // Drag functions
-    function dragstarted(event: any, d: Node) {
+    function dragstarted(event: any, d: TopoNode) {
       if (!event.active) simulation.alphaTarget(0.3).restart()
       d.fx = d.x
       d.fy = d.y
     }
 
-    function dragged(event: any, d: Node) {
+    function dragged(event: any, d: TopoNode) {
       d.fx = event.x
       d.fy = event.y
     }
 
-    function dragended(event: any, d: Node) {
+    function dragended(event: any, d: TopoNode) {
       if (!event.active) simulation.alphaTarget(0)
       d.fx = null
       d.fy = null
     }
 
-    // Pulse animation
-    function pulse(selection: any) {
+    // Green pulse for online agents
+    function pulseGreen(selection: any) {
       (function repeat() {
         selection
           .transition()
           .duration(2000)
-          .attr('r', 40)
+          .attr('r', 42)
           .attr('opacity', 0)
           .transition()
           .duration(0)
           .attr('r', 30)
-          .attr('opacity', 0.8)
+          .attr('opacity', 0.6)
+          .on('end', repeat)
+      })()
+    }
+
+    // Red danger pulse for offline nodes
+    function pulseRed(selection: any) {
+      (function repeat() {
+        selection
+          .transition()
+          .duration(1200)
+          .attr('r', 55)
+          .attr('opacity', 0)
+          .transition()
+          .duration(0)
+          .attr('r', d => (d as TopoNode).type === 'server' ? 40 : 30)
+          .attr('opacity', 0.9)
           .on('end', repeat)
       })()
     }
@@ -329,7 +506,7 @@ export default function Topology() {
     return () => {
       simulation.stop()
     }
-  }, [agents, filteredData])
+  }, [agents, servers, filteredData])
 
   const handleZoomIn = () => {
     d3.select(svgRef.current).transition().call(
@@ -466,15 +643,27 @@ export default function Topology() {
             <div className="space-y-2 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-purple-500 border-2 border-purple-400" />
-                <span className="text-slate-300">DCIM Server</span>
+                <span className="text-slate-300">Server (Healthy)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-red-900 border-2 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                <span className="text-slate-300">Server (Disconnected)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-green-500 border-2 border-green-400" />
                 <span className="text-slate-300">Agent (Online)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-red-500 border-2 border-red-400" />
+                <div className="w-6 h-6 rounded-full bg-red-500 border-2 border-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
                 <span className="text-slate-300">Agent (Offline)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-0.5 bg-green-500" />
+                <span className="text-slate-300">Healthy Link</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-0.5 border-t-2 border-dashed border-red-500" />
+                <span className="text-slate-300">Disconnected Link</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
@@ -486,7 +675,7 @@ export default function Topology() {
                 <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold">
                   !
                 </div>
-                <span className="text-slate-300">Active Alerts</span>
+                <span className="text-slate-300">Alert Badge</span>
               </div>
             </div>
           </div>
@@ -496,7 +685,19 @@ export default function Topology() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Server className="w-4 h-4 text-purple-400" />
-                <span className="text-slate-300">Total Agents: <span className="font-bold text-white">{agents?.length || 0}</span></span>
+                <span className="text-slate-300">Servers: <span className="font-bold text-white">{servers?.filter(s => s.enabled).length || 0}</span></span>
+                {(() => {
+                  const disconnected = servers?.filter(s => s.enabled && s.health?.status !== 'healthy').length || 0
+                  return disconnected > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
+                      {disconnected} down
+                    </span>
+                  ) : null
+                })()}
+              </div>
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-400" />
+                <span className="text-slate-300">Agents: <span className="font-bold text-white">{agents?.length || 0}</span></span>
               </div>
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-green-400" />
@@ -567,6 +768,15 @@ export default function Topology() {
                 <div>
                   <p className="text-sm text-slate-400">Active Alerts</p>
                   <p className="text-2xl font-bold text-red-400">{selectedNode.alerts}</p>
+                </div>
+              )}
+
+              {selectedNode.type === 'server' && (
+                <div>
+                  <p className="text-sm text-slate-400">Connected Agents</p>
+                  <p className="text-2xl font-bold text-purple-400">
+                    {agents?.filter(a => `server-${a.server_id}` === selectedNode.id).length || 0}
+                  </p>
                 </div>
               )}
 
