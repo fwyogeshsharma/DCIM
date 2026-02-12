@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.yourdomain.com', // Update with actual production API URL
+  apiUrl: 'https://Faber:8443',
   certPath: 'assets/certs'
 };
