@@ -89,6 +89,11 @@ export class SimulatorComponent {
   alerts: string[] = [];
   jsonOutput: string = '';
 
+  // API response message
+  apiMessage: string = '';
+  apiMessageType: 'success' | 'error' | '' = '';
+  isSending: boolean = false;
+
   constructor(private coolingApiService: CoolingApiService) {}
 
   ngOnInit() {
@@ -152,6 +157,11 @@ export class SimulatorComponent {
       } else {
         // Logic: If Condenser OFF -> send same Temperature value as coming
         this.inletTemperature = this.outletTemperature;
+
+        // Cap at 100°C (API validation limit)
+        if (this.inletTemperature > 100) {
+          this.inletTemperature = 100;
+        }
       }
 
       // Logic: Leaks affect pressure based on location in the cooling loop
@@ -190,6 +200,11 @@ export class SimulatorComponent {
       } else {
         // When SERVER (CPU) is on, it heats up the coolant
         this.outletTemperature = this.inletTemperature + 47; // Results in ~55 when inlet is 8
+
+        // Cap at 100°C (API validation limit)
+        if (this.outletTemperature > 100) {
+          this.outletTemperature = 100;
+        }
       }
     }
 
@@ -383,28 +398,59 @@ export class SimulatorComponent {
 
     const data = JSON.parse(this.jsonOutput);
 
+    // Clear previous message and show loading
+    this.apiMessage = '';
+    this.apiMessageType = '';
+    this.isSending = true;
+
     this.coolingApiService.sendMetrics(data).subscribe({
       next: (response) => {
         console.log('✅ API Response:', response);
-        alert('Data sent successfully to server!');
+        this.isSending = false;
+        this.apiMessage = response.message || 'Data sent successfully to server!';
+        this.apiMessageType = 'success';
+
+        // Auto-hide message after 5 seconds
+        setTimeout(() => {
+          this.apiMessage = '';
+          this.apiMessageType = '';
+        }, 5000);
       },
       error: (error) => {
         console.error('❌ API Error:', error);
+        this.isSending = false;
+
         if (error.status === 0) {
-          alert('Cannot connect to server. Please check:\n' +
-                '1. Server is running\n' +
-                '2. Client certificate is imported in browser\n' +
-                '3. API URL is correct in environment.ts');
+          this.apiMessage = 'Cannot connect to server. Please check: 1) Server is running 2) Proxy is running 3) Network connectivity';
+          this.apiMessageType = 'error';
+        } else if (error.error && error.error.error) {
+          // Server validation error
+          this.apiMessage = `Server Error: ${error.error.error}`;
+          this.apiMessageType = 'error';
         } else {
-          alert(`API Error: ${error.status} - ${error.message}`);
+          this.apiMessage = `API Error: ${error.status} - ${error.message}`;
+          this.apiMessageType = 'error';
         }
+
+        // Auto-hide error message after 8 seconds
+        setTimeout(() => {
+          this.apiMessage = '';
+          this.apiMessageType = '';
+        }, 8000);
       }
     });
   }
 
   copyJSON() {
     navigator.clipboard.writeText(this.jsonOutput).then(() => {
-      alert('JSON copied to clipboard!');
+      this.apiMessage = 'JSON copied to clipboard!';
+      this.apiMessageType = 'success';
+
+      // Auto-hide message after 3 seconds
+      setTimeout(() => {
+        this.apiMessage = '';
+        this.apiMessageType = '';
+      }, 3000);
     });
   }
 
