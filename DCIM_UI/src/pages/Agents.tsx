@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { formatDistanceToNow } from 'date-fns'
-import { BarChart3, Filter } from 'lucide-react'
+import { BarChart3, Filter, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function Agents() {
@@ -119,14 +119,37 @@ export default function Agents() {
           </thead>
           <tbody className="divide-y divide-white/5">
             {filteredAgents?.map((agent) => {
-              // Find server color
-              const serverColor = servers?.find((s) => s.name === agent.server_name)?.metadata?.color || '#3b82f6'
+              const server = servers?.find((s) => s.name === agent.server_name)
+              const serverColor = server?.metadata?.color || '#3b82f6'
+              const serverDown = server ? server.health?.status !== 'healthy' : false
               return (
-                <tr key={agent.id} className="hover:bg-white/5 transition-colors">
+                <tr
+                  key={agent.id}
+                  className={`transition-colors ${
+                    serverDown
+                      ? 'bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500'
+                      : agent.status === 'offline'
+                      ? 'bg-yellow-500/5 hover:bg-yellow-500/10'
+                      : 'hover:bg-white/5'
+                  }`}
+                >
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-6 rounded-full" style={{ backgroundColor: serverColor }} />
-                      <span className="text-sm text-slate-300">{agent.server_name || 'Unknown'}</span>
+                      <div className="relative">
+                        <div className="w-2 h-6 rounded-full" style={{ backgroundColor: serverDown ? '#ef4444' : serverColor }} />
+                        {serverDown && (
+                          <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-sm text-slate-300">{agent.server_name || 'Unknown'}</span>
+                        {serverDown && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <AlertTriangle className="w-3 h-3 text-red-400" />
+                            <span className="text-xs text-red-400 font-medium">Server Down</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="p-4">
@@ -140,17 +163,24 @@ export default function Agents() {
                   <td className="p-4 font-medium text-white">{agent.hostname}</td>
                   <td className="p-4 font-mono text-sm text-slate-300">{agent.ip_address}</td>
                   <td className="p-4">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        agent.status === 'online'
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                          : agent.status === 'offline'
-                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                          : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-                      }`}
-                    >
-                      {agent.status}
-                    </span>
+                    {serverDown ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                        <AlertTriangle className="w-3 h-3" />
+                        Unreachable
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          agent.status === 'online'
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : agent.status === 'offline'
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                        }`}
+                      >
+                        {agent.status}
+                      </span>
+                    )}
                   </td>
                   <td className="p-4 text-sm text-slate-400">
                     {formatDistanceToNow(new Date(agent.last_seen), { addSuffix: true })}

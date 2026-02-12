@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAgents } from '@/hooks/useAgents'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 import * as d3 from 'd3'
 import {
   Plus,
@@ -43,6 +45,11 @@ type LayoutType = 'force' | 'star' | 'chain' | 'hierarchy' | 'circle' | 'concent
 
 export default function TopologyEditor() {
   const { data: agents } = useAgents()
+  const { data: servers } = useQuery({
+    queryKey: ['servers'],
+    queryFn: () => api.getServers(),
+    staleTime: 60000,
+  })
   const svgRef = useRef<SVGSVGElement>(null)
   const [nodes, setNodes] = useState<Node[]>([])
   const [links, setLinks] = useState<Link[]>([])
@@ -53,37 +60,62 @@ export default function TopologyEditor() {
   const [linkSource, setLinkSource] = useState<Node | null>(null)
   const [editName, setEditName] = useState('')
   const simulationRef = useRef<d3.Simulation<Node, any> | null>(null)
+  // Store original links so force layout can restore them
+  const originalLinksRef = useRef<Link[]>([])
 
-  // Initialize with agent data
+  // Initialize with actual server + agent data
   useEffect(() => {
     if (!agents || nodes.length > 0) return
 
-    const initialNodes: Node[] = [
-      {
-        id: 'server',
-        name: 'DCIM Server',
-        type: 'server',
-        status: 'online',
-        color: '#8b5cf6',
-      },
-      ...agents.slice(0, 5).map((agent) => ({
-        id: agent.agent_id,
-        name: agent.hostname,
-        type: 'agent' as const,
-        status: agent.status as 'online' | 'offline',
-        color: agent.status === 'online' ? '#10b981' : '#ef4444',
-      })),
-    ]
-
-    const initialLinks: Link[] = agents.slice(0, 5).map(agent => ({
-      source: agent.agent_id,
-      target: 'server',
-      id: `${agent.agent_id}-server`,
+    // Build server nodes from actual servers
+    const enabledServers = servers?.filter(s => s.enabled) || []
+    const serverNodes: Node[] = enabledServers.map(s => ({
+      id: `server-${s.id}`,
+      name: s.name,
+      type: 'server' as const,
+      status: (s.health?.status === 'healthy' ? 'online' : 'offline') as 'online' | 'offline',
+      color: s.metadata?.color || '#8b5cf6',
     }))
 
+    // Fallback if no servers data yet — derive from agents
+    if (serverNodes.length === 0) {
+      const uniqueServerIds = [...new Set(agents.map(a => a.server_id).filter(Boolean))]
+      uniqueServerIds.forEach(sid => {
+        const agentForServer = agents.find(a => a.server_id === sid)
+        serverNodes.push({
+          id: `server-${sid}`,
+          name: agentForServer?.server_name || 'Server',
+          type: 'server',
+          status: 'online',
+          color: '#8b5cf6',
+        })
+      })
+    }
+
+    const agentNodes: Node[] = agents.map(agent => ({
+      id: agent.agent_id,
+      name: agent.hostname,
+      type: 'agent' as const,
+      status: agent.status as 'online' | 'offline',
+      color: agent.status === 'online' ? '#10b981' : '#ef4444',
+    }))
+
+    const initialNodes: Node[] = [...serverNodes, ...agentNodes]
+
+    // Each agent links to its own server
+    const initialLinks: Link[] = agents.map(agent => {
+      const serverNodeId = serverNodes.find(s => s.id === `server-${agent.server_id}`)?.id || serverNodes[0]?.id
+      return {
+        source: agent.agent_id,
+        target: serverNodeId || 'server-unknown',
+        id: `${agent.agent_id}-${serverNodeId}`,
+      }
+    }).filter(l => l.target !== 'server-unknown')
+
+    originalLinksRef.current = initialLinks
     setNodes(initialNodes)
     setLinks(initialLinks)
-  }, [agents])
+  }, [agents, servers])
 
   // Apply layout
   const applyLayout = (layoutType: LayoutType, nodeList: Node[], linkList: Link[]) => {
@@ -319,8 +351,10 @@ export default function TopologyEditor() {
           node.fx = null
           node.fy = null
         })
-        // For force layout, keep existing links
-        updatedLinks = linkList
+        // Restore original server-agent links for force layout
+        updatedLinks = originalLinksRef.current.length > 0
+          ? originalLinksRef.current.map(l => ({ ...l }))
+          : linkList
         break
       }
     }
