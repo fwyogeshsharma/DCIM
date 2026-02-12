@@ -31,7 +31,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         dbPool.query(`
           SELECT COUNT(*) as count
           FROM alerts
-          WHERE resolved = false AND timestamp >= NOW() - INTERVAL '24 hours'
+          WHERE resolved = false
         `),
       ])
 

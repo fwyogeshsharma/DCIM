@@ -119,16 +119,49 @@ class APIClient {
   }
 
   // Alert endpoints
-  async getAlerts(filter?: AlertFilter): Promise<Alert[]> {
+  async getAlerts(filter?: AlertFilter & { limit?: number; offset?: number }): Promise<Alert[]> {
     const params = new URLSearchParams()
     if (filter?.agent_id) params.append('agent_id', filter.agent_id)
     if (filter?.severity) params.append('severity', filter.severity)
     if (filter?.resolved !== undefined) params.append('resolved', String(filter.resolved))
     if (filter?.metric_type) params.append('metric_type', filter.metric_type)
     if (filter?.time_range) params.append('time_range', filter.time_range)
+    if (filter?.limit !== undefined) params.append('limit', String(filter.limit))
+    if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
 
     const queryString = params.toString()
     return this.request<Alert[]>(`/alerts${queryString ? `?${queryString}` : ''}`)
+  }
+
+  async getAlertsPaginated(filter?: AlertFilter & { limit?: number; offset?: number }): Promise<{
+    data: Alert[]
+    total: number
+    hasMore: boolean
+  }> {
+    const params = new URLSearchParams()
+    if (filter?.agent_id) params.append('agent_id', filter.agent_id)
+    if (filter?.severity) params.append('severity', filter.severity)
+    if (filter?.resolved !== undefined) params.append('resolved', String(filter.resolved))
+    if (filter?.limit !== undefined) params.append('limit', String(filter.limit))
+    if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
+
+    const queryString = params.toString()
+    const res = await fetch(`${this.baseURL}/alerts${queryString ? `?${queryString}` : ''}`)
+    const json = await res.json()
+    return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
+  }
+
+  async getAlertCounts(): Promise<{
+    agent_id: string
+    hostname: string
+    server_name: string
+    total: number
+    active: number
+    critical: number
+    warning: number
+    info: number
+  }[]> {
+    return this.request(`/alerts/counts`)
   }
 
   async getAlert(alertId: number): Promise<Alert> {

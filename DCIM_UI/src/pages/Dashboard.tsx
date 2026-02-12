@@ -16,10 +16,26 @@ export default function Dashboard() {
     refetchInterval: 30000,
   })
 
+  // Use the stats API for accurate total counts (alerts list is paginated to 20)
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => api.getDashboardStats(),
+    staleTime: 5000,
+    refetchInterval: 5000,
+  })
+
+  // Use alert counts API for critical count
+  const { data: alertCounts } = useQuery({
+    queryKey: ['alert-counts'],
+    queryFn: () => api.getAlertCounts(),
+    staleTime: 5000,
+    refetchInterval: 5000,
+  })
+
   const totalAgents = agents?.length || 0
   const onlineAgents = agents?.filter((a) => a.status === 'online').length || 0
-  const criticalAlerts = alerts?.filter((a) => a.severity === 'CRITICAL' && !a.resolved).length || 0
-  const totalAlerts = alerts?.filter((a) => !a.resolved).length || 0
+  const criticalAlerts = alertCounts?.reduce((sum, c) => sum + Number(c.critical), 0) || 0
+  const totalAlerts = dashboardStats?.activeAlerts || 0
   const totalServers = servers?.length || 0
   const healthyServers = servers?.filter((s) => s.health?.status === 'healthy').length || 0
 
@@ -81,7 +97,7 @@ export default function Dashboard() {
     },
   ]
 
-  if (agentsLoading || alertsLoading || serversLoading) {
+  if (agentsLoading || serversLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4">

@@ -55,7 +55,11 @@
       "Bash(cd:*)",
       "Bash(ls:*)",
       "Bash(echo:*)",
-      "Bash(PGPASSWORD=admin psql:*)"
+      "Bash(PGPASSWORD=admin psql:*)",
+      "Bash(ipconfig:*)",
+      "Bash(arp:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker exec:*)"
     ]
   }
 }

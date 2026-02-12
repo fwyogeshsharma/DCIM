@@ -167,25 +167,40 @@ export class DataSyncService {
   async syncAlertsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
       const agent = getAgentForServer(serverId)
-      const client = new HttpClient(serverUrl, 5000, agent)
+      const client = new HttpClient(serverUrl, 15000, agent)
 
-      // Get a known agent_id for authenticated access
-      const agentId = await this.getAgentIdForServer(serverId)
-      if (!agentId) {
+      // Fetch alerts per agent so every agent gets its fair share
+      const agentIds = await this.getAllAgentIdsForServer(serverId)
+      if (agentIds.length === 0) {
         logger.debug(`No agents known for server ${serverId}, skipping alerts sync`)
         return
       }
 
-      const response: any = await client.get('/alerts?time_range=7d&limit=1000', {
-        headers: { 'X-Agent-ID': agentId },
-      })
-      const alerts = response.data || response
+      let allAlerts: any[] = []
+      for (const aid of agentIds) {
+        try {
+          const params = new URLSearchParams()
+          params.append('agent_id', aid)
+          params.append('time_range', '7d')
+          params.append('limit', '1000')
+          const url = `/alerts?${params.toString()}`
+          const response: any = await client.get(url, {
+            headers: { 'X-Agent-ID': aid },
+          })
+          const data = response.data || response
+          if (Array.isArray(data)) {
+            allAlerts = allAlerts.concat(data)
+          }
+        } catch (err: any) {
+          logger.debug(`Failed to fetch alerts for agent ${aid}: ${err.message}`)
+        }
+      }
 
-      if (!Array.isArray(alerts)) {
+      if (allAlerts.length === 0) {
         return
       }
 
-      for (const alert of alerts) {
+      for (const alert of allAlerts) {
         try {
           await this.dbPool.query(
             `
@@ -211,7 +226,7 @@ export class DataSyncService {
         }
       }
 
-      logger.info(`Synced ${alerts.length} alerts from server ${serverId}`)
+      logger.info(`Synced ${allAlerts.length} alerts from server ${serverId}`)
     } catch (error: any) {
       logger.error(`Failed to sync alerts from ${serverId}:`, error.message)
     }
