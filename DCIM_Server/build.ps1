@@ -3,13 +3,14 @@
 #
 # Default: Builds for ALL platforms (Windows, Linux, macOS)
 # Usage:
-#   .\build.ps1                      # Build all platforms
-#   .\build.ps1 -Platform windows    # Build Windows only
-#   .\build.ps1 -Platform linux      # Build Linux only
-#   .\build.ps1 -Platform macos      # Build macOS only
+#   .\build.ps1                                    # Build all platforms (prompts for server)
+#   .\build.ps1 -ServerName PROD-01                # Build all platforms for PROD-01
+#   .\build.ps1 -Platform windows -ServerName PROD-01   # Build Windows for PROD-01
+#   .\build.ps1 -Platform linux                    # Build Linux only (prompts for server)
 
 param(
     [string]$Platform = "all",
+    [string]$ServerName = "",
     [string]$OutputDir = "build"
 )
 
@@ -18,6 +19,57 @@ $ErrorActionPreference = "Stop"
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host "DCIM Server - Build Script" -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Get server name for certificate deployment
+if ([string]::IsNullOrWhiteSpace($ServerName)) {
+    Write-Host "Select Server for Certificate Deployment" -ForegroundColor Yellow
+    Write-Host "========================================" -ForegroundColor Yellow
+    Write-Host ""
+
+    # List available servers
+    if (Test-Path "certs\servers") {
+        $availableServers = Get-ChildItem "certs\servers" -Directory | Select-Object -ExpandProperty Name
+
+        if ($availableServers.Count -eq 0) {
+            Write-Host "ERROR: No servers found in certs\servers\" -ForegroundColor Red
+            Write-Host "Generate certificates first with: .\scripts\windows\generate-certs.ps1" -ForegroundColor Yellow
+            exit 1
+        }
+
+        Write-Host "Available servers:" -ForegroundColor Cyan
+        foreach ($srv in $availableServers) {
+            Write-Host "  - $srv" -ForegroundColor White
+        }
+        Write-Host ""
+
+        # Always prompt for server name as text input
+        $ServerName = Read-Host "Enter server name"
+
+        # Verify server exists
+        if (-not (Test-Path "certs\servers\$ServerName")) {
+            Write-Host ""
+            Write-Host "ERROR: Server '$ServerName' not found in certs\servers\" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Available servers are:" -ForegroundColor Yellow
+            foreach ($srv in $availableServers) {
+                Write-Host "  - $srv" -ForegroundColor Yellow
+            }
+            Write-Host ""
+            exit 1
+        }
+
+        Write-Host ""
+        Write-Host "Selected server: $ServerName" -ForegroundColor Green
+        Write-Host ""
+    } else {
+        Write-Host "ERROR: certs\servers directory not found" -ForegroundColor Red
+        Write-Host "Generate certificates first with: .\scripts\windows\generate-certs.ps1" -ForegroundColor Yellow
+        exit 1
+    }
+}
+
+Write-Host "Building for Server: $ServerName" -ForegroundColor Green
 Write-Host ""
 
 if ($Platform -eq "all") {
@@ -129,29 +181,69 @@ function Build-Platform {
                 Write-Host "  [INFO] license.json not found - you'll need to generate it" -ForegroundColor Yellow
             }
 
+            # Copy installer files for Windows
+            if ($OS -eq "windows") {
+                if (Test-Path "install-windows.bat") {
+                    Copy-Item "install-windows.bat" "$PlatformDir\install-windows.bat" -Force
+                    Write-Host "  [OK] Copied install-windows.bat" -ForegroundColor Green
+                }
+                if (Test-Path "uninstall-windows.bat") {
+                    Copy-Item "uninstall-windows.bat" "$PlatformDir\uninstall-windows.bat" -Force
+                    Write-Host "  [OK] Copied uninstall-windows.bat" -ForegroundColor Green
+                }
+            }
+
             # Create certs directory
             $CertsDir = "$PlatformDir\certs"
             if (-not (Test-Path $CertsDir)) {
                 New-Item -ItemType Directory -Path $CertsDir | Out-Null
             }
 
-            # Copy certificates if they exist
+            # Clean up old certificates and directories (from previous builds)
+            Get-ChildItem $CertsDir -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+
+            # Copy certificates for the selected server (flat structure for deployment)
             $certsCopied = 0
-            $certsNeeded = @("ca.crt", "server.crt", "server.key")
-            foreach ($certFile in $certsNeeded) {
-                $sourcePath = "certs\$certFile"
-                if (Test-Path $sourcePath) {
-                    Copy-Item $sourcePath "$CertsDir\$certFile" -Force
-                    $certsCopied++
-                }
+            $serverCertPath = "certs\servers\$ServerName"
+
+            # Verify server certificates exist
+            if (-not (Test-Path $serverCertPath)) {
+                Write-Host "  [ERROR] Server certificates not found: $serverCertPath" -ForegroundColor Red
+                Write-Host "         Generate with: .\scripts\windows\generate-certs.ps1" -ForegroundColor Yellow
+                continue
             }
 
-            if ($certsCopied -eq 3) {
-                Write-Host "  [OK] Copied all certificates ($certsCopied/3)" -ForegroundColor Green
-            } elseif ($certsCopied -gt 0) {
-                Write-Host "  [WARNING] Copied $certsCopied/3 certificates - some are missing" -ForegroundColor Yellow
+            # Copy CA certificate (root level)
+            if (Test-Path "certs\ca.crt") {
+                Copy-Item "certs\ca.crt" "$CertsDir\ca.crt" -Force
+                $certsCopied++
             } else {
-                Write-Host "  [INFO] No certificates found - you'll need to generate them" -ForegroundColor Yellow
+                Write-Host "  [ERROR] CA certificate not found: certs\ca.crt" -ForegroundColor Red
+            }
+
+            # Copy server certificates (flatten structure for deployment)
+            if (Test-Path "$serverCertPath\server.crt") {
+                Copy-Item "$serverCertPath\server.crt" "$CertsDir\server.crt" -Force
+                $certsCopied++
+            } else {
+                Write-Host "  [ERROR] Server certificate not found: $serverCertPath\server.crt" -ForegroundColor Red
+            }
+
+            if (Test-Path "$serverCertPath\server.key") {
+                Copy-Item "$serverCertPath\server.key" "$CertsDir\server.key" -Force
+                $certsCopied++
+            } else {
+                Write-Host "  [ERROR] Server key not found: $serverCertPath\server.key" -ForegroundColor Red
+            }
+
+            # Display status
+            if ($certsCopied -eq 3) {
+                Write-Host "  [OK] Copied certificates for server: $ServerName" -ForegroundColor Green
+                Write-Host "       - ca.crt (CA certificate)" -ForegroundColor Gray
+                Write-Host "       - server.crt (Server certificate)" -ForegroundColor Gray
+                Write-Host "       - server.key (Server private key)" -ForegroundColor Gray
+            } else {
+                Write-Host "  [WARNING] Copied $certsCopied/3 certificates - some are missing" -ForegroundColor Yellow
             }
 
             # Create README in build directory
@@ -160,13 +252,15 @@ function Build-Platform {
             # Check certificate status
             $certStatus = "Not included"
             $certCount = 0
+
             foreach ($certFile in @("ca.crt", "server.crt", "server.key")) {
                 if (Test-Path "$CertsDir\$certFile") {
                     $certCount++
                 }
             }
+
             if ($certCount -eq 3) {
-                $certStatus = "Included (all required files)"
+                $certStatus = "Included for server: $ServerName"
             } elseif ($certCount -gt 0) {
                 $certStatus = "Partially included ($certCount/3 files)"
             }
@@ -186,6 +280,7 @@ DCIM Server - $OS/$Arch Build
 
 Version: $Version
 Built: $BuildTime
+Server: $ServerName
 
 Files Included:
 - $Binary (server executable)
@@ -205,22 +300,24 @@ Quick Start:
             if ($certCount -eq 3) {
                 $BuildReadme += @"
 
-   [OK] All certificates are included:
+   [OK] Certificates are included for server: $ServerName
    - certs/ca.crt (CA certificate)
-   - certs/server.crt (server certificate)
-   - certs/server.key (server private key)
+   - certs/server.crt (Server certificate)
+   - certs/server.key (Server private key)
+
+   These certificates are ready to use on the target server.
 
 "@
             } else {
                 $BuildReadme += @"
 
    [REQUIRED] Generate certificates in source directory:
-   scripts\generate-certs.ps1
+   Windows: .\scripts\windows\generate-certs.ps1
+   Linux:   ./scripts/linux/generate-certs.sh
+   macOS:   ./scripts/macos/generate-certs.sh
 
-   Then rebuild, or manually copy these files to certs\ directory:
-   - ca.crt (CA certificate)
-   - server.crt (server certificate)
-   - server.key (server private key)
+   Then rebuild with:
+   .\build.ps1 -ServerName "your-server-name"
 
 "@
             }

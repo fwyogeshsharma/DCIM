@@ -1,29 +1,29 @@
 ﻿# Certificate Information
-# Generated: 2026-02-13 14:20:26
+# Generated: 2026-02-13 16:48:14
 
 ## Certificate Authority (CA)
-- Valid for: 365 days
-- Expires: 2027-02-13
+- Valid for: 
+- Expires: 
 - Files: ca.crt, ca.key
 
 ## Server Certificate
-- Server ID: JPR-MP-SERVER-WIN-HP-AY-01
+- Server ID: JPR_MP_SERVER_WIN_HP_AY_01
 - Hostname: LAPTOP-KH1JURCU
 - Valid for: 365 days
 - Expires: 2027-02-13
-- Location: servers/JPR-MP-SERVER-WIN-HP-AY-01/
+- Location: servers/JPR_MP_SERVER_WIN_HP_AY_01/
 - Files: ca.crt, server.crt, server.key
 
 ## Client Certificate
-- Client ID: JPR-MP-AGENT-WIN-HP-AY-01
+- Client ID: JPR_MP_AGENT_WIN_HP_AY_01
 - Valid for: 365 days
 - Expires: 2027-02-13
-- Location: servers/JPR-MP-SERVER-WIN-HP-AY-01/agents/JPR-MP-AGENT-WIN-HP-AY-01/
+- Location: servers/JPR_MP_SERVER_WIN_HP_AY_01/agents/JPR_MP_AGENT_WIN_HP_AY_01/
 - Files: ca.crt, client.crt, client.key
 
 ## Renewal Reminders
 Set calendar reminders to renew certificates at least 30 days before expiry:
-- CA: Renew by 2027-01-14
+- CA: Renew by 2026-01-14
 - Server: Renew by 2027-01-14
 - Client: Renew by 2027-01-14
 
@@ -32,11 +32,11 @@ View CA certificate:
   openssl x509 -in ..\..\certs/ca.crt -text -noout
 
 View server certificate:
-  openssl x509 -in ..\..\certs\servers\JPR-MP-SERVER-WIN-HP-AY-01/server.crt -text -noout
+  openssl x509 -in ..\..\certs\servers\JPR_MP_SERVER_WIN_HP_AY_01/server.crt -text -noout
 
 View client certificate:
-  openssl x509 -in ..\..\certs\servers\JPR-MP-SERVER-WIN-HP-AY-01\agents\JPR-MP-AGENT-WIN-HP-AY-01/client.crt -text -noout
+  openssl x509 -in ..\..\certs\servers\JPR_MP_SERVER_WIN_HP_AY_01\agents\JPR_MP_AGENT_WIN_HP_AY_01/client.crt -text -noout
 
 Verify certificate chains:
-  openssl verify -CAfile ..\..\certs/ca.crt ..\..\certs\servers\JPR-MP-SERVER-WIN-HP-AY-01/server.crt
-  openssl verify -CAfile ..\..\certs\servers\JPR-MP-SERVER-WIN-HP-AY-01\agents\JPR-MP-AGENT-WIN-HP-AY-01/ca.crt ..\..\certs\servers\JPR-MP-SERVER-WIN-HP-AY-01\agents\JPR-MP-AGENT-WIN-HP-AY-01/client.crt
+  openssl verify -CAfile ..\..\certs/ca.crt ..\..\certs\servers\JPR_MP_SERVER_WIN_HP_AY_01/server.crt
+  openssl verify -CAfile ..\..\certs\servers\JPR_MP_SERVER_WIN_HP_AY_01\agents\JPR_MP_AGENT_WIN_HP_AY_01/ca.crt ..\..\certs\servers\JPR_MP_SERVER_WIN_HP_AY_01\agents\JPR_MP_AGENT_WIN_HP_AY_01/client.crt

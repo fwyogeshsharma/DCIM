@@ -207,41 +207,106 @@ Write-Host "Step 1/3: Certificate Authority (CA)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-$caValidity = Get-CertificateValidityDays -CertType "Certificate Authority (CA)" -DefaultYears 1
-$caDays = $caValidity.Days
-$caDisplayPeriod = $caValidity.DisplayPeriod
-$caExpiryDate = Get-ExpiryDate -Days $caDays
-
-Write-Host "Generating CA certificate..." -ForegroundColor Cyan
-Write-Host ""
-
-# Generate CA private key
-$success = Test-OpenSSLCommand -Description "Generating CA private key" `
-    -CommandLine "openssl genrsa -out $certDir/ca.key 4096" `
-    -ExpectedFile "$certDir/ca.key"
-
-if (-not $success) {
+# Check if CA already exists
+if ((Test-Path "$certDir/ca.crt") -and (Test-Path "$certDir/ca.key")) {
+    Write-Host "Existing CA certificate found!" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "ERROR: Failed to generate CA private key" -ForegroundColor Red
-    exit 1
+
+    # Display existing CA info
+    $caInfo = openssl x509 -in "$certDir/ca.crt" -noout -subject -dates
+    Write-Host "Current CA:" -ForegroundColor Cyan
+    Write-Host $caInfo -ForegroundColor Gray
+    Write-Host ""
+
+    $useExisting = Read-Host "Use existing CA? (y/n, default: y)"
+    if ([string]::IsNullOrWhiteSpace($useExisting) -or $useExisting -eq "y") {
+        Write-Host ""
+        Write-Host "[OK] Using existing CA certificate" -ForegroundColor Green
+        Write-Host ""
+        $skipCA = $true
+    } else {
+        Write-Host ""
+        Write-Host "WARNING: Creating new CA will invalidate ALL existing certificates!" -ForegroundColor Red
+        $confirm = Read-Host "Are you sure? (type 'yes' to confirm)"
+        if ($confirm -ne "yes") {
+            Write-Host "Aborted" -ForegroundColor Yellow
+            exit 0
+        }
+        $skipCA = $false
+    }
+} else {
+    $skipCA = $false
 }
 
-# Generate CA certificate
-$success = Test-OpenSSLCommand -Description "Generating CA certificate" `
-    -CommandLine "openssl req -new -x509 -days $caDays -key $certDir/ca.key -out $certDir/ca.crt -subj /C=US/ST=California/L=SanFrancisco/O=DCIM/CN=DCIM-RootCA" `
-    -ExpectedFile "$certDir/ca.crt"
+if (-not $skipCA) {
+    $caValidity = Get-CertificateValidityDays -CertType "Certificate Authority (CA)" -DefaultYears 1
+    $caDays = $caValidity.Days
+    $caDisplayPeriod = $caValidity.DisplayPeriod
+    $caExpiryDate = Get-ExpiryDate -Days $caDays
 
-if (-not $success) {
+    Write-Host "Generating CA certificate..." -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "ERROR: Failed to generate CA certificate" -ForegroundColor Red
-    exit 1
-}
 
-Write-Host ""
-Write-Host "[SUCCESS] CA certificate generated!" -ForegroundColor Green
-Write-Host "  Valid for: $caDisplayPeriod" -ForegroundColor Gray
-Write-Host "  Expires on: $caExpiryDate" -ForegroundColor Gray
-Write-Host ""
+    # Generate CA private key
+    $success = Test-OpenSSLCommand -Description "Generating CA private key" `
+        -CommandLine "openssl genrsa -out $certDir/ca.key 4096" `
+        -ExpectedFile "$certDir/ca.key"
+
+    if (-not $success) {
+        Write-Host ""
+        Write-Host "ERROR: Failed to generate CA private key" -ForegroundColor Red
+        exit 1
+    }
+    # Create CA config file with proper extensions
+    $caConfig = @"
+[req]
+default_bits = 4096
+prompt = no
+default_md = sha256
+distinguished_name = dn
+x509_extensions = v3_ca
+
+[dn]
+C=US
+ST=California
+L=SanFrancisco
+O=DCIM
+CN=DCIM-RootCA
+
+[v3_ca]
+basicConstraints = critical, CA:TRUE
+keyUsage = critical, keyCertSign, cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer:always
+"@
+
+    $caConfigFile = "$certDir/ca.cnf"
+    $caConfig | Out-File -FilePath $caConfigFile -Encoding ASCII
+
+    # Generate CA certificate with proper CA extensions
+    $success = Test-OpenSSLCommand -Description "Generating CA certificate" `
+        -CommandLine "openssl req -new -x509 -days $caDays -key $certDir/ca.key -out $certDir/ca.crt -config $caConfigFile" `
+        -ExpectedFile "$certDir/ca.crt"
+
+    if (-not $success) {
+        Write-Host ""
+        Write-Host "ERROR: Failed to generate CA certificate" -ForegroundColor Red
+        exit 1
+    }
+
+    # Clean up CA config file
+    Remove-Item $caConfigFile -Force -ErrorAction SilentlyContinue
+
+    Write-Host ""
+    Write-Host "[SUCCESS] CA certificate generated!" -ForegroundColor Green
+    Write-Host "  Valid for: $caDisplayPeriod" -ForegroundColor Gray
+    Write-Host "  Expires on: $caExpiryDate" -ForegroundColor Gray
+    Write-Host ""
+} else {
+    # Skip CA generation - using existing
+    Write-Host "Skipping CA generation (using existing)" -ForegroundColor Green
+    Write-Host ""
+}
 
 # ============================================
 # Step 2: Generate Server Certificate
