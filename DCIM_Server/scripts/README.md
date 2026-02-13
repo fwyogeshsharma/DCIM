@@ -1,237 +1,365 @@
-# DCIM Server - Scripts Directory
+# DCIM Server Scripts - Organized by Platform
 
-Certificate management and utility scripts for DCIM Server.
+All utility scripts for managing DCIM Server, organized by operating system for easy access.
 
-## Certificate Management Scripts
+---
 
-### Initial Setup
+## 📁 Directory Structure
 
-#### generate-certs.ps1
-Generate complete mTLS certificate infrastructure (CA, server, initial client).
+```
+scripts/
+├── windows/          # Windows scripts (.ps1 + .bat)
+├── linux/            # Linux scripts (.sh)
+├── macos/            # macOS scripts (.sh)
+├── common/           # Documentation (all platforms)
+└── README.md         # This file
+```
 
-**Improved version with:**
-- ✅ Automatic OpenSSL configuration fix (prevents config file errors)
-- ✅ Comprehensive error checking after each step
-- ✅ File verification (ensures .crt files are actually created)
-- ✅ Clear progress indicators and error messages
-- ✅ Automatic cleanup of temporary files
+---
 
+## 🚀 Quick Start
+
+### Windows Users
+```cmd
+cd scripts\windows
+generate-certs.bat
+```
+or
 ```powershell
+cd scripts\windows
 .\generate-certs.ps1
 ```
 
-**Creates:**
-- `../certs/ca.crt` and `ca.key` - Certificate Authority (root)
-- `../certs/server.crt` and `server.key` - Server certificate
-- `../certs/client.crt` and `client.key` - Initial client certificate
-- `../certs/CERTIFICATE_INFO.txt` - Certificate details and renewal dates
-
-**When to use:** First-time setup or complete certificate regeneration
-
-**Note:** The script automatically fixes common OpenSSL issues like:
-- Missing or incorrect OPENSSL_CONF environment variable
-- Config file path errors (Z:/extlib/... errors)
-- Silent failures (now detected and reported)
-
----
-
-#### generate-client-cert.ps1
-Generate additional client certificates for new agents.
-
-```powershell
-.\generate-client-cert.ps1 -AgentName "agent-02"
+### Linux Users
+```bash
+cd scripts/linux
+chmod +x *.sh
+./generate-certs.sh
 ```
 
-**Creates:**
-- `../certs/agents/agent-02.crt` - Client certificate
-- `../certs/agents/agent-02.key` - Client private key
-
-**When to use:** Adding new agents to the system
+### macOS Users
+```bash
+cd scripts/macos
+chmod +x *.sh
+./generate-certs.sh
+```
 
 ---
 
-### Monitoring
+## 📋 Available Scripts
 
-#### check-cert-expiry.ps1
-Check expiration status of all certificates.
+### Certificate Management
+| Script | Purpose | Windows | Linux | macOS |
+|--------|---------|---------|-------|-------|
+| **generate-certs** | Generate CA + Server + Client certificates | ✅ `.bat` `.ps1` | ✅ `.sh` | ✅ `.sh` |
+| **generate-client-cert** | Generate additional client certificates | ✅ `.bat` `.ps1` | ✅ `.sh` | ✅ `.sh` |
+| **renew-server-cert** | Renew server certificate | ✅ `.bat` `.ps1` | ✅ `.sh` | ✅ `.sh` |
+| **renew-client-cert** | Renew client certificate | ✅ `.bat` `.ps1` | ✅ `.sh` | ✅ `.sh` |
+| **check-cert-expiry** | Check certificate expiration | ✅ `.bat` `.ps1` | ✅ `.sh` | ✅ `.sh` |
 
+### Database Management
+| Script | Purpose | Windows | Linux | macOS |
+|--------|---------|---------|-------|-------|
+| **setup-postgres** | Setup PostgreSQL database | ✅ `.bat` `.ps1` | ✅ `.sh` | ✅ `.sh` |
+| **fix-postgres-path** | Fix PostgreSQL PATH | ✅ `.bat` `.ps1` | ❌ | ❌ |
+
+---
+
+## 📚 Documentation
+
+All documentation is in the `common/` directory:
+
+- **`SCRIPTS_README.md`** - Complete usage guide
+- **`DEPENDENCY_GUIDE.md`** - Dependency requirements
+- **`SCRIPT_INDEX.md`** - Quick reference index
+- **`CERTIFICATE_GENERATION_IMPROVEMENTS.md`** - Technical notes
+
+---
+
+## 🎯 Usage Examples
+
+### Windows
+
+#### Using Batch Files (.bat) - Easiest
+```cmd
+REM Navigate to Windows scripts directory
+cd C:\Anupam\Faber\Projects\DCIM\DCIM_Server\scripts\windows
+
+REM Generate certificates
+generate-certs.bat
+
+REM Generate client certificate for agent
+generate-client-cert.bat agent-02
+
+REM Check certificate expiry
+check-cert-expiry.bat
+
+REM Setup PostgreSQL
+setup-postgres.bat
+```
+
+#### Using PowerShell (.ps1) - More Control
 ```powershell
+# Navigate to Windows scripts directory
+cd C:\Anupam\Faber\Projects\DCIM\DCIM_Server\scripts\windows
+
+# Generate certificates
+.\generate-certs.ps1
+
+# Generate client certificate with specific validity
+.\generate-client-cert.ps1 -AgentName "agent-02" -ValidityDays 730
+
+# Check certificate expiry
 .\check-cert-expiry.ps1
-```
 
-**Output:**
-- Days until expiry for each certificate
-- Warning for certificates expiring within 30 days
-- Recommendations for renewal
-
-**When to use:** Regular monitoring (daily/weekly)
-
----
-
-### Renewal
-
-#### renew-server-cert.ps1
-Renew the server certificate using existing CA.
-
-```powershell
-# Default: 1 year validity
-.\renew-server-cert.ps1
-
-# Custom validity
-.\renew-server-cert.ps1 -ValidityDays 730
-
-# Skip backup
-.\renew-server-cert.ps1 -Backup:$false
-```
-
-**When to use:** Before server certificate expires (30 days warning)
-
----
-
-#### renew-client-cert.ps1
-Renew a client certificate using existing CA.
-
-```powershell
-# Renew default client certificate
-.\renew-client-cert.ps1
-
-# Renew specific agent certificate
-.\renew-client-cert.ps1 -AgentName "agent-02"
-
-# Custom validity
-.\renew-client-cert.ps1 -ValidityDays 365
-```
-
-**When to use:** Before client certificate expires
-
----
-
-## Database Scripts
-
-### setup-postgres.ps1
-Configure PostgreSQL database for DCIM Server.
-
-```powershell
+# Setup PostgreSQL
 .\setup-postgres.ps1
 ```
 
-**When to use:** Setting up PostgreSQL instead of SQLite
-
 ---
 
-### fix-postgres-path.ps1
-Fix PostgreSQL path issues on Windows.
+### Linux
 
-```powershell
-.\fix-postgres-path.ps1
-```
+```bash
+# Navigate to Linux scripts directory
+cd /path/to/DCIM_Server/scripts/linux
 
-**When to use:** PostgreSQL connection errors on Windows
+# Make scripts executable (first time only)
+chmod +x *.sh
 
----
+# Generate certificates
+./generate-certs.sh
 
-## Certificate Workflow
+# Generate client certificate for agent
+./generate-client-cert.sh -a agent-02
 
-### Initial Setup
-```powershell
-# 1. Generate all certificates
-.\generate-certs.ps1
+# Check certificate expiry
+./check-cert-expiry.sh
 
-# 2. Start server (uses certificates automatically)
-cd ..
-.\dcim-server.exe -config config.yaml
-```
-
-### Adding New Agents
-```powershell
-# 1. Generate client certificate for new agent
-.\generate-client-cert.ps1 -AgentName "agent-datacenter-2"
-
-# 2. Copy to agent machine
-# - certs/agents/agent-datacenter-2.crt
-# - certs/agents/agent-datacenter-2.key
-# - certs/ca.crt (CA certificate)
-```
-
-### Certificate Maintenance
-```powershell
-# Check expiry status monthly
-.\check-cert-expiry.ps1
-
-# Renew certificates before expiry
-.\renew-server-cert.ps1
-.\renew-client-cert.ps1
+# Setup PostgreSQL
+./setup-postgres.sh
 ```
 
 ---
 
-## Certificate Validity
+### macOS
 
-**Recommended periods:**
-- CA Certificate: 10 years
-- Server Certificate: 1-2 years
-- Client Certificates: 1 year
+```bash
+# Navigate to macOS scripts directory
+cd /path/to/DCIM_Server/scripts/macos
 
-**Warning thresholds:**
-- 30 days: Start planning renewal
-- 7 days: Urgent renewal required
+# Make scripts executable (first time only)
+chmod +x *.sh
 
----
+# Generate certificates
+./generate-certs.sh
 
-## Troubleshooting
+# Generate client certificate for agent
+./generate-client-cert.sh -a agent-02
 
-### Certificate Not Found
-```powershell
-# Generate new certificates
-.\generate-certs.ps1
-```
+# Check certificate expiry
+./check-cert-expiry.sh
 
-### Certificate Expired
-```powershell
-# Check status
-.\check-cert-expiry.ps1
-
-# Renew expired certificate
-.\renew-server-cert.ps1
-```
-
-### Agent Connection Fails
-```powershell
-# Verify certificates exist
-dir ..\certs\
-
-# Check certificate validity
-.\check-cert-expiry.ps1
-
-# Regenerate if needed
-.\generate-certs.ps1
+# Setup PostgreSQL
+./setup-postgres.sh
 ```
 
 ---
 
-## File Locations
+## 🔧 Dependencies
 
+### All Scripts Require
+
+**Certificate Scripts:**
+- OpenSSL (no Go needed!)
+
+**Database Scripts:**
+- PostgreSQL and psql (no Go needed!)
+
+**Build Scripts (separate, in DCIM_Server root):**
+- Go compiler (only for building from source)
+
+### Installation
+
+**OpenSSL:**
+```bash
+# Windows
+choco install openssl
+
+# Linux (Debian/Ubuntu)
+sudo apt-get install openssl
+
+# Linux (RHEL/CentOS)
+sudo yum install openssl
+
+# macOS
+brew install openssl
 ```
-DCIM_Server/
-├── scripts/                    # This directory
-│   ├── generate-certs.ps1      # Initial certificate generation
-│   ├── generate-client-cert.ps1 # Additional client certs
-│   ├── check-cert-expiry.ps1   # Monitor expiration
-│   ├── renew-server-cert.ps1   # Renew server cert
-│   └── renew-client-cert.ps1   # Renew client cert
-│
-└── certs/                      # Certificate storage
-    ├── ca.crt                  # CA certificate
-    ├── ca.key                  # CA private key
-    ├── server.crt              # Server certificate
-    ├── server.key              # Server private key
-    ├── client.crt              # Default client cert
-    ├── client.key              # Client private key
-    └── agents/                 # Additional client certs
-        ├── agent-02.crt
-        └── agent-02.key
+
+**PostgreSQL:**
+```bash
+# Windows
+winget install PostgreSQL.PostgreSQL
+
+# Linux (Debian/Ubuntu)
+sudo apt-get install postgresql postgresql-client
+
+# Linux (RHEL/CentOS)
+sudo yum install postgresql-server postgresql
+
+# macOS
+brew install postgresql
 ```
 
 ---
 
-For complete certificate management documentation, see [../CERTIFICATE_MANAGEMENT.md](../CERTIFICATE_MANAGEMENT.md)
+## ⚠️ Important Notes
+
+### 1. **Scripts DO NOT Require Go**
+   - Certificate and database scripts only need OpenSSL/PostgreSQL
+   - Only build scripts (in DCIM_Server root) need Go
+
+### 2. **Run from Correct Directory**
+   - Windows: Run from `scripts\windows\`
+   - Linux: Run from `scripts/linux/`
+   - macOS: Run from `scripts/macos/`
+
+### 3. **Certificates Must Be Generated Before Running Server**
+   ```bash
+   # Generate certificates first
+   ./generate-certs.sh  (or .bat on Windows)
+
+   # Then run server
+   cd ../..
+   ./build/linux-amd64/dcim-server
+   ```
+
+### 4. **Batch vs PowerShell on Windows**
+   - **Batch files (.bat)** - Easier to run, just double-click
+   - **PowerShell files (.ps1)** - More features, better error handling
+
+---
+
+## 🆘 Troubleshooting
+
+### "Permission denied" (Linux/Mac)
+```bash
+chmod +x script-name.sh
+```
+
+### "Execution Policy" Error (Windows PowerShell)
+```powershell
+# Use the .bat files instead, or:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+### "OpenSSL not found"
+- Install OpenSSL for your platform (see Dependencies above)
+- Make sure it's in your system PATH
+
+### "PostgreSQL connection failed"
+- Verify PostgreSQL service is running
+- Check credentials in config.yaml
+
+---
+
+## 📞 Getting Help
+
+1. **Read the documentation:**
+   ```bash
+   # View platform-specific README
+   cat common/SCRIPTS_README.md
+   ```
+
+2. **Use --help flag:**
+   ```bash
+   # Linux/Mac
+   ./generate-certs.sh --help
+
+   # Windows (PowerShell)
+   .\generate-certs.ps1 -?
+   ```
+
+3. **Check dependency guide:**
+   ```bash
+   cat common/DEPENDENCY_GUIDE.md
+   ```
+
+---
+
+## 🎯 Common Workflows
+
+### First-Time Server Setup
+
+**Windows:**
+```cmd
+cd scripts\windows
+generate-certs.bat
+setup-postgres.bat
+cd ..\..
+build\windows-amd64\dcim-server.exe
+```
+
+**Linux:**
+```bash
+cd scripts/linux
+chmod +x *.sh
+./generate-certs.sh
+./setup-postgres.sh
+cd ../..
+./build/linux-amd64/dcim-server
+```
+
+---
+
+### Add New Agent
+
+**Windows:**
+```cmd
+cd scripts\windows
+generate-client-cert.bat agent-03
+```
+
+**Linux:**
+```bash
+cd scripts/linux
+./generate-client-cert.sh -a agent-03
+```
+
+---
+
+### Check Certificate Health
+
+**Windows:**
+```cmd
+cd scripts\windows
+check-cert-expiry.bat
+```
+
+**Linux:**
+```bash
+cd scripts/linux
+./check-cert-expiry.sh
+```
+
+---
+
+## 📝 Script Comparison
+
+| Feature | .bat (Windows) | .ps1 (Windows) | .sh (Linux/Mac) |
+|---------|----------------|----------------|-----------------|
+| **Ease of Use** | ⭐⭐⭐ Double-click | ⭐⭐ Command-line | ⭐⭐ Command-line |
+| **Error Handling** | ⭐⭐ Basic | ⭐⭐⭐ Advanced | ⭐⭐⭐ Advanced |
+| **Features** | ⭐⭐ Wrapper only | ⭐⭐⭐ Full-featured | ⭐⭐⭐ Full-featured |
+| **Color Output** | ❌ No | ✅ Yes | ✅ Yes |
+| **Interactive** | ✅ Yes | ✅ Yes | ✅ Yes |
+
+**Recommendation:**
+- **Windows beginners:** Use `.bat` files
+- **Windows advanced:** Use `.ps1` files
+- **Linux/Mac:** Use `.sh` files
+
+---
+
+**Last Updated:** 2026-02-11
+**Version:** 2.0 (Organized Structure)

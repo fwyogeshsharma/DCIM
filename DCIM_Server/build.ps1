@@ -87,8 +87,39 @@ function Build-Platform {
         if ($LASTEXITCODE -eq 0) {
             Write-Host "[OK] Built $Binary" -ForegroundColor Green
 
-            # Copy config file
+            # Copy config files
             Copy-Item "config.yaml" "$PlatformDir\config.yaml" -Force
+            Write-Host "  [OK] Copied config.yaml" -ForegroundColor Green
+
+            # Copy cooling config file
+            if (Test-Path "cooling_config.yaml") {
+                Copy-Item "cooling_config.yaml" "$PlatformDir\cooling_config.yaml" -Force
+                Write-Host "  [OK] Copied cooling_config.yaml" -ForegroundColor Green
+            } else {
+                Write-Host "  [WARNING] cooling_config.yaml not found - cooling alerts will not work" -ForegroundColor Yellow
+            }
+
+            # Copy migrations folder
+            $MigrationsDir = "$PlatformDir\migrations"
+            if (Test-Path "migrations") {
+                # Create migrations directory in build
+                if (-not (Test-Path $MigrationsDir)) {
+                    New-Item -ItemType Directory -Path $MigrationsDir | Out-Null
+                }
+
+                # Copy all .sql migration files
+                $migrationFiles = Get-ChildItem "migrations\*.sql" -ErrorAction SilentlyContinue
+                if ($migrationFiles) {
+                    foreach ($file in $migrationFiles) {
+                        Copy-Item $file.FullName "$MigrationsDir\$($file.Name)" -Force
+                    }
+                    Write-Host "  [OK] Copied $($migrationFiles.Count) migration file(s)" -ForegroundColor Green
+                } else {
+                    Write-Host "  [WARNING] No migration files found in migrations/" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "  [WARNING] migrations/ directory not found - database migrations will fail" -ForegroundColor Yellow
+            }
 
             # Copy license file if it exists
             if (Test-Path "license.json") {
@@ -140,6 +171,16 @@ function Build-Platform {
                 $certStatus = "Partially included ($certCount/3 files)"
             }
 
+            # Check if cooling config was copied
+            $coolingConfigStatus = if (Test-Path "$PlatformDir\cooling_config.yaml") { "Included" } else { "Not included" }
+
+            # Check if migrations were copied
+            $migrationsCount = 0
+            if (Test-Path "$MigrationsDir") {
+                $migrationsCount = (Get-ChildItem "$MigrationsDir\*.sql" -ErrorAction SilentlyContinue).Count
+            }
+            $migrationsStatus = if ($migrationsCount -gt 0) { "Included ($migrationsCount migration files)" } else { "Not included" }
+
             $BuildReadme = @"
 DCIM Server - $OS/$Arch Build
 
@@ -149,11 +190,14 @@ Built: $BuildTime
 Files Included:
 - $Binary (server executable)
 - config.yaml (configuration template)
+- cooling_config.yaml ($coolingConfigStatus)
+- migrations/ ($migrationsStatus)
 - license.json ($licenseStatus)
 - certs/ ($certStatus)
 
 Quick Start:
 1. Edit config.yaml to configure the server
+   Edit cooling_config.yaml to configure cooling system thresholds
 
 2. Certificates (Required for mTLS):
 "@
