@@ -3,7 +3,7 @@ import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import * as d3 from 'd3'
-import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar } from 'lucide-react'
+import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar, Box } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 
 interface TopoNode extends d3.SimulationNodeDatum {
@@ -593,6 +593,14 @@ export default function Topology() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/app/topology-3d')}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
+            title="Open 3D topology view"
+          >
+            <Box className="w-4 h-4" />
+            3D View
+          </button>
           <button
             onClick={() => navigate('/app/topology-editor')}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"

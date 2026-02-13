@@ -59,7 +59,9 @@
       "Bash(ipconfig:*)",
       "Bash(arp:*)",
       "Bash(docker compose:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx vite build)"
     ]
   }
 }

@@ -11,6 +11,7 @@ import AgentDetail from './pages/AgentDetail'
 import AgentAnalytics from './pages/AgentAnalytics'
 import Alerts from './pages/Alerts'
 import Topology from './pages/Topology'
+import Topology3D from './pages/Topology3D'
 import TopologyEditor from './pages/TopologyEditor'
 import AIAnalytics from './pages/AIAnalytics'
 import NaturalLanguageQuery from './pages/NaturalLanguageQuery'
@@ -52,6 +53,7 @@ function App() {
               <Route path="agents/:agentId/analytics" element={<AgentAnalytics />} />
               <Route path="alerts" element={<Alerts />} />
               <Route path="topology" element={<Topology />} />
+              <Route path="topology-3d" element={<Topology3D />} />
               <Route path="topology-editor" element={<TopologyEditor />} />
               <Route path="ai-analytics" element={<AIAnalytics />} />
               <Route path="nl-query" element={<NaturalLanguageQuery />} />
