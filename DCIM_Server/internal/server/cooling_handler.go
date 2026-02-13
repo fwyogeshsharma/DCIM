@@ -60,6 +60,7 @@ func (s *Server) handleCoolingMetrics(w http.ResponseWriter, r *http.Request) {
 		// Agent doesn't exist, register it
 		agent := &models.Agent{
 			AgentID:  req.AgentID,
+			ServerID: s.serverID,
 			Hostname: req.AgentName,
 			Status:   "online",
 			Group:    "cooling_systems",

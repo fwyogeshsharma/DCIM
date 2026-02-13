@@ -402,6 +402,7 @@ func (s *Server) autoRegisterAgent(r *http.Request, agentID string) error {
 
 	agent := &models.Agent{
 		AgentID:       agentID,
+		ServerID:      s.serverID,
 		CertificateCN: certCN,
 		Hostname:      agentID,
 		IPAddress:     ip,
@@ -410,7 +411,7 @@ func (s *Server) autoRegisterAgent(r *http.Request, agentID string) error {
 		Approved:      !s.config.Agents.Registration.RequireApproval,
 	}
 
-	s.logger.Printf("Auto-registering agent: %s (CN: %s, IP: %s)", agentID, certCN, ip)
+	s.logger.Printf("Auto-registering agent: %s (CN: %s, IP: %s) on server: %s", agentID, certCN, ip, s.serverID)
 
 	return s.db.RegisterAgent(agent)
 }
@@ -607,6 +608,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	agent := &models.Agent{
 		AgentID:       req.AgentID,
+		ServerID:      s.serverID,
 		CertificateCN: certCN,
 		Hostname:      req.Hostname,
 		IPAddress:     req.IPAddress,

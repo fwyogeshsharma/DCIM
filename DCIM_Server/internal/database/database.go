@@ -170,6 +170,7 @@ func (d *Database) getSQLiteSchema() []string {
 		`CREATE TABLE IF NOT EXISTS agents (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			agent_id TEXT UNIQUE NOT NULL,
+			server_id TEXT NOT NULL,
 			certificate_cn TEXT,
 			hostname TEXT,
 			ip_address TEXT,
@@ -337,6 +338,7 @@ func (d *Database) getPostgresSchema() []string {
 		`CREATE TABLE IF NOT EXISTS agents (
 			id SERIAL PRIMARY KEY,
 			agent_id TEXT UNIQUE NOT NULL,
+			server_id TEXT NOT NULL,
 			certificate_cn TEXT,
 			hostname TEXT,
 			ip_address TEXT,
@@ -483,6 +485,7 @@ func (d *Database) getMySQLSchema() []string {
 		`CREATE TABLE IF NOT EXISTS agents (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			agent_id VARCHAR(255) UNIQUE NOT NULL,
+			server_id VARCHAR(255) NOT NULL,
 			certificate_cn VARCHAR(255),
 			hostname VARCHAR(255),
 			ip_address VARCHAR(45),
@@ -613,10 +616,11 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 	}
 
 	query := `
-		INSERT INTO agents (agent_id, certificate_cn, hostname, ip_address, status, group_name,
+		INSERT INTO agents (agent_id, server_id, certificate_cn, hostname, ip_address, status, group_name,
 			first_seen, last_seen, registered_at, approved, metadata, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(agent_id) DO UPDATE SET
+			server_id = excluded.server_id,
 			certificate_cn = excluded.certificate_cn,
 			hostname = excluded.hostname,
 			ip_address = excluded.ip_address,
@@ -630,6 +634,7 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 
 	_, err = d.db.Exec(query,
 		agent.AgentID,
+		agent.ServerID,
 		agent.CertificateCN,
 		agent.Hostname,
 		agent.IPAddress,
@@ -655,6 +660,7 @@ func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 	err := d.db.QueryRow(query, agentID).Scan(
 		&agent.ID,
 		&agent.AgentID,
+		&agent.ServerID,
 		&agent.CertificateCN,
 		&agent.Hostname,
 		&agent.IPAddress,
@@ -690,6 +696,7 @@ func (d *Database) GetAgentByHostname(hostname string) (*models.Agent, error) {
 	err := d.db.QueryRow(query, hostname).Scan(
 		&agent.ID,
 		&agent.AgentID,
+		&agent.ServerID,
 		&agent.CertificateCN,
 		&agent.Hostname,
 		&agent.IPAddress,
@@ -737,6 +744,7 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 		err := rows.Scan(
 			&agent.ID,
 			&agent.AgentID,
+			&agent.ServerID,
 			&agent.CertificateCN,
 			&agent.Hostname,
 			&agent.IPAddress,
