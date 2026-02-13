@@ -13,15 +13,27 @@ if not exist "%PS_SCRIPT%" (
 )
 
 if "%1"=="" (
+    echo ERROR: Server name and Agent name are required
+    echo Usage: generate-client-cert.bat ServerName AgentName [ValidityDays]
+    echo.
+    echo Example: generate-client-cert.bat JPR-MP-SERVER-WIN-HP-AS-01 JPR-MP-AGENT-WIN-HP-AY-01
+    echo          generate-client-cert.bat JPR-MP-SERVER-WIN-HP-AS-01 JPR-MP-AGENT-WIN-HP-AY-01 730
+    echo.
+    exit /b 1
+)
+
+if "%2"=="" (
     echo ERROR: Agent name is required
-    echo Usage: generate-client-cert.bat AgentName
-    echo Example: generate-client-cert.bat agent-02
+    echo Usage: generate-client-cert.bat ServerName AgentName [ValidityDays]
+    echo.
+    echo Example: generate-client-cert.bat JPR-MP-SERVER-WIN-HP-AS-01 JPR-MP-AGENT-WIN-HP-AY-01
+    echo.
     exit /b 1
 )
 
 echo Running Client Certificate Generation Script...
 echo.
 
-powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%" -AgentName "%1" %2 %3 %4 %5 %6
+powershell -ExecutionPolicy Bypass -File "%PS_SCRIPT%" -ServerName "%1" -AgentName "%2" %3 %4 %5 %6
 
 exit /b %ERRORLEVEL%
