@@ -1,16 +1,19 @@
 DCIM Server - darwin/arm64 Build
 
 Version: 1.0.0
-Built: 2026-02-10 16:52:39
+Built: 2026-02-13 13:23:35
 
 Files Included:
 - dcim-server (server executable)
 - config.yaml (configuration template)
+- cooling_config.yaml (Included)
+- migrations/ (Included (3 migration files))
 - license.json (Included)
 - certs/ (Included (all required files))
 
 Quick Start:
 1. Edit config.yaml to configure the server
+   Edit cooling_config.yaml to configure cooling system thresholds
 
 2. Certificates (Required for mTLS):
    [OK] All certificates are included:

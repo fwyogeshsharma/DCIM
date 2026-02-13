@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -11,6 +12,7 @@ import (
 // Config represents the entire server configuration
 type Config struct {
 	Server      ServerConfig      `yaml:"server"`
+	ServerID    ServerIDConfig    `yaml:"server_id"`
 	TLS         TLSConfig         `yaml:"tls"`
 	Database    DatabaseConfig    `yaml:"database"`
 	License     LicenseConfig     `yaml:"license"`
@@ -23,6 +25,15 @@ type Config struct {
 	Health      HealthConfig      `yaml:"health"`
 	Performance PerformanceConfig `yaml:"performance"`
 	Debug       DebugConfig       `yaml:"debug"`
+}
+
+// ServerIDConfig contains server identification settings
+type ServerIDConfig struct {
+	ID          string `yaml:"id"`           // Unique server identifier (auto-generated if empty)
+	Name        string `yaml:"name"`         // Human-readable server name
+	Location    string `yaml:"location"`     // Physical location of server
+	Environment string `yaml:"environment"`  // dev, staging, production, etc.
+	AutoGenerate bool  `yaml:"auto_generate"` // Auto-generate ID if not specified
 }
 
 // ServerConfig contains server settings
@@ -405,4 +416,20 @@ func (c *Config) GetDatabaseConnectionString() string {
 // GetServerAddress returns the full server address
 func (c *Config) GetServerAddress() string {
 	return fmt.Sprintf("%s:%d", c.Server.Address, c.Server.Port)
+}
+
+// GetMigrationsPath returns the path to the migrations directory
+func (c *Config) GetMigrationsPath() string {
+	// Get executable directory
+	exePath, err := os.Executable()
+	if err != nil {
+		// Fallback to current directory if executable path cannot be determined
+		return "./migrations"
+	}
+
+	// Get directory containing the executable
+	exeDir := filepath.Dir(exePath)
+
+	// Return migrations path relative to executable
+	return filepath.Join(exeDir, "migrations")
 }

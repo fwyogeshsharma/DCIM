@@ -1,0 +1,25 @@
+{
+  "agent_id": "System_Sim_1",
+  "agent_name": "System_Sim_1",
+  "pump": {
+    "isOn": false,
+    "status": "Pump is OFF"
+  },
+  "cpu": {
+    "isOn": false
+  },
+  "condenser": {
+    "isOn": false
+  },
+  "inlet": {
+    "temperature": 22,
+    "pressure": 0,
+    "leak": false
+  },
+  "outlet": {
+    "temperature": 22,
+    "pressure": 0,
+    "leak": false
+  },
+  "timestamp": "2026-02-11T10:45:00.000Z"
+}

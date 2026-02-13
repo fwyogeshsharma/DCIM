@@ -1,0 +1,145 @@
+{
+  "agent_id": "System_Sim_1",
+  "agent_name": "System_Sim_1",
+  "timestamp": "2026-02-12T10:05:00.000Z",
+  "loops": [
+    {
+      "loop_id": "primary_loop",
+      "type": "IT_COOLING",
+      "components": {
+        "components": [
+          {
+            "id": "pump_1",
+            "type": "PUMP",
+            "properties": {
+              "isOn": true,
+              "rpm": 3200,
+              "status": "running"
+            }
+          },
+          {
+            "id": "server_1",
+            "type": "SERVER",
+            "properties": {
+              "cpuOn": true,
+              "heatLoad_kw": 15
+            }
+          },
+          {
+            "id": "condenser_1",
+            "type": "CONDENSER",
+            "properties": {
+              "isOn": true
+            }
+          }
+        ],
+        "connections": [
+          {
+            "from": "pump_1",
+            "to": "server_1"
+          },
+          {
+            "from": "server_1",
+            "to": "condenser_1"
+          },
+          {
+            "from": "condenser_1",
+            "to": "pump_1"
+          }
+        ],
+        "sensors": [
+          {
+            "id": "sensor_temp_pump_out",
+            "type": "TEMPERATURE",
+            "attached_to": "pump_1",
+            "position": "OUTLET",
+            "value": 45,
+            "unit": "celsius",
+            "status": "alert"
+          },
+          {
+            "id": "sensor_pressure_pump_out",
+            "type": "PRESSURE",
+            "attached_to": "pump_1",
+            "position": "OUTLET",
+            "value": 50,
+            "unit": "psi",
+            "status": "normal"
+          },
+          {
+            "id": "sensor_flow_pump_out",
+            "type": "FLOW",
+            "attached_to": "pump_1",
+            "position": "OUTLET",
+            "value": 10,
+            "unit": "lpm",
+            "status": "normal"
+          },
+          {
+            "id": "sensor_leak_pump_out",
+            "type": "LEAK",
+            "attached_to": "pump_1",
+            "position": "OUTLET",
+            "value": false,
+            "unit": "boolean",
+            "status": "normal"
+          },
+          {
+            "id": "sensor_temp_server_in",
+            "type": "TEMPERATURE",
+            "attached_to": "server_1",
+            "position": "INLET",
+            "value": 45,
+            "unit": "celsius",
+            "status": "alert"
+          },
+          {
+            "id": "sensor_temp_server_out",
+            "type": "TEMPERATURE",
+            "attached_to": "server_1",
+            "position": "OUTLET",
+            "value": 60,
+            "unit": "celsius",
+            "status": "alert"
+          },
+          {
+            "id": "sensor_pressure_server_out",
+            "type": "PRESSURE",
+            "attached_to": "server_1",
+            "position": "OUTLET",
+            "value": 48,
+            "unit": "psi",
+            "status": "normal"
+          },
+          {
+            "id": "sensor_temp_condenser_in",
+            "type": "TEMPERATURE",
+            "attached_to": "condenser_1",
+            "position": "INLET",
+            "value": 60,
+            "unit": "celsius",
+            "status": "critical"
+          },
+          {
+            "id": "sensor_temp_condenser_out",
+            "type": "TEMPERATURE",
+            "attached_to": "condenser_1",
+            "position": "OUTLET",
+            "value": 59,
+            "unit": "celsius",
+            "status": "critical"
+          },
+          {
+            "id": "sensor_pressure_condenser_out",
+            "type": "PRESSURE",
+            "attached_to": "condenser_1",
+            "position": "OUTLET",
+            "value": 47,
+            "unit": "psi",
+            "status": "normal"
+          }
+        ]
+      }
+    }
+  ]
+}
