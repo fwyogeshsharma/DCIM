@@ -16,6 +16,24 @@ server:
   # Maximum request body size (in bytes)
   max_body_size: 10485760  # 10MB
 
+# Server Identification - For Multi-Server Deployments
+server_id:
+  # Unique server identifier (leave empty for auto-generation)
+  # Auto-generated ID will be saved to ./data/server_id.txt
+  id: ""
+
+  # Human-readable server name
+  name: "DCIM-Server-Primary"
+
+  # Physical location (datacenter, region, etc.)
+  location: "Primary-DC"
+
+  # Environment (dev, staging, production)
+  environment: "production"
+
+  # Auto-generate server ID if not specified
+  auto_generate: true
+
 # mTLS (Mutual TLS) Configuration - Enterprise Security
 tls:
   # Enable/disable TLS (must be true for production)
@@ -30,8 +48,7 @@ tls:
 
   # Client certificate verification
   # Options: "none", "request", "require", "verify_if_given", "require_and_verify"
-  # DEVELOPMENT: Set to "none" for easier testing. PRODUCTION: Use "require_and_verify"
-  client_auth: "none"
+  client_auth: "require_and_verify"
 
   # Minimum TLS version: "1.2" or "1.3" (default: "1.2")
   min_tls_version: "1.2"
@@ -58,9 +75,9 @@ database:
   # PostgreSQL settings (when type: "postgres")
   postgres:
     host: "localhost"
-    port: 5433
+    port: 5432
     user: "postgres"
-    password: "admin"
+    password: "postgres"
     database: "dcim_db"
     sslmode: "disable"
     max_open_conns: 50
@@ -180,7 +197,7 @@ api:
   # CORS settings (for web dashboard access)
   cors:
     enabled: true
-    allowed_origins: ["http://localhost:3000", "http://localhost:5173"]
+    allowed_origins: ["http://localhost:3000"]
     allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     allowed_headers: ["Content-Type", "Authorization"]
     allow_credentials: true

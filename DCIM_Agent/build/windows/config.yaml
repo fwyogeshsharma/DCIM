@@ -3,7 +3,7 @@
 
 # Server settings
 server:
-  url: "https://localhost:8443/api/v1"  # Use HTTPS for secure mTLS connection
+  url: "https://LAPTOP-KH1JURCU:8443/api/v1"  # Use HTTPS for secure mTLS connection
   timeout: 30s
   retry_attempts: 3
   retry_delay: 5s
@@ -32,9 +32,9 @@ server:
 # Agent settings
 agent:
   # Unique identifier for this agent (auto-generated if empty)
-  id: ""
+  id: "JPR_MP_AGENT_WIN_HP_AY_01"
   # Human-readable name for this machine
-  name: ""
+  name: "JPR_MP_AGENT_WIN_HP_AY_01"
   # Metrics collection interval (collect every 30 seconds for more detail)
   collect_interval: 30s
   # Normal metrics send interval (send every 2 minutes for real-time monitoring)

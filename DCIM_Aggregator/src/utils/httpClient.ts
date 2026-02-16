@@ -78,10 +78,26 @@ export class HttpClient {
         return response
       },
       (error) => {
-        if (error.response) {
+        const tlsCodes = [
+          'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+          'CERT_SIGNATURE_FAILURE',
+          'DEPTH_ZERO_SELF_SIGNED_CERT',
+          'SELF_SIGNED_CERT_IN_CHAIN',
+          'ERR_TLS_CERT_ALTNAME_INVALID',
+          'CERT_HAS_EXPIRED',
+        ]
+        const code: string | undefined = error.code || error.cause?.code
+        const isTls = code && tlsCodes.includes(code)
+
+        if (isTls) {
+          logger.error(
+            `TLS/mTLS error (${code}) for ${error.config?.url ?? 'unknown'} — ` +
+            'check that the correct CA certificate is uploaded for this server'
+          )
+        } else if (error.response) {
           logger.error(`HTTP Error: ${error.response.status} ${error.config.url}`)
         } else if (error.request) {
-          logger.error(`HTTP No Response: ${error.config.url}`)
+          logger.error(`HTTP No Response: ${error.config?.url}`)
         } else {
           logger.error('HTTP Error:', error.message)
         }

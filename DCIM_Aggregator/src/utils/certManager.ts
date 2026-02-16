@@ -63,7 +63,7 @@ export function getAgentForServer(serverId: string): https.Agent {
 
   logger.debug(`Using per-server TLS certs for ${serverId}`)
   return new https.Agent({
-    rejectUnauthorized: false,
+    rejectUnauthorized: hasCa,
     ...(hasCa && { ca: fs.readFileSync(caPath) }),
     ...(hasCert && { cert: fs.readFileSync(certPath) }),
     ...(hasKey && { key: fs.readFileSync(keyPath) }),

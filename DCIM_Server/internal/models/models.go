@@ -10,6 +10,7 @@ import (
 type Agent struct {
 	ID               int64     `json:"id" db:"id"`
 	AgentID          string    `json:"agent_id" db:"agent_id"`                   // Unique agent identifier
+	ServerID         string    `json:"server_id" db:"server_id"`                 // Server this agent belongs to
 	CertificateCN    string    `json:"certificate_cn" db:"certificate_cn"`       // Client certificate CN
 	Hostname         string    `json:"hostname" db:"hostname"`
 	IPAddress        string    `json:"ip_address" db:"ip_address"`

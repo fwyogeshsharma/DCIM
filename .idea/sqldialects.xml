@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/darwin-amd64/migrations/001_initial_schema.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/darwin-amd64/migrations/002_server_tracking.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/darwin-amd64/migrations/003_alert_resolution.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/darwin-arm64/migrations/001_initial_schema.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/darwin-arm64/migrations/002_server_tracking.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/darwin-arm64/migrations/003_alert_resolution.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/linux-amd64/migrations/001_initial_schema.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/linux-amd64/migrations/002_server_tracking.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/linux-amd64/migrations/003_alert_resolution.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/windows-amd64/migrations/001_initial_schema.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/windows-amd64/migrations/002_server_tracking.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/build/windows-amd64/migrations/003_alert_resolution.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/migrate_database.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/migrations/001_initial_schema.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/migrations/002_server_tracking.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Server/migrations/003_alert_resolution.sql" dialect="GenericSQL" />
+  </component>
+</project>

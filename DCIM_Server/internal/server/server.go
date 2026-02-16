@@ -22,6 +22,7 @@ import (
 
 // Server represents the DCIM server
 type Server struct {
+	serverID        string // Unique server instance identifier
 	config          *config.Config
 	db              *database.Database
 	licenseManager  *license.Manager
@@ -38,7 +39,14 @@ type Server struct {
 
 // New creates a new DCIM server
 func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*Server, error) {
+	// Initialize server ID
+	serverID, err := initializeServerID(cfg, db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize server ID: %w", err)
+	}
+
 	server := &Server{
+		serverID:       serverID,
 		config:         cfg,
 		db:             db,
 		licenseManager: licMgr,
@@ -47,20 +55,23 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 		clients:        make(map[string]chan string),
 	}
 
+	server.logger.Printf("Server initialized with ID: %s", serverID)
+
 	// Setup HTTP server
 	mux := http.NewServeMux()
 
 	// Register API routes
 	basePath := cfg.API.BasePath
 	mux.HandleFunc(basePath+"/metrics", server.handleMetrics)            // POST: submit metrics, GET: query metrics
+	mux.HandleFunc(basePath+"/alerts/", server.handleAlertsWithID)       // Handles /alerts/{id} and /alerts/{id}/resolve
 	mux.HandleFunc(basePath+"/alerts", server.handleAlerts)              // POST: submit alerts, GET: query alerts
 	mux.HandleFunc(basePath+"/snmp-metrics", server.handleSNMPMetrics)   // POST: submit SNMP metrics, GET: query SNMP metrics
+	mux.HandleFunc(basePath+"/cooling-metrics", server.handleCoolingMetrics) // POST: submit cooling system metrics
 	mux.HandleFunc(basePath+"/agent-status-history", server.handleAgentStatusHistory) // GET: query agent status history
 	mux.HandleFunc(basePath+"/register", server.handleRegister)
 	mux.HandleFunc(basePath+"/agents/", server.handleGetAgentMetrics)    // Trailing slash for path params
 	mux.HandleFunc(basePath+"/agents", server.handleGetAgents)
 	mux.HandleFunc(basePath+"/events", server.handleSSEEvents)           // SSE endpoint for real-time updates
-	mux.HandleFunc(basePath+"/ai/query", server.handleAIQuery)           // POST: AI-powered query processing
 
 	// Health check endpoint
 	if cfg.Health.Enabled {
@@ -88,6 +99,15 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 		}
 		server.httpServer.TLSConfig = tlsConfig
 	}
+
+	// Preload cooling configuration (will log on startup)
+	if _, err := server.loadCoolingConfig(); err != nil {
+		server.logger.Printf("Warning: Failed to load cooling configuration: %v", err)
+		server.logger.Printf("Cooling metrics API will be available but alerts may not function correctly")
+	}
+
+	// Start server heartbeat to update last_seen
+	go server.serverHeartbeat()
 
 	return server, nil
 }
@@ -182,8 +202,11 @@ func (s *Server) Start() error {
 	s.logger.Printf("  GET  %s/metrics", basePath)
 	s.logger.Printf("  POST %s/alerts", basePath)
 	s.logger.Printf("  GET  %s/alerts", basePath)
+	s.logger.Printf("  GET  %s/alerts/{id}", basePath)
+	s.logger.Printf("  PUT  %s/alerts/{id}/resolve", basePath)
 	s.logger.Printf("  POST %s/snmp-metrics", basePath)
 	s.logger.Printf("  GET  %s/snmp-metrics", basePath)
+	s.logger.Printf("  POST %s/cooling-metrics", basePath)
 	s.logger.Printf("  GET  %s/agent-status-history", basePath)
 	s.logger.Printf("  POST %s/register", basePath)
 	s.logger.Printf("  GET  %s/agents", basePath)
@@ -379,6 +402,7 @@ func (s *Server) autoRegisterAgent(r *http.Request, agentID string) error {
 
 	agent := &models.Agent{
 		AgentID:       agentID,
+		ServerID:      s.serverID,
 		CertificateCN: certCN,
 		Hostname:      agentID,
 		IPAddress:     ip,
@@ -387,7 +411,7 @@ func (s *Server) autoRegisterAgent(r *http.Request, agentID string) error {
 		Approved:      !s.config.Agents.Registration.RequireApproval,
 	}
 
-	s.logger.Printf("Auto-registering agent: %s (CN: %s, IP: %s)", agentID, certCN, ip)
+	s.logger.Printf("Auto-registering agent: %s (CN: %s, IP: %s) on server: %s", agentID, certCN, ip, s.serverID)
 
 	return s.db.RegisterAgent(agent)
 }
@@ -431,7 +455,7 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert metrics into database
-	if err := s.db.InsertMetrics(req.Metrics); err != nil {
+	if err := s.db.InsertMetrics(s.serverID, req.Metrics); err != nil {
 		s.logger.Printf("Failed to insert metrics: %v", err)
 		s.sendError(w, http.StatusInternalServerError, "Failed to store metrics")
 		return
@@ -489,7 +513,7 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert alerts into database
-	if err := s.db.InsertAlerts(req.Alerts); err != nil {
+	if err := s.db.InsertAlerts(s.serverID, req.Alerts); err != nil {
 		s.logger.Printf("Failed to insert alerts: %v", err)
 		s.sendError(w, http.StatusInternalServerError, "Failed to store alerts")
 		return
@@ -532,7 +556,7 @@ func (s *Server) handleSNMPMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert SNMP metrics into database
-	if err := s.db.InsertSNMPMetrics(req.SNMPMetrics); err != nil {
+	if err := s.db.InsertSNMPMetrics(s.serverID, req.SNMPMetrics); err != nil {
 		s.logger.Printf("Failed to insert SNMP metrics: %v", err)
 		s.sendError(w, http.StatusInternalServerError, "Failed to store SNMP metrics")
 		return
@@ -584,6 +608,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	agent := &models.Agent{
 		AgentID:       req.AgentID,
+		ServerID:      s.serverID,
 		CertificateCN: certCN,
 		Hostname:      req.Hostname,
 		IPAddress:     req.IPAddress,
@@ -712,7 +737,7 @@ func (s *Server) handleGetAgentMetrics(w http.ResponseWriter, r *http.Request) {
 	// Parse metric_type (optional)
 	metricType := query.Get("metric_type")
 
-	// Parse limit (default 100, max 100000)
+	// Parse limit (default 100, max 1000)
 	limitStr := query.Get("limit")
 	limit := 100
 	if limitStr != "" {
@@ -722,8 +747,8 @@ func (s *Server) handleGetAgentMetrics(w http.ResponseWriter, r *http.Request) {
 			s.sendError(w, http.StatusBadRequest, "Invalid limit")
 			return
 		}
-		if limit > 100000 {
-			limit = 100000
+		if limit > 1000 {
+			limit = 1000
 		}
 	}
 
@@ -1099,57 +1124,6 @@ func (s *Server) sendSuccess(w http.ResponseWriter, message string, accepted, re
 		Accepted: accepted,
 		Rejected: rejected,
 	})
-}
-
-// handleAIQuery proxies AI requests to Nvidia API
-func (s *Server) handleAIQuery(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.sendError(w, http.StatusMethodNotAllowed, "Only POST requests are allowed")
-		return
-	}
-
-	// Read request body
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		s.sendError(w, http.StatusBadRequest, "Failed to read request body")
-		return
-	}
-	defer r.Body.Close()
-
-	// Create request to Nvidia API
-	nvidiaURL := "https://integrate.api.nvidia.com/v1/chat/completions"
-	nvidiaAPIKey := "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"
-
-	req, err := http.NewRequest("POST", nvidiaURL, strings.NewReader(string(body)))
-	if err != nil {
-		s.sendError(w, http.StatusInternalServerError, "Failed to create request")
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+nvidiaAPIKey)
-
-	// Send request to Nvidia
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		s.logger.Printf("Nvidia API error: %v", err)
-		s.sendError(w, http.StatusBadGateway, "Failed to connect to AI service")
-		return
-	}
-	defer resp.Body.Close()
-
-	// Read response
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		s.sendError(w, http.StatusInternalServerError, "Failed to read AI response")
-		return
-	}
-
-	// Forward response to client
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(resp.StatusCode)
-	w.Write(respBody)
 }
 
 func (s *Server) sendError(w http.ResponseWriter, status int, errorMsg string) {

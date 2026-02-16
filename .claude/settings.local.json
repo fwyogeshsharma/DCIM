@@ -61,7 +61,11 @@
       "Bash(docker compose:*)",
       "Bash(docker exec:*)",
       "Bash(npm ls:*)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(docker-compose:*)",
+      "Bash(psql:*)",
+      "Bash(\"/c/Program Files/PostgreSQL/17/bin/psql.exe\" -U postgres -p 5435 -d dcim_aggregator -c \"SELECT s.id, s.name, s.url, COUNT\\(a.id\\) as agent_count FROM servers s LEFT JOIN agents a ON a.server_id = s.id GROUP BY s.id, s.name, s.url ORDER BY s.name;\")",
+      "Bash(PGPASSWORD=postgres \"/c/Program Files/PostgreSQL/17/bin/psql.exe\":*)"
     ]
   }
 }

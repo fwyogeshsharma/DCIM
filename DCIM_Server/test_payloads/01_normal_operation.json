@@ -1,0 +1,25 @@
+{
+  "agent_id": "System_Sim_1",
+  "agent_name": "System_Sim_1",
+  "pump": {
+    "isOn": true,
+    "status": "Coolant liquid is flowing"
+  },
+  "cpu": {
+    "isOn": true
+  },
+  "condenser": {
+    "isOn": true
+  },
+  "inlet": {
+    "temperature": 8,
+    "pressure": 50,
+    "leak": false
+  },
+  "outlet": {
+    "temperature": 45,
+    "pressure": 48,
+    "leak": false
+  },
+  "timestamp": "2026-02-11T10:17:56.817Z"
+}

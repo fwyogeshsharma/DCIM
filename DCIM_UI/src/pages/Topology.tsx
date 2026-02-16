@@ -16,6 +16,8 @@ interface TopoNode extends d3.SimulationNodeDatum {
   ip?: string
   color?: string
   serverId?: string
+  agentId?: string
+  serverName?: string
 }
 
 interface TopoLink extends d3.SimulationLinkDatum<TopoNode> {
@@ -138,11 +140,13 @@ export default function Topology() {
       })
     }
 
-    // Create agent nodes with filtered data
+    // Create agent nodes with filtered data — use compound ID to avoid collisions
+    // when different servers have agents with the same agent_id
     const agentNodes: TopoNode[] = agents.map((agent) => {
       const filtered = filteredData?.find(f => f.agent_id === agent.agent_id)
+      const parentServer = enabledServers.find(s => s.id === agent.server_id)
       return {
-        id: agent.agent_id,
+        id: `${agent.server_id}:${agent.agent_id}`,
         name: agent.hostname,
         type: 'agent' as const,
         status: agent.status as 'online' | 'offline',
@@ -150,17 +154,19 @@ export default function Topology() {
         alerts: filtered?.alerts_count ?? agent.total_alerts,
         ip: agent.ip_address,
         serverId: agent.server_id,
+        agentId: agent.agent_id,
+        serverName: parentServer?.name || agent.server_name,
       }
     })
 
     const nodes: TopoNode[] = [...serverNodes, ...agentNodes]
 
-    // Create links — each agent connects to its own server
+    // Create links — each agent connects to its own server (using compound IDs)
     const links: TopoLink[] = agents.map(agent => {
       // Find the matching server node
       const serverNodeId = serverNodes.find(s => s.id === `server-${agent.server_id}`)?.id || serverNodes[0]?.id
       return {
-        source: agent.agent_id,
+        source: `${agent.server_id}:${agent.agent_id}`,
         target: serverNodeId || 'server-unknown',
         strength: agent.status === 'online' ? 1 : 0.3,
       }
@@ -342,6 +348,15 @@ export default function Topology() {
       .attr('fill', '#e2e8f0')
       .attr('font-weight', 'bold')
       .text(d => d.name)
+
+    // Add server name sub-label for agents (helps distinguish same-named agents across servers)
+    node.filter(d => d.type === 'agent' && !!d.serverName)
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 58)
+      .attr('font-size', '10px')
+      .attr('fill', '#94a3b8')
+      .text(d => d.serverName || '')
 
     // Add "OFFLINE" label under name for offline servers
     node.filter(d => d.type === 'server' && d.status === 'offline')
@@ -788,9 +803,16 @@ export default function Topology() {
                 </div>
               )}
 
+              {selectedNode.type === 'agent' && selectedNode.serverName && (
+                <div>
+                  <p className="text-sm text-slate-400">Server</p>
+                  <p className="text-base font-semibold text-purple-400">{selectedNode.serverName}</p>
+                </div>
+              )}
+
               {selectedNode.type === 'agent' && (
                 <Link
-                  to={`/app/agents/${selectedNode.id}`}
+                  to={`/app/agents/${selectedNode.agentId || selectedNode.id}`}
                   className="block w-full text-center px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 rounded-lg transition-colors"
                 >
                   View Agent Details

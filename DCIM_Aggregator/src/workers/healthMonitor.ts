@@ -38,13 +38,30 @@ export function startHealthMonitorWorker() {
 
           logger.debug(`Server ${server.name} is healthy (${responseTime}ms)`)
         } catch (error: any) {
+          const tlsCodes = [
+            'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+            'CERT_SIGNATURE_FAILURE',
+            'DEPTH_ZERO_SELF_SIGNED_CERT',
+            'SELF_SIGNED_CERT_IN_CHAIN',
+            'ERR_TLS_CERT_ALTNAME_INVALID',
+            'CERT_HAS_EXPIRED',
+            'ECONNRESET',
+          ]
+          const code: string | undefined = error.code || error.cause?.code
+          const isTls = code && tlsCodes.includes(code)
+
+          const status = isTls ? 'tls_error' : 'offline'
+          const errorMsg = isTls
+            ? `TLS/mTLS error (${code}): check certificates for this server`
+            : error.message
+
           await cacheService.setServerHealth(server.id, {
-            status: 'offline',
-            error: error.message,
+            status,
+            error: errorMsg,
             timestamp: new Date().toISOString(),
           })
 
-          logger.warn(`Server ${server.name} is offline: ${error.message}`)
+          logger.warn(`Server ${server.name} ${status}: ${errorMsg}`)
         }
       }
     } catch (error: any) {

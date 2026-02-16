@@ -16,6 +16,24 @@ server:
   # Maximum request body size (in bytes)
   max_body_size: 10485760  # 10MB
 
+# Server Identification - For Multi-Server Deployments
+server_id:
+  # Unique server identifier (leave empty for auto-generation)
+  # Auto-generated ID will be saved to ./data/server_id.txt
+  id: "JPR_MP_SERVER_WIN_HP_AY_01"
+
+  # Human-readable server name
+  name: "JPR_MP_SERVER_WIN_HP_AY_01"
+
+  # Physical location (datacenter, region, etc.)
+  location: "Primary-DC"
+
+  # Environment (dev, staging, production)
+  environment: "production"
+
+  # Auto-generate server ID if not specified
+  auto_generate: true
+
 # mTLS (Mutual TLS) Configuration - Enterprise Security
 tls:
   # Enable/disable TLS (must be true for production)

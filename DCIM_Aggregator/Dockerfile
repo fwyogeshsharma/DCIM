@@ -2,16 +2,18 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Install all dependencies (including dev for TypeScript build)
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build TypeScript
-RUN npm install -g typescript ts-node
 RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --production
 
 # Expose port
 EXPOSE 3002

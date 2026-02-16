@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: dcim
       POSTGRES_PASSWORD: dcim_password
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./src/database/migrations:/docker-entrypoint-initdb.d
@@ -77,6 +77,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./logs:/app/logs
+      - ./certs:/app/certs
     restart: unless-stopped
     networks:
       - dcim-network

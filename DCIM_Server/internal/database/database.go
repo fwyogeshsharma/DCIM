@@ -78,9 +78,15 @@ func New(cfg *config.Config) (*Database, error) {
 		dbType: cfg.Database.Type,
 	}
 
-	// Initialize schema
+	// Initialize schema (creates tables if they don't exist)
 	if err := database.InitSchema(); err != nil {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	}
+
+	// Run database migrations (adds new columns to existing tables)
+	migrationsPath := cfg.GetMigrationsPath()
+	if err := database.RunMigrations(migrationsPath); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	return database, nil
@@ -139,10 +145,32 @@ func (d *Database) getSchema() []string {
 // getSQLiteSchema returns SQLite-specific schema
 func (d *Database) getSQLiteSchema() []string {
 	return []string{
+		// Servers table - Track DCIM_Server instances
+		`CREATE TABLE IF NOT EXISTS servers (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT UNIQUE NOT NULL,
+			server_name TEXT NOT NULL,
+			location TEXT,
+			environment TEXT,
+			hostname TEXT,
+			version TEXT,
+			status TEXT DEFAULT 'active',
+			last_seen DATETIME,
+			first_seen DATETIME,
+			metadata TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		// Index for servers queries
+		`CREATE INDEX IF NOT EXISTS idx_servers_id ON servers(server_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_servers_status ON servers(status, last_seen)`,
+
 		// Agents table
 		`CREATE TABLE IF NOT EXISTS agents (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			agent_id TEXT UNIQUE NOT NULL,
+			server_id TEXT NOT NULL,
 			certificate_cn TEXT,
 			hostname TEXT,
 			ip_address TEXT,
@@ -163,6 +191,7 @@ func (d *Database) getSQLiteSchema() []string {
 		// Metrics table
 		`CREATE TABLE IF NOT EXISTS metrics (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			timestamp DATETIME NOT NULL,
 			metric_type TEXT NOT NULL,
@@ -173,12 +202,14 @@ func (d *Database) getSQLiteSchema() []string {
 		)`,
 
 		// Index for metrics queries
+		// NOTE: idx_metrics_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_metrics_agent_time ON metrics(agent_id, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_metrics_type_time ON metrics(metric_type, timestamp)`,
 
 		// Alerts table
 		`CREATE TABLE IF NOT EXISTS alerts (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			timestamp DATETIME NOT NULL,
 			severity TEXT NOT NULL,
@@ -186,19 +217,29 @@ func (d *Database) getSQLiteSchema() []string {
 			value REAL NOT NULL,
 			threshold REAL NOT NULL,
 			message TEXT NOT NULL,
+			occurrence_count INTEGER DEFAULT 1,
+			first_seen DATETIME NOT NULL,
+			last_seen DATETIME NOT NULL,
 			retry_count INTEGER DEFAULT 0,
 			resolved INTEGER DEFAULT 0,
 			resolved_at DATETIME,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			resolved_by TEXT,
+			resolution_action TEXT,
+			resolution_notes TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 
 		// Index for alerts queries
+		// NOTE: idx_alerts_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_alerts_agent_time ON alerts(agent_id, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity, resolved)`,
+		// NOTE: idx_alerts_dedup created by migration 002_server_tracking.sql
 
 		// SNMP Metrics table
 		`CREATE TABLE IF NOT EXISTS snmp_metrics (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			timestamp DATETIME NOT NULL,
 			device_name TEXT NOT NULL,
@@ -212,12 +253,14 @@ func (d *Database) getSQLiteSchema() []string {
 		)`,
 
 		// Index for SNMP metrics queries
+		// NOTE: idx_snmp_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_snmp_agent_device ON snmp_metrics(agent_id, device_name, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_snmp_device_time ON snmp_metrics(device_host, timestamp)`,
 
 		// Agent Status History table
 		`CREATE TABLE IF NOT EXISTS agent_status_history (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			status TEXT NOT NULL,
 			timestamp DATETIME NOT NULL,
@@ -226,6 +269,7 @@ func (d *Database) getSQLiteSchema() []string {
 		)`,
 
 		// Index for status history
+		// NOTE: idx_agent_status_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_agent_status_time ON agent_status_history(agent_id, timestamp)`,
 
 		// Licenses table
@@ -247,6 +291,7 @@ func (d *Database) getSQLiteSchema() []string {
 		// Aggregated Metrics table
 		`CREATE TABLE IF NOT EXISTS aggregated_metrics (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			metric_type TEXT NOT NULL,
 			interval TEXT NOT NULL,
@@ -260,6 +305,7 @@ func (d *Database) getSQLiteSchema() []string {
 		)`,
 
 		// Index for aggregated metrics
+		// NOTE: idx_agg_metrics_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_agg_metrics ON aggregated_metrics(agent_id, metric_type, interval, timestamp)`,
 	}
 }
@@ -267,10 +313,32 @@ func (d *Database) getSQLiteSchema() []string {
 // getPostgresSchema returns PostgreSQL-specific schema
 func (d *Database) getPostgresSchema() []string {
 	return []string{
+		// Servers table - Track DCIM_Server instances
+		`CREATE TABLE IF NOT EXISTS servers (
+			id SERIAL PRIMARY KEY,
+			server_id TEXT UNIQUE NOT NULL,
+			server_name TEXT NOT NULL,
+			location TEXT,
+			environment TEXT,
+			hostname TEXT,
+			version TEXT,
+			status TEXT DEFAULT 'active',
+			last_seen TIMESTAMP,
+			first_seen TIMESTAMP,
+			metadata TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		// Index for servers queries
+		`CREATE INDEX IF NOT EXISTS idx_servers_id ON servers(server_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_servers_status ON servers(status, last_seen)`,
+
 		// Agents table
 		`CREATE TABLE IF NOT EXISTS agents (
 			id SERIAL PRIMARY KEY,
 			agent_id TEXT UNIQUE NOT NULL,
+			server_id TEXT NOT NULL,
 			certificate_cn TEXT,
 			hostname TEXT,
 			ip_address TEXT,
@@ -291,6 +359,7 @@ func (d *Database) getPostgresSchema() []string {
 		// Metrics table
 		`CREATE TABLE IF NOT EXISTS metrics (
 			id SERIAL PRIMARY KEY,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			timestamp TIMESTAMP NOT NULL,
 			metric_type TEXT NOT NULL,
@@ -301,12 +370,14 @@ func (d *Database) getPostgresSchema() []string {
 		)`,
 
 		// Index for metrics queries
+		// NOTE: idx_metrics_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_metrics_agent_time ON metrics(agent_id, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_metrics_type_time ON metrics(metric_type, timestamp)`,
 
 		// Alerts table
 		`CREATE TABLE IF NOT EXISTS alerts (
 			id SERIAL PRIMARY KEY,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			timestamp TIMESTAMP NOT NULL,
 			severity TEXT NOT NULL,
@@ -314,19 +385,29 @@ func (d *Database) getPostgresSchema() []string {
 			value REAL NOT NULL,
 			threshold REAL NOT NULL,
 			message TEXT NOT NULL,
+			occurrence_count INTEGER DEFAULT 1,
+			first_seen TIMESTAMP NOT NULL,
+			last_seen TIMESTAMP NOT NULL,
 			retry_count INTEGER DEFAULT 0,
 			resolved BOOLEAN DEFAULT false,
 			resolved_at TIMESTAMP,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			resolved_by TEXT,
+			resolution_action TEXT,
+			resolution_notes TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
 
 		// Index for alerts queries
+		// NOTE: idx_alerts_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_alerts_agent_time ON alerts(agent_id, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity, resolved)`,
+		// NOTE: idx_alerts_dedup created by migration 002_server_tracking.sql
 
 		// SNMP Metrics table
 		`CREATE TABLE IF NOT EXISTS snmp_metrics (
 			id SERIAL PRIMARY KEY,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			timestamp TIMESTAMP NOT NULL,
 			device_name TEXT NOT NULL,
@@ -340,12 +421,14 @@ func (d *Database) getPostgresSchema() []string {
 		)`,
 
 		// Index for SNMP metrics queries
+		// NOTE: idx_snmp_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_snmp_agent_device ON snmp_metrics(agent_id, device_name, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_snmp_device_time ON snmp_metrics(device_host, timestamp)`,
 
 		// Agent Status History table
 		`CREATE TABLE IF NOT EXISTS agent_status_history (
 			id SERIAL PRIMARY KEY,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			status TEXT NOT NULL,
 			timestamp TIMESTAMP NOT NULL,
@@ -354,6 +437,7 @@ func (d *Database) getPostgresSchema() []string {
 		)`,
 
 		// Index for status history
+		// NOTE: idx_agent_status_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_agent_status_time ON agent_status_history(agent_id, timestamp)`,
 
 		// Licenses table
@@ -375,6 +459,7 @@ func (d *Database) getPostgresSchema() []string {
 		// Aggregated Metrics table
 		`CREATE TABLE IF NOT EXISTS aggregated_metrics (
 			id SERIAL PRIMARY KEY,
+			server_id TEXT NOT NULL,
 			agent_id TEXT NOT NULL,
 			metric_type TEXT NOT NULL,
 			interval TEXT NOT NULL,
@@ -388,6 +473,7 @@ func (d *Database) getPostgresSchema() []string {
 		)`,
 
 		// Index for aggregated metrics
+		// NOTE: idx_agg_metrics_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_agg_metrics ON aggregated_metrics(agent_id, metric_type, interval, timestamp)`,
 	}
 }
@@ -399,6 +485,7 @@ func (d *Database) getMySQLSchema() []string {
 		`CREATE TABLE IF NOT EXISTS agents (
 			id INT AUTO_INCREMENT PRIMARY KEY,
 			agent_id VARCHAR(255) UNIQUE NOT NULL,
+			server_id VARCHAR(255) NOT NULL,
 			certificate_cn VARCHAR(255),
 			hostname VARCHAR(255),
 			ip_address VARCHAR(45),
@@ -529,10 +616,11 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 	}
 
 	query := `
-		INSERT INTO agents (agent_id, certificate_cn, hostname, ip_address, status, group_name,
+		INSERT INTO agents (agent_id, server_id, certificate_cn, hostname, ip_address, status, group_name,
 			first_seen, last_seen, registered_at, approved, metadata, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(agent_id) DO UPDATE SET
+			server_id = excluded.server_id,
 			certificate_cn = excluded.certificate_cn,
 			hostname = excluded.hostname,
 			ip_address = excluded.ip_address,
@@ -546,6 +634,7 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 
 	_, err = d.db.Exec(query,
 		agent.AgentID,
+		agent.ServerID,
 		agent.CertificateCN,
 		agent.Hostname,
 		agent.IPAddress,
@@ -565,12 +654,13 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 
 // GetAgent retrieves an agent by ID
 func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
-	query := d.preparePlaceholders(`SELECT * FROM agents WHERE agent_id = ?`)
+	query := d.preparePlaceholders(`SELECT id, agent_id, COALESCE(server_id, ''), COALESCE(certificate_cn, ''), COALESCE(hostname, ''), COALESCE(ip_address, ''), COALESCE(status, 'pending'), COALESCE(group_name, 'default'), COALESCE(last_seen, created_at), COALESCE(first_seen, created_at), COALESCE(registered_at, created_at), approved_at, COALESCE(approved, false), COALESCE(total_metrics, 0), COALESCE(total_alerts, 0), metadata, created_at, updated_at FROM agents WHERE agent_id = ?`)
 
 	var agent models.Agent
 	err := d.db.QueryRow(query, agentID).Scan(
 		&agent.ID,
 		&agent.AgentID,
+		&agent.ServerID,
 		&agent.CertificateCN,
 		&agent.Hostname,
 		&agent.IPAddress,
@@ -600,12 +690,13 @@ func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 
 // GetAgentByHostname retrieves an agent by hostname
 func (d *Database) GetAgentByHostname(hostname string) (*models.Agent, error) {
-	query := d.preparePlaceholders(`SELECT * FROM agents WHERE hostname = ? LIMIT 1`)
+	query := d.preparePlaceholders(`SELECT id, agent_id, COALESCE(server_id, ''), COALESCE(certificate_cn, ''), COALESCE(hostname, ''), COALESCE(ip_address, ''), COALESCE(status, 'pending'), COALESCE(group_name, 'default'), COALESCE(last_seen, created_at), COALESCE(first_seen, created_at), COALESCE(registered_at, created_at), approved_at, COALESCE(approved, false), COALESCE(total_metrics, 0), COALESCE(total_alerts, 0), metadata, created_at, updated_at FROM agents WHERE hostname = ? LIMIT 1`)
 
 	var agent models.Agent
 	err := d.db.QueryRow(query, hostname).Scan(
 		&agent.ID,
 		&agent.AgentID,
+		&agent.ServerID,
 		&agent.CertificateCN,
 		&agent.Hostname,
 		&agent.IPAddress,
@@ -639,7 +730,7 @@ func (d *Database) UpdateAgentLastSeen(agentID string) error {
 
 // GetAllAgents retrieves all agents
 func (d *Database) GetAllAgents() ([]models.Agent, error) {
-	query := `SELECT * FROM agents ORDER BY last_seen DESC`
+	query := `SELECT id, agent_id, COALESCE(server_id, ''), COALESCE(certificate_cn, ''), COALESCE(hostname, ''), COALESCE(ip_address, ''), COALESCE(status, 'pending'), COALESCE(group_name, 'default'), COALESCE(last_seen, created_at), COALESCE(first_seen, created_at), COALESCE(registered_at, created_at), approved_at, COALESCE(approved, false), COALESCE(total_metrics, 0), COALESCE(total_alerts, 0), metadata, created_at, updated_at FROM agents ORDER BY last_seen DESC`
 
 	rows, err := d.db.Query(query)
 	if err != nil {
@@ -653,6 +744,7 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 		err := rows.Scan(
 			&agent.ID,
 			&agent.AgentID,
+			&agent.ServerID,
 			&agent.CertificateCN,
 			&agent.Hostname,
 			&agent.IPAddress,
@@ -727,7 +819,7 @@ func (d *Database) GetAgentMetrics(agentID string, timeRange time.Duration, metr
 }
 
 // InsertMetrics inserts multiple metrics in a batch
-func (d *Database) InsertMetrics(metrics []models.Metric) error {
+func (d *Database) InsertMetrics(serverID string, metrics []models.Metric) error {
 	if len(metrics) == 0 {
 		return nil
 	}
@@ -739,8 +831,8 @@ func (d *Database) InsertMetrics(metrics []models.Metric) error {
 	defer tx.Rollback()
 
 	insertQuery := d.preparePlaceholders(`
-		INSERT INTO metrics (agent_id, timestamp, metric_type, value, unit, metadata, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO metrics (server_id, agent_id, timestamp, metric_type, value, unit, metadata, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	stmt, err := tx.Prepare(insertQuery)
 	if err != nil {
@@ -750,6 +842,7 @@ func (d *Database) InsertMetrics(metrics []models.Metric) error {
 
 	for _, metric := range metrics {
 		_, err := stmt.Exec(
+			serverID,
 			metric.AgentID,
 			metric.Timestamp,
 			metric.MetricType,
@@ -780,66 +873,114 @@ func (d *Database) InsertMetrics(metrics []models.Metric) error {
 	return tx.Commit()
 }
 
-// InsertAlerts inserts multiple alerts in a batch
-func (d *Database) InsertAlerts(alerts []models.Alert) error {
+// InsertAlerts inserts alerts with deduplication - increments count if alert exists
+func (d *Database) InsertAlerts(serverID string, alerts []models.Alert) error {
 	if len(alerts) == 0 {
 		return nil
 	}
 
-	tx, err := d.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	insertQuery := d.preparePlaceholders(`
-		INSERT INTO alerts (agent_id, timestamp, severity, metric_type, value, threshold,
-			message, retry_count, resolved, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
-	stmt, err := tx.Prepare(insertQuery)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
+	newAlertsCount := 0
 
 	for _, alert := range alerts {
-		_, err := stmt.Exec(
-			alert.AgentID,
-			alert.Timestamp,
-			alert.Severity,
-			alert.MetricType,
-			alert.Value,
-			alert.Threshold,
-			alert.Message,
-			alert.RetryCount,
-			alert.Resolved,
-			time.Now(),
-		)
-		if err != nil {
-			return err
+		// Check if same alert exists (not resolved)
+		var existingID int64
+		var existingCount int
+		var firstSeen time.Time
+
+		checkQuery := d.preparePlaceholders(`
+			SELECT id, occurrence_count, first_seen
+			FROM alerts
+			WHERE agent_id = ?
+			  AND metric_type = ?
+			  AND severity = ?
+			  AND resolved = ?
+			LIMIT 1
+		`)
+
+		err := d.db.QueryRow(checkQuery, alert.AgentID, alert.MetricType, alert.Severity, false).
+			Scan(&existingID, &existingCount, &firstSeen)
+
+		if err == sql.ErrNoRows {
+			// New alert - insert
+			insertQuery := d.preparePlaceholders(`
+				INSERT INTO alerts (
+					server_id, agent_id, timestamp, severity, metric_type,
+					value, threshold, message, occurrence_count,
+					first_seen, last_seen, resolved, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+			`)
+
+			now := time.Now()
+			_, err = d.db.Exec(insertQuery,
+				serverID,
+				alert.AgentID,
+				alert.Timestamp,
+				alert.Severity,
+				alert.MetricType,
+				alert.Value,
+				alert.Threshold,
+				alert.Message,
+				alert.Timestamp,  // first_seen
+				alert.Timestamp,  // last_seen
+				alert.Resolved,
+				now,              // created_at
+				now,              // updated_at
+			)
+
+			if err != nil {
+				return fmt.Errorf("failed to insert alert: %w", err)
+			}
+
+			newAlertsCount++
+		} else if err != nil {
+			return fmt.Errorf("failed to check existing alert: %w", err)
+		} else {
+			// Alert exists - increment count and update timestamps
+			updateQuery := d.preparePlaceholders(`
+				UPDATE alerts
+				SET occurrence_count = occurrence_count + 1,
+				    last_seen = ?,
+				    updated_at = ?,
+				    value = ?,
+				    threshold = ?,
+				    message = ?
+				WHERE id = ?
+			`)
+
+			_, err = d.db.Exec(updateQuery,
+				alert.Timestamp,  // last_seen
+				time.Now(),       // updated_at
+				alert.Value,      // update current value
+				alert.Threshold,  // update threshold
+				alert.Message,    // update message
+				existingID,
+			)
+
+			if err != nil {
+				return fmt.Errorf("failed to update alert count: %w", err)
+			}
 		}
 	}
 
-	// Update agent total alerts count
-	if len(alerts) > 0 {
+	// Update agent total alerts count (only for new alerts)
+	if newAlertsCount > 0 && len(alerts) > 0 {
 		agentID := alerts[0].AgentID
 		updateQuery := d.preparePlaceholders(`
 			UPDATE agents
 			SET total_alerts = total_alerts + ?, updated_at = ?
 			WHERE agent_id = ?
 		`)
-		_, err = tx.Exec(updateQuery, len(alerts), time.Now(), agentID)
+		_, err := d.db.Exec(updateQuery, newAlertsCount, time.Now(), agentID)
 		if err != nil {
 			return err
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // InsertSNMPMetrics inserts multiple SNMP metrics in a batch
-func (d *Database) InsertSNMPMetrics(metrics []models.SNMPMetric) error {
+func (d *Database) InsertSNMPMetrics(serverID string, metrics []models.SNMPMetric) error {
 	if len(metrics) == 0 {
 		return nil
 	}
@@ -851,9 +992,9 @@ func (d *Database) InsertSNMPMetrics(metrics []models.SNMPMetric) error {
 	defer tx.Rollback()
 
 	insertQuery := d.preparePlaceholders(`
-		INSERT INTO snmp_metrics (agent_id, timestamp, device_name, device_host, oid,
+		INSERT INTO snmp_metrics (server_id, agent_id, timestamp, device_name, device_host, oid,
 			metric_name, value, value_type, metadata, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	stmt, err := tx.Prepare(insertQuery)
 	if err != nil {
@@ -863,6 +1004,7 @@ func (d *Database) InsertSNMPMetrics(metrics []models.SNMPMetric) error {
 
 	for _, metric := range metrics {
 		_, err := stmt.Exec(
+			serverID,
 			metric.AgentID,
 			metric.Timestamp,
 			metric.DeviceName,
@@ -1162,4 +1304,170 @@ func (d *Database) GetOnlineAgentCount(timeout time.Duration) (int, error) {
 	query := d.preparePlaceholders(`SELECT COUNT(*) FROM agents WHERE last_seen > ? AND approved = true`)
 	err := d.db.QueryRow(query, cutoff).Scan(&count)
 	return count, err
+}
+
+// RegisterServer registers or updates a server instance
+func (d *Database) RegisterServer(serverID, serverName, location, environment, hostname, version string) error {
+	now := time.Now()
+
+	// Check if server exists
+	var existingID string
+	query := d.preparePlaceholders(`SELECT server_id FROM servers WHERE server_id = ?`)
+	err := d.db.QueryRow(query, serverID).Scan(&existingID)
+
+	if err == sql.ErrNoRows {
+		// Server doesn't exist, insert
+		insertQuery := d.preparePlaceholders(`
+			INSERT INTO servers (server_id, server_name, location, environment, hostname, version, status, first_seen, last_seen, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+		`)
+		_, err = d.db.Exec(insertQuery, serverID, serverName, location, environment, hostname, version, now, now, now, now)
+		if err != nil {
+			return fmt.Errorf("failed to insert server: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("failed to query server: %w", err)
+	} else {
+		// Server exists, update last_seen and other fields
+		updateQuery := d.preparePlaceholders(`
+			UPDATE servers 
+			SET server_name = ?, location = ?, environment = ?, hostname = ?, version = ?, 
+			    last_seen = ?, updated_at = ?, status = 'active'
+			WHERE server_id = ?
+		`)
+		_, err = d.db.Exec(updateQuery, serverName, location, environment, hostname, version, now, now, serverID)
+		if err != nil {
+			return fmt.Errorf("failed to update server: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// GetServer retrieves server information by server_id
+func (d *Database) GetServer(serverID string) (map[string]interface{}, error) {
+	query := d.preparePlaceholders(`
+		SELECT server_id, server_name, location, environment, hostname, version, status, 
+		       last_seen, first_seen, created_at, updated_at
+		FROM servers 
+		WHERE server_id = ?
+	`)
+
+	var serverName, location, environment, hostname, version, status string
+	var lastSeen, firstSeen, createdAt, updatedAt time.Time
+
+	err := d.db.QueryRow(query, serverID).Scan(
+		&serverID, &serverName, &location, &environment, &hostname, &version, &status,
+		&lastSeen, &firstSeen, &createdAt, &updatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"server_id":   serverID,
+		"server_name": serverName,
+		"location":    location,
+		"environment": environment,
+		"hostname":    hostname,
+		"version":     version,
+		"status":      status,
+		"last_seen":   lastSeen,
+		"first_seen":  firstSeen,
+		"created_at":  createdAt,
+		"updated_at":  updatedAt,
+	}, nil
+}
+
+// UpdateServerLastSeen updates the last_seen timestamp for a server
+func (d *Database) UpdateServerLastSeen(serverID string) error {
+	query := d.preparePlaceholders(`UPDATE servers SET last_seen = ?, updated_at = ? WHERE server_id = ?`)
+	_, err := d.db.Exec(query, time.Now(), time.Now(), serverID)
+	return err
+}
+
+// ResolveAlert marks an alert as resolved with resolution details
+func (d *Database) ResolveAlert(alertID int64, resolvedBy, resolutionAction, resolutionNotes string) error {
+	query := d.preparePlaceholders(`
+		UPDATE alerts
+		SET resolved = ?,
+		    resolved_at = ?,
+		    resolved_by = ?,
+		    resolution_action = ?,
+		    resolution_notes = ?,
+		    updated_at = ?
+		WHERE id = ?
+	`)
+
+	now := time.Now()
+	_, err := d.db.Exec(query, true, now, resolvedBy, resolutionAction, resolutionNotes, now, alertID)
+	return err
+}
+
+// GetAlertByID retrieves a single alert by ID
+func (d *Database) GetAlertByID(alertID int64) (map[string]interface{}, error) {
+	query := d.preparePlaceholders(`
+		SELECT id, server_id, agent_id, timestamp, severity, metric_type, value, threshold,
+		       message, occurrence_count, first_seen, last_seen, resolved, resolved_at,
+		       resolved_by, resolution_action, resolution_notes, created_at, updated_at
+		FROM alerts
+		WHERE id = ?
+	`)
+
+	var (
+		id                                   int64
+		serverID, agentID, severity          string
+		metricType, message                  string
+		value, threshold                     float64
+		occurrenceCount, resolved            int
+		timestamp, firstSeen, lastSeen       time.Time
+		createdAt, updatedAt                 time.Time
+		resolvedAt                           sql.NullTime
+		resolvedBy, resolutionAction         sql.NullString
+		resolutionNotes                      sql.NullString
+	)
+
+	err := d.db.QueryRow(query, alertID).Scan(
+		&id, &serverID, &agentID, &timestamp, &severity, &metricType, &value, &threshold,
+		&message, &occurrenceCount, &firstSeen, &lastSeen, &resolved, &resolvedAt,
+		&resolvedBy, &resolutionAction, &resolutionNotes, &createdAt, &updatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	alert := map[string]interface{}{
+		"id":                id,
+		"server_id":         serverID,
+		"agent_id":          agentID,
+		"timestamp":         timestamp,
+		"severity":          severity,
+		"metric_type":       metricType,
+		"value":             value,
+		"threshold":         threshold,
+		"message":           message,
+		"occurrence_count":  occurrenceCount,
+		"first_seen":        firstSeen,
+		"last_seen":         lastSeen,
+		"resolved":          resolved == 1,
+		"created_at":        createdAt,
+		"updated_at":        updatedAt,
+	}
+
+	if resolvedAt.Valid {
+		alert["resolved_at"] = resolvedAt.Time
+	}
+	if resolvedBy.Valid {
+		alert["resolved_by"] = resolvedBy.String
+	}
+	if resolutionAction.Valid {
+		alert["resolution_action"] = resolutionAction.String
+	}
+	if resolutionNotes.Valid {
+		alert["resolution_notes"] = resolutionNotes.String
+	}
+
+	return alert, nil
 }

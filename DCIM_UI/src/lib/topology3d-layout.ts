@@ -9,6 +9,8 @@ export interface LayoutNode {
   color: string
   ip?: string
   serverId?: string
+  agentId?: string
+  serverName?: string
   metrics?: number
   alerts?: number
 }
@@ -107,8 +109,11 @@ export function computeHierarchicalLayout(
       const isConnected = agent.status === 'online' &&
         nodes.find((n) => n.id === serverId)?.status === 'online'
 
+      const compoundId = `${agent.server_id}:${agent.agent_id}`
+      const parentServer = enabledServers.find(s => `server-${s.id}` === serverId)
+
       nodes.push({
-        id: agent.agent_id,
+        id: compoundId,
         name: agent.hostname,
         type: 'agent',
         status: agent.status === 'online' ? 'online' : 'offline',
@@ -116,12 +121,14 @@ export function computeHierarchicalLayout(
         color: agent.status === 'online' ? '#10b981' : '#ef4444',
         ip: agent.ip_address,
         serverId: agent.server_id,
+        agentId: agent.agent_id,
+        serverName: parentServer?.name,
         metrics: agent.total_metrics,
         alerts: agent.total_alerts,
       })
 
       links.push({
-        sourceId: agent.agent_id,
+        sourceId: compoundId,
         targetId: serverId,
         sourcePos: finalPos,
         targetPos: parentPos,
