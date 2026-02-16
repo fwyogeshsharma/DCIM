@@ -603,7 +603,7 @@ func (d *Database) getMySQLSchema() []string {
 // It first checks if an agent with the same hostname already exists
 // If yes, it updates that agent instead of creating a new one
 func (d *Database) RegisterAgent(agent *models.Agent) error {
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// First, check if an agent with this hostname already exists
 	existingAgent, err := d.GetAgentByHostname(agent.Hostname)
@@ -624,8 +624,6 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 			certificate_cn = excluded.certificate_cn,
 			hostname = excluded.hostname,
 			ip_address = excluded.ip_address,
-			status = excluded.status,
-			last_seen = excluded.last_seen,
 			updated_at = excluded.updated_at
 	`
 
@@ -654,9 +652,15 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 
 // GetAgent retrieves an agent by ID
 func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
-	query := d.preparePlaceholders(`SELECT * FROM agents WHERE agent_id = ?`)
+	query := d.preparePlaceholders(`
+		SELECT id, agent_id, server_id, certificate_cn, hostname, ip_address,
+		       status, group_name, last_seen, first_seen, registered_at, approved_at,
+		       approved, total_metrics, total_alerts, metadata, created_at, updated_at
+		FROM agents WHERE agent_id = ?
+	`)
 
 	var agent models.Agent
+	var approvedAt sql.NullTime
 	err := d.db.QueryRow(query, agentID).Scan(
 		&agent.ID,
 		&agent.AgentID,
@@ -669,7 +673,7 @@ func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 		&agent.LastSeen,
 		&agent.FirstSeen,
 		&agent.RegisteredAt,
-		&agent.ApprovedAt,
+		&approvedAt,
 		&agent.Approved,
 		&agent.TotalMetrics,
 		&agent.TotalAlerts,
@@ -685,14 +689,25 @@ func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 		return nil, err
 	}
 
+	// Convert sql.NullTime to *time.Time
+	if approvedAt.Valid {
+		agent.ApprovedAt = &approvedAt.Time
+	}
+
 	return &agent, nil
 }
 
 // GetAgentByHostname retrieves an agent by hostname
 func (d *Database) GetAgentByHostname(hostname string) (*models.Agent, error) {
-	query := d.preparePlaceholders(`SELECT * FROM agents WHERE hostname = ? LIMIT 1`)
+	query := d.preparePlaceholders(`
+		SELECT id, agent_id, server_id, certificate_cn, hostname, ip_address,
+		       status, group_name, last_seen, first_seen, registered_at, approved_at,
+		       approved, total_metrics, total_alerts, metadata, created_at, updated_at
+		FROM agents WHERE hostname = ? LIMIT 1
+	`)
 
 	var agent models.Agent
+	var approvedAt sql.NullTime
 	err := d.db.QueryRow(query, hostname).Scan(
 		&agent.ID,
 		&agent.AgentID,
@@ -705,7 +720,7 @@ func (d *Database) GetAgentByHostname(hostname string) (*models.Agent, error) {
 		&agent.LastSeen,
 		&agent.FirstSeen,
 		&agent.RegisteredAt,
-		&agent.ApprovedAt,
+		&approvedAt,
 		&agent.Approved,
 		&agent.TotalMetrics,
 		&agent.TotalAlerts,
@@ -718,19 +733,55 @@ func (d *Database) GetAgentByHostname(hostname string) (*models.Agent, error) {
 		return nil, err
 	}
 
+	// Convert sql.NullTime to *time.Time
+	if approvedAt.Valid {
+		agent.ApprovedAt = &approvedAt.Time
+	}
+
 	return &agent, nil
 }
 
 // UpdateAgentLastSeen updates the agent's last seen timestamp
 func (d *Database) UpdateAgentLastSeen(agentID string) error {
+	now := time.Now().UTC()
 	query := d.preparePlaceholders(`UPDATE agents SET last_seen = ?, updated_at = ? WHERE agent_id = ?`)
-	_, err := d.db.Exec(query, time.Now(), time.Now(), agentID)
+	_, err := d.db.Exec(query, now, now, agentID)
+	return err
+}
+
+// UpdateAgentStatus updates the agent's status and returns the updated agent
+func (d *Database) UpdateAgentStatus(agentID string, status string) (*models.Agent, error) {
+	now := time.Now().UTC()
+	query := d.preparePlaceholders(`UPDATE agents SET status = ?, updated_at = ? WHERE agent_id = ?`)
+	_, err := d.db.Exec(query, status, now, agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the updated agent
+	return d.GetAgent(agentID)
+}
+
+// ResolveAgentOfflineAlerts resolves all offline alerts for a specific agent
+func (d *Database) ResolveAgentOfflineAlerts(agentID string) error {
+	now := time.Now()
+	query := d.preparePlaceholders(`
+		UPDATE alerts
+		SET resolved = 1, resolved_at = ?, updated_at = ?
+		WHERE agent_id = ? AND metric_type = 'agent_offline' AND resolved = 0
+	`)
+	_, err := d.db.Exec(query, now, now, agentID)
 	return err
 }
 
 // GetAllAgents retrieves all agents
 func (d *Database) GetAllAgents() ([]models.Agent, error) {
-	query := `SELECT * FROM agents ORDER BY last_seen DESC`
+	query := `
+		SELECT id, agent_id, server_id, certificate_cn, hostname, ip_address,
+		       status, group_name, last_seen, first_seen, registered_at, approved_at,
+		       approved, total_metrics, total_alerts, metadata, created_at, updated_at
+		FROM agents ORDER BY last_seen DESC
+	`
 
 	rows, err := d.db.Query(query)
 	if err != nil {
@@ -741,6 +792,7 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 	var agents []models.Agent
 	for rows.Next() {
 		var agent models.Agent
+		var approvedAt sql.NullTime
 		err := rows.Scan(
 			&agent.ID,
 			&agent.AgentID,
@@ -753,7 +805,7 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 			&agent.LastSeen,
 			&agent.FirstSeen,
 			&agent.RegisteredAt,
-			&agent.ApprovedAt,
+			&approvedAt,
 			&agent.Approved,
 			&agent.TotalMetrics,
 			&agent.TotalAlerts,
@@ -764,6 +816,12 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Convert sql.NullTime to *time.Time
+		if approvedAt.Valid {
+			agent.ApprovedAt = &approvedAt.Time
+		}
+
 		agents = append(agents, agent)
 	}
 
