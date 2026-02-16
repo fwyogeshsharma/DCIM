@@ -442,7 +442,7 @@ function AgentNode({
             outlineWidth={0.05}
             outlineColor="#000000"
           >
-            OFFLINE
+            NOT REACHABLE
           </Text>
         </Billboard>
       )}

@@ -26,6 +26,7 @@ export function useResolveAlert() {
     mutationFn: (alertId: number) => api.resolveAlert(alertId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['alert-counts'] })
     },
   })
 }
@@ -37,6 +38,7 @@ export function useBulkResolveAlerts() {
     mutationFn: (alertIds: number[]) => api.bulkResolveAlerts(alertIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['alert-counts'] })
     },
   })
 }

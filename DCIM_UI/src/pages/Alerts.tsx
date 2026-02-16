@@ -18,6 +18,20 @@ export default function Alerts() {
   })
   const resolveAlert = useResolveAlert()
 
+  const handleResolve = (alertId: number) => {
+    resolveAlert.mutate(alertId, {
+      onSuccess: () => {
+        // Immediately update local state so the alert disappears/updates
+        if (statusFilter === 'active') {
+          setAlerts(prev => prev.filter(a => a.id !== alertId))
+          setTotalAlerts(prev => prev - 1)
+        } else {
+          setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, resolved: true, resolved_at: new Date().toISOString() } : a))
+        }
+      },
+    })
+  }
+
   // Alert counts per agent (lightweight, loads immediately)
   const { data: alertCounts, isLoading: countsLoading } = useQuery({
     queryKey: ['alert-counts'],
@@ -252,8 +266,8 @@ export default function Alerts() {
       </div>
 
       {/* Alerts Table */}
-      <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl shadow-lg overflow-hidden">
-        <table className="w-full">
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl shadow-lg overflow-x-auto">
+        <table className="w-full min-w-[900px]">
           <thead className="bg-slate-900/50">
             <tr>
               <th className="text-left p-4 font-medium text-slate-300">Severity</th>
@@ -314,16 +328,17 @@ export default function Alerts() {
                     </td>
                     <td className="p-4">
                       {alert.resolved ? (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30">
+                          <CheckCircle className="w-3.5 h-3.5" />
                           Resolved
                         </span>
                       ) : (
                         <button
-                          onClick={() => resolveAlert.mutate(alert.id)}
+                          onClick={() => handleResolve(alert.id)}
                           disabled={resolveAlert.isPending}
-                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/40 hover:bg-blue-500/30 hover:border-blue-500/60 transition-all cursor-pointer"
                         >
-                          <CheckCircle className="w-3 h-3" />
+                          <CheckCircle className="w-3.5 h-3.5" />
                           Resolve
                         </button>
                       )}

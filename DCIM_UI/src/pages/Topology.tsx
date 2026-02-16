@@ -40,6 +40,7 @@ export default function Topology() {
   const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const simulationRef = useRef<d3.Simulation<TopoNode, TopoLink> | null>(null)
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 
   // Fetch filtered metrics and alerts for each agent
   const { data: filteredData } = useQuery({
@@ -113,6 +114,7 @@ export default function Topology() {
       })
 
     svg.call(zoom)
+    zoomRef.current = zoom
 
     // Build server nodes from actual servers data
     const enabledServers = servers?.filter(s => s.enabled) || []
@@ -389,6 +391,16 @@ export default function Topology() {
       .attr('font-weight', 'bold')
       .text('!')
 
+    // Add "NOT REACHABLE" label under name for offline agents
+    node.filter(d => d.type === 'agent' && d.status === 'offline')
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', d => d.serverName ? 72 : 60)
+      .attr('font-size', '10px')
+      .attr('fill', '#ef4444')
+      .attr('font-weight', 'bold')
+      .text('NOT REACHABLE')
+
     // Add warning badge on offline agents
     node.filter(d => d.type === 'agent' && d.status === 'offline')
       .append('circle')
@@ -517,30 +529,86 @@ export default function Topology() {
       })()
     }
 
+    // Auto-fit to view after simulation settles on initial load
+    const fitTimer = setTimeout(() => {
+      const xValues = nodes.map(n => n.x || 0)
+      const yValues = nodes.map(n => n.y || 0)
+      if (xValues.length === 0) return
+
+      const xMin = Math.min(...xValues)
+      const xMax = Math.max(...xValues)
+      const yMin = Math.min(...yValues)
+      const yMax = Math.max(...yValues)
+
+      const padding = 100
+      const boundsWidth = (xMax - xMin) + padding * 2
+      const boundsHeight = (yMax - yMin) + padding * 2
+
+      const scale = Math.min(width / boundsWidth, height / boundsHeight, 1)
+      const centerX = (xMin + xMax) / 2
+      const centerY = (yMin + yMax) / 2
+      const translateX = width / 2 - scale * centerX
+      const translateY = height / 2 - scale * centerY
+
+      svg.transition().duration(750).call(
+        zoom.transform,
+        d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+      )
+    }, 1500)
+
     // Cleanup
     return () => {
       simulation.stop()
+      clearTimeout(fitTimer)
     }
   }, [agents, servers, filteredData])
 
   const handleZoomIn = () => {
+    if (!svgRef.current || !zoomRef.current) return
     d3.select(svgRef.current).transition().call(
-      d3.zoom<SVGSVGElement, unknown>().scaleBy as any,
+      zoomRef.current.scaleBy,
       1.3
     )
   }
 
   const handleZoomOut = () => {
+    if (!svgRef.current || !zoomRef.current) return
     d3.select(svgRef.current).transition().call(
-      d3.zoom<SVGSVGElement, unknown>().scaleBy as any,
+      zoomRef.current.scaleBy,
       0.7
     )
   }
 
   const handleReset = () => {
-    d3.select(svgRef.current).transition().call(
-      d3.zoom<SVGSVGElement, unknown>().transform as any,
-      d3.zoomIdentity
+    if (!svgRef.current || !zoomRef.current || !simulationRef.current) return
+
+    const svg = d3.select(svgRef.current)
+    const width = svgRef.current.clientWidth
+    const height = svgRef.current.clientHeight
+    const nodes = simulationRef.current.nodes()
+
+    const xValues = nodes.map(n => n.x || 0)
+    const yValues = nodes.map(n => n.y || 0)
+    if (xValues.length === 0) return
+
+    const xMin = Math.min(...xValues)
+    const xMax = Math.max(...xValues)
+    const yMin = Math.min(...yValues)
+    const yMax = Math.max(...yValues)
+
+    const padding = 100
+    const boundsWidth = (xMax - xMin) + padding * 2
+    const boundsHeight = (yMax - yMin) + padding * 2
+
+    const scale = Math.min(width / boundsWidth, height / boundsHeight, 1)
+    const centerX = (xMin + xMax) / 2
+    const centerY = (yMin + yMax) / 2
+    const translateX = width / 2 - scale * centerX
+    const translateY = height / 2 - scale * centerY
+
+    svg.transition().duration(500).call(
+      zoomRef.current.transform,
+      d3.zoomIdentity.translate(translateX, translateY).scale(scale)
     )
   }
 

@@ -240,7 +240,7 @@ export default function ServerManagement() {
                         <XCircle className="w-5 h-5 text-red-500" />
                       )}
                     </CardTitle>
-                    <CardDescription className="mt-1">
+                    <CardDescription className="mt-1 text-slate-300">
                       {server.metadata?.location || 'No location'}
                     </CardDescription>
                   </div>
