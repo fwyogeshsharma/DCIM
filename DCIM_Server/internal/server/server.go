@@ -219,6 +219,9 @@ func (s *Server) Start() error {
 	s.logger.Println("================================================================================")
 	s.logger.Println()
 
+	// Start agent heartbeat monitor
+	s.startAgentMonitor()
+
 	// Start server
 	if s.config.TLS.Enabled {
 		s.logger.Printf("Server starting with mTLS on https://%s", s.config.GetServerAddress())
@@ -337,8 +340,11 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 				return
 			}
 
-			// Update last seen
-			s.db.UpdateAgentLastSeen(agentID)
+			// Update last seen ONLY for POST/PUT requests (agent sending data)
+			// Don't update for GET requests (UI viewing data)
+			if r.Method == http.MethodPost || r.Method == http.MethodPut {
+				s.db.UpdateAgentLastSeen(agentID)
+			}
 		}
 
 		next.ServeHTTP(w, r)
