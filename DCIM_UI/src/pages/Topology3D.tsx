@@ -415,6 +415,22 @@ function AgentNode({
         </Text>
       </Billboard>
 
+      {/* ── Server name sub-label (distinguishes same-named agents across servers) ── */}
+      {node.serverName && (
+        <Billboard position={[0, 1.5, 0]}>
+          <Text
+            fontSize={0.6}
+            color="#94a3b8"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.04}
+            outlineColor="#000000"
+          >
+            {node.serverName}
+          </Text>
+        </Billboard>
+      )}
+
       {/* ── Status label for offline ── */}
       {node.status === 'offline' && (
         <Billboard position={[0, -2.2, 0]}>
@@ -807,9 +823,16 @@ export default function Topology3D() {
                 </div>
               )}
 
+              {selectedNode.type === 'agent' && selectedNode.serverName && (
+                <div>
+                  <p className="text-sm text-slate-400">Server</p>
+                  <p className="text-base font-semibold text-purple-400">{selectedNode.serverName}</p>
+                </div>
+              )}
+
               {selectedNode.type === 'agent' && (
                 <button
-                  onClick={() => navigate(`/app/agents/${selectedNode.id}`)}
+                  onClick={() => navigate(`/app/agents/${selectedNode.agentId || selectedNode.id}`)}
                   className="block w-full text-center px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 rounded-lg transition-colors"
                 >
                   View Agent Details

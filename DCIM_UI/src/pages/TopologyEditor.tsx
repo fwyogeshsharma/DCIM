@@ -93,7 +93,7 @@ export default function TopologyEditor() {
     }
 
     const agentNodes: Node[] = agents.map(agent => ({
-      id: agent.agent_id,
+      id: `${agent.server_id}:${agent.agent_id}`,
       name: agent.hostname,
       type: 'agent' as const,
       status: agent.status as 'online' | 'offline',
@@ -102,13 +102,14 @@ export default function TopologyEditor() {
 
     const initialNodes: Node[] = [...serverNodes, ...agentNodes]
 
-    // Each agent links to its own server
+    // Each agent links to its own server (compound IDs avoid collisions across servers)
     const initialLinks: Link[] = agents.map(agent => {
+      const compoundId = `${agent.server_id}:${agent.agent_id}`
       const serverNodeId = serverNodes.find(s => s.id === `server-${agent.server_id}`)?.id || serverNodes[0]?.id
       return {
-        source: agent.agent_id,
+        source: compoundId,
         target: serverNodeId || 'server-unknown',
-        id: `${agent.agent_id}-${serverNodeId}`,
+        id: `${compoundId}-${serverNodeId}`,
       }
     }).filter(l => l.target !== 'server-unknown')
 
