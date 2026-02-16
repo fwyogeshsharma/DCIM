@@ -26,7 +26,7 @@ app.post('/api/proxy/cooling-metrics', (req, res) => {
   const escapedJson = jsonData.replace(/"/g, '\\"');
 
   // Extract agent_id from payload for X-Agent-ID header
-  const agentId = req.body.agent_id || 'System_Sim_1';
+  const agentId = req.body.agent_id || 'JPR_MP_SIM_WIN_HP_SJ_01';
 
   // Build curl command (using double quotes for Windows compatibility)
   const curlCmd = `curl -k --cert "${clientCert}" --key "${clientKey}" --cacert "${caCert}" ` +

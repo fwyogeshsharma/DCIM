@@ -59,8 +59,8 @@ interface SensorData {
 })
 export class SimulatorComponent {
   // Agent information
-  agentId: string = 'System_Sim_1';
-  agentName: string = 'System_Sim_1';
+  agentId: string = 'JPR_MP_SIM_WIN_HP_SJ_01';
+  agentName: string = 'JPR_MP_SIM_WIN_HP_SJ_01';
 
   // System state
   pumpOn: boolean = false;
