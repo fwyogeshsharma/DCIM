@@ -43,6 +43,13 @@ type SNMPMetricsPayload struct {
 	SNMPMetrics []*storage.SNMPMetric  `json:"snmp_metrics"`
 }
 
+type ShutdownNotificationPayload struct {
+	AgentID      string            `json:"agent_id"`
+	ShutdownType string            `json:"shutdown_type"` // graceful, error
+	Reason       string            `json:"reason,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
+}
+
 type Response struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
@@ -344,6 +351,48 @@ func (s *Sender) SendSNMPMetrics(metrics []*storage.SNMPMetric) error {
 	}
 
 	return fmt.Errorf("failed to send SNMP metrics after %d attempts: %w", s.config.RetryAttempts, lastErr)
+}
+
+// SendShutdownNotification sends a graceful shutdown notification to the server
+func (s *Sender) SendShutdownNotification(shutdownType string, reason string) error {
+	payload := ShutdownNotificationPayload{
+		AgentID:      s.agentID,
+		ShutdownType: shutdownType,
+		Reason:       reason,
+		Metadata:     make(map[string]string),
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal shutdown notification: %w", err)
+	}
+
+	url := s.config.URL + "/agent/shutdown"
+
+	// Try to send shutdown notification (with limited retries since we're shutting down)
+	maxAttempts := 2 // Only try twice during shutdown
+	var lastErr error
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(500 * time.Millisecond) // Shorter retry delay during shutdown
+		}
+
+		resp, err := s.sendRequest("POST", url, data)
+		if err == nil && resp.Success {
+			s.logger.Infof("Shutdown notification sent successfully (type: %s)", shutdownType)
+			return nil
+		}
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = fmt.Errorf("server returned error: %s", resp.Error)
+		}
+	}
+
+	// Don't fail the shutdown if notification fails - just log it
+	s.logger.Warnf("Failed to send shutdown notification after %d attempts: %v", maxAttempts, lastErr)
+	return lastErr
 }
 
 // sendRequest sends an HTTP request and parses the response

@@ -1,14 +1,14 @@
 DCIM Server - linux/amd64 Build
 
 Version: 1.0.0
-Built: 2026-02-16 14:21:04
+Built: 2026-02-17 16:16:13
 Server: JPR_MP_SERVER_WIN_HP_AS_01
 
 Files Included:
 - dcim-server (server executable)
 - config.yaml (configuration template)
 - cooling_config.yaml (Included)
-- migrations/ (Included (4 migration files))
+- migrations/ (Included (6 migration files))
 - license.json (Included)
 - certs/ (Included for server: JPR_MP_SERVER_WIN_HP_AS_01)
 

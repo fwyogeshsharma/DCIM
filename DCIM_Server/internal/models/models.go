@@ -8,24 +8,28 @@ import (
 
 // Agent represents a monitoring agent
 type Agent struct {
-	ID               int64     `json:"id" db:"id"`
-	AgentID          string    `json:"agent_id" db:"agent_id"`                   // Unique agent identifier
-	ServerID         string    `json:"server_id" db:"server_id"`                 // Server this agent belongs to
-	CertificateCN    string    `json:"certificate_cn" db:"certificate_cn"`       // Client certificate CN
-	Hostname         string    `json:"hostname" db:"hostname"`
-	IPAddress        string    `json:"ip_address" db:"ip_address"`
-	Status           string    `json:"status" db:"status"`                       // online, offline, pending
-	Group            string    `json:"group" db:"group"`
-	LastSeen         time.Time `json:"last_seen" db:"last_seen"`
-	FirstSeen        time.Time `json:"first_seen" db:"first_seen"`
-	RegisteredAt     time.Time `json:"registered_at" db:"registered_at"`
-	ApprovedAt       *time.Time `json:"approved_at,omitempty" db:"approved_at"`
-	Approved         bool      `json:"approved" db:"approved"`
-	TotalMetrics     int64     `json:"total_metrics" db:"total_metrics"`
-	TotalAlerts      int64     `json:"total_alerts" db:"total_alerts"`
-	Metadata         JSONMap   `json:"metadata,omitempty" db:"metadata"`
-	CreatedAt        time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
+	ID                   int64          `json:"id" db:"id"`
+	AgentID              string         `json:"agent_id" db:"agent_id"`                   // Unique agent identifier
+	ServerID             string         `json:"server_id" db:"server_id"`                 // Server this agent belongs to
+	CertificateCN        string         `json:"certificate_cn" db:"certificate_cn"`       // Client certificate CN
+	Hostname             string         `json:"hostname" db:"hostname"`
+	IPAddress            string         `json:"ip_address" db:"ip_address"`
+	Status               string         `json:"status" db:"status"`                       // online, offline, degraded, pending
+	Group                string         `json:"group" db:"group"`
+	LastSeen             time.Time      `json:"last_seen" db:"last_seen"`
+	PreviousSeen         *time.Time     `json:"previous_seen,omitempty" db:"previous_seen"`
+	FirstSeen            time.Time      `json:"first_seen" db:"first_seen"`
+	RegisteredAt         time.Time      `json:"registered_at" db:"registered_at"`
+	ApprovedAt           *time.Time     `json:"approved_at,omitempty" db:"approved_at"`
+	Approved             bool           `json:"approved" db:"approved"`
+	TotalMetrics         int64          `json:"total_metrics" db:"total_metrics"`
+	TotalAlerts          int64          `json:"total_alerts" db:"total_alerts"`
+	LastResponseTime     *time.Duration `json:"last_response_time,omitempty" db:"last_response_time"`
+	AvgResponseTime      *time.Duration `json:"avg_response_time,omitempty" db:"avg_response_time"`
+	ConsecutiveSlowCount int            `json:"consecutive_slow_count" db:"consecutive_slow_count"`
+	Metadata             JSONMap        `json:"metadata,omitempty" db:"metadata"`
+	CreatedAt            time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time      `json:"updated_at" db:"updated_at"`
 }
 
 // Metric represents a system metric
@@ -79,6 +83,18 @@ type AgentStatus struct {
 	Timestamp time.Time `json:"timestamp" db:"timestamp"`
 	Reason    string    `json:"reason,omitempty" db:"reason"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+// ShutdownEvent represents an agent shutdown event
+type ShutdownEvent struct {
+	ID           int64     `json:"id" db:"id"`
+	AgentID      string    `json:"agent_id" db:"agent_id"`
+	ServerID     string    `json:"server_id" db:"server_id"`
+	ShutdownType string    `json:"shutdown_type" db:"shutdown_type"` // graceful, unexpected, error
+	ShutdownTime time.Time `json:"shutdown_time" db:"shutdown_time"`
+	Reason       string    `json:"reason,omitempty" db:"reason"`
+	Metadata     JSONMap   `json:"metadata,omitempty" db:"metadata"`
+	CreatedAt    time.Time `json:"created_at" db:"created_at"`
 }
 
 // License represents a license entry
@@ -211,4 +227,12 @@ type AgentRegistrationRequest struct {
 	Hostname  string            `json:"hostname"`
 	IPAddress string            `json:"ip_address"`
 	Metadata  map[string]string `json:"metadata,omitempty"`
+}
+
+// AgentShutdownRequest represents agent graceful shutdown notification
+type AgentShutdownRequest struct {
+	AgentID      string            `json:"agent_id"`
+	ShutdownType string            `json:"shutdown_type"` // graceful, error
+	Reason       string            `json:"reason,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
 }

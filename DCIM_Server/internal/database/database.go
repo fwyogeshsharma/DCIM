@@ -117,6 +117,52 @@ func (d *Database) preparePlaceholders(query string) string {
 	return result
 }
 
+// parsePostgresInterval parses a PostgreSQL interval string to time.Duration
+// Example formats: "00:01:30", "1 day", "2 days 03:45:12"
+func parsePostgresInterval(interval string) (time.Duration, error) {
+	if interval == "" {
+		return 0, nil
+	}
+
+	// PostgreSQL interval format can vary, but for our use case we primarily get
+	// formats like "00:01:30" or "1 day 00:01:30"
+	// We'll use a simple parser for the common cases
+
+	// Try parsing as simple duration (works for hours:minutes:seconds)
+	if d, err := time.ParseDuration(interval); err == nil {
+		return d, nil
+	}
+
+	// For PostgreSQL intervals like "00:01:30", convert to Go duration format
+	// by replacing colons and adding unit suffixes
+	var totalDuration time.Duration
+
+	// Simple regex-free parser for "HH:MM:SS" format
+	parts := make([]rune, 0)
+	for _, r := range interval {
+		if r >= '0' && r <= '9' {
+			parts = append(parts, r)
+		} else if r == ':' {
+			parts = append(parts, ':')
+		}
+	}
+
+	str := string(parts)
+	if len(str) > 0 {
+		// Try to parse as HH:MM:SS
+		var hours, minutes, seconds int
+		n, _ := fmt.Sscanf(str, "%d:%d:%d", &hours, &minutes, &seconds)
+		if n >= 2 {
+			totalDuration = time.Duration(hours)*time.Hour +
+				time.Duration(minutes)*time.Minute +
+				time.Duration(seconds)*time.Second
+			return totalDuration, nil
+		}
+	}
+
+	return 0, fmt.Errorf("unable to parse interval: %s", interval)
+}
+
 // InitSchema creates database tables if they don't exist
 func (d *Database) InitSchema() error {
 	schema := d.getSchema()
@@ -654,13 +700,18 @@ func (d *Database) RegisterAgent(agent *models.Agent) error {
 func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 	query := d.preparePlaceholders(`
 		SELECT id, agent_id, server_id, certificate_cn, hostname, ip_address,
-		       status, group_name, last_seen, first_seen, registered_at, approved_at,
-		       approved, total_metrics, total_alerts, metadata, created_at, updated_at
+		       status, group_name, last_seen, previous_seen, first_seen, registered_at, approved_at,
+		       approved, total_metrics, total_alerts, last_response_time, avg_response_time,
+		       consecutive_slow_count, metadata, created_at, updated_at
 		FROM agents WHERE agent_id = ?
 	`)
 
 	var agent models.Agent
 	var approvedAt sql.NullTime
+	var previousSeen sql.NullTime
+	var lastResponseTime sql.NullString
+	var avgResponseTime sql.NullString
+
 	err := d.db.QueryRow(query, agentID).Scan(
 		&agent.ID,
 		&agent.AgentID,
@@ -671,12 +722,16 @@ func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 		&agent.Status,
 		&agent.Group,
 		&agent.LastSeen,
+		&previousSeen,
 		&agent.FirstSeen,
 		&agent.RegisteredAt,
 		&approvedAt,
 		&agent.Approved,
 		&agent.TotalMetrics,
 		&agent.TotalAlerts,
+		&lastResponseTime,
+		&avgResponseTime,
+		&agent.ConsecutiveSlowCount,
 		&agent.Metadata,
 		&agent.CreatedAt,
 		&agent.UpdatedAt,
@@ -692,6 +747,23 @@ func (d *Database) GetAgent(agentID string) (*models.Agent, error) {
 	// Convert sql.NullTime to *time.Time
 	if approvedAt.Valid {
 		agent.ApprovedAt = &approvedAt.Time
+	}
+	if previousSeen.Valid {
+		agent.PreviousSeen = &previousSeen.Time
+	}
+
+	// Convert interval strings to *time.Duration
+	if lastResponseTime.Valid {
+		duration, err := parsePostgresInterval(lastResponseTime.String)
+		if err == nil {
+			agent.LastResponseTime = &duration
+		}
+	}
+	if avgResponseTime.Valid {
+		duration, err := parsePostgresInterval(avgResponseTime.String)
+		if err == nil {
+			agent.AvgResponseTime = &duration
+		}
 	}
 
 	return &agent, nil
@@ -744,8 +816,69 @@ func (d *Database) GetAgentByHostname(hostname string) (*models.Agent, error) {
 // UpdateAgentLastSeen updates the agent's last seen timestamp
 func (d *Database) UpdateAgentLastSeen(agentID string) error {
 	now := time.Now().UTC()
-	query := d.preparePlaceholders(`UPDATE agents SET last_seen = ?, updated_at = ? WHERE agent_id = ?`)
-	_, err := d.db.Exec(query, now, now, agentID)
+
+	// Get current agent data to calculate response time
+	agent, err := d.GetAgent(agentID)
+	if err != nil {
+		// Agent doesn't exist yet, just update timestamp
+		query := d.preparePlaceholders(`UPDATE agents SET last_seen = ?, updated_at = ? WHERE agent_id = ?`)
+		_, err := d.db.Exec(query, now, now, agentID)
+		return err
+	}
+
+	// Calculate response time (interval since last heartbeat)
+	var responseTime *time.Duration
+	var previousSeen *time.Time
+
+	if !agent.LastSeen.IsZero() {
+		interval := now.Sub(agent.LastSeen)
+		responseTime = &interval
+		previousSeen = &agent.LastSeen
+	}
+
+	// Calculate rolling average response time (simple moving average of last 10 responses)
+	var avgResponseTime *time.Duration
+	if responseTime != nil {
+		if agent.AvgResponseTime != nil {
+			// Exponential moving average: new_avg = 0.7 * old_avg + 0.3 * new_value
+			newAvg := time.Duration(float64(*agent.AvgResponseTime)*0.7 + float64(*responseTime)*0.3)
+			avgResponseTime = &newAvg
+		} else {
+			avgResponseTime = responseTime
+		}
+	}
+
+	// Calculate consecutive slow count
+	// Expected interval is based on average response time or a default of 30 seconds
+	var newSlowCount int
+	if responseTime != nil && avgResponseTime != nil {
+		// Consider "slow" if current response is > 1.5x average
+		slowThreshold := time.Duration(float64(*avgResponseTime) * 1.5)
+		if *responseTime > slowThreshold {
+			// Response is slow - increment counter
+			newSlowCount = agent.ConsecutiveSlowCount + 1
+		} else {
+			// Response is normal - reset counter
+			newSlowCount = 0
+		}
+	} else {
+		// No baseline yet, keep current count
+		newSlowCount = agent.ConsecutiveSlowCount
+	}
+
+	// Update agent with response time metrics and previous_seen
+	query := d.preparePlaceholders(`
+		UPDATE agents
+		SET last_seen = ?,
+		    previous_seen = ?,
+		    last_response_time = ?,
+		    avg_response_time = ?,
+		    consecutive_slow_count = ?,
+		    updated_at = ?
+		WHERE agent_id = ?
+	`)
+
+	_, err = d.db.Exec(query, now, previousSeen, responseTime, avgResponseTime, newSlowCount, now, agentID)
 	return err
 }
 
@@ -762,6 +895,19 @@ func (d *Database) UpdateAgentStatus(agentID string, status string) (*models.Age
 	return d.GetAgent(agentID)
 }
 
+// UpdateAgentSlowCount updates the consecutive slow count for an agent
+func (d *Database) UpdateAgentSlowCount(agentID string, count int) error {
+	now := time.Now().UTC()
+	query := d.preparePlaceholders(`UPDATE agents SET consecutive_slow_count = ?, updated_at = ? WHERE agent_id = ?`)
+	_, err := d.db.Exec(query, count, now, agentID)
+	return err
+}
+
+// ResetAgentSlowCount resets the consecutive slow count to zero
+func (d *Database) ResetAgentSlowCount(agentID string) error {
+	return d.UpdateAgentSlowCount(agentID, 0)
+}
+
 // ResolveAgentOfflineAlerts resolves all offline alerts for a specific agent
 func (d *Database) ResolveAgentOfflineAlerts(agentID string) error {
 	now := time.Now()
@@ -774,12 +920,73 @@ func (d *Database) ResolveAgentOfflineAlerts(agentID string) error {
 	return err
 }
 
+// RecordShutdownEvent records an agent shutdown event
+func (d *Database) RecordShutdownEvent(event *models.ShutdownEvent) error {
+	now := time.Now().UTC()
+	event.CreatedAt = now
+
+	query := d.preparePlaceholders(`
+		INSERT INTO agent_shutdown_events (agent_id, server_id, shutdown_type, shutdown_time, reason, metadata, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`)
+
+	_, err := d.db.Exec(query,
+		event.AgentID,
+		event.ServerID,
+		event.ShutdownType,
+		event.ShutdownTime,
+		event.Reason,
+		event.Metadata,
+		event.CreatedAt,
+	)
+	return err
+}
+
+// GetRecentShutdownEvent checks if there was a recent graceful shutdown for an agent
+// Returns the most recent shutdown event within the specified time window
+func (d *Database) GetRecentShutdownEvent(agentID string, within time.Duration) (*models.ShutdownEvent, error) {
+	threshold := time.Now().UTC().Add(-within)
+
+	query := d.preparePlaceholders(`
+		SELECT id, agent_id, server_id, shutdown_type, shutdown_time, reason, metadata, created_at
+		FROM agent_shutdown_events
+		WHERE agent_id = ? AND shutdown_time >= ?
+		ORDER BY shutdown_time DESC
+		LIMIT 1
+	`)
+
+	var event models.ShutdownEvent
+	var metadata models.JSONMap
+
+	err := d.db.QueryRow(query, agentID, threshold).Scan(
+		&event.ID,
+		&event.AgentID,
+		&event.ServerID,
+		&event.ShutdownType,
+		&event.ShutdownTime,
+		&event.Reason,
+		&metadata,
+		&event.CreatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // No recent shutdown event found
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	event.Metadata = metadata
+	return &event, nil
+}
+
 // GetAllAgents retrieves all agents
 func (d *Database) GetAllAgents() ([]models.Agent, error) {
 	query := `
 		SELECT id, agent_id, server_id, certificate_cn, hostname, ip_address,
-		       status, group_name, last_seen, first_seen, registered_at, approved_at,
-		       approved, total_metrics, total_alerts, metadata, created_at, updated_at
+		       status, group_name, last_seen, previous_seen, first_seen, registered_at, approved_at,
+		       approved, total_metrics, total_alerts, last_response_time, avg_response_time,
+		       consecutive_slow_count, metadata, created_at, updated_at
 		FROM agents ORDER BY last_seen DESC
 	`
 
@@ -793,6 +1000,10 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 	for rows.Next() {
 		var agent models.Agent
 		var approvedAt sql.NullTime
+		var previousSeen sql.NullTime
+		var lastResponseTime sql.NullString
+		var avgResponseTime sql.NullString
+
 		err := rows.Scan(
 			&agent.ID,
 			&agent.AgentID,
@@ -803,12 +1014,16 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 			&agent.Status,
 			&agent.Group,
 			&agent.LastSeen,
+			&previousSeen,
 			&agent.FirstSeen,
 			&agent.RegisteredAt,
 			&approvedAt,
 			&agent.Approved,
 			&agent.TotalMetrics,
 			&agent.TotalAlerts,
+			&lastResponseTime,
+			&avgResponseTime,
+			&agent.ConsecutiveSlowCount,
 			&agent.Metadata,
 			&agent.CreatedAt,
 			&agent.UpdatedAt,
@@ -820,6 +1035,23 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 		// Convert sql.NullTime to *time.Time
 		if approvedAt.Valid {
 			agent.ApprovedAt = &approvedAt.Time
+		}
+		if previousSeen.Valid {
+			agent.PreviousSeen = &previousSeen.Time
+		}
+
+		// Convert interval strings to *time.Duration
+		if lastResponseTime.Valid {
+			duration, err := parsePostgresInterval(lastResponseTime.String)
+			if err == nil {
+				agent.LastResponseTime = &duration
+			}
+		}
+		if avgResponseTime.Valid {
+			duration, err := parsePostgresInterval(avgResponseTime.String)
+			if err == nil {
+				agent.AvgResponseTime = &duration
+			}
 		}
 
 		agents = append(agents, agent)

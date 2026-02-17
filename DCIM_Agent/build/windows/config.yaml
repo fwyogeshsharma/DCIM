@@ -32,9 +32,9 @@ server:
 # Agent settings
 agent:
   # Unique identifier for this agent (auto-generated if empty)
-  id: "JPR_MP_AGENT_WIN_HP_AY_01"
+  id: ""
   # Human-readable name for this machine
-  name: "JPR_MP_AGENT_WIN_HP_AY_01"
+  name: ""
   # Metrics collection interval (collect every 30 seconds for more detail)
   collect_interval: 30s
   # Normal metrics send interval (send every 2 minutes for real-time monitoring)
