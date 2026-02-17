@@ -130,6 +130,13 @@ func (a *Agent) Stop() {
 	a.runningMutex.Unlock()
 
 	a.logger.Infof("Agent stopping...")
+
+	// Send graceful shutdown notification to server
+	// Do this BEFORE stopping goroutines so sender is still alive
+	if err := a.sender.SendShutdownNotification("graceful", "User-initiated shutdown"); err != nil {
+		a.logger.Warnf("Failed to send shutdown notification: %v", err)
+	}
+
 	close(a.stopCh)
 
 	// Wait for goroutines with timeout

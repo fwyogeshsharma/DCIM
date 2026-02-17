@@ -1,0 +1,1553 @@
+ALL FEEDBACK POINTS FOR YOUR REVIEW & APPROVAL
+
+  ---
+  🎯 SECTION 1: PAYLOAD DESIGN DECISIONS
+
+  1.1 PAYLOAD VERSION STRATEGY
+
+  OPTION A: Start Simple, Enhance Later (RECOMMENDED)
+
+  Use Current Simulator Payload Initially:
+  {
+    "agent_id": "System_Sim_1",
+    "agent_name": "System_Sim_1",
+    "pump": {"isOn": true, "status": "Coolant liquid is flowing"},
+    "cpu": {"isOn": true},
+    "condenser": {"isOn": true},
+    "inlet": {"temperature": 8, "pressure": 20, "leak": true},
+    "outlet": {"temperature": 55, "pressure": 20, "leak": false},
+    "timestamp": "2026-02-11T10:17:56.817Z"
+  }
+
+  ✅ PROS:
+  - Matches existing simulator immediately
+  - Faster initial implementation
+  - Can test core functionality quickly
+  - Backward compatible when we add fields
+
+  ❌ CONS:
+  - Missing critical data (flow rate, coolant level, RPM)
+  - Limited diagnostic capabilities
+  - May need to refactor simulator later
+
+  ---
+  OPTION B: Enhanced Payload from Day 1
+
+  Require Full Sensor Data:
+  {
+    "agent_id": "System_Sim_1",
+    "agent_name": "System_Sim_1",
+    "timestamp": "2026-02-11T10:17:56.817Z",
+    "pump": {
+      "is_on": true,
+      "rpm": 2400,
+      "power_watts": 120.5,
+      "status": "running",
+      "vibration_level": 0.2
+    },
+    "cpu": {
+      "is_on": true,
+      "load_percentage": 75.3,
+      "core_count": 8,
+      "tdp_watts": 125
+    },
+    "condenser": {
+      "is_on": true,
+      "fan_rpm": 1800,
+      "efficiency_percentage": 92.5,
+      "ambient_temperature": 22.0
+    },
+    "coolant": {
+      "type": "water_glycol_50_50",
+      "level_percentage": 95.0,
+      "flow_rate_lpm": 15.5,
+      "temperature_unit": "celsius"
+    },
+    "inlet": {
+      "temperature": 8.0,
+      "pressure": 20.0,
+      "pressure_unit": "psi",
+      "leak_detected": false,
+      "leak_rate_mlpm": 0.0
+    },
+    "outlet": {
+      "temperature": 55.0,
+      "pressure": 18.5,
+      "pressure_unit": "psi",
+      "leak_detected": false,
+      "leak_rate_mlpm": 0.0
+    },
+    "system": {
+      "overall_health": "warning",
+      "error_codes": ["TEMP_HIGH"],
+      "runtime_hours": 1520.5,
+      "maintenance_due": false
+    }
+  }
+
+  ✅ PROS:
+  - Complete monitoring from start
+  - Better alerting accuracy
+  - Production-ready diagnostics
+  - No future refactoring needed
+
+  ❌ CONS:
+  - Simulator needs updates first
+  - More complex initial implementation
+  - May delay testing
+
+  ---
+  OPTION C: Hybrid Approach (BEST COMPROMISE)
+
+  Required Fields + Optional Enhanced Fields:
+
+  Required (Minimum Viable):
+  - agent_id, agent_name, timestamp
+  - pump.isOn, cpu.isOn, condenser.isOn
+  - inlet/outlet: temperature, pressure
+  - inlet/outlet: leak (boolean)
+
+  Optional (Enhanced):
+  - pump: rpm, power_watts, vibration
+  - cpu: load_percentage, core_count
+  - coolant: level, flow_rate, type
+  - system: health, error_codes
+
+  ✅ PROS:
+  - Works with current simulator
+  - Graceful enhancement path
+  - Validates optional fields if present
+  - Simulator can add fields incrementally
+
+  ❌ CONS:
+  - Alerts less accurate without optional data
+  - Need to handle both simple/complex cases
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Which option do you prefer?
+  - A: Simple payload (match current simulator)
+  - B: Enhanced payload (update simulator first)
+  - C: Hybrid (required + optional fields) ✅ RECOMMENDED
+
+  ---
+  1.2 FIELD NAMING CONVENTION
+
+  Current Simulator Uses:
+
+  - isOn (camelCase)
+  - leak (boolean)
+  - Mixed conventions
+
+  Backend Standards (from existing code):
+
+  - Go uses CamelCase for exported fields
+  - JSON uses snake_case in responses
+  - Database uses snake_case
+
+  OPTIONS:
+
+  OPTION A: Keep Simulator Format (camelCase)
+  {"pump": {"isOn": true}}
+  Mapping: IsOn in Go, is_on in DB
+
+  OPTION B: Standardize to snake_case
+  {"pump": {"is_on": true}}
+  Requires: Simulator update
+
+  OPTION C: Accept Both (using JSON tags)
+  type PumpData struct {
+      IsOn bool `json:"isOn,omitempty" db:"is_on"`  // Accept camelCase
+      // OR
+      IsOn bool `json:"is_on,omitempty" db:"is_on"`  // Accept snake_case
+  }
+
+  🔹 DECISION NEEDED:
+
+  Preferred naming convention:
+  - A: Keep simulator's camelCase
+  - B: Standardize to snake_case
+  - C: Accept both ✅ RECOMMENDED
+
+  ---
+  1.3 UNITS SPECIFICATION
+
+  CRITICAL DECISION: How to Handle Units?
+
+  OPTION A: Assume Fixed Units (Hardcoded)
+  - Temperature: Always Celsius
+  - Pressure: Always PSI
+  - Flow: Always LPM
+  - No unit field in payload
+
+  ✅ PROS: Simpler parsing
+  ❌ CONS: Not flexible, assumes single datacenter standard
+
+  ---
+  OPTION B: Unit Field Required
+  {
+    "inlet": {
+      "temperature": 8.0,
+      "temperature_unit": "celsius",
+      "pressure": 20.0,
+      "pressure_unit": "psi"
+    }
+  }
+
+  ✅ PROS: Flexible, multi-region support
+  ❌ CONS: More validation, need conversion logic
+
+  ---
+  OPTION C: Global Unit Declaration
+  {
+    "units": {
+      "temperature": "celsius",
+      "pressure": "psi",
+      "flow_rate": "lpm"
+    },
+    "inlet": {
+      "temperature": 8.0,
+      "pressure": 20.0
+    }
+  }
+
+  ✅ PROS: DRY (don't repeat), cleaner payload
+  ❌ CONS: Must validate consistency
+
+  ---
+  SUPPORTED UNIT CONVERSIONS:
+
+  Temperature:
+  - Celsius ↔ Fahrenheit ↔ Kelvin
+  - Formula: F = (C × 9/5) + 32
+  - Should server auto-convert?
+
+  Pressure:
+  - PSI ↔ Bar ↔ kPa ↔ Pa
+  - 1 PSI = 0.0689476 Bar
+  - Should server auto-convert?
+
+  Flow Rate:
+  - LPM (liters/min) ↔ GPM (gallons/min) ↔ m³/h
+  - 1 LPM = 0.264172 GPM
+
+  ---
+  🔹 DECISION NEEDED:
+
+  1. Preferred approach:
+    - A: Fixed units (no unit field)
+    - B: Per-field unit specification
+    - C: Global unit declaration ✅ RECOMMENDED
+  2. Standard units for your datacenter:
+    - Temperature: [ ] Celsius [ ] Fahrenheit [ ] Kelvin
+    - Pressure: [ ] PSI [ ] Bar [ ] kPa
+    - Flow: [ ] LPM [ ] GPM
+  3. Should server auto-convert units?
+    - Yes - store in standard unit, accept any
+    - No - reject if wrong unit
+    - Accept but store as-is with unit metadata
+
+  ---
+  1.4 LEAK DETECTION GRANULARITY
+
+  Current Simulator:
+
+  "leak": true  // Boolean only
+
+  PRODUCTION OPTIONS:
+
+  OPTION A: Boolean Only (Simple)
+  "leak_detected": false
+  Use Case: Basic on/off leak sensor
+
+  ---
+  OPTION B: Leak Rate (Quantified)
+  "leak_detected": true,
+  "leak_rate_mlpm": 12.5  // milliliters per minute
+  Use Case: Flow meter measures leak severity
+
+  ---
+  OPTION C: Leak Location + Severity
+  "leaks": [
+    {
+      "location": "inlet",
+      "severity": "minor",
+      "rate_mlpm": 5.0,
+      "detected_at": "2026-02-11T10:15:00Z"
+    }
+  ]
+  Use Case: Multiple leak sensors at different points
+
+  ---
+  OPTION D: Leak Probability (Inferred)
+  "leak_probability": 0.75,  // 75% likely based on pressure drop
+  "leak_indicators": {
+    "pressure_drop_rate": 2.5,  // PSI per minute
+    "coolant_level_drop": 1.2   // % per hour
+  }
+  Use Case: No physical leak sensor, infer from other metrics
+
+  ---
+  🔹 DECISION NEEDED:
+
+  How sophisticated should leak detection be?
+  - A: Boolean only (simple) ✅ START HERE
+  - B: Boolean + leak rate
+  - C: Multiple leak locations
+  - D: Probabilistic inference
+
+  ---
+  🎯 SECTION 2: THRESHOLD CONFIGURATION
+
+  2.1 THRESHOLD VALUES VALIDATION
+
+  PROPOSED THRESHOLDS - ARE THESE REALISTIC?
+
+  Temperature (Celsius):
+  inlet_max_condenser_on: 10.0        # Too strict? Should be 12-15°C?
+  outlet_max_normal: 50.0             # Typical? Or should be 55°C?
+  outlet_max_critical: 60.0           # Emergency at 70°C?
+  delta_min_cpu_on: 3.0               # Realistic for low-power CPUs?
+  delta_max_normal: 25.0              # Or should be 20°C?
+  tolerance: 2.0                      # ±2°C enough? Or ±5°C?
+
+  Pressure (PSI):
+  normal_min: 40.0                    # Typical for closed loop?
+  normal_max: 60.0                    # Or wider range 30-70?
+  ideal_operating: 50.0               # Standard for your systems?
+  pump_off_threshold: 5.0             # Residual pressure acceptable?
+  inlet_outlet_diff_max: 5.0          # Or allow 10 PSI drop?
+
+  Flow Rate (LPM):
+  min_normal: 10.0                    # For how many CPUs?
+  max_normal: 20.0                    # Pump capacity?
+  min_critical: 5.0                   # Below this = emergency?
+
+  Coolant Level (%):
+  level_min_normal: 80.0              # Or 85%?
+  level_min_critical: 60.0            # Or 70%?
+
+  Pump RPM:
+  rpm_min: 2000                       # Your pump specs?
+  rpm_max: 3000                       # Max safe RPM?
+  rpm_critical_low: 1500              # Failure threshold?
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Please provide actual values from:
+  1. Pump specifications:
+    - Model/Manufacturer: ___________
+    - Rated RPM range: ___________
+    - Flow rate at rated speed: ___________ LPM
+    - Operating pressure range: ___________ PSI
+  2. Heat load:
+    - CPU TDP: ___________ Watts
+    - Expected heat dissipation: ___________ kW
+    - Number of CPUs per loop: ___________
+  3. Operational experience:
+    - Typical inlet temp: ___________ °C
+    - Typical outlet temp: ___________ °C
+    - Typical pressure: ___________ PSI
+    - Acceptable pressure drop: ___________ PSI
+  4. Safety margins:
+    - How conservative should thresholds be?
+        - Very strict (±5% tolerance)
+      - Moderate (±10% tolerance) ✅ RECOMMENDED
+      - Relaxed (±20% tolerance)
+
+  ---
+  2.2 THRESHOLD OVERRIDE STRATEGY
+
+  QUESTION: Should different agents have different thresholds?
+
+  SCENARIO:
+  - Agent A monitors high-performance server (TDP 250W)
+  - Agent B monitors low-power edge server (TDP 65W)
+  - Agent C monitors test environment
+
+  Should they share same thresholds?
+
+  ---
+  OPTION A: Global Thresholds Only (Simple)
+  # config/cooling_config.yaml
+  cooling:
+    temperature:
+      outlet_max_normal: 50.0  # Same for ALL agents
+
+  ✅ PROS: Simple, consistent, easy to manage
+  ❌ CONS: Not flexible, one-size-fits-all
+
+  ---
+  OPTION B: Per-Agent Overrides
+  # config/cooling_config.yaml
+  cooling:
+    temperature:
+      outlet_max_normal: 50.0  # Default
+
+    agent_overrides:
+      "System_Sim_1":
+        temperature:
+          outlet_max_normal: 55.0  # Higher threshold for high-power system
+      "EdgeServer_01":
+        temperature:
+          outlet_max_normal: 45.0  # Stricter for edge devices
+
+  ✅ PROS: Flexible, per-system tuning
+  ❌ CONS: More complex config, harder to maintain
+
+  ---
+  OPTION C: Group-Based Thresholds
+  cooling:
+    threshold_groups:
+      high_performance:
+        temperature:
+          outlet_max_normal: 60.0
+
+      standard:
+        temperature:
+          outlet_max_normal: 50.0
+
+      edge_devices:
+        temperature:
+          outlet_max_normal: 45.0
+
+    agent_groups:
+      "System_Sim_1": "high_performance"
+      "EdgeServer_01": "edge_devices"
+
+  ✅ PROS: Scalable, group management
+  ❌ CONS: Extra configuration layer
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Threshold strategy:
+  - A: Global only (simple) ✅ RECOMMENDED FOR V1
+  - B: Per-agent overrides
+  - C: Group-based thresholds
+  - D: Combination (global + overrides)
+
+  ---
+  2.3 DYNAMIC THRESHOLD ADJUSTMENT
+
+  QUESTION: Should thresholds adapt based on conditions?
+
+  EXAMPLE SCENARIOS:
+
+  Scenario 1: Ambient Temperature
+  - Summer (datacenter 25°C) → Allow higher outlet temp
+  - Winter (datacenter 18°C) → Expect lower outlet temp
+
+  Scenario 2: CPU Load
+  - CPU at 10% load → Expect minimal ΔT
+  - CPU at 100% load → Expect max ΔT
+
+  Scenario 3: Time-Based
+  - Peak hours (9AM-5PM) → Strict thresholds
+  - Off-hours → Relaxed thresholds
+
+  ---
+  OPTION A: Static Thresholds Only
+  - Fixed values, never change
+  - Simple, predictable
+
+  OPTION B: Conditional Thresholds
+  temperature:
+    outlet_max_normal:
+      cpu_load_high: 60.0    # If CPU > 80%
+      cpu_load_normal: 50.0  # If CPU 20-80%
+      cpu_load_idle: 45.0    # If CPU < 20%
+
+  OPTION C: Machine Learning Baseline
+  - Learn "normal" behavior over time
+  - Alert on anomalies (statistical deviation)
+  - Requires historical data
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Threshold adjustment:
+  - A: Static only (simple) ✅ RECOMMENDED FOR V1
+  - B: Conditional (based on CPU load/ambient)
+  - C: ML-based anomaly detection (future)
+
+  ---
+  🎯 SECTION 3: ALERT LOGIC REVIEW
+
+  3.1 ALERT SEVERITY LEVELS
+
+  CURRENT PROPOSAL: 4 Levels
+  ┌───────────┬─────────────────────────────┬────────────────────────────────────────┐
+  │   Level   │            Usage            │                Examples                │
+  ├───────────┼─────────────────────────────┼────────────────────────────────────────┤
+  │ EMERGENCY │ Immediate shutdown required │ Outlet > 70°C, Coolant < 50%           │
+  ├───────────┼─────────────────────────────┼────────────────────────────────────────┤
+  │ CRITICAL  │ System failure imminent     │ Outlet > 60°C, Pressure < 30 PSI       │
+  ├───────────┼─────────────────────────────┼────────────────────────────────────────┤
+  │ WARNING   │ Degraded performance        │ Outlet > 50°C, Pressure outside normal │
+  ├───────────┼─────────────────────────────┼────────────────────────────────────────┤
+  │ INFO      │ State changes               │ Pump turned on, System normalized      │
+  └───────────┴─────────────────────────────┴────────────────────────────────────────┘
+  ---
+  ALTERNATIVE: 3 Levels (Simpler)
+  ┌──────────┬──────────────────────┬───────────────────────┐
+  │  Level   │        Usage         │       Examples        │
+  ├──────────┼──────────────────────┼───────────────────────┤
+  │ CRITICAL │ Urgent action needed │ Any failure condition │
+  ├──────────┼──────────────────────┼───────────────────────┤
+  │ WARNING  │ Monitor closely      │ Approaching limits    │
+  ├──────────┼──────────────────────┼───────────────────────┤
+  │ INFO     │ Informational        │ State changes         │
+  └──────────┴──────────────────────┴───────────────────────┘
+  ---
+  🔹 DECISION NEEDED:
+
+  Alert severity levels:
+  - 4 levels (EMERGENCY, CRITICAL, WARNING, INFO)
+  - 3 levels (CRITICAL, WARNING, INFO) ✅ RECOMMENDED
+  - 5 levels (add DEBUG level)
+  - Custom levels: ___________
+
+  ---
+  3.2 ALERT DEDUPLICATION
+
+  PROBLEM:
+
+  If outlet temp is 65°C (above 60°C threshold), simulator sends data every 10 seconds:
+  - 10:00:00 → Alert: "Outlet 65°C > 60°C"
+  - 10:00:10 → Alert: "Outlet 65°C > 60°C"  ← DUPLICATE
+  - 10:00:20 → Alert: "Outlet 65°C > 60°C"  ← DUPLICATE
+
+  Result: Database flooded with duplicate alerts
+
+  ---
+  OPTION A: No Deduplication (Store All)
+  // Insert every alert every time
+  db.InsertAlerts(alerts)
+  ✅ PROS: Simple, full history
+  ❌ CONS: Database bloat, alert fatigue
+
+  ---
+  OPTION B: Suppress Duplicates (Time-Based)
+  // Only insert if no identical alert in last 5 minutes
+  if !db.AlertExistsRecently(alert, 5*time.Minute) {
+      db.InsertAlerts(alerts)
+  }
+  ✅ PROS: Reduces noise
+  ❌ CONS: May miss rising severity
+
+  ---
+  OPTION C: State-Based Alerts (Edges Only)
+  // Insert only when alert state CHANGES
+  // Rising edge: Normal → Alert
+  // Falling edge: Alert → Normal
+
+  if currentState != previousState {
+      db.InsertAlerts(alerts)
+  }
+  ✅ PROS: Clean, event-driven
+  ❌ CONS: Need state tracking
+
+  ---
+  OPTION D: Update Existing Alert
+  // Find open alert of same type
+  existing := db.GetOpenAlert(alert.MetricType, alert.AgentID)
+  if existing != nil {
+      // Update: increment counter, update timestamp
+      existing.OccurrenceCount++
+      existing.LastSeen = time.Now()
+      db.UpdateAlert(existing)
+  } else {
+      // Create new alert
+      db.InsertAlerts(alerts)
+  }
+  ✅ PROS: Tracks repeated violations
+  ❌ CONS: More complex queries
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Alert deduplication strategy:
+  - A: No deduplication (store all)
+  - B: Time-based suppression (e.g., 5 min)
+  - C: State-change only (edges) ✅ RECOMMENDED
+  - D: Update existing alert (increment counter)
+
+  If B selected, suppression window:
+  - 1 minute
+  - 5 minutes ✅ RECOMMENDED
+  - 15 minutes
+  - Custom: ___________ minutes
+
+  ---
+  3.3 ALERT RESOLUTION LOGIC
+
+  QUESTION: When is an alert "resolved"?
+
+  SCENARIO:
+  1. 10:00 - Alert: "Outlet 65°C > 60°C" (CRITICAL)
+  2. 10:05 - Temperature drops to 58°C (below threshold)
+  3. What happens?
+
+  ---
+  OPTION A: Manual Resolution Only
+  - Alert stays "open" until operator marks as resolved
+  - Requires UI action
+
+  OPTION B: Auto-Resolve When Normal
+  if currentValue < threshold {
+      alert.Resolved = true
+      alert.ResolvedAt = time.Now()
+      db.UpdateAlert(alert)
+
+      // Create INFO alert
+      db.InsertAlert(&Alert{
+          Severity: "INFO",
+          Message: "Outlet temperature normalized: 58°C",
+      })
+  }
+
+  OPTION C: Hysteresis Window
+  // Auto-resolve only if stays normal for N minutes
+  if currentValue < threshold {
+      if normalDuration >= 5*time.Minute {
+          alert.Resolved = true
+      }
+  }
+  Prevents flapping (up/down/up/down)
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Alert resolution:
+  - A: Manual only (operator action)
+  - B: Auto-resolve immediately ✅ RECOMMENDED
+  - C: Auto-resolve with hysteresis window
+
+  If C selected, hysteresis duration:
+  - 2 minutes
+  - 5 minutes
+  - 10 minutes
+  - Custom: ___________ minutes
+
+  ---
+  3.4 ALERT PRIORITY & EDGE CASES
+
+  MULTIPLE SIMULTANEOUS ALERTS:
+
+  SCENARIO:
+  Outlet temp: 65°C (CRITICAL)
+  Pressure: 35 PSI (WARNING)
+  Flow rate: 8 LPM (WARNING)
+  Leak detected: true (CRITICAL)
+
+  QUESTION: Should we:
+  1. Generate 4 separate alerts? ✅
+  2. Combine into 1 "system failure" alert?
+  3. Prioritize highest severity only?
+  4. Create parent/child alert hierarchy?
+
+  ---
+  CONFLICTING SIGNALS:
+
+  SCENARIO A: Leak but Normal Pressure
+  Leak detected: true (CRITICAL)
+  Pressure: 50 PSI (Normal)
+  Possible causes:
+  - False positive leak sensor
+  - Leak is sealed/minor
+  - Pressure sensor failure
+
+  ACTION:
+  - Trust leak sensor → CRITICAL alert
+  - Distrust due to normal pressure → WARNING alert
+  - Generate "sensor conflict" alert ✅ RECOMMENDED
+
+  ---
+  SCENARIO B: Pump OFF but Flow Detected
+  Pump: OFF
+  Flow rate: 5 LPM (detected)
+  Possible causes:
+  - Valve malfunction (gravity flow)
+  - Flow sensor failure
+  - Pump state reporting error
+
+  ACTION:
+  - CRITICAL alert: "Flow without pump - valve issue"
+  - WARNING: "Sensor mismatch detected"
+  - Ignore (assume sensor error)
+
+  ---
+  SCENARIO C: Contradictory Temperatures
+  Inlet: 50°C
+  Outlet: 45°C (LESS than inlet)
+  CPU: ON (100% load)
+  Physically impossible - outlet should be hotter
+
+  ACTION:
+  - CRITICAL: "Reverse temperature detected - sensor failure"
+  - Reject entire payload as invalid
+  - Swap inlet/outlet (auto-correct) ❌ DANGEROUS
+
+  ---
+  🔹 DECISION NEEDED:
+
+  1. Multiple alerts:
+    - Separate alerts for each condition ✅ RECOMMENDED
+    - Combine into summary alert
+    - Highest severity only
+  2. Conflicting sensor handling:
+    - Trust primary sensor
+    - Generate sensor conflict alert ✅ RECOMMENDED
+    - Reject payload as invalid
+  3. Physically impossible values:
+    - Generate "sensor failure" CRITICAL alert ✅ RECOMMENDED
+    - Reject entire payload
+    - Accept but flag for review
+
+  ---
+  3.5 MISSING ALERT CONDITIONS?
+
+  REVIEW ALL 20+ ALERT CONDITIONS:
+
+  🔴 CRITICAL ALERTS:
+  ┌──────────┬─────────────────────────────────────────────────┬───────────────────┐
+  │   Code   │                    Condition                    │ Missing Anything? │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_001 │ Outlet temp > critical AND CPU ON               │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_002 │ Inlet temp > max AND Condenser ON               │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_003 │ Pressure < critical_low AND Pump ON             │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_004 │ Coolant level < critical                        │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_005 │ Flow rate < critical AND Pump ON                │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_006 │ Leak detected AND rate > critical               │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_007 │ Pump ON AND RPM < critical                      │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ CRIT_008 │ No cooling: ΔT ≈ 0 AND CPU ON + high load       │ ✅                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ NEW?     │ Pump running but no flow detected?              │ ❓                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ NEW?     │ Condenser fan failed but condenser ON?          │ ❓                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ NEW?     │ Multiple component failures (pump + condenser)? │ ❓                │
+  ├──────────┼─────────────────────────────────────────────────┼───────────────────┤
+  │ NEW?     │ Rapid temperature rise rate (°C per minute)?    │ ❓                │
+  └──────────┴─────────────────────────────────────────────────┴───────────────────┘
+  ---
+  🟡 WARNING ALERTS:
+  ┌──────────┬───────────────────────────────────────┬───────────────────┐
+  │   Code   │               Condition               │ Missing Anything? │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_001 │ Outlet temp > normal AND < critical   │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_002 │ Pressure outside normal range         │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_003 │ High pressure drop                    │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_004 │ Low coolant level                     │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_005 │ Abnormal flow rate                    │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_006 │ Leak detected (minor)                 │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_007 │ Abnormal pump RPM                     │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_008 │ High pump vibration                   │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ WARN_009 │ Excessive ΔT                          │ ✅                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ NEW?     │ Cooling efficiency degraded?          │ ❓                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ NEW?     │ High power consumption (pump)?        │ ❓                │
+  ├──────────┼───────────────────────────────────────┼───────────────────┤
+  │ NEW?     │ Trending toward failure (predictive)? │ ❓                │
+  └──────────┴───────────────────────────────────────┴───────────────────┘
+  ---
+  ⚙️ LOGICAL VALIDATION:
+  ┌───────────┬────────────────────────────────────────┬───────────────────┐
+  │   Code    │               Condition                │ Missing Anything? │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ LOGIC_001 │ Pump OFF but pressure detected         │ ✅                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ LOGIC_002 │ Condenser OFF but ΔT detected          │ ✅                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ LOGIC_003 │ CPU OFF → ΔT should be minimal         │ ✅                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ LOGIC_004 │ Leak but pressure normal               │ ✅                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ LOGIC_005 │ Flow detected but pump OFF             │ ✅                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ LOGIC_006 │ Reverse flow (inlet < outlet pressure) │ ✅                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ NEW?      │ All components OFF but temp rising?    │ ❓                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ NEW?      │ Timestamp in future or too old?        │ ❓                │
+  ├───────────┼────────────────────────────────────────┼───────────────────┤
+  │ NEW?      │ Agent sending data too frequently?     │ ❓                │
+  └───────────┴────────────────────────────────────────┴───────────────────┘
+  ---
+  🔹 DECISION NEEDED:
+
+  Should we add these additional alert conditions?
+
+  1. CRIT_009: Pump Running, No Flow
+    - Condition: pump.is_on == true && flow_rate < 1.0 LPM
+    - Message: "Pump running but no flow detected - blockage or pump failure"
+    - Yes, add ✅ RECOMMENDED
+    - No, covered by CRIT_005
+  2. CRIT_010: Rapid Temperature Rise
+    - Condition: temp_rise_rate > 5°C per minute
+    - Message: "Rapid temperature increase - system overload"
+    - Requires: Tracking previous values
+    - Yes, add (requires state tracking)
+    - No, too complex for V1
+  3. WARN_010: Cooling Efficiency Degraded
+    - Condition: (outlet - inlet) / cpu_load < expected_ratio
+    - Message: "Cooling efficiency below 80% - check for fouling"
+    - Requires: Baseline calculation
+    - Yes, add (future enhancement)
+    - No, too complex
+  4. LOGIC_007: Stale Data
+    - Condition: timestamp > 5 minutes ago
+    - Message: "Agent not reporting - possible network issue"
+    - Yes, add ✅ RECOMMENDED
+    - No, handled by agent status monitoring
+  5. LOGIC_008: Data Flood Protection
+    - Condition: same agent sends > 10 requests per second
+    - Message: "Agent sending data too frequently - throttling"
+    - Yes, add (rate limiting)
+    - No, not needed
+
+  ---
+  🎯 SECTION 4: DATABASE DESIGN
+
+  4.1 METRICS STORAGE STRATEGY
+
+  QUESTION: How should we store cooling metrics?
+
+  OPTION A: Individual Metrics (Current Standard)
+  INSERT INTO metrics VALUES
+    ('System_Sim_1', 'cooling.inlet.temperature', 8.0, 'celsius', '2026-02-11 10:00:00'),
+    ('System_Sim_1', 'cooling.inlet.pressure', 20.0, 'psi', '2026-02-11 10:00:00'),
+    ('System_Sim_1', 'cooling.outlet.temperature', 55.0, 'celsius', '2026-02-11 10:00:00'),
+    ('System_Sim_1', 'cooling.outlet.pressure', 20.0, 'psi', '2026-02-11 10:00:00'),
+    ('System_Sim_1', 'cooling.delta_temperature', 47.0, 'celsius', '2026-02-11 10:00:00'),
+    ('System_Sim_1', 'cooling.pump.status', 1.0, 'boolean', '2026-02-11 10:00:00'),
+    ('System_Sim_1', 'cooling.cpu.status', 1.0, 'boolean', '2026-02-11 10:00:00'),
+    ('System_Sim_1', 'cooling.condenser.status', 1.0, 'boolean', '2026-02-11 10:00:00');
+
+  ✅ PROS:
+  - Follows existing pattern
+  - Easy to query individual metrics
+  - Works with existing dashboard
+
+  ❌ CONS:
+  - 8+ rows per reading
+  - Difficult to query related metrics together
+  - Can't guarantee atomic snapshot
+
+  ---
+  OPTION B: JSON Blob in Metadata
+  INSERT INTO metrics VALUES
+    ('System_Sim_1', 'cooling.system', 0, 'json', '2026-02-11 10:00:00',
+     '{"inlet":{"temp":8,"pressure":20},"outlet":{"temp":55,"pressure":20},"pump":{"isOn":true}}');
+
+  ✅ PROS:
+  - Single row per reading
+  - Atomic snapshot
+  - Easy to add fields
+
+  ❌ CONS:
+  - Harder to query specific values
+  - Can't index individual fields
+  - Not normalized
+
+  ---
+  OPTION C: Dedicated Cooling Metrics Table
+  CREATE TABLE cooling_metrics (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      agent_id VARCHAR(255) NOT NULL,
+      timestamp DATETIME NOT NULL,
+
+      -- Inlet
+      inlet_temperature DECIMAL(10,2),
+      inlet_pressure DECIMAL(10,2),
+      inlet_leak BOOLEAN,
+
+      -- Outlet
+      outlet_temperature DECIMAL(10,2),
+      outlet_pressure DECIMAL(10,2),
+      outlet_leak BOOLEAN,
+
+      -- Pump
+      pump_on BOOLEAN,
+      pump_rpm INT,
+      pump_power_watts DECIMAL(10,2),
+
+      -- CPU
+      cpu_on BOOLEAN,
+      cpu_load_percentage DECIMAL(5,2),
+
+      -- Condenser
+      condenser_on BOOLEAN,
+      condenser_fan_rpm INT,
+
+      -- Coolant
+      coolant_level_percentage DECIMAL(5,2),
+      coolant_flow_rate_lpm DECIMAL(10,2),
+
+      -- Derived
+      delta_temperature DECIMAL(10,2),
+      pressure_drop DECIMAL(10,2),
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_agent_timestamp (agent_id, timestamp)
+  );
+
+  ✅ PROS:
+  - Structured, easy to query
+  - Can index all fields
+  - Atomic snapshots
+  - Strongly typed
+
+  ❌ CONS:
+  - Schema changes require migrations
+  - Not flexible for new fields
+  - Separate table to maintain
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Metrics storage strategy:
+  - A: Individual metrics (existing pattern) ✅ SIMPLE
+  - B: JSON blob in metadata
+  - C: Dedicated cooling_metrics table ✅ PRODUCTION-READY
+
+  If C selected:
+  - Should we keep individual metrics too? (dual storage)
+    - Yes - both dedicated table AND individual metrics
+    - No - dedicated table only
+
+  ---
+  4.2 ALERT STORAGE - ENOUGH?
+
+  CURRENT ALERT TABLE (Existing):
+
+  CREATE TABLE alerts (
+      id BIGINT PRIMARY KEY,
+      agent_id VARCHAR(255),
+      timestamp DATETIME,
+      severity VARCHAR(50),      -- INFO, WARNING, CRITICAL
+      metric_type VARCHAR(255),
+      value DECIMAL(20,6),
+      threshold DECIMAL(20,6),
+      message TEXT,
+      retry_count INT,
+      resolved BOOLEAN DEFAULT FALSE,
+      resolved_at DATETIME,
+      created_at DATETIME
+  );
+
+  QUESTION: Is this sufficient for cooling alerts?
+
+  ---
+  POTENTIAL ADDITIONS:
+
+  Option 1: Add alert_code field
+  ALTER TABLE alerts ADD COLUMN alert_code VARCHAR(50);  -- e.g., "CRIT_001"
+  Why: Easy to filter/group by alert type
+
+  Option 2: Add context JSON
+  ALTER TABLE alerts ADD COLUMN context JSON;
+  -- Example: {"inlet_temp": 8, "outlet_temp": 65, "delta": 57, "cpu_load": 95}
+  Why: Preserve all relevant values at alert time
+
+  Option 3: Add resolved_by field
+  ALTER TABLE alerts ADD COLUMN resolved_by VARCHAR(50);  -- 'auto' or user ID
+  Why: Track manual vs auto resolution
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Should we enhance the alerts table?
+  - Keep existing schema (sufficient)
+  - Add alert_code ✅ RECOMMENDED
+  - Add context JSON ✅ RECOMMENDED
+  - Add resolved_by
+  - Add multiple fields above
+
+  ---
+  4.3 DATA RETENTION
+
+  QUESTION: How long to keep cooling data?
+
+  Current Config:
+  retention:
+    metrics_days: 30        # Keep metrics for 30 days
+    alerts_days: 90         # Keep alerts for 90 days
+
+  Cooling systems generate A LOT of data:
+  - Simulator reports every 10 seconds
+  - = 6 readings/minute = 360/hour = 8,640/day
+  - If storing 8 metrics per reading = 69,120 rows/day
+
+  30 days = 2,073,600 rows per agent
+
+  ---
+  OPTIONS:
+
+  OPTION A: Same Retention as Other Metrics
+  - Keep raw data: 30 days
+  - Keep alerts: 90 days
+
+  OPTION B: Tiered Retention
+  - Raw data (10s interval): 7 days
+  - Aggregated 1-minute: 30 days
+  - Aggregated 1-hour: 365 days
+  - Alerts: 90 days
+
+  OPTION C: Aggressive Retention
+  - Raw data: 24 hours only
+  - Aggregated: 30 days
+  - Alerts: 180 days (cooling issues need history)
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Data retention policy:
+  1. Raw cooling metrics:
+    - 7 days ✅ RECOMMENDED
+    - 30 days (like other metrics)
+    - 90 days
+    - Custom: ___________ days
+  2. Aggregated cooling data:
+    - Don't aggregate (keep raw only)
+    - Aggregate to 1-minute (keep 30 days) ✅ RECOMMENDED
+    - Aggregate to hourly (keep 365 days)
+  3. Cooling alerts:
+    - 30 days
+    - 90 days (like other alerts) ✅ RECOMMENDED
+    - 180 days (longer for pattern analysis)
+    - Custom: ___________ days
+
+  ---
+  🎯 SECTION 5: API DESIGN DETAILS
+
+  5.1 ENDPOINT NAMING
+
+  PROPOSED ENDPOINT:
+
+  POST /api/v1/cooling-metrics
+
+  ALTERNATIVES:
+  - POST /api/v1/cooling/metrics
+  - POST /api/v1/metrics/cooling
+  - POST /api/v1/water-cooling
+  - POST /api/v1/thermal/cooling
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Preferred endpoint:
+  - /api/v1/cooling-metrics ✅ RECOMMENDED
+  - /api/v1/cooling/metrics
+  - /api/v1/metrics/cooling (RESTful grouping)
+  - Custom: ___________
+
+  Should we also support:
+  - GET /api/v1/cooling-metrics (query cooling data)
+  - GET /api/v1/cooling-metrics/latest (last reading per agent)
+  - GET /api/v1/cooling-metrics/{agent_id}/history
+
+  ---
+  5.2 RESPONSE FORMAT
+
+  PROPOSED SUCCESS RESPONSE:
+
+  {
+    "success": true,
+    "message": "Cooling metrics received",
+    "accepted": 1,
+    "alerts_generated": 2,
+    "alert_summary": {
+      "critical": 1,
+      "warning": 1,
+      "info": 0
+    },
+    "data": {
+      "agent_id": "System_Sim_1",
+      "timestamp": "2026-02-11T10:17:56.817Z",
+      "metrics_stored": 8,
+      "derived_metrics": {
+        "delta_temperature": 47.0,
+        "pressure_drop": 0.0,
+        "cooling_efficiency": 0.85
+      }
+    }
+  }
+
+  ---
+  ALTERNATIVES:
+
+  OPTION A: Minimal Response (Faster)
+  {
+    "success": true,
+    "message": "OK"
+  }
+
+  OPTION B: Detailed with Alerts
+  {
+    "success": true,
+    "message": "Cooling metrics received",
+    "accepted": 1,
+    "alerts": [
+      {
+        "severity": "CRITICAL",
+        "code": "CRIT_001",
+        "message": "CPU Overheating: Outlet 65°C > 60°C",
+        "metric_type": "cooling.outlet.temperature",
+        "value": 65.0,
+        "threshold": 60.0
+      }
+    ]
+  }
+
+  OPTION C: Include Recommendations
+  {
+    "success": true,
+    "alerts_generated": 1,
+    "recommendations": [
+      "Check CPU thermal paste",
+      "Increase pump speed",
+      "Verify condenser fan operation"
+    ]
+  }
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Response verbosity:
+  - Minimal (success/failure only)
+  - Standard (with alert summary) ✅ RECOMMENDED
+  - Detailed (with full alert details)
+  - Include recommendations (AI-driven)
+
+  ---
+  5.3 ERROR HANDLING
+
+  VALIDATION ERRORS - HOW DETAILED?
+
+  SCENARIO: Invalid payload
+  {
+    "agent_id": "",  // ❌ EMPTY
+    "timestamp": "invalid",  // ❌ INVALID FORMAT
+    "inlet": {
+      "temperature": 999,  // ❌ OUT OF RANGE
+      "pressure": -10  // ❌ NEGATIVE
+    }
+  }
+
+  ---
+  OPTION A: Generic Error
+  {
+    "success": false,
+    "error": "Invalid request payload"
+  }
+
+  OPTION B: Detailed Validation Errors
+  {
+    "success": false,
+    "error": "Validation failed",
+    "validation_errors": [
+      {
+        "field": "agent_id",
+        "error": "required",
+        "message": "Agent ID cannot be empty"
+      },
+      {
+        "field": "timestamp",
+        "error": "invalid_format",
+        "message": "Expected ISO 8601 format"
+      },
+      {
+        "field": "inlet.temperature",
+        "error": "out_of_range",
+        "message": "Temperature must be between -50 and 150°C",
+        "value": 999,
+        "valid_range": [-50, 150]
+      }
+    ]
+  }
+
+  OPTION C: First Error Only
+  {
+    "success": false,
+    "error": "agent_id: required - Agent ID cannot be empty"
+  }
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Error response detail:
+  - A: Generic error (simple)
+  - B: Detailed validation errors ✅ RECOMMENDED FOR DEV
+  - C: First error only (fail fast)
+
+  For production, should we:
+  - Show detailed errors (helps debugging)
+  - Hide details (security - don't leak schema)
+  - Configurable (debug mode flag)
+
+  ---
+  5.4 AUTHENTICATION & AUTHORIZATION
+
+  CURRENT: Uses Existing mTLS Auth
+
+  - Agent authenticated via client certificate
+  - Agent must be registered and approved
+
+  QUESTION: Any additional requirements for cooling API?
+
+  ---
+  OPTION A: No Additional Auth (Use Existing)
+  - Same authentication as other APIs
+  - Any registered agent can submit cooling data
+
+  OPTION B: Require Specific Permission
+  # In agent registration
+  permissions:
+    - submit_metrics
+    - submit_alerts
+    - submit_cooling_metrics  # ← NEW
+
+  OPTION C: Separate API Key for Simulators
+  POST /api/v1/cooling-metrics
+  Authorization: Bearer sim_abc123xyz
+  - Allows simulator to connect without full mTLS setup
+  - Useful for development/testing
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Authentication strategy:
+  - A: Use existing mTLS (no changes) ✅ RECOMMENDED
+  - B: Require explicit permission
+  - C: Support API key for simulators (dev only)
+
+  Agent type designation:
+  - All agents can submit cooling data
+  - Only agents with group = "cooling_systems" ✅ RECOMMENDED
+  - Require explicit agent_type = "cooling_simulator"
+
+  ---
+  🎯 SECTION 6: OPERATIONAL CONSIDERATIONS
+
+  6.1 PERFORMANCE & SCALABILITY
+
+  EXPECTED LOAD:
+
+  Single Agent:
+  - Frequency: Every 10 seconds
+  - Payload size: ~500 bytes
+  - Metrics per reading: 8
+  - = 6 requests/min = 360/hour = 8,640/day
+
+  Multiple Agents:
+  - 10 agents = 86,400 requests/day
+  - 100 agents = 864,000 requests/day
+
+  ---
+  QUESTIONS:
+
+  1. How many cooling systems will you monitor?
+    - 1-10 (small deployment)
+    - 10-100 (medium deployment)
+    - 100-1000 (large deployment)
+    - 1000+ (enterprise)
+  2. Reporting frequency:
+    - Current: 10 seconds
+    - Keep 10 seconds ✅ (if few agents)
+    - Increase to 30 seconds (reduce load)
+    - Increase to 60 seconds (standard monitoring)
+    - Configurable per agent
+  3. Database optimization needed?
+    - No (SQLite sufficient for now)
+    - Yes - need indexes on common queries
+    - Yes - need partitioning by date
+    - Yes - migrate to PostgreSQL/TimescaleDB
+  4. Caching strategy:
+    - No caching (write-heavy, read minimal)
+    - Cache latest values (for dashboard)
+    - Cache aggregated statistics
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Performance requirements:
+  1. Max acceptable latency:
+    - < 100ms per request
+    - < 500ms per request ✅ REASONABLE
+    - < 1 second
+    - No specific requirement
+  2. Batch processing:
+    - Should simulator send multiple readings in one request?
+    - No - one reading per request ✅ CURRENT
+    - Yes - batch up to 10 readings
+    - Yes - configurable batch size
+  3. Async processing:
+    - Should alert evaluation be async?
+    - No - synchronous (simpler) ✅ V1
+    - Yes - queue-based (scalable)
+    - Yes - background worker
+
+  ---
+  6.2 MONITORING & OBSERVABILITY
+
+  HOW DO WE MONITOR THE MONITORING SYSTEM?
+
+  METRICS TO TRACK:
+  1. API request count (cooling metrics received)
+  2. API latency (p50, p95, p99)
+  3. Validation error rate
+  4. Alert generation rate (per severity)
+  5. Database write latency
+  6. Agent connection health
+
+  QUESTIONS:
+
+  1. Should cooling API have its own health endpoint?
+  GET /api/v1/cooling/health
+  1. Returns:
+  {
+    "status": "healthy",
+    "total_cooling_agents": 5,
+    "active_cooling_agents": 4,
+    "last_reading_age_seconds": 12,
+    "active_critical_alerts": 2
+  }
+  2. Should we expose Prometheus metrics?
+  dcim_cooling_requests_total{agent_id="System_Sim_1"} 1523
+  dcim_cooling_alerts_total{severity="critical"} 5
+  dcim_cooling_api_latency_seconds{quantile="0.95"} 0.234
+  3. Should we log all cooling data to separate log file?
+  DCIM_Server/logs/cooling.log
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Observability requirements:
+  - Use existing server logging (simple) ✅ V1
+  - Add cooling-specific health endpoint
+  - Add Prometheus metrics (future)
+  - Separate log file for cooling data
+
+  Logging level for cooling API:
+  - DEBUG (log everything including payloads)
+  - INFO (log requests + alerts) ✅ RECOMMENDED
+  - WARNING (log only issues)
+  - ERROR (log only failures)
+
+  ---
+  6.3 TESTING STRATEGY
+
+  REQUIRED TESTS:
+
+  1. Unit Tests:
+  - Payload validation (valid/invalid)
+  - Threshold evaluation (all alert conditions)
+  - Unit conversion (if applicable)
+  - Edge case handling
+
+  2. Integration Tests:
+  - End-to-end API flow
+  - Database operations
+  - Agent registration + cooling data
+  - Alert generation + storage
+
+  3. Load Tests:
+  - 100 requests/second
+  - Sustained load (1 hour)
+  - Database growth over time
+
+  ---
+  TEST DATA SCENARIOS:
+
+  Should we provide test payloads for:
+  - Normal operation (all green)
+  - Each CRITICAL alert condition (8+)
+  - Each WARNING alert condition (9+)
+  - Multiple simultaneous alerts
+  - Sensor conflicts
+  - Invalid payloads (malformed JSON)
+  - Boundary conditions (exact thresholds)
+  - Edge cases (pump off, all components off)
+
+  ---
+  🔹 DECISION NEEDED:
+
+  Testing scope for V1:
+  - Basic unit tests only
+  - Unit + integration tests ✅ RECOMMENDED
+  - Full test suite including load tests
+
+  Should I generate test payloads?
+  - Yes - provide comprehensive test suite ✅ RECOMMENDED
+  - No - manual testing only
+  - Later - implement first, test later
+
+  ---
+  🎯 SECTION 7: FUTURE ENHANCEMENTS
+
+  7.1 ROADMAP CONSIDERATIONS
+
+  PHASE 1 (Current Scope):
+
+  - Basic cooling metrics API
+  - Alert generation
+  - Threshold-based monitoring
+
+  PHASE 2 (Future):
+
+  Which features should be prioritized?
+
+  RANK THESE (1-10, 1=highest priority):
+
+  - ___ Historical trend analysis
+  - ___ Predictive maintenance (ML)
+  - ___ Cooling efficiency optimization
+  - ___ Multi-location support (remote datacenters)
+  - ___ Integration with HVAC systems
+  - ___ Automated remediation (auto-adjust pump speed)
+  - ___ Mobile alerts (SMS/email notifications)
+  - ___ Dashboard widgets (real-time charts)
+  - ___ Export to external monitoring (Grafana, Prometheus)
+  - ___ API for external control (set thresholds remotely)
+
+  ---
+  🔹 DECISION NEEDED:
+
+  What are your top 3 priorities for Phase 2?
+  ---------
+  ---
+  7.2 INTEGRATION REQUIREMENTS
+
+  QUESTION: Will this cooling API need to integrate with:
+
+  - HVAC control system (building management)
+  - UPS monitoring (power correlation)
+  - Fire suppression system (emergency shutdown)
+  - Building automation (BACnet/Modbus)
+  - External ticketing system (auto-create tickets)
+  - CMMS (Computerized Maintenance Management)
+  - Energy monitoring system
+  - Other: ___________________________
+
+  If yes to any, please specify:
+  - System name: ___________________________
+  - Integration method: [ ] REST API [ ] MQTT [ ] Webhook [ ] Other
+  - Priority: [ ] Phase 1 [ ] Phase 2 [ ] Future
+
+  ---
+  🎯 SECTION 8: FINAL APPROVAL CHECKLIST
+
+  ✅ PLEASE REVIEW AND APPROVE:
+
+  1. PAYLOAD DESIGN:
+
+  - Payload version: Simple ☐ / Enhanced ☐ / Hybrid ☐
+  - Naming convention: camelCase ☐ / snake_case ☐ / Both ☐
+  - Units strategy: Fixed ☐ / Per-field ☐ / Global ☐
+  - Leak detection: Boolean ☐ / Rate ☐ / Location ☐
+  - Standard units:
+    - Temperature: ___________ (C/F/K)
+    - Pressure: ___________ (PSI/Bar/kPa)
+    - Flow: ___________ (LPM/GPM)
+
+  ---
+  2. THRESHOLDS:
+
+  - Approve proposed values OR
+  - Provide actual equipment specs:
+    - Pump model: ___________________________
+    - Rated RPM: ___________________________
+    - Flow rate: ___________________________
+    - Operating pressure: ___________________________
+    - CPU TDP: ___________________________
+  - Threshold strategy: Global ☐ / Per-agent ☐ / Groups ☐
+  - Dynamic thresholds: Static ☐ / Conditional ☐ / ML ☐
+
+  ---
+  3. ALERTS:
+
+  - Severity levels: 3 ☐ / 4 ☐ / Custom: ___________
+  - Deduplication: None ☐ / Time-based ☐ / State-change ☐ / Update existing ☐
+  - Resolution: Manual ☐ / Auto ☐ / Hysteresis ☐
+  - Additional alert conditions approved: (list any)
+    ---  ---
+  ---
+  4. DATABASE:
+
+  - Metrics storage: Individual ☐ / JSON ☐ / Dedicated table ☐
+  - Alert enhancements: None ☐ / alert_code ☐ / context JSON ☐ / both ☐
+  - Retention:
+    - Raw data: ___________ days
+    - Aggregated: ___________ days
+    - Alerts: ___________ days
+
+  ---
+  5. API DESIGN:
+
+  - Endpoint: ___________________________
+  - Response format: Minimal ☐ / Standard ☐ / Detailed ☐
+  - Error handling: Generic ☐ / Detailed ☐ / First-only ☐
+  - Authentication: Existing ☐ / Permission-based ☐ / API key ☐
+
+  ---
+  6. OPERATIONS:
+
+  - Expected agents: 1-10 ☐ / 10-100 ☐ / 100-1000 ☐ / 1000+ ☐
+  - Reporting frequency: 10s ☐ / 30s ☐ / 60s ☐ / Configurable ☐
+  - Performance target: < 100ms ☐ / < 500ms ☐ / < 1s ☐
+  - Testing scope: Basic ☐ / Full ☐ / Load tests ☐
+
+  ---
+  7. IMPLEMENTATION:
+
+  - Start with: Simplified payload ☐ / Full implementation ☐
+  - Config file format: YAML ☐ / JSON ☐ / ENV ☐
+  - Generate test suite: Yes ☐ / No ☐
+  - Documentation: API docs ☐ / User guide ☐ / Both ☐
+
+  ---
+  📝 FINAL NOTES / SPECIAL REQUIREMENTS:
+
+  Please add any additional requirements, constraints, or preferences:
+
+  _____________________________________________
+  _____________________________________________
+  _____________________________________________
+  _____________________________________________
+
+  ---
+  🚀 READY TO PROCEED?
+
+  Once you've reviewed this document and made your selections, I will:
+
+  1. ✅ Create configuration files
+  2. ✅ Define data models
+  3. ✅ Implement API handler
+  4. ✅ Create alert evaluation logic
+  5. ✅ Write tests
+  6. ✅ Update documentation
+
+  Please reply with your decisions on the key points above, and I'll proceed with implementation!
+
+  You can provide feedback in any format - just highlight the important decisions, and I'll fill in reasonable defaults for anything not
+  specified.

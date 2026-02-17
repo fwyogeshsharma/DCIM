@@ -69,6 +69,7 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 	mux.HandleFunc(basePath+"/cooling-metrics", server.handleCoolingMetrics) // POST: submit cooling system metrics
 	mux.HandleFunc(basePath+"/agent-status-history", server.handleAgentStatusHistory) // GET: query agent status history
 	mux.HandleFunc(basePath+"/register", server.handleRegister)
+	mux.HandleFunc(basePath+"/agent/shutdown", server.handleAgentShutdown)  // POST: agent graceful shutdown notification
 	mux.HandleFunc(basePath+"/agents/", server.handleGetAgentMetrics)    // Trailing slash for path params
 	mux.HandleFunc(basePath+"/agents", server.handleGetAgents)
 	mux.HandleFunc(basePath+"/events", server.handleSSEEvents)           // SSE endpoint for real-time updates
@@ -209,6 +210,7 @@ func (s *Server) Start() error {
 	s.logger.Printf("  POST %s/cooling-metrics", basePath)
 	s.logger.Printf("  GET  %s/agent-status-history", basePath)
 	s.logger.Printf("  POST %s/register", basePath)
+	s.logger.Printf("  POST %s/agent/shutdown", basePath)
 	s.logger.Printf("  GET  %s/agents", basePath)
 	s.logger.Printf("  GET  %s/agents/{id}/metrics", basePath)
 	s.logger.Printf("  GET  %s/events", basePath)
@@ -632,6 +634,98 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	s.logger.Printf("Registered agent: %s (CN: %s, Hostname: %s)", req.AgentID, certCN, req.Hostname)
 
 	s.sendSuccess(w, "Agent registered successfully", 0, 0)
+}
+
+// handleAgentShutdown handles agent graceful shutdown notifications
+func (s *Server) handleAgentShutdown(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Read and parse request
+	body, err := io.ReadAll(io.LimitReader(r.Body, s.config.Server.MaxBodySize))
+	if err != nil {
+		s.sendError(w, http.StatusBadRequest, "Failed to read request body")
+		return
+	}
+
+	var req models.AgentShutdownRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		s.sendError(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
+		return
+	}
+
+	// Validate shutdown type
+	if req.ShutdownType != "graceful" && req.ShutdownType != "error" {
+		s.sendError(w, http.StatusBadRequest, "Invalid shutdown_type. Must be 'graceful' or 'error'")
+		return
+	}
+
+	// Create shutdown event
+	now := time.Now().UTC()
+	event := &models.ShutdownEvent{
+		AgentID:      req.AgentID,
+		ServerID:     s.serverID,
+		ShutdownType: req.ShutdownType,
+		ShutdownTime: now,
+		Reason:       req.Reason,
+		Metadata:     models.JSONMap{},
+	}
+
+	// Add metadata if provided
+	if req.Metadata != nil {
+		for k, v := range req.Metadata {
+			event.Metadata[k] = v
+		}
+	}
+
+	// Record the shutdown event
+	if err := s.db.RecordShutdownEvent(event); err != nil {
+		s.logger.Printf("Failed to record shutdown event for agent %s: %v", req.AgentID, err)
+		s.sendError(w, http.StatusInternalServerError, "Failed to record shutdown event")
+		return
+	}
+
+	// Update agent status to offline
+	_, err = s.db.UpdateAgentStatus(req.AgentID, "offline")
+	if err != nil {
+		s.logger.Printf("Failed to update agent status for %s: %v", req.AgentID, err)
+		// Don't fail the request if status update fails
+	}
+
+	// Create appropriate alert based on shutdown type
+	severity := "INFO"
+	message := fmt.Sprintf("Agent shutdown gracefully")
+	if req.ShutdownType == "error" {
+		severity = "CRITICAL"
+		message = fmt.Sprintf("Agent shutdown with error")
+	}
+	if req.Reason != "" {
+		message = fmt.Sprintf("%s: %s", message, req.Reason)
+	}
+
+	alert := models.Alert{
+		AgentID:    req.AgentID,
+		Timestamp:  now,
+		Severity:   severity,
+		MetricType: "agent_shutdown",
+		Value:      0,
+		Threshold:  0,
+		Message:    message,
+		Resolved:   false,
+	}
+
+	// Insert the alert
+	if err := s.db.InsertAlerts(s.serverID, []models.Alert{alert}); err != nil {
+		s.logger.Printf("Failed to create shutdown alert for agent %s: %v", req.AgentID, err)
+		// Don't fail the request if alert creation fails
+	}
+
+	s.logger.Printf("Agent %s shutdown notification received (type: %s, reason: %s)",
+		req.AgentID, req.ShutdownType, req.Reason)
+
+	s.sendSuccess(w, "Shutdown notification received", 0, 0)
 }
 
 // handleHealth handles health check requests
