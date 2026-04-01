@@ -160,6 +160,18 @@ class LinkEdge(QGraphicsLineItem):
         self._broken = broken
         self.update()
 
+    def boundingRect(self) -> QRectF:
+        line = self.line()
+        extra = 10.0  # half of the 16px hit area + margin
+        x1, y1 = line.x1(), line.y1()
+        x2, y2 = line.x2(), line.y2()
+        return QRectF(
+            min(x1, x2) - extra,
+            min(y1, y2) - extra,
+            abs(x2 - x1) + extra * 2,
+            abs(y2 - y1) + extra * 2,
+        )
+
     def shape(self) -> QPainterPath:
         p = QPainterPath()
         p.moveTo(self.line().p1())

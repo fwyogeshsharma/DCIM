@@ -7,9 +7,11 @@ Requires the application to run as Administrator.
 """
 from __future__ import annotations
 import ctypes
+import os
 import subprocess
 import sys
 import re
+import tempfile
 from typing import List, Tuple, Callable, Optional
 
 
@@ -175,24 +177,14 @@ def add_ips_batch(
     progress_cb: Optional[Callable[[int, int], None]] = None,
 ) -> Tuple[int, int]:
     """
-    Add every IP in *ips* to *interface*.
+    Add every IP in *ips* to *interface* using a single PowerShell process.
+    Avoids spawning one subprocess per IP which causes access violations on
+    Windows when called from a QThread with many IPs.
     Returns (success_count, failure_count).
     """
-    ok_count = fail_count = 0
-    total = len(ips)
-    for i, ip in enumerate(ips):
-        success, msg = add_ip(interface, ip, mask)
-        if success:
-            ok_count += 1
-            if log_cb:
-                log_cb(f"  + {ip} — {msg}", "success")
-        else:
-            fail_count += 1
-            if log_cb:
-                log_cb(f"  ! {ip} — {msg}", "error")
-        if progress_cb:
-            progress_cb(i + 1, total)
-    return ok_count, fail_count
+    if not ips:
+        return 0, 0
+    return _run_netsh_batch("add", interface, ips, mask, log_cb, progress_cb)
 
 
 def remove_ips_batch(
@@ -202,21 +194,104 @@ def remove_ips_batch(
     progress_cb: Optional[Callable[[int, int], None]] = None,
 ) -> Tuple[int, int]:
     """
-    Remove every IP in *ips* from *interface*.
+    Remove every IP in *ips* from *interface* using a single PowerShell process.
     Returns (success_count, failure_count).
     """
-    ok_count = fail_count = 0
-    total = len(ips)
-    for i, ip in enumerate(ips):
-        success, msg = remove_ip(interface, ip)
-        if success:
-            ok_count += 1
-            if log_cb:
-                log_cb(f"  - {ip} — {msg}", "info")
+    if not ips:
+        return 0, 0
+    return _run_netsh_batch("remove", interface, ips, None, log_cb, progress_cb)
+
+
+def _run_netsh_batch(
+    action: str,            # "add" or "remove"
+    interface: str,
+    ips: List[str],
+    mask: Optional[str],
+    log_cb: Optional[Callable[[str, str], None]],
+    progress_cb: Optional[Callable[[int, int], None]],
+) -> Tuple[int, int]:
+    """
+    Write a PowerShell script to a temp file and execute it once.
+    The script emits one 'OK:<ip>' or 'FAIL:<ip>' line per IP so the
+    caller can track progress from the streamed stdout.
+    """
+    iface = interface.replace("'", "''")   # escape single quotes for PS
+
+    ps_lines = ["$ErrorActionPreference = 'SilentlyContinue'"]
+    for ip in ips:
+        if action == "add":
+            cmd = f"netsh interface ip add address 'name={iface}' addr={ip} mask={mask}"
         else:
-            fail_count += 1
-            if log_cb:
-                log_cb(f"  ! {ip} — {msg}", "warning")
-        if progress_cb:
-            progress_cb(i + 1, total)
-    return ok_count, fail_count
+            cmd = f"netsh interface ip delete address 'name={iface}' addr={ip}"
+
+        ps_lines += [
+            f"$out = ({cmd}) 2>&1 | Out-String",
+            f"if ($LASTEXITCODE -eq 0 -or $out -match 'already' -or $out -match 'not found' -or $out -match 'element not found') {{",
+            f"    Write-Host 'OK:{ip}'",
+            f"}} else {{",
+            f"    Write-Host ('FAIL:{ip}:' + $out.Trim())",
+            f"}}",
+        ]
+
+    ps_script = "\n".join(ps_lines)
+
+    # Write to a temp .ps1 file to avoid command-line length limits
+    ps_file = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".ps1", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(ps_script)
+            ps_file = f.name
+
+        proc = subprocess.Popen(
+            [
+                "powershell",
+                "-NoProfile", "-NonInteractive",
+                "-ExecutionPolicy", "Bypass",
+                "-File", ps_file,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+
+        ok_count = fail_count = 0
+        processed = 0
+        total = len(ips)
+        for line in proc.stdout:
+            line = line.strip()
+            if line.startswith("OK:"):
+                ip = line[3:]
+                ok_count += 1
+                processed += 1
+                if log_cb:
+                    verb = "Bound" if action == "add" else "Removed"
+                    level = "success" if action == "add" else "info"
+                    log_cb(f"  {'+'  if action == 'add' else '-'} {ip} — {verb}", level)
+            elif line.startswith("FAIL:"):
+                rest = line[5:]
+                ip, _, msg = rest.partition(":")
+                fail_count += 1
+                processed += 1
+                level = "error" if action == "add" else "warning"
+                if log_cb:
+                    log_cb(f"  ! {ip} — {msg or 'Failed'}", level)
+            if progress_cb and processed <= total:
+                progress_cb(processed, total)
+
+        proc.wait()
+        return ok_count, fail_count
+
+    except Exception as exc:
+        if log_cb:
+            log_cb(f"Batch {action} failed: {exc}", "error")
+        return 0, len(ips)
+    finally:
+        if ps_file and os.path.exists(ps_file):
+            try:
+                os.unlink(ps_file)
+            except OSError:
+                pass

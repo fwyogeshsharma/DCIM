@@ -4,6 +4,7 @@ Main Application Window.
 from __future__ import annotations
 import json
 import os
+import queue
 import random
 import shutil
 from pathlib import Path
@@ -12,7 +13,7 @@ from typing import List
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QSplitter, QDockWidget, QTableWidget, QTableWidgetItem,
-    QHeaderView, QToolBar, QStatusBar, QLabel, QMenuBar,
+    QHeaderView, QStatusBar, QLabel, QMenuBar,
     QMenu, QFileDialog, QMessageBox, QInputDialog,
     QAbstractItemView, QFrame, QPushButton, QDialog,
     QSpinBox, QComboBox, QFormLayout, QDialogButtonBox,
@@ -32,6 +33,7 @@ from simulator.snmpsim_controller import SNMPSimController
 from ui.device_dialog import DeviceDialog
 from ui.topology_view import TopologyView
 from ui.simulation_panel import SimulationPanel
+from ui.discovery_dialog import DiscoveryDialog
 
 
 DATASETS_DIR = "datasets"
@@ -41,12 +43,6 @@ TOPOLOGIES_DIR = "topologies"
 # ------------------------------------------------------------------ #
 #  Background worker for dataset generation                           #
 # ------------------------------------------------------------------ #
-
-class _SnmpsimBridge(QObject):
-    """Routes SNMPSim daemon-thread callbacks to the main thread via signals."""
-    log_msg    = Signal(str, str)   # (message, level)
-    status_msg = Signal(str)
-
 
 class GeneratorWorker(QObject):
     progress = Signal(int, int)
@@ -207,9 +203,15 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._build_menus()
-        self._build_toolbar()
         self._connect_signals()
         self._apply_theme()
+
+        # Thread-safe log queue — monitor thread puts, main thread drains
+        self._log_queue: queue.Queue = queue.Queue()
+        self._log_drain_timer = QTimer(self)
+        self._log_drain_timer.setInterval(50)
+        self._log_drain_timer.timeout.connect(self._drain_log_queue)
+        self._log_drain_timer.start()
 
         # Periodic status refresh
         self._status_timer = QTimer(self)
@@ -340,57 +342,20 @@ class MainWindow(QMainWindow):
         self._act_start    = QAction("&Start Simulator",   self, shortcut="F6")
         self._act_stop     = QAction("S&top Simulator",    self, shortcut="F7")
         self._act_clear    = QAction("&Clear Simulation",  self)
+        self._act_discover = QAction("&Discover Topology via SNMP...", self, shortcut="F8")
         sim_menu.addAction(self._act_generate)
         sim_menu.addSeparator()
         sim_menu.addAction(self._act_start)
         sim_menu.addAction(self._act_stop)
         sim_menu.addSeparator()
         sim_menu.addAction(self._act_clear)
+        sim_menu.addSeparator()
+        sim_menu.addAction(self._act_discover)
 
         # Help
         help_menu = menubar.addMenu("&Help")
         help_menu.addAction(QAction("&About", self, triggered=self._show_about))
         help_menu.addAction(QAction("SNMP Walk &Command", self, triggered=self._show_snmpwalk))
-
-    def _build_toolbar(self):
-        tb = QToolBar("Main Toolbar")
-        tb.setMovable(False)
-        tb.setIconSize(QSize(18, 18))
-        tb.setStyleSheet("""
-            QToolBar {
-                background: #161b22;
-                border-bottom: 1px solid #30363d;
-                spacing: 4px;
-                padding: 4px;
-            }
-            QToolButton {
-                background: transparent;
-                color: #e6edf3;
-                border: 1px solid transparent;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 8pt;
-            }
-            QToolButton:hover   { background: #21262d; border-color: #30363d; }
-            QToolButton:pressed { background: #0d1117; }
-            QToolButton:checked { background: #1f6feb; border-color: #388bfd; }
-        """)
-        self.addToolBar(tb)
-
-        tb.addAction(self._act_add_device)
-        tb.addSeparator()
-
-        self._link_btn = tb.addAction("🔗 Link Mode")
-        self._link_btn.setCheckable(True)
-        self._link_btn.triggered.connect(self._toggle_link_mode_toolbar)
-        tb.addSeparator()
-
-        tb.addAction(self._act_generate)
-        tb.addAction(self._act_start)
-        tb.addAction(self._act_stop)
-        tb.addSeparator()
-
-        tb.addAction(self._act_fit_view)
 
     def _connect_signals(self):
         # Menu actions
@@ -408,6 +373,7 @@ class MainWindow(QMainWindow):
         self._act_start.triggered.connect(self._start_simulator)
         self._act_stop.triggered.connect(self._stop_simulator)
         self._act_clear.triggered.connect(self._clear_simulation)
+        self._act_discover.triggered.connect(self._discover_topology)
 
         # Simulation panel
         self._sim_panel.sig_generate.connect(self._generate_datasets)
@@ -416,16 +382,14 @@ class MainWindow(QMainWindow):
         self._sim_panel.sig_clear.connect(self._clear_simulation)
         self._sim_panel.sig_randomize.connect(self._randomize_metrics)
 
-        # SNMPSim callbacks — routed through a signal bridge so the
-        # snmpsim monitor daemon thread never touches Qt widgets directly.
-        self._snmpsim_bridge = _SnmpsimBridge(self)
-        self._snmpsim_bridge.log_msg.connect(self._sim_panel.log)
-        self._snmpsim_bridge.status_msg.connect(self._sim_panel.set_status)
+        # SNMPSim callbacks — push into a queue; main-thread timer drains it.
+        # Using a queue instead of direct signal emission prevents crashes when
+        # the daemon thread emits while Qt is mid-repaint (e.g. on maximize).
         self.snmpsim.set_log_callback(
-            lambda msg: self._snmpsim_bridge.log_msg.emit(msg, "info")
+            lambda msg: self._log_queue.put(("log", msg, "info"))
         )
         self.snmpsim.set_status_callback(
-            lambda s: self._snmpsim_bridge.status_msg.emit(s)
+            lambda s: self._log_queue.put(("status", s))
         )
 
         # Topology scene signals
@@ -589,17 +553,12 @@ class MainWindow(QMainWindow):
         self._link_mode = enabled
         self._topology_view.topology_scene.set_link_mode(enabled)
         self._act_link_mode.setChecked(enabled)
-        self._link_btn.setChecked(enabled)
         if enabled:
             self._topology_view.setDragMode(self._topology_view.NoDrag)
             self._status_label.setText("Link Mode: click source then destination")
         else:
             self._topology_view.setDragMode(self._topology_view.RubberBandDrag)
             self._status_label.setText("Ready")
-
-    def _toggle_link_mode_toolbar(self, checked: bool):
-        self._toggle_link_mode(checked)
-        self._act_link_mode.setChecked(checked)
 
     def _on_link_created(self, src_id: str, dst_id: str):
         ok = self.topology.add_link(src_id, dst_id)
@@ -839,13 +798,14 @@ class MainWindow(QMainWindow):
         self._bind_thread = QThread()
         self._bind_worker.moveToThread(self._bind_thread)
         self._bind_thread.started.connect(self._bind_worker.run)
-        self._bind_worker.progress.connect(
-            lambda c, t: self._sim_panel.show_progress(c, t)
-        )
+        self._bind_worker.progress.connect(self._on_bind_progress)
         self._bind_worker.log.connect(self._sim_panel.log)
         self._bind_worker.finished.connect(self._on_bind_finished)
         self._bind_worker.error.connect(self._on_bind_error)
         self._bind_thread.start()
+
+    def _on_bind_progress(self, current: int, total: int):
+        self._sim_panel.show_progress(current, total)
 
     def _on_bind_finished(self):
         self._bind_thread.quit()
@@ -1079,6 +1039,18 @@ class MainWindow(QMainWindow):
             len(self._generated_files),
         )
 
+    def _drain_log_queue(self):
+        """Drain log/status messages queued by the SNMPSim monitor thread."""
+        try:
+            while True:
+                item = self._log_queue.get_nowait()
+                if item[0] == "log":
+                    self._sim_panel.log(item[1], item[2])
+                elif item[0] == "status":
+                    self._sim_panel.set_status(item[1])
+        except queue.Empty:
+            pass
+
     def _refresh_status(self):
         if self.snmpsim.is_running():
             n_bound = len(self._bound_ips)
@@ -1124,6 +1096,20 @@ class MainWindow(QMainWindow):
             f"Device IPs are bound to the selected network adapter via netsh.\n"
             f"Point your monitoring tool to any device IP on port 161."
         )
+
+    def _discover_topology(self):
+        if self.topology.node_count() == 0:
+            QMessageBox.warning(self, "No Topology",
+                                "Load or build a topology first.")
+            return
+        dlg = DiscoveryDialog(
+            topology=self.topology,
+            snmpsim_running=self.snmpsim.is_running(),
+            host="127.0.0.1",
+            port=161,
+            parent=self,
+        )
+        dlg.exec()
 
     def closeEvent(self, event):
         if self.snmpsim.is_running():
