@@ -4,6 +4,7 @@ import { initMetricsSyncWorker, startMetricsSyncWorker } from './metricsSync'
 import { initAgentsSyncWorker, startAgentsSyncWorker } from './agentsSync'
 import { initAlertsSyncWorker, startAlertsSyncWorker } from './alertsSync'
 import { initHealthMonitorWorker, startHealthMonitorWorker } from './healthMonitor'
+import { logger } from '../utils/logger'
 
 export function startWorkers(dbPool: Pool, redisClient: RedisClientType) {
   // Initialize workers with dependencies
@@ -12,9 +13,13 @@ export function startWorkers(dbPool: Pool, redisClient: RedisClientType) {
   initAlertsSyncWorker(dbPool)
   initHealthMonitorWorker(dbPool, redisClient)
 
-  // Start all workers
-  startMetricsSyncWorker()
-  startAgentsSyncWorker()
-  startAlertsSyncWorker()
-  startHealthMonitorWorker()
+  // Delay first server API calls by 10 seconds to allow servers to come online
+  logger.info('Workers initialized — first sync in 10 seconds...')
+  setTimeout(() => {
+    startMetricsSyncWorker()
+    startAgentsSyncWorker()
+    startAlertsSyncWorker()
+    startHealthMonitorWorker()
+    logger.info('All workers started')
+  }, 10000)
 }

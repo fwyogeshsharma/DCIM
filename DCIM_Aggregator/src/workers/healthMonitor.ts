@@ -25,7 +25,7 @@ export function startHealthMonitorWorker() {
       for (const server of servers) {
         try {
           const startTime = Date.now()
-          const baseUrl = server.url.replace(/\/api\/v\d+\/?$/, '')
+          const baseUrl = server.url.replace(/\/api\/v\d+\/?$/, '').replace('localhost', '127.0.0.1')
           const httpsAgent = getAgentForServer(server.id)
           await axios.get(`${baseUrl}/health`, { timeout: 5000, httpsAgent })
           const responseTime = Date.now() - startTime
@@ -53,7 +53,7 @@ export function startHealthMonitorWorker() {
           const status = isTls ? 'tls_error' : 'offline'
           const errorMsg = isTls
             ? `TLS/mTLS error (${code}): check certificates for this server`
-            : error.message
+            : (error.message || error.errors?.map((e: any) => e.message).join('; ') || code || 'connection failed')
 
           await cacheService.setServerHealth(server.id, {
             status,

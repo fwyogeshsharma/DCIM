@@ -1,9 +1,9 @@
-import type { Agent, ServerConfig } from './types'
+import type { Agent, ServerConfig, SNMPDevice } from './types'
 
 export interface LayoutNode {
   id: string
   name: string
-  type: 'server' | 'agent'
+  type: 'server' | 'agent' | 'network'
   status: 'online' | 'offline'
   position: [number, number, number]
   color: string
@@ -11,8 +11,10 @@ export interface LayoutNode {
   serverId?: string
   agentId?: string
   serverName?: string
+  agentName?: string
   metrics?: number
   alerts?: number
+  lastSeen?: string
 }
 
 export interface LayoutLink {
@@ -21,6 +23,7 @@ export interface LayoutLink {
   sourcePos: [number, number, number]
   targetPos: [number, number, number]
   connected: boolean
+  linkType?: 'agent-server' | 'device-agent'
 }
 
 export interface LayoutResult {
@@ -30,17 +33,19 @@ export interface LayoutResult {
 
 const SERVER_Y = 20
 const AGENT_Y = -8
+const DEVICE_Y = -22
 const SERVER_SPACING = 55
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 
 export function computeHierarchicalLayout(
   servers: ServerConfig[],
-  agents: Agent[]
+  agents: Agent[],
+  snmpDevices: SNMPDevice[] = []
 ): LayoutResult {
   const enabledServers = servers.filter((s) => s.enabled)
   const nodes: LayoutNode[] = []
   const links: LayoutLink[] = []
 
-  // Position servers along X axis, centered at origin
   const totalWidth = (enabledServers.length - 1) * SERVER_SPACING
   const startX = -totalWidth / 2
 
@@ -68,49 +73,39 @@ export function computeHierarchicalLayout(
   const agentsByServer = new Map<string, Agent[]>()
   agents.forEach((agent) => {
     const sid = `server-${agent.server_id}`
-    if (!agentsByServer.has(sid)) {
-      agentsByServer.set(sid, [])
-    }
+    if (!agentsByServer.has(sid)) agentsByServer.set(sid, [])
     agentsByServer.get(sid)!.push(agent)
   })
 
-  // Position agents in semicircular arcs below their parent server
+  // Group SNMP devices by compound agent key
+  const devicesByAgent = new Map<string, SNMPDevice[]>()
+  snmpDevices.forEach((device) => {
+    const key = `${device.server_id}:${device.agent_id}`
+    if (!devicesByAgent.has(key)) devicesByAgent.set(key, [])
+    devicesByAgent.get(key)!.push(device)
+  })
+
+  // Position agents in arcs below their parent server
   agentsByServer.forEach((serverAgents, serverId) => {
     const parentPos = serverPositions.get(serverId)
     if (!parentPos) return
 
     const count = serverAgents.length
     const arcRadius = Math.max(15, count * 6)
+    const spread = arcRadius * 2
+    const step = count === 1 ? 0 : spread / (count - 1)
 
     serverAgents.forEach((agent, i) => {
-      // Spread agents in a semicircular arc (PI radians) below the server
-      const angle = count === 1
-        ? Math.PI / 2
-        : (Math.PI * (i + 1)) / (count + 1)
-
-      const x = parentPos[0] + arcRadius * Math.cos(angle) * (i % 2 === 0 ? 1 : -1)
-      const z = arcRadius * Math.sin(angle) * 0.5
-      const agentPos: [number, number, number] = [
-        parentPos[0] + (count === 1 ? 0 : arcRadius * Math.cos(angle) - arcRadius / 2),
-        AGENT_Y,
-        z,
-      ]
-
-      // For cleaner spreading, use even distribution
-      const spread = arcRadius * 2
-      const step = count === 1 ? 0 : spread / (count - 1)
-      const agentX = count === 1
-        ? parentPos[0]
-        : parentPos[0] - spread / 2 + i * step
+      const agentX = count === 1 ? parentPos[0] : parentPos[0] - spread / 2 + i * step
       const agentZ = Math.sin((i / Math.max(count - 1, 1)) * Math.PI) * (arcRadius * 0.4)
-
       const finalPos: [number, number, number] = [agentX, AGENT_Y, agentZ]
 
-      const isConnected = agent.status === 'online' &&
+      const isConnected =
+        agent.status === 'online' &&
         nodes.find((n) => n.id === serverId)?.status === 'online'
 
       const compoundId = `${agent.server_id}:${agent.agent_id}`
-      const parentServer = enabledServers.find(s => `server-${s.id}` === serverId)
+      const parentServer = enabledServers.find((s) => `server-${s.id}` === serverId)
 
       nodes.push({
         id: compoundId,
@@ -133,6 +128,51 @@ export function computeHierarchicalLayout(
         sourcePos: finalPos,
         targetPos: parentPos,
         connected: isConnected,
+        linkType: 'agent-server',
+      })
+
+      // Position SNMP devices below this agent
+      const agentDevices = devicesByAgent.get(compoundId) || []
+      const deviceCount = agentDevices.length
+      if (deviceCount === 0) return
+
+      const deviceSpread = Math.max(deviceCount * 4, 10)
+      const deviceStep = deviceCount === 1 ? 0 : deviceSpread / (deviceCount - 1)
+
+      agentDevices.forEach((device, j) => {
+        const deviceX =
+          deviceCount === 1 ? finalPos[0] : finalPos[0] - deviceSpread / 2 + j * deviceStep
+        const deviceZ = finalPos[2] + Math.sin((j / Math.max(deviceCount - 1, 1)) * Math.PI) * 4
+        const devicePos: [number, number, number] = [deviceX, DEVICE_Y, deviceZ]
+
+        const isActive = new Date(device.last_seen).getTime() > Date.now() - TWO_HOURS_MS
+        const deviceId = `device-${device.server_id}-${device.agent_id}-${device.device_ip || device.device_name}`
+
+        // Avoid duplicates
+        if (nodes.find((n) => n.id === deviceId)) return
+
+        nodes.push({
+          id: deviceId,
+          name: device.device_name || device.device_ip,
+          type: 'network',
+          status: isActive ? 'online' : 'offline',
+          position: devicePos,
+          color: isActive ? '#06b6d4' : '#475569',
+          ip: device.device_ip,
+          serverId: device.server_id,
+          agentId: device.agent_id,
+          agentName: agent.hostname,
+          lastSeen: device.last_seen,
+        })
+
+        links.push({
+          sourceId: deviceId,
+          targetId: compoundId,
+          sourcePos: devicePos,
+          targetPos: finalPos,
+          connected: isActive,
+          linkType: 'device-agent',
+        })
       })
     })
   })

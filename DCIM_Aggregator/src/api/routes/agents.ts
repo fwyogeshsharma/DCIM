@@ -97,6 +97,69 @@ export function createAgentsRouter(dbPool: Pool): Router {
     }
   })
 
+  // Aggregated agent stats grouped by server — MUST be before /by-server/:serverId
+  router.get('/stats/by-server', async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 5, 1), 50)
+
+      // Overall totals
+      const { rows: totalRows } = await dbPool.query(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(CASE WHEN status = 'online' THEN 1 END)::int AS online,
+          COUNT(CASE WHEN status = 'offline' THEN 1 END)::int AS offline,
+          COUNT(DISTINCT server_id)::int AS servers
+        FROM agents
+      `)
+
+      // Per-server breakdown, sorted by most offline
+      const { rows: serverRows } = await dbPool.query(`
+        SELECT s.id AS server_id, s.name AS server_name, s.metadata->>'color' AS color,
+          COUNT(*)::int AS total,
+          COUNT(CASE WHEN a.status = 'online' THEN 1 END)::int AS online,
+          COUNT(CASE WHEN a.status = 'offline' THEN 1 END)::int AS offline
+        FROM agents a
+        JOIN servers s ON a.server_id = s.id
+        GROUP BY s.id, s.name, s.metadata->>'color'
+        ORDER BY offline DESC, total DESC
+        LIMIT $1
+      `, [limit])
+
+      res.json({
+        success: true,
+        data: {
+          totals: totalRows[0],
+          servers: serverRows,
+        },
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // Recently seen agents (lightweight, no heavy joins)
+  router.get('/recent', async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 6, 1), 50)
+
+      const { rows } = await dbPool.query(`
+        SELECT a.agent_id, a.hostname, a.ip_address, a.status, a.last_seen,
+               a.agent_group AS "group", s.name AS server_name
+        FROM agents a
+        JOIN servers s ON a.server_id = s.id
+        ORDER BY a.last_seen DESC NULLS LAST
+        LIMIT $1
+      `, [limit])
+
+      res.json({
+        success: true,
+        data: rows,
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // Get agents by server — MUST be before /:agentId
   router.get('/by-server/:serverId', async (req, res) => {
     try {

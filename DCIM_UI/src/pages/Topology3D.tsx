@@ -1,12 +1,12 @@
 import { useMemo, useState, useRef, useCallback } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, RoundedBox, Billboard, Text, Line, Grid, Stars, Float } from '@react-three/drei'
+import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float } from '@react-three/drei'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { computeHierarchicalLayout, type LayoutNode, type LayoutLink } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Server, Box } from 'lucide-react'
+import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import * as THREE from 'three'
 
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
@@ -78,15 +78,22 @@ function ServerNode({
   isSelected,
   onSelect,
   onHover,
+  expanded,
+  agentCount,
+  onDoubleClick,
 }: {
   node: LayoutNode
   isSelected: boolean
   onSelect: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
+  expanded: boolean
+  agentCount: number
+  onDoubleClick: (node: LayoutNode) => void
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useFrame(() => {
     if (!glowRef.current) return
@@ -101,9 +108,29 @@ function ServerNode({
   const handleClick = useCallback(
     (e: THREE.Event & { stopPropagation: () => void }) => {
       e.stopPropagation()
-      onSelect(node)
+      // Debounce to distinguish from double-click
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current)
+        clickTimerRef.current = null
+      }
+      clickTimerRef.current = setTimeout(() => {
+        onSelect(node)
+        clickTimerRef.current = null
+      }, 250)
     },
     [node, onSelect]
+  )
+
+  const handleDoubleClick = useCallback(
+    (e: THREE.Event & { stopPropagation: () => void }) => {
+      e.stopPropagation()
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current)
+        clickTimerRef.current = null
+      }
+      onDoubleClick(node)
+    },
+    [node, onDoubleClick]
   )
 
   const handlePointerOver = useCallback(
@@ -129,6 +156,7 @@ function ServerNode({
       ref={groupRef}
       position={node.position}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
@@ -233,6 +261,22 @@ function ServerNode({
           {node.name}
         </Text>
       </Billboard>
+
+      {/* ── Agent count badge ── */}
+      {agentCount > 0 && (
+        <Billboard position={[0, 7, 0]}>
+          <Text
+            fontSize={0.8}
+            color={expanded ? '#a78bfa' : '#93c5fd'}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.04}
+            outlineColor="#000000"
+          >
+            {expanded ? `▾ ${agentCount} agents` : `▸ ${agentCount} agents`}
+          </Text>
+        </Billboard>
+      )}
 
       {/* ── Status label for offline ── */}
       {node.status === 'offline' && (
@@ -415,7 +459,7 @@ function AgentNode({
         </Text>
       </Billboard>
 
-      {/* ── Server name sub-label (distinguishes same-named agents across servers) ── */}
+      {/* ── Server name sub-label ── */}
       {node.serverName && (
         <Billboard position={[0, 1.5, 0]}>
           <Text
@@ -461,28 +505,174 @@ function AgentNode({
   return serverUnit
 }
 
+// ── Device Node (SNMP Network Device) ────────────────────────────────────────
+
+function DeviceNode({
+  node,
+  isSelected,
+  onSelect,
+  onHover,
+}: {
+  node: LayoutNode
+  isSelected: boolean
+  onSelect: (node: LayoutNode) => void
+  onHover: (hovering: boolean) => void
+}) {
+  const glowRef = useRef<THREE.Mesh>(null)
+  const [hovered, setHovered] = useState(false)
+
+  useFrame(() => {
+    if (!glowRef.current) return
+    const mat = glowRef.current.material as THREE.MeshBasicMaterial
+    if (node.status === 'online') {
+      mat.opacity = 0.08 + Math.sin(Date.now() * 0.003) * 0.06
+    } else {
+      mat.opacity = hovered || isSelected ? 0.08 : 0
+    }
+  })
+
+  const handleClick = useCallback(
+    (e: THREE.Event & { stopPropagation: () => void }) => {
+      e.stopPropagation()
+      onSelect(node)
+    },
+    [node, onSelect]
+  )
+
+  const handlePointerOver = useCallback(
+    (e: THREE.Event & { stopPropagation: () => void }) => {
+      e.stopPropagation()
+      setHovered(true)
+      onHover(true)
+    },
+    [onHover]
+  )
+
+  const handlePointerOut = useCallback(() => {
+    setHovered(false)
+    onHover(false)
+  }, [onHover])
+
+  const coreColor = node.status === 'online' ? '#06b6d4' : '#334155'
+  const ringColor = node.status === 'online' ? '#22d3ee' : '#475569'
+
+  return (
+    <group
+      position={node.position}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      {/* Core sphere */}
+      <mesh>
+        <sphereGeometry args={[1.2, 16, 16]} />
+        <meshStandardMaterial
+          color={coreColor}
+          emissive={coreColor}
+          emissiveIntensity={node.status === 'online' ? 0.5 : 0.05}
+          metalness={0.3}
+          roughness={0.4}
+        />
+      </mesh>
+
+      {/* Equatorial ring */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.8, 0.15, 8, 32]} />
+        <meshStandardMaterial
+          color={ringColor}
+          emissive={ringColor}
+          emissiveIntensity={node.status === 'online' ? 0.6 : 0.05}
+          metalness={0.5}
+          roughness={0.2}
+        />
+      </mesh>
+
+      {/* Pulsing glow */}
+      <mesh ref={glowRef}>
+        <sphereGeometry args={[2.8, 12, 12]} />
+        <meshBasicMaterial color={coreColor} transparent opacity={0} depthWrite={false} />
+      </mesh>
+
+      {/* Selection wireframe */}
+      {isSelected && (
+        <mesh>
+          <sphereGeometry args={[3.2, 12, 12]} />
+          <meshBasicMaterial color="#06b6d4" wireframe transparent opacity={0.5} />
+        </mesh>
+      )}
+
+      {/* Label */}
+      <Billboard position={[0, 3.2, 0]}>
+        <Text
+          fontSize={0.7}
+          color="#67e8f9"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.04}
+          outlineColor="#000000"
+        >
+          {node.name}
+        </Text>
+      </Billboard>
+
+      {node.agentName && (
+        <Billboard position={[0, 2.1, 0]}>
+          <Text
+            fontSize={0.5}
+            color="#94a3b8"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.03}
+            outlineColor="#000000"
+          >
+            via {node.agentName}
+          </Text>
+        </Billboard>
+      )}
+
+      {node.status === 'offline' && (
+        <Billboard position={[0, -2.8, 0]}>
+          <Text
+            fontSize={0.55}
+            color="#64748b"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.03}
+            outlineColor="#000000"
+          >
+            INACTIVE
+          </Text>
+        </Billboard>
+      )}
+    </group>
+  )
+}
+
 // ── Connection Line ──────────────────────────────────────────────────────────
 
 function ConnectionLine({ link }: { link: LayoutLink }) {
   const ref = useRef<any>(null)
 
   useFrame(() => {
-    if (!link.connected && ref.current) {
-      ref.current.material.dashOffset -= 0.05
+    if (ref.current && (link.linkType === 'device-agent' || !link.connected)) {
+      ref.current.material.dashOffset -= link.linkType === 'device-agent' ? 0.02 : 0.05
     }
   })
+
+  const isDevice = link.linkType === 'device-agent'
+  const color = isDevice ? '#06b6d4' : link.connected ? '#10b981' : '#ef4444'
 
   return (
     <Line
       ref={ref}
       points={[link.sourcePos, link.targetPos]}
-      color={link.connected ? '#10b981' : '#ef4444'}
-      lineWidth={link.connected ? 1.5 : 2}
-      dashed={!link.connected}
-      dashSize={1}
-      gapSize={0.8}
+      color={color}
+      lineWidth={isDevice ? 1 : link.connected ? 1.5 : 2}
+      dashed={isDevice || !link.connected}
+      dashSize={isDevice ? 0.5 : 1}
+      gapSize={isDevice ? 0.5 : 0.8}
       transparent
-      opacity={link.connected ? 0.6 : 0.8}
+      opacity={isDevice ? 0.5 : link.connected ? 0.6 : 0.8}
     />
   )
 }
@@ -496,6 +686,9 @@ function SceneContent({
   onSelectNode,
   onHover,
   onDeselect,
+  expandedServers,
+  agentCounts,
+  onDoubleClickServer,
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
@@ -503,6 +696,9 @@ function SceneContent({
   onSelectNode: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
   onDeselect: () => void
+  expandedServers: Set<string>
+  agentCounts: Record<string, number>
+  onDoubleClickServer: (node: LayoutNode) => void
 }) {
   return (
     <>
@@ -542,6 +738,9 @@ function SceneContent({
             isSelected={selectedNode?.id === node.id}
             onSelect={onSelectNode}
             onHover={onHover}
+            expanded={expandedServers.has(node.id)}
+            agentCount={agentCounts[node.id] || 0}
+            onDoubleClick={onDoubleClickServer}
           />
         ))}
 
@@ -550,6 +749,19 @@ function SceneContent({
         .filter((n) => n.type === 'agent')
         .map((node) => (
           <AgentNode
+            key={node.id}
+            node={node}
+            isSelected={selectedNode?.id === node.id}
+            onSelect={onSelectNode}
+            onHover={onHover}
+          />
+        ))}
+
+      {/* Device nodes (SNMP) */}
+      {nodes
+        .filter((n) => n.type === 'network')
+        .map((node) => (
+          <DeviceNode
             key={node.id}
             node={node}
             isSelected={selectedNode?.id === node.id}
@@ -584,14 +796,61 @@ export default function Topology3D() {
     queryFn: () => api.getServers(),
     staleTime: 60000,
   })
+  const { data: snmpDevices } = useQuery({
+    queryKey: ['snmp-devices-3d'],
+    queryFn: () => api.getSNMPDevices(),
+    staleTime: 15000,
+    refetchInterval: 15000,
+  })
   const navigate = useNavigate()
   const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
   const [cursorPointer, setCursorPointer] = useState(false)
 
+  // Expand/collapse state
+  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
+
+  const toggleServerExpansion = useCallback((node: LayoutNode) => {
+    setExpandedServers(prev => {
+      const next = new Set(prev)
+      if (next.has(node.id)) {
+        next.delete(node.id)
+      } else {
+        next.add(node.id)
+      }
+      return next
+    })
+  }, [])
+
+  const expandAll = useCallback(() => {
+    const allServerIds = servers?.filter(s => s.enabled).map(s => `server-${s.id}`) || []
+    setExpandedServers(new Set(allServerIds))
+  }, [servers])
+
+  const collapseAll = useCallback(() => {
+    setExpandedServers(new Set())
+  }, [])
+
+  // Compute agent counts per server (always full list)
+  const agentCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    agents?.forEach(a => {
+      const sid = `server-${a.server_id}`
+      counts[sid] = (counts[sid] || 0) + 1
+    })
+    return counts
+  }, [agents])
+
+  // Filter agents to only expanded servers, then compute layout with devices
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
-    return computeHierarchicalLayout(servers, agents)
-  }, [servers, agents])
+    const visibleAgents = agents.filter(a => expandedServers.has(`server-${a.server_id}`))
+    // Only pass devices whose agents are visible
+    const visibleAgentKeys = new Set(visibleAgents.map(a => `${a.server_id}:${a.agent_id}`))
+    const visibleDevices = (snmpDevices || []).filter(
+      d => visibleAgentKeys.has(`${d.server_id}:${d.agent_id}`)
+    )
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices)
+  }, [servers, agents, expandedServers, snmpDevices])
 
   const handleSelectNode = useCallback((node: LayoutNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node))
@@ -622,6 +881,7 @@ export default function Topology3D() {
   const offlineAgents = agents?.filter((a) => a.status === 'offline').length || 0
   const enabledServers = servers?.filter((s) => s.enabled) || []
   const offlineServers = enabledServers.filter((s) => s.health?.status !== 'healthy').length
+  const hasExpanded = expandedServers.size > 0
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -633,10 +893,18 @@ export default function Topology3D() {
             3D Network Topology
           </h1>
           <p className="text-slate-400 mt-2 text-lg">
-            Interactive 3D visualization — drag to rotate, scroll to zoom, right-click to pan
+            Interactive 3D visualization — drag to rotate, scroll to zoom, double-click a server to expand
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={hasExpanded ? collapseAll : expandAll}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
+            title={hasExpanded ? 'Collapse all servers' : 'Expand all servers'}
+          >
+            {hasExpanded ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
+            {hasExpanded ? 'Collapse All' : 'Expand All'}
+          </button>
           <button
             onClick={() => navigate('/app/topology')}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
@@ -664,6 +932,9 @@ export default function Topology3D() {
               onSelectNode={handleSelectNode}
               onHover={handleHover}
               onDeselect={handleDeselect}
+              expandedServers={expandedServers}
+              agentCounts={agentCounts}
+              onDoubleClickServer={toggleServerExpansion}
             />
           </Canvas>
 
@@ -709,6 +980,21 @@ export default function Topology3D() {
                 <div className="w-6 h-0.5 border-t-2 border-dashed border-red-500" />
                 <span className="text-slate-300">Disconnected Link</span>
               </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-cyan-600 border-2 border-cyan-300 shadow-[0_0_6px_rgba(6,182,212,0.5)]" />
+                <span className="text-slate-300">SNMP Device (Active)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-slate-700 border-2 border-slate-500" />
+                <span className="text-slate-300">SNMP Device (Inactive)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-0.5 border-t-2 border-dashed border-cyan-400 opacity-60" />
+                <span className="text-slate-300">Device Link</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-white/10">
+                <p className="text-slate-400">Double-click a server to expand/collapse its agents</p>
+              </div>
             </div>
           </div>
 
@@ -742,6 +1028,17 @@ export default function Topology3D() {
                 <Activity className="w-4 h-4 text-red-400" />
                 <span className="text-slate-300">
                   Offline: <span className="font-bold text-red-400">{offlineAgents}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-cyan-400" />
+                <span className="text-slate-300">
+                  Devices: <span className="font-bold text-cyan-400">{snmpDevices?.length || 0}</span>
+                </span>
+              </div>
+              <div className="border-t border-white/10 pt-2 mt-2 flex items-center gap-2">
+                <span className="text-slate-400 text-xs">
+                  {expandedServers.size} / {enabledServers.length} expanded
                 </span>
               </div>
             </div>
@@ -813,20 +1110,42 @@ export default function Topology3D() {
                 )}
 
               {selectedNode.type === 'server' && (
-                <div>
-                  <p className="text-sm text-slate-400">Connected Agents</p>
-                  <p className="text-2xl font-bold text-purple-400">
-                    {agents?.filter(
-                      (a) => `server-${a.server_id}` === selectedNode.id
-                    ).length || 0}
-                  </p>
-                </div>
+                <>
+                  <div>
+                    <p className="text-sm text-slate-400">Connected Agents</p>
+                    <p className="text-2xl font-bold text-purple-400">
+                      {agentCounts[selectedNode.id] || 0}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleServerExpansion(selectedNode)}
+                    className="block w-full text-center px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
+                  >
+                    {expandedServers.has(selectedNode.id) ? 'Collapse Agents' : 'Expand Agents'}
+                  </button>
+                </>
               )}
 
               {selectedNode.type === 'agent' && selectedNode.serverName && (
                 <div>
                   <p className="text-sm text-slate-400">Server</p>
                   <p className="text-base font-semibold text-purple-400">{selectedNode.serverName}</p>
+                </div>
+              )}
+
+              {selectedNode.type === 'network' && selectedNode.agentName && (
+                <div>
+                  <p className="text-sm text-slate-400">Monitored By</p>
+                  <p className="text-base font-semibold text-cyan-400">{selectedNode.agentName}</p>
+                </div>
+              )}
+
+              {selectedNode.type === 'network' && selectedNode.lastSeen && (
+                <div>
+                  <p className="text-sm text-slate-400">Last Seen</p>
+                  <p className="text-sm font-mono text-slate-300">
+                    {new Date(selectedNode.lastSeen).toLocaleString()}
+                  </p>
                 </div>
               )}
 

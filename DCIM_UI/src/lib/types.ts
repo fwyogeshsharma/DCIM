@@ -77,6 +77,31 @@ export interface Alert {
   created_at: string
 }
 
+export interface DeduplicatedAlert {
+  id: number
+  agent_id: string
+  server_id?: string
+  server_name?: string
+  timestamp: string
+  severity: 'INFO' | 'WARNING' | 'CRITICAL'
+  metric_type: string
+  value: number
+  threshold: number
+  message: string
+  created_at: string
+  occurrence_count: number
+  first_seen: string
+}
+
+export interface SNMPDevice {
+  device_name: string
+  device_ip: string
+  agent_id: string
+  server_id: string
+  server_name: string
+  last_seen: string
+}
+
 export interface SNMPMetric {
   id: number
   agent_id: string

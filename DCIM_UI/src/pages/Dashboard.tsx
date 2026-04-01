@@ -1,22 +1,13 @@
-import { useAgents } from '@/hooks/useAgents'
 import { useAlerts } from '@/hooks/useAlerts'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Server, Activity, AlertTriangle, ThermometerSun, ServerCog, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Server, Activity, AlertTriangle, ServerCog, CheckCircle, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Link } from 'react-router-dom'
 
 export default function Dashboard() {
-  const { data: agents, isLoading: agentsLoading } = useAgents()
-  const { data: alerts, isLoading: alertsLoading } = useAlerts()
-  const { data: servers, isLoading: serversLoading } = useQuery({
-    queryKey: ['servers'],
-    queryFn: () => api.getServers(),
-    staleTime: 30000,
-    refetchInterval: 30000,
-  })
+  const { data: alerts } = useAlerts()
 
-  // Use the stats API for accurate total counts (alerts list is paginated to 20)
   const { data: dashboardStats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => api.getDashboardStats(),
@@ -24,7 +15,6 @@ export default function Dashboard() {
     refetchInterval: 5000,
   })
 
-  // Use alert counts API for critical count
   const { data: alertCounts } = useQuery({
     queryKey: ['alert-counts'],
     queryFn: () => api.getAlertCounts(),
@@ -32,31 +22,31 @@ export default function Dashboard() {
     refetchInterval: 5000,
   })
 
-  const totalAgents = agents?.length || 0
-  const onlineAgents = agents?.filter((a) => a.status === 'online').length || 0
+  const { data: serverHealth, isLoading: serverHealthLoading } = useQuery({
+    queryKey: ['server-health-summary'],
+    queryFn: () => api.getServerHealthSummary(5),
+    refetchInterval: 30000,
+  })
+
+  const { data: agentsByServerSummary, isLoading: agentsSummaryLoading } = useQuery({
+    queryKey: ['agents-by-server-summary'],
+    queryFn: () => api.getAgentsByServerSummary(5),
+    refetchInterval: 30000,
+  })
+
+  const { data: recentAgents } = useQuery({
+    queryKey: ['recent-agents'],
+    queryFn: () => api.getRecentAgents(6),
+    refetchInterval: 30000,
+  })
+
+  // Derive stat card values from aggregated endpoints
+  const totalServers = serverHealth?.total ?? dashboardStats?.servers ?? 0
+  const healthyServers = serverHealth?.healthy ?? 0
+  const totalAgents = agentsByServerSummary?.totals.total ?? dashboardStats?.agents.total ?? 0
+  const onlineAgents = agentsByServerSummary?.totals.online ?? dashboardStats?.agents.online ?? 0
   const criticalAlerts = alertCounts?.reduce((sum, c) => sum + Number(c.critical), 0) || 0
   const totalAlerts = dashboardStats?.activeAlerts || 0
-  const totalServers = servers?.length || 0
-  const healthyServers = servers?.filter((s) => s.health?.status === 'healthy').length || 0
-
-  // Group agents by server
-  const agentsByServer: Record<string, { name: string; online: number; offline: number; total: number; color: string }> = {}
-  agents?.forEach((agent) => {
-    const key = agent.server_name || 'Unknown'
-    if (!agentsByServer[key]) {
-      agentsByServer[key] = { name: key, online: 0, offline: 0, total: 0, color: '#3b82f6' }
-    }
-    agentsByServer[key].total++
-    if (agent.status === 'online') agentsByServer[key].online++
-    else agentsByServer[key].offline++
-  })
-
-  // Try to assign server colors from server metadata
-  servers?.forEach((s) => {
-    if (agentsByServer[s.name] && s.metadata?.color) {
-      agentsByServer[s.name].color = s.metadata.color
-    }
-  })
 
   const stats = [
     {
@@ -70,8 +60,8 @@ export default function Dashboard() {
     },
     {
       name: 'Total Agents',
-      value: totalAgents,
-      subtitle: `${onlineAgents} online`,
+      value: totalAgents.toLocaleString(),
+      subtitle: `${onlineAgents.toLocaleString()} online`,
       icon: Server,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
@@ -79,8 +69,8 @@ export default function Dashboard() {
     },
     {
       name: 'Online Agents',
-      value: onlineAgents,
-      subtitle: `${totalAgents - onlineAgents} offline`,
+      value: onlineAgents.toLocaleString(),
+      subtitle: `${(totalAgents - onlineAgents).toLocaleString()} offline`,
       icon: Activity,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
@@ -97,7 +87,7 @@ export default function Dashboard() {
     },
   ]
 
-  if (agentsLoading || serversLoading) {
+  if (serverHealthLoading || agentsSummaryLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4">
@@ -146,41 +136,104 @@ export default function Dashboard() {
 
       {/* Server Health + Agent Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Server Health */}
+        {/* Server Health Summary */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-white">Server Health</h3>
             <Link to="/app/servers" className="text-sm text-blue-400 hover:text-blue-300">View All</Link>
           </div>
-          {servers && servers.length > 0 ? (
-            <div className="space-y-3">
-              {servers.map((server) => (
-                <div key={server.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-2 h-8 rounded-full"
-                      style={{ backgroundColor: server.metadata?.color || '#3b82f6' }}
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-white">{server.name}</p>
-                      <p className="text-xs text-slate-500 font-mono">{server.url}</p>
+          {serverHealth && serverHealth.total > 0 ? (
+            <div className="space-y-4">
+              {/* Stacked bar */}
+              <div className="h-3 bg-slate-700 rounded-full overflow-hidden flex">
+                {serverHealth.healthy > 0 && (
+                  <div
+                    className="h-full bg-green-500 transition-all duration-500"
+                    style={{ width: `${(serverHealth.healthy / serverHealth.total) * 100}%` }}
+                  />
+                )}
+                {serverHealth.offline > 0 && (
+                  <div
+                    className="h-full bg-red-500 transition-all duration-500"
+                    style={{ width: `${(serverHealth.offline / serverHealth.total) * 100}%` }}
+                  />
+                )}
+                {serverHealth.tls_error > 0 && (
+                  <div
+                    className="h-full bg-orange-500 transition-all duration-500"
+                    style={{ width: `${(serverHealth.tls_error / serverHealth.total) * 100}%` }}
+                  />
+                )}
+                {serverHealth.unknown > 0 && (
+                  <div
+                    className="h-full bg-slate-500 transition-all duration-500"
+                    style={{ width: `${(serverHealth.unknown / serverHealth.total) * 100}%` }}
+                  />
+                )}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                  <span className="text-slate-300">{serverHealth.healthy.toLocaleString()} Healthy</span>
+                </span>
+                {serverHealth.offline > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                    <span className="text-red-400">{serverHealth.offline} Offline</span>
+                  </span>
+                )}
+                {serverHealth.tls_error > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                    <span className="text-orange-400">{serverHealth.tls_error} TLS Error</span>
+                  </span>
+                )}
+                {serverHealth.unknown > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+                    <span className="text-slate-400">{serverHealth.unknown} Unknown</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Needs attention list or all-healthy message */}
+              {serverHealth.needs_attention.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Needs Attention</p>
+                  {serverHealth.needs_attention.map((server) => (
+                    <div key={server.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-2 h-8 rounded-full"
+                          style={{ backgroundColor: server.color }}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-white">{server.name}</p>
+                          <p className="text-xs text-slate-500 font-mono truncate max-w-[200px]">{server.url}</p>
+                        </div>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                        server.status === 'offline'
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : server.status === 'tls_error'
+                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                          : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                      }`}>
+                        {server.status === 'tls_error' ? 'TLS Error' : server.status === 'offline' ? 'Offline' : 'Unknown'}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {server.health?.status === 'healthy' ? (
-                      <>
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-xs text-green-400">{server.health.responseTime}ms</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4 text-red-500" />
-                        <span className="text-xs text-red-400">Offline</span>
-                      </>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <span className="text-sm text-green-400">
+                    All {serverHealth.total.toLocaleString()} servers healthy
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
@@ -193,42 +246,77 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Agents by Server */}
+        {/* Agents by Server Summary */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-white">Agents by Server</h3>
             <Link to="/app/agents" className="text-sm text-blue-400 hover:text-blue-300">View All</Link>
           </div>
-          {Object.keys(agentsByServer).length > 0 ? (
+          {agentsByServerSummary && agentsByServerSummary.totals.total > 0 ? (
             <div className="space-y-4">
-              {Object.values(agentsByServer).map((group) => {
-                const onlinePct = group.total > 0 ? (group.online / group.total) * 100 : 0
-                return (
-                  <div key={group.name} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: group.color }} />
-                        <span className="text-sm font-medium text-white">{group.name}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs">
-                        <span className="text-green-400">{group.online} online</span>
-                        {group.offline > 0 && <span className="text-red-400">{group.offline} offline</span>}
-                        <span className="text-slate-500">{group.total} total</span>
-                      </div>
-                    </div>
-                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${onlinePct}%`,
-                          backgroundColor: group.color,
-                          opacity: 0.8,
-                        }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
+              {/* Overall stacked bar */}
+              <div className="h-3 bg-slate-700 rounded-full overflow-hidden flex">
+                {agentsByServerSummary.totals.online > 0 && (
+                  <div
+                    className="h-full bg-green-500 transition-all duration-500"
+                    style={{ width: `${(agentsByServerSummary.totals.online / agentsByServerSummary.totals.total) * 100}%` }}
+                  />
+                )}
+                {agentsByServerSummary.totals.offline > 0 && (
+                  <div
+                    className="h-full bg-red-500 transition-all duration-500"
+                    style={{ width: `${(agentsByServerSummary.totals.offline / agentsByServerSummary.totals.total) * 100}%` }}
+                  />
+                )}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                <span className="text-green-400">{agentsByServerSummary.totals.online.toLocaleString()} online</span>
+                <span className="text-red-400">{agentsByServerSummary.totals.offline.toLocaleString()} offline</span>
+                <span className="text-slate-400">{agentsByServerSummary.totals.servers.toLocaleString()} servers</span>
+              </div>
+
+              {/* Per-server breakdown (top N by most offline) or all-online message */}
+              {agentsByServerSummary.totals.offline > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Most Offline Agents</p>
+                  {agentsByServerSummary.servers
+                    .filter((s) => s.offline > 0)
+                    .map((group) => {
+                      const onlinePct = group.total > 0 ? (group.online / group.total) * 100 : 0
+                      return (
+                        <div key={group.server_id} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: group.color || '#3b82f6' }} />
+                              <span className="text-sm font-medium text-white">{group.server_name}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="text-green-400">{group.online} online</span>
+                              <span className="text-red-400">{group.offline} offline</span>
+                            </div>
+                          </div>
+                          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${onlinePct}%`,
+                                backgroundColor: group.color || '#3b82f6',
+                                opacity: 0.8,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <span className="text-sm text-green-400">All agents online</span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
@@ -287,42 +375,40 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recently Seen Agents */}
+        {/* Recently Seen Agents (from lightweight endpoint) */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-white">Recently Active Agents</h3>
             <Link to="/app/agents" className="text-sm text-blue-400 hover:text-blue-300">View All</Link>
           </div>
           <div className="space-y-3">
-            {agents
-              ?.slice()
-              .sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime())
-              .slice(0, 6)
-              .map((agent) => (
-                <Link
-                  key={agent.id}
-                  to={`/app/agents/${agent.agent_id}`}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <div>
-                      <p className="text-sm font-medium text-white">{agent.hostname}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-slate-500 font-mono">{agent.ip_address}</p>
-                        {agent.server_name && (
-                          <span className="text-xs text-slate-500">&middot; {agent.server_name}</span>
-                        )}
-                      </div>
+            {recentAgents?.map((agent) => (
+              <Link
+                key={agent.agent_id}
+                to={`/app/agents/${agent.agent_id}`}
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div>
+                    <p className="text-sm font-medium text-white">{agent.hostname}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-slate-500 font-mono">{agent.ip_address}</p>
+                      {agent.server_name && (
+                        <span className="text-xs text-slate-500">&middot; {agent.server_name}</span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <Clock className="w-3 h-3" />
-                    {formatDistanceToNow(new Date(agent.last_seen), { addSuffix: true })}
-                  </div>
-                </Link>
-              ))}
-            {(!agents || agents.length === 0) && (
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Clock className="w-3 h-3" />
+                  {agent.last_seen
+                    ? formatDistanceToNow(new Date(agent.last_seen), { addSuffix: true })
+                    : 'Never'}
+                </div>
+              </Link>
+            ))}
+            {(!recentAgents || recentAgents.length === 0) && (
               <div className="text-center py-8 text-slate-400">
                 <Server className="w-10 h-10 mx-auto mb-3 text-slate-600" />
                 No agents found

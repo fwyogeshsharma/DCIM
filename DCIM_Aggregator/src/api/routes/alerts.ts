@@ -154,6 +154,94 @@ export function createAlertsRouter(dbPool: Pool): Router {
     }
   })
 
+  // Get deduplicated latest alerts (one per agent+metric_type+severity)
+  router.get('/latest', async (req, res) => {
+    try {
+      const { agent_id, severity, limit = 100, offset = 0 } = req.query
+
+      let whereClause = 'WHERE a.resolved = false'
+      const params: any[] = []
+      let paramIndex = 1
+
+      if (agent_id) {
+        params.push(agent_id)
+        whereClause += ` AND a.agent_id = $${paramIndex++}`
+      }
+
+      if (severity) {
+        params.push(String(severity).toLowerCase())
+        whereClause += ` AND LOWER(a.severity) = $${paramIndex++}`
+      }
+
+      const safeLimit = Math.max(1, Math.min(parseInt(String(limit), 10) || 100, 10000))
+      const safeOffset = Math.max(0, parseInt(String(offset), 10) || 0)
+
+      const query = `
+        WITH latest AS (
+          SELECT a.*,
+            ROW_NUMBER() OVER (
+              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
+              ORDER BY a.timestamp DESC
+            ) as rn,
+            COUNT(*) OVER (
+              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
+            )::int as occurrence_count,
+            MIN(a.timestamp) OVER (
+              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
+            ) as first_seen
+          FROM alerts a
+          ${whereClause}
+        )
+        SELECT l.id, l.server_id, l.agent_id, l.message, l.metric_type,
+          COALESCE(l.threshold_value, 0) AS threshold,
+          COALESCE(l.actual_value, 0) AS value,
+          UPPER(l.severity) AS severity,
+          l.timestamp, l.created_at,
+          s.name AS server_name,
+          l.occurrence_count,
+          l.first_seen
+        FROM latest l
+        JOIN servers s ON l.server_id = s.id
+        WHERE l.rn = 1
+        ORDER BY l.timestamp DESC
+        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+      `
+
+      params.push(safeLimit, safeOffset)
+
+      // Count query for pagination
+      const countQuery = `
+        WITH latest AS (
+          SELECT a.*,
+            ROW_NUMBER() OVER (
+              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
+              ORDER BY a.timestamp DESC
+            ) as rn
+          FROM alerts a
+          ${whereClause}
+        )
+        SELECT COUNT(*)::int as total FROM latest WHERE rn = 1
+      `
+
+      const [{ rows }, countResult] = await Promise.all([
+        dbPool.query(query, params),
+        dbPool.query(countQuery, params.slice(0, paramIndex - 3)), // exclude limit/offset
+      ])
+
+      const total = countResult.rows[0].total
+
+      res.json({
+        success: true,
+        data: rows,
+        count: rows.length,
+        total,
+        hasMore: safeOffset + rows.length < total,
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // Bulk resolve alerts — MUST be before /:alertId/resolve
   router.post('/bulk/resolve', async (req, res) => {
     try {

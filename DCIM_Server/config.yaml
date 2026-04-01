@@ -75,9 +75,9 @@ database:
   # PostgreSQL settings (when type: "postgres")
   postgres:
     host: "localhost"
-    port: 5432
-    user: "postgres"
-    password: "postgres"
+    port: 5435
+    user: "dcim"
+    password: "dcim_password"
     database: "dcim_db"
     sslmode: "disable"
     max_open_conns: 50

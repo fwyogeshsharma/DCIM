@@ -52,4 +52,20 @@ export class CacheService {
   async getServerHealth(serverId: string): Promise<any> {
     return this.get(`server:health:${serverId}`)
   }
+
+  async getMultipleServerHealth(serverIds: string[]): Promise<Record<string, any>> {
+    if (serverIds.length === 0) return {}
+    try {
+      const keys = serverIds.map(id => `server:health:${id}`)
+      const values = await this.redisClient.mGet(keys)
+      const result: Record<string, any> = {}
+      serverIds.forEach((id, i) => {
+        result[id] = values[i] ? JSON.parse(values[i]!) : null
+      })
+      return result
+    } catch (error) {
+      logger.error('Cache mGet error:', error)
+      return {}
+    }
+  }
 }

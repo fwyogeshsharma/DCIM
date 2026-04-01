@@ -155,7 +155,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       const { server_id, agent_id } = req.query
 
       let query = `
-        SELECT DISTINCT ON (sm.device_name, sm.device_ip)
+        SELECT
           sm.device_name,
           sm.device_ip,
           sm.agent_id,

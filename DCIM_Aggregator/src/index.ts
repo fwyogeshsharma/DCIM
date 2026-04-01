@@ -23,6 +23,11 @@ export const dbPool = new Pool({
   connectionTimeoutMillis: 5000,
 })
 
+// Disable TimescaleDB vectorized aggregation (incompatible with character varying columns)
+dbPool.on('connect', (client) => {
+  client.query("SET timescaledb.enable_vectorized_aggregation = off").catch(() => {})
+})
+
 // Redis connection
 export const redisClient = createClient({
   url: config.redis.url,

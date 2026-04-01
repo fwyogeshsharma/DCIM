@@ -49,6 +49,87 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
     }
   })
 
+  // Aggregated server health summary (must be before /:id)
+  router.get('/health/summary', async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 5, 1), 50)
+
+      // Get all enabled servers (lightweight columns only)
+      const { rows: servers } = await dbPool.query(
+        `SELECT id, name, url, metadata FROM servers WHERE enabled = true ORDER BY name`
+      )
+
+      const serverIds = servers.map((s: any) => s.id)
+      const healthMap = await cacheService.getMultipleServerHealth(serverIds)
+
+      let healthy = 0
+      let offline = 0
+      let tls_error = 0
+      let unknown = 0
+      const needsAttention: any[] = []
+
+      for (const server of servers) {
+        const health = healthMap[server.id]
+        const status = health?.status || 'unknown'
+
+        if (status === 'healthy') {
+          healthy++
+        } else if (status === 'tls_error') {
+          tls_error++
+          needsAttention.push({
+            id: server.id,
+            name: server.name,
+            url: server.url,
+            color: server.metadata?.color || '#3b82f6',
+            status,
+            error: health?.error || null,
+            responseTime: health?.responseTime || null,
+          })
+        } else if (status === 'offline') {
+          offline++
+          needsAttention.push({
+            id: server.id,
+            name: server.name,
+            url: server.url,
+            color: server.metadata?.color || '#3b82f6',
+            status,
+            error: health?.error || null,
+            responseTime: null,
+          })
+        } else {
+          unknown++
+          needsAttention.push({
+            id: server.id,
+            name: server.name,
+            url: server.url,
+            color: server.metadata?.color || '#3b82f6',
+            status: 'unknown',
+            error: null,
+            responseTime: null,
+          })
+        }
+      }
+
+      // Sort: offline first, then tls_error, then unknown
+      const statusOrder: Record<string, number> = { offline: 0, tls_error: 1, unknown: 2 }
+      needsAttention.sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9))
+
+      res.json({
+        success: true,
+        data: {
+          total: servers.length,
+          healthy,
+          offline,
+          tls_error,
+          unknown,
+          needs_attention: needsAttention.slice(0, limit),
+        },
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // Get server by ID
   router.get('/:id', async (req, res) => {
     try {
@@ -175,7 +256,7 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
 
       const startTime = Date.now()
       try {
-        const baseUrl = server.url.replace(/\/api\/v\d+\/?$/, '')
+        const baseUrl = server.url.replace(/\/api\/v\d+\/?$/, '').replace('localhost', '127.0.0.1')
         await axios.get(`${baseUrl}/health`, { timeout: 5000, httpsAgent: agent })
         const responseTime = Date.now() - startTime
 
@@ -194,7 +275,7 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
       } catch (error: any) {
         const health = {
           status: 'offline',
-          error: error.message,
+          error: error.message || error.errors?.map((e: any) => e.message).join('; ') || error.code || 'connection failed',
           timestamp: new Date().toISOString(),
         }
 

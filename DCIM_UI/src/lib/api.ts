@@ -2,7 +2,9 @@ import type {
   Agent,
   Metric,
   Alert,
+  DeduplicatedAlert,
   SNMPMetric,
+  SNMPDevice,
   License,
   AggregatedMetric,
   AgentFilter,
@@ -164,6 +166,23 @@ class APIClient {
     return this.request(`/alerts/counts`)
   }
 
+  async getLatestAlerts(filter?: { agent_id?: string; severity?: string; limit?: number; offset?: number }): Promise<{
+    data: DeduplicatedAlert[]
+    total: number
+    hasMore: boolean
+  }> {
+    const params = new URLSearchParams()
+    if (filter?.agent_id) params.append('agent_id', filter.agent_id)
+    if (filter?.severity) params.append('severity', filter.severity)
+    if (filter?.limit !== undefined) params.append('limit', String(filter.limit))
+    if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
+
+    const queryString = params.toString()
+    const res = await fetch(`${this.baseURL}/alerts/latest${queryString ? `?${queryString}` : ''}`)
+    const json = await res.json()
+    return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
+  }
+
   async getAlert(alertId: number): Promise<Alert> {
     return this.request<Alert>(`/alerts/${alertId}`)
   }
@@ -187,9 +206,9 @@ class APIClient {
     return this.request<SNMPMetric[]>(`/snmp/metrics${queryString}`)
   }
 
-  async getSNMPDevices(agentId?: string): Promise<any[]> {
+  async getSNMPDevices(agentId?: string): Promise<SNMPDevice[]> {
     const queryString = agentId ? `?agent_id=${agentId}` : ''
-    return this.request<any[]>(`/snmp/devices${queryString}`)
+    return this.request<SNMPDevice[]>(`/snmp/devices${queryString}`)
   }
 
   // License endpoints
@@ -320,6 +339,54 @@ class APIClient {
     activeAlerts: number
   }> {
     return this.request('/dashboard/stats')
+  }
+
+  // Aggregated server health summary
+  async getServerHealthSummary(limit = 5): Promise<{
+    total: number
+    healthy: number
+    offline: number
+    tls_error: number
+    unknown: number
+    needs_attention: Array<{
+      id: string
+      name: string
+      url: string
+      color: string
+      status: string
+      error: string | null
+      responseTime: number | null
+    }>
+  }> {
+    return this.request(`/servers/health/summary?limit=${limit}`)
+  }
+
+  // Aggregated agent stats grouped by server
+  async getAgentsByServerSummary(limit = 5): Promise<{
+    totals: { total: number; online: number; offline: number; servers: number }
+    servers: Array<{
+      server_id: string
+      server_name: string
+      color: string | null
+      total: number
+      online: number
+      offline: number
+    }>
+  }> {
+    return this.request(`/agents/stats/by-server?limit=${limit}`)
+  }
+
+  // Recently active agents (lightweight)
+  async getRecentAgents(limit = 6): Promise<Array<{
+    agent_id: string
+    hostname: string
+    ip_address: string
+    status: string
+    last_seen: string
+    group: string
+    server_name: string
+  }>> {
+    return this.request(`/agents/recent?limit=${limit}`)
   }
 }
 
