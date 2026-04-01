@@ -1,0 +1,12 @@
+--- importing QApplication ---
+--- setting HighDpi policy (static, before QApp) ---
+--- creating QApplication ---
+QApplication: OK
+--- importing _create_splash ---
+--- calling _create_splash ---
+Splash: OK
+--- importing MainWindow ---
+MainWindow import: OK
+--- constructing MainWindow ---
+MainWindow(): OK
+ALL STARTUP OK
