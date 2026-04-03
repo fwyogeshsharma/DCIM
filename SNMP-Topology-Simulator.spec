@@ -1,57 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec file for SNMP Network Topology Simulator
 
-import sys
-import os
-from pathlib import Path
-
-block_cipher = None
-
-# Data files to bundle
-datas = [
-    ('datasets', 'datasets'),
-    ('topologies', 'topologies'),
-    ('core', 'core'),
-    ('ui', 'ui'),
-    ('simulator', 'simulator'),
-]
 
 a = Analysis(
-    ['app/main.py'],
-    pathex=['.'],
+    ['app\\main.py'],
+    pathex=[],
     binaries=[],
-    datas=datas,
-    hiddenimports=[
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
-        'PySide6.QtNetwork',
-        'networkx',
-        'networkx.algorithms',
-        'networkx.classes',
-        'pysnmp',
-        'pysnmp.hlapi',
-        'pyasn1',
-        'pyasn1.type',
-        'jinja2',
-    ],
+    datas=[('datasets', 'datasets'), ('topologies', 'topologies'), ('core', 'core'), ('ui', 'ui'), ('simulator', 'simulator')],
+    hiddenimports=['PySide6.QtCore', 'PySide6.QtGui', 'PySide6.QtWidgets', 'networkx', 'pysnmp'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['tkinter', 'matplotlib', 'numpy', 'scipy'],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
+    excludes=[],
     noarchive=False,
+    optimize=0,
 )
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
     [],
     name='SNMP-Topology-Simulator',
@@ -61,11 +29,10 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,         # GUI app — no console window
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
 )

@@ -93,7 +93,7 @@ class SNMPRecGenerator:
             neighbors = topology.get_neighbors(device.id)
             neighbor_tuples = self._build_neighbor_tuples(device, topology)
             entries += generate_lldp_entries(device, neighbor_tuples)
-            if device.vendor == Vendor.CISCO:
+            if device.vendor == Vendor.CISCO_SYSTEMS:
                 entries += generate_cdp_entries(device, neighbor_tuples)
 
         if device.device_type == DeviceType.SWITCH:

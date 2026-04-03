@@ -6,7 +6,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTextEdit, QLabel, QGroupBox, QProgressBar,
-    QFrame, QComboBox, QLineEdit, QSizePolicy,
+    QComboBox, QLineEdit, QSizePolicy,
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QThread, QObject
 from PySide6.QtGui import QFont, QTextCursor
@@ -114,19 +114,31 @@ class SimulationPanel(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(8)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # ---- Title ----
-        title = QLabel("Simulation Control")
-        title.setFont(QFont("Arial", 11, QFont.Bold))
-        title.setStyleSheet("color: #e6edf3; padding: 4px 0;")
-        layout.addWidget(title)
+        # ── Title bar ─────────────────────────────────────────────────────
+        title_bar = QWidget()
+        title_bar.setFixedHeight(26)
+        title_bar.setStyleSheet(
+            "background: #21262d; border-bottom: 1px solid #30363d;"
+        )
+        tb_row = QHBoxLayout(title_bar)
+        tb_row.setContentsMargins(8, 0, 8, 0)
+        title_lbl = QLabel("Simulation Control")
+        title_lbl.setFont(QFont("Arial", 9, QFont.Bold))
+        title_lbl.setStyleSheet("color: #e6edf3; background: transparent; border: none;")
+        tb_row.addWidget(title_lbl)
+        tb_row.addStretch()
+        layout.addWidget(title_bar)
 
-        sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("color: #30363d;")
-        layout.addWidget(sep)
+        # ── Content ───────────────────────────────────────────────────────
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(6, 6, 6, 6)
+        content_layout.setSpacing(8)
+        layout.addWidget(content)
+        layout = content_layout   # redirect remaining additions to content
 
         # ---- Status ----
         status_row = QHBoxLayout()
@@ -140,6 +152,7 @@ class SimulationPanel(QWidget):
         net_group = QGroupBox("Network Interface Binding")
         net_group.setStyleSheet(self._group_style())
         net_layout = QVBoxLayout(net_group)
+        net_layout.setContentsMargins(6, 4, 6, 6)
         net_layout.setSpacing(4)
 
         # Explanation micro-text
@@ -157,7 +170,7 @@ class SimulationPanel(QWidget):
         iface_row.setSpacing(4)
         self.iface_combo = QComboBox()
         self.iface_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.iface_combo.setMinimumWidth(160)
+        self.iface_combo.setMinimumWidth(100)
         self.iface_combo.setStyleSheet(self._combo_style())
         self.iface_combo.setPlaceholderText("Loading interfaces...")
         self.iface_combo.setToolTip(
@@ -165,8 +178,9 @@ class SimulationPanel(QWidget):
         )
         iface_row.addWidget(self.iface_combo, stretch=1)
 
-        self.btn_refresh_ifaces = QPushButton("Refresh")
-        self.btn_refresh_ifaces.setFixedWidth(64)
+        self.btn_refresh_ifaces = QPushButton("⟳")
+        self.btn_refresh_ifaces.setFixedWidth(32)
+        self.btn_refresh_ifaces.setFixedHeight(28)
         self.btn_refresh_ifaces.setStyleSheet(self._btn_secondary_style())
         self.btn_refresh_ifaces.setToolTip("Re-scan network adapters")
         self.btn_refresh_ifaces.clicked.connect(self._load_interfaces)
@@ -180,12 +194,12 @@ class SimulationPanel(QWidget):
         mask_label.setStyleSheet("color: #8b949e;")
         mask_row.addWidget(mask_label)
         self.mask_edit = QLineEdit("255.255.255.0")
-        self.mask_edit.setFixedWidth(130)
+        self.mask_edit.setMaximumWidth(120)
+        self.mask_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.mask_edit.setFont(QFont("Consolas", 9))
         self.mask_edit.setStyleSheet(self._lineedit_style())
         self.mask_edit.setToolTip("Subnet mask applied when adding IPs via netsh")
-        mask_row.addWidget(self.mask_edit)
-        mask_row.addStretch()
+        mask_row.addWidget(self.mask_edit, stretch=1)
         net_layout.addLayout(mask_row)
 
         # Bound IPs info label
@@ -200,6 +214,8 @@ class SimulationPanel(QWidget):
         stats_group = QGroupBox("Topology Stats")
         stats_group.setStyleSheet(self._group_style())
         stats_layout = QVBoxLayout(stats_group)
+        stats_layout.setContentsMargins(6, 4, 6, 6)
+        stats_layout.setSpacing(2)
         self.devices_label = QLabel("Devices: 0")
         self.links_label   = QLabel("Links:   0")
         self.files_label   = QLabel("Files:   0")
@@ -292,7 +308,7 @@ class SimulationPanel(QWidget):
         self._iface_thread.wait()
         ifaces = self._iface_worker.result
         self.btn_refresh_ifaces.setEnabled(True)
-        self.btn_refresh_ifaces.setText("Refresh")
+        self.btn_refresh_ifaces.setText("⟳")
         self.iface_combo.setEnabled(True)
 
         prev = self.iface_combo.currentData()

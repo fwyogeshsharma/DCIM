@@ -45,22 +45,34 @@ class TopologyEngine:
     #  Edges (Links)                                                       #
     # ------------------------------------------------------------------ #
 
+    @staticmethod
+    def _next_free_iface(device) -> int:
+        """Return index of the first interface not yet connected to any device."""
+        for i, iface in enumerate(device.interfaces):
+            if iface.connected_to_device is None:
+                return i
+        return len(device.interfaces) - 1  # all occupied — reuse last
+
     def add_link(self, src_id: str, dst_id: str,
-                 src_iface: int = 0, dst_iface: int = 0) -> bool:
+                 src_iface: Optional[int] = None,
+                 dst_iface: Optional[int] = None) -> bool:
         if src_id == dst_id:
             return False
         if self.graph.has_edge(src_id, dst_id):
             return False
         if not (self.graph.has_node(src_id) and self.graph.has_node(dst_id)):
             return False
+        src_dev = self.get_device(src_id)
+        dst_dev = self.get_device(dst_id)
+        if src_iface is None:
+            src_iface = self._next_free_iface(src_dev) if src_dev else 0
+        if dst_iface is None:
+            dst_iface = self._next_free_iface(dst_dev) if dst_dev else 0
         self.graph.add_edge(src_id, dst_id,
                             src_iface=src_iface,
                             dst_iface=dst_iface,
                             src_node=src_id,
                             dst_node=dst_id)
-        # Update interface connected_to fields
-        src_dev = self.get_device(src_id)
-        dst_dev = self.get_device(dst_id)
         if src_dev and src_iface < len(src_dev.interfaces):
             src_dev.interfaces[src_iface].connected_to_device = dst_id
             src_dev.interfaces[src_iface].connected_to_iface = dst_iface
@@ -240,8 +252,8 @@ class TopologyEngine:
         from core.device_manager import DeviceType, Vendor
         spacing = 180
         # Core routers
-        r1 = self._make_device("Core-R1", DeviceType.ROUTER, Vendor.CISCO, ip_mgr, 8)
-        r2 = self._make_device("Core-R2", DeviceType.ROUTER, Vendor.CISCO, ip_mgr, 8)
+        r1 = self._make_device("Core-R1", DeviceType.ROUTER, Vendor.CISCO_SYSTEMS, ip_mgr, 8)
+        r2 = self._make_device("Core-R2", DeviceType.ROUTER, Vendor.CISCO_SYSTEMS, ip_mgr, 8)
         dm.add_device(r1); dm.add_device(r2)
         self.add_device(r1, 300, 100); self.add_device(r2, 500, 100)
         self.add_link(r1.id, r2.id)
@@ -250,7 +262,7 @@ class TopologyEngine:
         positions = [(200, 280), (400, 280), (600, 280)]
         switches = []
         for i, (x, y) in enumerate(positions):
-            s = self._make_device(f"Agg-SW{i+1}", DeviceType.SWITCH, Vendor.CISCO, ip_mgr, 24)
+            s = self._make_device(f"Agg-SW{i+1}", DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, ip_mgr, 24)
             dm.add_device(s); self.add_device(s, x, y); switches.append(s)
             self.add_link(r1.id, s.id)
             self.add_link(r2.id, s.id)
@@ -258,7 +270,7 @@ class TopologyEngine:
         # Servers per rack
         for si, sw in enumerate(switches):
             for j in range(3):
-                srv = self._make_device(f"SRV{si*3+j+1}", DeviceType.SERVER, Vendor.LINUX, ip_mgr, 2)
+                srv = self._make_device(f"SRV{si*3+j+1}", DeviceType.SERVER, [Vendor.DELL, Vendor.HPE, Vendor.SUPERMICRO][j % 3], ip_mgr, 2)
                 dm.add_device(srv)
                 sx = positions[si][0] + (j - 1) * 100
                 self.add_device(srv, sx, 430)
@@ -267,28 +279,28 @@ class TopologyEngine:
     def _template_enterprise_lan(self, dm, ip_mgr):
         from core.device_manager import DeviceType, Vendor
         # Core router
-        cr = self._make_device("Edge-Router", DeviceType.ROUTER, Vendor.CISCO, ip_mgr, 8)
+        cr = self._make_device("Edge-Router", DeviceType.ROUTER, Vendor.CISCO_SYSTEMS, ip_mgr, 8)
         dm.add_device(cr); self.add_device(cr, 400, 80)
 
         # Distribution switches
         dist_positions = [(200, 230), (600, 230)]
         dist_switches = []
         for i, (x, y) in enumerate(dist_positions):
-            s = self._make_device(f"Dist-SW{i+1}", DeviceType.SWITCH, Vendor.CISCO, ip_mgr, 24)
+            s = self._make_device(f"Dist-SW{i+1}", DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, ip_mgr, 24)
             dm.add_device(s); self.add_device(s, x, y); dist_switches.append(s)
             self.add_link(cr.id, s.id)
 
         # Access switches
         for di, ds in enumerate(dist_switches):
             for j in range(2):
-                access_sw = self._make_device(f"Access-SW{di*2+j+1}", DeviceType.SWITCH, Vendor.CISCO, ip_mgr, 24)
+                access_sw = self._make_device(f"Access-SW{di*2+j+1}", DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, ip_mgr, 24)
                 dm.add_device(access_sw)
                 ax = dist_positions[di][0] + (j - 0.5) * 160
                 self.add_device(access_sw, ax, 380)
                 self.add_link(ds.id, access_sw.id)
                 # Servers
                 for k in range(2):
-                    srv = self._make_device(f"PC-{di*4+j*2+k+1}", DeviceType.SERVER, Vendor.LINUX, ip_mgr, 1)
+                    srv = self._make_device(f"PC-{di*4+j*2+k+1}", DeviceType.SERVER, Vendor.LENOVO, ip_mgr, 1)
                     dm.add_device(srv)
                     self.add_device(srv, ax + (k - 0.5) * 100, 520)
                     self.add_link(access_sw.id, srv.id)
@@ -296,12 +308,12 @@ class TopologyEngine:
     def _template_campus_network(self, dm, ip_mgr):
         from core.device_manager import DeviceType, Vendor
         # Internet router
-        ir = self._make_device("Internet-GW", DeviceType.ROUTER, Vendor.JUNIPER, ip_mgr, 8)
+        ir = self._make_device("Internet-GW", DeviceType.ROUTER, Vendor.JUNIPER_NETWORKS, ip_mgr, 8)
         dm.add_device(ir); self.add_device(ir, 400, 60)
 
         # Core switches
-        cs1 = self._make_device("Core-SW1", DeviceType.SWITCH, Vendor.CISCO, ip_mgr, 48)
-        cs2 = self._make_device("Core-SW2", DeviceType.SWITCH, Vendor.CISCO, ip_mgr, 48)
+        cs1 = self._make_device("Core-SW1", DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, ip_mgr, 48)
+        cs2 = self._make_device("Core-SW2", DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, ip_mgr, 48)
         dm.add_device(cs1); dm.add_device(cs2)
         self.add_device(cs1, 250, 200); self.add_device(cs2, 550, 200)
         self.add_link(ir.id, cs1.id); self.add_link(ir.id, cs2.id)
@@ -313,11 +325,11 @@ class TopologyEngine:
             ("Building-C", 650, 350),
         ]
         for i, (bldg, bx, by) in enumerate(buildings):
-            fl_sw = self._make_device(f"{bldg}-SW", DeviceType.SWITCH, Vendor.CISCO, ip_mgr, 24)
+            fl_sw = self._make_device(f"{bldg}-SW", DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, ip_mgr, 24)
             dm.add_device(fl_sw); self.add_device(fl_sw, bx, by)
             self.add_link(cs1.id if i % 2 == 0 else cs2.id, fl_sw.id)
             for j in range(3):
-                srv = self._make_device(f"{bldg}-WS{j+1}", DeviceType.SERVER, Vendor.LINUX, ip_mgr, 1)
+                srv = self._make_device(f"{bldg}-WS{j+1}", DeviceType.SERVER, [Vendor.DELL, Vendor.HPE, Vendor.LENOVO][j % 3], ip_mgr, 1)
                 dm.add_device(srv)
                 self.add_device(srv, bx + (j - 1) * 110, 480)
                 self.add_link(fl_sw.id, srv.id)

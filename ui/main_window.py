@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QMenu, QFileDialog, QMessageBox, QInputDialog,
     QAbstractItemView, QFrame, QPushButton, QDialog,
     QSpinBox, QComboBox, QFormLayout, QDialogButtonBox,
-    QGroupBox,
+    QGroupBox, QToolBar,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject, QTimer, QSize
 from PySide6.QtGui import QAction, QIcon, QFont, QColor, QKeySequence
@@ -30,9 +30,12 @@ from core.ip_binder import (
     add_ips_batch, remove_ips_batch, is_admin,
 )
 from simulator.snmpsim_controller import SNMPSimController
+from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
+from core.trap_engine import TrapEngine
 from ui.device_dialog import DeviceDialog
 from ui.topology_view import TopologyView
 from ui.simulation_panel import SimulationPanel
+from ui.trap_panel import TrapPanel
 from ui.discovery_dialog import DiscoveryDialog
 
 
@@ -188,6 +191,7 @@ class MainWindow(QMainWindow):
         self.topology = TopologyEngine()
         self.ip_manager = IPManager()
         self.snmpsim = SNMPSimController(self._datasets_dir)
+        self._trap_engine = TrapEngine(self)
         self._generated_files: list = []
         self._worker_thread: QThread = None
         self._worker: GeneratorWorker = None
@@ -229,24 +233,18 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Splitter: canvas | right panel
-        self._splitter = QSplitter(Qt.Horizontal)
-
-        # Left: topology canvas
+        # Topology canvas fills the entire central widget
         self._topology_view = TopologyView()
-        self._splitter.addWidget(self._topology_view)
+        main_layout.addWidget(self._topology_view)
 
-        # Right: simulation panel
-        self._sim_panel = SimulationPanel()
-        self._sim_panel.setMinimumWidth(280)
-        self._sim_panel.setMaximumWidth(340)
-        self._splitter.addWidget(self._sim_panel)
-
-        self._splitter.setSizes([900, 300])
-        main_layout.addWidget(self._splitter)
-
-        # Dockable device list
+        # Dockable device list (left)
         self._build_device_dock()
+
+        # Both right-side panels in one outer dock with an inner splitter
+        self._build_right_panels()
+
+        # Right-side panel toggle toolbar (built last so dock refs are available)
+        self._build_right_toolbar()
 
         # Status bar
         self._status_bar = self.statusBar()
@@ -291,6 +289,132 @@ class MainWindow(QMainWindow):
         dock.setWidget(self._device_table)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
         self._device_dock = dock
+
+    def _build_right_panels(self):
+        """Single outer dock that holds both panels in an inner QSplitter.
+
+        Using one outer dock means the topology canvas absorbs all horizontal
+        resize — the inner splitter handle only redistributes between the two
+        panels, so stretching Sim Control never forces SNMP Traps to shrink.
+        """
+        # ── Inner splitter ────────────────────────────────────────────────
+        self._right_splitter = QSplitter(Qt.Horizontal)
+        self._right_splitter.setChildrenCollapsible(True)
+        self._right_splitter.setHandleWidth(3)
+        self._right_splitter.setStyleSheet(
+            "QSplitter::handle { background: #30363d; }"
+            "QSplitter::handle:hover { background: #58a6ff; }"
+        )
+
+        self._sim_panel = SimulationPanel()
+        self._sim_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._sim_panel)
+
+        self._trap_panel = TrapPanel()
+        self._trap_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._trap_panel)
+
+        # Sim Control gets all extra space when outer dock is resized;
+        # SNMP Traps stays at its own preferred width.
+        self._right_splitter.setStretchFactor(0, 1)
+        self._right_splitter.setStretchFactor(1, 0)
+        self._right_splitter.setSizes([300, 300])
+
+        # ── Outer dock ────────────────────────────────────────────────────
+        self._right_dock = QDockWidget(self)
+        self._right_dock.setObjectName("right_panels_dock")
+        self._right_dock.setAllowedAreas(Qt.RightDockWidgetArea)
+        # Suppress the dock title bar entirely — toolbar buttons handle show/hide
+        self._right_dock.setTitleBarWidget(QWidget())
+        self._right_dock.setWidget(self._right_splitter)
+        self.addDockWidget(Qt.RightDockWidgetArea, self._right_dock)
+        self.resizeDocks([self._right_dock], [600], Qt.Horizontal)
+
+    def _build_right_toolbar(self):
+        _TB_STYLE = """
+            QToolBar {
+                background: #161b22;
+                border-left: 1px solid #30363d;
+                padding: 6px 1px;
+                spacing: 2px;
+            }
+            QToolButton {
+                background: transparent;
+                border: 1px solid transparent;
+                border-radius: 4px;
+                color: #8b949e;
+                font-size: 17px;
+                padding: 8px 3px;
+                min-width: 28px;
+            }
+            QToolButton:hover {
+                background: #21262d;
+                color: #e6edf3;
+            }
+            QToolButton:checked {
+                background: rgba(31,111,235,0.15);
+                color: #58a6ff;
+                border-color: rgba(31,111,235,0.45);
+            }
+            QToolBarSeparator {
+                background: #30363d;
+                width: 1px;
+                margin: 4px 5px;
+            }
+        """
+        tb = QToolBar("Panels", self)
+        tb.setObjectName("right_panel_tb")
+        tb.setMovable(False)
+        tb.setFloatable(False)
+        tb.setOrientation(Qt.Vertical)
+        tb.setStyleSheet(_TB_STYLE)
+
+        # ── Simulation Control ────────────────────────────────────────────
+        self._act_panel_sim = QAction("⚙", self)
+        self._act_panel_sim.setCheckable(True)
+        self._act_panel_sim.setChecked(True)
+        self._act_panel_sim.setToolTip("Simulation Control")
+        self._act_panel_sim.toggled.connect(self._on_toggle_sim_panel)
+        tb.addAction(self._act_panel_sim)
+
+        tb.addSeparator()
+
+        # ── SNMP Traps ────────────────────────────────────────────────────
+        self._act_panel_traps = QAction("⚡", self)
+        self._act_panel_traps.setCheckable(True)
+        self._act_panel_traps.setChecked(True)
+        self._act_panel_traps.setToolTip("SNMP Traps")
+        self._act_panel_traps.toggled.connect(self._on_toggle_traps_panel)
+        tb.addAction(self._act_panel_traps)
+
+        # If the outer dock is closed (via float/close), uncheck both buttons
+        self._right_dock.visibilityChanged.connect(self._on_right_dock_visibility)
+
+        self.addToolBar(Qt.RightToolBarArea, tb)
+
+    # ── Panel toggle slots ─────────────────────────────────────────────────────
+
+    def _on_toggle_sim_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()   # parent must be visible before child
+        self._sim_panel.setVisible(visible)
+        if not self._act_panel_sim.isChecked() and not self._act_panel_traps.isChecked():
+            self._right_dock.hide()
+
+    def _on_toggle_traps_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+        self._trap_panel.setVisible(visible)
+        if not self._act_panel_sim.isChecked() and not self._act_panel_traps.isChecked():
+            self._right_dock.hide()
+
+    def _on_right_dock_visibility(self, visible: bool):
+        """Outer dock hidden externally — uncheck both toolbar buttons."""
+        if not visible:
+            for btn in (self._act_panel_sim, self._act_panel_traps):
+                btn.blockSignals(True)
+                btn.setChecked(False)
+                btn.blockSignals(False)
 
     def _build_menus(self):
         menubar = self.menuBar()
@@ -392,6 +516,12 @@ class MainWindow(QMainWindow):
             lambda s: self._log_queue.put(("status", s))
         )
 
+        # Trap panel ↔ trap engine
+        self._trap_panel.sig_apply.connect(self._trap_engine.configure)
+        self._trap_panel.sig_simulate.connect(self._on_trap_simulate)
+        self._trap_engine.trap_sent.connect(self._trap_panel.add_event)
+        self._trap_engine.trap_error.connect(self._trap_panel.add_error)
+
         # Topology scene signals
         scene = self._topology_view.topology_scene
         scene.link_created.connect(self._on_link_created)
@@ -423,7 +553,6 @@ class MainWindow(QMainWindow):
                 padding: 4px;
                 border-bottom: 1px solid #30363d;
             }
-            QSplitter::handle { background: #30363d; width: 2px; }
             QStatusBar { background: #161b22; color: #8b949e; }
             SimulationPanel { background: #161b22; }
             QGroupBox {
@@ -463,6 +592,7 @@ class MainWindow(QMainWindow):
             self._topology_view.topology_scene.add_device_node(device, x, y)
             self._refresh_device_table()
             self._refresh_stats()
+            self._sync_trap_devices()
             self._sim_panel.log(f"Added device: {device.name} ({device.ip_address})", "success")
 
     def _edit_device(self, device_id: str):
@@ -503,6 +633,7 @@ class MainWindow(QMainWindow):
             self._topology_view.topology_scene.remove_device_node(device_id)
             self._refresh_device_table()
             self._refresh_stats()
+            self._sync_trap_devices()
             self._sim_panel.log(f"Removed device: {device.name}", "warning")
 
     def _remove_selected(self):
@@ -540,6 +671,7 @@ class MainWindow(QMainWindow):
                 self._topology_view.topology_scene.add_device_node(device, x, y)
             self._refresh_device_table()
             self._refresh_stats()
+            self._sync_trap_devices()
             self._sim_panel.log(
                 f"Added {len(devices)} devices ({values['device_type'].value}s)",
                 "success"
@@ -574,15 +706,34 @@ class MainWindow(QMainWindow):
         self.topology.set_position(device_id, x, y)
 
     def _on_node_right_click(self, device_id: str, screen_pos):
-        menu = QMenu(self)
-        menu.setStyleSheet("""
+        device = self.device_manager.get_device(device_id)
+        _menu_style = """
             QMenu { background: #161b22; color: #e6edf3; border: 1px solid #30363d; }
             QMenu::item:selected { background: #1f6feb; }
-        """)
+        """
+        menu = QMenu(self)
+        menu.setStyleSheet(_menu_style)
         edit_act   = menu.addAction("Edit Device...")
         remove_act = menu.addAction("Remove Device")
         menu.addSeparator()
-        info_act = menu.addAction("Show Info")
+        info_act   = menu.addAction("Show Info")
+
+        trap_actions: dict = {}
+        if device:
+            menu.addSeparator()
+            trap_menu = menu.addMenu("Send Trap \u25b6")
+            trap_menu.setStyleSheet(_menu_style)
+            _LINK_TRAPS = {TrapType.LINK_DOWN, TrapType.LINK_UP}
+            applicable = [
+                t for t in get_applicable_traps(
+                    device.device_type.value, device.vendor.value
+                )
+                if t not in _LINK_TRAPS
+            ]
+            for tt in applicable:
+                act = trap_menu.addAction(TRAP_DEFINITIONS[tt].display_name)
+                trap_actions[act] = tt
+
         chosen = menu.exec(screen_pos)
         if chosen == edit_act:
             self._edit_device(device_id)
@@ -590,6 +741,8 @@ class MainWindow(QMainWindow):
             self._remove_device(device_id)
         elif chosen == info_act:
             self._show_device_info(device_id)
+        elif chosen in trap_actions and device:
+            self._send_trap(device, trap_actions[chosen])
 
     def _on_edge_right_click(self, src_id: str, dst_id: str, screen_pos):
         src = self.device_manager.get_device(src_id)
@@ -613,13 +766,45 @@ class MainWindow(QMainWindow):
                 self.topology.restore_link(src_id, dst_id)
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, False)
                 self._sim_panel.log(f"Link restored: {src.name} <-> {dst.name}", "success")
+                trap_type = TrapType.LINK_UP
             else:
                 self.topology.break_link(src_id, dst_id)
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
                 self._sim_panel.log(f"Link broken: {src.name} <-> {dst.name}", "error")
+                trap_type = TrapType.LINK_DOWN
+            for dev, peer_id in ((src, dst_id), (dst, src_id)):
+                iface = next(
+                    (i for i in dev.interfaces if i.connected_to_device == peer_id),
+                    dev.interfaces[0] if dev.interfaces else None,
+                )
+                kwargs = {"iface_index": iface.index} if iface else {}
+                self._trap_engine.send_trap(dev, trap_type, **kwargs)
             # Regenerate snmprec for both devices live if simulator is running
             self._regenerate_device_live(src_id)
             self._regenerate_device_live(dst_id)
+
+    # ── Trap helpers ──────────────────────────────────────────────────────────
+
+    def _send_trap(self, device: Device, trap_type: TrapType):
+        self._trap_engine.send_trap(device, trap_type)
+
+    def _on_trap_simulate(self, active: bool):
+        if active:
+            devices = self.device_manager.get_all_devices()
+            if not devices:
+                QMessageBox.warning(
+                    self, "No Devices",
+                    "Add devices to the topology before simulating traps."
+                )
+                self._trap_panel.set_simulating(False)
+                return
+            self._trap_engine.start_simulation(devices)
+        else:
+            self._trap_engine.stop_simulation()
+
+    def _sync_trap_devices(self):
+        """Keep the trap engine's device list in sync with the topology."""
+        self._trap_engine.update_sim_devices(self.device_manager.get_all_devices())
 
     def _regenerate_device_live(self, device_id: str):
         device = self.device_manager.get_device(device_id)
@@ -693,6 +878,7 @@ class MainWindow(QMainWindow):
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
         self._refresh_device_table()
         self._refresh_stats()
+        self._sync_trap_devices()
         self._topology_view.fit_view()
         self._sim_panel.log(f"Applied template: {template_name.replace('_', ' ').title()}", "success")
 
@@ -931,6 +1117,8 @@ class MainWindow(QMainWindow):
             )
             if reply != QMessageBox.Yes:
                 return
+        self._trap_engine.stop_simulation()
+        self._trap_panel.set_simulating(False)
         self.topology.clear()
         self.device_manager.clear()
         self.ip_manager.reset()
@@ -998,6 +1186,7 @@ class MainWindow(QMainWindow):
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
         self._refresh_device_table()
         self._refresh_stats()
+        self._sync_trap_devices()
         self._topology_view.fit_view()
 
     # ------------------------------------------------------------------ #
@@ -1125,4 +1314,5 @@ class MainWindow(QMainWindow):
             # Best-effort synchronous IP removal on exit
             if self._bound_ips and self._bound_interface:
                 remove_ips_batch(self._bound_interface, self._bound_ips)
+        self._trap_engine.stop()
         event.accept()

@@ -119,13 +119,11 @@ class SNMPSimController:
             return False
 
         cmd = self._build_command(snmpsim_path, device_ips, port)
-        self._log(f"Starting SNMPSim with {len(device_ips)} endpoint(s) on port {port}")
+        self._log(f"Starting SNMPSim with {len(device_ips)} device(s) on port {port}")
         self._log(f"  Executable: {snmpsim_path}")
         self._log(f"  Data dir:   {self.datasets_dir}")
-        for ip in device_ips[:5]:
-            self._log(f"  Endpoint:   {ip}:{port}")
-        if len(device_ips) > 5:
-            self._log(f"  ... and {len(device_ips) - 5} more")
+        self._log(f"  Listening:  0.0.0.0:{port}  (community string routes each request to its device)")
+        self._log(f"  Devices:    {device_ips[0]} … {device_ips[-1]}  ({len(device_ips)} total)")
 
         try:
             self._process = subprocess.Popen(
@@ -147,20 +145,25 @@ class SNMPSimController:
             return False
 
     def _build_command(self, snmpsim_path: str, device_ips: List[str], port: int) -> List[str]:
+        # Use a single wildcard endpoint instead of one flag per device IP.
+        # Passing hundreds of --agent-udpv4-endpoint flags would exceed the
+        # Windows 32 KB command-line limit (WinError 206).
+        # Routing still works because snmpsim matches requests to .snmprec
+        # files via the SNMP community string, which is set to the device IP
+        # in every generated dataset (e.g. community "10.1.1.1" →
+        # datasets/10.1.1.1.snmprec).  The netsh-bound virtual IPs ensure
+        # that traffic for each device IP reaches this process.
         base_cmd = (
             [sys.executable, snmpsim_path]
             if snmpsim_path.endswith(".py")
             else [snmpsim_path]
         )
 
-        endpoint_args = []
-        for ip in device_ips:
-            endpoint_args += [f"--agent-udpv4-endpoint={ip}:{port}"]
-
         return base_cmd + [
             f"--data-dir={self.datasets_dir}",
             "--log-level=info",
-        ] + endpoint_args
+            f"--agent-udpv4-endpoint=0.0.0.0:{port}",
+        ]
 
     # ------------------------------------------------------------------ #
     #  Stop                                                                #

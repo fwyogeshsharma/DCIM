@@ -16,24 +16,94 @@ class DeviceType(str, Enum):
 
 
 class Vendor(str, Enum):
-    CISCO = "Cisco"
-    JUNIPER = "Juniper"
-    LINUX = "Linux"
-    GENERIC = "Generic"
+    # Networking vendors (routers & switches)
+    CISCO_SYSTEMS = "Cisco Systems"
+    JUNIPER_NETWORKS = "Juniper Networks"
+    ARISTA_NETWORKS = "Arista Networks"
+    HPE = "Hewlett Packard Enterprise"
+    EXTREME_NETWORKS = "Extreme Networks"
+    HUAWEI = "Huawei Technologies"
+    DELL = "Dell Technologies"
+    # Server-only vendors
+    LENOVO = "Lenovo"
+    SUPERMICRO = "Supermicro"
+    IBM = "IBM"
+    PALO_ALTO_NETWORKS = "Palo Alto Networks"
+    F5_NETWORKS = "F5 Networks"
+
+
+class InterfaceType(str, Enum):
+    FAST_ETHERNET    = "Fast Ethernet (100 Mbps)"
+    GIGABIT_ETHERNET = "Gigabit Ethernet (1 Gbps)"
+    TEN_GIG_ETHERNET = "10 Gigabit Ethernet (10 Gbps)"
+    TWENTY_FIVE_GIG  = "25 Gigabit Ethernet (25 Gbps)"
+    FORTY_GIG        = "40 Gigabit Ethernet (40 Gbps)"
+    HUNDRED_GIG      = "100 Gigabit Ethernet (100 Gbps)"
+
+
+IFACE_SPEED = {
+    InterfaceType.FAST_ETHERNET:    100_000_000,
+    InterfaceType.GIGABIT_ETHERNET: 1_000_000_000,
+    InterfaceType.TEN_GIG_ETHERNET: 10_000_000_000,
+    InterfaceType.TWENTY_FIVE_GIG:  25_000_000_000,
+    InterfaceType.FORTY_GIG:        40_000_000_000,
+    InterfaceType.HUNDRED_GIG:      100_000_000_000,
+}
+
+
+def iface_name(vendor: Vendor, iface_type: InterfaceType, index: int) -> str:
+    """Return the vendor-specific interface name for a given type and index."""
+    if vendor == Vendor.CISCO_SYSTEMS:
+        return {
+            InterfaceType.FAST_ETHERNET:    f"FastEthernet0/{index}",
+            InterfaceType.GIGABIT_ETHERNET: f"GigabitEthernet0/{index}",
+            InterfaceType.TEN_GIG_ETHERNET: f"TenGigabitEthernet0/{index}",
+            InterfaceType.TWENTY_FIVE_GIG:  f"TwentyFiveGigE0/{index}",
+            InterfaceType.FORTY_GIG:        f"FortyGigabitEthernet0/{index}",
+            InterfaceType.HUNDRED_GIG:      f"HundredGigE0/{index}",
+        }.get(iface_type, f"GigabitEthernet0/{index}")
+    if vendor == Vendor.JUNIPER_NETWORKS:
+        return {
+            InterfaceType.GIGABIT_ETHERNET: f"ge-0/0/{index}",
+            InterfaceType.TEN_GIG_ETHERNET: f"xe-0/0/{index}",
+        }.get(iface_type, f"et-0/0/{index}")
+    if vendor == Vendor.HUAWEI:
+        return (f"GigabitEthernet0/0/{index}"
+                if iface_type == InterfaceType.GIGABIT_ETHERNET
+                else f"XGigabitEthernet0/0/{index}")
+    if vendor == Vendor.EXTREME_NETWORKS:
+        return f"1:{index + 1}"
+    if vendor == Vendor.ARISTA_NETWORKS:
+        return f"Ethernet{index}"
+    if vendor in (Vendor.HPE, Vendor.DELL):
+        return f"eth1/{index + 1}"
+    return f"eth{index}"
 
 
 VENDOR_SYSOID = {
-    Vendor.CISCO: "1.3.6.1.4.1.9.1.1",
-    Vendor.JUNIPER: "1.3.6.1.4.1.2636.1.1.1.2.1",
-    Vendor.LINUX: "1.3.6.1.4.1.8072.3.2.10",
-    Vendor.GENERIC: "1.3.6.1.4.1.0.0",
+    Vendor.CISCO_SYSTEMS:   "1.3.6.1.4.1.9.1.1",
+    Vendor.JUNIPER_NETWORKS:"1.3.6.1.4.1.2636.1.1.1.2.1",
+    Vendor.ARISTA_NETWORKS: "1.3.6.1.4.1.30065.1.3011.7060.5310.18.548",
+    Vendor.HPE:             "1.3.6.1.4.1.11.2.3.7.11.1",
+    Vendor.EXTREME_NETWORKS:"1.3.6.1.4.1.1916.2.1",
+    Vendor.HUAWEI:          "1.3.6.1.4.1.2011.2.239.1",
+    Vendor.DELL:            "1.3.6.1.4.1.674.10895.3000",
+    Vendor.LENOVO:          "1.3.6.1.4.1.19046.11.1.1",
+    Vendor.SUPERMICRO:      "1.3.6.1.4.1.10876.2.1",
+    Vendor.IBM:             "1.3.6.1.4.1.2.6.190",
 }
 
 VENDOR_SYSDESCR = {
-    Vendor.CISCO: "Cisco IOS Software, Version 15.7(3)M, RELEASE SOFTWARE (fc2)",
-    Vendor.JUNIPER: "Juniper Networks, Inc. mx480 internet router, kernel JUNOS 20.4R3",
-    Vendor.LINUX: "Linux server 5.15.0-91-generic #101-Ubuntu SMP x86_64",
-    Vendor.GENERIC: "Generic SNMP Device v1.0",
+    Vendor.CISCO_SYSTEMS:   "Cisco IOS Software, Version 17.9.4, RELEASE SOFTWARE (fc3)",
+    Vendor.JUNIPER_NETWORKS:"Juniper Networks, Inc. MX480 Internet Router, JUNOS 22.4R1",
+    Vendor.ARISTA_NETWORKS: "Arista Networks EOS version 4.28.3M running on an Arista Networks DCS-7050CX3",
+    Vendor.HPE:             "HPE FlexFabric 5945 JH175A, Comware Software Version 7.1.070",
+    Vendor.EXTREME_NETWORKS:"ExtremeXOS version 31.7.1.4 v31.7.1.4-patch1-4 by release-manager",
+    Vendor.HUAWEI:          "Huawei Versatile Routing Platform Software VRP (R) version V200R010C10SPC600",
+    Vendor.DELL:            "Dell EMC PowerSwitch S5248F-ON, OS10 Enterprise version 10.5.3.4",
+    Vendor.LENOVO:          "Lenovo ThinkSystem SR650 V2, BMC version 3.00",
+    Vendor.SUPERMICRO:      "Supermicro SYS-220U-TNR, IPMI firmware version 3.88.09",
+    Vendor.IBM:             "IBM System x3850 X6, IMM2 firmware version 4.70",
 }
 
 
@@ -65,6 +135,8 @@ class Device:
     snmp_port: int = 161
     snmp_community: str = "public"
     interface_count: int = 4
+    interface_groups: List[dict] = field(default_factory=list)
+    model_name: str = ""
     metrics_enabled: bool = True
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     interfaces: List[Interface] = field(default_factory=list)
@@ -82,6 +154,27 @@ class Device:
             self.device_type = DeviceType(self.device_type)
         if isinstance(self.vendor, str):
             self.vendor = Vendor(self.vendor)
+        # Normalize interface_groups (str → InterfaceType)
+        if self.interface_groups:
+            normalized = []
+            for g in self.interface_groups:
+                itype = g["iface_type"]
+                if isinstance(itype, str):
+                    try:
+                        itype = InterfaceType(itype)
+                    except ValueError:
+                        itype = InterfaceType.GIGABIT_ETHERNET
+                normalized.append({"iface_type": itype, "count": int(g["count"])})
+            self.interface_groups = normalized
+            self.interface_count = sum(g["count"] for g in self.interface_groups)
+        else:
+            # Auto-generate a single group from interface_count (e.g. topology scripts)
+            self.interface_groups = [
+                {"iface_type": InterfaceType.GIGABIT_ETHERNET, "count": self.interface_count}
+            ]
+        # Community string always mirrors the IP address (default "public" is a placeholder)
+        if self.snmp_community == "public":
+            self.snmp_community = self.ip_address
         self.memory_used = int(self.memory_total * random.uniform(0.2, 0.85))
         self.disk_used = int(self.disk_total * random.uniform(0.1, 0.75))
         if not self.interfaces:
@@ -89,37 +182,17 @@ class Device:
 
     def _generate_interfaces(self):
         self.interfaces = []
-        iface_names = self._get_interface_names()
-        for i in range(self.interface_count):
-            self.interfaces.append(Interface(
-                index=i + 1,
-                name=iface_names[i] if i < len(iface_names) else f"eth{i}",
-                speed=self._get_interface_speed(),
-            ))
-
-    def _get_interface_names(self) -> List[str]:
-        if self.device_type == DeviceType.ROUTER:
-            if self.vendor == Vendor.CISCO:
-                return [f"GigabitEthernet0/{i}" for i in range(self.interface_count)]
-            elif self.vendor == Vendor.JUNIPER:
-                return [f"ge-0/0/{i}" for i in range(self.interface_count)]
-            else:
-                return [f"eth{i}" for i in range(self.interface_count)]
-        elif self.device_type == DeviceType.SWITCH:
-            if self.vendor == Vendor.CISCO:
-                return [f"FastEthernet0/{i}" for i in range(self.interface_count)]
-            else:
-                return [f"port{i+1}" for i in range(self.interface_count)]
-        else:
-            return [f"eth{i}" for i in range(self.interface_count)]
-
-    def _get_interface_speed(self) -> int:
-        if self.device_type == DeviceType.SWITCH:
-            return random.choice([100000000, 1000000000])
-        elif self.device_type == DeviceType.ROUTER:
-            return random.choice([1000000000, 10000000000])
-        else:
-            return 1000000000
+        idx = 1
+        for group in self.interface_groups:
+            itype = group["iface_type"]
+            speed = IFACE_SPEED.get(itype, 1_000_000_000)
+            for i in range(group["count"]):
+                self.interfaces.append(Interface(
+                    index=idx,
+                    name=iface_name(self.vendor, itype, i),
+                    speed=speed,
+                ))
+                idx += 1
 
     @property
     def sys_descr(self) -> str:
@@ -143,11 +216,20 @@ class Device:
         d = asdict(self)
         d["device_type"] = self.device_type.value
         d["vendor"] = self.vendor.value
+        d["model_name"] = self.model_name
+        d["interface_groups"] = [
+            {"iface_type": (g["iface_type"].value
+                            if isinstance(g["iface_type"], InterfaceType)
+                            else g["iface_type"]),
+             "count": g["count"]}
+            for g in self.interface_groups
+        ]
         return d
 
     @classmethod
     def from_dict(cls, data: dict) -> "Device":
         interfaces_data = data.pop("interfaces", [])
+        data.pop("interface_type", None)  # removed field — drop from legacy JSON
         device = cls(**data)
         device.interfaces = [Interface(**i) for i in interfaces_data]
         return device
@@ -181,8 +263,8 @@ class DeviceManager:
             for key, value in kwargs.items():
                 if hasattr(device, key):
                     setattr(device, key, value)
-            # Rebuild interfaces if interface_count changed
-            if "interface_count" in kwargs:
+            # Rebuild interfaces if interface layout changed
+            if "interface_count" in kwargs or "interface_groups" in kwargs:
                 device._generate_interfaces()
         return device
 
