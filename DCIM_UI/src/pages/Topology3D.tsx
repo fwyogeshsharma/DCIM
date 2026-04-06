@@ -1,12 +1,12 @@
 import { useMemo, useState, useRef, useCallback } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float } from '@react-three/drei'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { computeHierarchicalLayout, type LayoutNode, type LayoutLink } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
+import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react'
 import * as THREE from 'three'
 
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
@@ -677,6 +677,32 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
   )
 }
 
+// ── Floor Navigator ──────────────────────────────────────────────────────────
+
+export const FLOORS = [
+  { name: 'SNMP Devices',  label: 'L1', y: -22, color: '#06b6d4' },
+  { name: 'Agent Servers', label: 'L2', y: -8,  color: '#3b82f6' },
+  { name: 'Server Racks',  label: 'L3', y: 20,  color: '#a855f7' },
+]
+
+function CameraFloorRunner({ targetFloorY }: { targetFloorY: number }) {
+  const { camera, controls } = useThree()
+
+  useFrame(() => {
+    if (!controls) return
+    const ctrl = controls as any
+    const diff = targetFloorY - ctrl.target.y
+    if (Math.abs(diff) > 0.01) {
+      const step = diff * 0.07
+      ctrl.target.y += step
+      camera.position.y += step
+      ctrl.update()
+    }
+  })
+
+  return null
+}
+
 // ── Scene Content ────────────────────────────────────────────────────────────
 
 function SceneContent({
@@ -689,6 +715,7 @@ function SceneContent({
   expandedServers,
   agentCounts,
   onDoubleClickServer,
+  currentFloorY,
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
@@ -699,6 +726,7 @@ function SceneContent({
   expandedServers: Set<string>
   agentCounts: Record<string, number>
   onDoubleClickServer: (node: LayoutNode) => void
+  currentFloorY: number
 }) {
   return (
     <>
@@ -776,6 +804,8 @@ function SceneContent({
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
+      <CameraFloorRunner targetFloorY={currentFloorY} />
+
       <OrbitControls
         makeDefault
         enableDamping
@@ -805,6 +835,7 @@ export default function Topology3D() {
   const navigate = useNavigate()
   const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
   const [cursorPointer, setCursorPointer] = useState(false)
+  const [currentFloor, setCurrentFloor] = useState(2) // start at Server Racks (top)
 
   // Expand/collapse state
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
@@ -935,6 +966,7 @@ export default function Topology3D() {
               expandedServers={expandedServers}
               agentCounts={agentCounts}
               onDoubleClickServer={toggleServerExpansion}
+              currentFloorY={FLOORS[currentFloor].y}
             />
           </Canvas>
 
@@ -994,6 +1026,61 @@ export default function Topology3D() {
               </div>
               <div className="mt-2 pt-2 border-t border-white/10">
                 <p className="text-slate-400">Double-click a server to expand/collapse its agents</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Floor Navigator */}
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-slate-900/90 border border-white/20 rounded-xl p-3 backdrop-blur-sm select-none z-10">
+            <button
+              onClick={() => setCurrentFloor(f => Math.min(f + 1, FLOORS.length - 1))}
+              disabled={currentFloor === FLOORS.length - 1}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-25 disabled:cursor-not-allowed text-white transition-colors"
+              title="Go up one floor"
+            >
+              <ChevronUp className="w-5 h-5" />
+            </button>
+
+            {/* Floor dots (rendered top→bottom visually = high→low Y) */}
+            <div className="flex flex-col items-center gap-2 py-1">
+              {[...FLOORS].reverse().map((floor, ri) => {
+                const fi = FLOORS.length - 1 - ri
+                const isActive = fi === currentFloor
+                return (
+                  <button
+                    key={fi}
+                    onClick={() => setCurrentFloor(fi)}
+                    title={floor.name}
+                    className={`rounded-full transition-all duration-200 ${
+                      isActive
+                        ? 'w-3.5 h-3.5 ring-2 ring-white/50 shadow-lg'
+                        : 'w-2.5 h-2.5 opacity-40 hover:opacity-70'
+                    }`}
+                    style={{ backgroundColor: floor.color }}
+                  />
+                )
+              })}
+            </div>
+
+            <button
+              onClick={() => setCurrentFloor(f => Math.max(f - 1, 0))}
+              disabled={currentFloor === 0}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-25 disabled:cursor-not-allowed text-white transition-colors"
+              title="Go down one floor"
+            >
+              <ChevronDown className="w-5 h-5" />
+            </button>
+
+            {/* Current floor label */}
+            <div className="text-center mt-1 border-t border-white/10 pt-2 w-full">
+              <div
+                className="text-xs font-bold"
+                style={{ color: FLOORS[currentFloor].color }}
+              >
+                {FLOORS[currentFloor].label}
+              </div>
+              <div className="text-[10px] text-slate-400 leading-tight max-w-[56px] text-center">
+                {FLOORS[currentFloor].name}
               </div>
             </div>
           </div>
