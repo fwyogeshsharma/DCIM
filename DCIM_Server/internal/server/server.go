@@ -18,6 +18,7 @@ import (
 	"github.com/faberlabs/dcim-server/internal/database"
 	"github.com/faberlabs/dcim-server/internal/license"
 	"github.com/faberlabs/dcim-server/internal/models"
+	"github.com/faberlabs/dcim-server/internal/snmpwalker"
 )
 
 // Server represents the DCIM server
@@ -35,6 +36,9 @@ type Server struct {
 	clients         map[string]chan string
 	clientsMu       sync.RWMutex
 	clientIDCounter atomic.Uint64
+
+	// SNMP topology walker
+	walker *snmpwalker.Walker
 }
 
 // New creates a new DCIM server
@@ -73,6 +77,11 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 	mux.HandleFunc(basePath+"/agents", server.handleGetAgents)
 	mux.HandleFunc(basePath+"/events", server.handleSSEEvents)           // SSE endpoint for real-time updates
 
+	// SNMP topology walker endpoints
+	mux.HandleFunc(basePath+"/topology/walk/", server.handleTopologyWalkStatus)
+	mux.HandleFunc(basePath+"/topology/walk", server.handleTopologyWalk)
+	mux.HandleFunc(basePath+"/topology/nodes", server.handleTopologyNodes)
+
 	// Health check endpoint
 	if cfg.Health.Enabled {
 		mux.HandleFunc(cfg.Health.Path, server.handleHealth)
@@ -108,6 +117,14 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 
 	// Start server heartbeat to update last_seen
 	go server.serverHeartbeat()
+
+	// Initialize SNMP walker
+	server.walker = snmpwalker.New(server.logger, func(metrics []snmpwalker.DiscoveredMetric) error {
+		return server.saveSNMPWalkerMetrics(metrics)
+	})
+	if cfg.SNMPWalker.Enabled && cfg.SNMPWalker.SeedIP != "" {
+		go server.runWalkerLoop()
+	}
 
 	return server, nil
 }

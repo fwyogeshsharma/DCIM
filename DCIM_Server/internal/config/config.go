@@ -25,6 +25,7 @@ type Config struct {
 	Health      HealthConfig      `yaml:"health"`
 	Performance PerformanceConfig `yaml:"performance"`
 	Debug       DebugConfig       `yaml:"debug"`
+	SNMPWalker  SNMPWalkerConfig  `yaml:"snmp_walker"`
 }
 
 // ServerIDConfig contains server identification settings
@@ -331,6 +332,20 @@ type DebugConfig struct {
 	ProfilingPort int    `yaml:"profiling_port"`
 	DumpData      bool   `yaml:"dump_data"`
 	DumpPath      string `yaml:"dump_path"`
+}
+
+// SNMPWalkerConfig holds settings for the built-in SNMP topology walker
+type SNMPWalkerConfig struct {
+	Enabled          bool          `yaml:"enabled"`
+	SeedIP           string        `yaml:"seed_ip"`
+	Community        string        `yaml:"community"`
+	Version          string        `yaml:"version"`
+	Port             uint16        `yaml:"port"`
+	MaxDepth         int           `yaml:"max_depth"`
+	Timeout          time.Duration `yaml:"timeout"`
+	Retries          int           `yaml:"retries"`
+	Interval         time.Duration `yaml:"interval"`
+	UseIPAsCommunity bool          `yaml:"use_ip_as_community"`
 }
 
 // Load loads configuration from a YAML file

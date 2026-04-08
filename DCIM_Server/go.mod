@@ -4,6 +4,7 @@ go 1.25.6
 
 require (
 	github.com/go-sql-driver/mysql v1.9.3
+	github.com/gosnmp/gosnmp v1.37.0
 	github.com/lib/pq v1.11.1
 	github.com/mattn/go-sqlite3 v1.14.33
 	gopkg.in/yaml.v3 v3.0.1

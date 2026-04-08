@@ -1,12 +1,11 @@
 package certmanager
 
 import (
-	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -347,5 +346,3 @@ func ValidateCertificate(certPath string) error {
 	return nil
 }
 
-// Helper function for PEM decoding (imported from crypto/x509)
-import "encoding/pem"

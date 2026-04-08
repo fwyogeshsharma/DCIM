@@ -356,6 +356,26 @@ if (-not (Test-Path $serverDir)) {
 
 Write-Host ""
 
+# Detect if serverName is an IP address or a hostname
+$isIPAddress = $serverName -match '^\d{1,3}(\.\d{1,3}){3}$' -or $serverName -match '^[0-9a-fA-F:]+:[0-9a-fA-F:]+$'
+
+# Build alt_names section correctly: IPs must use IP.n, hostnames must use DNS.n
+if ($isIPAddress) {
+    $altNamesSection = @"
+DNS.1 = localhost
+IP.1 = $serverName
+IP.2 = 127.0.0.1
+IP.3 = ::1
+"@
+} else {
+    $altNamesSection = @"
+DNS.1 = $serverName
+DNS.2 = localhost
+IP.1 = 127.0.0.1
+IP.2 = ::1
+"@
+}
+
 # Create OpenSSL config for server cert with SAN
 $serverConfigContent = @"
 [req]
@@ -378,10 +398,7 @@ extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = $serverName
-DNS.2 = localhost
-IP.1 = 127.0.0.1
-IP.2 = ::1
+$altNamesSection
 "@
 
 $serverConfigContent | Out-File -FilePath "$serverDir/server.cnf" -Encoding ASCII
