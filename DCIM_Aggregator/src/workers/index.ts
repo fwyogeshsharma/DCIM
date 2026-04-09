@@ -4,6 +4,8 @@ import { initMetricsSyncWorker, startMetricsSyncWorker } from './metricsSync'
 import { initAgentsSyncWorker, startAgentsSyncWorker } from './agentsSync'
 import { initAlertsSyncWorker, startAlertsSyncWorker } from './alertsSync'
 import { initHealthMonitorWorker, startHealthMonitorWorker } from './healthMonitor'
+import { initTrapsSyncWorker, startTrapsSyncWorker } from './trapsSync'
+import { initTopologyLinksSyncWorker, startTopologyLinksSyncWorker } from './topologyLinksSync'
 import { logger } from '../utils/logger'
 
 export function startWorkers(dbPool: Pool, redisClient: RedisClientType) {
@@ -12,6 +14,8 @@ export function startWorkers(dbPool: Pool, redisClient: RedisClientType) {
   initAgentsSyncWorker(dbPool)
   initAlertsSyncWorker(dbPool)
   initHealthMonitorWorker(dbPool, redisClient)
+  initTrapsSyncWorker(dbPool)
+  initTopologyLinksSyncWorker(dbPool)
 
   // Delay first server API calls by 10 seconds to allow servers to come online
   logger.info('Workers initialized — first sync in 10 seconds...')
@@ -20,6 +24,8 @@ export function startWorkers(dbPool: Pool, redisClient: RedisClientType) {
     startAgentsSyncWorker()
     startAlertsSyncWorker()
     startHealthMonitorWorker()
+    startTrapsSyncWorker()
+    startTopologyLinksSyncWorker()
     logger.info('All workers started')
   }, 10000)
 }
