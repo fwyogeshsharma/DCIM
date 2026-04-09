@@ -89,12 +89,23 @@ class SNMPRecGenerator:
         entries += self._ip_entries(device)
         entries += self._snmp_entries(device)
 
+        neighbor_tuples = self._build_neighbor_tuples(device, topology)
         if device.device_type in (DeviceType.ROUTER, DeviceType.SWITCH):
-            neighbors = topology.get_neighbors(device.id)
-            neighbor_tuples = self._build_neighbor_tuples(device, topology)
             entries += generate_lldp_entries(device, neighbor_tuples)
             if device.vendor == Vendor.CISCO_SYSTEMS:
                 entries += generate_cdp_entries(device, neighbor_tuples)
+        else:
+            # Non-network devices (firewalls, load balancers, etc.) only appear
+            # in their router/switch neighbors' LLDP tables.  Links between two
+            # non-network devices (e.g. FW↔LB) are invisible to discovery unless
+            # at least one side also emits LLDP.  Generate LLDP here only for
+            # those peer connections so topology discovery can find them.
+            peer_tuples = [
+                (n, lp, rp) for n, lp, rp in neighbor_tuples
+                if n.device_type not in (DeviceType.ROUTER, DeviceType.SWITCH)
+            ]
+            if peer_tuples:
+                entries += generate_lldp_entries(device, peer_tuples)
 
         if device.device_type == DeviceType.SWITCH:
             neighbor_port_tuples = self._build_switch_port_tuples(device, topology)
