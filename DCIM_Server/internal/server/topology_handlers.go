@@ -65,7 +65,8 @@ func (s *Server) waitForSNMP(ip string, port uint16, community string, timeout t
 func (s *Server) runWalkerLoop() {
 	cfg := s.config.SNMPWalker
 
-	// Wait until the SNMP simulator is actually started (responds to SNMP)
+	// Wait until the SNMP simulator is actually started (responds to SNMP).
+	// Use the same community string that will be used during the walk.
 	community := cfg.Community
 	if cfg.UseIPAsCommunity {
 		community = cfg.SeedIP
@@ -205,6 +206,27 @@ func (s *Server) handleTopologyNodes(w http.ResponseWriter, r *http.Request) {
 		Success: true,
 		Data:    nodes,
 	})
+}
+
+// handleTopologyLinks  GET  /api/v1/topology/links  — return discovered edges
+func (s *Server) handleTopologyLinks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	links, err := s.db.GetTopologyLinks(s.serverID)
+	if err != nil {
+		s.logger.Printf("Failed to query topology links: %v", err)
+		s.sendError(w, http.StatusInternalServerError, "Failed to query topology links")
+		return
+	}
+	if links == nil {
+		links = []map[string]interface{}{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(models.APIResponse{Success: true, Data: links})
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

@@ -26,15 +26,16 @@ type Config struct {
 	Performance PerformanceConfig `yaml:"performance"`
 	Debug       DebugConfig       `yaml:"debug"`
 	SNMPWalker  SNMPWalkerConfig  `yaml:"snmp_walker"`
+	SNMPTrap    SNMPTrapConfig    `yaml:"snmp_trap"`
 }
 
 // ServerIDConfig contains server identification settings
 type ServerIDConfig struct {
-	ID          string `yaml:"id"`           // Unique server identifier (auto-generated if empty)
-	Name        string `yaml:"name"`         // Human-readable server name
-	Location    string `yaml:"location"`     // Physical location of server
-	Environment string `yaml:"environment"`  // dev, staging, production, etc.
-	AutoGenerate bool  `yaml:"auto_generate"` // Auto-generate ID if not specified
+	ID           string `yaml:"id"`            // Unique server identifier (auto-generated if empty)
+	Name         string `yaml:"name"`          // Human-readable server name
+	Location     string `yaml:"location"`      // Physical location of server
+	Environment  string `yaml:"environment"`   // dev, staging, production, etc.
+	AutoGenerate bool   `yaml:"auto_generate"` // Auto-generate ID if not specified
 }
 
 // ServerConfig contains server settings
@@ -49,22 +50,22 @@ type ServerConfig struct {
 
 // TLSConfig contains TLS/mTLS settings
 type TLSConfig struct {
-	Enabled         bool     `yaml:"enabled"`
-	ServerCertPath  string   `yaml:"server_cert_path"`
-	ServerKeyPath   string   `yaml:"server_key_path"`
-	CACertPath      string   `yaml:"ca_cert_path"`
-	ClientAuth      string   `yaml:"client_auth"`
-	MinTLSVersion   string   `yaml:"min_tls_version"`
-	CipherSuites    []string `yaml:"cipher_suites"`
+	Enabled        bool     `yaml:"enabled"`
+	ServerCertPath string   `yaml:"server_cert_path"`
+	ServerKeyPath  string   `yaml:"server_key_path"`
+	CACertPath     string   `yaml:"ca_cert_path"`
+	ClientAuth     string   `yaml:"client_auth"`
+	MinTLSVersion  string   `yaml:"min_tls_version"`
+	CipherSuites   []string `yaml:"cipher_suites"`
 }
 
 // DatabaseConfig contains database settings
 type DatabaseConfig struct {
-	Type      string              `yaml:"type"`
-	SQLite    SQLiteConfig        `yaml:"sqlite"`
-	Postgres  PostgresConfig      `yaml:"postgres"`
-	MySQL     MySQLConfig         `yaml:"mysql"`
-	Retention RetentionConfig     `yaml:"retention"`
+	Type      string          `yaml:"type"`
+	SQLite    SQLiteConfig    `yaml:"sqlite"`
+	Postgres  PostgresConfig  `yaml:"postgres"`
+	MySQL     MySQLConfig     `yaml:"mysql"`
+	Retention RetentionConfig `yaml:"retention"`
 }
 
 // SQLiteConfig contains SQLite-specific settings
@@ -102,20 +103,20 @@ type MySQLConfig struct {
 
 // RetentionConfig contains data retention settings
 type RetentionConfig struct {
-	MetricsDays      int           `yaml:"metrics_days"`
-	AlertsDays       int           `yaml:"alerts_days"`
-	AgentStatusDays  int           `yaml:"agent_status_days"`
-	CleanupInterval  time.Duration `yaml:"cleanup_interval"`
+	MetricsDays     int           `yaml:"metrics_days"`
+	AlertsDays      int           `yaml:"alerts_days"`
+	AgentStatusDays int           `yaml:"agent_status_days"`
+	CleanupInterval time.Duration `yaml:"cleanup_interval"`
 }
 
 // LicenseConfig contains license management settings
 type LicenseConfig struct {
-	Mode             string              `yaml:"mode"`
-	FilePath         string              `yaml:"file_path"`
-	Enforce          bool                `yaml:"enforce"`
-	GracePeriodDays  int                 `yaml:"grace_period_days"`
-	CheckInterval    time.Duration       `yaml:"check_interval"`
-	Default          DefaultLicenseConfig `yaml:"default"`
+	Mode            string               `yaml:"mode"`
+	FilePath        string               `yaml:"file_path"`
+	Enforce         bool                 `yaml:"enforce"`
+	GracePeriodDays int                  `yaml:"grace_period_days"`
+	CheckInterval   time.Duration        `yaml:"check_interval"`
+	Default         DefaultLicenseConfig `yaml:"default"`
 }
 
 // DefaultLicenseConfig contains default license limits
@@ -134,8 +135,8 @@ type AgentConfig struct {
 
 // ConnectionConfig contains agent connection settings
 type ConnectionConfig struct {
-	HeartbeatTimeout      time.Duration `yaml:"heartbeat_timeout"`
-	IdentificationMethod  string        `yaml:"identification_method"`
+	HeartbeatTimeout     time.Duration `yaml:"heartbeat_timeout"`
+	IdentificationMethod string        `yaml:"identification_method"`
 }
 
 // RegistrationConfig contains agent registration settings
@@ -147,10 +148,10 @@ type RegistrationConfig struct {
 
 // ValidationConfig contains data validation settings
 type ValidationConfig struct {
-	RejectOldMetrics       time.Duration `yaml:"reject_old_metrics"`
-	RejectFutureMetrics    time.Duration `yaml:"reject_future_metrics"`
-	MaxMetricsPerBatch     int           `yaml:"max_metrics_per_batch"`
-	MaxAlertsPerBatch      int           `yaml:"max_alerts_per_batch"`
+	RejectOldMetrics    time.Duration `yaml:"reject_old_metrics"`
+	RejectFutureMetrics time.Duration `yaml:"reject_future_metrics"`
+	MaxMetricsPerBatch  int           `yaml:"max_metrics_per_batch"`
+	MaxAlertsPerBatch   int           `yaml:"max_alerts_per_batch"`
 }
 
 // APIConfig contains API settings
@@ -186,29 +187,29 @@ type CORSConfig struct {
 
 // LoggingConfig contains logging settings
 type LoggingConfig struct {
-	Level         string         `yaml:"level"`
-	Output        string         `yaml:"output"`
-	File          LogFileConfig  `yaml:"file"`
-	Format        string         `yaml:"format"`
-	IncludeCaller bool           `yaml:"include_caller"`
-	LogRequests   bool           `yaml:"log_requests"`
+	Level         string        `yaml:"level"`
+	Output        string        `yaml:"output"`
+	File          LogFileConfig `yaml:"file"`
+	Format        string        `yaml:"format"`
+	IncludeCaller bool          `yaml:"include_caller"`
+	LogRequests   bool          `yaml:"log_requests"`
 }
 
 // LogFileConfig contains log file settings
 type LogFileConfig struct {
-	Path        string `yaml:"path"`
-	MaxSizeMB   int    `yaml:"max_size_mb"`
-	MaxBackups  int    `yaml:"max_backups"`
-	MaxAgeDays  int    `yaml:"max_age_days"`
-	Compress    bool   `yaml:"compress"`
+	Path       string `yaml:"path"`
+	MaxSizeMB  int    `yaml:"max_size_mb"`
+	MaxBackups int    `yaml:"max_backups"`
+	MaxAgeDays int    `yaml:"max_age_days"`
+	Compress   bool   `yaml:"compress"`
 }
 
 // AlertingConfig contains alerting settings
 type AlertingConfig struct {
-	Enabled            bool                   `yaml:"enabled"`
-	AggregationWindow  time.Duration          `yaml:"aggregation_window"`
-	Notifications      NotificationsConfig    `yaml:"notifications"`
-	SeverityLevels     SeverityLevelsConfig   `yaml:"severity_levels"`
+	Enabled           bool                 `yaml:"enabled"`
+	AggregationWindow time.Duration        `yaml:"aggregation_window"`
+	Notifications     NotificationsConfig  `yaml:"notifications"`
+	SeverityLevels    SeverityLevelsConfig `yaml:"severity_levels"`
 }
 
 // NotificationsConfig contains notification channel settings
@@ -266,7 +267,7 @@ type MetricsConfig struct {
 
 // AggregationConfig contains aggregation settings
 type AggregationConfig struct {
-	Enabled   bool                `yaml:"enabled"`
+	Enabled   bool                  `yaml:"enabled"`
 	Intervals []AggregationInterval `yaml:"intervals"`
 }
 
@@ -308,9 +309,9 @@ type PerformanceConfig struct {
 
 // WorkersConfig contains worker pool sizes
 type WorkersConfig struct {
-	MetricProcessors  int `yaml:"metric_processors"`
-	AlertProcessors   int `yaml:"alert_processors"`
-	DatabaseWriters   int `yaml:"database_writers"`
+	MetricProcessors int `yaml:"metric_processors"`
+	AlertProcessors  int `yaml:"alert_processors"`
+	DatabaseWriters  int `yaml:"database_writers"`
 }
 
 // BuffersConfig contains buffer sizes
@@ -332,6 +333,12 @@ type DebugConfig struct {
 	ProfilingPort int    `yaml:"profiling_port"`
 	DumpData      bool   `yaml:"dump_data"`
 	DumpPath      string `yaml:"dump_path"`
+}
+
+// SNMPTrapConfig holds settings for the built-in SNMP trap receiver
+type SNMPTrapConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Port    uint16 `yaml:"port"` // UDP port to listen on (default 162; use 1162 to avoid needing root)
 }
 
 // SNMPWalkerConfig holds settings for the built-in SNMP topology walker

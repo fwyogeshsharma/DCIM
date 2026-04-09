@@ -19,14 +19,14 @@ ALTER TABLE metrics SET (
     timescaledb.compress_segmentby = 'server_id, agent_id, metric_type'
 );
 
-SELECT add_compression_policy('metrics', INTERVAL '7 days');
+SELECT add_compression_policy('metrics', INTERVAL '7 days', if_not_exists => TRUE);
 
 ALTER TABLE snmp_metrics SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'server_id, agent_id, device_ip'
 );
 
-SELECT add_compression_policy('snmp_metrics', INTERVAL '7 days');
+SELECT add_compression_policy('snmp_metrics', INTERVAL '7 days', if_not_exists => TRUE);
 
 -- Continuous aggregates for performance (pre-aggregated views)
 CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_hourly
@@ -48,9 +48,10 @@ WITH NO DATA;
 SELECT add_continuous_aggregate_policy('metrics_hourly',
     start_offset => INTERVAL '3 hours',
     end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour'
+    schedule_interval => INTERVAL '1 hour',
+    if_not_exists => TRUE
 );
 
 -- Retention policy (keep raw data for 90 days)
-SELECT add_retention_policy('metrics', INTERVAL '90 days');
-SELECT add_retention_policy('snmp_metrics', INTERVAL '90 days');
+SELECT add_retention_policy('metrics', INTERVAL '90 days', if_not_exists => TRUE);
+SELECT add_retention_policy('snmp_metrics', INTERVAL '90 days', if_not_exists => TRUE);

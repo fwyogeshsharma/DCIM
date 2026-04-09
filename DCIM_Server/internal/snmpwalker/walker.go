@@ -20,22 +20,22 @@ const (
 	oidSysDescr = "1.3.6.1.2.1.1.1.0"
 
 	// Neighbor discovery OIDs (tried in order)
-	oidCDPCacheAddress   = "1.3.6.1.4.1.9.9.23.1.2.1.1.4" // Cisco CDP neighbor IPs
-	oidARPTable          = "1.3.6.1.2.1.4.22.1.3"          // ipNetToMediaNetAddress
-	oidLLDPRemChassisID  = "1.0.8802.1.1.2.1.4.1.1.5"      // lldpRemChassisId — IP stored as string value (PRIMARY for simulators)
-	oidLLDPRemMgmtAddr   = "1.0.8802.1.1.2.1.4.2"          // lldpRemManAddrTable
-	oidIPRouteNextHop    = "1.3.6.1.2.1.4.21.1.7"          // ipRouteNextHop
+	oidCDPCacheAddress  = "1.3.6.1.4.1.9.9.23.1.2.1.1.4" // Cisco CDP neighbor IPs
+	oidARPTable         = "1.3.6.1.2.1.4.22.1.3"         // ipNetToMediaNetAddress
+	oidLLDPRemChassisID = "1.0.8802.1.1.2.1.4.1.1.5"     // lldpRemChassisId — IP stored as string value (PRIMARY for simulators)
+	oidLLDPRemMgmtAddr  = "1.0.8802.1.1.2.1.4.2"         // lldpRemManAddrTable
+	oidIPRouteNextHop   = "1.3.6.1.2.1.4.21.1.7"         // ipRouteNextHop
 )
 
 // WalkConfig holds the parameters for a walk run
 type WalkConfig struct {
-	SeedIP           string
-	Community        string
-	Version          string // "1", "2c", "3"
-	Port             uint16
-	MaxDepth         int
-	Timeout          time.Duration
-	Retries          int
+	SeedIP    string
+	Community string
+	Version   string // "1", "2c", "3"
+	Port      uint16
+	MaxDepth  int
+	Timeout   time.Duration
+	Retries   int
 	// UseIPAsCommunity: when true each device is queried using its own IP as
 	// the community string (required by some simulators like SNMP Network
 	// Topology Simulator).
@@ -93,20 +93,31 @@ type DiscoveredMetric struct {
 	Metadata   map[string]interface{}
 }
 
+// TopologyLink represents a discovered connection between two devices
+type TopologyLink struct {
+	SourceIP   string
+	SourceName string
+	TargetIP   string
+	TargetName string
+}
+
 // Walker manages SNMP topology walks
 type Walker struct {
-	sessions map[string]*WalkSession
-	mu       sync.RWMutex
-	logger   *log.Logger
-	saveFn   func(metrics []DiscoveredMetric) error
+	sessions    map[string]*WalkSession
+	mu          sync.RWMutex
+	logger      *log.Logger
+	saveFn      func(metrics []DiscoveredMetric) error
+	saveLinksFn func(links []TopologyLink) error
 }
 
 // New creates a Walker. saveFn is called with the discovered metrics to persist them.
-func New(logger *log.Logger, saveFn func(metrics []DiscoveredMetric) error) *Walker {
+// saveLinksFn (optional) is called with topology links discovered during the walk.
+func New(logger *log.Logger, saveFn func(metrics []DiscoveredMetric) error, saveLinksFn func(links []TopologyLink) error) *Walker {
 	return &Walker{
-		sessions: make(map[string]*WalkSession),
-		logger:   logger,
-		saveFn:   saveFn,
+		sessions:    make(map[string]*WalkSession),
+		logger:      logger,
+		saveFn:      saveFn,
+		saveLinksFn: saveLinksFn,
 	}
 }
 
@@ -186,6 +197,7 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 	parent := map[string]string{cfg.SeedIP: ""}
 
 	var collected []DiscoveredMetric
+	var collectedLinks []TopologyLink
 
 	for len(queue) > 0 {
 		ip := queue[0]
@@ -232,20 +244,6 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 				ValueType:  "gauge",
 			})
 
-			// Emit topology_parent metric if this device has a parent
-			if par := parent[ip]; par != "" {
-				collected = append(collected, DiscoveredMetric{
-					AgentID:    WalkerAgentID,
-					Timestamp:  time.Now(),
-					DeviceName: devName,
-					DeviceHost: ip,
-					OID:        oidSysName,
-					MetricName: "topology_parent",
-					Value:      float64(ipToUint32(par)),
-					ValueType:  "gauge",
-				})
-			}
-
 			session.mu.Lock()
 			session.NodesFound++
 			session.mu.Unlock()
@@ -259,6 +257,20 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 				}
 				if _, hasParent := parent[n]; !hasParent {
 					parent[n] = ip
+					// Record the link: ip → n
+					srcName := ip
+					for _, m := range collected {
+						if m.DeviceHost == ip && m.MetricName == "reachable" {
+							srcName = m.DeviceName
+							break
+						}
+					}
+					collectedLinks = append(collectedLinks, TopologyLink{
+						SourceIP:   ip,
+						SourceName: srcName,
+						TargetIP:   n,
+						TargetName: n,
+					})
 				}
 				queue = append(queue, n)
 			}
@@ -268,6 +280,12 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 	if len(collected) > 0 {
 		if err := w.saveFn(collected); err != nil {
 			w.logger.Printf("[WALKER] Failed to save %d metrics: %v", len(collected), err)
+		}
+	}
+
+	if w.saveLinksFn != nil && len(collectedLinks) > 0 {
+		if err := w.saveLinksFn(collectedLinks); err != nil {
+			w.logger.Printf("[WALKER] Failed to save %d links: %v", len(collectedLinks), err)
 		}
 	}
 
@@ -315,11 +333,11 @@ func (w *Walker) probeDevice(ip string, cfg WalkConfig) ([]DiscoveredMetric, []s
 	if err == nil {
 		for _, v := range getResult.Variables {
 			switch v.Name {
-			case "."+oidSysName, oidSysName:
+			case "." + oidSysName, oidSysName:
 				if s := snmpString(v); s != "" {
 					sysName = strings.TrimSpace(s)
 				}
-			case "."+oidSysDescr, oidSysDescr:
+			case "." + oidSysDescr, oidSysDescr:
 				sysDescr = strings.TrimSpace(snmpString(v))
 			}
 		}
@@ -578,17 +596,4 @@ func guessDeviceType(sysDescr string) string {
 	default:
 		return "unknown"
 	}
-}
-
-// ipToUint32 converts a dotted IPv4 string to its uint32 representation.
-func ipToUint32(ipStr string) uint32 {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return 0
-	}
-	ip = ip.To4()
-	if ip == nil {
-		return 0
-	}
-	return uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
 }

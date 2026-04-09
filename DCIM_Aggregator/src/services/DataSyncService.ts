@@ -293,4 +293,113 @@ export class DataSyncService {
       logger.error(`Failed to sync SNMP metrics from ${serverId}:`, error.message)
     }
   }
+
+  async syncTrapsFromServer(serverId: string, serverUrl: string): Promise<void> {
+    try {
+      const agent = getAgentForServer(serverId)
+      const client = new HttpClient(serverUrl, 10000, agent)
+
+      // Get a known agent_id for authenticated access
+      const agentId = await this.getAgentIdForServer(serverId)
+      if (!agentId) {
+        logger.debug(`No agents known for server ${serverId}, skipping traps sync`)
+        return
+      }
+
+      // Fetch last 500 traps — server returns latest-first; we use ON CONFLICT to dedup
+      const response: any = await client.get('/traps?limit=500', {
+        headers: { 'X-Agent-ID': agentId },
+      })
+      const traps: any[] = response.data || response
+
+      if (!Array.isArray(traps) || traps.length === 0) return
+
+      let inserted = 0
+      for (const trap of traps) {
+        try {
+          const result = await this.dbPool.query(
+            `INSERT INTO snmp_traps
+               (server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
+                severity, varbinds, description, resolved, resolved_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+             ON CONFLICT DO NOTHING`,
+            [
+              serverId,
+              trap.timestamp || new Date(),
+              trap.source_ip,
+              trap.device_name || '',
+              trap.trap_type,
+              trap.trap_oid,
+              trap.severity,
+              trap.varbinds ? JSON.stringify(trap.varbinds) : null,
+              trap.description || '',
+              trap.resolved || false,
+              trap.resolved_at || null,
+            ]
+          )
+          if (result.rowCount && result.rowCount > 0) inserted++
+        } catch {
+          // skip individual insert errors (constraint violations etc.)
+        }
+      }
+
+      if (inserted > 0) {
+        logger.info(`Synced ${inserted} new traps from server ${serverId}`)
+      }
+    } catch (error: any) {
+      logger.error(`Failed to sync traps from ${serverId}:`, error.message)
+    }
+  }
+
+  async syncTopologyLinksFromServer(serverId: string, serverUrl: string): Promise<void> {
+    try {
+      const agent = getAgentForServer(serverId)
+      const client = new HttpClient(serverUrl, 10000, agent)
+
+      // Get a known agent_id for authenticated access
+      const agentId = await this.getAgentIdForServer(serverId)
+      if (!agentId) {
+        logger.debug(`No agents known for server ${serverId}, skipping topology links sync`)
+        return
+      }
+
+      const response: any = await client.get('/topology/links', {
+        headers: { 'X-Agent-ID': agentId },
+      })
+      const links: any[] = response.data || response
+
+      if (!Array.isArray(links) || links.length === 0) return
+
+      let upserted = 0
+      for (const link of links) {
+        try {
+          const result = await this.dbPool.query(
+            `INSERT INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (server_id, source_ip, target_ip)
+             DO UPDATE SET source_name = EXCLUDED.source_name,
+                           target_name = EXCLUDED.target_name,
+                           last_seen   = EXCLUDED.last_seen`,
+            [
+              serverId,
+              link.source_ip,
+              link.source_name || '',
+              link.target_ip,
+              link.target_name || '',
+              link.last_seen || new Date(),
+            ]
+          )
+          if (result.rowCount && result.rowCount > 0) upserted++
+        } catch {
+          // skip individual errors
+        }
+      }
+
+      if (upserted > 0) {
+        logger.info(`Synced ${upserted} topology links from server ${serverId}`)
+      }
+    } catch (error: any) {
+      logger.error(`Failed to sync topology links from ${serverId}:`, error.message)
+    }
+  }
 }
