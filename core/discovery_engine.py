@@ -46,12 +46,19 @@ class DiscoveryEngine:
     #  Public API                                                          #
     # ------------------------------------------------------------------ #
 
-    def discover(self, topology, progress_cb=None) -> DiscoveryResult:
+    def discover(self, topology, progress_cb=None, link_cb=None,
+                 device_scanned_cb=None) -> DiscoveryResult:
         """
         Walk LLDP on every device in the topology and compare the discovered
         adjacencies against the configured topology.
 
         progress_cb(current, total, message) — optional progress callback.
+        link_cb(src_device_id, dst_device_id)  — called for each unique link
+            the moment it is confirmed via SNMP (may be called from a non-main
+            thread; use a Qt signal as the callback for thread safety).
+        device_scanned_cb(device_id) — called once per device immediately after
+            its LLDP walk completes (even if no links were found or an error
+            occurred).  Use this to drive per-device progress animations.
         """
         result = DiscoveryResult()
         devices = topology.get_all_devices()
@@ -71,11 +78,18 @@ class DiscoveryEngine:
                     remote_dev = ip_to_dev.get(link.remote_ip)
                     local_dev  = ip_to_dev.get(link.local_ip)
                     if remote_dev and local_dev:
-                        discovered_edges.add(frozenset([local_dev.id, remote_dev.id]))
+                        edge = frozenset([local_dev.id, remote_dev.id])
+                        if edge not in discovered_edges:
+                            discovered_edges.add(edge)
+                            if link_cb:
+                                link_cb(local_dev.id, remote_dev.id)
             except Exception as exc:
                 result.errors.append(
                     f"{device.name} ({device.ip_address}): [{type(exc).__name__}] {exc}"
                 )
+            finally:
+                if device_scanned_cb:
+                    device_scanned_cb(device.id)
 
         if progress_cb:
             progress_cb(len(devices), len(devices), "Comparing with configured topology…")
