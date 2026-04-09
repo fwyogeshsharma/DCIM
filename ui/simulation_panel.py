@@ -98,6 +98,7 @@ class SimulationPanel(QWidget):
     sig_generate  = Signal()
     sig_start     = Signal()
     sig_stop      = Signal()
+    sig_cancel    = Signal()   # emitted when Cancel is clicked during IP binding
     sig_clear     = Signal()
     sig_randomize = Signal()
     sig_refresh_interfaces = Signal()
@@ -105,6 +106,7 @@ class SimulationPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._running = False
+        self._binding = False
         self._build_ui()
         self._load_interfaces()
 
@@ -255,7 +257,7 @@ class SimulationPanel(QWidget):
 
         self.btn_stop = QPushButton("Stop")
         self.btn_stop.setStyleSheet(self._btn_stop_style())
-        self.btn_stop.clicked.connect(self.sig_stop.emit)
+        self.btn_stop.clicked.connect(self._on_stop_clicked)
         self.btn_stop.setEnabled(False)
 
         ss_row.addWidget(self.btn_start)
@@ -357,6 +359,25 @@ class SimulationPanel(QWidget):
         if value >= maximum:
             QTimer.singleShot(1500, self.progress.hide)
 
+    def set_binding(self, binding: bool):
+        """Switch Stop button to Cancel (orange) while IP binding is in progress."""
+        self._binding = binding
+        if binding:
+            self.btn_start.setEnabled(False)
+            self.btn_stop.setText("Cancel")
+            self.btn_stop.setStyleSheet(self._btn_cancel_style())
+            self.btn_stop.setEnabled(True)
+        else:
+            self.btn_stop.setText("Stop")
+            self.btn_stop.setStyleSheet(self._btn_stop_style())
+            self.btn_stop.setEnabled(False)   # set_simulator_running will re-enable if needed
+
+    def _on_stop_clicked(self):
+        if self._binding:
+            self.sig_cancel.emit()
+        else:
+            self.sig_stop.emit()
+
     def set_simulator_running(self, running: bool):
         self._running = running
         self.btn_start.setEnabled(not running)
@@ -430,6 +451,14 @@ class SimulationPanel(QWidget):
             "QPushButton:hover { background: #2ea043; } "
             "QPushButton:pressed { background: #196127; } "
             "QPushButton:disabled { background: #30363d; color: #6e7681; }"
+        )
+
+    def _btn_cancel_style(self) -> str:
+        return (
+            "QPushButton { background: #9a6700; color: white; border: none; "
+            "border-radius: 6px; padding: 8px; font-weight: bold; } "
+            "QPushButton:hover { background: #bb8009; } "
+            "QPushButton:pressed { background: #7a5200; }"
         )
 
     def _btn_stop_style(self) -> str:

@@ -17,12 +17,13 @@ from PySide6.QtWidgets import (
     QMenu, QFileDialog, QMessageBox, QInputDialog,
     QAbstractItemView, QFrame, QPushButton, QDialog,
     QSpinBox, QComboBox, QFormLayout, QDialogButtonBox,
-    QGroupBox, QToolBar,
+    QGroupBox, QToolBar, QLineEdit,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject, QTimer, QSize
 from PySide6.QtGui import QAction, QIcon, QFont, QColor, QKeySequence
 
 from core.device_manager import Device, DeviceManager, DeviceType, Vendor
+from core.device_models import DEVICE_MODELS
 from core.topology_engine import TopologyEngine
 from core.snmprec_generator import SNMPRecGenerator
 from core.ip_manager import IPManager
@@ -41,6 +42,12 @@ from ui.discovery_dialog import DiscoveryDialog
 
 DATASETS_DIR = "datasets"
 TOPOLOGIES_DIR = "topologies"
+
+
+def _default_model_name(device) -> str:
+    """Return the first known model name for this device's vendor+type, or '—'."""
+    models = DEVICE_MODELS.get((device.device_type, device.vendor), [])
+    return models[0].name if models else "—"
 
 
 # ------------------------------------------------------------------ #
@@ -64,13 +71,81 @@ class GeneratorWorker(QObject):
             devices = self.topology.get_all_devices()
             total = len(devices)
             generated = []
+            # Emit at most ~100 progress updates regardless of topology size.
+            # Emitting one signal per device (e.g. 1344 signals) floods the main
+            # thread's event queue and causes QBackingStore repaints to collide
+            # when the user interacts with the graph during generation.
+            step = max(1, total // 100)
             for i, device in enumerate(devices):
-                self.log.emit(f"Generating dataset for {device.name}...", "info")
                 fp = gen.generate_device(device, self.topology)
                 generated.append(fp)
-                self.progress.emit(i + 1, total)
+                if (i + 1) % step == 0 or i == total - 1:
+                    self.progress.emit(i + 1, total)
             self.result = generated
             self.finished.emit()
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+# ------------------------------------------------------------------ #
+#  Background worker for snmpsim index pre-building                   #
+# ------------------------------------------------------------------ #
+
+class IndexWorker(QObject):
+    """Pre-builds snmpsim .dbm indexes in parallel after dataset generation."""
+    progress = Signal(int, int)   # (completed, total)
+    finished = Signal(int)        # total files indexed
+    error    = Signal(str)
+
+    def __init__(self, snmpsim_controller: "SNMPSimController", data_dir: str):
+        super().__init__()
+        self._ctrl = snmpsim_controller
+        self._data_dir = data_dir
+
+    def run(self):
+        try:
+            count = self._ctrl.preindex_datasets(
+                self._data_dir,
+                progress_cb=lambda c, t: self.progress.emit(c, t),
+            )
+            self.finished.emit(count)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+# ------------------------------------------------------------------ #
+#  Background worker for live SNMP topology discovery                  #
+# ------------------------------------------------------------------ #
+
+class LiveDiscoveryWorker(QObject):
+    """
+    Runs a full SNMP topology discovery scan in a background thread.
+
+    Confirmed links are pushed into self.link_queue (a thread-safe Queue) instead
+    of being emitted as Qt signals.  A QTimer on the main thread drains the queue
+    every 50 ms so the graph updates progressively in sync with the actual SNMP
+    polling, rather than in a single burst when the event queue is finally flushed.
+    """
+    finished = Signal(object)   # DiscoveryResult
+    error    = Signal(str)
+
+    def __init__(self, topology, host: str = "127.0.0.1", port: int = 161):
+        super().__init__()
+        self._topology = topology
+        self._host = host
+        self._port = port
+        import queue as _q
+        self.link_queue = _q.Queue()   # (src_id, dst_id) tuples, thread-safe
+
+    def run(self):
+        try:
+            from core.discovery_engine import DiscoveryEngine
+            engine = DiscoveryEngine(self._host, self._port)
+            result = engine.discover(
+                self._topology,
+                device_scanned_cb=lambda dev_id: self.link_queue.put(dev_id),
+            )
+            self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
 
@@ -91,12 +166,18 @@ class IPBindWorker(QObject):
         self.interface = interface
         self.ips = ips
         self.mask = mask
+        self.cancelled = False
+
+    def cancel(self):
+        self.cancelled = True
 
     def run(self):
         try:
             bound: List[str] = []
             total = len(self.ips)
             for i, ip in enumerate(self.ips):
+                if self.cancelled:
+                    break
                 from core.ip_binder import add_ip
                 ok, msg = add_ip(self.interface, ip, self.mask)
                 level = "success" if ok else "error"
@@ -112,6 +193,7 @@ class IPBindWorker(QObject):
 
 class IPUnbindWorker(QObject):
     """Removes a list of IPs from a Windows network interface via netsh."""
+    progress = Signal(int, int)   # (current, total)
     log      = Signal(str, str)
     finished = Signal()
 
@@ -121,15 +203,84 @@ class IPUnbindWorker(QObject):
         self.ips = ips
 
     def run(self):
+        total = len(self.ips)
         try:
-            for ip in self.ips:
+            for i, ip in enumerate(self.ips):
                 from core.ip_binder import remove_ip
                 ok, msg = remove_ip(self.interface, ip)
                 self.log.emit(f"  {'OK' if ok else 'FAIL'} Removed {ip}: {msg}", "info")
+                self.progress.emit(i + 1, total)
         except Exception as e:
             self.log.emit(f"Unbind error: {e}", "error")
         finally:
             self.finished.emit()
+
+
+# ------------------------------------------------------------------ #
+#  Force-Directed Layout Worker                                        #
+# ------------------------------------------------------------------ #
+
+class ForceLayoutWorker(QObject):
+    """Computes a NetworkX layout in a background thread."""
+    finished = Signal(dict)   # {device_id: (x, y)}
+    error    = Signal(str)
+
+    def __init__(self, node_ids: list, edge_pairs: list,
+                 layout_name: str = "spring",
+                 device_types: dict = None):
+        super().__init__()
+        self._node_ids   = node_ids     # [device_id, ...]
+        self._edge_pairs = edge_pairs   # [(src_id, dst_id), ...]
+        self._layout     = layout_name  # spring | shell | multipartite | kamada_kawai
+        self._dev_types  = device_types or {}  # {device_id: DeviceType}
+
+    def run(self):
+        try:
+            import networkx as nx
+
+            G = nx.Graph()
+            G.add_nodes_from(self._node_ids)
+            G.add_edges_from(self._edge_pairs)
+
+            # scale=4000 → positions span roughly ±4 000 scene units
+            if self._layout == "spring":
+                pos = nx.spring_layout(G, seed=42, iterations=50, scale=4000)
+
+            elif self._layout == "shell":
+                # Arrange nodes in concentric shells by device type priority
+                type_order = [
+                    "FIREWALL", "ROUTER", "SWITCH", "WIRELESS_AP",
+                    "SERVER", "WORKSTATION", "PRINTER", "GENERIC"
+                ]
+                shells_dict: dict[str, list] = {t: [] for t in type_order}
+                for nid in self._node_ids:
+                    dt = str(self._dev_types.get(nid, "GENERIC")).split(".")[-1].upper()
+                    bucket = dt if dt in shells_dict else "GENERIC"
+                    shells_dict[bucket].append(nid)
+                shells = [s for s in (shells_dict[t] for t in type_order) if s]
+                if not shells:
+                    shells = [self._node_ids]
+                pos = nx.shell_layout(G, nlist=shells, scale=4000)
+
+            elif self._layout == "kamada_kawai":
+                # Hard cap: fall back to spring for very large graphs
+                if len(self._node_ids) > 500:
+                    raise ValueError(
+                        f"Kamada-Kawai is too slow for {len(self._node_ids)} nodes "
+                        f"(limit: 500). Use Spring Layout instead."
+                    )
+                # Warm-start with spring positions to reduce iterations
+                init_pos = nx.spring_layout(G, seed=42, scale=4000)
+                pos = nx.kamada_kawai_layout(G, pos=init_pos, scale=4000)
+
+            else:
+                pos = nx.spring_layout(G, seed=42, iterations=50, scale=4000)
+
+            result = {nid: (float(xy[0]), float(xy[1]))
+                      for nid, xy in pos.items()}
+            self.finished.emit(result)
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 # ------------------------------------------------------------------ #
@@ -193,8 +344,13 @@ class MainWindow(QMainWindow):
         self.snmpsim = SNMPSimController(self._datasets_dir)
         self._trap_engine = TrapEngine(self)
         self._generated_files: list = []
+        self._default_positions: dict = {}         # {device_id: (x, y)} — snapshot at load/template time
+        self._current_layout_positions: dict = {}  # snapshot after each layout application
+        self._algo_layout_active: bool = False  # True after an algo layout; drags no longer update default
         self._worker_thread: QThread = None
         self._worker: GeneratorWorker = None
+        self._index_thread: QThread = None
+        self._index_worker: IndexWorker = None
         self._link_mode = False
 
         # IP binding state
@@ -204,6 +360,14 @@ class MainWindow(QMainWindow):
         self._bind_worker = None
         self._unbind_thread: QThread = None
         self._unbind_worker = None
+
+        # Live topology discovery state
+        self._live_discovery_thread: QThread = None
+        self._live_discovery_worker: LiveDiscoveryWorker = None
+        self._live_discovery_running: bool = False
+        self._link_drain_timer: QTimer = None
+        self._discovered_devices: set = set()   # device IDs already polled
+        self._device_adjacency: dict = {}       # device_id → {neighbor_id}
 
         self._build_ui()
         self._build_menus()
@@ -256,12 +420,36 @@ class MainWindow(QMainWindow):
         dock = QDockWidget("Device List", self)
         dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.BottomDockWidgetArea)
 
+        # ── Search bar ───────────────────────────────────────────────────
+        self._device_search = QLineEdit()
+        self._device_search.setPlaceholderText("Search devices…")
+        self._device_search.setClearButtonEnabled(True)
+        self._device_search.setStyleSheet("""
+            QLineEdit {
+                background: #21262d;
+                color: #e6edf3;
+                border: 1px solid #30363d;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+            QLineEdit:focus { border-color: #1f6feb; }
+        """)
+        self._device_search.textChanged.connect(self._on_device_search)
+
+        # ── Table ────────────────────────────────────────────────────────
         self._device_table = QTableWidget()
         self._device_table.setColumnCount(6)
         self._device_table.setHorizontalHeaderLabels(
             ["Name", "Type", "Vendor", "IP Address", "Interfaces", "SNMP Port"]
         )
-        self._device_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        hdr = self._device_table.horizontalHeader()
+        hdr.setSectionResizeMode(QHeaderView.Interactive)
+        hdr.setDefaultSectionSize(90)
+        hdr.setMinimumSectionSize(50)
+        hdr.setStretchLastSection(True)
+
         self._device_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._device_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._device_table.setAlternatingRowColors(True)
@@ -280,13 +468,22 @@ class MainWindow(QMainWindow):
                 border: none;
                 border-bottom: 1px solid #30363d;
             }
-            QTableWidget::item:selected {
-                background: #1f6feb;
-            }
+            QHeaderView::section:hover { background: #2d333b; }
+            QTableWidget::item:selected { background: #1f6feb; }
         """)
         self._device_table.doubleClicked.connect(self._on_device_table_double_click)
+        self._device_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._device_table.customContextMenuRequested.connect(self._on_device_table_right_click)
 
-        dock.setWidget(self._device_table)
+        # ── Container ────────────────────────────────────────────────────
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(4)
+        layout.addWidget(self._device_search)
+        layout.addWidget(self._device_table)
+
+        dock.setWidget(container)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
         self._device_dock = dock
 
@@ -328,7 +525,7 @@ class MainWindow(QMainWindow):
         self._right_dock.setTitleBarWidget(QWidget())
         self._right_dock.setWidget(self._right_splitter)
         self.addDockWidget(Qt.RightDockWidgetArea, self._right_dock)
-        self.resizeDocks([self._right_dock], [600], Qt.Horizontal)
+        self.resizeDocks([self._right_dock], [300], Qt.Horizontal)
 
     def _build_right_toolbar(self):
         _TB_STYLE = """
@@ -382,10 +579,14 @@ class MainWindow(QMainWindow):
         # ── SNMP Traps ────────────────────────────────────────────────────
         self._act_panel_traps = QAction("⚡", self)
         self._act_panel_traps.setCheckable(True)
-        self._act_panel_traps.setChecked(True)
-        self._act_panel_traps.setToolTip("SNMP Traps")
+        self._act_panel_traps.setChecked(False)
+        self._act_panel_traps.setEnabled(False)  # enabled only when simulator is running
+        self._act_panel_traps.setToolTip("SNMP Traps (start simulator first)")
         self._act_panel_traps.toggled.connect(self._on_toggle_traps_panel)
         tb.addAction(self._act_panel_traps)
+
+        # Start with only Simulation Control visible
+        self._trap_panel.setVisible(False)
 
         # If the outer dock is closed (via float/close), uncheck both buttons
         self._right_dock.visibilityChanged.connect(self._on_right_dock_visibility)
@@ -396,10 +597,16 @@ class MainWindow(QMainWindow):
 
     def _on_toggle_sim_panel(self, visible: bool):
         if visible:
-            self._right_dock.show()   # parent must be visible before child
+            self._right_dock.show()
         self._sim_panel.setVisible(visible)
         if not self._act_panel_sim.isChecked() and not self._act_panel_traps.isChecked():
             self._right_dock.hide()
+        else:
+            both = self._act_panel_sim.isChecked() and self._act_panel_traps.isChecked()
+            target = 560 if both else 300
+            QTimer.singleShot(0, lambda: self.resizeDocks(
+                [self._right_dock], [target], Qt.Horizontal
+            ))
 
     def _on_toggle_traps_panel(self, visible: bool):
         if visible:
@@ -407,6 +614,13 @@ class MainWindow(QMainWindow):
         self._trap_panel.setVisible(visible)
         if not self._act_panel_sim.isChecked() and not self._act_panel_traps.isChecked():
             self._right_dock.hide()
+        else:
+            # Defer resize until Qt finishes the layout pass triggered by setVisible.
+            # When only sim is visible keep the dock narrow; when both are shown expand.
+            target = 560 if visible else 300
+            QTimer.singleShot(0, lambda: self.resizeDocks(
+                [self._right_dock], [target], Qt.Horizontal
+            ))
 
     def _on_right_dock_visibility(self, visible: bool):
         """Outer dock hidden externally — uncheck both toolbar buttons."""
@@ -446,19 +660,36 @@ class MainWindow(QMainWindow):
 
         # Topology
         topo_menu = menubar.addMenu("&Topology")
-        self._act_link_mode = QAction("&Link Mode", self, checkable=True, shortcut="Ctrl+L")
-        self._act_fit_view  = QAction("&Fit View", self, shortcut="Ctrl+Shift+F")
-        self._act_reset_zoom = QAction("Reset Zoom", self)
+        self._act_link_mode   = QAction("&Link Mode", self, checkable=True, shortcut="Ctrl+L")
+        self._act_fit_view    = QAction("&Fit View", self, shortcut="Ctrl+Shift+F")
         topo_menu.addAction(self._act_link_mode)
         topo_menu.addSeparator()
         topo_menu.addAction(self._act_fit_view)
-        topo_menu.addAction(self._act_reset_zoom)
+        topo_menu.addSeparator()
 
-        # Templates submenu
-        templates_menu = topo_menu.addMenu("Apply &Template")
-        templates_menu.addAction(QAction("Data Center",    self, triggered=lambda: self._apply_template("data_center")))
-        templates_menu.addAction(QAction("Enterprise LAN", self, triggered=lambda: self._apply_template("enterprise_lan")))
-        templates_menu.addAction(QAction("Campus Network", self, triggered=lambda: self._apply_template("campus_network")))
+        # Layouts submenu
+        layouts_menu = topo_menu.addMenu("&Layouts")
+        self._act_layout_default     = QAction("&Default Layout",       self, shortcut="Ctrl+Shift+D")
+        self._act_layout_spring      = QAction("&Spring Layout",        self, shortcut="Ctrl+F")
+        self._act_layout_shell       = QAction("S&hell Layout",         self)
+        self._act_layout_kamada      = QAction("&Kamada-Kawai Layout",  self)
+        self._act_layout_default.setToolTip(
+            "Restore the original saved positions from the loaded topology."
+        )
+        self._act_layout_spring.setToolTip(
+            "Re-arrange nodes using the Fruchterman-Reingold spring algorithm."
+        )
+        self._act_layout_shell.setToolTip(
+            "Arrange nodes in concentric shells grouped by device type."
+        )
+        self._act_layout_kamada.setToolTip(
+            "Re-arrange nodes using the Kamada-Kawai energy minimisation algorithm."
+        )
+        layouts_menu.addAction(self._act_layout_default)
+        layouts_menu.addSeparator()
+        layouts_menu.addAction(self._act_layout_spring)
+        layouts_menu.addAction(self._act_layout_shell)
+        layouts_menu.addAction(self._act_layout_kamada)
 
         # Simulation
         sim_menu = menubar.addMenu("&Simulation")
@@ -492,7 +723,11 @@ class MainWindow(QMainWindow):
         self._act_remove_selected.triggered.connect(self._remove_selected)
         self._act_link_mode.toggled.connect(self._toggle_link_mode)
         self._act_fit_view.triggered.connect(self._topology_view.fit_view)
-        self._act_reset_zoom.triggered.connect(self._topology_view.reset_zoom)
+        self._act_layout_default.triggered.connect(self._apply_default_layout)
+        self._topology_view.reset_current_layout_requested.connect(self._reset_current_layout)
+        self._act_layout_spring.triggered.connect(lambda: self._apply_algo_layout("spring"))
+        self._act_layout_shell.triggered.connect(lambda: self._apply_algo_layout("shell"))
+        self._act_layout_kamada.triggered.connect(lambda: self._apply_algo_layout("kamada_kawai"))
         self._act_generate.triggered.connect(self._generate_datasets)
         self._act_start.triggered.connect(self._start_simulator)
         self._act_stop.triggered.connect(self._stop_simulator)
@@ -503,6 +738,7 @@ class MainWindow(QMainWindow):
         self._sim_panel.sig_generate.connect(self._generate_datasets)
         self._sim_panel.sig_start.connect(self._start_simulator)
         self._sim_panel.sig_stop.connect(self._stop_simulator)
+        self._sim_panel.sig_cancel.connect(self._cancel_binding)
         self._sim_panel.sig_clear.connect(self._clear_simulation)
         self._sim_panel.sig_randomize.connect(self._randomize_metrics)
 
@@ -514,6 +750,9 @@ class MainWindow(QMainWindow):
         )
         self.snmpsim.set_status_callback(
             lambda s: self._log_queue.put(("status", s))
+        )
+        self.snmpsim.set_ready_callback(
+            lambda: self._log_queue.put(("snmpsim_ready",))
         )
 
         # Trap panel ↔ trap engine
@@ -568,6 +807,38 @@ class MainWindow(QMainWindow):
                 padding: 0 4px;
             }
             QLabel { color: #e6edf3; }
+            QScrollBar:vertical {
+                background: #0d1117; width: 10px; margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #30363d; border-radius: 5px; min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover { background: #58a6ff; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+            QScrollBar:horizontal {
+                background: #0d1117; height: 10px; margin: 0;
+            }
+            QScrollBar::handle:horizontal {
+                background: #30363d; border-radius: 5px; min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover { background: #58a6ff; }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+            QScrollArea { background: #161b22; border: none; }
+            QDialog { background: #161b22; color: #e6edf3; }
+            QDialogButtonBox QPushButton {
+                background: #21262d; color: #e6edf3;
+                border: 1px solid #30363d; border-radius: 4px; padding: 4px 12px;
+            }
+            QDialogButtonBox QPushButton:hover { background: #30363d; }
+            QDialogButtonBox QPushButton:pressed { background: #0d1117; }
+            QSpinBox, QDoubleSpinBox {
+                background: #21262d; color: #e6edf3;
+                border: 1px solid #30363d; border-radius: 4px; padding: 2px 4px;
+            }
+            QSpinBox::up-button, QSpinBox::down-button,
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                background: #30363d; border: none; width: 16px;
+            }
         """)
 
     # ------------------------------------------------------------------ #
@@ -681,6 +952,153 @@ class MainWindow(QMainWindow):
     #  Topology operations                                                 #
     # ------------------------------------------------------------------ #
 
+    # -- layout helpers -------------------------------------------------- #
+
+    def _snapshot_default_positions(self):
+        """Capture current topology positions as the Default Layout baseline."""
+        positions = {
+            dev.id: self.topology.get_position(dev.id)
+            for dev in self.topology.get_all_devices()
+        }
+        self._default_positions = positions
+        self._current_layout_positions = dict(positions)
+        self._algo_layout_active = False
+
+    _LAYOUT_LABELS = {
+        "spring":       "Spring",
+        "shell":        "Shell",
+        "kamada_kawai": "Kamada-Kawai",
+    }
+
+    def _layout_actions(self):
+        return [
+            self._act_layout_default,
+            self._act_layout_spring,
+            self._act_layout_shell,
+            self._act_layout_kamada,
+        ]
+
+    def _reset_current_layout(self):
+        """Restore node positions to the last applied layout, undoing any drags."""
+        scene = self._topology_view.topology_scene
+        if not scene._nodes or not self._current_layout_positions:
+            return
+        positions = {
+            nid: self._current_layout_positions[nid]
+            for nid in scene._nodes
+            if nid in self._current_layout_positions
+        }
+        if not positions:
+            return
+        self._topology_view.apply_force_layout_positions(positions)
+        for dev_id, (x, y) in positions.items():
+            self.topology.set_position(dev_id, x, y)
+        self._status_label.setText("Layout reset — node positions restored.")
+
+    def _apply_default_layout(self):
+        """Restore every node to the baseline position captured at load/template time."""
+        scene = self._topology_view.topology_scene
+        if not scene._nodes:
+            return
+        positions = {
+            nid: self._default_positions[nid]
+            for nid in scene._nodes
+            if nid in self._default_positions
+        }
+        if not positions:
+            return
+        self._topology_view.apply_force_layout_positions(positions)
+        self._algo_layout_active = False
+        self._current_layout_positions = dict(positions)
+        # Persist restored positions back into the topology model so Save works
+        for dev_id, (x, y) in positions.items():
+            self.topology.set_position(dev_id, x, y)
+        self._status_label.setText("Default layout restored.")
+
+    def _apply_algo_layout(self, layout_name: str):
+        """Run a NetworkX layout algorithm in a background thread."""
+        scene = self._topology_view.topology_scene
+        if not scene._nodes:
+            return
+
+        node_ids   = list(scene._nodes.keys())
+        edge_pairs = list(scene._edges.keys())
+
+        # Kamada-Kawai is O(n³) — warn and offer a faster alternative for large graphs
+        _KK_WARN_THRESHOLD = 200
+        if layout_name == "kamada_kawai" and len(node_ids) > _KK_WARN_THRESHOLD:
+            msg = (
+                f"Kamada-Kawai layout on <b>{len(node_ids)} nodes</b> is very slow "
+                f"(O(n³) complexity) and may take several minutes.<br><br>"
+                f"Use <b>Spring Layout</b> instead? It produces similar results "
+                f"and runs in seconds."
+            )
+            box = QMessageBox(self)
+            box.setWindowTitle("Large Topology Warning")
+            box.setIcon(QMessageBox.Warning)
+            box.setText(msg)
+            box.setTextFormat(Qt.RichText)
+            btn_spring = box.addButton("Use Spring Layout", QMessageBox.AcceptRole)
+            box.addButton("Cancel", QMessageBox.RejectRole)
+            box.exec()
+            if box.clickedButton() == btn_spring:
+                layout_name = "spring"
+            else:
+                return
+
+        # Collect device types so shell layout can group by tier
+        device_types = {}
+        for nid in node_ids:
+            dev = self.device_manager.get_device(nid)
+            if dev:
+                device_types[nid] = dev.device_type
+
+        label = self._LAYOUT_LABELS.get(layout_name, layout_name.capitalize())
+        for act in self._layout_actions():
+            act.setEnabled(False)
+        self._status_label.setText(
+            f"Computing {label} layout for {len(node_ids)} nodes…"
+        )
+        self._topology_view.show_spinner(f"Computing {label} layout…")
+        self._current_layout_name = layout_name
+
+        self._force_worker = ForceLayoutWorker(node_ids, edge_pairs,
+                                               layout_name, device_types)
+        self._force_thread = QThread(self)
+        self._force_worker.moveToThread(self._force_thread)
+
+        self._force_thread.started.connect(self._force_worker.run)
+        self._force_worker.finished.connect(self._on_layout_done)
+        self._force_worker.error.connect(self._on_layout_error)
+        self._force_worker.finished.connect(self._force_thread.quit)
+        self._force_worker.error.connect(self._force_thread.quit)
+        self._force_thread.finished.connect(self._force_worker.deleteLater)
+
+        self._force_thread.start()
+
+    def _on_layout_done(self, positions: dict):
+        self._topology_view.hide_spinner()
+        self._topology_view.apply_force_layout_positions(positions)
+        self._algo_layout_active = True
+        self._current_layout_positions = dict(positions)
+        for dev_id, (x, y) in positions.items():
+            self.topology.set_position(dev_id, x, y)
+        for act in self._layout_actions():
+            act.setEnabled(True)
+        label = self._LAYOUT_LABELS.get(
+            getattr(self, "_current_layout_name", ""), "")
+        self._status_label.setText(
+            f"{label} layout applied to {len(positions)} nodes."
+        )
+
+    def _on_layout_error(self, msg: str):
+        self._topology_view.hide_spinner()
+        for act in self._layout_actions():
+            act.setEnabled(True)
+        label = self._LAYOUT_LABELS.get(
+            getattr(self, "_current_layout_name", ""), "Layout")
+        self._status_label.setText(f"{label} layout error: {msg}")
+
     def _toggle_link_mode(self, enabled: bool):
         self._link_mode = enabled
         self._topology_view.topology_scene.set_link_mode(enabled)
@@ -704,8 +1122,18 @@ class MainWindow(QMainWindow):
 
     def _on_device_moved(self, device_id: str, x: float, y: float):
         self.topology.set_position(device_id, x, y)
+        if not self._algo_layout_active:
+            self._default_positions[device_id] = (x, y)
 
     def _on_node_right_click(self, device_id: str, screen_pos):
+        # Use popup() instead of exec() to avoid a nested event loop.
+        # exec() blocks by running its own QEventLoop; during that loop,
+        # cross-thread signals (IndexWorker progress, link-drain timer, etc.)
+        # are dispatched and trigger Qt UI updates that share the main window's
+        # QBackingStore with the QGraphicsView.  On Windows this causes
+        # "QBackingStore::endPaint() called with active painter" → crash.
+        # popup() shows the menu inside the normal top-level event loop where
+        # repaints cannot be re-entered.
         device = self.device_manager.get_device(device_id)
         _menu_style = """
             QMenu { background: #161b22; color: #e6edf3; border: 1px solid #30363d; }
@@ -713,13 +1141,15 @@ class MainWindow(QMainWindow):
         """
         menu = QMenu(self)
         menu.setStyleSheet(_menu_style)
-        edit_act   = menu.addAction("Edit Device...")
-        remove_act = menu.addAction("Remove Device")
+        edit_act     = menu.addAction("Edit Device...")
+        remove_act   = menu.addAction("Remove Device")
         menu.addSeparator()
-        info_act   = menu.addAction("Show Info")
+        locate_act   = menu.addAction("Locate on Graph")
+        menu.addSeparator()
+        info_act     = menu.addAction("Show Info")
 
         trap_actions: dict = {}
-        if device:
+        if device and self._sim_panel._running:
             menu.addSeparator()
             trap_menu = menu.addMenu("Send Trap \u25b6")
             trap_menu.setStyleSheet(_menu_style)
@@ -734,15 +1164,20 @@ class MainWindow(QMainWindow):
                 act = trap_menu.addAction(TRAP_DEFINITIONS[tt].display_name)
                 trap_actions[act] = tt
 
-        chosen = menu.exec(screen_pos)
-        if chosen == edit_act:
-            self._edit_device(device_id)
-        elif chosen == remove_act:
-            self._remove_device(device_id)
-        elif chosen == info_act:
-            self._show_device_info(device_id)
-        elif chosen in trap_actions and device:
-            self._send_trap(device, trap_actions[chosen])
+        def _dispatch(action):
+            if action == edit_act:
+                self._edit_device(device_id)
+            elif action == remove_act:
+                self._remove_device(device_id)
+            elif action == locate_act:
+                self._locate_device_on_graph(device_id)
+            elif action == info_act:
+                self._show_device_info(device_id)
+            elif action in trap_actions and device:
+                self._send_trap(device, trap_actions[action])
+
+        menu.triggered.connect(_dispatch)
+        menu.popup(screen_pos)
 
     def _on_edge_right_click(self, src_id: str, dst_id: str, screen_pos):
         src = self.device_manager.get_device(src_id)
@@ -760,8 +1195,10 @@ class MainWindow(QMainWindow):
             toggle_act = menu.addAction("Restore Link")
         else:
             toggle_act = menu.addAction("Break Link")
-        chosen = menu.exec(screen_pos)
-        if chosen == toggle_act:
+
+        def _dispatch(action):
+            if action != toggle_act:
+                return
             if broken:
                 self.topology.restore_link(src_id, dst_id)
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, False)
@@ -772,16 +1209,20 @@ class MainWindow(QMainWindow):
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
                 self._sim_panel.log(f"Link broken: {src.name} <-> {dst.name}", "error")
                 trap_type = TrapType.LINK_DOWN
-            for dev, peer_id in ((src, dst_id), (dst, src_id)):
-                iface = next(
-                    (i for i in dev.interfaces if i.connected_to_device == peer_id),
-                    dev.interfaces[0] if dev.interfaces else None,
-                )
-                kwargs = {"iface_index": iface.index} if iface else {}
-                self._trap_engine.send_trap(dev, trap_type, **kwargs)
+            if self._sim_panel._running:
+                for dev, peer_id in ((src, dst_id), (dst, src_id)):
+                    iface = next(
+                        (i for i in dev.interfaces if i.connected_to_device == peer_id),
+                        dev.interfaces[0] if dev.interfaces else None,
+                    )
+                    kwargs = {"iface_index": iface.index} if iface else {}
+                    self._trap_engine.send_trap(dev, trap_type, **kwargs)
             # Regenerate snmprec for both devices live if simulator is running
             self._regenerate_device_live(src_id)
             self._regenerate_device_live(dst_id)
+
+        menu.triggered.connect(_dispatch)
+        menu.popup(screen_pos)
 
     # ── Trap helpers ──────────────────────────────────────────────────────────
 
@@ -839,6 +1280,7 @@ class MainWindow(QMainWindow):
             f"Name:        {device.name}\n"
             f"Type:        {device.device_type.value}\n"
             f"Vendor:      {device.vendor.value}\n"
+            f"Model:       {device.model_name or _default_model_name(device)}\n"
             f"IP:          {device.ip_address}\n"
             f"SNMP Port:   {device.snmp_port}\n"
             f"Community:   {device.snmp_community}\n"
@@ -857,30 +1299,32 @@ class MainWindow(QMainWindow):
             if dev_id:
                 self._edit_device(dev_id)
 
-    def _apply_template(self, template_name: str):
-        if self.topology.node_count() > 0:
-            reply = QMessageBox.question(
-                self, "Apply Template",
-                "This will clear the current topology. Continue?",
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if reply != QMessageBox.Yes:
-                return
-        self._new_topology(confirm=False)
-        self.topology.apply_template(template_name, self.device_manager, self.ip_manager)
-        # Sync scene with topology
-        for device in self.topology.get_all_devices():
-            x, y = self.topology.get_position(device.id)
-            self._topology_view.topology_scene.add_device_node(device, x, y)
-        for src_id, dst_id, _ in self.topology.get_links():
-            self._topology_view.topology_scene.add_link_edge(src_id, dst_id)
-            if self.topology.is_link_broken(src_id, dst_id):
-                self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
-        self._refresh_device_table()
-        self._refresh_stats()
-        self._sync_trap_devices()
-        self._topology_view.fit_view()
-        self._sim_panel.log(f"Applied template: {template_name.replace('_', ' ').title()}", "success")
+    def _locate_device_on_graph(self, device_id: str):
+        """Select the node and zoom the canvas to it."""
+        scene = self._topology_view.topology_scene
+        node = scene.get_node(device_id)
+        if not node:
+            return
+        scene.clearSelection()
+        node.setSelected(True)
+        bounds = node.sceneBoundingRect()
+        self._topology_view.fitInView(
+            bounds.adjusted(-150, -150, 150, 150),
+            Qt.KeepAspectRatio,
+        )
+        self._topology_view._sync_zoom_after_fit()
+
+    def _on_device_table_right_click(self, pos):
+        item = self._device_table.itemAt(pos)
+        if not item:
+            return
+        id_item = self._device_table.item(item.row(), 0)
+        if not id_item:
+            return
+        device_id = id_item.data(Qt.UserRole)
+        if device_id:
+            screen_pos = self._device_table.viewport().mapToGlobal(pos)
+            self._on_node_right_click(device_id, screen_pos)
 
     # ------------------------------------------------------------------ #
     #  Simulation operations                                               #
@@ -898,6 +1342,17 @@ class MainWindow(QMainWindow):
         self._sim_panel.log("Starting dataset generation...", "info")
         self._sim_panel.set_status("Generating...")
         self._sim_panel.show_progress(0, self.topology.node_count())
+
+        # Disable mouse interaction on the scene for the entire
+        # generation+indexing pipeline.  This blocks hover events (which show the
+        # tooltip) and drag events while background threads are running.  Hover
+        # events were the proximate crash trigger: showing the tooltip caused a DWM
+        # compositing repaint to race with the scene's own QPainter, producing
+        # QBackingStore::endPaint() / STATUS_ACCESS_VIOLATION on Windows.
+        # setInteractive(False) keeps the canvas visible and repainting normally
+        # (nodes stay where they are, progress is shown), but silently drops all
+        # mouse input until the workers finish.
+        self._topology_view.setInteractive(False)
 
         self._worker = GeneratorWorker(self.topology, self._datasets_dir)
         self._worker_thread = QThread()
@@ -918,19 +1373,50 @@ class MainWindow(QMainWindow):
         files = self._worker.result
         self._generated_files = files
         self._sim_panel.log(f"Generated {len(files)} dataset files in '{self._datasets_dir}/'", "success")
-        self._sim_panel.set_status("Datasets ready")
-        self._sim_panel.set_datasets_ready(True)
         self._sim_panel.set_stats(
             self.topology.node_count(),
             self.topology.edge_count(),
             len(files),
         )
+        # Pre-build snmpsim indexes now so simulator starts instantly
+        self._sim_panel.set_status("Building indexes…")
+        self._sim_panel.log("Pre-building SNMP indexes (parallel)…", "info")
+        self._sim_panel.show_progress(0, len(files))
+
+        self._index_worker = IndexWorker(self.snmpsim, self.snmpsim.datasets_dir)
+        self._index_thread = QThread()
+        self._index_worker.moveToThread(self._index_thread)
+        self._index_thread.started.connect(self._index_worker.run)
+        self._index_worker.progress.connect(
+            lambda c, t: self._sim_panel.show_progress(c, t)
+        )
+        self._index_worker.finished.connect(self._on_index_finished)
+        self._index_worker.error.connect(self._on_index_error)
+        self._index_thread.start()
+
+    def _on_index_finished(self, count: int):
+        self._index_thread.quit()
+        self._index_thread.wait()
+        self._sim_panel.log(f"Indexes built for {count} datasets — simulator will start instantly.", "success")
+        self._sim_panel.set_status("Datasets ready")
+        self._sim_panel.set_datasets_ready(True)
+        self._topology_view.setInteractive(True)
+
+    def _on_index_error(self, error: str):
+        self._index_thread.quit()
+        self._index_thread.wait()
+        self._sim_panel.log(f"Index pre-build warning: {error}", "warning")
+        # Still mark datasets ready — snmpsim will build indexes itself on start
+        self._sim_panel.set_status("Datasets ready")
+        self._sim_panel.set_datasets_ready(True)
+        self._topology_view.setInteractive(True)
 
     def _on_gen_error(self, error: str):
         self._worker_thread.quit()
         self._worker_thread.wait()
         self._sim_panel.log(f"Generation error: {error}", "error")
         self._sim_panel.set_status("Error")
+        self._topology_view.setInteractive(True)
 
     def _start_simulator(self):
         if self.topology.node_count() == 0:
@@ -975,9 +1461,7 @@ class MainWindow(QMainWindow):
         )
         self._sim_panel.set_status("Binding IPs...")
         self._sim_panel.show_progress(0, len(device_ips))
-        # Disable start/stop during binding
-        self._sim_panel.btn_start.setEnabled(False)
-        self._sim_panel.btn_stop.setEnabled(False)
+        self._sim_panel.set_binding(True)
 
         self._bound_interface = interface
         self._bind_worker = IPBindWorker(interface, device_ips, mask)
@@ -993,9 +1477,48 @@ class MainWindow(QMainWindow):
     def _on_bind_progress(self, current: int, total: int):
         self._sim_panel.show_progress(current, total)
 
+    def _cancel_binding(self):
+        if self._bind_worker:
+            self._bind_worker.cancel()
+            # Reset the progress bar immediately so it doesn't freeze on the
+            # last bind value while we wait for the worker to notice the flag.
+            self._sim_panel.show_progress(0, 1)
+
+    def _on_cancel_unbind_finished(self):
+        self._unbind_thread.quit()
+        self._unbind_thread.wait()
+        self._sim_panel.log("Partial IPs removed.", "success")
+        self._sim_panel.set_status("Cancelled")
+        self._sim_panel.set_datasets_ready(True)
+
     def _on_bind_finished(self):
         self._bind_thread.quit()
         self._bind_thread.wait()
+        self._sim_panel.set_binding(False)
+
+        if self._bind_worker.cancelled:
+            partial_ips = self._bind_worker.result  # IPs bound before cancellation
+            if partial_ips:
+                self._sim_panel.log(
+                    f"Binding cancelled — removing {len(partial_ips)} partially bound IP(s)…",
+                    "warning",
+                )
+                self._sim_panel.set_status("Removing partial IPs…")
+                self._unbind_worker = IPUnbindWorker(self._bound_interface, partial_ips)
+                self._unbind_thread = QThread()
+                self._unbind_worker.moveToThread(self._unbind_thread)
+                self._unbind_thread.started.connect(self._unbind_worker.run)
+                self._unbind_worker.progress.connect(self._sim_panel.show_progress)
+                self._unbind_worker.log.connect(self._sim_panel.log)
+                self._unbind_worker.finished.connect(self._on_cancel_unbind_finished)
+                self._sim_panel.show_progress(0, len(partial_ips))
+                self._unbind_thread.start()
+            else:
+                self._sim_panel.log("IP binding cancelled — no IPs to clean up.", "warning")
+                self._sim_panel.set_status("Cancelled")
+                self._sim_panel.set_datasets_ready(True)
+            return
+
         bound_ips = self._bind_worker.result
         self._bound_ips = bound_ips
         self._sim_panel.set_bound_count(len(bound_ips))
@@ -1017,9 +1540,15 @@ class MainWindow(QMainWindow):
         )
         ok = self.snmpsim.start(device_ips=bound_ips, port=161)
         if ok:
+            # Process launched — show stop button but keep traps disabled until
+            # snmpsim logs "Listening at UDP/IPv4 endpoint" (ready callback).
             self._sim_panel.set_simulator_running(True)
             self._status_label.setText(
-                f"SNMPSim running — {len(bound_ips)} devices — PID {self.snmpsim.get_pid()}"
+                f"SNMPSim starting — building indexes… ({len(bound_ips)} devices)"
+            )
+            self._sim_panel.log(
+                "SNMPSim is indexing datasets — devices will respond once 'Running' is shown.",
+                "info"
             )
         else:
             self._sim_panel.set_simulator_running(False)
@@ -1028,13 +1557,162 @@ class MainWindow(QMainWindow):
     def _on_bind_error(self, error: str):
         self._bind_thread.quit()
         self._bind_thread.wait()
+        self._sim_panel.set_binding(False)
         self._sim_panel.log(f"IP bind error: {error}", "error")
         self._sim_panel.set_status("Error")
         self._sim_panel.set_datasets_ready(True)
 
+    def _on_snmpsim_ready(self):
+        """Called (via queue) when SNMPSim logs its 'Listening at UDP/IPv4 endpoint' line."""
+        n_bound = len(self._bound_ips)
+        self._act_panel_traps.setEnabled(True)
+        self._act_panel_traps.setToolTip("SNMP Traps")
+        self._status_label.setText(
+            f"SNMPSim running — {n_bound} devices — PID {self.snmpsim.get_pid()}"
+        )
+        self._sim_panel.log("SNMPSim is ready — devices are now responding to SNMP polls.", "success")
+
+        # Run one SNMP topology discovery scan as soon as the simulator is ready.
+        self._start_live_discovery()
+
+    def _start_live_discovery(self):
+        """Launch a background SNMP discovery scan if one is not already running."""
+        if self._live_discovery_running or not self.snmpsim.is_ready():
+            return
+        if self.topology.node_count() == 0:
+            return
+        self._live_discovery_running = True
+        self._topology_view.topology_scene.set_discovery_running(True)
+
+        # Pre-build adjacency so the drain loop can un-fade edges instantly when
+        # both endpoints have been polled, without iterating all edges each tick.
+        self._discovered_devices = set()
+        self._device_adjacency = {}
+        for src_id, dst_id, _ in self.topology.get_links():
+            self._device_adjacency.setdefault(src_id, set()).add(dst_id)
+            self._device_adjacency.setdefault(dst_id, set()).add(src_id)
+
+        self._live_discovery_worker = LiveDiscoveryWorker(self.topology)
+        self._live_discovery_thread = QThread()
+        self._live_discovery_worker.moveToThread(self._live_discovery_thread)
+        self._live_discovery_thread.started.connect(self._live_discovery_worker.run)
+        self._live_discovery_worker.finished.connect(self._on_live_discovery_done)
+        self._live_discovery_worker.error.connect(self._on_live_discovery_error)
+
+        # Drain the scan queue every 50 ms on the main thread.
+        # A node un-fades when its device is polled; an edge un-fades when BOTH
+        # its endpoints have been polled — this ties animation to per-device scan
+        # progress, not to when a neighbor happens to report a link first.
+        self._link_drain_timer = QTimer(self)
+        self._link_drain_timer.setInterval(50)
+        self._link_drain_timer.timeout.connect(self._drain_link_queue)
+        self._link_drain_timer.start()
+
+        self._live_discovery_thread.start()
+
+    def _drain_link_queue(self):
+        """Process all device IDs polled since the last timer tick."""
+        if not self._live_discovery_worker:
+            return
+        scene = self._topology_view.topology_scene
+        q = self._live_discovery_worker.link_queue
+        while not q.empty():
+            try:
+                device_id = q.get_nowait()
+            except Exception:
+                break
+            self._discovered_devices.add(device_id)
+            scene.set_node_faded(device_id, False)
+            # Un-fade every edge whose other endpoint has already been polled
+            for neighbor_id in self._device_adjacency.get(device_id, ()):
+                if neighbor_id in self._discovered_devices:
+                    scene.set_edge_faded(device_id, neighbor_id, False)
+
+    def _on_live_discovery_done(self, result):
+        """Finalize the graph after all devices have been scanned."""
+        # Stop drain timer and do one final drain to flush any last links
+        if self._link_drain_timer:
+            self._link_drain_timer.stop()
+            self._link_drain_timer = None
+        self._drain_link_queue()
+
+        self._live_discovery_running = False
+        self._live_discovery_thread.quit()
+        self._live_discovery_thread.wait()
+
+        scene = self._topology_view.topology_scene
+        scene.set_discovery_running(False)
+        # Confirmed links: un-faded (safety pass — already done live, but ensures correctness)
+        for src_id, dst_id in result.matched:
+            scene.set_edge_faded(src_id, dst_id, False)
+            scene.set_node_faded(src_id, False)
+            scene.set_node_faded(dst_id, False)
+        # Missing links: un-fade so they're visible, but mark broken (red) to flag as missing
+        for src_id, dst_id in result.missing:
+            scene.set_edge_faded(src_id, dst_id, False)
+            scene.set_edge_broken(src_id, dst_id, True)
+
+        matched = len(result.matched)
+        missing = len(result.missing)
+        n_bound = len(self._bound_ips)
+        if missing:
+            self._status_label.setText(
+                f"SNMPSim running — {n_bound} devices — "
+                f"SNMP: {matched} links OK, {missing} missing"
+            )
+            self._sim_panel.log(
+                f"Live discovery: {matched} matched, {missing} missing links.", "warn"
+            )
+        else:
+            self._status_label.setText(
+                f"SNMPSim running — {n_bound} devices — SNMP: all {matched} links OK"
+            )
+            self._sim_panel.log(
+                f"Live discovery: all {matched} links confirmed via SNMP.", "success"
+            )
+
+    def _on_live_discovery_error(self, error: str):
+        """Handle a live discovery failure — un-fade everything so graph remains usable."""
+        if self._link_drain_timer:
+            self._link_drain_timer.stop()
+            self._link_drain_timer = None
+        self._live_discovery_running = False
+        self._topology_view.topology_scene.set_discovery_running(False)
+        if self._live_discovery_thread:
+            self._live_discovery_thread.quit()
+            self._live_discovery_thread.wait()
+        self._topology_view.topology_scene.set_all_faded(False)
+        self._sim_panel.log(f"Live discovery error: {error}", "error")
+
     def _stop_simulator(self):
+        # Stop any in-flight live discovery scan
+        if self._link_drain_timer:
+            self._link_drain_timer.stop()
+            self._link_drain_timer = None
+        if self._live_discovery_thread and self._live_discovery_thread.isRunning():
+            self._live_discovery_thread.quit()
+            self._live_discovery_thread.wait(2000)
+        self._live_discovery_running = False
+        # Reset graph: clear broken state and fade everything back
+        scene = self._topology_view.topology_scene
+        scene.set_discovery_running(False)
+        for u, v, _ in self.topology.get_links():
+            scene.set_edge_broken(u, v, False)
+        scene.set_all_faded(True)
+
         self.snmpsim.stop()
         self._sim_panel.set_simulator_running(False)
+        # Collapse and disable the Traps panel
+        self._act_panel_traps.blockSignals(True)
+        self._act_panel_traps.setChecked(False)
+        self._act_panel_traps.blockSignals(False)
+        self._trap_panel.setVisible(False)
+        self._trap_engine.stop_simulation()
+        self._trap_panel.set_simulating(False)
+        self._act_panel_traps.setEnabled(False)
+        self._act_panel_traps.setToolTip("SNMP Traps (start simulator first)")
+        if not self._act_panel_sim.isChecked():
+            self._right_dock.hide()
         self._status_label.setText("Removing bound IPs...")
 
         if self._bound_ips and self._bound_interface:
@@ -1123,6 +1801,7 @@ class MainWindow(QMainWindow):
         self.device_manager.clear()
         self.ip_manager.reset()
         self._topology_view.topology_scene.clear_all()
+        self._default_positions.clear()
         self._refresh_device_table()
         self._refresh_stats()
         self._sim_panel.log("New topology created.", "info")
@@ -1188,6 +1867,9 @@ class MainWindow(QMainWindow):
         self._refresh_stats()
         self._sync_trap_devices()
         self._topology_view.fit_view()
+        self._snapshot_default_positions()
+        # Fade the graph until SNMP confirms devices are live
+        self._topology_view.topology_scene.set_all_faded(True)
 
     # ------------------------------------------------------------------ #
     #  UI Refresh                                                          #
@@ -1221,6 +1903,24 @@ class MainWindow(QMainWindow):
             self._device_table.setItem(row, 4, iface_item)
             self._device_table.setItem(row, 5, port_item)
 
+        # Re-apply any active search filter
+        self._on_device_search(self._device_search.text())
+
+    def _on_device_search(self, query: str):
+        """Show only rows whose name, type, vendor, or IP match the query."""
+        query = query.strip().lower()
+        for row in range(self._device_table.rowCount()):
+            if not query:
+                self._device_table.setRowHidden(row, False)
+                continue
+            match = False
+            for col in range(self._device_table.columnCount()):
+                item = self._device_table.item(row, col)
+                if item and query in item.text().lower():
+                    match = True
+                    break
+            self._device_table.setRowHidden(row, not match)
+
     def _refresh_stats(self):
         self._sim_panel.set_stats(
             self.topology.node_count(),
@@ -1237,17 +1937,25 @@ class MainWindow(QMainWindow):
                     self._sim_panel.log(item[1], item[2])
                 elif item[0] == "status":
                     self._sim_panel.set_status(item[1])
+                elif item[0] == "snmpsim_ready":
+                    self._on_snmpsim_ready()
         except queue.Empty:
             pass
 
     def _refresh_status(self):
         if self.snmpsim.is_running():
             n_bound = len(self._bound_ips)
-            self._status_label.setText(
-                f"SNMPSim running — {n_bound} IPs on port 161 "
-                f"— PID {self.snmpsim.get_pid()}"
-            )
-            self._sim_panel.set_status("Running")
+            if self.snmpsim.is_ready():
+                self._status_label.setText(
+                    f"SNMPSim running — {n_bound} IPs on port 161 "
+                    f"— PID {self.snmpsim.get_pid()}"
+                )
+                self._sim_panel.set_status("Running")
+            else:
+                self._status_label.setText(
+                    f"SNMPSim starting — building indexes… ({n_bound} devices)"
+                )
+                self._sim_panel.set_status("Starting (building indexes)…")
 
     # ------------------------------------------------------------------ #
     #  Dialogs                                                             #
@@ -1293,7 +2001,7 @@ class MainWindow(QMainWindow):
             return
         dlg = DiscoveryDialog(
             topology=self.topology,
-            snmpsim_running=self.snmpsim.is_running(),
+            snmpsim_running=self.snmpsim.is_ready(),
             host="127.0.0.1",
             port=161,
             parent=self,
