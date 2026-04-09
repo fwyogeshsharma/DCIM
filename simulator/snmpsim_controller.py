@@ -16,6 +16,7 @@ import sys
 import subprocess
 import threading
 import shutil
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional, Callable, List
 
@@ -29,7 +30,9 @@ class SNMPSimController:
         self._monitor_thread: Optional[threading.Thread] = None
         self._log_callback: Optional[Callable[[str], None]] = None
         self._status_callback: Optional[Callable[[str], None]] = None
+        self._ready_callback: Optional[Callable[[], None]] = None
         self._running = False
+        self._ready = False   # True once snmpsim is actually listening
         self._active_endpoints: List[str] = []
 
     # ------------------------------------------------------------------ #
@@ -41,6 +44,10 @@ class SNMPSimController:
 
     def set_status_callback(self, cb: Callable[[str], None]):
         self._status_callback = cb
+
+    def set_ready_callback(self, cb: Callable[[], None]):
+        """Called once SNMPSim is actually listening on its UDP endpoint."""
+        self._ready_callback = cb
 
     def _log(self, msg: str):
         if self._log_callback:
@@ -58,6 +65,10 @@ class SNMPSimController:
         if self._process is None:
             return False
         return self._process.poll() is None
+
+    def is_ready(self) -> bool:
+        """True once SNMPSim has logged its 'Listening at UDP/IPv4 endpoint' line."""
+        return self._ready
 
     def get_pid(self) -> Optional[int]:
         return self._process.pid if self._process else None
@@ -135,8 +146,9 @@ class SNMPSimController:
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
             )
             self._running = True
+            self._ready = False
             self._active_endpoints = [f"{ip}:{port}" for ip in device_ips]
-            self._set_status("Running")
+            self._set_status("Starting (building indexes)…")
             self._start_monitor()
             return True
         except Exception as e:
@@ -182,6 +194,7 @@ class SNMPSimController:
             except Exception as e:
                 self._log(f"Error stopping SNMPSim: {e}")
         self._running = False
+        self._ready = False
         self._process = None
         self._active_endpoints = []
         self._set_status("Stopped")
@@ -203,15 +216,205 @@ class SNMPSimController:
         try:
             for line in self._process.stdout:
                 line = line.rstrip()
-                if line:
-                    self._log(f"[snmpsim] {line}")
+                if not line:
+                    continue
+                self._log(f"[snmpsim] {line}")
+                # Detect when snmpsim finishes indexing and is actually listening
+                if not self._ready and "Listening at UDP/IPv4 endpoint" in line:
+                    self._ready = True
+                    self._set_status("Running")
+                    if self._ready_callback:
+                        self._ready_callback()
             self._process.wait()
             if self._running:
                 self._set_status("Stopped unexpectedly")
                 self._log("SNMPSim process ended unexpectedly.")
             self._running = False
+            self._ready = False
         except Exception as e:
             self._log(f"Monitor error: {e}")
+
+    # ------------------------------------------------------------------ #
+    #  Index pre-building                                                  #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _snmpsim_cache_dir() -> Optional[str]:
+        """Return the snmpsim index cache directory, or None if unavailable."""
+        try:
+            from snmpsim import confdir
+            return confdir.cache
+        except ImportError:
+            return None
+
+    def clear_index_cache(self) -> int:
+        """
+        Delete all cached .dbm index files from the snmpsim temp directory.
+        Returns the number of files removed.
+        Stale indexes accumulate when topologies change; wiping before a fresh
+        pre-build keeps the cache lean.
+        """
+        cache = self._snmpsim_cache_dir()
+        if not cache or not os.path.isdir(cache):
+            return 0
+
+        removed = 0
+        for entry in os.scandir(cache):
+            if entry.is_file() and entry.name.endswith((".dat", ".dir", ".bak")):
+                try:
+                    os.remove(entry.path)
+                    removed += 1
+                except OSError:
+                    pass
+        return removed
+
+    def preindex_datasets(self,
+                          data_dir: str,
+                          progress_cb: Optional[Callable[[int, int], None]] = None,
+                          workers: int = 8) -> int:
+        """
+        Wipe stale index cache, then pre-build snmpsim .dbm indexes for every
+        .snmprec file in *data_dir* in parallel so snmpsim starts instantly.
+
+        Uses a fast single-pass writer that produces dbm.dumb-compatible files
+        without the O(n²) per-write overhead of dbm.dumb itself.
+
+        Returns the number of files indexed.
+        """
+        try:
+            from snmpsim import confdir as _confdir
+        except ImportError:
+            return 0  # snmpsim not installed
+
+        # Wipe ALL stale indexes first so the cache never accumulates garbage
+        # from previous topology configurations.
+        self.clear_index_cache()
+
+        snmprec_files = [
+            str(p) for p in Path(data_dir).glob("*.snmprec")
+        ]
+        if not snmprec_files:
+            return 0
+
+        cache_dir = _confdir.cache
+        os.makedirs(cache_dir, exist_ok=True)
+
+        total = len(snmprec_files)
+        completed = 0
+        lock = threading.Lock()
+
+        def _db_path(snmprec_path: str) -> str:
+            """Replicate snmpsim's index path computation."""
+            p = snmprec_path[: snmprec_path.rindex(".")]  # strip extension
+            p += ".dbm"
+            p = os.path.splitdrive(p)[1].replace(os.sep, "_")
+            return os.path.join(cache_dir, p)
+
+        def _index_one(snmprec_path: str) -> None:
+            """
+            Parse one .snmprec file and write dbm.dumb-compatible index files
+            (.dat, .dir) in a single pass — O(n) instead of O(n²).
+
+            dbm.dumb format (matches CPython's dbm/dumb.py exactly):
+              .dat  – raw UTF-8 value bytes, concatenated (no alignment padding)
+              .dir  – text lines: "%r, %r\\n" % (key_str, (pos, siz))
+                      where key_str is the OID as a Latin-1 string (no b'' prefix)
+                      First char must be ' or " for whichdb() to recognise format.
+            """
+            db_base = _db_path(snmprec_path)
+            dat_path = db_base + ".dat"
+            dir_path = db_base + ".dir"
+
+            # Parse the .snmprec file to build the index in one pass.
+            # Format: OID|TYPE|VALUE\n
+            entries: list = []     # [(key_bytes, value_bytes)]
+            offset = 0
+            prev_offset = -1
+
+            try:
+                with open(snmprec_path, "rb") as fh:
+                    for raw_line in fh:
+                        line = raw_line.decode("utf-8", errors="replace")
+
+                        stripped = line.rstrip("\r\n")
+                        if not stripped or stripped.startswith("#"):
+                            offset += len(raw_line)
+                            continue
+
+                        parts = stripped.split("|", 2)
+                        if len(parts) < 3:
+                            offset += len(raw_line)
+                            continue
+
+                        oid, tag, _val = parts
+                        is_subtree = 1 if tag.startswith(":") else 0
+                        val_str = "%d,%d,%d" % (offset, is_subtree, prev_offset)
+
+                        # Store raw UTF-8 bytes — NOT marshal-encoded.
+                        # dbm.dumb.__setitem__ encodes str→utf-8 before writing.
+                        key_b = oid.encode("utf-8")
+                        val_b = val_str.encode("utf-8")
+                        entries.append((key_b, val_b))
+
+                        if is_subtree:
+                            prev_offset = offset
+                        else:
+                            prev_offset = -1
+
+                        offset += len(raw_line)
+
+                # "last" sentinel (matches snmpsim's db["last"] = "offset,0,prev")
+                last_val = "%d,%d,%d" % (offset, 0, prev_offset)
+                entries.append((b"last", last_val.encode("utf-8")))
+
+            except Exception:
+                return  # skip unreadable files
+
+            # Write .dat — raw value bytes concatenated (no block alignment needed
+            # for reads; dbm.dumb seeks to pos+reads siz bytes directly).
+            # Write .dir — key as Latin-1 string repr so first char is ' or "
+            # (required by whichdb() to recognise the file as dbm.dumb).
+            dat_io = bytearray()
+            dir_lines: list = []
+
+            for key_b, val_b in entries:
+                pos = len(dat_io)
+                siz = len(val_b)
+                dat_io += val_b
+                # key decoded to Latin-1 str → repr starts with ' or "
+                # tuple repr matches dbm.dumb _addkey() format exactly
+                key_str = key_b.decode("latin-1")
+                dir_lines.append("%r, %r\n" % (key_str, (pos, siz)))
+
+            try:
+                with open(dat_path, "wb") as f:
+                    f.write(dat_io)
+                with open(dir_path, "w", encoding="latin-1") as f:
+                    f.write("".join(dir_lines))
+                # snmpsim uses os.stat()[8] (integer seconds) for freshness.
+                # If both files land in the same second the index looks stale.
+                # Force .dat mtime to snmprec_mtime + 1 so the check always passes.
+                snmprec_sec = int(os.stat(snmprec_path)[8])
+                future = snmprec_sec + 1
+                os.utime(dat_path, (future, future))
+                os.utime(dir_path, (future, future))
+            except Exception:
+                pass  # skip files we can't write
+
+        # Emit at most ~100 progress callbacks regardless of file count.
+        # One callback per file (e.g. 1344 files) floods the main thread's
+        # event queue and causes backing-store paint collisions on Windows.
+        step = max(1, total // 100)
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_index_one, f): f for f in snmprec_files}
+            for _ in as_completed(futures):
+                with lock:
+                    completed += 1
+                    if progress_cb and (completed % step == 0 or completed == total):
+                        progress_cb(completed, total)
+
+        return completed
 
     # ------------------------------------------------------------------ #
     #  Utility                                                             #
