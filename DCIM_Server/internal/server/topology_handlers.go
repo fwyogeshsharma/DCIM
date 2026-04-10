@@ -201,7 +201,7 @@ func (s *Server) handleTopologyWalkStatus(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// handleTopologyNodes  GET  /api/v1/topology/nodes  — list discovered devices
+// handleTopologyNodes  GET  /api/v1/topology/nodes  — list discovered devices with online/offline status
 func (s *Server) handleTopologyNodes(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -231,9 +231,26 @@ func (s *Server) handleTopologyNodes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	nodes := make([]models.SNMPMetric, 0, len(seen))
+	// staleness threshold: 2× the walker interval (default 30 min if not set)
+	walkerInterval := s.config.SNMPWalker.Interval
+	if walkerInterval <= 0 {
+		walkerInterval = 30 * time.Minute
+	}
+	staleThreshold := time.Now().Add(-2 * walkerInterval)
+
+	type TopologyNode struct {
+		models.SNMPMetric
+		Status string `json:"status"`
+	}
+
+	nodes := make([]TopologyNode, 0, len(seen))
 	for _, m := range seen {
-		nodes = append(nodes, m)
+		status := "offline"
+		// online only if walker probed it recently AND it responded
+		if m.Timestamp.After(staleThreshold) && m.Value == 1 {
+			status = "online"
+		}
+		nodes = append(nodes, TopologyNode{SNMPMetric: m, Status: status})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

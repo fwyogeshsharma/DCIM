@@ -24,8 +24,8 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         dbPool.query(`
           SELECT
             COUNT(*) as total,
-            COUNT(CASE WHEN status = 'online' THEN 1 END) as online,
-            COUNT(CASE WHEN status = 'offline' THEN 1 END) as offline
+            COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '300 seconds' THEN 1 END) as online,
+            COUNT(CASE WHEN last_seen < NOW() - INTERVAL '300 seconds' OR last_seen IS NULL THEN 1 END) as offline
           FROM agents
         `),
         dbPool.query(`
@@ -59,8 +59,8 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         dbPool.query(`
           SELECT
             COUNT(*) as total_agents,
-            COUNT(CASE WHEN status = 'online' THEN 1 END) as online_agents,
-            COUNT(CASE WHEN status = 'offline' THEN 1 END) as offline_agents
+            COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '300 seconds' THEN 1 END) as online_agents,
+            COUNT(CASE WHEN last_seen < NOW() - INTERVAL '300 seconds' OR last_seen IS NULL THEN 1 END) as offline_agents
           FROM agents
         `),
         dbPool.query(`
@@ -143,6 +143,70 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
 
       const { rows } = await dbPool.query(query, params)
 
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // Topology nodes — online/offline computed from latest reachable metric in snmp_metrics
+  app.get('/api/v1/topology/nodes', async (req, res) => {
+    try {
+      const { server_id } = req.query
+      const HEARTBEAT_TIMEOUT_SECONDS = 1800 // 30 min = 2x default walker interval
+
+      let query = `
+        SELECT DISTINCT ON (sm.server_id, sm.device_host)
+          sm.server_id,
+          sm.device_name,
+          sm.device_host,
+          sm.timestamp AS last_seen,
+          s.name AS server_name,
+          CASE
+            WHEN sm.value = 1 AND sm.timestamp >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online'
+            ELSE 'offline'
+          END AS status
+        FROM snmp_metrics sm
+        JOIN servers s ON sm.server_id = s.id
+        WHERE sm.agent_id = 'snmp-walker' AND sm.metric_name = 'reachable'
+      `
+      const params: any[] = []
+
+      if (server_id) {
+        params.push(server_id)
+        query += ` AND sm.server_id = $1`
+      }
+
+      query += ` ORDER BY sm.server_id, sm.device_host, sm.timestamp DESC`
+
+      const { rows } = await dbPool.query(query, params)
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // Topology links endpoint
+  app.get('/api/v1/topology/links', async (req, res) => {
+    try {
+      const { server_id } = req.query
+
+      let query = `
+        SELECT tl.*, s.name AS server_name
+        FROM topology_links tl
+        JOIN servers s ON tl.server_id = s.id
+        WHERE 1=1
+      `
+      const params: any[] = []
+
+      if (server_id) {
+        params.push(server_id)
+        query += ` AND tl.server_id = $1`
+      }
+
+      query += ` ORDER BY tl.server_id, tl.source_ip`
+
+      const { rows } = await dbPool.query(query, params)
       res.json({ success: true, data: rows, count: rows.length })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
