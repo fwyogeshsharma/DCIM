@@ -402,4 +402,55 @@ export class DataSyncService {
       logger.error(`Failed to sync topology links from ${serverId}:`, error.message)
     }
   }
+
+  async syncTopologyNodesFromServer(serverId: string, serverUrl: string): Promise<void> {
+    try {
+      const agent = getAgentForServer(serverId)
+      const client = new HttpClient(serverUrl, 10000, agent)
+
+      const agentId = await this.getAgentIdForServer(serverId)
+      if (!agentId) {
+        logger.debug(`No agents known for server ${serverId}, skipping topology nodes sync`)
+        return
+      }
+
+      const response: any = await client.get('/topology/nodes', {
+        headers: { 'X-Agent-ID': agentId },
+      })
+      const nodes: any[] = response.data || response
+
+      if (!Array.isArray(nodes) || nodes.length === 0) return
+
+      let upserted = 0
+      for (const node of nodes) {
+        try {
+          const result = await this.dbPool.query(
+            `INSERT INTO topology_nodes (server_id, device_host, device_name, status, last_seen, updated_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (server_id, device_host)
+             DO UPDATE SET device_name = EXCLUDED.device_name,
+                           status      = EXCLUDED.status,
+                           last_seen   = EXCLUDED.last_seen,
+                           updated_at  = NOW()`,
+            [
+              serverId,
+              node.device_host,
+              node.device_name || node.device_host,
+              node.status || 'offline',
+              node.timestamp || new Date(),
+            ]
+          )
+          if (result.rowCount && result.rowCount > 0) upserted++
+        } catch {
+          // skip individual errors
+        }
+      }
+
+      if (upserted > 0) {
+        logger.info(`Synced ${upserted} topology nodes from server ${serverId}`)
+      }
+    } catch (error: any) {
+      logger.error(`Failed to sync topology nodes from ${serverId}:`, error.message)
+    }
+  }
 }
