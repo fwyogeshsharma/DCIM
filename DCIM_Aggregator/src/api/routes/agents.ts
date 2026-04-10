@@ -1,9 +1,17 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
 
-// Common SELECT with computed total_metrics, total_alerts, and group alias
+// Agent heartbeat timeout — agent is online if last_seen within this window
+const HEARTBEAT_TIMEOUT_SECONDS = 300
+
+// Common SELECT with computed total_metrics, total_alerts, and group alias.
+// Status is computed dynamically from last_seen so it never stays stale.
 const AGENT_SELECT = `
   SELECT a.*,
+    CASE
+      WHEN a.last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online'
+      ELSE 'offline'
+    END AS status,
     a.agent_group AS "group",
     s.name AS server_name,
     s.url AS server_url,
@@ -81,8 +89,8 @@ export function createAgentsRouter(dbPool: Pool): Router {
       const { rows } = await dbPool.query(`
         SELECT
           COUNT(*) as total_agents,
-          COUNT(CASE WHEN status = 'online' THEN 1 END) as online_agents,
-          COUNT(CASE WHEN status = 'offline' THEN 1 END) as offline_agents,
+          COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END) as online_agents,
+          COUNT(CASE WHEN last_seen < NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' OR last_seen IS NULL THEN 1 END) as offline_agents,
           COUNT(DISTINCT server_id) as total_servers,
           COUNT(DISTINCT agent_group) as total_groups
         FROM agents
@@ -106,8 +114,8 @@ export function createAgentsRouter(dbPool: Pool): Router {
       const { rows: totalRows } = await dbPool.query(`
         SELECT
           COUNT(*)::int AS total,
-          COUNT(CASE WHEN status = 'online' THEN 1 END)::int AS online,
-          COUNT(CASE WHEN status = 'offline' THEN 1 END)::int AS offline,
+          COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online,
+          COUNT(CASE WHEN last_seen < NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' OR last_seen IS NULL THEN 1 END)::int AS offline,
           COUNT(DISTINCT server_id)::int AS servers
         FROM agents
       `)
@@ -116,8 +124,8 @@ export function createAgentsRouter(dbPool: Pool): Router {
       const { rows: serverRows } = await dbPool.query(`
         SELECT s.id AS server_id, s.name AS server_name, s.metadata->>'color' AS color,
           COUNT(*)::int AS total,
-          COUNT(CASE WHEN a.status = 'online' THEN 1 END)::int AS online,
-          COUNT(CASE WHEN a.status = 'offline' THEN 1 END)::int AS offline
+          COUNT(CASE WHEN a.last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online,
+          COUNT(CASE WHEN a.last_seen < NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' OR a.last_seen IS NULL THEN 1 END)::int AS offline
         FROM agents a
         JOIN servers s ON a.server_id = s.id
         GROUP BY s.id, s.name, s.metadata->>'color'
@@ -143,8 +151,9 @@ export function createAgentsRouter(dbPool: Pool): Router {
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 6, 1), 50)
 
       const { rows } = await dbPool.query(`
-        SELECT a.agent_id, a.hostname, a.ip_address, a.status, a.last_seen,
-               a.agent_group AS "group", s.name AS server_name
+        SELECT a.agent_id, a.hostname, a.ip_address,
+               CASE WHEN a.last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online' ELSE 'offline' END AS status,
+               a.last_seen, a.agent_group AS "group", s.name AS server_name
         FROM agents a
         JOIN servers s ON a.server_id = s.id
         ORDER BY a.last_seen DESC NULLS LAST

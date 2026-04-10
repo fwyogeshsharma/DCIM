@@ -7,6 +7,7 @@ import (
 
 	"github.com/faberlabs/dcim-server/internal/config"
 	"github.com/faberlabs/dcim-server/internal/models"
+	"github.com/faberlabs/dcim-server/internal/snmpwalker"
 
 	// Database drivers
 	_ "github.com/mattn/go-sqlite3"      // SQLite with CGO
@@ -307,6 +308,45 @@ func (d *Database) getSQLiteSchema() []string {
 		// Index for aggregated metrics
 		// NOTE: idx_agg_metrics_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_agg_metrics ON aggregated_metrics(agent_id, metric_type, interval, timestamp)`,
+
+		// SNMP Traps table
+		`CREATE TABLE IF NOT EXISTS snmp_traps (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
+			timestamp DATETIME NOT NULL,
+			source_ip TEXT NOT NULL,
+			device_name TEXT NOT NULL DEFAULT '',
+			trap_type TEXT NOT NULL,
+			trap_oid TEXT NOT NULL,
+			severity TEXT NOT NULL,
+			varbinds TEXT,
+			description TEXT NOT NULL DEFAULT '',
+			resolved INTEGER NOT NULL DEFAULT 0,
+			resolved_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		// Deduplicate: one trap per (server, source_ip, trap_oid) per second
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_snmp_traps_dedup
+			ON snmp_traps(server_id, source_ip, trap_oid, strftime('%s', timestamp))`,
+
+		`CREATE INDEX IF NOT EXISTS idx_snmp_traps_time ON snmp_traps(server_id, timestamp)`,
+		`CREATE INDEX IF NOT EXISTS idx_snmp_traps_ip ON snmp_traps(source_ip, trap_type, resolved)`,
+
+		// Topology links table — stores source→target pairs discovered by SNMP walker
+		`CREATE TABLE IF NOT EXISTS topology_links (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			server_id TEXT NOT NULL,
+			source_ip TEXT NOT NULL,
+			source_name TEXT NOT NULL DEFAULT '',
+			target_ip TEXT NOT NULL,
+			target_name TEXT NOT NULL DEFAULT '',
+			last_seen DATETIME NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_topology_links_pair ON topology_links(server_id, source_ip, target_ip)`,
+		`CREATE INDEX IF NOT EXISTS idx_topology_links_server ON topology_links(server_id, last_seen)`,
 	}
 }
 
@@ -475,6 +515,44 @@ func (d *Database) getPostgresSchema() []string {
 		// Index for aggregated metrics
 		// NOTE: idx_agg_metrics_server created by migration 002_server_tracking.sql
 		`CREATE INDEX IF NOT EXISTS idx_agg_metrics ON aggregated_metrics(agent_id, metric_type, interval, timestamp)`,
+
+		// SNMP Traps table
+		`CREATE TABLE IF NOT EXISTS snmp_traps (
+			id BIGSERIAL PRIMARY KEY,
+			server_id TEXT NOT NULL,
+			timestamp TIMESTAMPTZ NOT NULL,
+			source_ip TEXT NOT NULL,
+			device_name TEXT NOT NULL DEFAULT '',
+			trap_type TEXT NOT NULL,
+			trap_oid TEXT NOT NULL,
+			severity TEXT NOT NULL,
+			varbinds JSONB,
+			description TEXT NOT NULL DEFAULT '',
+			resolved BOOLEAN NOT NULL DEFAULT FALSE,
+			resolved_at TIMESTAMPTZ,
+			created_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_snmp_traps_dedup
+			ON snmp_traps(server_id, source_ip, trap_oid, date_trunc('second', timestamp))`,
+
+		`CREATE INDEX IF NOT EXISTS idx_snmp_traps_time ON snmp_traps(server_id, timestamp)`,
+		`CREATE INDEX IF NOT EXISTS idx_snmp_traps_ip ON snmp_traps(source_ip, trap_type, resolved)`,
+
+		// Topology links table — stores source→target pairs discovered by SNMP walker
+		`CREATE TABLE IF NOT EXISTS topology_links (
+			id BIGSERIAL PRIMARY KEY,
+			server_id TEXT NOT NULL,
+			source_ip TEXT NOT NULL,
+			source_name TEXT NOT NULL DEFAULT '',
+			target_ip TEXT NOT NULL,
+			target_name TEXT NOT NULL DEFAULT '',
+			last_seen TIMESTAMPTZ NOT NULL,
+			created_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_topology_links_pair ON topology_links(server_id, source_ip, target_ip)`,
+		`CREATE INDEX IF NOT EXISTS idx_topology_links_server ON topology_links(server_id, last_seen)`,
 	}
 }
 
@@ -594,7 +672,106 @@ func (d *Database) getMySQLSchema() []string {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			INDEX idx_agg_metrics (agent_id, metric_type, interval, timestamp)
 		)`,
+
+		// SNMP Traps table
+		`CREATE TABLE IF NOT EXISTS snmp_traps (
+			id BIGINT PRIMARY KEY AUTO_INCREMENT,
+			server_id VARCHAR(255) NOT NULL,
+			timestamp DATETIME NOT NULL,
+			source_ip VARCHAR(45) NOT NULL,
+			device_name VARCHAR(255) NOT NULL DEFAULT '',
+			trap_type VARCHAR(100) NOT NULL,
+			trap_oid VARCHAR(255) NOT NULL,
+			severity VARCHAR(20) NOT NULL,
+			varbinds JSON,
+			description TEXT NOT NULL DEFAULT '',
+			resolved TINYINT(1) NOT NULL DEFAULT 0,
+			resolved_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY idx_snmp_traps_dedup (server_id, source_ip, trap_oid, timestamp),
+			INDEX idx_snmp_traps_time (server_id, timestamp),
+			INDEX idx_snmp_traps_ip (source_ip, trap_type, resolved)
+		)`,
+
+		// Topology links table — stores source→target pairs discovered by SNMP walker
+		`CREATE TABLE IF NOT EXISTS topology_links (
+			id BIGINT PRIMARY KEY AUTO_INCREMENT,
+			server_id VARCHAR(255) NOT NULL,
+			source_ip VARCHAR(45) NOT NULL,
+			source_name VARCHAR(255) NOT NULL DEFAULT '',
+			target_ip VARCHAR(45) NOT NULL,
+			target_name VARCHAR(255) NOT NULL DEFAULT '',
+			last_seen DATETIME NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY idx_topology_links_pair (server_id, source_ip, target_ip),
+			INDEX idx_topology_links_server (server_id, last_seen)
+		)`,
 	}
+}
+
+// Topology link operations
+
+// UpsertTopologyLinks upserts source→target links discovered by the SNMP walker.
+// Existing rows for the same (server_id, source_ip, target_ip) are updated with
+// the latest last_seen timestamp and names; new rows are inserted.
+func (d *Database) UpsertTopologyLinks(serverID string, links []snmpwalker.TopologyLink) error {
+	now := time.Now()
+	for _, l := range links {
+		var query string
+		switch d.dbType {
+		case "postgres":
+			query = `INSERT INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
+				VALUES ($1, $2, $3, $4, $5, $6)
+				ON CONFLICT (server_id, source_ip, target_ip)
+				DO UPDATE SET source_name = EXCLUDED.source_name, target_name = EXCLUDED.target_name, last_seen = EXCLUDED.last_seen`
+			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.TargetIP, l.TargetName, now); err != nil {
+				return fmt.Errorf("upsert topology link %s->%s: %w", l.SourceIP, l.TargetIP, err)
+			}
+		case "mysql":
+			query = `INSERT INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
+				VALUES (?, ?, ?, ?, ?, ?)
+				ON DUPLICATE KEY UPDATE source_name = VALUES(source_name), target_name = VALUES(target_name), last_seen = VALUES(last_seen)`
+			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.TargetIP, l.TargetName, now); err != nil {
+				return fmt.Errorf("upsert topology link %s->%s: %w", l.SourceIP, l.TargetIP, err)
+			}
+		default: // sqlite
+			query = `INSERT OR REPLACE INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
+				VALUES (?, ?, ?, ?, ?, ?)`
+			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.TargetIP, l.TargetName, now); err != nil {
+				return fmt.Errorf("upsert topology link %s->%s: %w", l.SourceIP, l.TargetIP, err)
+			}
+		}
+	}
+	return nil
+}
+
+// GetTopologyLinks returns all current topology links for the given server.
+func (d *Database) GetTopologyLinks(serverID string) ([]map[string]interface{}, error) {
+	query := d.preparePlaceholders(`SELECT source_ip, source_name, target_ip, target_name, last_seen
+		FROM topology_links WHERE server_id = ? ORDER BY source_ip`)
+
+	rows, err := d.db.Query(query, serverID)
+	if err != nil {
+		return nil, fmt.Errorf("query topology links: %w", err)
+	}
+	defer rows.Close()
+
+	var result []map[string]interface{}
+	for rows.Next() {
+		var sourceIP, sourceName, targetIP, targetName string
+		var lastSeen time.Time
+		if err := rows.Scan(&sourceIP, &sourceName, &targetIP, &targetName, &lastSeen); err != nil {
+			return nil, fmt.Errorf("scan topology link: %w", err)
+		}
+		result = append(result, map[string]interface{}{
+			"source_ip":   sourceIP,
+			"source_name": sourceName,
+			"target_ip":   targetIP,
+			"target_name": targetName,
+			"last_seen":   lastSeen,
+		})
+	}
+	return result, rows.Err()
 }
 
 // Agent operations
@@ -728,8 +905,9 @@ func (d *Database) UpdateAgentLastSeen(agentID string) error {
 	return err
 }
 
-// GetAllAgents retrieves all agents
-func (d *Database) GetAllAgents() ([]models.Agent, error) {
+// GetAllAgents retrieves all agents with dynamically computed online/offline status
+// based on last_seen vs heartbeatTimeout.
+func (d *Database) GetAllAgents(heartbeatTimeout time.Duration) ([]models.Agent, error) {
 	query := `SELECT id, agent_id, COALESCE(server_id, ''), COALESCE(certificate_cn, ''), COALESCE(hostname, ''), COALESCE(ip_address, ''), COALESCE(status, 'pending'), COALESCE(group_name, 'default'), COALESCE(last_seen, created_at), COALESCE(first_seen, created_at), COALESCE(registered_at, created_at), approved_at, COALESCE(approved, false), COALESCE(total_metrics, 0), COALESCE(total_alerts, 0), metadata, created_at, updated_at FROM agents ORDER BY last_seen DESC`
 
 	rows, err := d.db.Query(query)
@@ -738,6 +916,7 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 	}
 	defer rows.Close()
 
+	cutoff := time.Now().Add(-heartbeatTimeout)
 	var agents []models.Agent
 	for rows.Next() {
 		var agent models.Agent
@@ -763,6 +942,12 @@ func (d *Database) GetAllAgents() ([]models.Agent, error) {
 		)
 		if err != nil {
 			return nil, err
+		}
+		// Compute online/offline dynamically from last_seen
+		if agent.LastSeen.After(cutoff) {
+			agent.Status = "online"
+		} else {
+			agent.Status = "offline"
 		}
 		agents = append(agents, agent)
 	}
@@ -991,11 +1176,17 @@ func (d *Database) InsertSNMPMetrics(serverID string, metrics []models.SNMPMetri
 	}
 	defer tx.Rollback()
 
-	insertQuery := d.preparePlaceholders(`
-		INSERT INTO snmp_metrics (server_id, agent_id, timestamp, device_name, device_host, oid,
+	var insertQuery string
+	if d.dbType == "sqlite" {
+		insertQuery = `INSERT OR IGNORE INTO snmp_metrics (server_id, agent_id, timestamp, device_name, device_host, oid,
 			metric_name, value, value_type, metadata, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	} else {
+		insertQuery = d.preparePlaceholders(`INSERT INTO snmp_metrics (server_id, agent_id, timestamp, device_name, device_host, oid,
+			metric_name, value, value_type, metadata, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT DO NOTHING`)
+	}
 	stmt, err := tx.Prepare(insertQuery)
 	if err != nil {
 		return err
@@ -1470,4 +1661,131 @@ func (d *Database) GetAlertByID(alertID int64) (map[string]interface{}, error) {
 	}
 
 	return alert, nil
+}
+
+// ── SNMP Trap operations ──────────────────────────────────────────────────────
+
+// InsertSNMPTrap stores a trap, ignoring duplicates (same server+ip+oid within same second).
+// For linkUp traps it also auto-resolves any open linkDown for the same source IP.
+func (d *Database) InsertSNMPTrap(serverID string, trap models.SNMPTrap) error {
+	varbindsJSON, err := trap.Varbinds.Value()
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+
+	var insertQuery string
+	switch d.dbType {
+	case "sqlite":
+		insertQuery = `
+			INSERT OR IGNORE INTO snmp_traps
+				(server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
+				 severity, varbinds, description, resolved, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	case "postgres":
+		insertQuery = `
+			INSERT INTO snmp_traps
+				(server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
+				 severity, varbinds, description, resolved, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			ON CONFLICT DO NOTHING`
+	default:
+		insertQuery = d.preparePlaceholders(`
+			INSERT IGNORE INTO snmp_traps
+				(server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
+				 severity, varbinds, description, resolved, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	}
+
+	_, err = d.db.Exec(insertQuery,
+		serverID,
+		trap.Timestamp,
+		trap.SourceIP,
+		trap.DeviceName,
+		trap.TrapType,
+		trap.TrapOID,
+		trap.Severity,
+		varbindsJSON,
+		trap.Description,
+		false,
+		now,
+	)
+	if err != nil {
+		return fmt.Errorf("insert trap: %w", err)
+	}
+
+	// Auto-resolve open linkDown traps when linkUp arrives from same device
+	if trap.TrapType == "linkUp" {
+		resolveQuery := d.preparePlaceholders(`
+			UPDATE snmp_traps
+			SET resolved = ?, resolved_at = ?
+			WHERE server_id = ? AND source_ip = ? AND trap_type = 'linkDown' AND resolved = ?`)
+		_, _ = d.db.Exec(resolveQuery, true, now, serverID, trap.SourceIP, false)
+	}
+
+	return nil
+}
+
+// GetSNMPTraps retrieves traps with optional filters.
+func (d *Database) GetSNMPTraps(serverID string, resolved *bool, trapType string, limit int) ([]models.SNMPTrap, error) {
+	query := `SELECT id, server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
+		severity, varbinds, description, resolved, resolved_at, created_at
+		FROM snmp_traps WHERE server_id = ?`
+	args := []interface{}{serverID}
+
+	if resolved != nil {
+		query += " AND resolved = ?"
+		if d.dbType == "postgres" {
+			args = append(args, *resolved)
+		} else {
+			v := 0
+			if *resolved {
+				v = 1
+			}
+			args = append(args, v)
+		}
+	}
+	if trapType != "" {
+		query += " AND trap_type = ?"
+		args = append(args, trapType)
+	}
+	query += " ORDER BY timestamp DESC LIMIT ?"
+	args = append(args, limit)
+
+	query = d.preparePlaceholders(query)
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var traps []models.SNMPTrap
+	for rows.Next() {
+		var t models.SNMPTrap
+		var resolvedAt sql.NullTime
+		var resolvedInt interface{}
+
+		err := rows.Scan(
+			&t.ID, &t.ServerID, &t.Timestamp, &t.SourceIP, &t.DeviceName,
+			&t.TrapType, &t.TrapOID, &t.Severity, &t.Varbinds,
+			&t.Description, &resolvedInt, &resolvedAt, &t.CreatedAt,
+		)
+		if err != nil {
+			continue
+		}
+
+		switch v := resolvedInt.(type) {
+		case bool:
+			t.Resolved = v
+		case int64:
+			t.Resolved = v != 0
+		}
+
+		if resolvedAt.Valid {
+			t.ResolvedAt = &resolvedAt.Time
+		}
+		traps = append(traps, t)
+	}
+	return traps, rows.Err()
 }

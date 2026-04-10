@@ -3,7 +3,9 @@ package server
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -61,6 +63,16 @@ func (s *Server) waitForSNMP(ip string, port uint16, community string, timeout t
 	}
 }
 
+// localOutboundIP returns the local IP address used to reach the given target.
+func localOutboundIP(target string) string {
+	conn, err := net.Dial("udp", target+":80")
+	if err != nil {
+		return ""
+	}
+	defer conn.Close()
+	return conn.LocalAddr().(*net.UDPAddr).IP.String()
+}
+
 // runWalkerLoop starts a walk on boot, then repeats on the configured interval.
 func (s *Server) runWalkerLoop() {
 	cfg := s.config.SNMPWalker
@@ -72,6 +84,11 @@ func (s *Server) runWalkerLoop() {
 		community = cfg.SeedIP
 	}
 	s.waitForSNMP(cfg.SeedIP, cfg.Port, community, cfg.Timeout)
+
+	// Determine the server's own IP on the path toward the seed, so we can
+	// store a synthetic "server → seed" link that the UI can render.
+	serverIP := localOutboundIP(cfg.SeedIP)
+	hostname, _ := os.Hostname()
 
 	run := func() {
 		s.logger.Printf("[WALKER] Auto-starting walk from seed %s (depth %d)", cfg.SeedIP, cfg.MaxDepth)
@@ -90,6 +107,24 @@ func (s *Server) runWalkerLoop() {
 			return
 		}
 		s.logger.Printf("[WALKER] Auto-started session %s", id)
+
+		// Store a synthetic link: server → seed so the UI shows the server
+		// connected to the first node of the network.
+		if serverIP != "" {
+			serverName := hostname
+			if serverName == "" {
+				serverName = serverIP
+			}
+			seedLink := []snmpwalker.TopologyLink{{
+				SourceIP:   serverIP,
+				SourceName: serverName,
+				TargetIP:   cfg.SeedIP,
+				TargetName: cfg.SeedIP,
+			}}
+			if err := s.db.UpsertTopologyLinks(s.serverID, seedLink); err != nil {
+				s.logger.Printf("[WALKER] Failed to store server→seed link: %v", err)
+			}
+		}
 	}
 
 	run()

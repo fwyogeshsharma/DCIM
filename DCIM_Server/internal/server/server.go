@@ -18,6 +18,7 @@ import (
 	"github.com/faberlabs/dcim-server/internal/database"
 	"github.com/faberlabs/dcim-server/internal/license"
 	"github.com/faberlabs/dcim-server/internal/models"
+	"github.com/faberlabs/dcim-server/internal/snmptrap"
 	"github.com/faberlabs/dcim-server/internal/snmpwalker"
 )
 
@@ -39,6 +40,9 @@ type Server struct {
 
 	// SNMP topology walker
 	walker *snmpwalker.Walker
+
+	// SNMP trap receiver
+	trapReceiver *snmptrap.Receiver
 }
 
 // New creates a new DCIM server
@@ -81,6 +85,10 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 	mux.HandleFunc(basePath+"/topology/walk/", server.handleTopologyWalkStatus)
 	mux.HandleFunc(basePath+"/topology/walk", server.handleTopologyWalk)
 	mux.HandleFunc(basePath+"/topology/nodes", server.handleTopologyNodes)
+	mux.HandleFunc(basePath+"/topology/links", server.handleTopologyLinks)
+
+	// SNMP trap endpoint
+	mux.HandleFunc(basePath+"/traps", server.handleSNMPTraps)
 
 	// Health check endpoint
 	if cfg.Health.Enabled {
@@ -119,11 +127,29 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 	go server.serverHeartbeat()
 
 	// Initialize SNMP walker
-	server.walker = snmpwalker.New(server.logger, func(metrics []snmpwalker.DiscoveredMetric) error {
-		return server.saveSNMPWalkerMetrics(metrics)
-	})
+	server.walker = snmpwalker.New(server.logger,
+		func(metrics []snmpwalker.DiscoveredMetric) error {
+			return server.saveSNMPWalkerMetrics(metrics)
+		},
+		func(links []snmpwalker.TopologyLink) error {
+			return server.db.UpsertTopologyLinks(server.serverID, links)
+		},
+	)
 	if cfg.SNMPWalker.Enabled && cfg.SNMPWalker.SeedIP != "" {
 		go server.runWalkerLoop()
+	}
+
+	// Start SNMP trap receiver
+	if cfg.SNMPTrap.Enabled {
+		port := cfg.SNMPTrap.Port
+		if port == 0 {
+			port = 162
+		}
+		server.trapReceiver = snmptrap.New(port, server.logger, server.onTrapReceived)
+		if err := server.trapReceiver.Start(); err != nil {
+			server.logger.Printf("[TRAP] Failed to start trap receiver on port %d: %v", port, err)
+			server.logger.Printf("[TRAP] Trap receiver disabled — check port permissions (port <1024 needs admin/root)")
+		}
 	}
 
 	return server, nil
@@ -689,7 +715,7 @@ func (s *Server) handleGetAgents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get all agents from database
-	agents, err := s.db.GetAllAgents()
+	agents, err := s.db.GetAllAgents(s.config.Agents.Connection.HeartbeatTimeout)
 	if err != nil {
 		s.logger.Printf("Failed to get agents: %v", err)
 		s.sendError(w, http.StatusInternalServerError, "Failed to retrieve agents")

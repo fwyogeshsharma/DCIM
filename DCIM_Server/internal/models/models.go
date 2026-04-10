@@ -212,3 +212,20 @@ type AgentRegistrationRequest struct {
 	IPAddress string            `json:"ip_address"`
 	Metadata  map[string]string `json:"metadata,omitempty"`
 }
+
+// SNMPTrap represents a received SNMP trap event
+type SNMPTrap struct {
+	ID          int64      `json:"id" db:"id"`
+	ServerID    string     `json:"server_id" db:"server_id"`
+	Timestamp   time.Time  `json:"timestamp" db:"timestamp"`
+	SourceIP    string     `json:"source_ip" db:"source_ip"`
+	DeviceName  string     `json:"device_name" db:"device_name"`
+	TrapType    string     `json:"trap_type" db:"trap_type"`
+	TrapOID     string     `json:"trap_oid" db:"trap_oid"`
+	Severity    string     `json:"severity" db:"severity"`
+	Varbinds    JSONMap    `json:"varbinds" db:"varbinds"`
+	Description string     `json:"description" db:"description"`
+	Resolved    bool       `json:"resolved" db:"resolved"`
+	ResolvedAt  *time.Time `json:"resolved_at,omitempty" db:"resolved_at"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+}
