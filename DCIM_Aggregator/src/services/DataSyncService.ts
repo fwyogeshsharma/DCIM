@@ -374,18 +374,26 @@ export class DataSyncService {
       for (const link of links) {
         try {
           const result = await this.dbPool.query(
-            `INSERT INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
-             VALUES ($1, $2, $3, $4, $5, $6)
+            `INSERT INTO topology_links (server_id, source_ip, source_name, source_depth, source_port, target_ip, target_name, target_depth, target_port, last_seen)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              ON CONFLICT (server_id, source_ip, target_ip)
-             DO UPDATE SET source_name = EXCLUDED.source_name,
-                           target_name = EXCLUDED.target_name,
-                           last_seen   = EXCLUDED.last_seen`,
+             DO UPDATE SET source_name  = EXCLUDED.source_name,
+                           source_depth = EXCLUDED.source_depth,
+                           source_port  = EXCLUDED.source_port,
+                           target_name  = EXCLUDED.target_name,
+                           target_depth = EXCLUDED.target_depth,
+                           target_port  = EXCLUDED.target_port,
+                           last_seen    = EXCLUDED.last_seen`,
             [
               serverId,
               link.source_ip,
               link.source_name || '',
+              link.source_depth ?? 0,
+              link.source_port ?? 0,
               link.target_ip,
               link.target_name || '',
+              link.target_depth ?? 0,
+              link.target_port || '',
               link.last_seen || new Date(),
             ]
           )

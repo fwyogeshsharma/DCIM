@@ -10,10 +10,10 @@ import (
 	"github.com/faberlabs/dcim-server/internal/snmpwalker"
 
 	// Database drivers
-	_ "github.com/mattn/go-sqlite3"      // SQLite with CGO
-	_ "modernc.org/sqlite"               // Pure-Go SQLite (fallback for cross-compilation)
-	_ "github.com/lib/pq"                // PostgreSQL
-	_ "github.com/go-sql-driver/mysql"  // MySQL
+	_ "github.com/go-sql-driver/mysql" // MySQL
+	_ "github.com/lib/pq"              // PostgreSQL
+	_ "github.com/mattn/go-sqlite3"    // SQLite with CGO
+	_ "modernc.org/sqlite"             // Pure-Go SQLite (fallback for cross-compilation)
 )
 
 // Database represents the database connection and operations
@@ -712,32 +712,35 @@ func (d *Database) getMySQLSchema() []string {
 // Topology link operations
 
 // UpsertTopologyLinks upserts source→target links discovered by the SNMP walker.
-// Existing rows for the same (server_id, source_ip, target_ip) are updated with
-// the latest last_seen timestamp and names; new rows are inserted.
+// Stores depth and port info for UI hierarchy visualization.
 func (d *Database) UpsertTopologyLinks(serverID string, links []snmpwalker.TopologyLink) error {
 	now := time.Now()
 	for _, l := range links {
 		var query string
 		switch d.dbType {
 		case "postgres":
-			query = `INSERT INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
-				VALUES ($1, $2, $3, $4, $5, $6)
+			query = `INSERT INTO topology_links (server_id, source_ip, source_name, source_depth, source_port, target_ip, target_name, target_depth, target_port, last_seen)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 				ON CONFLICT (server_id, source_ip, target_ip)
-				DO UPDATE SET source_name = EXCLUDED.source_name, target_name = EXCLUDED.target_name, last_seen = EXCLUDED.last_seen`
-			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.TargetIP, l.TargetName, now); err != nil {
+				DO UPDATE SET source_name = EXCLUDED.source_name, source_depth = EXCLUDED.source_depth, source_port = EXCLUDED.source_port,
+				              target_name = EXCLUDED.target_name, target_depth = EXCLUDED.target_depth, target_port = EXCLUDED.target_port,
+				              last_seen = EXCLUDED.last_seen`
+			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.SourceDepth, l.SourcePort, l.TargetIP, l.TargetName, l.TargetDepth, l.TargetPort, now); err != nil {
 				return fmt.Errorf("upsert topology link %s->%s: %w", l.SourceIP, l.TargetIP, err)
 			}
 		case "mysql":
-			query = `INSERT INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
-				VALUES (?, ?, ?, ?, ?, ?)
-				ON DUPLICATE KEY UPDATE source_name = VALUES(source_name), target_name = VALUES(target_name), last_seen = VALUES(last_seen)`
-			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.TargetIP, l.TargetName, now); err != nil {
+			query = `INSERT INTO topology_links (server_id, source_ip, source_name, source_depth, source_port, target_ip, target_name, target_depth, target_port, last_seen)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON DUPLICATE KEY UPDATE source_name = VALUES(source_name), source_depth = VALUES(source_depth), source_port = VALUES(source_port),
+				                        target_name = VALUES(target_name), target_depth = VALUES(target_depth), target_port = VALUES(target_port),
+				                        last_seen = VALUES(last_seen)`
+			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.SourceDepth, l.SourcePort, l.TargetIP, l.TargetName, l.TargetDepth, l.TargetPort, now); err != nil {
 				return fmt.Errorf("upsert topology link %s->%s: %w", l.SourceIP, l.TargetIP, err)
 			}
 		default: // sqlite
-			query = `INSERT OR REPLACE INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
-				VALUES (?, ?, ?, ?, ?, ?)`
-			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.TargetIP, l.TargetName, now); err != nil {
+			query = `INSERT OR REPLACE INTO topology_links (server_id, source_ip, source_name, source_depth, source_port, target_ip, target_name, target_depth, target_port, last_seen)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			if _, err := d.db.Exec(query, serverID, l.SourceIP, l.SourceName, l.SourceDepth, l.SourcePort, l.TargetIP, l.TargetName, l.TargetDepth, l.TargetPort, now); err != nil {
 				return fmt.Errorf("upsert topology link %s->%s: %w", l.SourceIP, l.TargetIP, err)
 			}
 		}
@@ -747,8 +750,8 @@ func (d *Database) UpsertTopologyLinks(serverID string, links []snmpwalker.Topol
 
 // GetTopologyLinks returns all current topology links for the given server.
 func (d *Database) GetTopologyLinks(serverID string) ([]map[string]interface{}, error) {
-	query := d.preparePlaceholders(`SELECT source_ip, source_name, target_ip, target_name, last_seen
-		FROM topology_links WHERE server_id = ? ORDER BY source_ip`)
+	query := d.preparePlaceholders(`SELECT source_ip, source_name, source_depth, source_port, target_ip, target_name, target_depth, target_port, last_seen
+		FROM topology_links WHERE server_id = ? ORDER BY source_depth, source_ip`)
 
 	rows, err := d.db.Query(query, serverID)
 	if err != nil {
@@ -758,17 +761,22 @@ func (d *Database) GetTopologyLinks(serverID string) ([]map[string]interface{}, 
 
 	var result []map[string]interface{}
 	for rows.Next() {
-		var sourceIP, sourceName, targetIP, targetName string
+		var sourceIP, sourceName, targetIP, targetName, targetPort string
+		var sourceDepth, sourcePort, targetDepth int
 		var lastSeen time.Time
-		if err := rows.Scan(&sourceIP, &sourceName, &targetIP, &targetName, &lastSeen); err != nil {
+		if err := rows.Scan(&sourceIP, &sourceName, &sourceDepth, &sourcePort, &targetIP, &targetName, &targetDepth, &targetPort, &lastSeen); err != nil {
 			return nil, fmt.Errorf("scan topology link: %w", err)
 		}
 		result = append(result, map[string]interface{}{
-			"source_ip":   sourceIP,
-			"source_name": sourceName,
-			"target_ip":   targetIP,
-			"target_name": targetName,
-			"last_seen":   lastSeen,
+			"source_ip":    sourceIP,
+			"source_name":  sourceName,
+			"source_depth": sourceDepth,
+			"source_port":  sourcePort,
+			"target_ip":    targetIP,
+			"target_name":  targetName,
+			"target_depth": targetDepth,
+			"target_port":  targetPort,
+			"last_seen":    lastSeen,
 		})
 	}
 	return result, rows.Err()
@@ -1105,11 +1113,11 @@ func (d *Database) InsertAlerts(serverID string, alerts []models.Alert) error {
 				alert.Value,
 				alert.Threshold,
 				alert.Message,
-				alert.Timestamp,  // first_seen
-				alert.Timestamp,  // last_seen
+				alert.Timestamp, // first_seen
+				alert.Timestamp, // last_seen
 				alert.Resolved,
-				now,              // created_at
-				now,              // updated_at
+				now, // created_at
+				now, // updated_at
 			)
 
 			if err != nil {
@@ -1133,11 +1141,11 @@ func (d *Database) InsertAlerts(serverID string, alerts []models.Alert) error {
 			`)
 
 			_, err = d.db.Exec(updateQuery,
-				alert.Timestamp,  // last_seen
-				time.Now(),       // updated_at
-				alert.Value,      // update current value
-				alert.Threshold,  // update threshold
-				alert.Message,    // update message
+				alert.Timestamp, // last_seen
+				time.Now(),      // updated_at
+				alert.Value,     // update current value
+				alert.Threshold, // update threshold
+				alert.Message,   // update message
 				existingID,
 			)
 
@@ -1607,16 +1615,16 @@ func (d *Database) GetAlertByID(alertID int64) (map[string]interface{}, error) {
 	`)
 
 	var (
-		id                                   int64
-		serverID, agentID, severity          string
-		metricType, message                  string
-		value, threshold                     float64
-		occurrenceCount, resolved            int
-		timestamp, firstSeen, lastSeen       time.Time
-		createdAt, updatedAt                 time.Time
-		resolvedAt                           sql.NullTime
-		resolvedBy, resolutionAction         sql.NullString
-		resolutionNotes                      sql.NullString
+		id                             int64
+		serverID, agentID, severity    string
+		metricType, message            string
+		value, threshold               float64
+		occurrenceCount, resolved      int
+		timestamp, firstSeen, lastSeen time.Time
+		createdAt, updatedAt           time.Time
+		resolvedAt                     sql.NullTime
+		resolvedBy, resolutionAction   sql.NullString
+		resolutionNotes                sql.NullString
 	)
 
 	err := d.db.QueryRow(query, alertID).Scan(
@@ -1630,21 +1638,21 @@ func (d *Database) GetAlertByID(alertID int64) (map[string]interface{}, error) {
 	}
 
 	alert := map[string]interface{}{
-		"id":                id,
-		"server_id":         serverID,
-		"agent_id":          agentID,
-		"timestamp":         timestamp,
-		"severity":          severity,
-		"metric_type":       metricType,
-		"value":             value,
-		"threshold":         threshold,
-		"message":           message,
-		"occurrence_count":  occurrenceCount,
-		"first_seen":        firstSeen,
-		"last_seen":         lastSeen,
-		"resolved":          resolved == 1,
-		"created_at":        createdAt,
-		"updated_at":        updatedAt,
+		"id":               id,
+		"server_id":        serverID,
+		"agent_id":         agentID,
+		"timestamp":        timestamp,
+		"severity":         severity,
+		"metric_type":      metricType,
+		"value":            value,
+		"threshold":        threshold,
+		"message":          message,
+		"occurrence_count": occurrenceCount,
+		"first_seen":       firstSeen,
+		"last_seen":        lastSeen,
+		"resolved":         resolved == 1,
+		"created_at":       createdAt,
+		"updated_at":       updatedAt,
 	}
 
 	if resolvedAt.Valid {

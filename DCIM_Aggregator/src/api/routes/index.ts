@@ -204,7 +204,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         query += ` AND tl.server_id = $1`
       }
 
-      query += ` ORDER BY tl.server_id, tl.source_ip`
+      query += ` ORDER BY tl.server_id, tl.source_depth, tl.source_ip`
 
       const { rows } = await dbPool.query(query, params)
       res.json({ success: true, data: rows, count: rows.length })

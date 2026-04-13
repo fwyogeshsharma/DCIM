@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,12 +20,18 @@ const (
 	oidSysName  = "1.3.6.1.2.1.1.5.0"
 	oidSysDescr = "1.3.6.1.2.1.1.1.0"
 
-	// Neighbor discovery OIDs (tried in order)
-	oidCDPCacheAddress  = "1.3.6.1.4.1.9.9.23.1.2.1.1.4" // Cisco CDP neighbor IPs
-	oidARPTable         = "1.3.6.1.2.1.4.22.1.3"         // ipNetToMediaNetAddress
-	oidLLDPRemChassisID = "1.0.8802.1.1.2.1.4.1.1.5"     // lldpRemChassisId — IP stored as string value (PRIMARY for simulators)
-	oidLLDPRemMgmtAddr  = "1.0.8802.1.1.2.1.4.2"         // lldpRemManAddrTable
-	oidIPRouteNextHop   = "1.3.6.1.2.1.4.21.1.7"         // ipRouteNextHop
+	// LLDP remote table OIDs — matches lldp_generator.py in the simulator.
+	// All three are walked simultaneously and correlated by OID suffix
+	// (format: {timeMark}.{localPort}.{remoteIdx}) to get a complete neighbor record.
+	oidLLDPRemSysName   = "1.0.8802.1.1.2.1.4.1.1.9" // neighbor hostname
+	oidLLDPRemChassisID = "1.0.8802.1.1.2.1.4.1.1.5" // neighbor IP (ASCII string value)
+	oidLLDPRemPortID    = "1.0.8802.1.1.2.1.4.1.1.7" // remote port name
+
+	// Fallback neighbor discovery OIDs (used when LLDP returns nothing)
+	oidCDPCacheAddress = "1.3.6.1.4.1.9.9.23.1.2.1.1.4" // Cisco CDP neighbor IPs
+	oidARPTable        = "1.3.6.1.2.1.4.22.1.3"         // ipNetToMediaNetAddress
+	oidLLDPRemMgmtAddr = "1.0.8802.1.1.2.1.4.2"         // lldpRemManAddrTable
+	oidIPRouteNextHop  = "1.3.6.1.2.1.4.21.1.7"         // ipRouteNextHop
 )
 
 // WalkConfig holds the parameters for a walk run
@@ -93,12 +100,27 @@ type DiscoveredMetric struct {
 	Metadata   map[string]interface{}
 }
 
-// TopologyLink represents a discovered connection between two devices
+// DiscoveredNeighbor holds rich LLDP neighbor info discovered from a single device.
+type DiscoveredNeighbor struct {
+	IP         string // neighbor IP (from lldpRemChassisId)
+	Name       string // neighbor hostname (from lldpRemSysName)
+	LocalPort  int    // local interface index (from LLDP suffix: timeMark.localPort.remoteIdx)
+	RemotePort string // remote interface name (from lldpRemPortId)
+}
+
+// TopologyLink represents a discovered connection between two devices.
+// SourceDepth and TargetDepth reflect BFS depth from the seed IP (entry point = 0).
+// The synthetic server→seed link uses SourceDepth=-1 to place the server above the network.
+// SourcePort and TargetPort carry LLDP port info for UI visualization.
 type TopologyLink struct {
-	SourceIP   string
-	SourceName string
-	TargetIP   string
-	TargetName string
+	SourceIP    string
+	SourceName  string
+	SourceDepth int
+	SourcePort  int // local port index on source device (from LLDP)
+	TargetIP    string
+	TargetName  string
+	TargetDepth int
+	TargetPort  string // remote port name on target device (from LLDP)
 }
 
 // Walker manages SNMP topology walks
@@ -199,6 +221,10 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 	var collected []DiscoveredMetric
 	var collectedLinks []TopologyLink
 
+	// nameByIP caches discovered device names so target names can be resolved
+	// from earlier LLDP walks without waiting for the target to be probed.
+	nameByIP := make(map[string]string)
+
 	for len(queue) > 0 {
 		ip := queue[0]
 		queue = queue[1:]
@@ -217,7 +243,6 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 		metrics, neighbors, err := w.probeDevice(ip, cfg)
 		if err != nil {
 			w.logger.Printf("[WALKER] Unreachable %s: %v", ip, err)
-			// Record as unreachable so it still appears in the node list
 			collected = append(collected, DiscoveredMetric{
 				AgentID:    WalkerAgentID,
 				Timestamp:  time.Now(),
@@ -230,6 +255,11 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 			})
 		} else {
 			collected = append(collected, metrics...)
+
+			// Cache device name for link resolution
+			if len(metrics) > 0 {
+				nameByIP[ip] = metrics[0].DeviceName
+			}
 
 			// Emit topology_depth metric
 			devName := metrics[0].DeviceName
@@ -249,31 +279,46 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 			session.mu.Unlock()
 		}
 
-		// Enqueue unvisited neighbors within depth limit
+		// Enqueue unvisited neighbors and record topology links
 		for _, n := range neighbors {
-			if !visited[n] {
-				if _, seen := depth[n]; !seen {
-					depth[n] = depth[ip] + 1
+			if !visited[n.IP] {
+				if _, seen := depth[n.IP]; !seen {
+					depth[n.IP] = depth[ip] + 1
 				}
-				if _, hasParent := parent[n]; !hasParent {
-					parent[n] = ip
-					// Record the link: ip → n
-					srcName := ip
-					for _, m := range collected {
-						if m.DeviceHost == ip && m.MetricName == "reachable" {
-							srcName = m.DeviceName
-							break
-						}
+				if _, hasParent := parent[n.IP]; !hasParent {
+					parent[n.IP] = ip
+
+					srcName := nameByIP[ip]
+					if srcName == "" {
+						srcName = ip
 					}
+					// Use LLDP-discovered target name if available; will be
+					// overwritten with actual sysName when target is probed.
+					targetName := n.Name
+					if targetName == "" {
+						targetName = n.IP
+					}
+
 					collectedLinks = append(collectedLinks, TopologyLink{
-						SourceIP:   ip,
-						SourceName: srcName,
-						TargetIP:   n,
-						TargetName: n,
+						SourceIP:    ip,
+						SourceName:  srcName,
+						SourceDepth: depth[ip],
+						SourcePort:  n.LocalPort,
+						TargetIP:    n.IP,
+						TargetName:  targetName,
+						TargetDepth: depth[n.IP],
+						TargetPort:  n.RemotePort,
 					})
 				}
-				queue = append(queue, n)
+				queue = append(queue, n.IP)
 			}
+		}
+	}
+
+	// Second pass: update target names in links using actual sysName from probed devices
+	for i, link := range collectedLinks {
+		if name, ok := nameByIP[link.TargetIP]; ok && name != "" {
+			collectedLinks[i].TargetName = name
 		}
 	}
 
@@ -298,8 +343,8 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 	w.logger.Printf("[WALKER] Session %s complete — %d nodes found", session.ID, session.NodesFound)
 }
 
-// probeDevice connects to one IP, fetches system info and neighbor IPs.
-func (w *Walker) probeDevice(ip string, cfg WalkConfig) ([]DiscoveredMetric, []string, error) {
+// probeDevice connects to one IP, fetches system info and discovers neighbors.
+func (w *Walker) probeDevice(ip string, cfg WalkConfig) ([]DiscoveredMetric, []DiscoveredNeighbor, error) {
 	community := cfg.Community
 	if cfg.UseIPAsCommunity {
 		community = ip
@@ -323,9 +368,7 @@ func (w *Walker) probeDevice(ip string, cfg WalkConfig) ([]DiscoveredMetric, []s
 	// Fetch sysName + sysDescr in a single GET
 	getResult, err := g.Get([]string{oidSysName, oidSysDescr})
 
-	// Close GET connection immediately so the neighbor walk opens a clean socket.
-	// Leaving two simultaneous UDP connections open to the same host confuses
-	// some SNMP simulators and causes BulkWalkAll to return empty.
+	// Close GET connection immediately — reusing it for BulkWalk confuses some simulators
 	g.Conn.Close()
 
 	sysName := ip
@@ -364,15 +407,13 @@ func (w *Walker) probeDevice(ip string, cfg WalkConfig) ([]DiscoveredMetric, []s
 	}
 
 	neighbors := w.discoverNeighbors(ip, cfg)
-
 	return metrics, neighbors, nil
 }
 
-// discoverNeighbors opens a fresh SNMP connection and tries multiple MIBs to
-// find adjacent device IPs. A separate connection is required because reusing
-// the GET connection from probeDevice causes BulkWalkAll to time out on some
-// SNMP agents and simulators.
-func (w *Walker) discoverNeighbors(ip string, cfg WalkConfig) []string {
+// discoverNeighbors opens a fresh SNMP connection and discovers adjacent devices.
+// Primary method: LLDP correlation (name + IP + port from suffix).
+// Fallback: CDP, ARP, routing table when LLDP returns nothing.
+func (w *Walker) discoverNeighbors(ip string, cfg WalkConfig) []DiscoveredNeighbor {
 	community := cfg.Community
 	if cfg.UseIPAsCommunity {
 		community = ip
@@ -392,29 +433,12 @@ func (w *Walker) discoverNeighbors(ip string, cfg WalkConfig) []string {
 	}
 	defer g.Conn.Close()
 
-	seen := make(map[string]bool)
-	var result []string
-
-	addIP := func(neighbor string) {
-		if neighbor == "" || neighbor == ip || seen[neighbor] || !isRoutable(neighbor) {
-			return
-		}
-		seen[neighbor] = true
-		result = append(result, neighbor)
-	}
-
-	// walkFn tries BulkWalk first (SNMPv2c/v3); if it fails or returns empty it
-	// falls back to a plain Walk (SNMPv1-style GET-NEXT). Many simulators and
-	// embedded agents respond to GET but do not implement GETBULK, causing
-	// BulkWalkAll to time out silently. Errors and empty results are logged so
-	// the operator can see which OIDs are not supported.
 	walkFn := func(label, oid string) []gosnmp.SnmpPDU {
 		if cfg.Version != "1" {
 			pdus, err := g.BulkWalkAll(oid)
 			if err == nil && len(pdus) > 0 {
 				return pdus
 			}
-			// Only log real errors (timeouts/refused), not empty responses
 			if err != nil {
 				w.logger.Printf("[WALKER] BulkWalk %s on %s failed: %v — retrying with Walk", label, ip, err)
 			}
@@ -427,70 +451,139 @@ func (w *Walker) discoverNeighbors(ip string, cfg WalkConfig) []string {
 		return pdus
 	}
 
-	// 1. LLDP lldpRemChassisId — value is the neighbor IP as a plain ASCII string.
-	// This is the format used by SNMP topology simulators (snmpsim-based).
-	for _, pdu := range walkFn("LLDPChassisId", oidLLDPRemChassisID) {
-		if b, ok := pdu.Value.([]byte); ok {
-			if s := strings.TrimSpace(string(b)); net.ParseIP(s) != nil {
-				addIP(s)
+	// ── Primary: LLDP correlation ────────────────────────────────────────────
+	// Walk all three LLDP tables simultaneously, then correlate by OID suffix.
+	// Suffix format: {timeMark}.{localPort}.{remoteIdx}
+	// This matches the approach used by the SNMP simulator's discovery engine.
+	namesPDUs := walkFn("LLDPSysName", oidLLDPRemSysName)
+	ipsPDUs := walkFn("LLDPChassisId", oidLLDPRemChassisID)
+	portsPDUs := walkFn("LLDPPortId", oidLLDPRemPortID)
+
+	names := toSuffixMap(namesPDUs, oidLLDPRemSysName)
+	ips := toSuffixMap(ipsPDUs, oidLLDPRemChassisID)
+	ports := toSuffixMap(portsPDUs, oidLLDPRemPortID)
+
+	seen := make(map[string]bool)
+	var result []DiscoveredNeighbor
+
+	if len(names) > 0 {
+		for suffix, neighborName := range names {
+			neighborIP := ips[suffix]
+			if neighborIP == "" {
+				continue
 			}
+			if net.ParseIP(neighborIP) == nil {
+				continue
+			}
+			if neighborIP == ip || seen[neighborIP] || !isRoutable(neighborIP) {
+				continue
+			}
+
+			// Extract local port index from suffix: {timeMark}.{localPort}.{remoteIdx}
+			localPort := 0
+			parts := strings.Split(suffix, ".")
+			if len(parts) >= 3 {
+				if p, err := strconv.Atoi(parts[1]); err == nil {
+					localPort = p
+				}
+			}
+
+			seen[neighborIP] = true
+			result = append(result, DiscoveredNeighbor{
+				IP:         neighborIP,
+				Name:       strings.TrimSpace(neighborName),
+				LocalPort:  localPort,
+				RemotePort: strings.TrimSpace(ports[suffix]),
+			})
+		}
+
+		if len(result) > 0 {
+			w.logger.Printf("[WALKER] LLDP discovered %d neighbor(s) for %s: %v",
+				len(result), ip, neighborIPs(result))
+			return result
 		}
 	}
 
-	// 2. Cisco CDP neighbor IP addresses.
-	// Value encoding varies by implementation:
-	//   - ASCII OctetString: bytes are the IP string e.g. "10.100.0.3"
-	//   - net.IP or raw 4-byte slice
-	//   - 5-byte CDP prefix [type=1, a,b,c,d]
-	//   - 8-byte CDP wire format [0x00,0x01,0x00,0x04, a,b,c,d]
+	// ── Fallback: IP-only methods ────────────────────────────────────────────
+	w.logger.Printf("[WALKER] LLDP returned no neighbors for %s — trying CDP/ARP/routes", ip)
+
+	addIP := func(neighborIP, name string) {
+		if neighborIP == "" || neighborIP == ip || seen[neighborIP] || !isRoutable(neighborIP) {
+			return
+		}
+		seen[neighborIP] = true
+		result = append(result, DiscoveredNeighbor{IP: neighborIP, Name: name})
+	}
+
+	// CDP
 	for _, pdu := range walkFn("CDP", oidCDPCacheAddress) {
 		if b, ok := pdu.Value.([]byte); ok {
 			if s := string(b); net.ParseIP(s) != nil {
-				addIP(s)
+				addIP(s, "")
 				continue
 			}
 			switch len(b) {
 			case 4:
-				addIP(net.IP(b).String())
+				addIP(net.IP(b).String(), "")
 			case 5:
 				if b[0] == 1 {
-					addIP(net.IP(b[1:5]).String())
+					addIP(net.IP(b[1:5]).String(), "")
 				}
 			case 8:
-				addIP(net.IP(b[4:8]).String())
+				addIP(net.IP(b[4:8]).String(), "")
 			}
 			continue
 		}
 		if parsed := snmpIPValue(pdu); parsed != "" {
-			addIP(parsed)
+			addIP(parsed, "")
 		}
 	}
 
-	// 3. ARP table — OID suffix encodes the IP: baseOID.ifIndex.a.b.c.d
+	// ARP
 	for _, pdu := range walkFn("ARP", oidARPTable) {
-		addIP(ipFromOIDSuffix(pdu.Name, oidARPTable))
+		addIP(ipFromOIDSuffix(pdu.Name, oidARPTable), "")
 	}
 
-	// 4. IP routing table next hops
+	// IP routing table
 	for _, pdu := range walkFn("RouteNextHop", oidIPRouteNextHop) {
-		if ip := snmpIPValue(pdu); ip != "" {
-			addIP(ip)
+		if v := snmpIPValue(pdu); v != "" {
+			addIP(v, "")
 		}
 	}
 
-	// 5. LLDP remote management address table
+	// LLDP management address table
 	for _, pdu := range walkFn("LLDPMgmtAddr", oidLLDPRemMgmtAddr) {
-		if ip := snmpIPValue(pdu); ip != "" {
-			addIP(ip)
+		if v := snmpIPValue(pdu); v != "" {
+			addIP(v, "")
 		}
 	}
 
 	if len(result) == 0 {
-		w.logger.Printf("[WALKER] No neighbors discovered for %s (LLDPChassisId/CDP/ARP/RouteNextHop/LLDPMgmtAddr all returned empty)", ip)
+		w.logger.Printf("[WALKER] No neighbors discovered for %s", ip)
 	} else {
-		w.logger.Printf("[WALKER] Discovered %d neighbor(s) for %s: %v", len(result), ip, result)
+		w.logger.Printf("[WALKER] Fallback discovered %d neighbor(s) for %s: %v",
+			len(result), ip, neighborIPs(result))
 	}
 	return result
+}
+
+// toSuffixMap builds a map from OID suffix → string value.
+// Suffix is everything after baseOID + ".".
+func toSuffixMap(pdus []gosnmp.SnmpPDU, baseOID string) map[string]string {
+	m := make(map[string]string)
+	prefix := strings.TrimPrefix(baseOID, ".") + "."
+	for _, pdu := range pdus {
+		fullOID := strings.TrimPrefix(pdu.Name, ".")
+		if strings.HasPrefix(fullOID, prefix) {
+			suffix := fullOID[len(prefix):]
+			if b, ok := pdu.Value.([]byte); ok {
+				m[suffix] = strings.TrimSpace(string(b))
+			} else {
+				m[suffix] = strings.TrimSpace(fmt.Sprintf("%v", pdu.Value))
+			}
+		}
+	}
+	return m
 }
 
 func (w *Walker) markFailed(session *WalkSession, msg string) {
@@ -503,6 +596,14 @@ func (w *Walker) markFailed(session *WalkSession, msg string) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+func neighborIPs(neighbors []DiscoveredNeighbor) []string {
+	ips := make([]string, len(neighbors))
+	for i, n := range neighbors {
+		ips[i] = n.IP
+	}
+	return ips
+}
 
 func parseVersion(v string) gosnmp.SnmpVersion {
 	switch strings.TrimSpace(v) {
@@ -548,7 +649,6 @@ func snmpIPValue(pdu gosnmp.SnmpPDU) string {
 // ipFromOIDSuffix extracts an IPv4 address from an OID with a dotted-IP suffix.
 // ARP table OID: baseOID.ifIndex.a.b.c.d  — last 4 segments are the IP.
 func ipFromOIDSuffix(fullOID, baseOID string) string {
-	// Strip leading dot if present
 	full := strings.TrimPrefix(fullOID, ".")
 	base := strings.TrimPrefix(baseOID, ".")
 
@@ -577,7 +677,6 @@ func isRoutable(ip string) bool {
 	if parsed.IsLoopback() || parsed.IsMulticast() || parsed.IsUnspecified() {
 		return false
 	}
-	// Skip broadcast-style addresses
 	if parsed.Equal(net.IPv4bcast) {
 		return false
 	}
