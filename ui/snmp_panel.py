@@ -1,49 +1,22 @@
 """
-Simulation Control Panel - start/stop/generate/clear controls
-plus network interface selector for IP binding.
+SNMP Simulation Panel — network binding, dataset generation, SNMPSim controls,
+and embedded SNMP Trap receiver / log.
+
+The log console has been moved to ConsolePanel.
+The gNMI controls have been moved to GNMIPanel.
 """
 from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QTextEdit, QLabel, QGroupBox, QProgressBar,
+    QLabel, QGroupBox, QProgressBar,
     QComboBox, QLineEdit, QSizePolicy,
+    QTableWidget, QTableWidgetItem, QHeaderView, QSpinBox,
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QThread, QObject
-from PySide6.QtGui import QFont, QTextCursor
+from PySide6.QtGui import QFont, QColor
 
-
-# ------------------------------------------------------------------ #
-#  Log console                                                         #
-# ------------------------------------------------------------------ #
-
-class LogConsole(QTextEdit):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setReadOnly(True)
-        self.setFont(QFont("Consolas", 9))
-        self.setStyleSheet("""
-            QTextEdit {
-                background-color: #0d1117;
-                color: #58a6ff;
-                border: 1px solid #30363d;
-                border-radius: 4px;
-            }
-        """)
-        self.setMaximumHeight(200)
-
-    def append_log(self, message: str, level: str = "info"):
-        colors = {
-            "info":    "#58a6ff",
-            "success": "#3fb950",
-            "warning": "#d29922",
-            "error":   "#f85149",
-        }
-        color = colors.get(level, "#58a6ff")
-        self.append(f'<span style="color:{color};">{message}</span>')
-        self.moveCursor(QTextCursor.End)
-
-    def clear_log(self):
-        self.clear()
+from core.trap_definitions import TRAP_DEFINITIONS, SEVERITY_COLOR
+from core.trap_engine import TrapEvent
 
 
 # ------------------------------------------------------------------ #
@@ -81,8 +54,7 @@ class StatusBadge(QLabel):
 # ------------------------------------------------------------------ #
 
 class _InterfaceLoader(QObject):
-    """Fetches Windows interfaces on a worker thread."""
-    finished = Signal()   # no args – avoids marshaling Python list across thread boundary
+    finished = Signal()
 
     def run(self):
         from core.ip_binder import get_interfaces
@@ -91,22 +63,27 @@ class _InterfaceLoader(QObject):
 
 
 # ------------------------------------------------------------------ #
-#  Main panel widget                                                   #
+#  SNMP Simulation Panel                                               #
 # ------------------------------------------------------------------ #
 
-class SimulationPanel(QWidget):
+class SNMPPanel(QWidget):
+    # SNMP Simulator signals
     sig_generate  = Signal()
     sig_start     = Signal()
     sig_stop      = Signal()
-    sig_cancel    = Signal()   # emitted when Cancel is clicked during IP binding
+    sig_cancel    = Signal()
     sig_clear     = Signal()
-    sig_randomize = Signal()
     sig_refresh_interfaces = Signal()
+
+    # SNMP Trap signals (forwarded from embedded trap section)
+    sig_trap_apply    = Signal(str, int)   # (ip, port)
+    sig_trap_simulate = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._running = False
         self._binding = False
+        self._severity_counts: dict[str, int] = {s: 0 for s in SEVERITY_COLOR}
         self._build_ui()
         self._load_interfaces()
 
@@ -127,22 +104,22 @@ class SimulationPanel(QWidget):
         )
         tb_row = QHBoxLayout(title_bar)
         tb_row.setContentsMargins(8, 0, 8, 0)
-        title_lbl = QLabel("Simulation Control")
+        title_lbl = QLabel("SNMP Simulator")
         title_lbl.setFont(QFont("Arial", 9, QFont.Bold))
         title_lbl.setStyleSheet("color: #e6edf3; background: transparent; border: none;")
         tb_row.addWidget(title_lbl)
         tb_row.addStretch()
         layout.addWidget(title_bar)
 
-        # ── Content ───────────────────────────────────────────────────────
+        # ── Scrollable content ────────────────────────────────────────────
         content = QWidget()
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(6, 6, 6, 6)
         content_layout.setSpacing(8)
         layout.addWidget(content)
-        layout = content_layout   # redirect remaining additions to content
+        layout = content_layout  # redirect remaining additions
 
-        # ---- Status ----
+        # ── Status ────────────────────────────────────────────────────────
         status_row = QHBoxLayout()
         status_row.addWidget(QLabel("Status:"))
         self.status_badge = StatusBadge()
@@ -150,24 +127,21 @@ class SimulationPanel(QWidget):
         status_row.addStretch()
         layout.addLayout(status_row)
 
-        # ---- Network binding group ----
+        # ── Network binding group ──────────────────────────────────────────
         net_group = QGroupBox("Network Interface Binding")
         net_group.setStyleSheet(self._group_style())
         net_layout = QVBoxLayout(net_group)
         net_layout.setContentsMargins(6, 4, 6, 6)
         net_layout.setSpacing(4)
 
-        # Explanation micro-text
         hint = QLabel(
-            "Device IPs will be added to the selected adapter\n"
-            "so SNMPSim can listen on each IP:161."
+            "Device IPs will be added to the selected adapter"
         )
         hint.setFont(QFont("Arial", 8))
         hint.setStyleSheet("color: #8b949e;")
         hint.setWordWrap(True)
         net_layout.addWidget(hint)
 
-        # Interface combo + refresh button
         iface_row = QHBoxLayout()
         iface_row.setSpacing(4)
         self.iface_combo = QComboBox()
@@ -175,9 +149,6 @@ class SimulationPanel(QWidget):
         self.iface_combo.setMinimumWidth(100)
         self.iface_combo.setStyleSheet(self._combo_style())
         self.iface_combo.setPlaceholderText("Loading interfaces...")
-        self.iface_combo.setToolTip(
-            "Select the network adapter that device IPs will be added to"
-        )
         iface_row.addWidget(self.iface_combo, stretch=1)
 
         self.btn_refresh_ifaces = QPushButton("⟳")
@@ -189,7 +160,6 @@ class SimulationPanel(QWidget):
         iface_row.addWidget(self.btn_refresh_ifaces)
         net_layout.addLayout(iface_row)
 
-        # Subnet mask
         mask_row = QHBoxLayout()
         mask_label = QLabel("Subnet Mask:")
         mask_label.setFont(QFont("Arial", 9))
@@ -200,34 +170,35 @@ class SimulationPanel(QWidget):
         self.mask_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.mask_edit.setFont(QFont("Consolas", 9))
         self.mask_edit.setStyleSheet(self._lineedit_style())
-        self.mask_edit.setToolTip("Subnet mask applied when adding IPs via netsh")
         mask_row.addWidget(self.mask_edit, stretch=1)
         net_layout.addLayout(mask_row)
 
-        # Bound IPs info label
         self.bound_label = QLabel("IPs bound: 0")
         self.bound_label.setFont(QFont("Consolas", 8))
         self.bound_label.setStyleSheet("color: #3fb950;")
         net_layout.addWidget(self.bound_label)
-
         layout.addWidget(net_group)
 
-        # ---- Stats ----
-        stats_group = QGroupBox("Topology Stats")
+        # ── Active Devices ─────────────────────────────────────────────────
+        stats_group = QGroupBox("Active Devices")
         stats_group.setStyleSheet(self._group_style())
         stats_layout = QVBoxLayout(stats_group)
         stats_layout.setContentsMargins(6, 4, 6, 6)
         stats_layout.setSpacing(2)
-        self.devices_label = QLabel("Devices: 0")
-        self.links_label   = QLabel("Links:   0")
-        self.files_label   = QLabel("Files:   0")
-        for lbl in (self.devices_label, self.links_label, self.files_label):
+        self.lbl_switches      = QLabel("Switches:      0")
+        self.lbl_routers       = QLabel("Routers:       0")
+        self.lbl_firewalls     = QLabel("Firewalls:     0")
+        self.lbl_load_balancers = QLabel("Load Balancers: 0")
+        self.lbl_servers       = QLabel("Servers:       0")
+        self.lbl_total         = QLabel("Total:         0")
+        for lbl in (self.lbl_switches, self.lbl_routers, self.lbl_firewalls,
+                    self.lbl_load_balancers, self.lbl_servers, self.lbl_total):
             lbl.setFont(QFont("Consolas", 9))
             lbl.setStyleSheet("color: #e6edf3;")
             stats_layout.addWidget(lbl)
         layout.addWidget(stats_group)
 
-        # ---- Progress bar ----
+        # ── Progress bar ───────────────────────────────────────────────────
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
@@ -243,14 +214,14 @@ class SimulationPanel(QWidget):
         self.progress.hide()
         layout.addWidget(self.progress)
 
-        # ---- Action buttons ----
+        # ── Action buttons ─────────────────────────────────────────────────
         self.btn_generate = QPushButton("Generate Datasets")
         self.btn_generate.setStyleSheet(self._btn_generate_style())
         self.btn_generate.clicked.connect(self.sig_generate.emit)
         layout.addWidget(self.btn_generate)
 
         ss_row = QHBoxLayout()
-        self.btn_start = QPushButton("Start Simulator")
+        self.btn_start = QPushButton("Start SNMP Simulator")
         self.btn_start.setStyleSheet(self._btn_start_style())
         self.btn_start.clicked.connect(self.sig_start.emit)
         self.btn_start.setEnabled(False)
@@ -259,38 +230,118 @@ class SimulationPanel(QWidget):
         self.btn_stop.setStyleSheet(self._btn_stop_style())
         self.btn_stop.clicked.connect(self._on_stop_clicked)
         self.btn_stop.setEnabled(False)
-
         ss_row.addWidget(self.btn_start)
         ss_row.addWidget(self.btn_stop)
         layout.addLayout(ss_row)
 
-        self.btn_randomize = QPushButton("Randomize Metrics")
-        self.btn_randomize.setStyleSheet(self._btn_secondary_style())
-        self.btn_randomize.clicked.connect(self.sig_randomize.emit)
-        layout.addWidget(self.btn_randomize)
-
+        misc_row = QHBoxLayout()
         self.btn_clear = QPushButton("Clear Simulation")
         self.btn_clear.setStyleSheet(self._btn_secondary_style())
+        self.btn_clear.setEnabled(False)
         self.btn_clear.clicked.connect(self.sig_clear.emit)
-        layout.addWidget(self.btn_clear)
+        misc_row.addWidget(self.btn_clear)
+        layout.addLayout(misc_row)
 
-        # ---- Log console ----
-        log_group = QGroupBox("Console Output")
-        log_group.setStyleSheet(self._group_style())
-        log_layout = QVBoxLayout(log_group)
-        self.log_console = LogConsole()
-        log_layout.addWidget(self.log_console)
+        # ── SNMP Traps section ─────────────────────────────────────────────
+        traps_group = QGroupBox("SNMP Traps")
+        traps_group.setStyleSheet(self._group_style())
+        traps_layout = QVBoxLayout(traps_group)
+        traps_layout.setContentsMargins(6, 4, 6, 6)
+        traps_layout.setSpacing(4)
 
-        clr_btn = QPushButton("Clear Log")
-        clr_btn.setStyleSheet(self._btn_secondary_style())
-        clr_btn.clicked.connect(self.log_console.clear_log)
-        log_layout.addWidget(clr_btn)
+        # Receiver config row
+        recv_row = QHBoxLayout()
+        recv_row.setSpacing(4)
+        recv_row.addWidget(QLabel("IP:"))
+        self._trap_ip = QLineEdit("127.0.0.1")
+        self._trap_ip.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self._trap_ip.setStyleSheet(self._lineedit_style())
+        recv_row.addWidget(self._trap_ip, stretch=1)
+        recv_row.addWidget(QLabel("Port:"))
+        self._trap_port = QSpinBox()
+        self._trap_port.setRange(1, 65535)
+        self._trap_port.setValue(162)
+        self._trap_port.setFixedWidth(60)
+        self._trap_port.setStyleSheet(
+            "QSpinBox { background:#21262d; color:#e6edf3; "
+            "border:1px solid #30363d; border-radius:4px; padding:2px 4px; }"
+        )
+        recv_row.addWidget(self._trap_port)
+        trap_apply = QPushButton("Apply")
+        trap_apply.setFixedWidth(48)
+        trap_apply.setStyleSheet(self._btn_secondary_style())
+        trap_apply.clicked.connect(self._on_trap_apply)
+        recv_row.addWidget(trap_apply)
+        traps_layout.addLayout(recv_row)
 
-        layout.addWidget(log_group)
+        # Simulate button
+        self._trap_sim_btn = QPushButton("▶  Simulate Traps")
+        self._trap_sim_btn.setCheckable(True)
+        self._trap_sim_btn.setStyleSheet(self._btn_secondary_style())
+        self._trap_sim_btn.toggled.connect(self._on_trap_simulate_toggled)
+        traps_layout.addWidget(self._trap_sim_btn)
+
+        # Severity counter badges + clear
+        sev_row = QHBoxLayout()
+        sev_row.setSpacing(3)
+        self._sev_labels: dict[str, QLabel] = {}
+        for sev, color in SEVERITY_COLOR.items():
+            badge = QLabel("0")
+            badge.setAlignment(Qt.AlignCenter)
+            badge.setFixedWidth(32)
+            badge.setStyleSheet(
+                f"background:{color}; color:white; border-radius:3px;"
+                f" padding:1px 3px; font-weight:bold; font-size:10px;"
+            )
+            badge.setToolTip(sev.capitalize())
+            self._sev_labels[sev] = badge
+            sev_row.addWidget(badge)
+        sev_row.addStretch()
+        trap_clr = QPushButton("Clear")
+        trap_clr.setFixedWidth(46)
+        trap_clr.setStyleSheet(self._btn_secondary_style())
+        trap_clr.clicked.connect(self.clear_traps)
+        sev_row.addWidget(trap_clr)
+        traps_layout.addLayout(sev_row)
+
+        # Trap log table
+        self._trap_table = QTableWidget(0, 5)
+        self._trap_table.setHorizontalHeaderLabels(
+            ["Time", "Device", "IP", "Trap Type", "Details"]
+        )
+        hdr = self._trap_table.horizontalHeader()
+        hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(4, QHeaderView.Stretch)
+        self._trap_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self._trap_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self._trap_table.setAlternatingRowColors(True)
+        self._trap_table.verticalHeader().setVisible(False)
+        self._trap_table.setFont(QFont("Consolas", 8))
+        self._trap_table.setMinimumHeight(120)
+        self._trap_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._trap_table.setStyleSheet("""
+            QTableWidget {
+                background: #161b22; color: #e6edf3;
+                border: 1px solid #30363d;
+                alternate-background-color: #0d1117;
+                gridline-color: #30363d;
+            }
+            QHeaderView::section {
+                background: #21262d; color: #8b949e;
+                padding: 3px; border: none;
+                border-bottom: 1px solid #30363d;
+            }
+            QTableWidget::item:selected { background: #1f6feb; }
+        """)
+        traps_layout.addWidget(self._trap_table)
+        layout.addWidget(traps_group)
         layout.addStretch()
 
     # ------------------------------------------------------------------ #
-    #  Interface loading (background thread)                              #
+    #  Interface loading                                                   #
     # ------------------------------------------------------------------ #
 
     def _load_interfaces(self):
@@ -319,30 +370,28 @@ class SimulationPanel(QWidget):
         if not ifaces:
             self.iface_combo.addItem("(no adapters found)", None)
             return
-
         for name, label in ifaces:
             self.iface_combo.addItem(label, name)
-
-        # Restore previous selection if still present
         if prev:
             idx = self.iface_combo.findData(prev)
             if idx >= 0:
                 self.iface_combo.setCurrentIndex(idx)
 
     # ------------------------------------------------------------------ #
-    #  Public API                                                          #
+    #  Public API — SNMP simulator                                        #
     # ------------------------------------------------------------------ #
-
-    def log(self, msg: str, level: str = "info"):
-        self.log_console.append_log(msg, level)
 
     def set_status(self, status: str):
         self.status_badge.set_status(status)
 
-    def set_stats(self, devices: int, links: int, files: int = 0):
-        self.devices_label.setText(f"Devices: {devices}")
-        self.links_label.setText(f"Links:   {links}")
-        self.files_label.setText(f"Files:   {files}")
+    def set_device_counts(self, switches: int, routers: int, servers: int,
+                          firewalls: int = 0, load_balancers: int = 0):
+        self.lbl_switches.setText(f"Switches:       {switches}")
+        self.lbl_routers.setText(f"Routers:        {routers}")
+        self.lbl_firewalls.setText(f"Firewalls:      {firewalls}")
+        self.lbl_load_balancers.setText(f"Load Balancers: {load_balancers}")
+        self.lbl_servers.setText(f"Servers:        {servers}")
+        self.lbl_total.setText(f"Total:          {switches + routers + servers + firewalls + load_balancers}")
 
     def set_bound_count(self, count: int):
         if count > 0:
@@ -360,7 +409,6 @@ class SimulationPanel(QWidget):
             QTimer.singleShot(1500, self.progress.hide)
 
     def set_binding(self, binding: bool):
-        """Switch Stop button to Cancel (orange) while IP binding is in progress."""
         self._binding = binding
         if binding:
             self.btn_start.setEnabled(False)
@@ -370,7 +418,7 @@ class SimulationPanel(QWidget):
         else:
             self.btn_stop.setText("Stop")
             self.btn_stop.setStyleSheet(self._btn_stop_style())
-            self.btn_stop.setEnabled(False)   # set_simulator_running will re-enable if needed
+            self.btn_stop.setEnabled(False)
 
     def _on_stop_clicked(self):
         if self._binding:
@@ -389,16 +437,73 @@ class SimulationPanel(QWidget):
 
     def set_datasets_ready(self, ready: bool):
         self.btn_start.setEnabled(ready and not self._running)
+        self.btn_clear.setEnabled(ready)
 
     @property
     def selected_interface(self) -> str:
-        """The adapter name currently chosen in the dropdown (empty string if none)."""
         data = self.iface_combo.currentData()
         return data if data else ""
 
     @property
     def subnet_mask(self) -> str:
         return self.mask_edit.text().strip() or "255.255.255.0"
+
+    # ------------------------------------------------------------------ #
+    #  Public API — SNMP Traps                                            #
+    # ------------------------------------------------------------------ #
+
+    def add_trap_event(self, event: TrapEvent):
+        defn = event.defn
+        row  = self._trap_table.rowCount()
+        self._trap_table.insertRow(row)
+        bg = QColor(SEVERITY_COLOR.get(defn.severity, "#888"))
+        bg.setAlpha(45)
+        for col, text in enumerate([
+            event.timestamp.strftime("%H:%M:%S"),
+            event.device.name,
+            event.device.ip_address,
+            defn.display_name,
+            event.details,
+        ]):
+            item = QTableWidgetItem(text)
+            item.setBackground(bg)
+            if col == 3:
+                f = item.font(); f.setBold(True); item.setFont(f)
+            self._trap_table.setItem(row, col, item)
+        self._trap_table.scrollToBottom()
+        self._severity_counts[defn.severity] = (
+            self._severity_counts.get(defn.severity, 0) + 1
+        )
+        self._sev_labels[defn.severity].setText(
+            str(self._severity_counts[defn.severity])
+        )
+
+    def add_trap_error(self, msg: str):
+        row = self._trap_table.rowCount()
+        self._trap_table.insertRow(row)
+        item = QTableWidgetItem(msg)
+        item.setForeground(QColor("#e74c3c"))
+        self._trap_table.setItem(row, 4, item)
+        self._trap_table.scrollToBottom()
+
+    def clear_traps(self):
+        self._trap_table.setRowCount(0)
+        self._severity_counts = {s: 0 for s in SEVERITY_COLOR}
+        for lbl in self._sev_labels.values():
+            lbl.setText("0")
+
+    def set_simulating(self, active: bool):
+        self._trap_sim_btn.blockSignals(True)
+        self._trap_sim_btn.setChecked(active)
+        self._trap_sim_btn.setText("⏹  Stop Simulation" if active else "▶  Simulate Traps")
+        self._trap_sim_btn.blockSignals(False)
+
+    def _on_trap_apply(self):
+        self.sig_trap_apply.emit(self._trap_ip.text().strip(), self._trap_port.value())
+
+    def _on_trap_simulate_toggled(self, checked: bool):
+        self._trap_sim_btn.setText("⏹  Stop Simulation" if checked else "▶  Simulate Traps")
+        self.sig_trap_simulate.emit(checked)
 
     # ------------------------------------------------------------------ #
     #  Style helpers                                                       #

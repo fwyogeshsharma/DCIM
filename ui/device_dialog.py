@@ -38,7 +38,11 @@ VENDORS_BY_TYPE = {
         Vendor.SUPERMICRO,
         Vendor.CISCO_SYSTEMS,
         Vendor.IBM,
+    ],
+    DeviceType.FIREWALL: [
         Vendor.PALO_ALTO_NETWORKS,
+    ],
+    DeviceType.LOAD_BALANCER: [
         Vendor.F5_NETWORKS,
     ],
 }
@@ -107,6 +111,11 @@ class DeviceDialog(QDialog):
         self.port_spin.setRange(161, 65535)
         self.port_spin.setValue(161)
         net_form.addRow("SNMP Port:", self.port_spin)
+
+        self.gnmi_port_spin = QSpinBox()
+        self.gnmi_port_spin.setRange(1, 65535)
+        self.gnmi_port_spin.setValue(57400)
+        net_form.addRow("gNMI Port:", self.gnmi_port_spin)
 
         self.community_edit = QLineEdit()
         self.community_edit.setReadOnly(True)
@@ -203,6 +212,7 @@ class DeviceDialog(QDialog):
 
         self.ip_edit.setText(self.device.ip_address)
         self.port_spin.setValue(self.device.snmp_port)
+        self.gnmi_port_spin.setValue(self.device.gnmi_port)
         self.metrics_check.setChecked(self.device.metrics_enabled)
 
     # ------------------------------------------------------------------ #
@@ -238,6 +248,7 @@ class DeviceDialog(QDialog):
             "model_name":       model.name if model else "",
             "ip_address":       ip,
             "snmp_port":        self.port_spin.value(),
+            "gnmi_port":        self.gnmi_port_spin.value(),
             "snmp_community":   ip,
             "interface_groups": list(model.interface_groups) if model else [],
             "metrics_enabled":  self.metrics_check.isChecked(),

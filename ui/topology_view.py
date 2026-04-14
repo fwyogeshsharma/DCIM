@@ -42,6 +42,18 @@ DEVICE_COLORS = {
         "text": QColor("white"),
         "icon": "SRV",
     },
+    DeviceType.FIREWALL: {
+        "fill": QColor("#e67e22"),
+        "border": QColor("#784212"),
+        "text": QColor("white"),
+        "icon": "FW",
+    },
+    DeviceType.LOAD_BALANCER: {
+        "fill": QColor("#16a085"),
+        "border": QColor("#0e6655"),
+        "text": QColor("white"),
+        "icon": "LB",
+    },
 }
 
 NODE_W = 90
@@ -73,9 +85,10 @@ class DeviceNode(QGraphicsItem):
         self._edges: list = []
         self._faded: bool = False
 
-    def set_faded(self, faded: bool):
+    def set_faded(self, faded: bool, repaint: bool = True):
         self._faded = faded
-        self.update()
+        if repaint:
+            self.update()
 
     def type(self):
         return DeviceNode.Type
@@ -195,9 +208,10 @@ class LinkEdge(QGraphicsLineItem):
         self.setAcceptHoverEvents(True)
         self.adjust()
 
-    def set_faded(self, faded: bool):
+    def set_faded(self, faded: bool, repaint: bool = True):
         self._faded = faded
-        self.update()
+        if repaint:
+            self.update()
 
     def hoverEnterEvent(self, event):
         scene = self.scene()
@@ -363,11 +377,16 @@ class _LinkTooltip(QWidget):
 
     def show_for_node(self, device, global_pos: QPoint):
         self._name_lbl.setText(device.name)
+        mono = 'font-family:Consolas,monospace;'
         rows = [
-            ("Type",    device.device_type.value.capitalize()),
-            ("Vendor",  device.vendor.value),
-            ("IP",      f'<span style="font-family:Consolas,monospace;">{device.ip_address}</span>'),
-            ("Port",    str(device.snmp_port)),
+            ("Type",      device.device_type.value.capitalize()),
+            ("Vendor",    device.vendor.value),
+            ("Model",     device.model_name or "—"),
+            ("OS",        device.os_name),
+            ("Version",   device.os_version),
+            ("IP",        f'<span style="{mono}">{device.ip_address}</span>'),
+            ("SNMP Port", f'<span style="{mono}">{device.snmp_port}</span>'),
+            ("gNMI Port", f'<span style="{mono}">{device.gnmi_port}</span>'),
         ]
         lines = "".join(
             f'<span style="color:#8b949e;">{k}:</span>'
@@ -463,22 +482,25 @@ class TopologyScene(QGraphicsScene):
         if edge:
             edge.set_broken(broken)
 
-    def set_node_faded(self, device_id: str, faded: bool):
+    def set_node_faded(self, device_id: str, faded: bool, repaint: bool = True):
         node = self._nodes.get(device_id)
         if node:
-            node.set_faded(faded)
+            node.set_faded(faded, repaint=repaint)
 
-    def set_edge_faded(self, src_id: str, dst_id: str, faded: bool):
+    def set_edge_faded(self, src_id: str, dst_id: str, faded: bool, repaint: bool = True):
         key = tuple(sorted([src_id, dst_id]))
         edge = self._edges.get(key)
         if edge:
-            edge.set_faded(faded)
+            edge.set_faded(faded, repaint=repaint)
 
     def set_all_faded(self, faded: bool):
+        # Set flags on every item without triggering individual repaints,
+        # then issue a single scene-wide update — avoids O(N) dirty-region calls.
         for node in self._nodes.values():
-            node.set_faded(faded)
+            node.set_faded(faded, repaint=False)
         for edge in self._edges.values():
-            edge.set_faded(faded)
+            edge.set_faded(faded, repaint=False)
+        self.update()
 
     def mousePressEvent(self, event):
         if self._link_mode and event.button() == Qt.LeftButton:

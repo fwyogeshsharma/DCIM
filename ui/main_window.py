@@ -26,21 +26,27 @@ from core.device_manager import Device, DeviceManager, DeviceType, Vendor
 from core.device_models import DEVICE_MODELS
 from core.topology_engine import TopologyEngine
 from core.snmprec_generator import SNMPRecGenerator
+from core.gnmi_data_generator import GNMIDataGenerator
+from core.device_state_store import DeviceStateStore
 from core.ip_manager import IPManager
 from core.ip_binder import (
     add_ips_batch, remove_ips_batch, is_admin,
 )
 from simulator.snmpsim_controller import SNMPSimController
+from simulator.gnmi_controller import GNMIController
 from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
 from core.trap_engine import TrapEngine
 from ui.device_dialog import DeviceDialog
 from ui.topology_view import TopologyView
-from ui.simulation_panel import SimulationPanel
-from ui.trap_panel import TrapPanel
+from ui.snmp_panel import SNMPPanel
+from ui.gnmi_panel import GNMIPanel
+from ui.console_panel import ConsolePanel
 from ui.discovery_dialog import DiscoveryDialog
 
 
-DATASETS_DIR = "datasets"
+DATASETS_DIR      = "datasets"
+SNMP_DATASETS_DIR = os.path.join(DATASETS_DIR, "snmp")
+GNMI_DATASETS_DIR = os.path.join(DATASETS_DIR, "gnmi")
 TOPOLOGIES_DIR = "topologies"
 
 
@@ -57,7 +63,7 @@ def _default_model_name(device) -> str:
 class GeneratorWorker(QObject):
     progress = Signal(int, int)
     log      = Signal(str, str)
-    finished = Signal()   # no args – result stored in self.result
+    finished = Signal()   # no args – result stored in self.result / self.gnmi_result
     error    = Signal(str)
 
     def __init__(self, topology: TopologyEngine, output_dir: str):
@@ -67,21 +73,58 @@ class GeneratorWorker(QObject):
 
     def run(self):
         try:
-            gen = SNMPRecGenerator(self.output_dir)
-            devices = self.topology.get_all_devices()
-            total = len(devices)
-            generated = []
+            snmp_gen = SNMPRecGenerator(self.output_dir)
+            devices  = self.topology.get_all_devices()
+            total    = len(devices)
+            snmp_files  = []
             # Emit at most ~100 progress updates regardless of topology size.
-            # Emitting one signal per device (e.g. 1344 signals) floods the main
-            # thread's event queue and causes QBackingStore repaints to collide
-            # when the user interacts with the graph during generation.
             step = max(1, total // 100)
             for i, device in enumerate(devices):
-                fp = gen.generate_device(device, self.topology)
-                generated.append(fp)
+                fp = snmp_gen.generate_device(device, self.topology)
+                snmp_files.append(fp)
+                self.log.emit(
+                    f"[SNMP] {device.ip_address}  {device.device_type.value}  ({device.interface_count} ifaces)",
+                    "info"
+                )
+
                 if (i + 1) % step == 0 or i == total - 1:
                     self.progress.emit(i + 1, total)
-            self.result = generated
+
+            self.result = snmp_files
+            self.finished.emit()
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+# ------------------------------------------------------------------ #
+#  Background worker for standalone gNMI dataset generation           #
+# ------------------------------------------------------------------ #
+
+class _GNMIGenWorker(QObject):
+    progress = Signal(int, int)
+    finished = Signal()
+    error    = Signal(str)
+
+    def __init__(self, devices, topology: TopologyEngine, output_dir: str):
+        super().__init__()
+        self.devices    = devices
+        self.topology   = topology
+        self.output_dir = output_dir
+        self.result: list = []
+
+    def run(self):
+        try:
+            gnmi_gen = GNMIDataGenerator(self.output_dir)
+            files = []
+            total = len(self.devices)
+            step  = max(1, total // 100)
+            for i, device in enumerate(self.devices):
+                fp = gnmi_gen.generate_device(device, self.topology)
+                if fp:
+                    files.append(fp)
+                if (i + 1) % step == 0 or i == total - 1:
+                    self.progress.emit(i + 1, total)
+            self.result = files
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
@@ -331,19 +374,29 @@ class BulkAddDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("SNMP Network Topology Simulator")
+        self.setWindowTitle("dataCenter Simulator")
         self.setMinimumSize(1200, 750)
-        self._datasets_dir = DATASETS_DIR
-        self._topologies_dir = TOPOLOGIES_DIR
-        os.makedirs(self._datasets_dir, exist_ok=True)
+        self._datasets_dir      = DATASETS_DIR
+        self._snmp_datasets_dir = SNMP_DATASETS_DIR
+        self._gnmi_datasets_dir = GNMI_DATASETS_DIR
+        self._topologies_dir    = TOPOLOGIES_DIR
+        os.makedirs(self._snmp_datasets_dir, exist_ok=True)
+        os.makedirs(self._gnmi_datasets_dir, exist_ok=True)
         os.makedirs(self._topologies_dir, exist_ok=True)
 
         self.device_manager = DeviceManager()
         self.topology = TopologyEngine()
         self.ip_manager = IPManager()
-        self.snmpsim = SNMPSimController(self._datasets_dir)
+        self.snmpsim = SNMPSimController(self._snmp_datasets_dir)
+        self.gnmi = GNMIController(self._gnmi_datasets_dir)
+        self.state_store = DeviceStateStore(
+            self.device_manager, self.topology, self._snmp_datasets_dir,
+            tick_interval=30.0, snmp_sync_every=1,
+        )
+        self.gnmi.set_state_store(self.state_store)
         self._trap_engine = TrapEngine(self)
         self._generated_files: list = []
+        self._gnmi_files: list = []
         self._default_positions: dict = {}         # {device_id: (x, y)} — snapshot at load/template time
         self._current_layout_positions: dict = {}  # snapshot after each layout application
         self._algo_layout_active: bool = False  # True after an algo layout; drags no longer update default
@@ -353,13 +406,21 @@ class MainWindow(QMainWindow):
         self._index_worker: IndexWorker = None
         self._link_mode = False
 
-        # IP binding state
+        # SNMP IP binding state
         self._bound_ips: List[str] = []
         self._bound_interface: str = ""
         self._bind_thread: QThread = None
         self._bind_worker = None
         self._unbind_thread: QThread = None
         self._unbind_worker = None
+
+        # gNMI IP binding state (independent from SNMP)
+        self._gnmi_bound_ips: List[str] = []
+        self._gnmi_bound_interface: str = ""
+        self._gnmi_bind_thread: QThread = None
+        self._gnmi_bind_worker = None
+        self._gnmi_unbind_thread: QThread = None
+        self._gnmi_unbind_worker = None
 
         # Live topology discovery state
         self._live_discovery_thread: QThread = None
@@ -488,13 +549,11 @@ class MainWindow(QMainWindow):
         self._device_dock = dock
 
     def _build_right_panels(self):
-        """Single outer dock that holds both panels in an inner QSplitter.
-
-        Using one outer dock means the topology canvas absorbs all horizontal
-        resize — the inner splitter handle only redistributes between the two
-        panels, so stretching Sim Control never forces SNMP Traps to shrink.
+        """Single outer dock holding three panels in a horizontal QSplitter:
+        1. SNMP Simulator (controls + embedded SNMP Traps)
+        2. gNMI Simulator
+        3. Console (shared log)
         """
-        # ── Inner splitter ────────────────────────────────────────────────
         self._right_splitter = QSplitter(Qt.Horizontal)
         self._right_splitter.setChildrenCollapsible(True)
         self._right_splitter.setHandleWidth(3)
@@ -503,29 +562,37 @@ class MainWindow(QMainWindow):
             "QSplitter::handle:hover { background: #58a6ff; }"
         )
 
-        self._sim_panel = SimulationPanel()
+        # Panel 1 — SNMP Simulator + Traps
+        self._sim_panel = SNMPPanel()
         self._sim_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._sim_panel)
 
-        self._trap_panel = TrapPanel()
-        self._trap_panel.setMinimumWidth(260)
-        self._right_splitter.addWidget(self._trap_panel)
+        # Panel 2 — gNMI Simulator
+        self._gnmi_panel = GNMIPanel()
+        self._gnmi_panel.setMinimumWidth(240)
+        self._right_splitter.addWidget(self._gnmi_panel)
 
-        # Sim Control gets all extra space when outer dock is resized;
-        # SNMP Traps stays at its own preferred width.
+        # Panel 3 — Console
+        self._console_panel = ConsolePanel()
+        self._console_panel.setMinimumWidth(220)
+        self._right_splitter.addWidget(self._console_panel)
+
         self._right_splitter.setStretchFactor(0, 1)
-        self._right_splitter.setStretchFactor(1, 0)
-        self._right_splitter.setSizes([300, 300])
+        self._right_splitter.setStretchFactor(1, 1)
+        self._right_splitter.setStretchFactor(2, 1)
+        self._right_splitter.setSizes([300, 270, 250])
 
-        # ── Outer dock ────────────────────────────────────────────────────
+        # All three panels visible by default
+        self._gnmi_panel.setVisible(True)
+        self._console_panel.setVisible(True)
+
         self._right_dock = QDockWidget(self)
         self._right_dock.setObjectName("right_panels_dock")
         self._right_dock.setAllowedAreas(Qt.RightDockWidgetArea)
-        # Suppress the dock title bar entirely — toolbar buttons handle show/hide
         self._right_dock.setTitleBarWidget(QWidget())
         self._right_dock.setWidget(self._right_splitter)
         self.addDockWidget(Qt.RightDockWidgetArea, self._right_dock)
-        self.resizeDocks([self._right_dock], [300], Qt.Horizontal)
+        self.resizeDocks([self._right_dock], [560], Qt.Horizontal)
 
     def _build_right_toolbar(self):
         _TB_STYLE = """
@@ -566,66 +633,88 @@ class MainWindow(QMainWindow):
         tb.setOrientation(Qt.Vertical)
         tb.setStyleSheet(_TB_STYLE)
 
-        # ── Simulation Control ────────────────────────────────────────────
+        # ── SNMP Simulator ────────────────────────────────────────────────
         self._act_panel_sim = QAction("⚙", self)
         self._act_panel_sim.setCheckable(True)
         self._act_panel_sim.setChecked(True)
-        self._act_panel_sim.setToolTip("Simulation Control")
+        self._act_panel_sim.setToolTip("SNMP Simulator")
         self._act_panel_sim.toggled.connect(self._on_toggle_sim_panel)
         tb.addAction(self._act_panel_sim)
 
         tb.addSeparator()
 
-        # ── SNMP Traps ────────────────────────────────────────────────────
-        self._act_panel_traps = QAction("⚡", self)
-        self._act_panel_traps.setCheckable(True)
-        self._act_panel_traps.setChecked(False)
-        self._act_panel_traps.setEnabled(False)  # enabled only when simulator is running
-        self._act_panel_traps.setToolTip("SNMP Traps (start simulator first)")
-        self._act_panel_traps.toggled.connect(self._on_toggle_traps_panel)
-        tb.addAction(self._act_panel_traps)
+        # ── gNMI Simulator ────────────────────────────────────────────────
+        self._act_panel_gnmi = QAction("📡", self)
+        self._act_panel_gnmi.setCheckable(True)
+        self._act_panel_gnmi.setChecked(True)
+        self._act_panel_gnmi.setToolTip("gNMI Simulator")
+        self._act_panel_gnmi.toggled.connect(self._on_toggle_gnmi_panel)
+        tb.addAction(self._act_panel_gnmi)
 
-        # Start with only Simulation Control visible
-        self._trap_panel.setVisible(False)
+        tb.addSeparator()
 
-        # If the outer dock is closed (via float/close), uncheck both buttons
+        # ── Console ───────────────────────────────────────────────────────
+        self._act_panel_console = QAction("🖥", self)
+        self._act_panel_console.setCheckable(True)
+        self._act_panel_console.setChecked(True)
+        self._act_panel_console.setToolTip("Console")
+        self._act_panel_console.toggled.connect(self._on_toggle_console_panel)
+        tb.addAction(self._act_panel_console)
+
+        # Sync visibility with initial checked states (all on by default)
+        self._gnmi_panel.setVisible(True)
+        self._console_panel.setVisible(True)
+
         self._right_dock.visibilityChanged.connect(self._on_right_dock_visibility)
-
         self.addToolBar(Qt.RightToolBarArea, tb)
 
     # ── Panel toggle slots ─────────────────────────────────────────────────────
+
+    def _visible_panel_count(self) -> int:
+        return sum([
+            self._act_panel_sim.isChecked(),
+            self._act_panel_gnmi.isChecked(),
+            self._act_panel_console.isChecked(),
+        ])
+
+    def _resize_right_dock(self):
+        n = self._visible_panel_count()
+        target = max(270, n * 280)
+        QTimer.singleShot(0, lambda: self.resizeDocks(
+            [self._right_dock], [target], Qt.Horizontal
+        ))
 
     def _on_toggle_sim_panel(self, visible: bool):
         if visible:
             self._right_dock.show()
         self._sim_panel.setVisible(visible)
-        if not self._act_panel_sim.isChecked() and not self._act_panel_traps.isChecked():
+        if self._visible_panel_count() == 0:
             self._right_dock.hide()
         else:
-            both = self._act_panel_sim.isChecked() and self._act_panel_traps.isChecked()
-            target = 560 if both else 300
-            QTimer.singleShot(0, lambda: self.resizeDocks(
-                [self._right_dock], [target], Qt.Horizontal
-            ))
+            self._resize_right_dock()
 
-    def _on_toggle_traps_panel(self, visible: bool):
+    def _on_toggle_gnmi_panel(self, visible: bool):
         if visible:
             self._right_dock.show()
-        self._trap_panel.setVisible(visible)
-        if not self._act_panel_sim.isChecked() and not self._act_panel_traps.isChecked():
+        self._gnmi_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
             self._right_dock.hide()
         else:
-            # Defer resize until Qt finishes the layout pass triggered by setVisible.
-            # When only sim is visible keep the dock narrow; when both are shown expand.
-            target = 560 if visible else 300
-            QTimer.singleShot(0, lambda: self.resizeDocks(
-                [self._right_dock], [target], Qt.Horizontal
-            ))
+            self._resize_right_dock()
+
+    def _on_toggle_console_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+        self._console_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
+            self._right_dock.hide()
+        else:
+            self._resize_right_dock()
 
     def _on_right_dock_visibility(self, visible: bool):
-        """Outer dock hidden externally — uncheck both toolbar buttons."""
+        """Outer dock hidden externally — uncheck all toolbar buttons."""
         if not visible:
-            for btn in (self._act_panel_sim, self._act_panel_traps):
+            for btn in (self._act_panel_sim, self._act_panel_gnmi, self._act_panel_console):
                 btn.blockSignals(True)
                 btn.setChecked(False)
                 btn.blockSignals(False)
@@ -693,15 +782,20 @@ class MainWindow(QMainWindow):
 
         # Simulation
         sim_menu = menubar.addMenu("&Simulation")
-        self._act_generate = QAction("&Generate Datasets", self, shortcut="F5")
-        self._act_start    = QAction("&Start Simulator",   self, shortcut="F6")
-        self._act_stop     = QAction("S&top Simulator",    self, shortcut="F7")
-        self._act_clear    = QAction("&Clear Simulation",  self)
+        self._act_generate = QAction("&Generate Datasets",      self, shortcut="F5")
+        self._act_start    = QAction("&Start SNMP Simulator",   self, shortcut="F6")
+        self._act_stop     = QAction("S&top SNMP Simulator",    self, shortcut="F7")
+        self._act_clear    = QAction("&Clear Simulation",       self)
         self._act_discover = QAction("&Discover Topology via SNMP...", self, shortcut="F8")
+        self._act_gnmi_start = QAction("Start &gNMI Server",   self, shortcut="F9")
+        self._act_gnmi_stop  = QAction("Stop g&NMI Server",    self, shortcut="F10")
         sim_menu.addAction(self._act_generate)
         sim_menu.addSeparator()
         sim_menu.addAction(self._act_start)
         sim_menu.addAction(self._act_stop)
+        sim_menu.addSeparator()
+        sim_menu.addAction(self._act_gnmi_start)
+        sim_menu.addAction(self._act_gnmi_stop)
         sim_menu.addSeparator()
         sim_menu.addAction(self._act_clear)
         sim_menu.addSeparator()
@@ -740,7 +834,26 @@ class MainWindow(QMainWindow):
         self._sim_panel.sig_stop.connect(self._stop_simulator)
         self._sim_panel.sig_cancel.connect(self._cancel_binding)
         self._sim_panel.sig_clear.connect(self._clear_simulation)
-        self._sim_panel.sig_randomize.connect(self._randomize_metrics)
+        self._gnmi_panel.sig_generate.connect(self._generate_gnmi_datasets)
+        self._gnmi_panel.sig_gnmi_start.connect(self._start_gnmi_server)
+        self._gnmi_panel.sig_gnmi_stop.connect(self._stop_gnmi_server)
+        self._gnmi_panel.sig_clear.connect(self._clear_gnmi_data)
+        self._gnmi_panel.sig_proxy_toggle.connect(self._on_gnmi_proxy_toggle)
+
+        # gNMI menu actions
+        self._act_gnmi_start.triggered.connect(self._start_gnmi_server)
+        self._act_gnmi_stop.triggered.connect(self._stop_gnmi_server)
+
+        # gNMI controller callbacks
+        self.gnmi.set_log_callback(
+            lambda msg: self._log_queue.put(("log_gnmi", msg, "info"))
+        )
+        self.gnmi.set_status_callback(
+            lambda s: self._log_queue.put(("gnmi_status", s))
+        )
+        self.gnmi.set_ready_callback(
+            lambda: self._log_queue.put(("gnmi_ready",))
+        )
 
         # SNMPSim callbacks — push into a queue; main-thread timer drains it.
         # Using a queue instead of direct signal emission prevents crashes when
@@ -755,11 +868,11 @@ class MainWindow(QMainWindow):
             lambda: self._log_queue.put(("snmpsim_ready",))
         )
 
-        # Trap panel ↔ trap engine
-        self._trap_panel.sig_apply.connect(self._trap_engine.configure)
-        self._trap_panel.sig_simulate.connect(self._on_trap_simulate)
-        self._trap_engine.trap_sent.connect(self._trap_panel.add_event)
-        self._trap_engine.trap_error.connect(self._trap_panel.add_error)
+        # Trap section (embedded in SNMPPanel) ↔ trap engine
+        self._sim_panel.sig_trap_apply.connect(self._trap_engine.configure)
+        self._sim_panel.sig_trap_simulate.connect(self._on_trap_simulate)
+        self._trap_engine.trap_sent.connect(self._sim_panel.add_trap_event)
+        self._trap_engine.trap_error.connect(self._sim_panel.add_trap_error)
 
         # Topology scene signals
         scene = self._topology_view.topology_scene
@@ -793,7 +906,7 @@ class MainWindow(QMainWindow):
                 border-bottom: 1px solid #30363d;
             }
             QStatusBar { background: #161b22; color: #8b949e; }
-            SimulationPanel { background: #161b22; }
+            SNMPPanel { background: #161b22; }
             QGroupBox {
                 color: #8b949e;
                 border: 1px solid #30363d;
@@ -864,7 +977,7 @@ class MainWindow(QMainWindow):
             self._refresh_device_table()
             self._refresh_stats()
             self._sync_trap_devices()
-            self._sim_panel.log(f"Added device: {device.name} ({device.ip_address})", "success")
+            self._console_panel.log(f"Added device: {device.name} ({device.ip_address})", "success")
 
     def _edit_device(self, device_id: str):
         device = self.device_manager.get_device(device_id)
@@ -882,7 +995,7 @@ class MainWindow(QMainWindow):
             if node:
                 node.device = device
                 node.update()
-            self._sim_panel.log(f"Updated device: {device.name}", "info")
+            self._console_panel.log(f"Updated device: {device.name}", "info")
 
     def _remove_device(self, device_id: str):
         device = self.device_manager.get_device(device_id)
@@ -905,7 +1018,7 @@ class MainWindow(QMainWindow):
             self._refresh_device_table()
             self._refresh_stats()
             self._sync_trap_devices()
-            self._sim_panel.log(f"Removed device: {device.name}", "warning")
+            self._console_panel.log(f"Removed device: {device.name}", "warning")
 
     def _remove_selected(self):
         selected_rows = set(idx.row() for idx in self._device_table.selectedIndexes())
@@ -943,7 +1056,7 @@ class MainWindow(QMainWindow):
             self._refresh_device_table()
             self._refresh_stats()
             self._sync_trap_devices()
-            self._sim_panel.log(
+            self._console_panel.log(
                 f"Added {len(devices)} devices ({values['device_type'].value}s)",
                 "success"
             )
@@ -1117,7 +1230,7 @@ class MainWindow(QMainWindow):
             src = self.device_manager.get_device(src_id)
             dst = self.device_manager.get_device(dst_id)
             if src and dst:
-                self._sim_panel.log(f"Linked: {src.name} ↔ {dst.name}", "success")
+                self._console_panel.log(f"Linked: {src.name} ↔ {dst.name}", "success")
             self._refresh_stats()
 
     def _on_device_moved(self, device_id: str, x: float, y: float):
@@ -1202,12 +1315,12 @@ class MainWindow(QMainWindow):
             if broken:
                 self.topology.restore_link(src_id, dst_id)
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, False)
-                self._sim_panel.log(f"Link restored: {src.name} <-> {dst.name}", "success")
+                self._console_panel.log(f"Link restored: {src.name} <-> {dst.name}", "success")
                 trap_type = TrapType.LINK_UP
             else:
                 self.topology.break_link(src_id, dst_id)
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
-                self._sim_panel.log(f"Link broken: {src.name} <-> {dst.name}", "error")
+                self._console_panel.log(f"Link broken: {src.name} <-> {dst.name}", "error")
                 trap_type = TrapType.LINK_DOWN
             if self._sim_panel._running:
                 for dev, peer_id in ((src, dst_id), (dst, src_id)):
@@ -1237,7 +1350,7 @@ class MainWindow(QMainWindow):
                     self, "No Devices",
                     "Add devices to the topology before simulating traps."
                 )
-                self._trap_panel.set_simulating(False)
+                self._sim_panel.set_simulating(False)
                 return
             self._trap_engine.start_simulation(devices)
         else:
@@ -1251,8 +1364,12 @@ class MainWindow(QMainWindow):
         device = self.device_manager.get_device(device_id)
         if not device:
             return
-        gen = SNMPRecGenerator(output_dir="datasets")
-        gen.generate_device(device, self.topology)
+        # SNMP
+        SNMPRecGenerator(output_dir=self._snmp_datasets_dir).generate_device(device, self.topology)
+        # gNMI
+        if device.device_type in (DeviceType.SWITCH, DeviceType.ROUTER):
+            GNMIDataGenerator(self._gnmi_datasets_dir).regenerate(device, self.topology)
+            self.gnmi.reload_device(device.ip_address)
 
     def _show_device_info(self, device_id: str):
         device = self.device_manager.get_device(device_id)
@@ -1281,8 +1398,11 @@ class MainWindow(QMainWindow):
             f"Type:        {device.device_type.value}\n"
             f"Vendor:      {device.vendor.value}\n"
             f"Model:       {device.model_name or _default_model_name(device)}\n"
+            f"OS:          {device.os_name}\n"
+            f"OS Version:  {device.os_version}\n"
             f"IP:          {device.ip_address}\n"
             f"SNMP Port:   {device.snmp_port}\n"
+            f"gNMI Port:   {device.gnmi_port}\n"
             f"Community:   {device.snmp_community}\n"
             f"Interfaces:  {device.interface_count}\n"
             f"CPU:         {device.cpu_usage}%\n"
@@ -1339,7 +1459,7 @@ class MainWindow(QMainWindow):
                                 "Stop the simulator before regenerating datasets.")
             return
 
-        self._sim_panel.log("Starting dataset generation...", "info")
+        self._console_panel.log("Starting dataset generation...", "info")
         self._sim_panel.set_status("Generating...")
         self._sim_panel.show_progress(0, self.topology.node_count())
 
@@ -1354,12 +1474,12 @@ class MainWindow(QMainWindow):
         # mouse input until the workers finish.
         self._topology_view.setInteractive(False)
 
-        self._worker = GeneratorWorker(self.topology, self._datasets_dir)
+        self._worker = GeneratorWorker(self.topology, self._snmp_datasets_dir)
         self._worker_thread = QThread()
         self._worker.moveToThread(self._worker_thread)
         self._worker_thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._on_gen_progress)
-        self._worker.log.connect(self._sim_panel.log)
+        self._worker.log.connect(self._console_panel.log)
         self._worker.finished.connect(self._on_gen_finished)
         self._worker.error.connect(self._on_gen_error)
         self._worker_thread.start()
@@ -1372,15 +1492,14 @@ class MainWindow(QMainWindow):
         self._worker_thread.wait()
         files = self._worker.result
         self._generated_files = files
-        self._sim_panel.log(f"Generated {len(files)} dataset files in '{self._datasets_dir}/'", "success")
-        self._sim_panel.set_stats(
-            self.topology.node_count(),
-            self.topology.edge_count(),
-            len(files),
+        self._console_panel.log(
+            f"[SNMP] {len(files)} .snmprec files generated",
+            "success"
         )
+        self._refresh_stats()
         # Pre-build snmpsim indexes now so simulator starts instantly
         self._sim_panel.set_status("Building indexes…")
-        self._sim_panel.log("Pre-building SNMP indexes (parallel)…", "info")
+        self._console_panel.log("Pre-building SNMP indexes (parallel)…", "info")
         self._sim_panel.show_progress(0, len(files))
 
         self._index_worker = IndexWorker(self.snmpsim, self.snmpsim.datasets_dir)
@@ -1397,24 +1516,26 @@ class MainWindow(QMainWindow):
     def _on_index_finished(self, count: int):
         self._index_thread.quit()
         self._index_thread.wait()
-        self._sim_panel.log(f"Indexes built for {count} datasets — simulator will start instantly.", "success")
+        self._console_panel.log(f"Indexes built for {count} datasets — simulator will start instantly.", "success")
         self._sim_panel.set_status("Datasets ready")
         self._sim_panel.set_datasets_ready(True)
+        self._gnmi_panel.set_datasets_ready(bool(self._gnmi_files))
         self._topology_view.setInteractive(True)
 
     def _on_index_error(self, error: str):
         self._index_thread.quit()
         self._index_thread.wait()
-        self._sim_panel.log(f"Index pre-build warning: {error}", "warning")
+        self._console_panel.log(f"Index pre-build warning: {error}", "warning")
         # Still mark datasets ready — snmpsim will build indexes itself on start
         self._sim_panel.set_status("Datasets ready")
         self._sim_panel.set_datasets_ready(True)
+        self._gnmi_panel.set_datasets_ready(bool(self._gnmi_files))
         self._topology_view.setInteractive(True)
 
     def _on_gen_error(self, error: str):
         self._worker_thread.quit()
         self._worker_thread.wait()
-        self._sim_panel.log(f"Generation error: {error}", "error")
+        self._console_panel.log(f"Generation error: {error}", "error")
         self._sim_panel.set_status("Error")
         self._topology_view.setInteractive(True)
 
@@ -1456,7 +1577,7 @@ class MainWindow(QMainWindow):
         device_ips = [d.ip_address for d in self.device_manager.get_all_devices()]
         mask = self._sim_panel.subnet_mask
 
-        self._sim_panel.log(
+        self._console_panel.log(
             f"Binding {len(device_ips)} IPs to interface '{interface}'...", "info"
         )
         self._sim_panel.set_status("Binding IPs...")
@@ -1469,7 +1590,7 @@ class MainWindow(QMainWindow):
         self._bind_worker.moveToThread(self._bind_thread)
         self._bind_thread.started.connect(self._bind_worker.run)
         self._bind_worker.progress.connect(self._on_bind_progress)
-        self._bind_worker.log.connect(self._sim_panel.log)
+        self._bind_worker.log.connect(self._console_panel.log)
         self._bind_worker.finished.connect(self._on_bind_finished)
         self._bind_worker.error.connect(self._on_bind_error)
         self._bind_thread.start()
@@ -1487,7 +1608,7 @@ class MainWindow(QMainWindow):
     def _on_cancel_unbind_finished(self):
         self._unbind_thread.quit()
         self._unbind_thread.wait()
-        self._sim_panel.log("Partial IPs removed.", "success")
+        self._console_panel.log("Partial IPs removed.", "success")
         self._sim_panel.set_status("Cancelled")
         self._sim_panel.set_datasets_ready(True)
 
@@ -1499,7 +1620,7 @@ class MainWindow(QMainWindow):
         if self._bind_worker.cancelled:
             partial_ips = self._bind_worker.result  # IPs bound before cancellation
             if partial_ips:
-                self._sim_panel.log(
+                self._console_panel.log(
                     f"Binding cancelled — removing {len(partial_ips)} partially bound IP(s)…",
                     "warning",
                 )
@@ -1509,12 +1630,12 @@ class MainWindow(QMainWindow):
                 self._unbind_worker.moveToThread(self._unbind_thread)
                 self._unbind_thread.started.connect(self._unbind_worker.run)
                 self._unbind_worker.progress.connect(self._sim_panel.show_progress)
-                self._unbind_worker.log.connect(self._sim_panel.log)
+                self._unbind_worker.log.connect(self._console_panel.log)
                 self._unbind_worker.finished.connect(self._on_cancel_unbind_finished)
                 self._sim_panel.show_progress(0, len(partial_ips))
                 self._unbind_thread.start()
             else:
-                self._sim_panel.log("IP binding cancelled — no IPs to clean up.", "warning")
+                self._console_panel.log("IP binding cancelled — no IPs to clean up.", "warning")
                 self._sim_panel.set_status("Cancelled")
                 self._sim_panel.set_datasets_ready(True)
             return
@@ -1524,29 +1645,32 @@ class MainWindow(QMainWindow):
         self._sim_panel.set_bound_count(len(bound_ips))
 
         if not bound_ips:
-            self._sim_panel.log("No IPs were bound — aborting simulator start.", "error")
+            self._console_panel.log("No IPs were bound — aborting simulator start.", "error")
             self._sim_panel.set_status("Error: no IPs bound")
             self._sim_panel.set_datasets_ready(True)
             return
 
         failed = len(self.device_manager.get_all_devices()) - len(bound_ips)
         if failed:
-            self._sim_panel.log(
+            self._console_panel.log(
                 f"Warning: {failed} IP(s) could not be bound.", "warning"
             )
 
-        self._sim_panel.log(
+        self._console_panel.log(
             f"Bound {len(bound_ips)} IPs. Launching SNMPSim on port 161...", "success"
         )
         ok = self.snmpsim.start(device_ips=bound_ips, port=161)
         if ok:
+            self.state_store.set_log_callback(self._console_panel.log)
+            self.state_store.start()
+            self.state_store.enable_snmp_sync(self.snmpsim)
             # Process launched — show stop button but keep traps disabled until
             # snmpsim logs "Listening at UDP/IPv4 endpoint" (ready callback).
             self._sim_panel.set_simulator_running(True)
             self._status_label.setText(
                 f"SNMPSim starting — building indexes… ({len(bound_ips)} devices)"
             )
-            self._sim_panel.log(
+            self._console_panel.log(
                 "SNMPSim is indexing datasets — devices will respond once 'Running' is shown.",
                 "info"
             )
@@ -1558,22 +1682,36 @@ class MainWindow(QMainWindow):
         self._bind_thread.quit()
         self._bind_thread.wait()
         self._sim_panel.set_binding(False)
-        self._sim_panel.log(f"IP bind error: {error}", "error")
+        self._console_panel.log(f"IP bind error: {error}", "error")
         self._sim_panel.set_status("Error")
         self._sim_panel.set_datasets_ready(True)
 
     def _on_snmpsim_ready(self):
         """Called (via queue) when SNMPSim logs its 'Listening at UDP/IPv4 endpoint' line."""
         n_bound = len(self._bound_ips)
-        self._act_panel_traps.setEnabled(True)
-        self._act_panel_traps.setToolTip("SNMP Traps")
         self._status_label.setText(
             f"SNMPSim running — {n_bound} devices — PID {self.snmpsim.get_pid()}"
         )
-        self._sim_panel.log("SNMPSim is ready — devices are now responding to SNMP polls.", "success")
+        self._console_panel.log("SNMPSim is ready — devices are now responding to SNMP polls.", "success")
 
         # Run one SNMP topology discovery scan as soon as the simulator is ready.
         self._start_live_discovery()
+
+    def _on_gnmi_ready(self):
+        """Called (via queue) when gNMI controller signals ready."""
+        counts = self.gnmi.target_counts()
+        self._gnmi_panel.set_gnmi_running(True)
+        self._gnmi_panel.set_gnmi_status("Running")
+        self._gnmi_panel.set_gnmi_targets(
+            counts.get("switch", 0), counts.get("router", 0)
+        )
+        n_direct = self.gnmi.get_per_device_count()
+        self._console_panel.log_gnmi(
+            f"[gNMI] Simulation ready — "
+            f"{counts.get('switch', 0)} switches, {counts.get('router', 0)} routers"
+            + (f" | {n_direct} direct server(s)" if n_direct else ""),
+            "success"
+        )
 
     def _start_live_discovery(self):
         """Launch a background SNMP discovery scan if one is not already running."""
@@ -1616,17 +1754,21 @@ class MainWindow(QMainWindow):
             return
         scene = self._topology_view.topology_scene
         q = self._live_discovery_worker.link_queue
+        changed = False
         while not q.empty():
             try:
                 device_id = q.get_nowait()
             except Exception:
                 break
             self._discovered_devices.add(device_id)
-            scene.set_node_faded(device_id, False)
-            # Un-fade every edge whose other endpoint has already been polled
+            # Set flags without per-item repaints; one scene.update() at the end.
+            scene.set_node_faded(device_id, False, repaint=False)
             for neighbor_id in self._device_adjacency.get(device_id, ()):
                 if neighbor_id in self._discovered_devices:
-                    scene.set_edge_faded(device_id, neighbor_id, False)
+                    scene.set_edge_faded(device_id, neighbor_id, False, repaint=False)
+            changed = True
+        if changed:
+            scene.update()  # single repaint covering all changes this tick
 
     def _on_live_discovery_done(self, result):
         """Finalize the graph after all devices have been scanned."""
@@ -1642,15 +1784,22 @@ class MainWindow(QMainWindow):
 
         scene = self._topology_view.topology_scene
         scene.set_discovery_running(False)
-        # Confirmed links: un-faded (safety pass — already done live, but ensures correctness)
+        # Batch all flag changes, then a single repaint at the end.
         for src_id, dst_id in result.matched:
-            scene.set_edge_faded(src_id, dst_id, False)
-            scene.set_node_faded(src_id, False)
-            scene.set_node_faded(dst_id, False)
-        # Missing links: un-fade so they're visible, but mark broken (red) to flag as missing
+            scene.set_edge_faded(src_id, dst_id, False, repaint=False)
+            scene.set_node_faded(src_id, False, repaint=False)
+            scene.set_node_faded(dst_id, False, repaint=False)
         for src_id, dst_id in result.missing:
-            scene.set_edge_faded(src_id, dst_id, False)
-            scene.set_edge_broken(src_id, dst_id, True)
+            scene.set_edge_faded(src_id, dst_id, False, repaint=False)
+            scene.set_edge_broken(src_id, dst_id, True)   # set_edge_broken has its own update()
+        scene.update()
+
+        switches       = len(self.device_manager.get_devices_by_type(DeviceType.SWITCH))
+        routers        = len(self.device_manager.get_devices_by_type(DeviceType.ROUTER))
+        servers        = len(self.device_manager.get_devices_by_type(DeviceType.SERVER))
+        firewalls      = len(self.device_manager.get_devices_by_type(DeviceType.FIREWALL))
+        load_balancers = len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER))
+        self._sim_panel.set_device_counts(switches, routers, servers, firewalls, load_balancers)
 
         matched = len(result.matched)
         missing = len(result.missing)
@@ -1660,14 +1809,14 @@ class MainWindow(QMainWindow):
                 f"SNMPSim running — {n_bound} devices — "
                 f"SNMP: {matched} links OK, {missing} missing"
             )
-            self._sim_panel.log(
+            self._console_panel.log(
                 f"Live discovery: {matched} matched, {missing} missing links.", "warn"
             )
         else:
             self._status_label.setText(
                 f"SNMPSim running — {n_bound} devices — SNMP: all {matched} links OK"
             )
-            self._sim_panel.log(
+            self._console_panel.log(
                 f"Live discovery: all {matched} links confirmed via SNMP.", "success"
             )
 
@@ -1682,7 +1831,14 @@ class MainWindow(QMainWindow):
             self._live_discovery_thread.quit()
             self._live_discovery_thread.wait()
         self._topology_view.topology_scene.set_all_faded(False)
-        self._sim_panel.log(f"Live discovery error: {error}", "error")
+        self._console_panel.log(f"Live discovery error: {error}", "error")
+        # Simulator is running even though discovery failed — show device counts
+        switches       = len(self.device_manager.get_devices_by_type(DeviceType.SWITCH))
+        routers        = len(self.device_manager.get_devices_by_type(DeviceType.ROUTER))
+        servers        = len(self.device_manager.get_devices_by_type(DeviceType.SERVER))
+        firewalls      = len(self.device_manager.get_devices_by_type(DeviceType.FIREWALL))
+        load_balancers = len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER))
+        self._sim_panel.set_device_counts(switches, routers, servers, firewalls, load_balancers)
 
     def _stop_simulator(self):
         # Stop any in-flight live discovery scan
@@ -1701,46 +1857,280 @@ class MainWindow(QMainWindow):
         scene.set_all_faded(True)
 
         self.snmpsim.stop()
+        self.state_store.disable_snmp_sync()
+        self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
-        # Collapse and disable the Traps panel
-        self._act_panel_traps.blockSignals(True)
-        self._act_panel_traps.setChecked(False)
-        self._act_panel_traps.blockSignals(False)
-        self._trap_panel.setVisible(False)
         self._trap_engine.stop_simulation()
-        self._trap_panel.set_simulating(False)
-        self._act_panel_traps.setEnabled(False)
-        self._act_panel_traps.setToolTip("SNMP Traps (start simulator first)")
+        self._sim_panel.set_simulating(False)
         if not self._act_panel_sim.isChecked():
             self._right_dock.hide()
-        self._status_label.setText("Removing bound IPs...")
-
-        if self._bound_ips and self._bound_interface:
-            self._sim_panel.log(
-                f"Removing {len(self._bound_ips)} IPs from '{self._bound_interface}'...",
-                "info",
-            )
-            self._sim_panel.set_status("Removing IPs...")
-            self._unbind_worker = IPUnbindWorker(self._bound_interface, list(self._bound_ips))
-            self._unbind_thread = QThread()
-            self._unbind_worker.moveToThread(self._unbind_thread)
-            self._unbind_thread.started.connect(self._unbind_worker.run)
-            self._unbind_worker.log.connect(self._sim_panel.log)
-            self._unbind_worker.finished.connect(self._on_unbind_finished)
-            self._unbind_thread.start()
-        else:
-            self._status_label.setText("Ready")
-            self._sim_panel.set_status("Stopped")
-
-    def _on_unbind_finished(self):
-        self._unbind_thread.quit()
-        self._unbind_thread.wait()
-        self._bound_ips = []
-        self._bound_interface = ""
-        self._sim_panel.set_bound_count(0)
+        # IP bindings are intentionally kept so the user can restart quickly
+        # without waiting for rebind.  Use Clear Simulation to release IPs.
         self._sim_panel.set_status("Stopped")
-        self._status_label.setText("Ready")
-        self._sim_panel.log("All IPs removed from interface.", "info")
+        self._status_label.setText("Stopped")
+
+    # ------------------------------------------------------------------ #
+    #  gNMI Dataset generation                                            #
+    # ------------------------------------------------------------------ #
+
+    def _generate_gnmi_datasets(self):
+        if self.topology.node_count() == 0:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "No Devices",
+                                "Add devices to the topology first.")
+            return
+
+        devices = [
+            d for d in self.device_manager.get_all_devices()
+            if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
+        ]
+        if not devices:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "No Targets",
+                                "No switches or routers in topology — nothing to generate.")
+            return
+
+        self._gnmi_panel.set_generating(True, f"Generating 0 / {len(devices)}…")
+        self._console_panel.log_gnmi(
+            f"Generating gNMI datasets for {len(devices)} devices…", "info"
+        )
+
+        # Run in a background thread so the UI stays responsive.
+        self._gnmi_gen_worker = _GNMIGenWorker(
+            devices, self.topology, self._gnmi_datasets_dir
+        )
+        self._gnmi_gen_thread = QThread(self)
+        self._gnmi_gen_worker.moveToThread(self._gnmi_gen_thread)
+        self._gnmi_gen_thread.started.connect(self._gnmi_gen_worker.run)
+        self._gnmi_gen_worker.progress.connect(self._on_gnmi_gen_progress)
+        self._gnmi_gen_worker.finished.connect(self._on_gnmi_gen_finished)
+        self._gnmi_gen_worker.error.connect(self._on_gnmi_gen_error)
+        self._gnmi_gen_thread.start()
+
+    def _on_gnmi_gen_progress(self, current: int, total: int):
+        self._gnmi_panel.set_generating(True, f"Generating {current} / {total}…")
+
+    def _on_gnmi_gen_finished(self):
+        self._gnmi_gen_thread.quit()
+        self._gnmi_gen_thread.wait()
+        files = self._gnmi_gen_worker.result
+        self._gnmi_files = files
+        self._gnmi_panel.set_generating(False)
+        self._gnmi_panel.set_datasets_ready(bool(files))
+        self._console_panel.log_gnmi(
+            f"[gNMI] {len(files)} datasets generated.", "success"
+        )
+
+    def _on_gnmi_gen_error(self, error: str):
+        self._gnmi_gen_thread.quit()
+        self._gnmi_gen_thread.wait()
+        self._gnmi_panel.set_generating(False)
+        self._console_panel.log_gnmi(f"gNMI generation error: {error}", "error")
+
+    # ------------------------------------------------------------------ #
+    #  gNMI Server start / stop                                            #
+    # ------------------------------------------------------------------ #
+
+    def _start_gnmi_server(self):
+        if self.topology.node_count() == 0:
+            QMessageBox.warning(self, "No Devices",
+                                "Generate datasets first — no devices in topology.")
+            return
+        if not self._gnmi_files and not self._generated_files:
+            reply = QMessageBox.question(
+                self, "No Datasets",
+                "No datasets generated yet. Generate now?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply == QMessageBox.Yes:
+                self._generate_datasets()
+            return
+
+        if self.gnmi.is_running():
+            self._console_panel.log_gnmi("[gNMI] Server is already running.", "info")
+            return
+
+        port      = self._gnmi_panel.gnmi_port
+        interface = self._gnmi_panel.selected_interface
+
+        if not interface:
+            QMessageBox.warning(
+                self, "No Interface Selected",
+                "Select a network interface in the 'Network Interface Binding' "
+                "section before starting.\n"
+                "Device IPs must be bound to an adapter for gNMI polling to work."
+            )
+            return
+
+        self._gnmi_panel.set_gnmi_status("Starting…")
+        self._gnmi_panel.set_gnmi_running(False)
+        self._gnmi_panel.set_interface_locked(True)
+
+        # If an interface is selected, always bind gNMI's own IPs to it —
+        # even if SNMP has already bound the same IPs to its adapter.
+        # gRPC needs the bind to go through gNMI's selected adapter to work
+        # reliably on Windows; relying on SNMP's netsh pass is not sufficient.
+        all_device_ips = [
+            d.ip_address for d in self.device_manager.get_all_devices()
+            if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
+        ]
+        # Only skip IPs that gNMI itself has already bound (not SNMP-bound ones).
+        gnmi_bound = set(self._gnmi_bound_ips)
+        ips_to_bind = [ip for ip in all_device_ips if ip not in gnmi_bound]
+        needs_bind = bool(interface and ips_to_bind and is_admin())
+        already_bound = set(self._bound_ips) | gnmi_bound
+        if needs_bind:
+            mask = self._gnmi_panel.subnet_mask
+            self._gnmi_bound_interface = interface
+            self._console_panel.log_gnmi(
+                f"[gNMI] Binding {len(ips_to_bind)} IPs to '{interface}'…", "info")
+            self._gnmi_bind_worker = IPBindWorker(interface, ips_to_bind, mask)
+            self._gnmi_bind_thread = QThread()
+            self._gnmi_bind_worker.moveToThread(self._gnmi_bind_thread)
+            self._gnmi_bind_thread.started.connect(self._gnmi_bind_worker.run)
+            self._gnmi_bind_worker.log.connect(self._console_panel.log_gnmi)
+            self._gnmi_bind_worker.finished.connect(self._on_gnmi_bind_finished)
+            self._gnmi_bind_worker.error.connect(
+                lambda e: self._console_panel.log_gnmi(f"[gNMI] Bind error: {e}", "error"))
+            self._gnmi_bind_thread.start()
+        else:
+            # No interface selected or IPs already gNMI-bound — start directly.
+            # Still apply a short delay so gRPC sockets have time to activate.
+            self._console_panel.log_gnmi("[gNMI] Waiting for IPs to activate…", "info")
+            QTimer.singleShot(2000, lambda: self._do_start_gnmi_server(list(already_bound), port))
+
+    def _on_gnmi_bind_finished(self):
+        self._gnmi_bind_thread.quit()
+        self._gnmi_bind_thread.wait()
+        self._gnmi_bound_ips = self._gnmi_bind_worker.result
+        self._gnmi_panel.set_bound_count(len(self._gnmi_bound_ips))
+        if self._gnmi_bound_ips:
+            self._console_panel.log_gnmi(
+                f"[gNMI] {len(self._gnmi_bound_ips)} IPs bound.", "success")
+        port      = self._gnmi_panel.gnmi_port
+        all_bound = list(set(self._bound_ips) | set(self._gnmi_bound_ips))
+        # Allow the OS 2 s to fully activate the newly bound IPs before gRPC
+        # tries to open TCP sockets on them (critical for loopback adapter IPs).
+        self._console_panel.log_gnmi("[gNMI] Waiting for IPs to activate…", "info")
+        QTimer.singleShot(2000, lambda: self._do_start_gnmi_server(all_bound, port))
+
+    def _do_start_gnmi_server(self, bound_ips: list, port: int):
+        """Actually start the gNMI server — called directly or after IP binding."""
+        all_devices = self.device_manager.get_all_devices()
+        switch_ips  = [d.ip_address for d in all_devices
+                       if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)]
+
+        # Build {ip: gnmi_port} from device topology data for bound IPs only
+        bound_set = set(bound_ips)
+        bound_ip_ports = {
+            d.ip_address: d.gnmi_port
+            for d in all_devices
+            if d.ip_address in bound_set
+               and d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
+        }
+
+        # Register auto-proxy callback — called from background thread when
+        # per-device binding completely fails; dispatched to main thread via QTimer.
+        def _on_auto_proxy():
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self._gnmi_panel.set_proxy_running(True))
+
+        self.gnmi.set_auto_proxy_callback(_on_auto_proxy)
+
+        self._console_panel.log_gnmi("[gNMI] Starting device simulation…", "info")
+        ok = self.gnmi.start(
+            device_ips=switch_ips,
+            port=port,
+            bound_ip_ports=bound_ip_ports if bound_ip_ports else None,
+        )
+        if ok:
+            self.state_store.set_log_callback(self._console_panel.log)
+            self.state_store.start()
+            self._gnmi_panel.set_gnmi_running(True)
+            counts   = self.gnmi.target_counts()
+            n_direct = self.gnmi.get_per_device_count()
+            self._gnmi_panel.set_gnmi_targets(
+                counts.get("switch", 0), counts.get("router", 0))
+            self._gnmi_panel.set_direct_servers(n_direct)
+            self._status_label.setText(
+                f"gNMI running — {n_direct} direct server(s), "
+                f"{counts.get('switch', 0)} switches, {counts.get('router', 0)} routers"
+            )
+        else:
+            self._gnmi_panel.set_gnmi_status("Error")
+            self._gnmi_panel.set_interface_locked(False)
+
+    def _stop_gnmi_server(self):
+        if not self.gnmi.is_running():
+            return
+        self.gnmi.stop()
+        self._gnmi_panel.set_gnmi_running(False)
+        self._gnmi_panel.set_gnmi_status("Stopped")
+        self._gnmi_panel.set_gnmi_targets(0, 0)
+        self._gnmi_panel.set_direct_servers(0)
+        self._gnmi_panel.set_clients([])
+        self._gnmi_panel.set_interface_locked(False)
+        self._status_label.setText("gNMI stopped.")
+
+    def _on_gnmi_proxy_toggle(self, enable: bool):
+        """Enable or disable the gNMI proxy server independently of device simulation."""
+        if enable:
+            port = self._gnmi_panel.gnmi_port
+            self._console_panel.log_gnmi(f"[gNMI] Starting proxy on port {port}…", "info")
+            ok = self.gnmi.start_proxy(port)
+            if ok:
+                self._console_panel.log_gnmi(f"[gNMI] Proxy running on port {port}.", "success")
+                self._gnmi_panel.set_proxy_running(True)
+                counts   = self.gnmi.target_counts()
+                n_direct = self.gnmi.get_per_device_count()
+                self._status_label.setText(
+                    f"gNMI running — proxy:{port}, {n_direct} direct server(s), "
+                    f"{counts.get('switch', 0)} switches, {counts.get('router', 0)} routers"
+                )
+            else:
+                self._console_panel.log_gnmi("[gNMI] Proxy failed to start.", "error")
+                self._gnmi_panel.set_proxy_running(False)
+        else:
+            self.gnmi.stop_proxy()
+            self._console_panel.log_gnmi("[gNMI] Proxy stopped.", "info")
+            self._gnmi_panel.set_proxy_running(False)
+
+    # ------------------------------------------------------------------ #
+    #  gNMI IP unbinding (called by clear, not by stop)                  #
+    # ------------------------------------------------------------------ #
+
+    def _on_gnmi_unbind(self):
+        if not self._gnmi_bound_ips:
+            return
+        # Only remove IPs that are not also held by the SNMP binding
+        snmp_set = set(self._bound_ips)
+        to_remove = [ip for ip in self._gnmi_bound_ips if ip not in snmp_set]
+        if not to_remove:
+            # All IPs overlap with SNMP binding — just clear the gNMI tracking
+            self._gnmi_bound_ips = []
+            self._gnmi_panel.set_bound_count(0)
+            self._gnmi_panel.set_gnmi_status("Unbound")
+            return
+
+        self._console_panel.log_gnmi(
+            f"[gNMI] Unbinding {len(to_remove)} IPs from '{self._gnmi_bound_interface}'…",
+            "warning")
+        self._gnmi_unbind_worker = IPUnbindWorker(self._gnmi_bound_interface, to_remove)
+        self._gnmi_unbind_thread = QThread()
+        self._gnmi_unbind_worker.moveToThread(self._gnmi_unbind_thread)
+        self._gnmi_unbind_thread.started.connect(self._gnmi_unbind_worker.run)
+        self._gnmi_unbind_worker.log.connect(self._console_panel.log_gnmi)
+        self._gnmi_unbind_worker.finished.connect(self._on_gnmi_unbind_finished)
+        self._gnmi_unbind_thread.start()
+
+    def _on_gnmi_unbind_finished(self):
+        self._gnmi_unbind_thread.quit()
+        self._gnmi_unbind_thread.wait()
+        self._gnmi_bound_ips = []
+        self._gnmi_panel.set_bound_count(0)
+        self._gnmi_panel.set_interface_locked(False)
+        self._gnmi_panel.set_gnmi_status("Idle")
+        self._console_panel.log_gnmi("[gNMI] IPs unbound.", "warning")
 
     def _clear_simulation(self):
         reply = QMessageBox.question(
@@ -1748,39 +2138,133 @@ class MainWindow(QMainWindow):
             "Stop simulator, remove bound IPs, and clear all devices and datasets?",
             QMessageBox.Yes | QMessageBox.No,
         )
-        if reply == QMessageBox.Yes:
-            if self.snmpsim.is_running():
-                self.snmpsim.stop()
-            # Synchronously remove bound IPs (user is waiting anyway)
-            if self._bound_ips and self._bound_interface:
-                self._sim_panel.log(
-                    f"Removing {len(self._bound_ips)} bound IPs...", "info"
-                )
-                remove_ips_batch(
-                    self._bound_interface,
-                    self._bound_ips,
-                    log_cb=self._sim_panel.log,
-                )
-                self._bound_ips = []
-                self._bound_interface = ""
-                self._sim_panel.set_bound_count(0)
-            # Remove dataset directories (IP-based subdirs)
-            ds_path = Path(self._datasets_dir)
-            for child in ds_path.iterdir():
-                if child.is_dir():
-                    shutil.rmtree(child, ignore_errors=True)
-                elif child.suffix == ".snmprec":
-                    child.unlink(missing_ok=True)
-            self._new_topology(confirm=False)
-            self._generated_files = []
-            self._sim_panel.set_simulator_running(False)
-            self._sim_panel.set_datasets_ready(False)
-            self._sim_panel.set_status("Idle")
-            self._sim_panel.log("Simulation cleared.", "warning")
+        if reply != QMessageBox.Yes:
+            return
+
+        # Stop processes first (fast — no blocking I/O)
+        if self.snmpsim.is_running():
+            self.snmpsim.stop()
+        self.state_store.stop()
+        if self.gnmi.is_running():
+            self.gnmi.stop()
+            self._gnmi_panel.set_gnmi_running(False)
+            self._gnmi_panel.set_gnmi_status("Idle")
+            self._gnmi_panel.set_gnmi_targets(0, 0)
+
+        if self._bound_ips and self._bound_interface:
+            # Remove IPs in a background thread so the UI stays responsive.
+            # With 1344 devices this is 1344 netsh calls — blocking the main
+            # thread would freeze the window for the entire duration.
+            ips  = list(self._bound_ips)
+            iface = self._bound_interface
+            self._console_panel.log(f"Removing {len(ips)} bound IPs…", "info")
+            self._sim_panel.set_status("Removing IPs…")
+            self._sim_panel.show_progress(0, len(ips))
+            self._act_clear.setEnabled(False)
+
+            self._unbind_worker = IPUnbindWorker(iface, ips)
+            self._unbind_thread = QThread()
+            self._unbind_worker.moveToThread(self._unbind_thread)
+            self._unbind_thread.started.connect(self._unbind_worker.run)
+            self._unbind_worker.progress.connect(self._sim_panel.show_progress)
+            self._unbind_worker.log.connect(self._console_panel.log)
+            self._unbind_worker.finished.connect(self._on_clear_unbind_finished)
+            self._unbind_thread.start()
+        else:
+            # Nothing to unbind — finish immediately
+            self._finish_clear()
+
+    def _on_clear_unbind_finished(self):
+        self._unbind_thread.quit()
+        self._unbind_thread.wait()
+        self._unbind_thread = None
+        self._unbind_worker = None
+        self._bound_ips = []
+        self._bound_interface = ""
+        self._sim_panel.set_bound_count(0)
+        self._act_clear.setEnabled(True)
+        self._finish_clear()
+
+    def _finish_clear(self):
+        """Delete datasets, reset topology and UI after IPs have been unbound."""
+        ds_path = Path(self._datasets_dir)
+        for child in ds_path.iterdir():
+            if child.is_dir():
+                shutil.rmtree(child, ignore_errors=True)
+            elif child.suffix in (".snmprec",) or child.name.endswith(".gnmi.json"):
+                child.unlink(missing_ok=True)
+        self._new_topology(confirm=False)
+        self._generated_files = []
+        self._gnmi_files      = []
+        self._sim_panel.set_device_counts(0, 0, 0)
+        self._sim_panel.set_simulator_running(False)
+        self._sim_panel.set_datasets_ready(False)
+        self._gnmi_panel.set_datasets_ready(False)
+        self._sim_panel.set_status("Idle")
+        self._console_panel.log("Simulation cleared.", "warning")
 
     def _randomize_metrics(self):
         self.device_manager.randomize_all_metrics()
-        self._sim_panel.log("Metrics randomized. Regenerate datasets to apply.", "info")
+        self._console_panel.log("Metrics randomized.", "info")
+
+        # Regenerate gNMI data files and hot-reload the running server
+        if self._gnmi_files or self.gnmi.is_running():
+            gnmi_gen = GNMIDataGenerator(self._gnmi_datasets_dir)
+            reloaded = 0
+            for device in self.device_manager.get_all_devices():
+                if device.device_type in (DeviceType.SWITCH, DeviceType.ROUTER):
+                    gnmi_gen.regenerate(device, self.topology)
+                    self.gnmi.reload_device(device.ip_address)
+                    reloaded += 1
+            if reloaded:
+                self._console_panel.log_gnmi(
+                    f"[gNMI] Hot-reloaded metrics for {reloaded} device(s).", "success"
+                )
+
+        # Regenerate SNMP .snmprec files
+        if self._generated_files:
+            snmp_gen = SNMPRecGenerator(self._snmp_datasets_dir)
+            for device in self.device_manager.get_all_devices():
+                snmp_gen.generate_device(device, self.topology)
+            self._console_panel.log("SNMP datasets regenerated with new metrics.", "success")
+
+    def _randomize_gnmi_metrics(self):
+        """Randomize device metrics and hot-reload gNMI datasets only."""
+        self.device_manager.randomize_all_metrics()
+        gnmi_gen = GNMIDataGenerator(self._gnmi_datasets_dir)
+        reloaded = 0
+        for device in self.device_manager.get_all_devices():
+            if device.device_type in (DeviceType.SWITCH, DeviceType.ROUTER):
+                gnmi_gen.regenerate(device, self.topology)
+                self.gnmi.reload_device(device.ip_address)
+                reloaded += 1
+        self._console_panel.log_gnmi(
+            f"[gNMI] Metrics randomized — {reloaded} device(s) reloaded.", "success"
+        )
+
+    def _clear_gnmi_data(self):
+        """Delete all gNMI dataset files and stop the gNMI server if running."""
+        if self.gnmi.is_running():
+            self.gnmi.stop()
+            self._gnmi_panel.set_gnmi_running(False)
+            self._gnmi_panel.set_gnmi_status("Stopped")
+            self._gnmi_panel.set_gnmi_targets(0, 0)
+            self._gnmi_panel.set_direct_servers(0)
+            self._gnmi_panel.set_clients([])
+            self._gnmi_panel.set_gnmi_status("Idle")
+        # Unbind gNMI-exclusive IPs (those not shared with SNMP)
+        if self._gnmi_bound_ips:
+            self._on_gnmi_unbind()
+        import pathlib
+        removed = 0
+        for f in pathlib.Path(self._gnmi_datasets_dir).glob("*.gnmi.json"):
+            f.unlink(missing_ok=True)
+            removed += 1
+        self._gnmi_files = []
+        self._gnmi_panel.set_datasets_ready(False)
+        self._console_panel.log_gnmi(
+            f"[gNMI] Cleared {removed} dataset file(s).", "warning"
+        )
 
     # ------------------------------------------------------------------ #
     #  File I/O                                                            #
@@ -1796,7 +2280,7 @@ class MainWindow(QMainWindow):
             if reply != QMessageBox.Yes:
                 return
         self._trap_engine.stop_simulation()
-        self._trap_panel.set_simulating(False)
+        self._sim_panel.set_simulating(False)
         self.topology.clear()
         self.device_manager.clear()
         self.ip_manager.reset()
@@ -1804,7 +2288,7 @@ class MainWindow(QMainWindow):
         self._default_positions.clear()
         self._refresh_device_table()
         self._refresh_stats()
-        self._sim_panel.log("New topology created.", "info")
+        self._console_panel.log("New topology created.", "info")
 
     def _save_topology(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -1815,7 +2299,7 @@ class MainWindow(QMainWindow):
             data = self.topology.to_dict()
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
-            self._sim_panel.log(f"Topology saved: {path}", "success")
+            self._console_panel.log(f"Topology saved: {path}", "success")
 
     def _open_topology(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1827,7 +2311,7 @@ class MainWindow(QMainWindow):
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self._load_topology_data(data)
-                self._sim_panel.log(f"Topology loaded: {path}", "success")
+                self._console_panel.log(f"Topology loaded: {path}", "success")
             except Exception as e:
                 QMessageBox.critical(self, "Load Error", str(e))
 
@@ -1846,7 +2330,7 @@ class MainWindow(QMainWindow):
             }
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
-            self._sim_panel.log(f"Exported: {path}", "success")
+            self._console_panel.log(f"Exported: {path}", "success")
 
     def _load_topology_data(self, data: dict):
         self._new_topology(confirm=False)
@@ -1879,9 +2363,11 @@ class MainWindow(QMainWindow):
         devices = self.device_manager.get_all_devices()
         self._device_table.setRowCount(len(devices))
         type_colors = {
-            DeviceType.ROUTER: QColor("#1f6feb"),
-            DeviceType.SWITCH: QColor("#238636"),
-            DeviceType.SERVER: QColor("#8957e5"),
+            DeviceType.ROUTER:        QColor("#1f6feb"),
+            DeviceType.SWITCH:        QColor("#238636"),
+            DeviceType.SERVER:        QColor("#8957e5"),
+            DeviceType.FIREWALL:      QColor("#e67e22"),
+            DeviceType.LOAD_BALANCER: QColor("#16a085"),
         }
         for row, device in enumerate(devices):
             name_item = QTableWidgetItem(device.name)
@@ -1922,23 +2408,25 @@ class MainWindow(QMainWindow):
             self._device_table.setRowHidden(row, not match)
 
     def _refresh_stats(self):
-        self._sim_panel.set_stats(
-            self.topology.node_count(),
-            self.topology.edge_count(),
-            len(self._generated_files),
-        )
+        pass  # Active Devices counts are populated after discovery, not on topology changes
 
     def _drain_log_queue(self):
-        """Drain log/status messages queued by the SNMPSim monitor thread."""
+        """Drain log/status messages queued by SNMPSim and gNMI monitor threads."""
         try:
             while True:
                 item = self._log_queue.get_nowait()
                 if item[0] == "log":
-                    self._sim_panel.log(item[1], item[2])
+                    self._console_panel.log(item[1], item[2])
+                elif item[0] == "log_gnmi":
+                    self._console_panel.log_gnmi(item[1], item[2])
                 elif item[0] == "status":
                     self._sim_panel.set_status(item[1])
                 elif item[0] == "snmpsim_ready":
                     self._on_snmpsim_ready()
+                elif item[0] == "gnmi_status":
+                    self._gnmi_panel.set_gnmi_status(item[1])
+                elif item[0] == "gnmi_ready":
+                    self._on_gnmi_ready()
         except queue.Empty:
             pass
 
@@ -1957,20 +2445,26 @@ class MainWindow(QMainWindow):
                 )
                 self._sim_panel.set_status("Starting (building indexes)…")
 
+        if self.gnmi.is_running():
+            self._gnmi_panel.set_clients(self.gnmi.get_clients())
+            self._gnmi_panel.set_direct_servers(self.gnmi.get_per_device_count())
+
     # ------------------------------------------------------------------ #
     #  Dialogs                                                             #
     # ------------------------------------------------------------------ #
 
     def _show_about(self):
         QMessageBox.about(
-            self, "About SNMP Network Topology Simulator",
-            "<h3>SNMP Network Topology Simulator</h3>"
-            "<p>Visually build network topologies and generate SNMP simulation "
-            "datasets compatible with SNMPSim.</p>"
+            self, "About dataCenter Simulator",
+            "<h3>dataCenter Simulator v2.0</h3>"
+            "<p>Visually build network topologies and simulate both SNMP and gNMI "
+            "protocols for routers, switches, and servers.</p>"
             "<br>"
-            "<b>Tech Stack:</b> Python 3.11+, PySide6, NetworkX, SNMPSim<br>"
+            "<b>Tech Stack:</b> Python 3.11+, PySide6, NetworkX, SNMPSim, gRPC<br>"
             "<b>Supports:</b> Routers, Switches, Servers<br>"
             "<b>SNMP Versions:</b> v1, v2c<br>"
+            "<b>gNMI:</b> OpenConfig — Interfaces, LLDP, BGP, OSPF, AFT, System<br>"
+            "<b>Telemetry:</b> gNMI Subscribe STREAM / ONCE / POLL<br>"
         )
 
     def _show_snmpwalk(self):
@@ -2022,5 +2516,8 @@ class MainWindow(QMainWindow):
             # Best-effort synchronous IP removal on exit
             if self._bound_ips and self._bound_interface:
                 remove_ips_batch(self._bound_interface, self._bound_ips)
+        # Stop gNMI server if running
+        if self.gnmi.is_running():
+            self.gnmi.stop()
         self._trap_engine.stop()
         event.accept()
