@@ -6,9 +6,8 @@ tools can poll them as if they were real hardware.  SNMPSim is started with
 one --agent-udpv4-endpoint flag per device IP.
 
 Dataset directory layout expected by snmpsim-lextudio:
-    datasets/
-        <device_ip>/
-            <community>.snmprec     # e.g. 192.168.1.10/public.snmprec
+    datasets/snmp/
+        <device_ip>.snmprec         # e.g. datasets/snmp/192.168.1.10.snmprec
 """
 from __future__ import annotations
 import os
@@ -24,7 +23,7 @@ from typing import Optional, Callable, List
 class SNMPSimController:
     """Start, stop, and monitor the snmpsim process."""
 
-    def __init__(self, datasets_dir: str = "datasets"):
+    def __init__(self, datasets_dir: str = "datasets/snmp"):
         self.datasets_dir = str(Path(datasets_dir).resolve())
         self._process: Optional[subprocess.Popen] = None
         self._monitor_thread: Optional[threading.Thread] = None
@@ -137,12 +136,21 @@ class SNMPSimController:
         self._log(f"  Devices:    {device_ips[0]} … {device_ips[-1]}  ({len(device_ips)} total)")
 
         try:
+            # PYTHONUNBUFFERED=1 forces SNMPSim (a Python process) to flush
+            # stdout after every line.  Without it, subprocess pipe buffering
+            # holds output until the buffer fills (~8 KB) — on fast hardware
+            # with pre-built indexes the buffer never fills during a scan so
+            # per-request SNMP logs appear only in a burst at the end.
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
+
             self._process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
+                env=env,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
             )
             self._running = True
