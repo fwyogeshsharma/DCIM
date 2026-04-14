@@ -314,34 +314,34 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
                     "4 × 25GE (GPU optimized)"),
     ],
 
-    # ── Palo Alto Networks — Firewalls (modelled as server) ──────────────────
-    (DeviceType.SERVER, Vendor.PALO_ALTO_NETWORKS): [
-        DeviceModel("PA-820", Vendor.PALO_ALTO_NETWORKS, DeviceType.SERVER,
+    # ── Palo Alto Networks — Firewalls ────────────────────────────────────────
+    (DeviceType.FIREWALL, Vendor.PALO_ALTO_NETWORKS): [
+        DeviceModel("PA-820", Vendor.PALO_ALTO_NETWORKS, DeviceType.FIREWALL,
                     [_g(_GE, 4), _g(_10G, 4)],
                     "4 × GE + 4 × 10GE SFP+"),
-        DeviceModel("PA-3220", Vendor.PALO_ALTO_NETWORKS, DeviceType.SERVER,
+        DeviceModel("PA-3220", Vendor.PALO_ALTO_NETWORKS, DeviceType.FIREWALL,
                     [_g(_GE, 4), _g(_10G, 8)],
                     "4 × GE + 8 × 10GE SFP+"),
-        DeviceModel("PA-5220", Vendor.PALO_ALTO_NETWORKS, DeviceType.SERVER,
+        DeviceModel("PA-5220", Vendor.PALO_ALTO_NETWORKS, DeviceType.FIREWALL,
                     [_g(_10G, 8), _g(_40G, 4)],
                     "8 × 10GE SFP+ + 4 × 40GE QSFP+"),
-        DeviceModel("PA-5260", Vendor.PALO_ALTO_NETWORKS, DeviceType.SERVER,
+        DeviceModel("PA-5260", Vendor.PALO_ALTO_NETWORKS, DeviceType.FIREWALL,
                     [_g(_10G, 8), _g(_100G, 4)],
                     "8 × 10GE SFP+ + 4 × 100GE QSFP28"),
     ],
 
-    # ── F5 Networks — Load Balancers (modelled as server) ────────────────────
-    (DeviceType.SERVER, Vendor.F5_NETWORKS): [
-        DeviceModel("BIG-IP i2800", Vendor.F5_NETWORKS, DeviceType.SERVER,
+    # ── F5 Networks — Load Balancers ──────────────────────────────────────────
+    (DeviceType.LOAD_BALANCER, Vendor.F5_NETWORKS): [
+        DeviceModel("BIG-IP i2800", Vendor.F5_NETWORKS, DeviceType.LOAD_BALANCER,
                     [_g(_GE, 4), _g(_10G, 4)],
                     "4 × GE + 4 × 10GE SFP+"),
-        DeviceModel("BIG-IP i4800", Vendor.F5_NETWORKS, DeviceType.SERVER,
+        DeviceModel("BIG-IP i4800", Vendor.F5_NETWORKS, DeviceType.LOAD_BALANCER,
                     [_g(_10G, 8)],
                     "8 × 10GE SFP+"),
-        DeviceModel("BIG-IP i5800", Vendor.F5_NETWORKS, DeviceType.SERVER,
+        DeviceModel("BIG-IP i5800", Vendor.F5_NETWORKS, DeviceType.LOAD_BALANCER,
                     [_g(_10G, 8), _g(_40G, 2)],
                     "8 × 10GE SFP+ + 2 × 40GE QSFP+"),
-        DeviceModel("BIG-IP i10800", Vendor.F5_NETWORKS, DeviceType.SERVER,
+        DeviceModel("BIG-IP i10800", Vendor.F5_NETWORKS, DeviceType.LOAD_BALANCER,
                     [_g(_10G, 8), _g(_100G, 4)],
                     "8 × 10GE SFP+ + 4 × 100GE QSFP28"),
     ],
