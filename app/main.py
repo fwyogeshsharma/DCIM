@@ -1,9 +1,16 @@
 """
-SNMP Network Topology Simulator - Entry Point
+dataCenter Simulator - Entry Point
 """
 import sys
 import os
 import faulthandler
+
+# Suppress gRPC C-core stderr noise (bind failures during initial retry are expected)
+os.environ.setdefault("GRPC_VERBOSITY", "NONE")
+
+# Suppress pysnmp-lextudio deprecation warning (third-party library, not actionable)
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*pysnmp-lextudio.*")
 
 # Ensure project root is on the path (handles both dev and PyInstaller modes)
 if getattr(sys, "frozen", False):
@@ -122,9 +129,9 @@ def main():
     _title_filter = _DarkTitleBarFilter()
     app.installEventFilter(_title_filter)
 
-    app.setApplicationName("SNMP Network Topology Simulator")
-    app.setOrganizationName("SNMPSim Tools")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationName("dataCenter Simulator")
+    app.setOrganizationName("dataCenter Simulator")
+    app.setApplicationVersion("2.0.0")
 
     # Import MainWindow AFTER QApplication so all Qt objects in imported
     # modules (e.g. QColor in DEVICE_COLORS) are created with a live app.
