@@ -1,0 +1,212 @@
+// gNMI - gRPC Network Management Interface
+// Self-contained proto (no external imports) for use in dataCenter Simulator.
+// Based on OpenConfig gNMI specification v0.9.1
+
+syntax = "proto3";
+package gnmi;
+option go_package = "github.com/openconfig/gnmi/proto/gnmi";
+
+// The gNMI service, to be implemented by the device or NMS.
+service gNMI {
+    // Capabilities returns the capabilities of the gNMI service implementation.
+    rpc Capabilities(CapabilityRequest) returns (CapabilityResponse) {}
+
+    // Retrieve a snapshot of data from the target.
+    rpc Get(GetRequest) returns (GetResponse) {}
+
+    // Modify state on the target.
+    rpc Set(SetRequest) returns (SetResponse) {}
+
+    // Subscribe to receive streaming telemetry updates from the target.
+    rpc Subscribe(stream SubscribeRequest) returns (stream SubscribeResponse) {}
+}
+
+// Notification represents an update notification.
+message Notification {
+    int64 timestamp = 1;
+    Path prefix = 2;
+    string alias = 10;
+    repeated Update update = 4;
+    repeated Path delete = 3;
+    bool atomic = 9;
+}
+
+// Update pairs a path with a value.
+message Update {
+    Path path = 1;
+    TypedValue val = 3;
+    uint32 duplicates = 4;
+}
+
+// TypedValue holds a value in one of the supported types.
+message TypedValue {
+    oneof value {
+        string string_val   = 3;
+        bytes  json_val     = 4;
+        int64  int_val      = 5;
+        uint64 uint_val     = 6;
+        bool   bool_val     = 7;
+        bytes  bytes_val    = 8;
+        float  float_val    = 9;
+        double double_val   = 10;
+        bytes  json_ietf_val = 13;
+        string ascii_val    = 14;
+    }
+}
+
+// Path represents a gNMI path.
+message Path {
+    repeated PathElem elem   = 3;
+    string            origin = 2;
+    string            target = 4;
+}
+
+// PathElem is one element in a Path.
+message PathElem {
+    string              name = 1;
+    map<string, string> key  = 2;
+}
+
+// Encoding defines how values are serialized on the wire.
+enum Encoding {
+    JSON      = 0;
+    BYTES     = 1;
+    PROTO     = 2;
+    ASCII     = 3;
+    JSON_IETF = 4;
+}
+
+// SubscriptionMode determines how the target sends updates.
+enum SubscriptionMode {
+    TARGET_DEFINED = 0;
+    ON_CHANGE      = 1;
+    SAMPLE         = 2;
+}
+
+// CapabilityRequest is sent by the client to discover target capabilities.
+message CapabilityRequest {}
+
+// CapabilityResponse contains the capabilities of the target.
+message CapabilityResponse {
+    repeated ModelData supported_models    = 1;
+    repeated Encoding  supported_encodings = 2;
+    string             gNMI_version        = 3;
+}
+
+// ModelData describes a single OpenConfig model supported by the target.
+message ModelData {
+    string name         = 1;
+    string organization = 2;
+    string version      = 3;
+}
+
+// GetRequest retrieves one or more data items.
+message GetRequest {
+    Path   prefix = 1;
+    repeated Path path = 3;
+
+    enum DataType {
+        ALL         = 0;
+        CONFIG      = 1;
+        STATE       = 2;
+        OPERATIONAL = 3;
+    }
+    DataType type     = 5;
+    Encoding encoding = 6;
+}
+
+// GetResponse contains the data requested.
+message GetResponse {
+    repeated Notification notification = 1;
+}
+
+// SetRequest modifies state on the target.
+message SetRequest {
+    Path             prefix  = 1;
+    repeated Path    delete  = 2;
+    repeated Update  replace = 3;
+    repeated Update  update  = 4;
+}
+
+// SetResponse indicates the result of a Set operation.
+message SetResponse {
+    Path                 prefix    = 1;
+    repeated UpdateResult response = 2;
+    int64                timestamp = 4;
+}
+
+// UpdateResult is the result of a single update within a SetResponse.
+message UpdateResult {
+    enum Operation {
+        INVALID = 0;
+        DELETE  = 1;
+        REPLACE = 2;
+        UPDATE  = 3;
+    }
+    Path      path = 2;
+    Operation op   = 4;
+}
+
+// SubscribeRequest is sent from the client to initiate a subscription.
+message SubscribeRequest {
+    oneof request {
+        SubscriptionList subscribe = 1;
+        Poll             poll      = 3;
+        AliasList        aliases   = 4;
+    }
+}
+
+// Poll is sent to trigger a one-time response in POLL mode.
+message Poll {}
+
+// AliasList defines path aliases.
+message AliasList {
+    repeated Alias alias = 1;
+}
+
+// Alias maps a path to a short alias string.
+message Alias {
+    Path   path  = 1;
+    string alias = 2;
+}
+
+// SubscribeResponse is sent from the target to the client.
+message SubscribeResponse {
+    oneof response {
+        Notification update        = 1;
+        bool         sync_response = 3;
+    }
+}
+
+// SubscriptionList describes what the client wants to subscribe to.
+message SubscriptionList {
+    Path                 prefix           = 1;
+    repeated Subscription subscription    = 2;
+    bool                 use_aliases      = 3;
+    QOSMarking           qos              = 4;
+
+    enum Mode {
+        STREAM = 0;
+        ONCE   = 1;
+        POLL   = 2;
+    }
+    Mode             mode              = 5;
+    bool             allow_aggregation = 6;
+    repeated ModelData use_models      = 7;
+    Encoding         encoding          = 8;
+    bool             updates_only      = 9;
+}
+
+// QOSMarking specifies the DSCP marking for subscription traffic.
+message QOSMarking {
+    uint32 marking = 1;
+}
+
+// Subscription specifies a single path in a SubscriptionList.
+message Subscription {
+    Path             path               = 1;
+    SubscriptionMode mode               = 2;
+    uint64           sample_interval    = 3;
+    bool             suppress_redundant = 4;
+    uint64           heartbeat_interval = 5;
+}
