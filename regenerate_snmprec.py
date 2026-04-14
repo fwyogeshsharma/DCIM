@@ -97,7 +97,7 @@ def main():
     topo.from_dict(data)
 
     print("Regenerating snmprec files ...")
-    gen = SNMPRecGenerator(output_dir="datasets")
+    gen = SNMPRecGenerator(output_dir="datasets/snmp")
     files = gen.generate_all(topo)
     print(f"  Generated {len(files)} snmprec files")
 
