@@ -104,6 +104,19 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.CPU_HIGH,
         TrapType.TEMPERATURE_ALERT,
     ],
+    # Firewalls behave like routers: they run routing protocols (BGP/OSPF between
+    # security zones) and can generate the full trap set including BGP_DOWN.
+    "firewall": list(TrapType),
+    # Load balancers are L4-7 appliances: no routing protocols, but they do
+    # generate link, CPU, and temperature alerts.
+    "load_balancer": [
+        TrapType.COLD_START,
+        TrapType.LINK_DOWN,
+        TrapType.LINK_UP,
+        TrapType.AUTH_FAILURE,
+        TrapType.CPU_HIGH,
+        TrapType.TEMPERATURE_ALERT,
+    ],
 }
 
 # Vendors that run BGP on switch/fabric infrastructure (data-centre leaf-spine,
