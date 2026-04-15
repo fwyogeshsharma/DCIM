@@ -2153,7 +2153,6 @@ class MainWindow(QMainWindow):
             # All IPs overlap with SNMP binding — just clear the gNMI tracking
             self._gnmi_bound_ips = []
             self._gnmi_panel.set_bound_count(0)
-            self._gnmi_panel.set_gnmi_status("Unbound")
             if self._pending_clear_finish:
                 self._pending_clear_finish = False
                 self._complete_pending_clear()
