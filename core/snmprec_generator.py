@@ -195,7 +195,7 @@ class SNMPRecGenerator:
             updates[f"{UCD_DISK}.6.1"] = ("2",  str(disk_total_kb))
             updates[f"{UCD_DISK}.7.1"] = ("2",  str(disk_avail_kb))
 
-        # Read existing file, replace matching OID lines, write back.
+        # Read existing file, replace matching OID lines.
         try:
             lines = filepath.read_text(encoding="utf-8").splitlines()
             patched = []
@@ -208,13 +208,42 @@ class SNMPRecGenerator:
                         patched.append(f"{oid}|{typ}|{val}")
                         continue
                 patched.append(line)
-            filepath.write_text("\n".join(patched), encoding="utf-8")
+            new_content = "\n".join(patched)
         except OSError:
             return str(filepath)  # file temporarily locked — skip this tick
 
-        # Immediately rebuild the dbm.dumb index so SNMPSim finds a fresh
-        # index and skips its internal O(n²) rebuild on the next request.
-        self._reindex(str(filepath))
+        # Atomic write: temp file → pre-build index → rename.
+        #
+        # Sequence matters: the index must be in place (with mtime > snmprec
+        # mtime) BEFORE the snmprec rename becomes visible to SNMPSim.  That
+        # way, when SNMPSim detects the file change it immediately finds a
+        # fresh index and skips its own blocking internal rebuild entirely.
+        import tempfile as _tempfile
+        tmp_snmprec = None
+        try:
+            with _tempfile.NamedTemporaryFile(
+                    "w", dir=filepath.parent, suffix=".tmp",
+                    encoding="utf-8", delete=False) as f:
+                f.write(new_content)
+                tmp_snmprec = f.name
+
+            snmprec_mtime = int(os.stat(tmp_snmprec).st_mtime)
+
+            # Pre-build index reading from the temp file but keyed to the
+            # canonical (live) path so SNMPSim's lookup finds it.
+            self._reindex(tmp_snmprec,
+                          canonical_path=str(filepath),
+                          target_mtime=snmprec_mtime + 1)
+
+            # Index is fresh; now atomically expose the new snmprec.
+            os.replace(tmp_snmprec, str(filepath))
+        except OSError:
+            if tmp_snmprec:
+                try:
+                    os.unlink(tmp_snmprec)
+                except OSError:
+                    pass
+            return str(filepath)
 
         return str(filepath)
 
@@ -476,11 +505,20 @@ class SNMPRecGenerator:
         p = os.path.splitdrive(p)[1].replace(os.sep, "_")
         return os.path.join(cache_dir, p)
 
-    def _reindex(self, snmprec_path: str) -> None:
+    def _reindex(self, snmprec_path: str, canonical_path: str = None,
+                 target_mtime: int = None) -> None:
         """
         Write a fresh dbm.dumb index (.dat + .dir) for *snmprec_path* in a
         single O(n) pass so SNMPSim's freshness check passes and it skips its
         own slow internal rebuild.
+
+        canonical_path: the "real" snmprec path whose index entry SNMPSim will
+                        look up (defaults to snmprec_path).  Pass this when
+                        reading from a temp file but writing the index for the
+                        live path so the index is in place before the atomic
+                        rename makes the new snmprec visible.
+        target_mtime:   explicit mtime (integer seconds) to stamp on the index
+                        files.  Defaults to snmprec_path mtime + 1.
 
         dbm.dumb format (matches CPython's dbm/dumb.py exactly):
           .dat  – raw UTF-8 value bytes, concatenated
@@ -488,12 +526,13 @@ class SNMPRecGenerator:
                   where key_str is the OID as a Latin-1 string
                   (first char must be ' or " so whichdb() recognises the file)
         """
+        index_for = canonical_path if canonical_path is not None else snmprec_path
         cache_dir = self._get_cache_dir()
         if cache_dir is None:
             return
 
         os.makedirs(cache_dir, exist_ok=True)
-        db_base  = self._db_path(snmprec_path, cache_dir)
+        db_base  = self._db_path(index_for, cache_dir)
         dat_path = db_base + ".dat"
         dir_path = db_base + ".dir"
 
@@ -546,8 +585,11 @@ class SNMPRecGenerator:
 
         try:
             import tempfile
-            snmprec_sec = int(os.stat(snmprec_path)[8])
-            future = snmprec_sec + 1
+            if target_mtime is not None:
+                future = target_mtime
+            else:
+                snmprec_sec = int(os.stat(snmprec_path)[8])
+                future = snmprec_sec + 1
 
             # Write to temp files then atomically rename over the live index
             # files so SNMPSim never reads a partially-written index mid-walk.

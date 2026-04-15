@@ -87,15 +87,58 @@ class SNMPSimController:
             "snmpsimd.py",
             "snmpsimd.exe",
         ]
+
+        # 1. PATH lookup — works in dev mode and when Python/Scripts is on PATH.
         for name in candidates:
             path = shutil.which(name)
             if path:
                 return path
-        python_scripts = Path(sys.executable).parent / "Scripts"
+
+        # 2. Same directory as the running executable — supports placing
+        #    snmpsim-command-responder.exe alongside the bundled .exe.
+        exe_dir = Path(sys.executable).parent
         for name in candidates:
-            p = python_scripts / name
+            p = exe_dir / name
             if p.exists():
                 return str(p)
+
+        # 3. When frozen by PyInstaller sys.executable IS the bundle, not Python.
+        #    Search common Windows Python installation paths explicitly.
+        if getattr(sys, "frozen", False):
+            import glob as _glob
+            scripts_dirs: list = []
+            for env_var in ("LOCALAPPDATA", "APPDATA"):
+                base = os.environ.get(env_var, "")
+                if base:
+                    # e.g. C:\Users\<user>\AppData\Local\Programs\Python\Python312\Scripts
+                    for match in _glob.glob(
+                        os.path.join(base, "Programs", "Python", "Python3*", "Scripts")
+                    ):
+                        scripts_dirs.append(match)
+                    # user-level pip installs: AppData\Roaming\Python\Python3*\Scripts
+                    for match in _glob.glob(
+                        os.path.join(base, "Python", "Python3*", "Scripts")
+                    ):
+                        scripts_dirs.append(match)
+            # System-level installs (C:\Python312\Scripts, D:\Python\Scripts …)
+            for drive in ("C:", "D:"):
+                for match in _glob.glob(os.path.join(drive, os.sep, "Python3*", "Scripts")):
+                    scripts_dirs.append(match)
+                for match in _glob.glob(os.path.join(drive, os.sep, "Python", "Scripts")):
+                    scripts_dirs.append(match)
+            for scripts in scripts_dirs:
+                for name in candidates:
+                    p = Path(scripts) / name
+                    if p.exists():
+                        return str(p)
+        else:
+            # 4. Dev mode: Scripts folder sits next to the Python interpreter.
+            python_scripts = Path(sys.executable).parent / "Scripts"
+            for name in candidates:
+                p = python_scripts / name
+                if p.exists():
+                    return str(p)
+
         return None
 
     # ------------------------------------------------------------------ #
@@ -119,7 +162,14 @@ class SNMPSimController:
 
         snmpsim_path = self._find_snmpsim()
         if not snmpsim_path:
-            self._log("ERROR: snmpsim not found. Install with:  pip install snmpsim-lextudio")
+            if getattr(sys, "frozen", False):
+                self._log(
+                    "ERROR: snmpsim not found. "
+                    "Install Python and run:  pip install snmpsim-lextudio  "
+                    "then ensure the Python Scripts folder is on your PATH."
+                )
+            else:
+                self._log("ERROR: snmpsim not found. Install with:  pip install snmpsim-lextudio")
             self._set_status("Error: snmpsim not found")
             return False
 
