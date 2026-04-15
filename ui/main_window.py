@@ -1730,6 +1730,11 @@ class MainWindow(QMainWindow):
             return
         if self.topology.node_count() == 0:
             return
+        # A previous thread may still be winding down after a stop() timeout.
+        # Replacing self._live_discovery_thread while it's running would drop the
+        # last Python reference to the QThread, triggering a GC-while-running crash.
+        if self._live_discovery_thread and self._live_discovery_thread.isRunning():
+            return
         self._live_discovery_running = True
         self._topology_view.topology_scene.set_discovery_running(True)
 
@@ -1859,7 +1864,13 @@ class MainWindow(QMainWindow):
         if self._live_discovery_thread and self._live_discovery_thread.isRunning():
             self._live_discovery_thread.quit()
             self._live_discovery_thread.wait(2000)
-        self._live_discovery_running = False
+            # Only clear the flag if the thread actually stopped.
+            # If it timed out the thread is still alive; _start_live_discovery
+            # will refuse to replace its reference, preventing the GC-crash.
+            if not self._live_discovery_thread.isRunning():
+                self._live_discovery_running = False
+        else:
+            self._live_discovery_running = False
         # Reset graph: clear broken state and fade everything back
         scene = self._topology_view.topology_scene
         scene.set_discovery_running(False)

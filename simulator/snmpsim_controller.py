@@ -20,6 +20,72 @@ from pathlib import Path
 from typing import Optional, Callable, List
 
 
+def _assign_job_object(pid: int):
+    """
+    Windows only: assign *pid* to an anonymous Job Object with KillOnJobClose.
+    When our process exits for any reason (normal, crash, Task Manager kill),
+    the OS automatically terminates all processes in the job — including snmpsim —
+    which releases their open file handles to the .snmprec files.
+
+    Returns the raw job handle (must be kept open; close it on snmpsim stop).
+    Returns None on non-Windows or if the call fails.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        import ctypes.wintypes as wt
+        k32 = ctypes.windll.kernel32
+
+        job = k32.CreateJobObjectW(None, None)
+        if not job:
+            return None
+
+        # JOBOBJECT_EXTENDED_LIMIT_INFORMATION with KillOnJobClose flag
+        class _BasicLimit(ctypes.Structure):
+            _fields_ = [
+                ("PerProcessUserTimeLimit", ctypes.c_int64),
+                ("PerJobUserTimeLimit",     ctypes.c_int64),
+                ("LimitFlags",             wt.DWORD),
+                ("MinimumWorkingSetSize",  ctypes.c_size_t),
+                ("MaximumWorkingSetSize",  ctypes.c_size_t),
+                ("ActiveProcessLimit",     wt.DWORD),
+                ("Affinity",              ctypes.c_size_t),
+                ("PriorityClass",          wt.DWORD),
+                ("SchedulingClass",        wt.DWORD),
+            ]
+
+        class _IoCounters(ctypes.Structure):
+            _fields_ = [(f"_c{i}", ctypes.c_uint64) for i in range(6)]
+
+        class _ExtLimit(ctypes.Structure):
+            _fields_ = [
+                ("BasicLimitInformation", _BasicLimit),
+                ("IoInfo",               _IoCounters),
+                ("ProcessMemoryLimit",   ctypes.c_size_t),
+                ("JobMemoryLimit",       ctypes.c_size_t),
+                ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                ("PeakJobMemoryUsed",    ctypes.c_size_t),
+            ]
+
+        info = _ExtLimit()
+        info.BasicLimitInformation.LimitFlags = 0x00002000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+            k32.CloseHandle(job)
+            return None
+
+        proc = k32.OpenProcess(0x1F0FFF, False, pid)  # PROCESS_ALL_ACCESS
+        if not proc:
+            k32.CloseHandle(job)
+            return None
+
+        k32.AssignProcessToJobObject(job, proc)
+        k32.CloseHandle(proc)
+        return job  # keep open — OS closes it when our process exits
+    except Exception:
+        return None
+
+
 class SNMPSimController:
     """Start, stop, and monitor the snmpsim process."""
 
@@ -33,6 +99,7 @@ class SNMPSimController:
         self._running = False
         self._ready = False   # True once snmpsim is actually listening
         self._active_endpoints: List[str] = []
+        self._job_handle = None   # Windows Job Object handle — kept open until stop()
 
     # ------------------------------------------------------------------ #
     #  Callbacks                                                           #
@@ -206,6 +273,9 @@ class SNMPSimController:
             self._running = True
             self._ready = False
             self._active_endpoints = [f"{ip}:{port}" for ip in device_ips]
+            # Tie snmpsim's lifetime to ours: if we crash or are force-killed,
+            # the OS will kill snmpsim too, releasing its .snmprec file handles.
+            self._job_handle = _assign_job_object(self._process.pid)
             self._set_status("Starting (building indexes)…")
             self._start_monitor()
             return True
@@ -255,6 +325,13 @@ class SNMPSimController:
         self._ready = False
         self._process = None
         self._active_endpoints = []
+        if self._job_handle:
+            try:
+                import ctypes
+                ctypes.windll.kernel32.CloseHandle(self._job_handle)
+            except Exception:
+                pass
+            self._job_handle = None
         self._set_status("Stopped")
         self._log("SNMPSim stopped.")
 
