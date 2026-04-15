@@ -10,12 +10,20 @@ import time
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QGroupBox, QLineEdit, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QComboBox, QSizePolicy,
+    QHeaderView, QAbstractItemView, QComboBox, QSizePolicy, QProgressBar,
 )
-from PySide6.QtCore import Qt, Signal, QThread, QObject
+from PySide6.QtCore import Qt, Signal, QThread, QObject, QTimer
 from PySide6.QtGui import QFont
 
 from ui.snmp_panel import StatusBadge   # reuse the same badge widget
+
+_DEVICE_TYPE_LABELS = [
+    ("switch",        "Switches"),
+    ("router",        "Routers"),
+    ("server",        "Servers"),
+    ("firewall",      "Firewalls"),
+    ("load_balancer", "Load Balancers"),
+]
 
 
 class _IfaceLoader(QObject):
@@ -132,33 +140,49 @@ class GNMIPanel(QWidget):
         layout.addWidget(bind_group)
 
         # ── Targets group ──────────────────────────────────────────────────
-        tgt_group = QGroupBox("Active Devices")
-        tgt_group.setStyleSheet(self._group_style())
-        tgt_layout = QVBoxLayout(tgt_group)
+        self.tgt_group = QGroupBox("Active Devices")
+        self.tgt_group.setStyleSheet(self._group_style())
+        self.tgt_group.hide()
+        tgt_layout = QVBoxLayout(self.tgt_group)
         tgt_layout.setContentsMargins(6, 4, 6, 6)
         tgt_layout.setSpacing(3)
 
-        self.lbl_switches = QLabel("Switches:  0")
-        self.lbl_routers  = QLabel("Routers:   0")
-        self.lbl_total    = QLabel("Total:     0")
-        for lbl in (self.lbl_switches, self.lbl_routers, self.lbl_total):
+        self._device_labels = {}
+        for key, name in _DEVICE_TYPE_LABELS:
+            lbl = QLabel(f"{name}: 0")
             lbl.setFont(QFont("Consolas", 9))
             lbl.setStyleSheet("color: #e6edf3;")
+            lbl.hide()
             tgt_layout.addWidget(lbl)
-        layout.addWidget(tgt_group)
+            self._device_labels[key] = lbl
+        self.lbl_total = QLabel("Total: 0")
+        self.lbl_total.setFont(QFont("Consolas", 9))
+        self.lbl_total.setStyleSheet("color: #8b949e;")
+        self.lbl_total.hide()
+        tgt_layout.addWidget(self.lbl_total)
+        layout.addWidget(self.tgt_group)
 
-        # ── Generate button + progress ────────────────────────────────────
+        # ── Progress bar ──────────────────────────────────────────────────
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 100)
+        self.progress.setValue(0)
+        self.progress.setTextVisible(True)
+        self.progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #30363d; border-radius: 4px;
+                background: #0d1117; color: #e6edf3;
+                height: 16px; text-align: center;
+            }
+            QProgressBar::chunk { background: #1f6feb; border-radius: 3px; }
+        """)
+        self.progress.hide()
+        layout.addWidget(self.progress)
+
+        # ── Generate button ───────────────────────────────────────────────
         self.btn_generate = QPushButton("Generate Dataset")
         self.btn_generate.setStyleSheet(self._btn_generate_style())
         self.btn_generate.clicked.connect(self.sig_generate.emit)
         layout.addWidget(self.btn_generate)
-
-        self.lbl_progress = QLabel("")
-        self.lbl_progress.setFont(QFont("Consolas", 8))
-        self.lbl_progress.setStyleSheet("color: #8b949e;")
-        self.lbl_progress.setAlignment(Qt.AlignCenter)
-        self.lbl_progress.hide()
-        layout.addWidget(self.lbl_progress)
 
         # ── Start / Stop buttons ───────────────────────────────────────────
         ss_row = QHBoxLayout()
@@ -312,17 +336,28 @@ class GNMIPanel(QWidget):
     # ------------------------------------------------------------------ #
 
     def set_generating(self, active: bool, progress: str = ""):
-        self.btn_generate.setEnabled(not active)
+        self.btn_generate.setEnabled(not active and not self._running)
         if active:
-            self.lbl_progress.setText(progress or "Generating…")
-            self.lbl_progress.show()
+            self.progress.setValue(0)
+            self.progress.show()
         else:
-            self.lbl_progress.hide()
+            self.progress.hide()
+
+    def show_progress(self, value: int, maximum: int = 100):
+        self.progress.setMaximum(maximum)
+        self.progress.setValue(value)
+        self.progress.show()
+        if value >= maximum:
+            QTimer.singleShot(1500, self.progress.hide)
 
     def set_gnmi_running(self, running: bool):
         self._running = running
+        self.tgt_group.setVisible(running)
+        self.btn_generate.setEnabled(not running)
         self.btn_start.setEnabled(not running)
         self.btn_stop.setEnabled(running)
+        if running:
+            self.btn_clear.setEnabled(True)
         self.btn_proxy_toggle.setEnabled(running)
         if not running:
             # Reset proxy button when simulation stops
@@ -350,10 +385,22 @@ class GNMIPanel(QWidget):
     def set_gnmi_status(self, status: str):
         self.status_badge.set_status(status)
 
-    def set_gnmi_targets(self, switches: int, routers: int):
-        self.lbl_switches.setText(f"Switches:  {switches}")
-        self.lbl_routers.setText(f"Routers:   {routers}")
-        self.lbl_total.setText(f"Total:     {switches + routers}")
+    def set_gnmi_targets(self, counts: dict):
+        total = 0
+        for key, name in _DEVICE_TYPE_LABELS:
+            n = counts.get(key, 0)
+            total += n
+            lbl = self._device_labels[key]
+            if n > 0:
+                lbl.setText(f"{name}: {n}")
+                lbl.show()
+            else:
+                lbl.hide()
+        if total > 0:
+            self.lbl_total.setText(f"Total: {total}")
+            self.lbl_total.show()
+        else:
+            self.lbl_total.hide()
 
     def set_direct_servers(self, count: int):
         pass  # Direct server count no longer displayed

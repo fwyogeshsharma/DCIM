@@ -421,6 +421,8 @@ class MainWindow(QMainWindow):
         self._gnmi_bind_worker = None
         self._gnmi_unbind_thread: QThread = None
         self._gnmi_unbind_worker = None
+        # Set when a clear operation needs to chain unbind of the other simulator's IPs
+        self._pending_clear_finish: bool = False
 
         # Live topology discovery state
         self._live_discovery_thread: QThread = None
@@ -727,11 +729,14 @@ class MainWindow(QMainWindow):
         self._act_new = QAction("&New Topology", self, shortcut="Ctrl+N")
         self._act_open = QAction("&Open Topology...", self, shortcut="Ctrl+O")
         self._act_save = QAction("&Save Topology...", self, shortcut="Ctrl+S")
+        self._act_close_topo = QAction("&Close Topology", self, shortcut="Ctrl+W")
         self._act_export_json = QAction("Export as &JSON...", self)
         file_menu.addAction(self._act_new)
         file_menu.addSeparator()
         file_menu.addAction(self._act_open)
         file_menu.addAction(self._act_save)
+        file_menu.addAction(self._act_close_topo)
+        file_menu.addSeparator()
         file_menu.addAction(self._act_export_json)
         file_menu.addSeparator()
         file_menu.addAction(QAction("E&xit", self, shortcut="Ctrl+Q",
@@ -811,6 +816,7 @@ class MainWindow(QMainWindow):
         self._act_new.triggered.connect(self._new_topology)
         self._act_open.triggered.connect(self._open_topology)
         self._act_save.triggered.connect(self._save_topology)
+        self._act_close_topo.triggered.connect(self._close_topology)
         self._act_export_json.triggered.connect(self._export_json)
         self._act_add_device.triggered.connect(self._add_device)
         self._act_bulk_add.triggered.connect(self._bulk_add)
@@ -1667,6 +1673,13 @@ class MainWindow(QMainWindow):
             # Process launched — show stop button but keep traps disabled until
             # snmpsim logs "Listening at UDP/IPv4 endpoint" (ready callback).
             self._sim_panel.set_simulator_running(True)
+            self._sim_panel.set_device_counts(
+                len(self.device_manager.get_devices_by_type(DeviceType.SWITCH)),
+                len(self.device_manager.get_devices_by_type(DeviceType.ROUTER)),
+                len(self.device_manager.get_devices_by_type(DeviceType.SERVER)),
+                len(self.device_manager.get_devices_by_type(DeviceType.FIREWALL)),
+                len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER)),
+            )
             self._status_label.setText(
                 f"SNMPSim starting — building indexes… ({len(bound_ips)} devices)"
             )
@@ -1702,9 +1715,7 @@ class MainWindow(QMainWindow):
         counts = self.gnmi.target_counts()
         self._gnmi_panel.set_gnmi_running(True)
         self._gnmi_panel.set_gnmi_status("Running")
-        self._gnmi_panel.set_gnmi_targets(
-            counts.get("switch", 0), counts.get("router", 0)
-        )
+        self._gnmi_panel.set_gnmi_targets(counts)
         n_direct = self.gnmi.get_per_device_count()
         self._console_panel.log_gnmi(
             f"[gNMI] Simulation ready — "
@@ -1890,7 +1901,8 @@ class MainWindow(QMainWindow):
                                 "No switches or routers in topology — nothing to generate.")
             return
 
-        self._gnmi_panel.set_generating(True, f"Generating 0 / {len(devices)}…")
+        self._gnmi_panel.set_generating(True)
+        self._gnmi_panel.show_progress(0, len(devices))
         self._console_panel.log_gnmi(
             f"Generating gNMI datasets for {len(devices)} devices…", "info"
         )
@@ -1908,7 +1920,7 @@ class MainWindow(QMainWindow):
         self._gnmi_gen_thread.start()
 
     def _on_gnmi_gen_progress(self, current: int, total: int):
-        self._gnmi_panel.set_generating(True, f"Generating {current} / {total}…")
+        self._gnmi_panel.show_progress(current, total)
 
     def _on_gnmi_gen_finished(self):
         self._gnmi_gen_thread.quit()
@@ -1989,6 +2001,7 @@ class MainWindow(QMainWindow):
             self._gnmi_bind_worker.moveToThread(self._gnmi_bind_thread)
             self._gnmi_bind_thread.started.connect(self._gnmi_bind_worker.run)
             self._gnmi_bind_worker.log.connect(self._console_panel.log_gnmi)
+            self._gnmi_bind_worker.progress.connect(self._gnmi_panel.show_progress)
             self._gnmi_bind_worker.finished.connect(self._on_gnmi_bind_finished)
             self._gnmi_bind_worker.error.connect(
                 lambda e: self._console_panel.log_gnmi(f"[gNMI] Bind error: {e}", "error"))
@@ -2049,8 +2062,7 @@ class MainWindow(QMainWindow):
             self._gnmi_panel.set_gnmi_running(True)
             counts   = self.gnmi.target_counts()
             n_direct = self.gnmi.get_per_device_count()
-            self._gnmi_panel.set_gnmi_targets(
-                counts.get("switch", 0), counts.get("router", 0))
+            self._gnmi_panel.set_gnmi_targets(counts)
             self._gnmi_panel.set_direct_servers(n_direct)
             self._status_label.setText(
                 f"gNMI running — {n_direct} direct server(s), "
@@ -2066,7 +2078,7 @@ class MainWindow(QMainWindow):
         self.gnmi.stop()
         self._gnmi_panel.set_gnmi_running(False)
         self._gnmi_panel.set_gnmi_status("Stopped")
-        self._gnmi_panel.set_gnmi_targets(0, 0)
+        self._gnmi_panel.set_gnmi_targets({})
         self._gnmi_panel.set_direct_servers(0)
         self._gnmi_panel.set_clients([])
         self._gnmi_panel.set_interface_locked(False)
@@ -2099,8 +2111,29 @@ class MainWindow(QMainWindow):
     #  gNMI IP unbinding (called by clear, not by stop)                  #
     # ------------------------------------------------------------------ #
 
+    def _complete_pending_clear(self):
+        """Chain the SNMP IP unbind (or finish immediately) after a gNMI unbind
+        that was triggered as the second half of a cross-clear operation."""
+        if self._bound_ips and self._bound_interface:
+            ips = list(self._bound_ips)
+            iface = self._bound_interface
+            self._console_panel.log_gnmi(f"[gNMI] Removing {len(ips)} bound SNMP IPs…", "info")
+            self._unbind_worker = IPUnbindWorker(iface, ips)
+            self._unbind_thread = QThread()
+            self._unbind_worker.moveToThread(self._unbind_thread)
+            self._unbind_thread.started.connect(self._unbind_worker.run)
+            self._unbind_worker.log.connect(self._console_panel.log_gnmi)
+            self._unbind_worker.progress.connect(self._gnmi_panel.show_progress)
+            self._unbind_worker.finished.connect(self._on_clear_unbind_finished)
+            self._unbind_thread.start()
+        else:
+            self._finish_clear()
+
     def _on_gnmi_unbind(self):
         if not self._gnmi_bound_ips:
+            if self._pending_clear_finish:
+                self._pending_clear_finish = False
+                self._complete_pending_clear()
             return
         # Only remove IPs that are not also held by the SNMP binding
         snmp_set = set(self._bound_ips)
@@ -2110,6 +2143,9 @@ class MainWindow(QMainWindow):
             self._gnmi_bound_ips = []
             self._gnmi_panel.set_bound_count(0)
             self._gnmi_panel.set_gnmi_status("Unbound")
+            if self._pending_clear_finish:
+                self._pending_clear_finish = False
+                self._complete_pending_clear()
             return
 
         self._console_panel.log_gnmi(
@@ -2120,6 +2156,7 @@ class MainWindow(QMainWindow):
         self._gnmi_unbind_worker.moveToThread(self._gnmi_unbind_thread)
         self._gnmi_unbind_thread.started.connect(self._gnmi_unbind_worker.run)
         self._gnmi_unbind_worker.log.connect(self._console_panel.log_gnmi)
+        self._gnmi_unbind_worker.progress.connect(self._gnmi_panel.show_progress)
         self._gnmi_unbind_worker.finished.connect(self._on_gnmi_unbind_finished)
         self._gnmi_unbind_thread.start()
 
@@ -2129,6 +2166,9 @@ class MainWindow(QMainWindow):
         self._gnmi_bound_ips = []
         self._gnmi_panel.set_bound_count(0)
         self._gnmi_panel.set_interface_locked(False)
+        if self._pending_clear_finish:
+            self._pending_clear_finish = False
+            self._complete_pending_clear()
         self._gnmi_panel.set_gnmi_status("Idle")
         self._console_panel.log_gnmi("[gNMI] IPs unbound.", "warning")
 
@@ -2141,17 +2181,14 @@ class MainWindow(QMainWindow):
         if reply != QMessageBox.Yes:
             return
 
-        # Stop processes first (fast — no blocking I/O)
+        # Stop the SNMP simulator only — gNMI has its own clear button.
         if self.snmpsim.is_running():
             self.snmpsim.stop()
         self.state_store.stop()
-        if self.gnmi.is_running():
-            self.gnmi.stop()
-            self._gnmi_panel.set_gnmi_running(False)
-            self._gnmi_panel.set_gnmi_status("Idle")
-            self._gnmi_panel.set_gnmi_targets(0, 0)
 
-        if self._bound_ips and self._bound_interface:
+        # Only remove bound IPs when both simulators are stopped.
+        # gNMI may still be using the same IPs.
+        if self._bound_ips and self._bound_interface and not self.gnmi.is_running():
             # Remove IPs in a background thread so the UI stays responsive.
             # With 1344 devices this is 1344 netsh calls — blocking the main
             # thread would freeze the window for the entire duration.
@@ -2171,7 +2208,10 @@ class MainWindow(QMainWindow):
             self._unbind_worker.finished.connect(self._on_clear_unbind_finished)
             self._unbind_thread.start()
         else:
-            # Nothing to unbind — finish immediately
+            if self._bound_ips and self.gnmi.is_running():
+                self._console_panel.log(
+                    "IP bindings kept — gNMI simulator is still running.", "info"
+                )
             self._finish_clear()
 
     def _on_clear_unbind_finished(self):
@@ -2183,23 +2223,32 @@ class MainWindow(QMainWindow):
         self._bound_interface = ""
         self._sim_panel.set_bound_count(0)
         self._act_clear.setEnabled(True)
-        self._finish_clear()
+        if self._gnmi_bound_ips and not self.gnmi.is_running():
+            # gNMI is also stopped — remove its remaining IPs then finish
+            self._pending_clear_finish = True
+            self._on_gnmi_unbind()
+        else:
+            self._finish_clear()
 
     def _finish_clear(self):
-        """Delete datasets, reset topology and UI after IPs have been unbound."""
+        """Delete datasets and reset simulation UI after IPs have been unbound."""
         ds_path = Path(self._datasets_dir)
         for child in ds_path.iterdir():
             if child.is_dir():
                 shutil.rmtree(child, ignore_errors=True)
             elif child.suffix in (".snmprec",) or child.name.endswith(".gnmi.json"):
                 child.unlink(missing_ok=True)
-        self._new_topology(confirm=False)
+        self._trap_engine.stop_simulation()
+        self._sim_panel.set_simulating(False)
         self._generated_files = []
-        self._gnmi_files      = []
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
         self._sim_panel.set_datasets_ready(False)
-        self._gnmi_panel.set_datasets_ready(False)
+        # Only mark gNMI datasets as gone if gNMI is not running.
+        # If it is running, its Clear button must stay enabled.
+        if not self.gnmi.is_running():
+            self._gnmi_files = []
+            self._gnmi_panel.set_datasets_ready(False)
         self._sim_panel.set_status("Idle")
         self._console_panel.log("Simulation cleared.", "warning")
 
@@ -2244,17 +2293,32 @@ class MainWindow(QMainWindow):
 
     def _clear_gnmi_data(self):
         """Delete all gNMI dataset files and stop the gNMI server if running."""
+        reply = QMessageBox.question(
+            self, "Clear Simulation",
+            "Stop simulator, remove bound IPs, and clear all devices and datasets?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
         if self.gnmi.is_running():
             self.gnmi.stop()
             self._gnmi_panel.set_gnmi_running(False)
             self._gnmi_panel.set_gnmi_status("Stopped")
-            self._gnmi_panel.set_gnmi_targets(0, 0)
+            self._gnmi_panel.set_gnmi_targets({})
             self._gnmi_panel.set_direct_servers(0)
             self._gnmi_panel.set_clients([])
             self._gnmi_panel.set_gnmi_status("Idle")
-        # Unbind gNMI-exclusive IPs (those not shared with SNMP)
-        if self._gnmi_bound_ips:
+        # Only remove bound IPs when all simulators are stopped.
+        # If SNMP is still running it is actively using the same IPs.
+        if self._gnmi_bound_ips and not self.snmpsim.is_running():
+            # Flag signals _on_gnmi_unbind_finished to also unbind SNMP IPs if any remain
+            self._pending_clear_finish = True
             self._on_gnmi_unbind()
+        elif self._gnmi_bound_ips:
+            self._console_panel.log_gnmi(
+                "[gNMI] IP bindings kept — SNMP simulator is still running.", "info"
+            )
         import pathlib
         removed = 0
         for f in pathlib.Path(self._gnmi_datasets_dir).glob("*.gnmi.json"):
@@ -2269,6 +2333,26 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     #  File I/O                                                            #
     # ------------------------------------------------------------------ #
+
+    def _close_topology(self):
+        if self.topology.node_count() == 0:
+            return
+        reply = QMessageBox.question(
+            self, "Close Topology",
+            "Close the current topology? Running simulators will be stopped and all devices removed.",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        if self.snmpsim.is_running():
+            self._stop_simulator()
+        if self.gnmi.is_running():
+            self.gnmi.stop()
+            self._gnmi_panel.set_gnmi_running(False)
+            self._gnmi_panel.set_gnmi_status("Idle")
+            self._gnmi_panel.set_gnmi_targets({})
+            self._gnmi_panel.set_clients([])
+        self._new_topology(confirm=False)
 
     def _new_topology(self, confirm: bool = True):
         if confirm and self.topology.node_count() > 0:

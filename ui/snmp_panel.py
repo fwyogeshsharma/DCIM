@@ -180,23 +180,29 @@ class SNMPPanel(QWidget):
         layout.addWidget(net_group)
 
         # ── Active Devices ─────────────────────────────────────────────────
-        stats_group = QGroupBox("Active Devices")
-        stats_group.setStyleSheet(self._group_style())
-        stats_layout = QVBoxLayout(stats_group)
+        self.stats_group = QGroupBox("Active Devices")
+        self.stats_group.setStyleSheet(self._group_style())
+        self.stats_group.hide()
+        stats_layout = QVBoxLayout(self.stats_group)
         stats_layout.setContentsMargins(6, 4, 6, 6)
         stats_layout.setSpacing(2)
-        self.lbl_switches      = QLabel("Switches:      0")
-        self.lbl_routers       = QLabel("Routers:       0")
-        self.lbl_firewalls     = QLabel("Firewalls:     0")
+        self.lbl_switches       = QLabel("Switches: 0")
+        self.lbl_routers        = QLabel("Routers: 0")
+        self.lbl_firewalls      = QLabel("Firewalls: 0")
         self.lbl_load_balancers = QLabel("Load Balancers: 0")
-        self.lbl_servers       = QLabel("Servers:       0")
-        self.lbl_total         = QLabel("Total:         0")
+        self.lbl_servers        = QLabel("Servers: 0")
+        self.lbl_total          = QLabel("Total: 0")
         for lbl in (self.lbl_switches, self.lbl_routers, self.lbl_firewalls,
-                    self.lbl_load_balancers, self.lbl_servers, self.lbl_total):
+                    self.lbl_load_balancers, self.lbl_servers):
             lbl.setFont(QFont("Consolas", 9))
             lbl.setStyleSheet("color: #e6edf3;")
+            lbl.hide()
             stats_layout.addWidget(lbl)
-        layout.addWidget(stats_group)
+        self.lbl_total.setFont(QFont("Consolas", 9))
+        self.lbl_total.setStyleSheet("color: #8b949e;")
+        self.lbl_total.hide()
+        stats_layout.addWidget(self.lbl_total)
+        layout.addWidget(self.stats_group)
 
         # ── Progress bar ───────────────────────────────────────────────────
         self.progress = QProgressBar()
@@ -386,12 +392,25 @@ class SNMPPanel(QWidget):
 
     def set_device_counts(self, switches: int, routers: int, servers: int,
                           firewalls: int = 0, load_balancers: int = 0):
-        self.lbl_switches.setText(f"Switches:       {switches}")
-        self.lbl_routers.setText(f"Routers:        {routers}")
-        self.lbl_firewalls.setText(f"Firewalls:      {firewalls}")
-        self.lbl_load_balancers.setText(f"Load Balancers: {load_balancers}")
-        self.lbl_servers.setText(f"Servers:        {servers}")
-        self.lbl_total.setText(f"Total:          {switches + routers + servers + firewalls + load_balancers}")
+        _entries = [
+            (self.lbl_switches,       "Switches",       switches),
+            (self.lbl_routers,        "Routers",        routers),
+            (self.lbl_firewalls,      "Firewalls",      firewalls),
+            (self.lbl_load_balancers, "Load Balancers", load_balancers),
+            (self.lbl_servers,        "Servers",        servers),
+        ]
+        for lbl, name, n in _entries:
+            if n > 0:
+                lbl.setText(f"{name}: {n}")
+                lbl.show()
+            else:
+                lbl.hide()
+        total = switches + routers + servers + firewalls + load_balancers
+        if total > 0:
+            self.lbl_total.setText(f"Total: {total}")
+            self.lbl_total.show()
+        else:
+            self.lbl_total.hide()
 
     def set_bound_count(self, count: int):
         if count > 0:
@@ -428,6 +447,7 @@ class SNMPPanel(QWidget):
 
     def set_simulator_running(self, running: bool):
         self._running = running
+        self.stats_group.setVisible(running)
         self.btn_start.setEnabled(not running)
         self.btn_stop.setEnabled(running)
         self.btn_generate.setEnabled(not running)

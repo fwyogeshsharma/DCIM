@@ -763,7 +763,9 @@ class TopologyView(QGraphicsView):
         bsz = self._BTN_SIZE
 
         # Button group: top-left
-        self._btn_group.adjustSize()
+        # adjustSize() is called once at construction; repeating it here during
+        # resizeEvent / scrollContentsBy causes a recursive repaint because Qt
+        # may still be painting the viewport's backing store.
         self._btn_group.move(m, m)
 
         # Search bar: same top edge, immediately right of the button group
