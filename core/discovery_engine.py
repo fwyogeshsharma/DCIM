@@ -208,4 +208,12 @@ class DiscoveryEngine:
         try:
             return loop.run_until_complete(_run())
         finally:
+            # Drain pending async-generator cleanup tasks (walkCmd leaves
+            # athrow tasks scheduled when the generator is not fully
+            # exhausted).  Without this, loop.close() destroys them and
+            # Python prints hundreds of "Task was destroyed but pending" lines.
+            try:
+                loop.run_until_complete(loop.shutdown_asyncgens())
+            except Exception:
+                pass
             loop.close()
