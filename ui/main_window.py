@@ -216,43 +216,41 @@ class IPBindWorker(QObject):
 
     def run(self):
         try:
-            bound: List[str] = []
-            total = len(self.ips)
-            for i, ip in enumerate(self.ips):
-                if self.cancelled:
-                    break
-                from core.ip_binder import add_ip
-                ok, msg = add_ip(self.interface, ip, self.mask)
-                level = "success" if ok else "error"
-                self.log.emit(f"  {'OK' if ok else 'FAIL'} {ip}: {msg}", level)
-                if ok:
-                    bound.append(ip)
-                self.progress.emit(i + 1, total)
-            self.result = bound
+            from core.ip_binder import add_ips_fast
+            bound, contexts = add_ips_fast(
+                self.interface, self.ips, self.mask,
+                log_cb=lambda msg, lvl: self.log.emit(msg, lvl),
+                progress_cb=lambda c, t: self.progress.emit(c, t),
+                cancelled_fn=lambda: self.cancelled,
+            )
+            self.result       = bound
+            self.nte_contexts = contexts   # {ip: nte_context} for fast removal
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
 
 
 class IPUnbindWorker(QObject):
-    """Removes a list of IPs from a Windows network interface via netsh."""
+    """Removes a list of IPs from a Windows network interface."""
     progress = Signal(int, int)   # (current, total)
     log      = Signal(str, str)
     finished = Signal()
 
-    def __init__(self, interface: str, ips: List[str]):
+    def __init__(self, interface: str, ips: List[str],
+                 nte_contexts: Optional[dict] = None):
         super().__init__()
-        self.interface = interface
-        self.ips = ips
+        self.interface    = interface
+        self.ips          = ips
+        self.nte_contexts = nte_contexts or {}
 
     def run(self):
-        total = len(self.ips)
         try:
-            for i, ip in enumerate(self.ips):
-                from core.ip_binder import remove_ip
-                ok, msg = remove_ip(self.interface, ip)
-                self.log.emit(f"  {'OK' if ok else 'FAIL'} Removed {ip}: {msg}", "info")
-                self.progress.emit(i + 1, total)
+            from core.ip_binder import remove_ips_fast
+            remove_ips_fast(
+                self.interface, self.ips, self.nte_contexts,
+                log_cb=lambda msg, lvl: self.log.emit(msg, lvl),
+                progress_cb=lambda c, t: self.progress.emit(c, t),
+            )
         except Exception as e:
             self.log.emit(f"Unbind error: {e}", "error")
         finally:
@@ -391,7 +389,7 @@ class MainWindow(QMainWindow):
         self.gnmi = GNMIController(self._gnmi_datasets_dir)
         self.state_store = DeviceStateStore(
             self.device_manager, self.topology, self._snmp_datasets_dir,
-            tick_interval=30.0, snmp_sync_every=1,
+            tick_interval=60.0, snmp_sync_every=1,   # 60 s reduces I/O pressure for large topologies
         )
         self.gnmi.set_state_store(self.state_store)
         self._trap_engine = TrapEngine(self)
@@ -409,6 +407,7 @@ class MainWindow(QMainWindow):
         # SNMP IP binding state
         self._bound_ips: List[str] = []
         self._bound_interface: str = ""
+        self._nte_contexts: dict = {}   # {ip: nte_context} for fast DeleteIPAddress
         self._bind_thread: QThread = None
         self._bind_worker = None
         self._unbind_thread: QThread = None
@@ -440,7 +439,7 @@ class MainWindow(QMainWindow):
         # Thread-safe log queue — monitor thread puts, main thread drains
         self._log_queue: queue.Queue = queue.Queue()
         self._log_drain_timer = QTimer(self)
-        self._log_drain_timer.setInterval(50)
+        self._log_drain_timer.setInterval(150)   # 150 ms — log display doesn't need 50 ms refresh
         self._log_drain_timer.timeout.connect(self._drain_log_queue)
         self._log_drain_timer.start()
 
@@ -1517,7 +1516,8 @@ class MainWindow(QMainWindow):
         )
         self._index_worker.finished.connect(self._on_index_finished)
         self._index_worker.error.connect(self._on_index_error)
-        self._index_thread.start()
+        # LowPriority: index building is a background task — UI must stay responsive
+        self._index_thread.start(QThread.LowPriority)
 
     def _on_index_finished(self, count: int):
         self._index_thread.quit()
@@ -1647,7 +1647,8 @@ class MainWindow(QMainWindow):
             return
 
         bound_ips = self._bind_worker.result
-        self._bound_ips = bound_ips
+        self._bound_ips    = bound_ips
+        self._nte_contexts = getattr(self._bind_worker, "nte_contexts", {})
         self._sim_panel.set_bound_count(len(bound_ips))
 
         if not bound_ips:
@@ -1681,10 +1682,10 @@ class MainWindow(QMainWindow):
                 len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER)),
             )
             self._status_label.setText(
-                f"SNMPSim starting — building indexes… ({len(bound_ips)} devices)"
+                f"SNMPSim starting — loading datasets… ({len(bound_ips)} devices)"
             )
             self._console_panel.log(
-                "SNMPSim is indexing datasets — devices will respond once 'Running' is shown.",
+                "SNMPSim is loading pre-built datasets — devices will respond once 'Running' is shown.",
                 "info"
             )
         else:
@@ -2129,7 +2130,7 @@ class MainWindow(QMainWindow):
             ips = list(self._bound_ips)
             iface = self._bound_interface
             self._console_panel.log_gnmi(f"[gNMI] Removing {len(ips)} bound SNMP IPs…", "info")
-            self._unbind_worker = IPUnbindWorker(iface, ips)
+            self._unbind_worker = IPUnbindWorker(iface, ips, self._nte_contexts)
             self._unbind_thread = QThread()
             self._unbind_worker.moveToThread(self._unbind_thread)
             self._unbind_thread.started.connect(self._unbind_worker.run)
@@ -2209,7 +2210,7 @@ class MainWindow(QMainWindow):
             self._sim_panel.show_progress(0, len(ips))
             self._act_clear.setEnabled(False)
 
-            self._unbind_worker = IPUnbindWorker(iface, ips)
+            self._unbind_worker = IPUnbindWorker(iface, ips, self._nte_contexts)
             self._unbind_thread = QThread()
             self._unbind_worker.moveToThread(self._unbind_thread)
             self._unbind_thread.started.connect(self._unbind_worker.run)
@@ -2229,8 +2230,9 @@ class MainWindow(QMainWindow):
         self._unbind_thread.wait()
         self._unbind_thread = None
         self._unbind_worker = None
-        self._bound_ips = []
+        self._bound_ips    = []
         self._bound_interface = ""
+        self._nte_contexts = {}
         self._sim_panel.set_bound_count(0)
         self._act_clear.setEnabled(True)
         if self._gnmi_bound_ips and not self.gnmi.is_running():
@@ -2455,33 +2457,43 @@ class MainWindow(QMainWindow):
 
     def _refresh_device_table(self):
         devices = self.device_manager.get_all_devices()
-        self._device_table.setRowCount(len(devices))
-        type_colors = {
-            DeviceType.ROUTER:        QColor("#1f6feb"),
-            DeviceType.SWITCH:        QColor("#238636"),
-            DeviceType.SERVER:        QColor("#8957e5"),
-            DeviceType.FIREWALL:      QColor("#e67e22"),
-            DeviceType.LOAD_BALANCER: QColor("#16a085"),
-        }
-        for row, device in enumerate(devices):
-            name_item = QTableWidgetItem(device.name)
-            name_item.setData(Qt.UserRole, device.id)
-            type_item = QTableWidgetItem(device.device_type.value.capitalize())
-            type_item.setForeground(type_colors.get(device.device_type, QColor("white")))
-            vendor_item = QTableWidgetItem(device.vendor.value)
-            ip_item = QTableWidgetItem(device.ip_address)
-            ip_item.setFont(QFont("Consolas", 9))
-            iface_item  = QTableWidgetItem(str(device.interface_count))
-            iface_item.setTextAlignment(Qt.AlignCenter)
-            port_item   = QTableWidgetItem(str(device.snmp_port))
-            port_item.setTextAlignment(Qt.AlignCenter)
-
-            self._device_table.setItem(row, 0, name_item)
-            self._device_table.setItem(row, 1, type_item)
-            self._device_table.setItem(row, 2, vendor_item)
-            self._device_table.setItem(row, 3, ip_item)
-            self._device_table.setItem(row, 4, iface_item)
-            self._device_table.setItem(row, 5, port_item)
+        t = self._device_table
+        # Suppress per-cell repaints and signals for the entire rebuild.
+        # Without this, inserting 1 300+ rows triggers one repaint per cell
+        # which locks the main thread for several seconds.
+        t.setUpdatesEnabled(False)
+        t.blockSignals(True)
+        try:
+            t.setRowCount(len(devices))
+            type_colors = {
+                DeviceType.ROUTER:        QColor("#1f6feb"),
+                DeviceType.SWITCH:        QColor("#238636"),
+                DeviceType.SERVER:        QColor("#8957e5"),
+                DeviceType.FIREWALL:      QColor("#e67e22"),
+                DeviceType.LOAD_BALANCER: QColor("#16a085"),
+            }
+            _consolas = QFont("Consolas", 9)
+            for row, device in enumerate(devices):
+                name_item = QTableWidgetItem(device.name)
+                name_item.setData(Qt.UserRole, device.id)
+                type_item = QTableWidgetItem(device.device_type.value.capitalize())
+                type_item.setForeground(type_colors.get(device.device_type, QColor("white")))
+                vendor_item = QTableWidgetItem(device.vendor.value)
+                ip_item = QTableWidgetItem(device.ip_address)
+                ip_item.setFont(_consolas)
+                iface_item = QTableWidgetItem(str(device.interface_count))
+                iface_item.setTextAlignment(Qt.AlignCenter)
+                port_item  = QTableWidgetItem(str(device.snmp_port))
+                port_item.setTextAlignment(Qt.AlignCenter)
+                t.setItem(row, 0, name_item)
+                t.setItem(row, 1, type_item)
+                t.setItem(row, 2, vendor_item)
+                t.setItem(row, 3, ip_item)
+                t.setItem(row, 4, iface_item)
+                t.setItem(row, 5, port_item)
+        finally:
+            t.blockSignals(False)
+            t.setUpdatesEnabled(True)
 
         # Re-apply any active search filter
         self._on_device_search(self._device_search.text())
@@ -2505,14 +2517,25 @@ class MainWindow(QMainWindow):
         pass  # Active Devices counts are populated after discovery, not on topology changes
 
     def _drain_log_queue(self):
-        """Drain log/status messages queued by SNMPSim and gNMI monitor threads."""
+        """Drain log/status messages queued by SNMPSim and gNMI monitor threads.
+
+        Collects up to 100 items per tick, batches all plain log lines into a
+        single console.log_batch() call, and handles control messages immediately.
+        This keeps the main-thread time per tick to a single HTML append rather
+        than N individual append() calls.
+        """
+        _MAX_PER_TICK = 100
+        snmp_lines: list = []
+        gnmi_lines: list = []
+        processed = 0
         try:
-            while True:
+            while processed < _MAX_PER_TICK:
                 item = self._log_queue.get_nowait()
+                processed += 1
                 if item[0] == "log":
-                    self._console_panel.log(item[1], item[2])
+                    snmp_lines.append((item[1], item[2]))
                 elif item[0] == "log_gnmi":
-                    self._console_panel.log_gnmi(item[1], item[2])
+                    gnmi_lines.append((item[1], item[2]))
                 elif item[0] == "status":
                     self._sim_panel.set_status(item[1])
                 elif item[0] == "snmpsim_ready":
@@ -2523,6 +2546,8 @@ class MainWindow(QMainWindow):
                     self._on_gnmi_ready()
         except queue.Empty:
             pass
+        if snmp_lines or gnmi_lines:
+            self._console_panel.log_batch(snmp_lines, gnmi_lines)
 
     def _refresh_status(self):
         if self.snmpsim.is_running():
@@ -2535,9 +2560,9 @@ class MainWindow(QMainWindow):
                 self._sim_panel.set_status("Running")
             else:
                 self._status_label.setText(
-                    f"SNMPSim starting — building indexes… ({n_bound} devices)"
+                    f"SNMPSim starting — loading datasets… ({n_bound} devices)"
                 )
-                self._sim_panel.set_status("Starting (building indexes)…")
+                self._sim_panel.set_status("Starting…")
 
         if self.gnmi.is_running():
             self._gnmi_panel.set_clients(self.gnmi.get_clients())
