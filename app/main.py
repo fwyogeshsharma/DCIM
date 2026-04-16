@@ -3,6 +3,29 @@ dataCenter Simulator - Entry Point
 """
 import sys
 import os
+
+# ── SNMPSim runner mode ───────────────────────────────────────────────────────
+# When the frozen exe is launched with _SNMPSIM_RUNNER=1 it acts as the snmpsim
+# subprocess instead of starting the UI.  This lets a single self-contained exe
+# serve as both the main application and the snmpsim backend without requiring
+# any external Python installation on the target machine.
+if os.environ.get("_SNMPSIM_RUNNER") == "1":
+    if getattr(sys, "frozen", False):
+        # snmpsim's variation modules are .py files that it opens and exec()s at
+        # runtime.  In a frozen exe those files can't be exec'd reliably, so
+        # load_variation_modules() returns 1 (error) instead of a dict, causing
+        # an AttributeError later.  Pointing snmpsim at an empty temp directory
+        # makes it find no .py files → returns {} → starts cleanly.
+        # We don't use variation modules in our simulation so this is safe.
+        import tempfile as _tempfile
+        _var_dir = _tempfile.mkdtemp(prefix="snmpsim_var_")
+        # --variation-modules-dir uses action="append", so one flag is enough.
+        sys.argv.insert(1, f"--variation-modules-dir={_var_dir}")
+
+    from snmpsim.commands.responder import main as _snmpsim_main
+    sys.exit(_snmpsim_main() or 0)
+# ─────────────────────────────────────────────────────────────────────────────
+
 import faulthandler
 
 # Suppress gRPC C-core stderr noise (bind failures during initial retry are expected)

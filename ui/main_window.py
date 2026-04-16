@@ -194,6 +194,32 @@ class LiveDiscoveryWorker(QObject):
 
 
 # ------------------------------------------------------------------ #
+#  Background worker for dataset file deletion                         #
+# ------------------------------------------------------------------ #
+
+class ClearDatasetsWorker(QObject):
+    """Deletes all dataset files/directories in the background so the main
+    thread is never blocked by shutil.rmtree on large topologies."""
+    finished = Signal()
+
+    def __init__(self, datasets_dir: str):
+        super().__init__()
+        self.datasets_dir = datasets_dir
+
+    def run(self):
+        ds_path = Path(self.datasets_dir)
+        try:
+            for child in ds_path.iterdir():
+                if child.is_dir():
+                    shutil.rmtree(child, ignore_errors=True)
+                elif child.suffix in (".snmprec",) or child.name.endswith(".gnmi.json"):
+                    child.unlink(missing_ok=True)
+        except Exception:
+            pass
+        self.finished.emit()
+
+
+# ------------------------------------------------------------------ #
 #  Background workers for IP binding / unbinding                       #
 # ------------------------------------------------------------------ #
 
@@ -422,6 +448,8 @@ class MainWindow(QMainWindow):
         self._gnmi_unbind_worker = None
         # Set when a clear operation needs to chain unbind of the other simulator's IPs
         self._pending_clear_finish: bool = False
+        self._clear_thread: QThread = None
+        self._clear_worker: ClearDatasetsWorker = None
 
         # Live topology discovery state
         self._live_discovery_thread: QThread = None
@@ -2243,24 +2271,34 @@ class MainWindow(QMainWindow):
             self._finish_clear()
 
     def _finish_clear(self):
-        """Delete datasets and reset simulation UI after IPs have been unbound."""
-        ds_path = Path(self._datasets_dir)
-        for child in ds_path.iterdir():
-            if child.is_dir():
-                shutil.rmtree(child, ignore_errors=True)
-            elif child.suffix in (".snmprec",) or child.name.endswith(".gnmi.json"):
-                child.unlink(missing_ok=True)
+        """Kick off background deletion of dataset files, then reset UI when done."""
+        self._sim_panel.set_status("Clearing…")
+        self._act_clear.setEnabled(False)
+
+        self._clear_worker = ClearDatasetsWorker(self._datasets_dir)
+        self._clear_thread = QThread()
+        self._clear_worker.moveToThread(self._clear_thread)
+        self._clear_thread.started.connect(self._clear_worker.run)
+        self._clear_worker.finished.connect(self._on_clear_datasets_finished)
+        self._clear_thread.start()
+
+    def _on_clear_datasets_finished(self):
+        """Called on main thread once background file deletion is complete."""
+        self._clear_thread.quit()
+        self._clear_thread.wait()
+        self._clear_thread = None
+        self._clear_worker = None
+
         self._trap_engine.stop_simulation()
         self._sim_panel.set_simulating(False)
         self._generated_files = []
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
         self._sim_panel.set_datasets_ready(False)
-        # Only mark gNMI datasets as gone if gNMI is not running.
-        # If it is running, its Clear button must stay enabled.
         if not self.gnmi.is_running():
             self._gnmi_files = []
             self._gnmi_panel.set_datasets_ready(False)
+        self._act_clear.setEnabled(True)
         self._sim_panel.set_status("Idle")
         self._console_panel.log("Simulation cleared.", "warning")
 

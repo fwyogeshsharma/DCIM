@@ -100,6 +100,7 @@ class SNMPSimController:
         self._ready = False   # True once snmpsim is actually listening
         self._active_endpoints: List[str] = []
         self._job_handle = None   # Windows Job Object handle — kept open until stop()
+        self._snmpsim_path: Optional[str] = None  # cached after first discovery
 
     # ------------------------------------------------------------------ #
     #  Callbacks                                                           #
@@ -147,6 +148,14 @@ class SNMPSimController:
     # ------------------------------------------------------------------ #
 
     def _find_snmpsim(self) -> Optional[str]:
+        # Return cached path if it still exists — avoids repeating PATH search
+        # and glob.glob() across drive roots on every Start click.
+        if self._snmpsim_path and Path(self._snmpsim_path).exists():
+            return self._snmpsim_path
+        self._snmpsim_path = self._discover_snmpsim()
+        return self._snmpsim_path
+
+    def _discover_snmpsim(self) -> Optional[str]:
         candidates = [
             "snmpsim-command-responder",
             "snmpsim-command-responder.exe",
@@ -155,7 +164,7 @@ class SNMPSimController:
             "snmpsimd.exe",
         ]
 
-        # 1. PATH lookup — works in dev mode and when Python/Scripts is on PATH.
+        # 1. PATH lookup — fastest; works whenever Python/Scripts is on PATH.
         for name in candidates:
             path = shutil.which(name)
             if path:
@@ -169,40 +178,43 @@ class SNMPSimController:
             if p.exists():
                 return str(p)
 
-        # 3. When frozen by PyInstaller sys.executable IS the bundle, not Python.
-        #    Search common Windows Python installation paths explicitly.
-        if getattr(sys, "frozen", False):
-            import glob as _glob
-            scripts_dirs: list = []
-            for env_var in ("LOCALAPPDATA", "APPDATA"):
-                base = os.environ.get(env_var, "")
-                if base:
-                    # e.g. C:\Users\<user>\AppData\Local\Programs\Python\Python312\Scripts
-                    for match in _glob.glob(
-                        os.path.join(base, "Programs", "Python", "Python3*", "Scripts")
-                    ):
-                        scripts_dirs.append(match)
-                    # user-level pip installs: AppData\Roaming\Python\Python3*\Scripts
-                    for match in _glob.glob(
-                        os.path.join(base, "Python", "Python3*", "Scripts")
-                    ):
-                        scripts_dirs.append(match)
-            # System-level installs (C:\Python312\Scripts, D:\Python\Scripts …)
-            for drive in ("C:", "D:"):
-                for match in _glob.glob(os.path.join(drive, os.sep, "Python3*", "Scripts")):
+        # 3. Scripts folder next to the Python interpreter (dev + venv installs).
+        #    In dev mode: sys.executable = C:\Python311\python.exe
+        #                 → Scripts = C:\Python311\Scripts  ✓
+        #    In frozen exe: sys.executable = the .exe itself, exe_dir/Scripts won't
+        #    exist, so this is a no-op — falls through to the glob search below.
+        python_scripts = exe_dir / "Scripts"
+        for name in candidates:
+            p = python_scripts / name
+            if p.exists():
+                return str(p)
+
+        # 4. Broad glob search across common Windows Python install locations.
+        #    Runs unconditionally (not gated on sys.frozen) so it works whether
+        #    the app is a PyInstaller exe, a cx_Freeze exe, or any other wrapper
+        #    that may not set sys.frozen.  The result is cached by _find_snmpsim
+        #    so this glob only ever executes once per session.
+        import glob as _glob
+        scripts_dirs: list = []
+        for env_var in ("LOCALAPPDATA", "APPDATA"):
+            base = os.environ.get(env_var, "")
+            if base:
+                for match in _glob.glob(
+                    os.path.join(base, "Programs", "Python", "Python3*", "Scripts")
+                ):
                     scripts_dirs.append(match)
-                for match in _glob.glob(os.path.join(drive, os.sep, "Python", "Scripts")):
+                for match in _glob.glob(
+                    os.path.join(base, "Python", "Python3*", "Scripts")
+                ):
                     scripts_dirs.append(match)
-            for scripts in scripts_dirs:
-                for name in candidates:
-                    p = Path(scripts) / name
-                    if p.exists():
-                        return str(p)
-        else:
-            # 4. Dev mode: Scripts folder sits next to the Python interpreter.
-            python_scripts = Path(sys.executable).parent / "Scripts"
+        for drive in ("C:", "D:"):
+            for match in _glob.glob(os.path.join(drive, os.sep, "Python3*", "Scripts")):
+                scripts_dirs.append(match)
+            for match in _glob.glob(os.path.join(drive, os.sep, "Python", "Scripts")):
+                scripts_dirs.append(match)
+        for scripts in scripts_dirs:
             for name in candidates:
-                p = python_scripts / name
+                p = Path(scripts) / name
                 if p.exists():
                     return str(p)
 
@@ -227,18 +239,19 @@ class SNMPSimController:
             self._set_status("Error: no IPs")
             return False
 
-        snmpsim_path = self._find_snmpsim()
-        if not snmpsim_path:
-            if getattr(sys, "frozen", False):
-                self._log(
-                    "ERROR: snmpsim not found. "
-                    "Install Python and run:  pip install snmpsim-lextudio  "
-                    "then ensure the Python Scripts folder is on your PATH."
-                )
-            else:
+        # In a frozen (PyInstaller) exe, snmpsim is bundled inside the exe itself.
+        # We launch sys.executable (our own exe) with _SNMPSIM_RUNNER=1 so it
+        # boots into snmpsim mode instead of starting the UI.  No external Python
+        # or snmpsim installation is required on the target machine.
+        frozen = getattr(sys, "frozen", False)
+        if frozen:
+            snmpsim_path = sys.executable
+        else:
+            snmpsim_path = self._find_snmpsim()
+            if not snmpsim_path:
                 self._log("ERROR: snmpsim not found. Install with:  pip install snmpsim-lextudio")
-            self._set_status("Error: snmpsim not found")
-            return False
+                self._set_status("Error: snmpsim not found")
+                return False
 
         if not os.path.isdir(self.datasets_dir):
             self._log(f"ERROR: Datasets directory not found: {self.datasets_dir}")
@@ -260,6 +273,8 @@ class SNMPSimController:
             # per-request SNMP logs appear only in a burst at the end.
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
+            if frozen:
+                env["_SNMPSIM_RUNNER"] = "1"
 
             self._process = subprocess.Popen(
                 cmd,
@@ -296,11 +311,15 @@ class SNMPSimController:
         # in every generated dataset (e.g. community "10.1.1.1" →
         # datasets/10.1.1.1.snmprec).  The netsh-bound virtual IPs ensure
         # that traffic for each device IP reaches this process.
-        base_cmd = (
-            [sys.executable, snmpsim_path]
-            if snmpsim_path.endswith(".py")
-            else [snmpsim_path]
-        )
+        # In frozen mode snmpsim_path IS sys.executable (the exe runs itself in
+        # snmpsim mode via _SNMPSIM_RUNNER=1).  In dev mode, use the discovered
+        # snmpsim script/exe as before.
+        if getattr(sys, "frozen", False):
+            base_cmd = [snmpsim_path]
+        elif snmpsim_path.endswith(".py"):
+            base_cmd = [sys.executable, snmpsim_path]
+        else:
+            base_cmd = [snmpsim_path]
 
         return base_cmd + [
             f"--data-dir={self.datasets_dir}",

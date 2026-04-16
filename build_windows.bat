@@ -39,11 +39,27 @@ pyinstaller ^
     --add-data "core;core" ^
     --add-data "ui;ui" ^
     --add-data "simulator;simulator" ^
+    --add-data "proto;proto" ^
     --hidden-import PySide6.QtCore ^
     --hidden-import PySide6.QtGui ^
     --hidden-import PySide6.QtWidgets ^
     --hidden-import networkx ^
     --hidden-import pysnmp ^
+    --hidden-import snmpsim ^
+    --hidden-import snmpsim.commands ^
+    --hidden-import snmpsim.commands.responder ^
+    --collect-all snmpsim ^
+    --hidden-import dbm ^
+    --hidden-import dbm.dumb ^
+    --hidden-import google.protobuf ^
+    --hidden-import google.protobuf.descriptor ^
+    --hidden-import google.protobuf.descriptor_pb2 ^
+    --hidden-import google.protobuf.descriptor_pool ^
+    --hidden-import google.protobuf.message ^
+    --hidden-import google.protobuf.reflection ^
+    --hidden-import google.protobuf.symbol_database ^
+    --collect-all protobuf ^
+    --collect-all google ^
     app/main.py
 
 if %errorlevel% neq 0 (
