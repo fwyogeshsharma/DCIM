@@ -268,7 +268,10 @@ class SNMPSimController:
                 text=True,
                 bufsize=1,
                 env=env,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+                creationflags=(
+                    subprocess.CREATE_NO_WINDOW |
+                    subprocess.BELOW_NORMAL_PRIORITY_CLASS   # prevents snmpsim startup from saturating CPU/disk
+                ) if sys.platform == "win32" else 0,
             )
             self._running = True
             self._ready = False
@@ -276,7 +279,7 @@ class SNMPSimController:
             # Tie snmpsim's lifetime to ours: if we crash or are force-killed,
             # the OS will kill snmpsim too, releasing its .snmprec file handles.
             self._job_handle = _assign_job_object(self._process.pid)
-            self._set_status("Starting (building indexes)…")
+            self._set_status("Starting…")
             self._start_monitor()
             return True
         except Exception as e:
@@ -346,21 +349,28 @@ class SNMPSimController:
         self._monitor_thread.start()
 
     def _monitor_loop(self):
-        if not self._process:
+        # Capture a local reference so stop() nulling self._process on the main
+        # thread doesn't cause an AttributeError when we call proc.wait() below.
+        proc = self._process
+        if not proc:
             return
         try:
-            for line in self._process.stdout:
+            for line in proc.stdout:
                 line = line.rstrip()
                 if not line:
                     continue
-                self._log(f"[snmpsim] {line}")
-                # Detect when snmpsim finishes indexing and is actually listening
+                # Detect startup before any filtering so the ready callback always fires.
                 if not self._ready and "Listening at UDP/IPv4 endpoint" in line:
                     self._ready = True
                     self._set_status("Running")
                     if self._ready_callback:
                         self._ready_callback()
-            self._process.wait()
+
+                # Forward every line to the UI console.
+                # The console QTextEdit has setMaximumBlockCount(1000) so old lines
+                # roll off automatically — no stalling regardless of poll volume.
+                self._log(f"[snmpsim] {line}")
+            proc.wait()
             if self._running:
                 self._set_status("Stopped unexpectedly")
                 self._log("SNMPSim process ended unexpectedly.")
@@ -406,7 +416,7 @@ class SNMPSimController:
     def preindex_datasets(self,
                           data_dir: str,
                           progress_cb: Optional[Callable[[int, int], None]] = None,
-                          workers: int = 8) -> int:
+                          workers: int = 2) -> int:
         """
         Wipe stale index cache, then pre-build snmpsim .dbm indexes for every
         .snmprec file in *data_dir* in parallel so snmpsim starts instantly.
@@ -456,6 +466,17 @@ class SNMPSimController:
                       where key_str is the OID as a Latin-1 string (no b'' prefix)
                       First char must be ' or " for whichdb() to recognise format.
             """
+            # Run at below-normal OS priority so the UI thread is never starved.
+            if sys.platform == "win32":
+                try:
+                    import ctypes
+                    # SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL=-1)
+                    ctypes.windll.kernel32.SetThreadPriority(
+                        ctypes.windll.kernel32.GetCurrentThread(), -1
+                    )
+                except Exception:
+                    pass
+
             db_base = _db_path(snmprec_path)
             dat_path = db_base + ".dat"
             dir_path = db_base + ".dir"
@@ -516,8 +537,11 @@ class SNMPSimController:
                 pos = len(dat_io)
                 siz = len(val_b)
                 dat_io += val_b
-                # key decoded to Latin-1 str → repr starts with ' or "
-                # tuple repr matches dbm.dumb _addkey() format exactly
+                # Write key as Latin-1 string repr ('...' not b'...').
+                # Python 3.11 dbm.dumb stores keys as strings in .dir and
+                # handles both string and bytes lookups transparently.
+                # Using bytes repr (b'...') breaks dbm.dumb.open() in Python 3.11
+                # with "'bytes' object has no attribute 'encode'".
                 key_str = key_b.decode("latin-1")
                 dir_lines.append("%r, %r\n" % (key_str, (pos, siz)))
 
