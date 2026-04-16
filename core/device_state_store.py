@@ -269,7 +269,7 @@ class DeviceStateStore:
             from core.snmprec_generator import SNMPRecGenerator
             from concurrent.futures import ThreadPoolExecutor
             snmp_gen = SNMPRecGenerator(self._datasets_dir)
-            with ThreadPoolExecutor(max_workers=8) as pool:
+            with ThreadPoolExecutor(max_workers=4) as pool:
                 list(pool.map(snmp_gen.patch_metrics, devices))
             log.debug("[StateStore] SNMP sync — %d file(s) patched.", len(devices))
         except Exception as e:
