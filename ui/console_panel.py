@@ -94,6 +94,10 @@ def _make_tab(label: str) -> tuple[QWidget, QTextEdit]:
     te.setReadOnly(True)
     te.setFont(QFont("Consolas", 9))
     te.setStyleSheet(_CONSOLE_STYLE)
+    # Cap document size so append() stays O(1) regardless of runtime length.
+    # Without this, a 1 300-device topology floods the console until each
+    # append() blocks the main thread for tens of milliseconds.
+    te.document().setMaximumBlockCount(1000)
     vlay.addWidget(te)
 
     clr.clicked.connect(te.clear)
@@ -142,17 +146,44 @@ class ConsolePanel(QWidget):
     #  Public API                                                          #
     # ------------------------------------------------------------------ #
 
+    @staticmethod
+    def _append(te: QTextEdit, html: str) -> None:
+        """Append HTML and scroll only if the user is already at the bottom."""
+        sb = te.verticalScrollBar()
+        at_bottom = sb.value() >= sb.maximum() - 4
+        te.append(html)
+        if at_bottom:
+            te.moveCursor(QTextCursor.End)
+
     def log(self, message: str, level: str = "info"):
         """Append a message to the SNMP Simulator tab."""
         color = _COLORS.get(level, "#58a6ff")
-        self._snmp_te.append(f'<span style="color:{color};">{message}</span>')
-        self._snmp_te.moveCursor(QTextCursor.End)
+        self._append(self._snmp_te,
+                     f'<span style="color:{color};">{message}</span>')
 
     def log_gnmi(self, message: str, level: str = "info"):
         """Append a message to the gNMI Simulator tab."""
         color = _COLORS.get(level, "#58a6ff")
-        self._gnmi_te.append(f'<span style="color:{color};">{message}</span>')
-        self._gnmi_te.moveCursor(QTextCursor.End)
+        self._append(self._gnmi_te,
+                     f'<span style="color:{color};">{message}</span>')
+
+    def log_batch(self, snmp_lines: list, gnmi_lines: list) -> None:
+        """Append multiple pre-formatted (message, level) pairs in one pass.
+        Called by _drain_log_queue to avoid N individual append() calls per tick."""
+        if snmp_lines:
+            html = "".join(
+                f'<span style="color:{_COLORS.get(lvl, _COLORS["info"])};">'
+                f'{msg}</span>'
+                for msg, lvl in snmp_lines
+            )
+            self._append(self._snmp_te, html)
+        if gnmi_lines:
+            html = "".join(
+                f'<span style="color:{_COLORS.get(lvl, _COLORS["info"])};">'
+                f'{msg}</span>'
+                for msg, lvl in gnmi_lines
+            )
+            self._append(self._gnmi_te, html)
 
     def clear_log(self):
         """Clear the currently visible tab."""
