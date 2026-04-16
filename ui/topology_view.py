@@ -84,11 +84,32 @@ class DeviceNode(QGraphicsItem):
         self.setAcceptHoverEvents(True)
         self._edges: list = []
         self._faded: bool = False
+        # Cache each node's rendered output as a device-pixel pixmap.
+        # On a 1 300-node canvas, Qt normally calls paint() on every visible
+        # node for each scene repaint (drag, panel resize, timer-induced redraws).
+        # With DeviceCoordinateCache only the moved/changed node is re-painted;
+        # all others are composited from cache — O(1) per static node per frame.
+        self.setCacheMode(QGraphicsItem.DeviceCoordinateCache)
+
+        # Pre-compute per-node paint resources so paint() allocates nothing.
+        # With 1 300+ nodes a single scene.update() would otherwise create
+        # thousands of QLinearGradient / QColor objects on every frame.
+        _fill = self._color_scheme["fill"]
+        _text = self._color_scheme["text"]
+        self._gradient = QLinearGradient(0, -NODE_H / 2, 0, NODE_H / 2)
+        self._gradient.setColorAt(0, _fill.lighter(120))
+        self._gradient.setColorAt(1, _fill)
+        self._brush          = QBrush(self._gradient)
+        self._color_type_lbl = _text.lighter(150)
+        self._color_ip_lbl   = _text.lighter(130)
+        self._type_str       = device.device_type.value.capitalize()
 
     def set_faded(self, faded: bool, repaint: bool = True):
         self._faded = faded
-        if repaint:
-            self.update()
+        # Always call update() to invalidate the DeviceCoordinateCache pixmap.
+        # With caching, skipping update() (repaint=False) leaves the old faded
+        # pixmap in the cache — nodes never visually unfade during discovery.
+        self.update()
 
     def type(self):
         return DeviceNode.Type
@@ -119,12 +140,8 @@ class DeviceNode(QGraphicsItem):
         painter.setBrush(QColor(0, 0, 0, 40))
         painter.drawRoundedRect(-NODE_W / 2 + 3, -NODE_H / 2 + 3, NODE_W, NODE_H, 8, 8)
 
-        # Body gradient
-        grad = QLinearGradient(0, -NODE_H / 2, 0, NODE_H / 2)
-        fill = colors["fill"]
-        grad.setColorAt(0, fill.lighter(120))
-        grad.setColorAt(1, fill)
-        painter.setBrush(QBrush(grad))
+        # Body gradient (brush pre-computed in __init__)
+        painter.setBrush(self._brush)
 
         border_color = QColor("#f39c12") if selected else colors["border"]
         border_width = 3 if selected else 1.5
@@ -139,10 +156,9 @@ class DeviceNode(QGraphicsItem):
 
         # Device type label
         painter.setFont(self._FONT_TYPE)
-        painter.setPen(QPen(colors["text"].lighter(150)))
+        painter.setPen(QPen(self._color_type_lbl))
         type_rect = QRectF(-NODE_W / 2 + 2, -NODE_H / 2 + ICON_SIZE - 2, NODE_W - 4, 14)
-        painter.drawText(type_rect, Qt.AlignCenter,
-                         self.device.device_type.value.capitalize())
+        painter.drawText(type_rect, Qt.AlignCenter, self._type_str)
 
         # Device name
         painter.setFont(self._FONT_NAME)
@@ -152,7 +168,7 @@ class DeviceNode(QGraphicsItem):
 
         # IP address
         painter.setFont(self._FONT_IP)
-        painter.setPen(QPen(colors["text"].lighter(130)))
+        painter.setPen(QPen(self._color_ip_lbl))
         ip_rect = QRectF(-NODE_W / 2, NODE_H / 2 - 14, NODE_W, 12)
         painter.drawText(ip_rect, Qt.AlignCenter, self.device.ip_address)
 
