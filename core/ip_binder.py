@@ -8,11 +8,15 @@ Requires the application to run as Administrator.
 from __future__ import annotations
 import ctypes
 import os
+import socket as _socket
+import struct as _struct
 import subprocess
 import sys
 import re
 import tempfile
-from typing import List, Tuple, Callable, Optional
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
+from typing import Dict, List, Tuple, Callable, Optional
 
 
 # ------------------------------------------------------------------ #
@@ -163,6 +167,171 @@ def remove_ip(interface: str, ip: str) -> Tuple[bool, str]:
         return False, out or f"netsh exit {result.returncode}"
     except Exception as e:
         return False, str(e)
+
+
+# ------------------------------------------------------------------ #
+#  Fast Win32 API helpers (Windows only)                              #
+# ------------------------------------------------------------------ #
+
+def _get_if_index(interface_name: str) -> Optional[int]:
+    """Return the Windows IfIndex for a named adapter (one PowerShell call)."""
+    try:
+        safe = interface_name.replace("'", "''")
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+             f"(Get-NetAdapter -Name '{safe}').IfIndex"],
+            capture_output=True, text=True, timeout=10,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        val = result.stdout.strip()
+        if val.isdigit():
+            return int(val)
+    except Exception:
+        pass
+    return None
+
+
+def _ip_dword(ip: str) -> int:
+    """Convert a dotted-decimal IP string to a DWORD in network byte order
+    as expected by the Win32 AddIPAddress / DeleteIPAddress APIs."""
+    return _struct.unpack("<I", _socket.inet_aton(ip))[0]
+
+
+def _add_ip_api(if_index: int, ip: str, mask: str) -> Tuple[bool, int, str]:
+    """
+    Add *ip/mask* to interface *if_index* via Windows AddIPAddress.
+    Returns (success, nte_context, message).
+    nte_context is needed for fast removal via DeleteIPAddress.
+    """
+    try:
+        nte_ctx  = ctypes.c_ulong(0)
+        nte_inst = ctypes.c_ulong(0)
+        err = ctypes.windll.iphlpapi.AddIPAddress(
+            _ip_dword(ip), _ip_dword(mask), if_index,
+            ctypes.byref(nte_ctx), ctypes.byref(nte_inst),
+        )
+        if err == 0:
+            return True, nte_ctx.value, f"Bound {ip}"
+        if err in (183, 5003, 5010):    # ERROR_ALREADY_EXISTS / OBJECT_ALREADY_EXISTS / ERROR_ADDRESS_ALREADY_EXISTS
+            return True, 0, f"Already bound {ip}"
+        return False, 0, f"AddIPAddress error {err}"
+    except Exception as exc:
+        return False, 0, str(exc)
+
+
+def _remove_ip_api(nte_context: int) -> Tuple[bool, str]:
+    """Remove an IP address via Windows DeleteIPAddress using its NTEContext."""
+    try:
+        err = ctypes.windll.iphlpapi.DeleteIPAddress(ctypes.c_ulong(nte_context))
+        return err == 0, ("ok" if err == 0 else f"DeleteIPAddress error {err}")
+    except Exception as exc:
+        return False, str(exc)
+
+
+def add_ips_fast(
+    interface: str,
+    ips: List[str],
+    mask: str = "255.255.255.0",
+    log_cb: Optional[Callable[[str, str], None]] = None,
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+    workers: int = 4,
+    cancelled_fn: Optional[Callable[[], bool]] = None,
+) -> Tuple[List[str], Dict[str, int]]:
+    """
+    Bind IPs in parallel using the Windows AddIPAddress API.
+
+    Returns (bound_ips, {ip: nte_context}).
+    nte_context values are needed for fast removal; store them and pass to
+    remove_ips_fast().  Falls back to the single-PS batch approach when the
+    interface index cannot be resolved (e.g. non-Windows or permission error).
+    """
+    if sys.platform != "win32":
+        ok, _ = add_ips_batch(interface, ips, mask, log_cb, progress_cb)
+        return ips[:ok], {}
+
+    if_index = _get_if_index(interface)
+    if if_index is None:
+        # Fallback — batch netsh in a single PowerShell process
+        add_ips_batch(interface, ips, mask, log_cb, progress_cb)
+        return ips, {}
+
+    total     = len(ips)
+    done      = [0]
+    lock      = threading.Lock()
+    bound: List[str]       = []
+    contexts: Dict[str, int] = {}
+
+    def _bind_one(ip: str) -> Tuple[str, bool, int]:
+        ok, ctx, msg = _add_ip_api(if_index, ip, mask)
+        with lock:
+            done[0] += 1
+            n = done[0]
+        if log_cb:
+            log_cb(f"  {'OK' if ok else 'FAIL'} {ip}: {msg}",
+                   "success" if ok else "error")
+        if progress_cb:
+            progress_cb(n, total)
+        return ip, ok, ctx
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {}
+        for ip in ips:
+            if cancelled_fn and cancelled_fn():
+                break
+            futures[pool.submit(_bind_one, ip)] = ip
+        for fut in _as_completed(futures):
+            ip, ok, ctx = fut.result()
+            if ok:
+                bound.append(ip)
+                if ctx:
+                    contexts[ip] = ctx
+
+    return bound, contexts
+
+
+def remove_ips_fast(
+    interface: str,
+    ips: List[str],
+    nte_contexts: Optional[Dict[str, int]] = None,
+    log_cb: Optional[Callable[[str, str], None]] = None,
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+    workers: int = 4,
+) -> Tuple[int, int]:
+    """
+    Remove IPs in parallel.
+    Uses DeleteIPAddress (instant) for IPs that have an NTEContext stored from
+    add_ips_fast(); falls back to netsh for IPs without one.
+    """
+    if not ips:
+        return 0, 0
+    if sys.platform != "win32" or not nte_contexts:
+        return remove_ips_batch(interface, ips, log_cb, progress_cb)
+
+    total     = len(ips)
+    done      = [0]
+    lock      = threading.Lock()
+
+    def _remove_one(ip: str) -> bool:
+        ctx = nte_contexts.get(ip, 0)
+        if ctx:
+            ok, msg = _remove_ip_api(ctx)
+        else:
+            ok, msg = remove_ip(interface, ip)   # netsh fallback
+        with lock:
+            done[0] += 1
+            n = done[0]
+        if log_cb:
+            log_cb(f"  {'OK' if ok else 'FAIL'} {ip}: {msg}",
+                   "info" if ok else "warning")
+        if progress_cb:
+            progress_cb(n, total)
+        return ok
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(_remove_one, ips))
+
+    ok_count = sum(results)
+    return ok_count, len(results) - ok_count
 
 
 # ------------------------------------------------------------------ #
