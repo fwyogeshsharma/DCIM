@@ -8,11 +8,10 @@ The gNMI controls have been moved to GNMIPanel.
 from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QGroupBox, QProgressBar,
-    QComboBox, QLineEdit, QSizePolicy,
+    QLabel, QGroupBox, QProgressBar, QLineEdit, QSizePolicy,
     QTableWidget, QTableWidgetItem, QHeaderView, QSpinBox,
 )
-from PySide6.QtCore import Qt, Signal, QTimer, QThread, QObject
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont, QColor
 
 from core.trap_definitions import TRAP_DEFINITIONS, SEVERITY_COLOR
@@ -50,19 +49,6 @@ class StatusBadge(QLabel):
 
 
 # ------------------------------------------------------------------ #
-#  Interface loader (runs in background thread)                        #
-# ------------------------------------------------------------------ #
-
-class _InterfaceLoader(QObject):
-    finished = Signal()
-
-    def run(self):
-        from core.ip_binder import get_interfaces
-        self.result = get_interfaces()
-        self.finished.emit()
-
-
-# ------------------------------------------------------------------ #
 #  SNMP Simulation Panel                                               #
 # ------------------------------------------------------------------ #
 
@@ -73,8 +59,6 @@ class SNMPPanel(QWidget):
     sig_stop      = Signal()
     sig_cancel    = Signal()
     sig_clear     = Signal()
-    sig_refresh_interfaces = Signal()
-
     # SNMP Trap signals (forwarded from embedded trap section)
     sig_trap_apply    = Signal(str, int)   # (ip, port)
     sig_trap_simulate = Signal(bool)
@@ -85,7 +69,6 @@ class SNMPPanel(QWidget):
         self._binding = False
         self._severity_counts: dict[str, int] = {s: 0 for s in SEVERITY_COLOR}
         self._build_ui()
-        self._load_interfaces()
 
     # ------------------------------------------------------------------ #
     #  Build UI                                                            #
@@ -116,7 +99,7 @@ class SNMPPanel(QWidget):
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(6, 6, 6, 6)
         content_layout.setSpacing(8)
-        layout.addWidget(content)
+        layout.addWidget(content, stretch=1)
         layout = content_layout  # redirect remaining additions
 
         # ── Status ────────────────────────────────────────────────────────
@@ -126,58 +109,6 @@ class SNMPPanel(QWidget):
         status_row.addWidget(self.status_badge)
         status_row.addStretch()
         layout.addLayout(status_row)
-
-        # ── Network binding group ──────────────────────────────────────────
-        net_group = QGroupBox("Network Interface Binding")
-        net_group.setStyleSheet(self._group_style())
-        net_layout = QVBoxLayout(net_group)
-        net_layout.setContentsMargins(6, 4, 6, 6)
-        net_layout.setSpacing(4)
-
-        hint = QLabel(
-            "Device IPs will be added to the selected adapter"
-        )
-        hint.setFont(QFont("Arial", 8))
-        hint.setStyleSheet("color: #8b949e;")
-        hint.setWordWrap(True)
-        net_layout.addWidget(hint)
-
-        iface_row = QHBoxLayout()
-        iface_row.setSpacing(4)
-        self.iface_combo = QComboBox()
-        self.iface_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.iface_combo.setMinimumWidth(100)
-        self.iface_combo.setStyleSheet(self._combo_style())
-        self.iface_combo.setPlaceholderText("Loading interfaces...")
-        iface_row.addWidget(self.iface_combo, stretch=1)
-
-        self.btn_refresh_ifaces = QPushButton("⟳")
-        self.btn_refresh_ifaces.setFixedWidth(32)
-        self.btn_refresh_ifaces.setFixedHeight(28)
-        self.btn_refresh_ifaces.setStyleSheet(self._btn_secondary_style())
-        self.btn_refresh_ifaces.setToolTip("Re-scan network adapters")
-        self.btn_refresh_ifaces.clicked.connect(self._load_interfaces)
-        iface_row.addWidget(self.btn_refresh_ifaces)
-        net_layout.addLayout(iface_row)
-
-        mask_row = QHBoxLayout()
-        mask_label = QLabel("Subnet Mask:")
-        mask_label.setFont(QFont("Arial", 9))
-        mask_label.setStyleSheet("color: #8b949e;")
-        mask_row.addWidget(mask_label)
-        self.mask_edit = QLineEdit("255.255.255.0")
-        self.mask_edit.setMaximumWidth(120)
-        self.mask_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.mask_edit.setFont(QFont("Consolas", 9))
-        self.mask_edit.setStyleSheet(self._lineedit_style())
-        mask_row.addWidget(self.mask_edit, stretch=1)
-        net_layout.addLayout(mask_row)
-
-        self.bound_label = QLabel("IPs bound: 0")
-        self.bound_label.setFont(QFont("Consolas", 8))
-        self.bound_label.setStyleSheet("color: #3fb950;")
-        net_layout.addWidget(self.bound_label)
-        layout.addWidget(net_group)
 
         # ── Active Devices ─────────────────────────────────────────────────
         self.stats_group = QGroupBox("Active Devices")
@@ -342,46 +273,8 @@ class SNMPPanel(QWidget):
             }
             QTableWidget::item:selected { background: #1f6feb; }
         """)
-        traps_layout.addWidget(self._trap_table)
-        layout.addWidget(traps_group)
-        layout.addStretch()
-
-    # ------------------------------------------------------------------ #
-    #  Interface loading                                                   #
-    # ------------------------------------------------------------------ #
-
-    def _load_interfaces(self):
-        self.btn_refresh_ifaces.setEnabled(False)
-        self.btn_refresh_ifaces.setText("...")
-        self.iface_combo.setEnabled(False)
-
-        self._iface_thread = QThread()
-        self._iface_worker = _InterfaceLoader()
-        self._iface_worker.moveToThread(self._iface_thread)
-        self._iface_thread.started.connect(self._iface_worker.run)
-        self._iface_worker.finished.connect(self._on_interfaces_loaded)
-        self._iface_thread.start()
-
-    def _on_interfaces_loaded(self):
-        self._iface_thread.quit()
-        self._iface_thread.wait()
-        ifaces = self._iface_worker.result
-        self.btn_refresh_ifaces.setEnabled(True)
-        self.btn_refresh_ifaces.setText("⟳")
-        self.iface_combo.setEnabled(True)
-
-        prev = self.iface_combo.currentData()
-        self.iface_combo.clear()
-
-        if not ifaces:
-            self.iface_combo.addItem("(no adapters found)", None)
-            return
-        for name, label in ifaces:
-            self.iface_combo.addItem(label, name)
-        if prev:
-            idx = self.iface_combo.findData(prev)
-            if idx >= 0:
-                self.iface_combo.setCurrentIndex(idx)
+        traps_layout.addWidget(self._trap_table, stretch=1)
+        layout.addWidget(traps_group, stretch=1)
 
     # ------------------------------------------------------------------ #
     #  Public API — SNMP simulator                                        #
@@ -411,14 +304,6 @@ class SNMPPanel(QWidget):
             self.lbl_total.show()
         else:
             self.lbl_total.hide()
-
-    def set_bound_count(self, count: int):
-        if count > 0:
-            self.bound_label.setText(f"IPs bound: {count}")
-            self.bound_label.setStyleSheet("color: #3fb950;")
-        else:
-            self.bound_label.setText("IPs bound: 0")
-            self.bound_label.setStyleSheet("color: #8b949e;")
 
     def show_progress(self, value: int, maximum: int = 100):
         self.progress.setMaximum(maximum)
@@ -451,22 +336,10 @@ class SNMPPanel(QWidget):
         self.btn_start.setEnabled(not running)
         self.btn_stop.setEnabled(running)
         self.btn_generate.setEnabled(not running)
-        self.iface_combo.setEnabled(not running)
-        self.mask_edit.setEnabled(not running)
-        self.btn_refresh_ifaces.setEnabled(not running)
 
     def set_datasets_ready(self, ready: bool):
         self.btn_start.setEnabled(ready and not self._running)
         self.btn_clear.setEnabled(ready)
-
-    @property
-    def selected_interface(self) -> str:
-        data = self.iface_combo.currentData()
-        return data if data else ""
-
-    @property
-    def subnet_mask(self) -> str:
-        return self.mask_edit.text().strip() or "255.255.255.0"
 
     # ------------------------------------------------------------------ #
     #  Public API — SNMP Traps                                            #

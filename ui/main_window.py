@@ -41,6 +41,7 @@ from ui.topology_view import TopologyView
 from ui.snmp_panel import SNMPPanel
 from ui.gnmi_panel import GNMIPanel
 from ui.console_panel import ConsolePanel
+from ui.binding_panel import BindingPanel
 from ui.discovery_dialog import DiscoveryDialog
 
 
@@ -198,21 +199,22 @@ class LiveDiscoveryWorker(QObject):
 # ------------------------------------------------------------------ #
 
 class ClearDatasetsWorker(QObject):
-    """Deletes all dataset files/directories in the background so the main
-    thread is never blocked by shutil.rmtree on large topologies."""
+    """Deletes SNMP dataset files in the background so the main thread is
+    never blocked by shutil.rmtree on large topologies.
+    Only the snmp_datasets_dir is touched — gNMI datasets are left intact."""
     finished = Signal()
 
-    def __init__(self, datasets_dir: str):
+    def __init__(self, snmp_datasets_dir: str):
         super().__init__()
-        self.datasets_dir = datasets_dir
+        self.snmp_datasets_dir = snmp_datasets_dir
 
     def run(self):
-        ds_path = Path(self.datasets_dir)
+        ds_path = Path(self.snmp_datasets_dir)
         try:
             for child in ds_path.iterdir():
                 if child.is_dir():
                     shutil.rmtree(child, ignore_errors=True)
-                elif child.suffix in (".snmprec",) or child.name.endswith(".gnmi.json"):
+                elif child.suffix == ".snmprec":
                     child.unlink(missing_ok=True)
         except Exception:
             pass
@@ -446,6 +448,11 @@ class MainWindow(QMainWindow):
         self._gnmi_bind_worker = None
         self._gnmi_unbind_thread: QThread = None
         self._gnmi_unbind_worker = None
+        # Binding-panel manual bind/unbind workers
+        self._panel_bind_thread: QThread = None
+        self._panel_bind_worker = None
+        self._panel_unbind_thread: QThread = None
+        self._panel_unbind_worker = None
         # Set when a clear operation needs to chain unbind of the other simulator's IPs
         self._pending_clear_finish: bool = False
         self._clear_thread: QThread = None
@@ -578,10 +585,11 @@ class MainWindow(QMainWindow):
         self._device_dock = dock
 
     def _build_right_panels(self):
-        """Single outer dock holding three panels in a horizontal QSplitter:
-        1. SNMP Simulator (controls + embedded SNMP Traps)
-        2. gNMI Simulator
-        3. Console (shared log)
+        """Single outer dock holding four panels in a horizontal QSplitter:
+        1. Network Interface Binding (shared adapter selector)
+        2. SNMP Simulator (controls + embedded SNMP Traps)
+        3. gNMI Simulator
+        4. Console (shared log)
         """
         self._right_splitter = QSplitter(Qt.Horizontal)
         self._right_splitter.setChildrenCollapsible(True)
@@ -591,29 +599,36 @@ class MainWindow(QMainWindow):
             "QSplitter::handle:hover { background: #58a6ff; }"
         )
 
-        # Panel 1 — SNMP Simulator + Traps
+        # Panel 1 — Network Interface Binding (shared)
+        self._binding_panel = BindingPanel()
+        self._binding_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._binding_panel)
+
+        # Panel 2 — SNMP Simulator + Traps
         self._sim_panel = SNMPPanel()
         self._sim_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._sim_panel)
 
-        # Panel 2 — gNMI Simulator
+        # Panel 3 — gNMI Simulator
         self._gnmi_panel = GNMIPanel()
-        self._gnmi_panel.setMinimumWidth(240)
+        self._gnmi_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._gnmi_panel)
 
-        # Panel 3 — Console
+        # Panel 4 — Console
         self._console_panel = ConsolePanel()
-        self._console_panel.setMinimumWidth(220)
+        self._console_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._console_panel)
 
         self._right_splitter.setStretchFactor(0, 1)
         self._right_splitter.setStretchFactor(1, 1)
         self._right_splitter.setStretchFactor(2, 1)
-        self._right_splitter.setSizes([300, 270, 250])
+        self._right_splitter.setStretchFactor(3, 1)
+        self._right_splitter.setSizes([250, 250, 250, 250])
 
-        # All three panels visible by default
-        self._gnmi_panel.setVisible(True)
-        self._console_panel.setVisible(True)
+        # Only the IP Binder panel visible on startup
+        self._sim_panel.setVisible(False)
+        self._gnmi_panel.setVisible(False)
+        self._console_panel.setVisible(False)
 
         self._right_dock = QDockWidget(self)
         self._right_dock.setObjectName("right_panels_dock")
@@ -621,7 +636,7 @@ class MainWindow(QMainWindow):
         self._right_dock.setTitleBarWidget(QWidget())
         self._right_dock.setWidget(self._right_splitter)
         self.addDockWidget(Qt.RightDockWidgetArea, self._right_dock)
-        self.resizeDocks([self._right_dock], [560], Qt.Horizontal)
+        self.resizeDocks([self._right_dock], [250], Qt.Horizontal)
 
     def _build_right_toolbar(self):
         _TB_STYLE = """
@@ -662,10 +677,20 @@ class MainWindow(QMainWindow):
         tb.setOrientation(Qt.Vertical)
         tb.setStyleSheet(_TB_STYLE)
 
+        # ── IP Binder ─────────────────────────────────────────────────────
+        self._act_panel_binding = QAction("🔗", self)
+        self._act_panel_binding.setCheckable(True)
+        self._act_panel_binding.setChecked(True)
+        self._act_panel_binding.setToolTip("Network Interface Bindings")
+        self._act_panel_binding.toggled.connect(self._on_toggle_binding_panel)
+        tb.addAction(self._act_panel_binding)
+
+        tb.addSeparator()
+
         # ── SNMP Simulator ────────────────────────────────────────────────
-        self._act_panel_sim = QAction("⚙", self)
+        self._act_panel_sim = QAction("🖥️", self)
         self._act_panel_sim.setCheckable(True)
-        self._act_panel_sim.setChecked(True)
+        self._act_panel_sim.setChecked(False)
         self._act_panel_sim.setToolTip("SNMP Simulator")
         self._act_panel_sim.toggled.connect(self._on_toggle_sim_panel)
         tb.addAction(self._act_panel_sim)
@@ -675,7 +700,7 @@ class MainWindow(QMainWindow):
         # ── gNMI Simulator ────────────────────────────────────────────────
         self._act_panel_gnmi = QAction("📡", self)
         self._act_panel_gnmi.setCheckable(True)
-        self._act_panel_gnmi.setChecked(True)
+        self._act_panel_gnmi.setChecked(False)
         self._act_panel_gnmi.setToolTip("gNMI Simulator")
         self._act_panel_gnmi.toggled.connect(self._on_toggle_gnmi_panel)
         tb.addAction(self._act_panel_gnmi)
@@ -683,16 +708,17 @@ class MainWindow(QMainWindow):
         tb.addSeparator()
 
         # ── Console ───────────────────────────────────────────────────────
-        self._act_panel_console = QAction("🖥", self)
+        self._act_panel_console = QAction(">_", self)
         self._act_panel_console.setCheckable(True)
-        self._act_panel_console.setChecked(True)
+        self._act_panel_console.setChecked(False)
         self._act_panel_console.setToolTip("Console")
         self._act_panel_console.toggled.connect(self._on_toggle_console_panel)
         tb.addAction(self._act_panel_console)
-
-        # Sync visibility with initial checked states (all on by default)
-        self._gnmi_panel.setVisible(True)
-        self._console_panel.setVisible(True)
+        _btn = tb.widgetForAction(self._act_panel_console)
+        if _btn:
+            _f = _btn.font()
+            _f.setBold(True)
+            _btn.setFont(_f)
 
         self._right_dock.visibilityChanged.connect(self._on_right_dock_visibility)
         self.addToolBar(Qt.RightToolBarArea, tb)
@@ -701,6 +727,7 @@ class MainWindow(QMainWindow):
 
     def _visible_panel_count(self) -> int:
         return sum([
+            self._act_panel_binding.isChecked(),
             self._act_panel_sim.isChecked(),
             self._act_panel_gnmi.isChecked(),
             self._act_panel_console.isChecked(),
@@ -708,10 +735,19 @@ class MainWindow(QMainWindow):
 
     def _resize_right_dock(self):
         n = self._visible_panel_count()
-        target = max(270, n * 280)
+        target = max(250, n * 250)
         QTimer.singleShot(0, lambda: self.resizeDocks(
             [self._right_dock], [target], Qt.Horizontal
         ))
+
+    def _on_toggle_binding_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+        self._binding_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
+            self._right_dock.hide()
+        else:
+            self._resize_right_dock()
 
     def _on_toggle_sim_panel(self, visible: bool):
         if visible:
@@ -743,7 +779,8 @@ class MainWindow(QMainWindow):
     def _on_right_dock_visibility(self, visible: bool):
         """Outer dock hidden externally — uncheck all toolbar buttons."""
         if not visible:
-            for btn in (self._act_panel_sim, self._act_panel_gnmi, self._act_panel_console):
+            for btn in (self._act_panel_binding, self._act_panel_sim,
+                        self._act_panel_gnmi, self._act_panel_console):
                 btn.blockSignals(True)
                 btn.setChecked(False)
                 btn.blockSignals(False)
@@ -860,6 +897,10 @@ class MainWindow(QMainWindow):
         self._act_stop.triggered.connect(self._stop_simulator)
         self._act_clear.triggered.connect(self._clear_simulation)
         self._act_discover.triggered.connect(self._discover_topology)
+
+        # Binding panel
+        self._binding_panel.sig_bind.connect(self._on_panel_bind_ips)
+        self._binding_panel.sig_unbind.connect(self._on_panel_unbind_ips)
 
         # Simulation panel
         self._sim_panel.sig_generate.connect(self._generate_datasets)
@@ -1588,11 +1629,11 @@ class MainWindow(QMainWindow):
                 self._generate_datasets()
             return
 
-        interface = self._sim_panel.selected_interface
+        interface = self._binding_panel.selected_interface
         if not interface:
             QMessageBox.warning(
                 self, "No Interface Selected",
-                "Select a network interface in the panel before starting.\n"
+                "Select a network interface in the 'Network Interface Binding' panel before starting.\n"
                 "Device IPs must be bound to an adapter for SNMP polling to work."
             )
             return
@@ -1609,7 +1650,7 @@ class MainWindow(QMainWindow):
                 return
 
         device_ips = [d.ip_address for d in self.device_manager.get_all_devices()]
-        mask = self._sim_panel.subnet_mask
+        mask = self._binding_panel.subnet_mask
 
         self._console_panel.log(
             f"Binding {len(device_ips)} IPs to interface '{interface}'...", "info"
@@ -1617,6 +1658,7 @@ class MainWindow(QMainWindow):
         self._sim_panel.set_status("Binding IPs...")
         self._sim_panel.show_progress(0, len(device_ips))
         self._sim_panel.set_binding(True)
+        self._binding_panel.set_snmp_locked(True)
 
         self._bound_interface = interface
         self._bind_worker = IPBindWorker(interface, device_ips, mask)
@@ -1642,6 +1684,7 @@ class MainWindow(QMainWindow):
     def _on_cancel_unbind_finished(self):
         self._unbind_thread.quit()
         self._unbind_thread.wait()
+        self._binding_panel.set_snmp_locked(False)
         self._console_panel.log("Partial IPs removed.", "success")
         self._sim_panel.set_status("Cancelled")
         self._sim_panel.set_datasets_ready(True)
@@ -1677,7 +1720,7 @@ class MainWindow(QMainWindow):
         bound_ips = self._bind_worker.result
         self._bound_ips    = bound_ips
         self._nte_contexts = getattr(self._bind_worker, "nte_contexts", {})
-        self._sim_panel.set_bound_count(len(bound_ips))
+        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
 
         if not bound_ips:
             self._console_panel.log("No IPs were bound — aborting simulator start.", "error")
@@ -1702,6 +1745,7 @@ class MainWindow(QMainWindow):
             # Process launched — show stop button but keep traps disabled until
             # snmpsim logs "Listening at UDP/IPv4 endpoint" (ready callback).
             self._sim_panel.set_simulator_running(True)
+            self._binding_panel.set_snmp_locked(True)
             self._sim_panel.set_device_counts(
                 len(self.device_manager.get_devices_by_type(DeviceType.SWITCH)),
                 len(self.device_manager.get_devices_by_type(DeviceType.ROUTER)),
@@ -1718,15 +1762,122 @@ class MainWindow(QMainWindow):
             )
         else:
             self._sim_panel.set_simulator_running(False)
+            self._binding_panel.set_snmp_locked(False)
             self._sim_panel.set_datasets_ready(True)
 
     def _on_bind_error(self, error: str):
         self._bind_thread.quit()
         self._bind_thread.wait()
         self._sim_panel.set_binding(False)
+        self._binding_panel.set_snmp_locked(False)
         self._console_panel.log(f"IP bind error: {error}", "error")
         self._sim_panel.set_status("Error")
         self._sim_panel.set_datasets_ready(True)
+
+    # ------------------------------------------------------------------ #
+    #  Binding panel — manual Bind / Remove Binding                        #
+    # ------------------------------------------------------------------ #
+
+    def _on_panel_bind_ips(self):
+        """Bind all device IPs to the selected adapter without starting a simulator."""
+        interface = self._binding_panel.selected_interface
+        if not interface:
+            QMessageBox.warning(
+                self, "No Interface Selected",
+                "Select a network interface in the 'Network Interface Binding' panel first."
+            )
+            return
+        devices = self.device_manager.get_all_devices()
+        if not devices:
+            QMessageBox.warning(self, "No Devices", "Build a topology with devices first.")
+            return
+        if not is_admin():
+            reply = QMessageBox.warning(
+                self, "Administrator Required",
+                "Binding IPs via netsh requires Administrator privileges.\n"
+                "IP binding may fail — continue anyway?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if reply == QMessageBox.No:
+                return
+
+        device_ips = [d.ip_address for d in devices]
+        mask = self._binding_panel.subnet_mask
+        self._console_panel.log(
+            f"Binding {len(device_ips)} IPs to '{interface}'…", "info"
+        )
+        self._binding_panel.set_snmp_locked(True)
+        self._bound_interface = interface
+
+        self._binding_panel.show_progress(0, len(device_ips))
+        self._panel_bind_worker = IPBindWorker(interface, device_ips, mask)
+        self._panel_bind_thread = QThread()
+        self._panel_bind_worker.moveToThread(self._panel_bind_thread)
+        self._panel_bind_thread.started.connect(self._panel_bind_worker.run)
+        self._panel_bind_worker.progress.connect(self._binding_panel.show_progress)
+        self._panel_bind_worker.log.connect(self._console_panel.log)
+        self._panel_bind_worker.finished.connect(self._on_panel_bind_ips_finished)
+        self._panel_bind_worker.error.connect(self._on_panel_bind_ips_error)
+        self._panel_bind_thread.start()
+
+    def _on_panel_bind_ips_finished(self):
+        self._panel_bind_thread.quit()
+        self._panel_bind_thread.wait()
+        self._panel_bind_thread = None
+        bound_ips = self._panel_bind_worker.result
+        self._bound_ips    = bound_ips
+        self._nte_contexts = getattr(self._panel_bind_worker, "nte_contexts", {})
+        self._panel_bind_worker = None
+        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
+        self._binding_panel.set_snmp_locked(False)
+        if bound_ips:
+            self._console_panel.log(f"{len(bound_ips)} IPs bound to adapter.", "success")
+        else:
+            self._console_panel.log("No IPs were bound.", "error")
+
+    def _on_panel_bind_ips_error(self, error: str):
+        self._panel_bind_thread.quit()
+        self._panel_bind_thread.wait()
+        self._panel_bind_thread = None
+        self._panel_bind_worker = None
+        self._binding_panel.set_snmp_locked(False)
+        self._console_panel.log(f"Bind error: {error}", "error")
+
+    def _on_panel_unbind_ips(self):
+        """Remove all bound IPs (SNMP and gNMI) from the adapter."""
+        all_ips = list(set(self._bound_ips) | set(self._gnmi_bound_ips))
+        iface   = self._bound_interface or self._gnmi_bound_interface
+        if not all_ips or not iface:
+            return
+        self._console_panel.log(f"Removing {len(all_ips)} bound IPs…", "info")
+        self._binding_panel.set_snmp_locked(True)
+        self._binding_panel.set_gnmi_locked(True)
+        all_contexts = dict(self._nte_contexts)
+
+        self._binding_panel.show_progress(0, len(all_ips))
+        self._panel_unbind_worker = IPUnbindWorker(iface, all_ips, all_contexts)
+        self._panel_unbind_thread = QThread()
+        self._panel_unbind_worker.moveToThread(self._panel_unbind_thread)
+        self._panel_unbind_thread.started.connect(self._panel_unbind_worker.run)
+        self._panel_unbind_worker.progress.connect(self._binding_panel.show_progress)
+        self._panel_unbind_worker.log.connect(self._console_panel.log)
+        self._panel_unbind_worker.finished.connect(self._on_panel_unbind_ips_finished)
+        self._panel_unbind_thread.start()
+
+    def _on_panel_unbind_ips_finished(self):
+        self._panel_unbind_thread.quit()
+        self._panel_unbind_thread.wait()
+        self._panel_unbind_thread = None
+        self._panel_unbind_worker = None
+        self._bound_ips           = []
+        self._bound_interface     = ""
+        self._nte_contexts        = {}
+        self._gnmi_bound_ips      = []
+        self._gnmi_bound_interface = ""
+        self._binding_panel.set_bound_count(0)
+        self._binding_panel.set_snmp_locked(False)
+        self._binding_panel.set_gnmi_locked(False)
+        self._console_panel.log("All IPs removed from adapter.", "warning")
 
     def _on_snmpsim_ready(self):
         """Called (via queue) when SNMPSim logs its 'Listening at UDP/IPv4 endpoint' line."""
@@ -1911,6 +2062,7 @@ class MainWindow(QMainWindow):
         self.state_store.disable_snmp_sync()
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
+        self._binding_panel.set_snmp_locked(False)
         self._trap_engine.stop_simulation()
         self._sim_panel.set_simulating(False)
         if not self._act_panel_sim.isChecked():
@@ -2003,20 +2155,20 @@ class MainWindow(QMainWindow):
             return
 
         port      = self._gnmi_panel.gnmi_port
-        interface = self._gnmi_panel.selected_interface
+        interface = self._binding_panel.selected_interface
 
         if not interface:
             QMessageBox.warning(
                 self, "No Interface Selected",
                 "Select a network interface in the 'Network Interface Binding' "
-                "section before starting.\n"
+                "panel before starting.\n"
                 "Device IPs must be bound to an adapter for gNMI polling to work."
             )
             return
 
         self._gnmi_panel.set_gnmi_status("Starting…")
         self._gnmi_panel.set_gnmi_running(False)
-        self._gnmi_panel.set_interface_locked(True)
+        self._binding_panel.set_gnmi_locked(True)
 
         # If an interface is selected, always bind gNMI's own IPs to it —
         # even if SNMP has already bound the same IPs to its adapter.
@@ -2032,7 +2184,7 @@ class MainWindow(QMainWindow):
         needs_bind = bool(interface and ips_to_bind and is_admin())
         already_bound = set(self._bound_ips) | gnmi_bound
         if needs_bind:
-            mask = self._gnmi_panel.subnet_mask
+            mask = self._binding_panel.subnet_mask
             self._gnmi_bound_interface = interface
             self._console_panel.log_gnmi(
                 f"[gNMI] Binding {len(ips_to_bind)} IPs to '{interface}'…", "info")
@@ -2056,7 +2208,7 @@ class MainWindow(QMainWindow):
         self._gnmi_bind_thread.quit()
         self._gnmi_bind_thread.wait()
         self._gnmi_bound_ips = self._gnmi_bind_worker.result
-        self._gnmi_panel.set_bound_count(len(self._gnmi_bound_ips))
+        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
         if self._gnmi_bound_ips:
             self._console_panel.log_gnmi(
                 f"[gNMI] {len(self._gnmi_bound_ips)} IPs bound.", "success")
@@ -2110,7 +2262,7 @@ class MainWindow(QMainWindow):
             )
         else:
             self._gnmi_panel.set_gnmi_status("Error")
-            self._gnmi_panel.set_interface_locked(False)
+            self._binding_panel.set_gnmi_locked(False)
 
     def _stop_gnmi_server(self):
         if not self.gnmi.is_running():
@@ -2121,7 +2273,7 @@ class MainWindow(QMainWindow):
         self._gnmi_panel.set_gnmi_targets({})
         self._gnmi_panel.set_direct_servers(0)
         self._gnmi_panel.set_clients([])
-        self._gnmi_panel.set_interface_locked(False)
+        self._binding_panel.set_gnmi_locked(False)
         self._status_label.setText("gNMI stopped.")
 
     def _on_gnmi_proxy_toggle(self, enable: bool):
@@ -2181,7 +2333,7 @@ class MainWindow(QMainWindow):
         if not to_remove:
             # All IPs overlap with SNMP binding — just clear the gNMI tracking
             self._gnmi_bound_ips = []
-            self._gnmi_panel.set_bound_count(0)
+            self._binding_panel.set_bound_count(len(self._bound_ips))
             if self._pending_clear_finish:
                 self._pending_clear_finish = False
                 self._complete_pending_clear()
@@ -2203,8 +2355,8 @@ class MainWindow(QMainWindow):
         self._gnmi_unbind_thread.quit()
         self._gnmi_unbind_thread.wait()
         self._gnmi_bound_ips = []
-        self._gnmi_panel.set_bound_count(0)
-        self._gnmi_panel.set_interface_locked(False)
+        self._binding_panel.set_bound_count(len(self._bound_ips))
+        self._binding_panel.set_gnmi_locked(False)
         if self._pending_clear_finish:
             self._pending_clear_finish = False
             self._complete_pending_clear()
@@ -2214,68 +2366,23 @@ class MainWindow(QMainWindow):
     def _clear_simulation(self):
         reply = QMessageBox.question(
             self, "Clear Simulation",
-            "Stop simulator, remove bound IPs, and clear all devices and datasets?",
+            "Stop SNMP simulator and clear all datasets?",
             QMessageBox.Yes | QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
             return
 
-        # Stop the SNMP simulator only — gNMI has its own clear button.
         if self.snmpsim.is_running():
             self.snmpsim.stop()
         self.state_store.stop()
-
-        # Only remove bound IPs when both simulators are stopped.
-        # gNMI may still be using the same IPs.
-        if self._bound_ips and self._bound_interface and not self.gnmi.is_running():
-            # Remove IPs in a background thread so the UI stays responsive.
-            # With 1344 devices this is 1344 netsh calls — blocking the main
-            # thread would freeze the window for the entire duration.
-            ips  = list(self._bound_ips)
-            iface = self._bound_interface
-            self._console_panel.log(f"Removing {len(ips)} bound IPs…", "info")
-            self._sim_panel.set_status("Removing IPs…")
-            self._sim_panel.show_progress(0, len(ips))
-            self._act_clear.setEnabled(False)
-
-            self._unbind_worker = IPUnbindWorker(iface, ips, self._nte_contexts)
-            self._unbind_thread = QThread()
-            self._unbind_worker.moveToThread(self._unbind_thread)
-            self._unbind_thread.started.connect(self._unbind_worker.run)
-            self._unbind_worker.progress.connect(self._sim_panel.show_progress)
-            self._unbind_worker.log.connect(self._console_panel.log)
-            self._unbind_worker.finished.connect(self._on_clear_unbind_finished)
-            self._unbind_thread.start()
-        else:
-            if self._bound_ips and self.gnmi.is_running():
-                self._console_panel.log(
-                    "IP bindings kept — gNMI simulator is still running.", "info"
-                )
-            self._finish_clear()
-
-    def _on_clear_unbind_finished(self):
-        self._unbind_thread.quit()
-        self._unbind_thread.wait()
-        self._unbind_thread = None
-        self._unbind_worker = None
-        self._bound_ips    = []
-        self._bound_interface = ""
-        self._nte_contexts = {}
-        self._sim_panel.set_bound_count(0)
-        self._act_clear.setEnabled(True)
-        if self._gnmi_bound_ips and not self.gnmi.is_running():
-            # gNMI is also stopped — remove its remaining IPs then finish
-            self._pending_clear_finish = True
-            self._on_gnmi_unbind()
-        else:
-            self._finish_clear()
+        self._finish_clear()
 
     def _finish_clear(self):
         """Kick off background deletion of dataset files, then reset UI when done."""
         self._sim_panel.set_status("Clearing…")
         self._act_clear.setEnabled(False)
 
-        self._clear_worker = ClearDatasetsWorker(self._datasets_dir)
+        self._clear_worker = ClearDatasetsWorker(self._snmp_datasets_dir)
         self._clear_thread = QThread()
         self._clear_worker.moveToThread(self._clear_thread)
         self._clear_thread.started.connect(self._clear_worker.run)
@@ -2294,13 +2401,16 @@ class MainWindow(QMainWindow):
         self._generated_files = []
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
+        self._binding_panel.set_snmp_locked(False)
         self._sim_panel.set_datasets_ready(False)
         if not self.gnmi.is_running():
             self._gnmi_files = []
             self._gnmi_panel.set_datasets_ready(False)
+
+        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
         self._act_clear.setEnabled(True)
         self._sim_panel.set_status("Idle")
-        self._console_panel.log("Simulation cleared.", "warning")
+        self._console_panel.log("SNMP datasets cleared — IPs kept on adapter.", "warning")
 
     def _randomize_metrics(self):
         self.device_manager.randomize_all_metrics()
@@ -2344,8 +2454,8 @@ class MainWindow(QMainWindow):
     def _clear_gnmi_data(self):
         """Delete all gNMI dataset files and stop the gNMI server if running."""
         reply = QMessageBox.question(
-            self, "Clear Simulation",
-            "Stop simulator, remove bound IPs, and clear all devices and datasets?",
+            self, "Clear gNMI Simulation",
+            "Stop gNMI simulator and clear all gNMI datasets?",
             QMessageBox.Yes | QMessageBox.No,
         )
         if reply != QMessageBox.Yes:
@@ -2359,16 +2469,7 @@ class MainWindow(QMainWindow):
             self._gnmi_panel.set_direct_servers(0)
             self._gnmi_panel.set_clients([])
             self._gnmi_panel.set_gnmi_status("Idle")
-        # Only remove bound IPs when all simulators are stopped.
-        # If SNMP is still running it is actively using the same IPs.
-        if self._gnmi_bound_ips and not self.snmpsim.is_running():
-            # Flag signals _on_gnmi_unbind_finished to also unbind SNMP IPs if any remain
-            self._pending_clear_finish = True
-            self._on_gnmi_unbind()
-        elif self._gnmi_bound_ips:
-            self._console_panel.log_gnmi(
-                "[gNMI] IP bindings kept — SNMP simulator is still running.", "info"
-            )
+
         import pathlib
         removed = 0
         for f in pathlib.Path(self._gnmi_datasets_dir).glob("*.gnmi.json"):
@@ -2376,8 +2477,9 @@ class MainWindow(QMainWindow):
             removed += 1
         self._gnmi_files = []
         self._gnmi_panel.set_datasets_ready(False)
+        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
         self._console_panel.log_gnmi(
-            f"[gNMI] Cleared {removed} dataset file(s).", "warning"
+            f"[gNMI] Cleared {removed} dataset file(s) — IPs kept on adapter.", "warning"
         )
 
     # ------------------------------------------------------------------ #

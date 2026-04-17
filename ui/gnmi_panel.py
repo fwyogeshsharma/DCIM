@@ -10,9 +10,9 @@ import time
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QGroupBox, QLineEdit, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QComboBox, QSizePolicy, QProgressBar,
+    QHeaderView, QAbstractItemView, QSizePolicy, QProgressBar,
 )
-from PySide6.QtCore import Qt, Signal, QThread, QObject, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont
 
 from ui.snmp_panel import StatusBadge   # reuse the same badge widget
@@ -24,16 +24,6 @@ _DEVICE_TYPE_LABELS = [
     ("firewall",      "Firewalls"),
     ("load_balancer", "Load Balancers"),
 ]
-
-
-class _IfaceLoader(QObject):
-    """Load network interfaces in a background thread."""
-    finished = Signal()
-
-    def run(self):
-        from core.ip_binder import get_interfaces
-        self.result = get_interfaces()
-        self.finished.emit()
 
 
 class GNMIPanel(QWidget):
@@ -48,7 +38,6 @@ class GNMIPanel(QWidget):
         self._running = False
         self._proxy_running = False
         self._build_ui()
-        self._load_interfaces()
 
     # ------------------------------------------------------------------ #
     #  Build UI                                                            #
@@ -79,7 +68,7 @@ class GNMIPanel(QWidget):
         cl = QVBoxLayout(content)
         cl.setContentsMargins(6, 6, 6, 6)
         cl.setSpacing(8)
-        layout.addWidget(content)
+        layout.addWidget(content, stretch=1)
         layout = cl  # redirect
 
         # ── Status row ─────────────────────────────────────────────────────
@@ -89,55 +78,6 @@ class GNMIPanel(QWidget):
         status_row.addWidget(self.status_badge)
         status_row.addStretch()
         layout.addLayout(status_row)
-
-        # ── Network Interface Binding group ────────────────────────────────
-        bind_group = QGroupBox("Network Interface Binding")
-        bind_group.setStyleSheet(self._group_style())
-        bind_layout = QVBoxLayout(bind_group)
-        bind_layout.setContentsMargins(6, 4, 6, 6)
-        bind_layout.setSpacing(4)
-
-        bind_hint = QLabel(
-            "Device IPs will be added to the selected adapter"
-        )
-        bind_hint.setFont(QFont("Arial", 8))
-        bind_hint.setStyleSheet("color: #8b949e;")
-        bind_hint.setWordWrap(True)
-        bind_layout.addWidget(bind_hint)
-
-        iface_row = QHBoxLayout()
-        iface_row.setSpacing(4)
-        self.iface_combo = QComboBox()
-        self.iface_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.iface_combo.setStyleSheet(self._combo_style())
-        self.iface_combo.setPlaceholderText("Loading interfaces…")
-        iface_row.addWidget(self.iface_combo, stretch=1)
-        self.btn_refresh_ifaces = QPushButton("⟳")
-        self.btn_refresh_ifaces.setFixedWidth(32)
-        self.btn_refresh_ifaces.setFixedHeight(28)
-        self.btn_refresh_ifaces.setStyleSheet(self._btn_secondary_style())
-        self.btn_refresh_ifaces.setToolTip("Re-scan network adapters")
-        self.btn_refresh_ifaces.clicked.connect(self._load_interfaces)
-        iface_row.addWidget(self.btn_refresh_ifaces)
-        bind_layout.addLayout(iface_row)
-
-        mask_row = QHBoxLayout()
-        mask_lbl = QLabel("Subnet Mask:")
-        mask_lbl.setFont(QFont("Arial", 9))
-        mask_lbl.setStyleSheet("color: #8b949e;")
-        mask_row.addWidget(mask_lbl)
-        self.mask_edit = QLineEdit("255.255.255.0")
-        self.mask_edit.setFont(QFont("Consolas", 9))
-        self.mask_edit.setStyleSheet(self._lineedit_style())
-        mask_row.addWidget(self.mask_edit, stretch=1)
-        bind_layout.addLayout(mask_row)
-
-        self.bound_label = QLabel("IPs bound: 0")
-        self.bound_label.setFont(QFont("Consolas", 8))
-        self.bound_label.setStyleSheet("color: #3fb950;")
-        bind_layout.addWidget(self.bound_label)
-
-        layout.addWidget(bind_group)
 
         # ── Targets group ──────────────────────────────────────────────────
         self.tgt_group = QGroupBox("Active Devices")
@@ -290,46 +230,9 @@ class GNMIPanel(QWidget):
         hdr.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Uptime
         # Initial width = header text width from font metrics
         fm = hdr.fontMetrics()
-        cli_layout.addWidget(self.clients_table)
+        cli_layout.addWidget(self.clients_table, stretch=1)
 
-        layout.addWidget(cli_group)
-
-        layout.addStretch()
-
-    # ------------------------------------------------------------------ #
-    #  Interface loading                                                   #
-    # ------------------------------------------------------------------ #
-
-    def _load_interfaces(self):
-        self.btn_refresh_ifaces.setEnabled(False)
-        self.btn_refresh_ifaces.setText("…")
-        self.iface_combo.setEnabled(False)
-        self._iface_thread = QThread()
-        self._iface_worker = _IfaceLoader()
-        self._iface_worker.moveToThread(self._iface_thread)
-        self._iface_thread.started.connect(self._iface_worker.run)
-        self._iface_worker.finished.connect(self._on_interfaces_loaded)
-        self._iface_thread.start()
-
-    def _on_interfaces_loaded(self):
-        self._iface_thread.quit()
-        self._iface_thread.wait()
-        ifaces = self._iface_worker.result
-        self.btn_refresh_ifaces.setEnabled(True)
-        self.btn_refresh_ifaces.setText("⟳")
-        self.iface_combo.setEnabled(True)
-        prev = self.iface_combo.currentData()
-        self.iface_combo.clear()
-        if not ifaces:
-            self.iface_combo.addItem("(no adapters found)", None)
-            return
-        self.iface_combo.addItem("Select interface…", None)
-        for name, label in ifaces:
-            self.iface_combo.addItem(label, name)
-        if prev:
-            idx = self.iface_combo.findData(prev)
-            if idx >= 0:
-                self.iface_combo.setCurrentIndex(idx)
+        layout.addWidget(cli_group, stretch=1)
 
     # ------------------------------------------------------------------ #
     #  Public API                                                          #
@@ -405,20 +308,6 @@ class GNMIPanel(QWidget):
     def set_direct_servers(self, count: int):
         pass  # Direct server count no longer displayed
 
-    def set_bound_count(self, count: int):
-        if count > 0:
-            self.bound_label.setText(f"IPs bound: {count}")
-            self.bound_label.setStyleSheet("color: #3fb950;")
-        else:
-            self.bound_label.setText("IPs bound: 0")
-            self.bound_label.setStyleSheet("color: #8b949e;")
-
-    def set_interface_locked(self, locked: bool):
-        """Lock interface controls while binding is in progress or server is running."""
-        self.iface_combo.setEnabled(not locked)
-        self.mask_edit.setEnabled(not locked)
-        self.btn_refresh_ifaces.setEnabled(not locked)
-
     def set_datasets_ready(self, ready: bool):
         """Enable Start button once datasets have been generated."""
         self.btn_start.setEnabled(ready and not self._running)
@@ -455,15 +344,6 @@ class GNMIPanel(QWidget):
             return int(self.port_edit.text().strip())
         except ValueError:
             return 50051
-
-    @property
-    def selected_interface(self) -> str:
-        data = self.iface_combo.currentData()
-        return data if data else ""
-
-    @property
-    def subnet_mask(self) -> str:
-        return self.mask_edit.text().strip() or "255.255.255.0"
 
     # ------------------------------------------------------------------ #
     #  Style helpers                                                       #
