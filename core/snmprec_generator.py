@@ -8,14 +8,14 @@ Type codes:
   4x = OctetString (hex)
   5  = Null
   6  = OID
-  41 = Counter32
-  42 = Gauge32
-  43 = TimeTicks
-  44 = Counter64
-  64 = IPAddress
+  41 = Counter32    (0x41)
+  42 = Gauge32      (0x42)
+  44 = Counter64    (0x44 — unused, use 70 for Counter64)
+  64 = IPAddress    (0x40)
   65 = NetworkAddress
-  67 = TimeTicks (alternate)
-  70 = Opaque
+  67 = TimeTicks    (0x43 — BER APPLICATION tag 3)
+  70 = Counter64    (0x46)
+  71 = Opaque       (0x47)
 """
 from __future__ import annotations
 import os
@@ -147,8 +147,8 @@ class SNMPRecGenerator:
         updates: dict = {}
 
         # System uptime (centiseconds)
-        updates[f"{SYSTEM_BASE}.3.0"] = ("43", str(device.sys_uptime))
-        updates[f"{SYSTEM_BASE}.8.0"] = ("43", str(device.sys_uptime))
+        updates[f"{SYSTEM_BASE}.3.0"] = ("67", str(device.sys_uptime))
+        updates[f"{SYSTEM_BASE}.8.0"] = ("67", str(device.sys_uptime))
 
         # Interface counters
         ifx_base = "1.3.6.1.2.1.31.1.1.1"
@@ -255,16 +255,16 @@ class SNMPRecGenerator:
         return [
             _oid_entry(f"{SYSTEM_BASE}.1.0", "4", device.sys_descr),
             _oid_entry(f"{SYSTEM_BASE}.2.0", "6", device.sys_oid),  # sysObjectID
-            _oid_entry(f"{SYSTEM_BASE}.3.0", "43", str(device.sys_uptime)),
+            _oid_entry(f"{SYSTEM_BASE}.3.0", "67", str(device.sys_uptime)),
             _oid_entry(f"{SYSTEM_BASE}.4.0", "4", f"admin@{device.name.lower()}.example.com"),
             _oid_entry(f"{SYSTEM_BASE}.5.0", "4", device.name),
             _oid_entry(f"{SYSTEM_BASE}.6.0", "4", "Network Lab"),
             _oid_entry(f"{SYSTEM_BASE}.7.0", "2", "72"),  # sysServices
-            _oid_entry(f"{SYSTEM_BASE}.8.0", "43", str(device.sys_uptime)),  # hrSystemUptime
+            _oid_entry(f"{SYSTEM_BASE}.8.0", "67", str(device.sys_uptime)),  # hrSystemUptime
             # SNMPv2-MIB::sysORLastChange
             _oid_entry("1.3.6.1.2.1.1.9.1.2.1", "6", device.sys_oid),
             _oid_entry("1.3.6.1.2.1.1.9.1.3.1", "4", device.vendor.value),
-            _oid_entry("1.3.6.1.2.1.1.9.1.4.1", "43", "0"),
+            _oid_entry("1.3.6.1.2.1.1.9.1.4.1", "67", "0"),
         ]
 
     # ------------------------------------------------------------------ #
@@ -287,7 +287,7 @@ class SNMPRecGenerator:
                 _oid_entry(f"{IF_TABLE}.6.{i}",  "4x", iface.mac_address.replace(":", "")),  # ifPhysAddress
                 _oid_entry(f"{IF_TABLE}.7.{i}",  "2",  "1"),                # ifAdminStatus (1=up)
                 _oid_entry(f"{IF_TABLE}.8.{i}",  "2",  str(2 if iface.connected_to_device is None else iface.oper_status)), # ifOperStatus
-                _oid_entry(f"{IF_TABLE}.9.{i}",  "43", str(device.sys_uptime)), # ifLastChange
+                _oid_entry(f"{IF_TABLE}.9.{i}",  "67", str(device.sys_uptime)), # ifLastChange
                 _oid_entry(f"{IF_TABLE}.10.{i}", "41", str(iface.in_octets)),   # ifInOctets Counter32
                 _oid_entry(f"{IF_TABLE}.11.{i}", "41", str(random.randint(0,9999))),  # ifInUcastPkts
                 _oid_entry(f"{IF_TABLE}.12.{i}", "41", "0"),                # ifInNUcastPkts
