@@ -6,6 +6,7 @@ import * as d3 from 'd3'
 import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar, Box, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
+import { computeLayeredLayout } from '@/lib/topology-layered'
 
 // ── Toggle this to use 500+ node mock data for testing ──
 const USE_MOCK_DATA = false
@@ -25,12 +26,25 @@ interface TopoNode extends d3.SimulationNodeDatum {
   agentName?: string
 }
 
+interface D2DInfo {
+  sourceIp: string
+  sourceName: string
+  sourcePort?: number
+  targetIp: string
+  targetName: string
+  targetPort?: string
+  lastSeen: string
+  sourceStatus?: 'online' | 'offline'
+  targetStatus?: 'online' | 'offline'
+}
+
 interface TopoLink extends d3.SimulationLinkDatum<TopoNode> {
   source: string | TopoNode
   target: string | TopoNode
   strength: number
   distance?: number
-  linkType?: 'agent-server' | 'device-agent'
+  linkType?: 'agent-server' | 'device-agent' | 'device-device'
+  d2dInfo?: D2DInfo
 }
 
 type TimeFilter = 'today' | '30days' | 'all'
@@ -145,6 +159,17 @@ export default function Topology() {
 
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
 
+  // Device↔device wiring from the topology_links table (walker LLDP/CDP + discovery deep-scan)
+  const { data: realTopologyLinks } = useQuery({
+    queryKey: ['topology-links'],
+    queryFn: () => api.getTopologyLinks(),
+    staleTime: 30000,
+    refetchInterval: USE_MOCK_DATA ? false : 60000,
+    enabled: !USE_MOCK_DATA,
+  })
+
+  const topologyLinks = USE_MOCK_DATA ? mockData!.topologyLinks : realTopologyLinks
+
   useEffect(() => {
     if (!agents || !svgRef.current) return
 
@@ -236,8 +261,83 @@ export default function Topology() {
       }
     })
 
-    // Build SNMP device nodes for visible agents
+    // Build SNMP device nodes for visible agents.
+    // Device status (online/offline) is driven primarily by the freshest
+    // topology_links.last_seen for that device's IP — every walker cycle
+    // re-stamps the edges for devices still present, so a stale link row
+    // means the device stopped responding. Devices with no topology_links
+    // entry (isolated / leaf-only) fall back to snmp_devices.last_seen.
     const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
+    const lastSeenByIp = new Map<string, number>()
+    if (topologyLinks) {
+      topologyLinks.forEach(tl => {
+        const ts = new Date(tl.last_seen).getTime()
+        if (isNaN(ts)) return
+        const prev = lastSeenByIp.get(tl.source_ip)
+        if (prev === undefined || ts > prev) lastSeenByIp.set(tl.source_ip, ts)
+        const prevT = lastSeenByIp.get(tl.target_ip)
+        if (prevT === undefined || ts > prevT) lastSeenByIp.set(tl.target_ip, ts)
+      })
+    }
+
+    // Per-device depth via our own BFS over the device↔device graph.
+    //
+    // We DON'T trust source_depth / target_depth from the walker verbatim —
+    // the walker populates them during its own BFS, but rows can carry
+    // stale depths from prior sweeps, and partially-discovered devices can
+    // end up with depth values that don't form a consistent layering.
+    // Running our own BFS here guarantees that every device's depth is
+    // exactly one more than its shallowest neighbor, so the layered
+    // layout always produces a clean tier-by-tier diagram.
+    //
+    // Seeds (depth 0) are devices the walker flagged with source_depth=0
+    // in at least one row — the real entry points it was pointed at. If
+    // nothing is flagged (older data), we fall back to the highest-degree
+    // device as a pragmatic "most central" seed so BFS has a starting
+    // point. Orphan devices with no link rows land on depth 0 too (by
+    // default in `layerOf` below), so they render as their own small
+    // floating roots rather than getting jammed into an unrelated tier.
+    const deviceDepth = new Map<string, number>() // deviceIp -> depth (>=0)
+    if (topologyLinks && topologyLinks.length > 0) {
+      const adj = new Map<string, Set<string>>()
+      const seeds = new Set<string>()
+      topologyLinks.forEach(tl => {
+        if (!adj.has(tl.source_ip)) adj.set(tl.source_ip, new Set())
+        if (!adj.has(tl.target_ip)) adj.set(tl.target_ip, new Set())
+        adj.get(tl.source_ip)!.add(tl.target_ip)
+        adj.get(tl.target_ip)!.add(tl.source_ip)
+        if ((tl.source_depth ?? 0) <= 0) seeds.add(tl.source_ip)
+      })
+      if (seeds.size === 0 && adj.size > 0) {
+        let best: string | null = null
+        let bestDeg = -1
+        adj.forEach((nbrs, ip) => {
+          if (nbrs.size > bestDeg) {
+            bestDeg = nbrs.size
+            best = ip
+          }
+        })
+        if (best) seeds.add(best)
+      }
+      const queue: string[] = []
+      seeds.forEach(s => {
+        deviceDepth.set(s, 0)
+        queue.push(s)
+      })
+      while (queue.length > 0) {
+        const cur = queue.shift()!
+        const d = deviceDepth.get(cur)!
+        const nbrs = adj.get(cur)
+        if (!nbrs) continue
+        for (const n of nbrs) {
+          if (!deviceDepth.has(n)) {
+            deviceDepth.set(n, d + 1)
+            queue.push(n)
+          }
+        }
+      }
+    }
+
     const deviceNodes: TopoNode[] = []
     const deviceLinks: TopoLink[] = []
     const deviceNodeIds = new Set<string>()
@@ -252,7 +352,11 @@ export default function Topology() {
         if (deviceNodeIds.has(deviceNodeId)) return
         deviceNodeIds.add(deviceNodeId)
 
-        const isActive = new Date(device.last_seen).getTime() > twoHoursAgo
+        // Prefer topology_links last_seen (updated every walker cycle);
+        // fall back to snmp_devices.last_seen for devices not in any link.
+        const linkTs = device.device_ip ? lastSeenByIp.get(device.device_ip) : undefined
+        const effectiveTs = linkTs ?? new Date(device.last_seen).getTime()
+        const isActive = effectiveTs > twoHoursAgo
         const agentData = agentLookup.get(`${device.server_id}:${device.agent_id}`)
 
         deviceNodes.push({
@@ -267,7 +371,15 @@ export default function Topology() {
         })
 
         const agentNodeId = `${device.server_id}:${device.agent_id}`
-        if (agentNodeIdSet.has(agentNodeId)) {
+        // Only seed devices (BFS depth 0 in the device↔device graph, or
+        // devices not in any link row at all) connect directly to the
+        // agent. Everything deeper reaches the agent transitively via the
+        // device↔device chain — without this gate, every device draws a
+        // long line up through every layer to the single agent and the
+        // diagram collapses into a hairball.
+        const depth = device.device_ip ? deviceDepth.get(device.device_ip) : undefined
+        const isSeedDevice = depth === undefined || depth === 0
+        if (isSeedDevice && agentNodeIdSet.has(agentNodeId)) {
           deviceLinks.push({
             source: deviceNodeId,
             target: agentNodeId,
@@ -281,6 +393,48 @@ export default function Topology() {
 
     const nodes: TopoNode[] = [...serverNodes, ...agentNodes, ...deviceNodes]
     const nodeMap = new Map(nodes.map(n => [n.id, n]))
+
+    // Device↔device edges from topology_links. Resolve each row's source_ip
+    // and target_ip to a rendered device node. We build an IP→deviceNodeId
+    // lookup over the current device node set; rows referencing an IP that
+    // isn't currently rendered (e.g. server collapsed, or device filtered
+    // out) are dropped.
+    const deviceNodeByIp = new Map<string, TopoNode>()
+    deviceNodes.forEach(dn => {
+      if (dn.ip) deviceNodeByIp.set(dn.ip, dn)
+    })
+    const deviceToDeviceLinks: TopoLink[] = []
+    if (topologyLinks && topologyLinks.length > 0) {
+      const seenPairs = new Set<string>()
+      topologyLinks.forEach(tl => {
+        const srcNode = deviceNodeByIp.get(tl.source_ip)
+        const tgtNode = deviceNodeByIp.get(tl.target_ip)
+        if (!srcNode || !tgtNode || srcNode.id === tgtNode.id) return
+        // Dedup bidirectional duplicates: a↔b and b↔a render once.
+        const pairKey = [srcNode.id, tgtNode.id].sort().join('|')
+        if (seenPairs.has(pairKey)) return
+        seenPairs.add(pairKey)
+        const bothOnline = srcNode.status === 'online' && tgtNode.status === 'online'
+        deviceToDeviceLinks.push({
+          source: srcNode.id,
+          target: tgtNode.id,
+          strength: bothOnline ? 0.9 : 0.3,
+          distance: 130,
+          linkType: 'device-device',
+          d2dInfo: {
+            sourceIp: tl.source_ip,
+            sourceName: tl.source_name,
+            sourcePort: tl.source_port,
+            targetIp: tl.target_ip,
+            targetName: tl.target_name,
+            targetPort: tl.target_port,
+            lastSeen: tl.last_seen,
+            sourceStatus: srcNode.status,
+            targetStatus: tgtNode.status,
+          },
+        })
+      })
+    }
 
     // Create links — each agent connects to its own server
     const links: TopoLink[] = [
@@ -296,112 +450,165 @@ export default function Topology() {
         }
       }).filter(l => l.target !== 'server-unknown'),
       ...deviceLinks,
+      ...deviceToDeviceLinks,
     ]
 
-    // ── Static hierarchical tree layout ──
     const nodeCount = nodes.length
 
-    // Group visible agents by server for layout
-    const visibleAgentsByServer = new Map<string, TopoNode[]>()
-    agentNodes.forEach(an => {
-      const sid = `server-${an.serverId}`
-      if (!visibleAgentsByServer.has(sid)) visibleAgentsByServer.set(sid, [])
-      visibleAgentsByServer.get(sid)!.push(an)
+    // ── Layered (multipartite) layout ───────────────────────────────────────
+    // NetworkX-style. Every node is assigned a fixed LAYER (0 = top row), then
+    // a barycenter sweep reorders nodes within each layer to minimize edge
+    // crossings, and a per-layer x-pass spaces them evenly. This replaces the
+    // old d3.tree-per-server rendering, which couldn't draw Clos/fat-tree
+    // topologies (full mesh between aggregation tiers) because d3.tree is a
+    // strict single-parent hierarchy.
+    //
+    // Layer assignment:
+    //   0 — server (config-side DCIM server)
+    //   1 — agent (aggregator agent running on a host)
+    //   2 + N — SNMP devices at BFS depth N from their agent. N comes from
+    //           topology_links.source_depth / target_depth populated by the
+    //           walker. A device that never appears in any link row lands on
+    //           layer 2.
+    //
+    // Edges fed to the layout:
+    //   - agent → server (via the visibleAgents list)
+    //   - device → agent (for devices whose agent is in scope)
+    //   - device ↔ device (from topology_links; direction is whichever way
+    //     source_depth < target_depth points)
+    // Same-layer edges (not currently produced by the walker, but reserved
+    // for peer links like cluster-R1 ↔ cluster-R2) are ignored by the layout
+    // but still rendered.
+
+    const TOP_Y = 100
+
+    // Role-based layer assignment. Six device tiers, each pinned to a
+    // fixed layer so the diagram always reads top-to-bottom as:
+    //
+    //     0  server (config-side DCIM server)
+    //     1  agent  (aggregator agent)
+    //     2  routers / LBs                 — top of the fabric
+    //     3  fabric / spine / core switches
+    //     4  pod / aggregation switches
+    //     5  ToR / leaf switches
+    //     6  compute / generic servers
+    //     7  storage / GPU / specialty servers
+    //
+    // Name-pattern detection is the primary signal (real-world naming is
+    // pretty consistent: "Cluster-R1", "Fabric-GW", "Pod-GW", "ToR-P3",
+    // "Compute-17", "GPU-4", etc). Devices that don't match any pattern
+    // fall back to `2 + BFS depth`, so generic / unknown devices still
+    // slot into a sensible tier based on their graph distance from the
+    // walker's seed.
+    const roleLayerOf = (name: string): number | null => {
+      if (!name) return null
+      // Order matters: check specific patterns before generic ones, and
+      // check specialty servers (gpu/storage) before generic "server".
+      if (/\brouter\b|\brtr\b|cluster-?r\b|^r[-\d]|core-?r\b/i.test(name)) return 2
+      if (/\blb\b|load-?balancer/i.test(name)) return 2
+      if (/fabric|spine|super-?spine/i.test(name)) return 3
+      if (/\bpod\b|aggregation|\bagg\b/i.test(name)) return 4
+      if (/\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
+      if (/gpu|storage|\bnas\b|\bsan\b/i.test(name)) return 7
+      if (/compute|host|\bsrv?\b|^server\b/i.test(name)) return 6
+      return null
+    }
+
+    const layerOf = (n: TopoNode): number => {
+      if (n.type === 'server') return 0
+      if (n.type === 'agent') return 1
+      const byRole = roleLayerOf(n.name || '')
+      if (byRole !== null) return byRole
+      const d = n.ip ? deviceDepth.get(n.ip) ?? 0 : 0
+      return 2 + d
+    }
+
+    const layeredInput = nodes.map(n => ({ id: n.id, layer: layerOf(n) }))
+    const layeredEdges = links.map(l => ({
+      source: typeof l.source === 'string' ? l.source : (l.source as TopoNode).id,
+      target: typeof l.target === 'string' ? l.target : (l.target as TopoNode).id,
+    }))
+
+    const layered = computeLayeredLayout(layeredInput, layeredEdges, {
+      nodeGapX: 95,          // horizontal spacing between sibling nodes
+      layerGapY: 180,        // vertical spacing between layers
+      iterations: 28,        // barycenter sweeps (down+up per round)
+      originX: width / 2,    // center on SVG viewport
+      originY: TOP_Y,
     })
 
-    // Group devices by agent
-    const devicesByAgentMap = new Map<string, TopoNode[]>()
-    deviceNodes.forEach(dn => {
-      const key = `${dn.serverId}:${dn.agentId}`
-      if (!devicesByAgentMap.has(key)) devicesByAgentMap.set(key, [])
-      devicesByAgentMap.get(key)!.push(dn)
-    })
-
-    // Node sizing constants
-    const nodeRadius = { server: 40, agent: 30, network: 20 }
-
-    // ── Generous spacing constants ──
-    const NODE_GAP_X = 140        // horizontal gap between sibling nodes
-    const SERVER_GAP_X = 200      // extra gap between server subtrees
-    const TIER_GAP_Y = 250        // vertical gap between tiers
-
-    // Tier Y positions
-    const serverRowY = 100
-    const agentRowY = serverRowY + TIER_GAP_Y
-    const deviceRowY = agentRowY + TIER_GAP_Y
-
-    // ── First pass: position agents and devices bottom-up to compute subtree widths ──
-    // For each server, compute total subtree width
-    const serverSubtreeWidths = new Map<string, number>()
-    const agentSubtreeWidths = new Map<string, number>()
-
-    serverNodes.forEach(sn => {
-      const sAgents = visibleAgentsByServer.get(sn.id) || []
-      if (sAgents.length === 0) {
-        serverSubtreeWidths.set(sn.id, NODE_GAP_X)
-        return
+    // Apply computed positions onto the TopoNode objects so downstream
+    // rendering (circles, links, labels) reads them transparently.
+    nodes.forEach(n => {
+      const p = layered.positions.get(n.id)
+      if (p) {
+        n.x = p.x
+        n.y = p.y
       }
-
-      let serverWidth = 0
-      sAgents.forEach((agent, i) => {
-        const devs = devicesByAgentMap.get(agent.id) || []
-        const agentWidth = devs.length > 1
-          ? (devs.length - 1) * NODE_GAP_X
-          : NODE_GAP_X
-        agentSubtreeWidths.set(agent.id, agentWidth)
-        serverWidth += agentWidth
-        if (i < sAgents.length - 1) serverWidth += NODE_GAP_X * 0.5 // gap between agent subtrees
-      })
-
-      serverSubtreeWidths.set(sn.id, serverWidth)
-    })
-
-    // Total layout width
-    const totalWidth = Array.from(serverSubtreeWidths.values()).reduce((a, b) => a + b, 0)
-      + Math.max(0, serverNodes.length - 1) * SERVER_GAP_X
-
-    // ── Second pass: assign X positions ──
-    let cursorX = width / 2 - totalWidth / 2
-
-    serverNodes.forEach((sn, si) => {
-      const subtreeW = serverSubtreeWidths.get(sn.id) || NODE_GAP_X
-      sn.x = cursorX + subtreeW / 2
-      sn.y = serverRowY
-
-      const sAgents = visibleAgentsByServer.get(sn.id) || []
-      if (sAgents.length > 0) {
-        let agentCursorX = cursorX
-        sAgents.forEach((agent, ai) => {
-          const agentW = agentSubtreeWidths.get(agent.id) || NODE_GAP_X
-          agent.x = agentCursorX + agentW / 2
-          agent.y = agentRowY
-
-          const devs = devicesByAgentMap.get(agent.id) || []
-          if (devs.length > 0) {
-            const devTotalW = (devs.length - 1) * NODE_GAP_X
-            const devStartX = agent.x! - devTotalW / 2
-            devs.forEach((dn, j) => {
-              dn.x = devStartX + j * NODE_GAP_X
-              dn.y = deviceRowY
-            })
-          }
-
-          agentCursorX += agentW
-          if (ai < sAgents.length - 1) agentCursorX += NODE_GAP_X * 0.5
-        })
-      }
-
-      cursorX += subtreeW
-      if (si < serverNodes.length - 1) cursorX += SERVER_GAP_X
     })
 
     // No force simulation — positions are static
     simulationRef.current = null
 
+    // ── Guard: position every node, or hide it ───────────────────────────────
+    // Any node the d3.tree pass missed (truly orphaned — e.g. agent whose
+    // serverId didn't match any rendered server AND no fallback existed)
+    // would render at (0,0) with its links fanning back to the main tree —
+    // the bug visible in img_1.png. Stash those nodes into a hidden
+    // "unpositioned" set so we can strip them + their links before render.
+    const unpositioned = new Set<string>()
+    nodes.forEach(n => {
+      if (typeof n.x !== 'number' || typeof n.y !== 'number' || !isFinite(n.x) || !isFinite(n.y)) {
+        unpositioned.add(n.id)
+      }
+    })
+    if (unpositioned.size > 0) {
+      console.warn('[Topology] dropping', unpositioned.size, 'unpositioned nodes:', Array.from(unpositioned))
+    }
+    // Rebuild nodes + links excluding unpositioned ones so d3 never tries
+    // to render lines into (0,0).
+    const visibleNodes = nodes.filter(n => !unpositioned.has(n.id))
+    const visibleLinks = links.filter(l => {
+      const sid = typeof l.source === 'string' ? l.source : (l.source as TopoNode).id
+      const tid = typeof l.target === 'string' ? l.target : (l.target as TopoNode).id
+      return !unpositioned.has(sid) && !unpositioned.has(tid)
+    })
+
+    // Replace the originals so the downstream render uses the filtered set.
+    nodes.length = 0
+    nodes.push(...visibleNodes)
+    links.length = 0
+    links.push(...visibleLinks)
+
+    // ── Auto-fit: compute bounding box and set initial zoom so the entire
+    // tree is visible. Prevents branches from extending off-screen the
+    // moment a server with a wide fan-out (e.g. /24 sweep hit) is expanded.
+    let bboxMinX = Infinity, bboxMaxX = -Infinity
+    let bboxMinY = Infinity, bboxMaxY = -Infinity
+    nodes.forEach(n => {
+      const x = n.x as number, y = n.y as number
+      if (x < bboxMinX) bboxMinX = x
+      if (x > bboxMaxX) bboxMaxX = x
+      if (y < bboxMinY) bboxMinY = y
+      if (y > bboxMaxY) bboxMaxY = y
+    })
+    if (isFinite(bboxMinX) && isFinite(bboxMinY)) {
+      const pad = 100
+      const contentW = (bboxMaxX - bboxMinX) + pad * 2
+      const contentH = (bboxMaxY - bboxMinY) + pad * 2
+      const fitScale = Math.min(width / contentW, height / contentH, 1)
+      const contentCenterX = (bboxMinX + bboxMaxX) / 2
+      const contentCenterY = (bboxMinY + bboxMaxY) / 2
+      const tx = width / 2 - contentCenterX * fitScale
+      const ty = height / 2 - contentCenterY * fitScale
+      svg.call(zoom.transform as any, d3.zoomIdentity.translate(tx, ty).scale(fitScale))
+    }
+
     // Resolve link source/target strings to node objects
+    const nodeMapFiltered = new Map(nodes.map(n => [n.id, n]))
     links.forEach(l => {
-      if (typeof l.source === 'string') l.source = nodeMap.get(l.source) || l.source
-      if (typeof l.target === 'string') l.target = nodeMap.get(l.target) || l.target
+      if (typeof l.source === 'string') l.source = nodeMapFiltered.get(l.source) || l.source
+      if (typeof l.target === 'string') l.target = nodeMapFiltered.get(l.target) || l.target
     })
 
     // Build a set of offline server IDs for quick lookup
@@ -463,12 +670,22 @@ export default function Topology() {
       .data(links)
       .enter().append('line')
       .attr('stroke', d => {
+        if (d.linkType === 'device-device') {
+          return isLinkDisconnected(d) ? '#ef4444' : '#f59e0b' // amber for physical wiring
+        }
         if (d.linkType === 'device-agent') return '#06b6d4'
         return isLinkDisconnected(d) ? '#ef4444' : '#10b981'
       })
-      .attr('stroke-width', d => d.linkType === 'device-agent' ? 1.5 : isLinkDisconnected(d) ? 2.5 : 2)
-      .attr('stroke-opacity', d => d.linkType === 'device-agent' ? 0.4 : isLinkDisconnected(d) ? 0.7 : 0.5)
+      .attr('stroke-width', d => {
+        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 2 : 2
+        return d.linkType === 'device-agent' ? 1.5 : isLinkDisconnected(d) ? 2.5 : 2
+      })
+      .attr('stroke-opacity', d => {
+        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 0.6 : 0.8
+        return d.linkType === 'device-agent' ? 0.4 : isLinkDisconnected(d) ? 0.7 : 0.5
+      })
       .attr('stroke-dasharray', d => {
+        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? '8,6' : 'none'
         if (d.linkType === 'device-agent') return '6,4'
         return isLinkDisconnected(d) ? '8,6' : 'none'
       })
@@ -476,6 +693,87 @@ export default function Topology() {
       .attr('y1', d => (d.source as TopoNode).y || 0)
       .attr('x2', d => (d.target as TopoNode).x || 0)
       .attr('y2', d => (d.target as TopoNode).y || 0)
+
+    // Widen the invisible pointer target for links so they're easy to hover
+    // without losing the thin visible stroke.
+    link.attr('stroke-linecap', 'round')
+
+    // Tooltip on device↔device links: shows the two endpoints, LLDP port
+    // mapping, last_seen age, and the fault reason when either side is
+    // offline. Only wired for device-device links since the agent/device
+    // hierarchy edges are implicit from the node tooltips.
+    const linkTooltipHtml = (d: TopoLink): string => {
+      if (d.linkType !== 'device-device' || !d.d2dInfo) return ''
+      const info = d.d2dInfo
+      const faulted = info.sourceStatus === 'offline' || info.targetStatus === 'offline'
+      const ageMs = Date.now() - new Date(info.lastSeen).getTime()
+      const ageMin = Math.max(0, Math.round(ageMs / 60000))
+      const ageText = ageMin < 2 ? 'just now' : ageMin < 60 ? `${ageMin} min ago` : `${Math.round(ageMin / 60)} h ago`
+      const statusColor = faulted ? 'text-red-400' : 'text-green-400'
+      const statusText = faulted ? 'Link down' : 'Link up'
+      let faultReason = ''
+      if (info.sourceStatus === 'offline' && info.targetStatus === 'offline') {
+        faultReason = 'Both endpoints offline'
+      } else if (info.sourceStatus === 'offline') {
+        faultReason = `${info.sourceName} offline`
+      } else if (info.targetStatus === 'offline') {
+        faultReason = `${info.targetName} offline`
+      }
+      return `
+        <div class="font-bold text-base mb-1.5 text-amber-300">Link</div>
+        <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          <span class="text-slate-400">Status</span>
+          <span class="${statusColor} font-semibold">${statusText}</span>
+          ${faultReason ? `<span class="text-slate-400">Fault</span><span class="text-red-300">${faultReason}</span>` : ''}
+          <span class="text-slate-400">Source</span>
+          <span class="text-slate-200">${info.sourceName} <span class="text-slate-500 font-mono text-[11px]">(${info.sourceIp})</span></span>
+          ${info.sourcePort ? `<span class="text-slate-400">Src port</span><span class="text-slate-300 font-mono text-[11px]">${info.sourcePort}</span>` : ''}
+          <span class="text-slate-400">Target</span>
+          <span class="text-slate-200">${info.targetName} <span class="text-slate-500 font-mono text-[11px]">(${info.targetIp})</span></span>
+          ${info.targetPort ? `<span class="text-slate-400">Tgt port</span><span class="text-slate-300 font-mono text-[11px]">${info.targetPort}</span>` : ''}
+          <span class="text-slate-400">Last seen</span>
+          <span class="text-slate-300">${ageText}</span>
+        </div>
+      `
+    }
+
+    const moveTip = (event: MouseEvent) => {
+      const tip = tooltipRef.current
+      if (!tip) return
+      const container = svgRef.current?.parentElement
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      const tipW = 300
+      let left = event.clientX - rect.left + 16
+      let top = event.clientY - rect.top - 10
+      if (left + tipW > rect.width) left = left - tipW - 32
+      if (top < 0) top = 10
+      tip.style.left = `${left}px`
+      tip.style.top = `${top}px`
+    }
+
+    link.on('mouseenter', function (event, d) {
+      const tip = tooltipRef.current
+      if (!tip) return
+      const html = linkTooltipHtml(d)
+      if (!html) return
+      tip.innerHTML = html
+      tip.style.opacity = '1'
+      tip.style.pointerEvents = 'none'
+      moveTip(event)
+      d3.select(this).attr('stroke-width', 4)
+    })
+    link.on('mousemove', function (event, d) {
+      if (d.linkType !== 'device-device') return
+      moveTip(event)
+    })
+    link.on('mouseleave', function (event, d) {
+      const tip = tooltipRef.current
+      if (tip) tip.style.opacity = '0'
+      if (d.linkType === 'device-device') {
+        d3.select(this).attr('stroke-width', isLinkDisconnected(d) ? 2 : 2)
+      }
+    })
 
     // Create node groups with drag
     const node = g.append('g')

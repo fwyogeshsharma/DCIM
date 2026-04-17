@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Faber/AMAN/DCIM/DCIM_Server/**)",
+      "Bash(go build *)"
+    ]
+  }
+}

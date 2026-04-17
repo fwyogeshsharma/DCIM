@@ -102,6 +102,24 @@ export interface SNMPDevice {
   last_seen: string
 }
 
+// One directed edge between two discovered SNMP devices, from the
+// topology_links table populated by the walker's LLDP/CDP/ARP correlation
+// and by discovery's deep-scan.
+export interface TopologyLink {
+  id?: number
+  server_id: string
+  server_name?: string
+  source_ip: string
+  source_name: string
+  source_depth?: number
+  source_port?: number
+  target_ip: string
+  target_name: string
+  target_depth?: number
+  target_port?: string
+  last_seen: string
+}
+
 export interface SNMPMetric {
   id: number
   agent_id: string

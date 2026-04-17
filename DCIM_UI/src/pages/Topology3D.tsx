@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float } from '@react-three/drei'
+import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float, Html } from '@react-three/drei'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -710,6 +710,7 @@ function DeviceNode({
 
 function ConnectionLine({ link }: { link: LayoutLink }) {
   const ref = useRef<any>(null)
+  const [hovered, setHovered] = useState(false)
 
   useFrame(() => {
     if (ref.current && (link.linkType === 'device-agent' || !link.connected)) {
@@ -717,21 +718,96 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
     }
   })
 
-  const isDevice = link.linkType === 'device-agent'
-  const color = isDevice ? '#06b6d4' : link.connected ? '#10b981' : '#ef4444'
+  const isAgentLink = link.linkType === 'device-agent'
+  const isD2D = link.linkType === 'device-device'
+  const color = isD2D
+    ? (link.connected ? '#f59e0b' : '#ef4444')     // amber for physical wiring, red if broken
+    : isAgentLink
+    ? '#06b6d4'
+    : link.connected ? '#10b981' : '#ef4444'
+
+  // Midpoint for the hover tooltip anchor.
+  const midPoint: [number, number, number] = [
+    (link.sourcePos[0] + link.targetPos[0]) / 2,
+    (link.sourcePos[1] + link.targetPos[1]) / 2,
+    (link.sourcePos[2] + link.targetPos[2]) / 2,
+  ]
+
+  const renderTooltip = () => {
+    if (!isD2D || !link.d2dInfo || !hovered) return null
+    const info = link.d2dInfo
+    const faulted = info.sourceStatus === 'offline' || info.targetStatus === 'offline'
+    const ageMs = Date.now() - new Date(info.lastSeen).getTime()
+    const ageMin = Math.max(0, Math.round(ageMs / 60000))
+    const ageText = ageMin < 2 ? 'just now' : ageMin < 60 ? `${ageMin} min ago` : `${Math.round(ageMin / 60)} h ago`
+    let faultReason = ''
+    if (info.sourceStatus === 'offline' && info.targetStatus === 'offline') {
+      faultReason = 'Both endpoints offline'
+    } else if (info.sourceStatus === 'offline') {
+      faultReason = `${info.sourceName} offline`
+    } else if (info.targetStatus === 'offline') {
+      faultReason = `${info.targetName} offline`
+    }
+    return (
+      <Html position={midPoint} center zIndexRange={[100, 0]} wrapperClass="pointer-events-none">
+        <div className="bg-slate-900/95 border border-white/10 rounded-lg p-3 text-xs shadow-lg min-w-[240px]">
+          <div className="font-bold text-base mb-1.5 text-amber-300">Link</div>
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <span className="text-slate-400">Status</span>
+            <span className={`${faulted ? 'text-red-400' : 'text-green-400'} font-semibold`}>
+              {faulted ? 'Link down' : 'Link up'}
+            </span>
+            {faultReason && (
+              <>
+                <span className="text-slate-400">Fault</span>
+                <span className="text-red-300">{faultReason}</span>
+              </>
+            )}
+            <span className="text-slate-400">Source</span>
+            <span className="text-slate-200">
+              {info.sourceName} <span className="text-slate-500 font-mono text-[11px]">({info.sourceIp})</span>
+            </span>
+            {info.sourcePort ? (
+              <>
+                <span className="text-slate-400">Src port</span>
+                <span className="text-slate-300 font-mono text-[11px]">{info.sourcePort}</span>
+              </>
+            ) : null}
+            <span className="text-slate-400">Target</span>
+            <span className="text-slate-200">
+              {info.targetName} <span className="text-slate-500 font-mono text-[11px]">({info.targetIp})</span>
+            </span>
+            {info.targetPort ? (
+              <>
+                <span className="text-slate-400">Tgt port</span>
+                <span className="text-slate-300 font-mono text-[11px]">{info.targetPort}</span>
+              </>
+            ) : null}
+            <span className="text-slate-400">Last seen</span>
+            <span className="text-slate-300">{ageText}</span>
+          </div>
+        </div>
+      </Html>
+    )
+  }
 
   return (
-    <Line
-      ref={ref}
-      points={[link.sourcePos, link.targetPos]}
-      color={color}
-      lineWidth={isDevice ? 1 : link.connected ? 1.5 : 2}
-      dashed={isDevice || !link.connected}
-      dashSize={isDevice ? 0.5 : 1}
-      gapSize={isDevice ? 0.5 : 0.8}
-      transparent
-      opacity={isDevice ? 0.5 : link.connected ? 0.6 : 0.8}
-    />
+    <>
+      <Line
+        ref={ref}
+        points={[link.sourcePos, link.targetPos]}
+        color={color}
+        lineWidth={isD2D ? (hovered ? 3 : 2) : isAgentLink ? 1 : link.connected ? 1.5 : 2}
+        dashed={isAgentLink || !link.connected}
+        dashSize={isAgentLink ? 0.5 : 1}
+        gapSize={isAgentLink ? 0.5 : 0.8}
+        transparent
+        opacity={isD2D ? (link.connected ? 0.85 : 0.7) : isAgentLink ? 0.5 : link.connected ? 0.6 : 0.8}
+        onPointerOver={isD2D ? (e: any) => { e.stopPropagation?.(); setHovered(true) } : undefined}
+        onPointerOut={isD2D ? () => setHovered(false) : undefined}
+      />
+      {renderTooltip()}
+    </>
   )
 }
 
@@ -1096,6 +1172,13 @@ export default function Topology3D() {
     refetchInterval: USE_MOCK_DATA ? false : 15000,
     enabled: !USE_MOCK_DATA,
   })
+  const { data: realTopologyLinks } = useQuery({
+    queryKey: ['topology-links-3d'],
+    queryFn: () => api.getTopologyLinks(),
+    staleTime: 30000,
+    refetchInterval: USE_MOCK_DATA ? false : 60000,
+    enabled: !USE_MOCK_DATA,
+  })
 
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
@@ -1151,8 +1234,9 @@ export default function Topology3D() {
     const visibleDevices = (snmpDevices || []).filter(
       d => expandedServers.has(`server-${d.server_id}`)
     )
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices)
-  }, [servers, agents, expandedServers, snmpDevices])
+    const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks)
+  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
@@ -1257,7 +1341,7 @@ export default function Topology3D() {
           style={{ cursor: cursorPointer ? 'pointer' : 'grab' }}
         >
           <Canvas
-            camera={{ position: [0, 60, 100], fov: 50 }}
+            camera={{ position: [0, 80, 160], fov: 50, near: 0.1, far: 2000 }}
             style={{ background: 'transparent' }}
             onPointerMissed={handleDeselect}
           >
