@@ -101,6 +101,7 @@ func (s *Server) runWalkerLoop() {
 			Timeout:          cfg.Timeout,
 			Retries:          cfg.Retries,
 			UseIPAsCommunity: cfg.UseIPAsCommunity,
+			Subnets:          cfg.Subnets,
 		})
 		if err != nil {
 			s.logger.Printf("[WALKER] Auto-start failed: %v", err)

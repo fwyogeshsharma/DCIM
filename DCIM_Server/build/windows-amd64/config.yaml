@@ -75,7 +75,7 @@ database:
   # PostgreSQL settings (when type: "postgres")
   postgres:
     host: "localhost"
-    port: 5433
+    port: 5432
     user: "postgres"
     password: "admin"
     database: "dcim_db"
@@ -369,3 +369,32 @@ debug:
   # Dump received data to files (for debugging)
   dump_data: false
   dump_path: "./debug"
+
+# SNMP Topology Walker — auto-discovers network topology from a seed IP.
+# When `subnets` is set, every host in each CIDR is pre-seeded into the BFS
+# queue so every device gets probed even if LLDP/CDP does not link it back
+# to seed_ip. Topology links are still built from LLDP/CDP/ARP on top.
+snmp_walker:
+  enabled: true
+  seed_ip: "10.100.0.4"
+  community: "public"
+  version: "2c"
+  port: 161
+  max_depth: 15
+  timeout: 10s
+  retries: 2
+  use_ip_as_community: true
+  interval: 15m
+  subnets:
+    - "10.100.0.0/24"
+  health_check_interval: 2m
+  deep_scan:
+    enabled: true
+
+# SNMP Trap Receiver
+snmp_trap:
+  # Enable the built-in SNMP trap listener
+  enabled: true
+  # UDP port to listen on. Port 162 is standard but requires admin/root on most systems.
+  # Use 1162 if running without elevated privileges.
+  port: 1162

@@ -194,7 +194,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       let query = `
         SELECT tl.*, s.name AS server_name
         FROM topology_links tl
-        JOIN servers s ON tl.server_id = s.id
+        JOIN servers s ON tl.server_id = s.id::text
         WHERE 1=1
       `
       const params: any[] = []

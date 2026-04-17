@@ -353,6 +353,11 @@ func (d *Database) getSQLiteSchema() []string {
 // getPostgresSchema returns PostgreSQL-specific schema
 func (d *Database) getPostgresSchema() []string {
 	return []string{
+		// Immutable helper: truncate timestamptz to second (for use in index expressions)
+		`CREATE OR REPLACE FUNCTION trunc_second(ts TIMESTAMPTZ)
+			RETURNS BIGINT LANGUAGE sql IMMUTABLE AS
+			$fn$ SELECT floor(extract(epoch FROM ts))::bigint $fn$`,
+
 		// Servers table - Track DCIM_Server instances
 		`CREATE TABLE IF NOT EXISTS servers (
 			id SERIAL PRIMARY KEY,
@@ -534,7 +539,7 @@ func (d *Database) getPostgresSchema() []string {
 		)`,
 
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_snmp_traps_dedup
-			ON snmp_traps(server_id, source_ip, trap_oid, date_trunc('second', timestamp))`,
+			ON snmp_traps(server_id, source_ip, trap_oid, trunc_second(timestamp))`,
 
 		`CREATE INDEX IF NOT EXISTS idx_snmp_traps_time ON snmp_traps(server_id, timestamp)`,
 		`CREATE INDEX IF NOT EXISTS idx_snmp_traps_ip ON snmp_traps(source_ip, trap_type, resolved)`,
@@ -545,11 +550,21 @@ func (d *Database) getPostgresSchema() []string {
 			server_id TEXT NOT NULL,
 			source_ip TEXT NOT NULL,
 			source_name TEXT NOT NULL DEFAULT '',
+			source_depth INTEGER NOT NULL DEFAULT 0,
+			source_port TEXT NOT NULL DEFAULT '',
 			target_ip TEXT NOT NULL,
 			target_name TEXT NOT NULL DEFAULT '',
+			target_depth INTEGER NOT NULL DEFAULT 0,
+			target_port TEXT NOT NULL DEFAULT '',
 			last_seen TIMESTAMPTZ NOT NULL,
 			created_at TIMESTAMPTZ DEFAULT NOW()
 		)`,
+
+		// Add columns if table was created before depth/port support
+		`ALTER TABLE topology_links ADD COLUMN IF NOT EXISTS source_depth INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE topology_links ADD COLUMN IF NOT EXISTS source_port TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE topology_links ADD COLUMN IF NOT EXISTS target_depth INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE topology_links ADD COLUMN IF NOT EXISTS target_port TEXT NOT NULL DEFAULT ''`,
 
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_topology_links_pair ON topology_links(server_id, source_ip, target_ip)`,
 		`CREATE INDEX IF NOT EXISTS idx_topology_links_server ON topology_links(server_id, last_seen)`,

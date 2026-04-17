@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(psql -U postgres -c \"SELECT 1\")",
+      "Bash(where psql *)",
+      "Read(//c/Program Files/PostgreSQL/**)",
+      "Read(//c/Program Files \\(x86\\)/PostgreSQL/**)",
+      "Bash(PGPASSWORD=admin /c/Program Files/PostgreSQL/18/bin/psql.exe *)",
+      "Bash(PGPASSWORD=dcim_password /c/Program Files/PostgreSQL/18/bin/psql.exe *)",
+      "Bash(go build *)",
+      "Bash(curl *)",
+      "Read(//c/Users/Faber/AMAN/DCIM/DCIM_UI/**)",
+      "Bash(npx tsc *)",
+      "Bash(npx --prefix /c/Users/Faber/AMAN/DCIM/DCIM_UI tsc --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(python3 -m json.tool)",
+      "Bash(pip show *)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 show *)",
+      "Bash(python3 -c \"import pysnmp\")"
+    ]
+  }
+}

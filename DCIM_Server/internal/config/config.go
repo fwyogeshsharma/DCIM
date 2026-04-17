@@ -353,6 +353,10 @@ type SNMPWalkerConfig struct {
 	Retries          int           `yaml:"retries"`
 	Interval         time.Duration `yaml:"interval"`
 	UseIPAsCommunity bool          `yaml:"use_ip_as_community"`
+	// Subnets is an optional list of CIDRs whose IPs are all pre-seeded into
+	// the BFS queue. This guarantees every host in the range is probed even
+	// when LLDP/CDP neighbor tables don't link them back to the seed.
+	Subnets []string `yaml:"subnets"`
 }
 
 // Load loads configuration from a YAML file

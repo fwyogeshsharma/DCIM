@@ -5,6 +5,10 @@ import { api } from '@/lib/api'
 import * as d3 from 'd3'
 import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar, Box, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { getMockTopologyData } from '@/lib/topology-mock-data'
+
+// ── Toggle this to use 500+ node mock data for testing ──
+const USE_MOCK_DATA = false
 
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
@@ -32,14 +36,22 @@ interface TopoLink extends d3.SimulationLinkDatum<TopoNode> {
 type TimeFilter = 'today' | '30days' | 'all'
 
 export default function Topology() {
-  const { data: agents, isLoading } = useAgents()
-  const { data: servers } = useQuery({
+  const mockData = USE_MOCK_DATA ? getMockTopologyData() : null
+  const { data: realAgents, isLoading: realLoading } = useAgents()
+  const { data: realServers } = useQuery({
     queryKey: ['servers'],
     queryFn: () => api.getServers(),
     staleTime: 60000,
+    enabled: !USE_MOCK_DATA,
   })
+
+  const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
+  const servers = USE_MOCK_DATA ? mockData!.servers : realServers
+  const isLoading = USE_MOCK_DATA ? false : realLoading
+
   const navigate = useNavigate()
   const svgRef = useRef<SVGSVGElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
   const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const simulationRef = useRef<d3.Simulation<TopoNode, TopoLink> | null>(null)
@@ -71,7 +83,7 @@ export default function Topology() {
   }, [])
 
   // Fetch filtered metrics and alerts for each agent
-  const { data: filteredData } = useQuery({
+  const { data: realFilteredData } = useQuery({
     queryKey: ['topology-filtered-data', timeFilter, agents?.map(a => a.agent_id).join(',')],
     queryFn: async () => {
       if (!agents) return null
@@ -115,16 +127,23 @@ export default function Topology() {
 
       return results
     },
-    enabled: !!agents && agents.length > 0,
-    refetchInterval: 30000,
+    enabled: !USE_MOCK_DATA && !!agents && agents.length > 0,
+    refetchInterval: USE_MOCK_DATA ? false : 30000,
   })
 
-  const { data: snmpDevices } = useQuery({
+  const filteredData = USE_MOCK_DATA
+    ? agents?.map(a => ({ agent_id: a.agent_id, metrics_count: a.total_metrics, alerts_count: a.total_alerts })) ?? null
+    : realFilteredData
+
+  const { data: realSnmpDevices } = useQuery({
     queryKey: ['snmp-devices'],
     queryFn: () => api.getSNMPDevices(),
     staleTime: 30000,
-    refetchInterval: 60000,
+    refetchInterval: USE_MOCK_DATA ? false : 60000,
+    enabled: !USE_MOCK_DATA,
   })
+
+  const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
 
   useEffect(() => {
     if (!agents || !svgRef.current) return
@@ -179,17 +198,20 @@ export default function Topology() {
 
     // Compute agent counts per server (always use full list)
     const agentCountByServer: Record<string, number> = {}
-    const onlineCountByServer: Record<string, number> = {}
-    const offlineCountByServer: Record<string, number> = {}
     agents.forEach(a => {
       const sid = `server-${a.server_id}`
       agentCountByServer[sid] = (agentCountByServer[sid] || 0) + 1
-      if (a.status === 'online') {
-        onlineCountByServer[sid] = (onlineCountByServer[sid] || 0) + 1
-      } else {
-        offlineCountByServer[sid] = (offlineCountByServer[sid] || 0) + 1
-      }
     })
+
+    // ── O(1) lookup Maps ──
+    const filteredDataMap = new Map(
+      (filteredData || []).map(f => [f.agent_id, f])
+    )
+    const serverConfigMap = new Map(enabledServers.map(s => [s.id, s]))
+    const agentLookup = new Map(
+      agents.map(a => [`${a.server_id}:${a.agent_id}`, a])
+    )
+    const serverNodeMap = new Map(serverNodes.map(s => [s.id, s]))
 
     // Only show agents for expanded servers
     const visibleAgents = agents.filter(agent =>
@@ -198,8 +220,8 @@ export default function Topology() {
 
     // Create agent nodes with filtered data
     const agentNodes: TopoNode[] = visibleAgents.map((agent) => {
-      const filtered = filteredData?.find(f => f.agent_id === agent.agent_id)
-      const parentServer = enabledServers.find(s => s.id === agent.server_id)
+      const filtered = filteredDataMap.get(agent.agent_id)
+      const parentServer = serverConfigMap.get(agent.server_id)
       return {
         id: `${agent.server_id}:${agent.agent_id}`,
         name: agent.hostname,
@@ -218,18 +240,20 @@ export default function Topology() {
     const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
     const deviceNodes: TopoNode[] = []
     const deviceLinks: TopoLink[] = []
+    const deviceNodeIds = new Set<string>()
+    const agentNodeIdSet = new Set(agentNodes.map(n => n.id))
 
     if (snmpDevices) {
       snmpDevices.forEach(device => {
-        const agentNodeId = `${device.server_id}:${device.agent_id}`
         const isAgentVisible = expandedServers.has(`server-${device.server_id}`)
         if (!isAgentVisible) return
 
         const deviceNodeId = `device-${device.server_id}-${device.agent_id}-${device.device_ip || device.device_name}`
-        if (deviceNodes.find(n => n.id === deviceNodeId)) return  // deduplicate
+        if (deviceNodeIds.has(deviceNodeId)) return
+        deviceNodeIds.add(deviceNodeId)
 
         const isActive = new Date(device.last_seen).getTime() > twoHoursAgo
-        const agentData = agents?.find(a => a.agent_id === device.agent_id && a.server_id === device.server_id)
+        const agentData = agentLookup.get(`${device.server_id}:${device.agent_id}`)
 
         deviceNodes.push({
           id: deviceNodeId,
@@ -242,7 +266,8 @@ export default function Topology() {
           agentName: agentData?.hostname || device.agent_id,
         })
 
-        if (agentNodes.find(n => n.id === agentNodeId)) {
+        const agentNodeId = `${device.server_id}:${device.agent_id}`
+        if (agentNodeIdSet.has(agentNodeId)) {
           deviceLinks.push({
             source: deviceNodeId,
             target: agentNodeId,
@@ -255,11 +280,13 @@ export default function Topology() {
     }
 
     const nodes: TopoNode[] = [...serverNodes, ...agentNodes, ...deviceNodes]
+    const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
     // Create links — each agent connects to its own server
     const links: TopoLink[] = [
       ...visibleAgents.map(agent => {
-        const serverNodeId = serverNodes.find(s => s.id === `server-${agent.server_id}`)?.id || serverNodes[0]?.id
+        const sid = `server-${agent.server_id}`
+        const serverNodeId = serverNodeMap.get(sid)?.id || serverNodes[0]?.id
         return {
           source: `${agent.server_id}:${agent.agent_id}`,
           target: serverNodeId || 'server-unknown',
@@ -271,17 +298,111 @@ export default function Topology() {
       ...deviceLinks,
     ]
 
-    // Create force simulation
-    const simulation = d3.forceSimulation<TopoNode>(nodes)
-      .force('link', d3.forceLink<TopoNode, TopoLink>(links)
-        .id(d => d.id)
-        .distance(d => d.distance ?? 200)
-        .strength(d => d.strength))
-      .force('charge', d3.forceManyBody().strength(-1200))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(70))
+    // ── Static hierarchical tree layout ──
+    const nodeCount = nodes.length
 
-    simulationRef.current = simulation
+    // Group visible agents by server for layout
+    const visibleAgentsByServer = new Map<string, TopoNode[]>()
+    agentNodes.forEach(an => {
+      const sid = `server-${an.serverId}`
+      if (!visibleAgentsByServer.has(sid)) visibleAgentsByServer.set(sid, [])
+      visibleAgentsByServer.get(sid)!.push(an)
+    })
+
+    // Group devices by agent
+    const devicesByAgentMap = new Map<string, TopoNode[]>()
+    deviceNodes.forEach(dn => {
+      const key = `${dn.serverId}:${dn.agentId}`
+      if (!devicesByAgentMap.has(key)) devicesByAgentMap.set(key, [])
+      devicesByAgentMap.get(key)!.push(dn)
+    })
+
+    // Node sizing constants
+    const nodeRadius = { server: 40, agent: 30, network: 20 }
+
+    // ── Generous spacing constants ──
+    const NODE_GAP_X = 140        // horizontal gap between sibling nodes
+    const SERVER_GAP_X = 200      // extra gap between server subtrees
+    const TIER_GAP_Y = 250        // vertical gap between tiers
+
+    // Tier Y positions
+    const serverRowY = 100
+    const agentRowY = serverRowY + TIER_GAP_Y
+    const deviceRowY = agentRowY + TIER_GAP_Y
+
+    // ── First pass: position agents and devices bottom-up to compute subtree widths ──
+    // For each server, compute total subtree width
+    const serverSubtreeWidths = new Map<string, number>()
+    const agentSubtreeWidths = new Map<string, number>()
+
+    serverNodes.forEach(sn => {
+      const sAgents = visibleAgentsByServer.get(sn.id) || []
+      if (sAgents.length === 0) {
+        serverSubtreeWidths.set(sn.id, NODE_GAP_X)
+        return
+      }
+
+      let serverWidth = 0
+      sAgents.forEach((agent, i) => {
+        const devs = devicesByAgentMap.get(agent.id) || []
+        const agentWidth = devs.length > 1
+          ? (devs.length - 1) * NODE_GAP_X
+          : NODE_GAP_X
+        agentSubtreeWidths.set(agent.id, agentWidth)
+        serverWidth += agentWidth
+        if (i < sAgents.length - 1) serverWidth += NODE_GAP_X * 0.5 // gap between agent subtrees
+      })
+
+      serverSubtreeWidths.set(sn.id, serverWidth)
+    })
+
+    // Total layout width
+    const totalWidth = Array.from(serverSubtreeWidths.values()).reduce((a, b) => a + b, 0)
+      + Math.max(0, serverNodes.length - 1) * SERVER_GAP_X
+
+    // ── Second pass: assign X positions ──
+    let cursorX = width / 2 - totalWidth / 2
+
+    serverNodes.forEach((sn, si) => {
+      const subtreeW = serverSubtreeWidths.get(sn.id) || NODE_GAP_X
+      sn.x = cursorX + subtreeW / 2
+      sn.y = serverRowY
+
+      const sAgents = visibleAgentsByServer.get(sn.id) || []
+      if (sAgents.length > 0) {
+        let agentCursorX = cursorX
+        sAgents.forEach((agent, ai) => {
+          const agentW = agentSubtreeWidths.get(agent.id) || NODE_GAP_X
+          agent.x = agentCursorX + agentW / 2
+          agent.y = agentRowY
+
+          const devs = devicesByAgentMap.get(agent.id) || []
+          if (devs.length > 0) {
+            const devTotalW = (devs.length - 1) * NODE_GAP_X
+            const devStartX = agent.x! - devTotalW / 2
+            devs.forEach((dn, j) => {
+              dn.x = devStartX + j * NODE_GAP_X
+              dn.y = deviceRowY
+            })
+          }
+
+          agentCursorX += agentW
+          if (ai < sAgents.length - 1) agentCursorX += NODE_GAP_X * 0.5
+        })
+      }
+
+      cursorX += subtreeW
+      if (si < serverNodes.length - 1) cursorX += SERVER_GAP_X
+    })
+
+    // No force simulation — positions are static
+    simulationRef.current = null
+
+    // Resolve link source/target strings to node objects
+    links.forEach(l => {
+      if (typeof l.source === 'string') l.source = nodeMap.get(l.source) || l.source
+      if (typeof l.target === 'string') l.target = nodeMap.get(l.target) || l.target
+    })
 
     // Build a set of offline server IDs for quick lookup
     const offlineServerIds = new Set(
@@ -292,8 +413,8 @@ export default function Topology() {
     const isLinkDisconnected = (d: TopoLink) => {
       const sourceId = typeof d.source === 'string' ? d.source : d.source.id
       const targetId = typeof d.target === 'string' ? d.target : d.target.id
-      const sourceNode = nodes.find(n => n.id === sourceId)
-      const targetNode = nodes.find(n => n.id === targetId)
+      const sourceNode = nodeMap.get(sourceId)
+      const targetNode = nodeMap.get(targetId)
       return sourceNode?.status === 'offline' || targetNode?.status === 'offline'
     }
 
@@ -336,7 +457,7 @@ export default function Topology() {
     glowMerge.append('feMergeNode').attr('in', 'glow')
     glowMerge.append('feMergeNode').attr('in', 'SourceGraphic')
 
-    // Create links
+    // Create links as straight lines
     const link = g.append('g')
       .selectAll('line')
       .data(links)
@@ -346,24 +467,15 @@ export default function Topology() {
         return isLinkDisconnected(d) ? '#ef4444' : '#10b981'
       })
       .attr('stroke-width', d => d.linkType === 'device-agent' ? 1.5 : isLinkDisconnected(d) ? 2.5 : 2)
-      .attr('stroke-opacity', d => d.linkType === 'device-agent' ? 0.5 : isLinkDisconnected(d) ? 0.8 : 0.6)
+      .attr('stroke-opacity', d => d.linkType === 'device-agent' ? 0.4 : isLinkDisconnected(d) ? 0.7 : 0.5)
       .attr('stroke-dasharray', d => {
-        if (d.linkType === 'device-agent') return '4,3'
+        if (d.linkType === 'device-agent') return '6,4'
         return isLinkDisconnected(d) ? '8,6' : 'none'
       })
-      .attr('marker-end', d => {
-        if (d.linkType === 'device-agent') return 'url(#arrow-device)'
-        return isLinkDisconnected(d) ? 'url(#arrow-disconnected)' : 'url(#arrow-online)'
-      })
-
-    // Animate dashed lines for disconnected links
-    link.filter(d => d.linkType !== 'device-agent' && isLinkDisconnected(d))
-      .append('animate')
-      .attr('attributeName', 'stroke-dashoffset')
-      .attr('from', '0')
-      .attr('to', '28')
-      .attr('dur', '1.5s')
-      .attr('repeatCount', 'indefinite')
+      .attr('x1', d => (d.source as TopoNode).x || 0)
+      .attr('y1', d => (d.source as TopoNode).y || 0)
+      .attr('x2', d => (d.target as TopoNode).x || 0)
+      .attr('y2', d => (d.target as TopoNode).y || 0)
 
     // Create node groups with drag
     const node = g.append('g')
@@ -411,6 +523,101 @@ export default function Topology() {
       }
     })
 
+    // ── Tooltip on hover ──
+    node.on('mouseenter', function (event, d) {
+      const tip = tooltipRef.current
+      if (!tip) return
+
+      const agentCount = agentCountByServer[d.id] || 0
+      let html = ''
+
+      if (d.type === 'server') {
+        html = `
+          <div class="font-bold text-base mb-1.5" style="color:${d.color || '#a78bfa'}">${d.name}</div>
+          <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <span class="text-slate-400">Status</span>
+            <span class="${d.status === 'online' ? 'text-green-400' : 'text-red-400'} font-semibold">${d.status === 'online' ? 'Healthy' : 'Disconnected'}</span>
+            <span class="text-slate-400">Type</span>
+            <span class="text-slate-200">Server</span>
+            ${d.ip ? `<span class="text-slate-400">URL</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
+            <span class="text-slate-400">Agents</span>
+            <span class="text-slate-200 font-semibold">${agentCount}</span>
+            <span class="text-slate-400">Expanded</span>
+            <span class="text-slate-200">${expandedServers.has(d.id) ? 'Yes' : 'No'}</span>
+          </div>
+          <div class="text-[10px] text-slate-500 mt-2 border-t border-white/10 pt-1.5">Double-click to ${expandedServers.has(d.id) ? 'collapse' : 'expand'} agents</div>
+        `
+      } else if (d.type === 'agent') {
+        html = `
+          <div class="font-bold text-base mb-1.5 text-white">${d.name}</div>
+          <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <span class="text-slate-400">Status</span>
+            <span class="${d.status === 'online' ? 'text-green-400' : 'text-red-400'} font-semibold">${d.status === 'online' ? 'Online' : 'Offline'}</span>
+            <span class="text-slate-400">Type</span>
+            <span class="text-slate-200">Agent</span>
+            ${d.ip ? `<span class="text-slate-400">IP</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
+            ${d.serverName ? `<span class="text-slate-400">Server</span><span class="text-purple-300">${d.serverName}</span>` : ''}
+            ${d.agentId ? `<span class="text-slate-400">Agent ID</span><span class="text-slate-200 font-mono text-[11px]">${d.agentId}</span>` : ''}
+            <span class="text-slate-400">Metrics</span>
+            <span class="text-blue-400 font-semibold">${d.metrics != null ? d.metrics.toLocaleString() : '—'}</span>
+            <span class="text-slate-400">Alerts</span>
+            <span class="${(d.alerts || 0) > 0 ? 'text-red-400 font-semibold' : 'text-slate-300'}">${d.alerts || 0}</span>
+          </div>
+        `
+      } else {
+        // network / SNMP device
+        html = `
+          <div class="font-bold text-base mb-1.5 text-cyan-300">${d.name}</div>
+          <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <span class="text-slate-400">Status</span>
+            <span class="${d.status === 'online' ? 'text-green-400' : 'text-slate-400'} font-semibold">${d.status === 'online' ? 'Active' : 'Inactive'}</span>
+            <span class="text-slate-400">Type</span>
+            <span class="text-slate-200">SNMP Device</span>
+            ${d.ip ? `<span class="text-slate-400">IP</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
+            ${d.agentName ? `<span class="text-slate-400">Monitored By</span><span class="text-blue-300">${d.agentName}</span>` : ''}
+          </div>
+        `
+      }
+
+      tip.innerHTML = html
+      tip.style.opacity = '1'
+      tip.style.pointerEvents = 'none'
+
+      // Position near cursor, clamped to container bounds
+      const container = svgRef.current?.parentElement
+      if (container) {
+        const rect = container.getBoundingClientRect()
+        const tipW = 280
+        let left = event.clientX - rect.left + 16
+        let top = event.clientY - rect.top - 10
+        if (left + tipW > rect.width) left = left - tipW - 32
+        if (top < 0) top = 10
+        tip.style.left = `${left}px`
+        tip.style.top = `${top}px`
+      }
+    })
+
+    node.on('mousemove', function (event) {
+      const tip = tooltipRef.current
+      if (!tip) return
+      const container = svgRef.current?.parentElement
+      if (container) {
+        const rect = container.getBoundingClientRect()
+        const tipW = 280
+        let left = event.clientX - rect.left + 16
+        let top = event.clientY - rect.top - 10
+        if (left + tipW > rect.width) left = left - tipW - 32
+        if (top < 0) top = 10
+        tip.style.left = `${left}px`
+        tip.style.top = `${top}px`
+      }
+    })
+
+    node.on('mouseleave', function () {
+      const tip = tooltipRef.current
+      if (tip) tip.style.opacity = '0'
+    })
+
     // Add circles for nodes
     node.append('circle')
       .attr('r', d => d.type === 'server' ? 40 : d.type === 'network' ? 20 : 30)
@@ -432,35 +639,62 @@ export default function Topology() {
       .style('cursor', 'pointer')
       .attr('filter', d => d.status === 'offline' && d.type !== 'network' ? 'url(#glow-red)' : null)
 
-    // Add green pulse for ONLINE agents (not devices)
-    node.filter(d => d.status === 'online' && d.type === 'agent')
-      .append('circle')
-      .attr('r', 30)
-      .attr('fill', 'none')
-      .attr('stroke', '#10b981')
-      .attr('stroke-width', 2)
-      .attr('opacity', 0)
-      .call(pulseGreen)
+    // Pulse animations — skip for large node counts (invisible at that zoom, heavy on perf)
+    if (nodeCount <= 100) {
+      // Online agents — SVG <animate> (GPU-composited, no JS timer overhead)
+      node.filter(d => d.status === 'online' && d.type === 'agent')
+        .append('circle')
+        .attr('r', 30)
+        .attr('fill', 'none')
+        .attr('stroke', '#10b981')
+        .attr('stroke-width', 2)
+        .attr('opacity', 0.6)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '30;42;30')
+            .attr('dur', '2s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.6;0;0.6')
+            .attr('dur', '2s').attr('repeatCount', 'indefinite')
+        })
 
-    // Add red danger pulse for OFFLINE servers
-    node.filter(d => d.status === 'offline' && d.type === 'server')
-      .append('circle')
-      .attr('r', 40)
-      .attr('fill', 'none')
-      .attr('stroke', '#ef4444')
-      .attr('stroke-width', 3)
-      .attr('opacity', 0)
-      .call(pulseRed)
+      // Offline servers
+      node.filter(d => d.status === 'offline' && d.type === 'server')
+        .append('circle')
+        .attr('r', 40)
+        .attr('fill', 'none')
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 3)
+        .attr('opacity', 0.9)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '40;55;40')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.9;0;0.9')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+        })
 
-    // Add red danger pulse for OFFLINE agents
-    node.filter(d => d.status === 'offline' && d.type === 'agent')
-      .append('circle')
-      .attr('r', 30)
-      .attr('fill', 'none')
-      .attr('stroke', '#ef4444')
-      .attr('stroke-width', 2)
-      .attr('opacity', 0)
-      .call(pulseRed)
+      // Offline agents
+      node.filter(d => d.status === 'offline' && d.type === 'agent')
+        .append('circle')
+        .attr('r', 30)
+        .attr('fill', 'none')
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 2)
+        .attr('opacity', 0.9)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '30;45;30')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.9;0;0.9')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+        })
+    }
 
     // Add warning ring for agents connected to an offline server
     node.filter(d => d.type === 'agent' && d.status === 'online' && d.serverId && offlineServerIds.has(`server-${d.serverId}`))
@@ -653,68 +887,27 @@ export default function Topology() {
         return `▸ ${count} agents`
       })
 
-    // Update positions on simulation tick
-    simulation.on('tick', () => {
-      link
-        .attr('x1', d => (d.source as TopoNode).x || 0)
-        .attr('y1', d => (d.source as TopoNode).y || 0)
-        .attr('x2', d => (d.target as TopoNode).x || 0)
-        .attr('y2', d => (d.target as TopoNode).y || 0)
+    // ── Static placement — no simulation tick needed ──
+    node.attr('transform', d => `translate(${d.x},${d.y})`)
 
-      node.attr('transform', d => `translate(${d.x},${d.y})`)
-    })
-
-    // Drag functions
-    function dragstarted(event: any, d: TopoNode) {
-      if (!event.active) simulation.alphaTarget(0.3).restart()
-      d.fx = d.x
-      d.fy = d.y
-    }
+    // Drag functions — reposition node and update links in-place
+    function dragstarted(_event: any, _d: TopoNode) {}
 
     function dragged(event: any, d: TopoNode) {
-      d.fx = event.x
-      d.fy = event.y
+      d.x = event.x
+      d.y = event.y
+      d3.select(event.sourceEvent.target.closest('g')).attr('transform', `translate(${d.x},${d.y})`)
+      // Update straight line endpoints
+      link
+        .attr('x1', (l: TopoLink) => (l.source as TopoNode).x || 0)
+        .attr('y1', (l: TopoLink) => (l.source as TopoNode).y || 0)
+        .attr('x2', (l: TopoLink) => (l.target as TopoNode).x || 0)
+        .attr('y2', (l: TopoLink) => (l.target as TopoNode).y || 0)
     }
 
-    function dragended(event: any, d: TopoNode) {
-      if (!event.active) simulation.alphaTarget(0)
-      d.fx = null
-      d.fy = null
-    }
+    function dragended(_event: any, _d: TopoNode) {}
 
-    // Green pulse for online agents
-    function pulseGreen(selection: any) {
-      (function repeat() {
-        selection
-          .transition()
-          .duration(2000)
-          .attr('r', 42)
-          .attr('opacity', 0)
-          .transition()
-          .duration(0)
-          .attr('r', 30)
-          .attr('opacity', 0.6)
-          .on('end', repeat)
-      })()
-    }
-
-    // Red danger pulse for offline nodes
-    function pulseRed(selection: any) {
-      (function repeat() {
-        selection
-          .transition()
-          .duration(1200)
-          .attr('r', 55)
-          .attr('opacity', 0)
-          .transition()
-          .duration(0)
-          .attr('r', d => (d as TopoNode).type === 'server' ? 40 : 30)
-          .attr('opacity', 0.9)
-          .on('end', repeat)
-      })()
-    }
-
-    // Auto-fit to view after simulation settles
+    // Auto-fit to view immediately
     const fitTimer = setTimeout(() => {
       const xValues = nodes.map(n => n.x || 0)
       const yValues = nodes.map(n => n.y || 0)
@@ -739,11 +932,10 @@ export default function Topology() {
         zoom.transform,
         d3.zoomIdentity.translate(translateX, translateY).scale(scale)
       )
-    }, 1500)
+    }, 100)
 
     // Cleanup
     return () => {
-      simulation.stop()
       clearTimeout(fitTimer)
       if (clickTimerRef.current) {
         clearTimeout(clickTimerRef.current)
@@ -769,40 +961,16 @@ export default function Topology() {
   }
 
   const handleReset = () => {
-    if (!svgRef.current || !zoomRef.current || !simulationRef.current) return
-
+    if (!svgRef.current || !zoomRef.current) return
     const svg = d3.select(svgRef.current)
-    const width = svgRef.current.clientWidth
-    const height = svgRef.current.clientHeight
-    const nodes = simulationRef.current.nodes()
-
-    const xValues = nodes.map(n => n.x || 0)
-    const yValues = nodes.map(n => n.y || 0)
-    if (xValues.length === 0) return
-
-    const xMin = Math.min(...xValues)
-    const xMax = Math.max(...xValues)
-    const yMin = Math.min(...yValues)
-    const yMax = Math.max(...yValues)
-
-    const padding = 100
-    const boundsWidth = (xMax - xMin) + padding * 2
-    const boundsHeight = (yMax - yMin) + padding * 2
-
-    const scale = Math.min(width / boundsWidth, height / boundsHeight, 1)
-    const centerX = (xMin + xMax) / 2
-    const centerY = (yMin + yMax) / 2
-    const translateX = width / 2 - scale * centerX
-    const translateY = height / 2 - scale * centerY
-
     svg.transition().duration(500).call(
       zoomRef.current.transform,
-      d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+      d3.zoomIdentity
     )
   }
 
   const handleRestart = () => {
-    simulationRef.current?.alpha(1).restart()
+    // No simulation — this is a no-op in hierarchical mode
   }
 
   if (isLoading) {
@@ -926,6 +1094,13 @@ export default function Topology() {
         {/* Main visualization */}
         <div className="flex-1 bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden relative">
           <svg ref={svgRef} className="w-full h-full" />
+
+          {/* Hover tooltip */}
+          <div
+            ref={tooltipRef}
+            className="absolute z-50 w-[280px] bg-slate-900/95 border border-white/15 rounded-xl px-4 py-3 backdrop-blur-md shadow-2xl transition-opacity duration-150"
+            style={{ opacity: 0, pointerEvents: 'none', top: 0, left: 0 }}
+          />
 
           {/* Legend */}
           <div className="absolute bottom-4 left-4 bg-slate-900/90 border border-white/20 rounded-lg p-4 backdrop-blur-sm">

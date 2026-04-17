@@ -47,6 +47,9 @@ type WalkConfig struct {
 	// the community string (required by some simulators like SNMP Network
 	// Topology Simulator).
 	UseIPAsCommunity bool
+	// Subnets pre-seed every host IP in these CIDRs into the BFS queue so
+	// disconnected devices get probed even without an LLDP/CDP path from SeedIP.
+	Subnets []string
 }
 
 // WalkSession tracks a running or completed walk
@@ -217,6 +220,25 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 	visited := make(map[string]bool)
 	depth := map[string]int{cfg.SeedIP: 0}
 	parent := map[string]string{cfg.SeedIP: ""}
+
+	// Expand any configured subnets into additional depth-0 queue entries so
+	// every host in the range is probed independently of LLDP reachability.
+	for _, cidr := range cfg.Subnets {
+		ips, err := expandCIDR(cidr)
+		if err != nil {
+			w.logger.Printf("[WALKER] Skipping invalid subnet %q: %v", cidr, err)
+			continue
+		}
+		w.logger.Printf("[WALKER] Seeding %d IP(s) from subnet %s", len(ips), cidr)
+		for _, ip := range ips {
+			if _, seen := depth[ip]; seen {
+				continue
+			}
+			depth[ip] = 0
+			parent[ip] = ""
+			queue = append(queue, ip)
+		}
+	}
 
 	var collected []DiscoveredMetric
 	var collectedLinks []TopologyLink
@@ -596,6 +618,39 @@ func (w *Walker) markFailed(session *WalkSession, msg string) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+// expandCIDR returns every usable host IP inside the given CIDR. Network and
+// broadcast addresses are skipped for IPv4 prefixes shorter than /31. Refuses
+// prefixes larger than /16 to avoid pathological queue sizes.
+func expandCIDR(cidr string) ([]string, error) {
+	_, network, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil, err
+	}
+	ones, bits := network.Mask.Size()
+	if bits-ones > 16 {
+		return nil, fmt.Errorf("prefix too large (max /%d for IPv%d)", bits-16, bits/8)
+	}
+	var ips []string
+	ip := network.IP.Mask(network.Mask)
+	skipEdges := bits == 32 && (bits-ones) >= 2
+	for network.Contains(ip) {
+		cur := make(net.IP, len(ip))
+		copy(cur, ip)
+		ips = append(ips, cur.String())
+		// increment
+		for i := len(ip) - 1; i >= 0; i-- {
+			ip[i]++
+			if ip[i] != 0 {
+				break
+			}
+		}
+	}
+	if skipEdges && len(ips) >= 2 {
+		ips = ips[1 : len(ips)-1]
+	}
+	return ips, nil
+}
 
 func neighborIPs(neighbors []DiscoveredNeighbor) []string {
 	ips := make([]string, len(neighbors))

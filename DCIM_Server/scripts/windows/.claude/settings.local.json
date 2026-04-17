@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where openssl *)",
+      "Bash(openssl version *)",
+      "Bash(powershell *)",
+      "Bash(openssl x509 *)",
+      "Bash(unset OPENSSL_CONF)",
+      "Bash(cat)",
+      "Bash(openssl genrsa *)",
+      "Bash(openssl req *)",
+      "Bash(cp C:/Users/Faber/AMAN/DCIM/DCIM_Server/certs/ca.crt C:/Users/Faber/AMAN/DCIM/DCIM_Server/certs/servers/LAPTOP-IKELHLI4/ca.crt)",
+      "Bash(cp C:/Users/Faber/AMAN/DCIM/DCIM_Server/certs/ca.crt C:/Users/Faber/AMAN/DCIM/DCIM_Server/certs/servers/LAPTOP-IKELHLI4/agents/FABER/ca.crt)",
+      "Bash(rm -f C:/Users/Faber/AMAN/DCIM/DCIM_Server/certs/servers/LAPTOP-IKELHLI4/agents/FABER/client.csr C:/Users/Faber/AMAN/DCIM/DCIM_Server/certs/servers/LAPTOP-IKELHLI4/agents/FABER/client.cnf C:/Users/Faber/AMAN/DCIM/DCIM_Server/certs/minimal.cnf)"
+    ]
+  }
+}

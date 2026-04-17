@@ -381,6 +381,10 @@ snmp_walker:
   timeout: 5s
   retries: 1
   interval: 15m
+  # Pre-seed every host in these CIDRs so every device is probed, not just
+  # those reachable via LLDP/CDP neighbor chains from seed_ip.
+  subnets:
+    - "10.100.0.0/24"
 
 # SNMP Auto-Discovery
 snmp_discovery:
