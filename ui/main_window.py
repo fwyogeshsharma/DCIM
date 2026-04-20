@@ -1329,7 +1329,8 @@ class MainWindow(QMainWindow):
         menu = QMenu(self)
         menu.setStyleSheet(_menu_style)
         edit_act     = menu.addAction("Edit Device...")
-        remove_act   = menu.addAction("Remove Device")
+        sim_active   = self.snmpsim.is_running() or self.gnmi.is_running()
+        remove_act   = None if sim_active else menu.addAction("Remove Device")
         menu.addSeparator()
         locate_act   = menu.addAction("Locate on Graph")
         menu.addSeparator()
@@ -1354,7 +1355,7 @@ class MainWindow(QMainWindow):
         def _dispatch(action):
             if action == edit_act:
                 self._edit_device(device_id)
-            elif action == remove_act:
+            elif remove_act and action == remove_act:
                 self._remove_device(device_id)
             elif action == locate_act:
                 self._locate_device_on_graph(device_id)
@@ -2073,8 +2074,6 @@ class MainWindow(QMainWindow):
         self._binding_panel.set_snmp_locked(False)
         self._trap_engine.stop_simulation()
         self._sim_panel.set_simulating(False)
-        if not self._act_panel_sim.isChecked():
-            self._right_dock.hide()
         # IP bindings are intentionally kept so the user can restart quickly
         # without waiting for rebind.  Use Clear Simulation to release IPs.
         self._sim_panel.set_status("Stopped")
@@ -2411,10 +2410,6 @@ class MainWindow(QMainWindow):
         self._sim_panel.set_simulator_running(False)
         self._binding_panel.set_snmp_locked(False)
         self._sim_panel.set_datasets_ready(False)
-        if not self.gnmi.is_running():
-            self._gnmi_files = []
-            self._gnmi_panel.set_datasets_ready(False)
-
         self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
         self._act_clear.setEnabled(True)
         self._sim_panel.set_status("Idle")
