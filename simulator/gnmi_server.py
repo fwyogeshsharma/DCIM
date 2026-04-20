@@ -693,7 +693,7 @@ class GNMIServer:
             return True
         except Exception as exc:
             self.last_error = str(exc)
-            log.error("gNMI server start failed: %s", exc)
+            log.debug("gNMI server start failed: %s", exc)
             return False
 
     def stop(self, grace: float = 2.0):
