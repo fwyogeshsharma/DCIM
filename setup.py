@@ -1,13 +1,13 @@
 """
-Setup script for SNMP Network Topology Simulator.
+Setup script for Datacenter Network Simulator.
 Used by PyInstaller and for development installation.
 """
 from setuptools import setup, find_packages
 
 setup(
-    name="snmp-topology-simulator",
-    version="1.0.0",
-    description="Visual SNMP network topology simulator with SNMPSim integration",
+    name="datacenter-network-simulator",
+    version="2.0.0",
+    description="Visual datacenter network topology simulator with SNMP and gNMI simulation",
     packages=find_packages(),
     python_requires=">=3.11",
     install_requires=[
@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "snmp-topology-sim=app.main:main",
+            "datacenter-network-sim=app.main:main",
         ],
     },
 )

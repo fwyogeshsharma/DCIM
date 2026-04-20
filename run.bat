@@ -1,9 +1,9 @@
 @echo off
 REM ================================================================
-REM  SNMP Network Topology Simulator - Quick Launch Script
+REM  Datacenter Network Simulator - Quick Launch Script
 REM ================================================================
 
-echo Starting SNMP Network Topology Simulator...
+echo Starting Datacenter Network Simulator...
 echo.
 
 cd /d "%~dp0"

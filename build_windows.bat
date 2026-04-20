@@ -1,11 +1,11 @@
 @echo off
 REM ================================================================
-REM  SNMP Network Topology Simulator - Windows Build Script
+REM  Datacenter Network Simulator - Windows Build Script
 REM ================================================================
 
 echo.
 echo ============================================
-echo  Building SNMP Network Topology Simulator
+echo  Building Datacenter Network Simulator
 echo ============================================
 echo.
 
@@ -33,7 +33,7 @@ echo [2/3] Building Windows executable...
 pyinstaller ^
     --onefile ^
     --windowed ^
-    --name "SNMP-Topology-Simulator" ^
+    --name "Datacenter-Network-Simulator" ^
     --add-data "datasets;datasets" ^
     --add-data "topologies;topologies" ^
     --add-data "core;core" ^
@@ -71,6 +71,6 @@ if %errorlevel% neq 0 (
 echo.
 echo [3/3] Build complete!
 echo.
-echo Output: dist\SNMP-Topology-Simulator.exe
+echo Output: dist\Datacenter-Network-Simulator.exe
 echo.
 pause

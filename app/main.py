@@ -1,5 +1,5 @@
 """
-dataCenter Simulator - Entry Point
+Datacenter Network Simulator - Entry Point
 """
 import sys
 import os
@@ -152,8 +152,8 @@ def main():
     _title_filter = _DarkTitleBarFilter()
     app.installEventFilter(_title_filter)
 
-    app.setApplicationName("dataCenter Simulator")
-    app.setOrganizationName("dataCenter Simulator")
+    app.setApplicationName("Datacenter Network Simulator")
+    app.setOrganizationName("Datacenter Network Simulator")
     app.setApplicationVersion("2.0.0")
 
     # Import MainWindow AFTER QApplication so all Qt objects in imported
