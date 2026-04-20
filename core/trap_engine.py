@@ -129,7 +129,7 @@ class TrapEngine(QObject):
                 break
 
             device = random.choice(self._sim_devices)
-            applicable = get_applicable_traps(device.device_type.value, device.vendor.value)
+            applicable = get_applicable_traps(device.device_type.value, device.vendor.value, device.model_name)
             population = [t for t in applicable if t in weights]
             trap_type  = random.choices(
                 population, weights=[weights[t] for t in population], k=1

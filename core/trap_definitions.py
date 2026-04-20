@@ -119,27 +119,39 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
     ],
 }
 
-# Vendors that run BGP on switch/fabric infrastructure (data-centre leaf-spine,
-# EVPN underlay, etc.) — these platforms get BGP_DOWN added to their switch traps.
-_BGP_CAPABLE_SWITCH_VENDORS = {
-    "Cisco Systems",       # Nexus EVPN fabrics
-    "Arista Networks",     # EOS BGP/EVPN leaf-spine
-    "Juniper Networks",    # QFX BGP/EVPN
-    "Dell Technologies",   # OS10 BGP underlay
-    "Huawei Technologies", # CE series BGP
+# Switch model name substrings that indicate BGP support.
+# Vendor-level checks are too broad (e.g. Cisco 2960-X is Cisco but has no BGP).
+# Each entry is matched as a substring of the device's model_name.
+#
+# Cisco  : Nexus (NX-OS) and Catalyst 9xxx (IOS XE DC) — NOT 2960/3850 (L2 campus)
+# Juniper: QFX leaf-spine and EX9xxx core — NOT EX2300/EX4300 (campus)
+# Arista : all EOS platforms (BGP is universally available)
+# HPE    : AOS-CX DC line (6300M, 8325) and FlexFabric 5940 — NOT Aruba 2930F (campus)
+# Extreme: X695 and X870 DC spine/leaf — NOT X460-G2 (campus)
+# Huawei : CloudEngine CE6xxx/CE8xxx and S6730-H DC — NOT general S-series
+# Dell   : all OS10 open-networking switches (S5xxx-ON, Z92xx-ON)
+_BGP_CAPABLE_SWITCH_MODELS: set[str] = {
+    "Nexus",          "Catalyst 9",       # Cisco DC
+    "QFX",            "EX9",              # Juniper DC
+    "Arista",                             # Arista (EOS universal)
+    "Aruba 6300",     "Aruba 8325",       # HPE AOS-CX DC
+    "FlexFabric 5940",                    # HPE FlexFabric DC
+    "X695",           "X870",             # Extreme DC
+    "CE6",            "CE8",   "S6730-H", # Huawei CloudEngine / DC
+    "S5248F",         "S5296F", "Z9264F", # Dell OS10
 }
 
 
-def get_applicable_traps(device_type: str, vendor: str) -> list[TrapType]:
-    """Return applicable trap types for a device, accounting for vendor capabilities.
+def get_applicable_traps(device_type: str, vendor: str,
+                         model_name: str = "") -> list[TrapType]:
+    """Return applicable trap types for a device.
 
-    Routers support all traps (including BGP).
-    Servers support all traps except BGP.
-    Switches support all non-BGP traps by default; BGP_DOWN is added for
-    data-centre fabric vendors that commonly run BGP on the underlay.
+    BGP_DOWN is added for switches only when the specific model is known to
+    support BGP (data-centre fabric platforms).  Vendor alone is not sufficient
+    — e.g. a Cisco Catalyst 2960-X is Cisco but has no BGP capability.
     """
     base = list(APPLICABLE_TRAPS.get(device_type, list(TrapType)))
-    if device_type == "switch" and vendor in _BGP_CAPABLE_SWITCH_VENDORS:
+    if device_type == "switch" and any(kw in model_name for kw in _BGP_CAPABLE_SWITCH_MODELS):
         if TrapType.BGP_DOWN not in base:
             base.append(TrapType.BGP_DOWN)
     return base

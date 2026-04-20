@@ -970,6 +970,7 @@ class MainWindow(QMainWindow):
                 border: 1px solid #30363d;
             }
             QMenu::item:selected { background: #1f6feb; }
+            QMenu::item:disabled { color: #484f58; }
             QDockWidget {
                 color: #e6edf3;
                 background: #161b22;
@@ -1344,7 +1345,7 @@ class MainWindow(QMainWindow):
             _LINK_TRAPS = {TrapType.LINK_DOWN, TrapType.LINK_UP}
             applicable = [
                 t for t in get_applicable_traps(
-                    device.device_type.value, device.vendor.value
+                    device.device_type.value, device.vendor.value, device.model_name
                 )
                 if t not in _LINK_TRAPS
             ]
@@ -1735,6 +1736,13 @@ class MainWindow(QMainWindow):
 
         self._launch_snmpsim(bound_ips)
 
+    def _update_topology_edit_actions(self):
+        """Enable/disable topology-editing actions based on simulator state."""
+        sim_active = self.snmpsim.is_running() or self.gnmi.is_running()
+        self._act_add_device.setEnabled(not sim_active)
+        self._act_bulk_add.setEnabled(not sim_active)
+        self._act_remove_selected.setEnabled(not sim_active)
+
     def _launch_snmpsim(self, bound_ips: list):
         """Start SNMPSim using the given list of already-bound IPs."""
         failed = len(self.device_manager.get_all_devices()) - len(bound_ips)
@@ -1754,6 +1762,7 @@ class MainWindow(QMainWindow):
             # Process launched — show stop button but keep traps disabled until
             # snmpsim logs "Listening at UDP/IPv4 endpoint" (ready callback).
             self._sim_panel.set_simulator_running(True)
+            self._update_topology_edit_actions()
             self._binding_panel.set_snmp_locked(True)
             self._sim_panel.set_device_counts(
                 len(self.device_manager.get_devices_by_type(DeviceType.SWITCH)),
@@ -1771,6 +1780,7 @@ class MainWindow(QMainWindow):
             )
         else:
             self._sim_panel.set_simulator_running(False)
+            self._update_topology_edit_actions()
             self._binding_panel.set_snmp_locked(False)
             self._sim_panel.set_datasets_ready(True)
 
@@ -1903,6 +1913,7 @@ class MainWindow(QMainWindow):
         """Called (via queue) when gNMI controller signals ready."""
         counts = self.gnmi.target_counts()
         self._gnmi_panel.set_gnmi_running(True)
+        self._update_topology_edit_actions()
         self._gnmi_panel.set_gnmi_status("Running")
         self._gnmi_panel.set_gnmi_targets(counts)
         n_direct = self.gnmi.get_per_device_count()
@@ -2071,6 +2082,7 @@ class MainWindow(QMainWindow):
         self.state_store.disable_snmp_sync()
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
+        self._update_topology_edit_actions()
         self._binding_panel.set_snmp_locked(False)
         self._trap_engine.stop_simulation()
         self._sim_panel.set_simulating(False)
@@ -2175,6 +2187,7 @@ class MainWindow(QMainWindow):
 
         self._gnmi_panel.set_gnmi_status("Starting…")
         self._gnmi_panel.set_gnmi_running(False)
+        self._update_topology_edit_actions()
         self._binding_panel.set_gnmi_locked(True)
 
         # If an interface is selected, always bind gNMI's own IPs to it —
@@ -2259,6 +2272,7 @@ class MainWindow(QMainWindow):
             self.state_store.set_log_callback(self._console_panel.log)
             self.state_store.start()
             self._gnmi_panel.set_gnmi_running(True)
+            self._update_topology_edit_actions()
             counts   = self.gnmi.target_counts()
             n_direct = self.gnmi.get_per_device_count()
             self._gnmi_panel.set_gnmi_targets(counts)
@@ -2276,6 +2290,7 @@ class MainWindow(QMainWindow):
             return
         self.gnmi.stop()
         self._gnmi_panel.set_gnmi_running(False)
+        self._update_topology_edit_actions()
         self._gnmi_panel.set_gnmi_status("Stopped")
         self._gnmi_panel.set_gnmi_targets({})
         self._gnmi_panel.set_direct_servers(0)
@@ -2408,6 +2423,7 @@ class MainWindow(QMainWindow):
         self._generated_files = []
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
+        self._update_topology_edit_actions()
         self._binding_panel.set_snmp_locked(False)
         self._sim_panel.set_datasets_ready(False)
         self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
@@ -2467,6 +2483,7 @@ class MainWindow(QMainWindow):
         if self.gnmi.is_running():
             self.gnmi.stop()
             self._gnmi_panel.set_gnmi_running(False)
+            self._update_topology_edit_actions()
             self._gnmi_panel.set_gnmi_status("Stopped")
             self._gnmi_panel.set_gnmi_targets({})
             self._gnmi_panel.set_direct_servers(0)
@@ -2504,6 +2521,7 @@ class MainWindow(QMainWindow):
         if self.gnmi.is_running():
             self.gnmi.stop()
             self._gnmi_panel.set_gnmi_running(False)
+            self._update_topology_edit_actions()
             self._gnmi_panel.set_gnmi_status("Idle")
             self._gnmi_panel.set_gnmi_targets({})
             self._gnmi_panel.set_clients([])
