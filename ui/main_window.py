@@ -1649,6 +1649,14 @@ class MainWindow(QMainWindow):
             if reply == QMessageBox.No:
                 return
 
+        # If IPs are already bound (e.g. via the binding panel), skip rebinding
+        if self._bound_ips:
+            self._console_panel.log(
+                f"IPs already bound ({len(self._bound_ips)}). Launching SNMPSim...", "info"
+            )
+            self._launch_snmpsim(self._bound_ips)
+            return
+
         device_ips = [d.ip_address for d in self.device_manager.get_all_devices()]
         mask = self._binding_panel.subnet_mask
 
@@ -1697,24 +1705,20 @@ class MainWindow(QMainWindow):
         if self._bind_worker.cancelled:
             partial_ips = self._bind_worker.result  # IPs bound before cancellation
             if partial_ips:
+                self._bound_ips    = partial_ips
+                self._nte_contexts = getattr(self._bind_worker, "nte_contexts", {})
+                self._binding_panel.set_bound_count(
+                    len(self._bound_ips) + len(self._gnmi_bound_ips)
+                )
                 self._console_panel.log(
-                    f"Binding cancelled — removing {len(partial_ips)} partially bound IP(s)…",
+                    f"Binding cancelled — {len(partial_ips)} IP(s) remain bound.",
                     "warning",
                 )
-                self._sim_panel.set_status("Removing partial IPs…")
-                self._unbind_worker = IPUnbindWorker(self._bound_interface, partial_ips)
-                self._unbind_thread = QThread()
-                self._unbind_worker.moveToThread(self._unbind_thread)
-                self._unbind_thread.started.connect(self._unbind_worker.run)
-                self._unbind_worker.progress.connect(self._sim_panel.show_progress)
-                self._unbind_worker.log.connect(self._console_panel.log)
-                self._unbind_worker.finished.connect(self._on_cancel_unbind_finished)
-                self._sim_panel.show_progress(0, len(partial_ips))
-                self._unbind_thread.start()
             else:
-                self._console_panel.log("IP binding cancelled — no IPs to clean up.", "warning")
-                self._sim_panel.set_status("Cancelled")
-                self._sim_panel.set_datasets_ready(True)
+                self._console_panel.log("IP binding cancelled — no IPs were bound.", "warning")
+            self._sim_panel.set_status("Cancelled")
+            self._sim_panel.set_datasets_ready(True)
+            self._binding_panel.set_snmp_locked(False)
             return
 
         bound_ips = self._bind_worker.result
@@ -1728,6 +1732,10 @@ class MainWindow(QMainWindow):
             self._sim_panel.set_datasets_ready(True)
             return
 
+        self._launch_snmpsim(bound_ips)
+
+    def _launch_snmpsim(self, bound_ips: list):
+        """Start SNMPSim using the given list of already-bound IPs."""
         failed = len(self.device_manager.get_all_devices()) - len(bound_ips)
         if failed:
             self._console_panel.log(
@@ -1735,7 +1743,7 @@ class MainWindow(QMainWindow):
             )
 
         self._console_panel.log(
-            f"Bound {len(bound_ips)} IPs. Launching SNMPSim on port 161...", "success"
+            f"Launching SNMPSim on port 161 with {len(bound_ips)} device(s)...", "success"
         )
         ok = self.snmpsim.start(device_ips=bound_ips, port=161)
         if ok:
