@@ -258,20 +258,59 @@ class DeviceStateStore:
 
     def _sync_snmp(self, devices: list):
         """
-        Patch the dynamic metric OIDs (counters, uptime, CPU, memory) in each
-        .snmprec file without touching the static data (LLDP, MAC, STP, CDP).
-        After patching each file the dbm.dumb index (.dat/.dir) is rebuilt in
-        a single O(n) pass with its mtime forced to snmprec_mtime+1, so SNMPSim
-        finds a fresh index and skips its own slow internal rebuild entirely.
-        Both steps are parallelised across 8 threads to keep total I/O time low.
+        Patch dynamic metric OIDs in .snmprec files for a rotating shard of
+        devices rather than all of them at once.
+
+        Writing all N files in one burst causes an I/O storm that starves the
+        Windows kernel scheduler and freezes the cursor on large topologies.
+        Spreading writes across multiple ticks eliminates the burst: each tick
+        processes at most BATCH_MAX devices, cycling through the full list over
+        ceil(N / BATCH_MAX) ticks.  At the default 60-second tick interval this
+        means every device is refreshed at most every few minutes — acceptable
+        for an SNMP simulator whose consumers poll on their own schedule anyway.
+
+        Worker threads run at below-normal OS priority so disk I/O from this
+        background task cannot starve the Qt event loop or the system cursor.
         """
+        total = len(devices)
+        if total == 0:
+            return
+
+        # At most 100 files per sync cycle; for small topologies process all.
+        BATCH_MAX = 100
+        num_shards = max(1, (total + BATCH_MAX - 1) // BATCH_MAX)
+        shard_idx  = (self._tick_count - 1) % num_shards
+        batch      = devices[shard_idx * BATCH_MAX : (shard_idx + 1) * BATCH_MAX]
+        if not batch:
+            return
+
         try:
+            import sys as _sys
+            import ctypes as _ctypes
             from core.snmprec_generator import SNMPRecGenerator
             from concurrent.futures import ThreadPoolExecutor
+
             snmp_gen = SNMPRecGenerator(self._datasets_dir)
-            with ThreadPoolExecutor(max_workers=4) as pool:
-                list(pool.map(snmp_gen.patch_metrics, devices))
-            log.debug("[StateStore] SNMP sync — %d file(s) patched.", len(devices))
+
+            def _patch_below_normal(device):
+                # Depress this worker thread's priority so the UI and cursor
+                # remain responsive even when the disk is under write pressure.
+                if _sys.platform == "win32":
+                    try:
+                        _ctypes.windll.kernel32.SetThreadPriority(
+                            _ctypes.windll.kernel32.GetCurrentThread(), -1
+                        )
+                    except Exception:
+                        pass
+                snmp_gen.patch_metrics(device)
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                list(pool.map(_patch_below_normal, batch))
+
+            log.debug(
+                "[StateStore] SNMP sync — %d/%d file(s) patched (shard %d/%d).",
+                len(batch), total, shard_idx + 1, num_shards,
+            )
         except Exception as e:
             log.error("[StateStore] SNMP sync error: %s", e)
 
