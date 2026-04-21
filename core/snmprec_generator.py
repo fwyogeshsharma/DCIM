@@ -283,7 +283,7 @@ class SNMPRecGenerator:
                 _oid_entry(f"{IF_TABLE}.2.{i}",  "4",  iface.name),         # ifDescr
                 _oid_entry(f"{IF_TABLE}.3.{i}",  "2",  "6"),                # ifType (ethernetCsmacd)
                 _oid_entry(f"{IF_TABLE}.4.{i}",  "2",  "1500"),             # ifMtu
-                _oid_entry(f"{IF_TABLE}.5.{i}",  "66", str(iface.speed)),   # ifSpeed (Gauge32)
+                _oid_entry(f"{IF_TABLE}.5.{i}",  "66", str(min(iface.speed, 4294967295))),   # ifSpeed (Gauge32, capped per RFC 2863)
                 _oid_entry(f"{IF_TABLE}.6.{i}",  "4x", iface.mac_address.replace(":", "")),  # ifPhysAddress
                 _oid_entry(f"{IF_TABLE}.7.{i}",  "2",  "1"),                # ifAdminStatus (1=up)
                 _oid_entry(f"{IF_TABLE}.8.{i}",  "2",  str(2 if iface.connected_to_device is None else iface.oper_status)), # ifOperStatus
@@ -299,7 +299,7 @@ class SNMPRecGenerator:
                 _oid_entry(f"{IF_TABLE}.18.{i}", "41", "0"),                # ifOutNUcastPkts
                 _oid_entry(f"{IF_TABLE}.19.{i}", "41", str(iface.out_errors // 10)), # ifOutDiscards
                 _oid_entry(f"{IF_TABLE}.20.{i}", "41", str(iface.out_errors)),       # ifOutErrors
-                _oid_entry(f"{IF_TABLE}.21.{i}", "66", str(iface.speed)),   # ifOutQLen
+                _oid_entry(f"{IF_TABLE}.21.{i}", "66", "0"),                  # ifOutQLen (Gauge32)
                 _oid_entry(f"{IF_TABLE}.22.{i}", "6",  "0.0"),              # ifSpecific
             ]
 
