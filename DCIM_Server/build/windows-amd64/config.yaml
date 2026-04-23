@@ -1,0 +1,385 @@
+# DCIM Server Configuration
+# Central monitoring server for Network Monitor Agents
+
+# Server settings
+server:
+  # Server listening address and port
+  # Use "0.0.0.0" to listen on all interfaces, or specific IP for single interface
+  address: "0.0.0.0"
+  port: 8443
+
+  # Read and write timeouts
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+
+  # Maximum request body size (in bytes)
+  max_body_size: 10485760  # 10MB
+
+# Server Identification - For Multi-Server Deployments
+server_id:
+  # Unique server identifier (leave empty for auto-generation)
+  # Auto-generated ID will be saved to ./data/server_id.txt
+  id: "JPR_MP_SERVER_WIN_HP_AY_01"
+
+  # Human-readable server name
+  name: "JPR_MP_SERVER_WIN_HP_AY_01"
+
+  # Physical location (datacenter, region, etc.)
+  location: "Primary-DC"
+
+  # Environment (dev, staging, production)
+  environment: "production"
+
+  # Auto-generate server ID if not specified
+  auto_generate: true
+
+# mTLS (Mutual TLS) Configuration - Enterprise Security
+tls:
+  # Enable/disable TLS (must be true for production)
+  enabled: true
+
+  # Server certificate and key
+  server_cert_path: "./certs/server.crt"
+  server_key_path: "./certs/server.key"
+
+  # CA certificate to verify client certificates
+  ca_cert_path: "./certs/ca.crt"
+
+  # Client certificate verification
+  # Options: "none", "request", "require", "verify_if_given", "require_and_verify"
+  client_auth: "require_and_verify"
+
+  # Minimum TLS version: "1.2" or "1.3" (default: "1.2")
+  min_tls_version: "1.2"
+
+  # Cipher suites (leave empty for defaults)
+  # Example: ["TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"]
+  cipher_suites: []
+
+# Database settings
+database:
+  # Database type: "sqlite", "postgres", "mysql"
+  type: "postgres"
+
+  # SQLite settings
+  sqlite:
+    path: "./data/dcim_server.db"
+    # Maximum open connections
+    max_open_conns: 25
+    # Maximum idle connections
+    max_idle_conns: 5
+    # Connection lifetime
+    conn_max_lifetime: 300s
+
+  # PostgreSQL settings (when type: "postgres")
+  postgres:
+    host: "localhost"
+    port: 5433
+    user: "postgres"
+    password: "admin"
+    database: "dcim_db"
+    sslmode: "disable"
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: 300s
+
+  # MySQL settings (when type: "mysql")
+  mysql:
+    host: "localhost"
+    port: 3306
+    user: "dcim_user"
+    password: "secure_password"
+    database: "dcim_db"
+    max_open_conns: 50
+    max_idle_conns: 10
+    conn_max_lifetime: 300s
+
+  # Data retention settings
+  retention:
+    # Keep metrics for this many days (0 = keep forever)
+    metrics_days: 90
+    # Keep alerts for this many days (0 = keep forever)
+    alerts_days: 365
+    # Keep agent status history for this many days
+    agent_status_days: 30
+    # Cleanup interval - how often to run cleanup
+    cleanup_interval: 24h
+
+# License management
+license:
+  # License validation mode: "file", "database", "disabled"
+  mode: "file"
+
+  # License file path (when mode: "file")
+  file_path: "./license.json"
+
+  # Enforce license limits
+  enforce: true
+
+  # Grace period after license expiry (days)
+  grace_period_days: 7
+
+  # License check interval
+  check_interval: 1h
+
+  # Default license limits (can be overridden by license file)
+  default:
+    max_agents: 10
+    max_snmp_devices: 50
+    features:
+      - "basic_monitoring"
+      - "alerting"
+      - "snmp_monitoring"
+
+# Agent management
+agents:
+  # Agent connection settings
+  connection:
+    # Agent heartbeat timeout - mark agent offline if no data for this duration
+    heartbeat_timeout: 300s
+
+    # Agent identification method: "certificate_cn", "agent_id", "both"
+    # - "certificate_cn": Use client certificate Common Name
+    # - "agent_id": Use agent_id from request payload
+    # - "both": Require both to match
+    identification_method: "agent_id"
+
+  # Agent registration settings
+  registration:
+    # Auto-register new agents on first connection
+    auto_register: true
+
+    # Require approval for new agents
+    require_approval: false
+
+    # Default agent group for new registrations
+    default_group: "default"
+
+  # Agent data validation
+  validation:
+    # Reject metrics older than this duration
+    reject_old_metrics: 24h
+
+    # Reject metrics from future (clock skew tolerance)
+    reject_future_metrics: 5m
+
+    # Maximum metrics per batch
+    max_metrics_per_batch: 1000
+
+    # Maximum alerts per batch
+    max_alerts_per_batch: 100
+
+# API settings
+api:
+  # API version
+  version: "v1"
+
+  # Base path for API endpoints
+  base_path: "/api/v1"
+
+  # Enable API rate limiting
+  rate_limiting:
+    enabled: true
+    # Requests per agent per minute
+    requests_per_minute: 12
+    # Burst size
+    burst: 20
+
+  # Enable request compression
+  compression:
+    enabled: true
+    # Minimum response size to compress (bytes)
+    min_size: 1024
+    # Compression level (1-9, 9 = best compression)
+    level: 6
+
+  # CORS settings (for web dashboard access)
+  cors:
+    enabled: true
+    allowed_origins: ["http://localhost:3000"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allowed_headers: ["Content-Type", "Authorization"]
+    allow_credentials: true
+
+# Logging settings
+logging:
+  # Log level: "debug", "info", "warn", "error"
+  level: "info"
+
+  # Log output: "console", "file", "both"
+  output: "both"
+
+  # Log file settings
+  file:
+    path: "./logs/dcim_server.log"
+    # Maximum size in megabytes before rotation
+    max_size_mb: 100
+    # Maximum number of old log files to keep
+    max_backups: 10
+    # Maximum age in days to keep old log files
+    max_age_days: 30
+    # Compress rotated log files
+    compress: true
+
+  # Log format: "json", "text"
+  format: "text"
+
+  # Include caller information (file:line)
+  include_caller: false
+
+  # Log HTTP requests
+  log_requests: true
+
+# Alerting settings
+alerting:
+  # Enable alert processing
+  enabled: true
+
+  # Alert aggregation window - group similar alerts within this window
+  aggregation_window: 5m
+
+  # Alert notification channels
+  notifications:
+    # Email notifications
+    email:
+      enabled: false
+      smtp_host: "smtp.example.com"
+      smtp_port: 587
+      smtp_user: "alerts@example.com"
+      smtp_password: "password"
+      from_address: "alerts@example.com"
+      to_addresses: ["admin@example.com"]
+      use_tls: true
+
+    # Webhook notifications
+    webhook:
+      enabled: false
+      url: "https://hooks.example.com/alerts"
+      timeout: 10s
+      retry_attempts: 3
+      headers:
+        Authorization: "Bearer token"
+
+    # Slack notifications
+    slack:
+      enabled: false
+      webhook_url: "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+      channel: "#alerts"
+      username: "DCIM Server"
+
+  # Alert severity thresholds
+  severity_levels:
+    critical:
+      # Auto-escalate warnings to critical after this many occurrences
+      escalation_threshold: 5
+      # Notification cooldown period
+      cooldown: 15m
+    warning:
+      # Minimum time between same warning notifications
+      cooldown: 5m
+
+# Metrics aggregation
+metrics:
+  # Enable metrics aggregation for long-term storage
+  aggregation:
+    enabled: true
+    # Aggregation intervals
+    intervals:
+      # Keep 1-minute averages for 7 days
+      - interval: 1m
+        retention: 168h
+      # Keep 5-minute averages for 30 days
+      - interval: 5m
+        retention: 720h
+      # Keep 1-hour averages for 90 days
+      - interval: 1h
+        retention: 2160h
+      # Keep 1-day averages for 1 year
+      - interval: 24h
+        retention: 8760h
+
+# Dashboard settings (for future web UI)
+dashboard:
+  # Enable web dashboard
+  enabled: true
+
+  # Dashboard listening port (separate from API)
+  port: 8080
+
+  # Dashboard authentication
+  auth:
+    enabled: true
+    # Session timeout
+    session_timeout: 24h
+    # Default admin credentials (change on first login)
+    admin_user: "admin"
+    admin_password: "changeme"
+
+# Health check settings
+health:
+  # Enable health check endpoint
+  enabled: true
+
+  # Health check path
+  path: "/health"
+
+  # Include detailed status in health check
+  detailed: true
+
+  # Health check interval for internal monitoring
+  check_interval: 30s
+
+# Performance settings
+performance:
+  # Worker pool sizes
+  workers:
+    # Metric processing workers
+    metric_processors: 10
+    # Alert processing workers
+    alert_processors: 5
+    # Database writers
+    database_writers: 5
+
+  # Buffer sizes
+  buffers:
+    # Metric buffer size (per agent)
+    metrics: 1000
+    # Alert buffer size (per agent)
+    alerts: 100
+
+  # Batch processing
+  batch:
+    # Batch insert size for metrics
+    metrics_batch_size: 500
+    # Batch insert timeout
+    batch_timeout: 5s
+
+# Development/Debug settings
+debug:
+  # Enable debug mode (more verbose logging)
+  enabled: false
+
+  # Enable profiling endpoints
+  profiling: false
+
+  # Profiling port
+  profiling_port: 6060
+
+  # Dump received data to files (for debugging)
+  dump_data: false
+  dump_path: "./debug"
+
+# SNMP Topology Walker
+snmp_walker:
+  enabled: true
+  seed_ip: "10.100.0.2"
+  community: "public"
+  version: "2c"
+  port: 161
+  max_depth: 5
+  timeout: 2s
+  retries: 0
+  interval: 15m
+  use_ip_as_community: true
+  combine_discovery: true

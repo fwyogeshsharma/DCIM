@@ -1,6 +1,4 @@
 # Build outputs
-DCIM_Server/build/
-DCIM_Agent/build/
 DCIM_UI/dist/
 DCIM_UI/node_modules/
 DCIM_Aggregator/dist/
