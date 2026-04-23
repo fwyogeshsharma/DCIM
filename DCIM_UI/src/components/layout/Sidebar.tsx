@@ -41,13 +41,23 @@ export default function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-white/10">
           {sidebarOpen && (
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              aria-label="Collapse sidebar"
+            >
               <Server className="w-6 h-6 text-blue-500" />
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">DCIM</h1>
-            </div>
+            </button>
           )}
           {!sidebarOpen && (
-            <Server className="w-6 h-6 text-blue-500 mx-auto" />
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="w-full flex justify-center cursor-pointer hover:opacity-80 transition-opacity"
+              aria-label="Expand sidebar"
+            >
+              <Server className="w-6 h-6 text-blue-500" />
+            </button>
           )}
           {sidebarOpen && (
             <Button
@@ -55,20 +65,9 @@ export default function Sidebar() {
               size="icon"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="h-8 w-8 hover:bg-white/10"
-              aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+              aria-label="Collapse sidebar"
             >
               <ChevronLeft className="h-4 w-4" />
-            </Button>
-          )}
-          {!sidebarOpen && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="h-8 w-8 hover:bg-white/10 hidden"
-              aria-label="Expand sidebar"
-            >
-              <ChevronRight className="h-4 w-4" />
             </Button>
           )}
         </div>

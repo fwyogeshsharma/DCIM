@@ -3,13 +3,13 @@ import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import * as d3 from 'd3'
-import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar, Box, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
+import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar, Box, ChevronsDownUp, ChevronsUpDown, X } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { computeLayeredLayout } from '@/lib/topology-layered'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = false
+const USE_MOCK_DATA = true
 
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
@@ -73,6 +73,8 @@ export default function Topology() {
 
   // Expand/collapse state — tracks which servers have their agents visible
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
+  const [showLegend, setShowLegend] = useState(true)
+  const [showStats, setShowStats] = useState(true)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const toggleServerExpansion = useCallback((serverId: string) => {
@@ -1240,7 +1242,7 @@ export default function Topology() {
         clickTimerRef.current = null
       }
     }
-  }, [agents, servers, filteredData, expandedServers, snmpDevices])
+  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks])
 
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomRef.current) return
@@ -1401,8 +1403,14 @@ export default function Topology() {
           />
 
           {/* Legend */}
+          {showLegend && (
           <div className="absolute bottom-4 left-4 bg-slate-900/90 border border-white/20 rounded-lg p-4 backdrop-blur-sm">
-            <h3 className="text-sm font-semibold text-white mb-3">Legend</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white">Legend</h3>
+              <button onClick={() => setShowLegend(false)} className="ml-4 text-slate-400 hover:text-white transition-colors" aria-label="Close legend">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-purple-500 border-2 border-purple-400" />
@@ -1453,9 +1461,16 @@ export default function Topology() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Stats */}
+          {showStats && (
           <div className="absolute top-4 left-4 bg-slate-900/90 border border-white/20 rounded-lg p-4 backdrop-blur-sm">
+            <div className="flex justify-end mb-1">
+              <button onClick={() => setShowStats(false)} className="text-slate-400 hover:text-white transition-colors" aria-label="Close stats">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Server className="w-4 h-4 text-purple-400" />
@@ -1498,6 +1513,7 @@ export default function Topology() {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Node details panel */}

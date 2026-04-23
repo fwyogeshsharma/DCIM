@@ -29,9 +29,9 @@ import type { ServerConfig, Agent, SNMPDevice, TopologyLink } from './types'
 // reloads (important for demos and visual regression).
 
 const SERVER_ID = 'mock-dc-server'
-const SERVER_NAME = 'DC-Core'
+const SERVER_NAME = 'DCIM-SERVER'
 const AGENT_ID = 'mock-dc-agent'
-const AGENT_HOST = 'dc-core-agent'
+const AGENT_HOST = 'DESKTOP-LEN7780'
 
 function iso(secondsAgo = 0): string {
   return new Date(Date.now() - secondsAgo * 1000).toISOString()

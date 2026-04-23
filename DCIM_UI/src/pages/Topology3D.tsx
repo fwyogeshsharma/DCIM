@@ -6,12 +6,12 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { computeHierarchicalLayout, type LayoutNode, type LayoutLink } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react'
+import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X } from 'lucide-react'
 import * as THREE from 'three'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = false
+const USE_MOCK_DATA = true
 
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
 
@@ -1189,6 +1189,8 @@ export default function Topology3D() {
   const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
   const [cursorPointer, setCursorPointer] = useState(false)
   const [currentFloor, setCurrentFloor] = useState(2) // start at Server Racks (top)
+  const [showLegend, setShowLegend] = useState(true)
+  const [showStats, setShowStats] = useState(true)
 
   // Expand/collapse state
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
@@ -1361,8 +1363,18 @@ export default function Topology3D() {
           </Canvas>
 
           {/* Legend overlay */}
+          {showLegend && (
           <div className="absolute bottom-4 left-4 bg-slate-900/90 border border-white/20 rounded-lg p-4 backdrop-blur-sm">
-            <h3 className="text-sm font-semibold text-white mb-3">Legend</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-white">Legend</h3>
+              <button
+                onClick={() => setShowLegend(false)}
+                className="ml-3 p-1 -mr-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                aria-label="Close legend"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="space-y-2 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-6 rounded-sm bg-sky-300 border border-sky-400 relative">
@@ -1419,6 +1431,7 @@ export default function Topology3D() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Joystick + Reset — bottom right */}
           <div className="absolute bottom-4 right-4 flex items-end gap-3 z-10">
@@ -1506,7 +1519,13 @@ export default function Topology3D() {
           </div>
 
           {/* Stats overlay */}
+          {showStats && (
           <div className="absolute top-4 left-4 bg-slate-900/90 border border-white/20 rounded-lg p-4 backdrop-blur-sm">
+            <div className="flex justify-end mb-1">
+              <button onClick={() => setShowStats(false)} className="text-slate-400 hover:text-white transition-colors" aria-label="Close stats">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <Server className="w-4 h-4 text-purple-400" />
@@ -1550,6 +1569,7 @@ export default function Topology3D() {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Detail panel */}
