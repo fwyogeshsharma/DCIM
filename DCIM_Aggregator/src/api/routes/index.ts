@@ -194,7 +194,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       let query = `
         SELECT tl.*, s.name AS server_name
         FROM topology_links tl
-        JOIN servers s ON tl.server_id = s.id
+        JOIN servers s ON tl.server_id::uuid = s.id
         WHERE 1=1
       `
       const params: any[] = []
@@ -204,7 +204,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         query += ` AND tl.server_id = $1`
       }
 
-      query += ` ORDER BY tl.server_id, tl.source_depth, tl.source_ip`
+      query += ` ORDER BY tl.server_id, tl.source_ip`
 
       const { rows } = await dbPool.query(query, params)
       res.json({ success: true, data: rows, count: rows.length })
@@ -221,7 +221,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       let query = `
         SELECT
           sm.device_name,
-          sm.device_ip,
+          sm.device_host AS device_ip,
           sm.agent_id,
           sm.server_id,
           s.name as server_name,
@@ -247,8 +247,8 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         query += ` WHERE ${conditions.join(' AND ')}`
       }
 
-      query += ` GROUP BY sm.device_name, sm.device_ip, sm.agent_id, sm.server_id, s.name`
-      query += ` ORDER BY sm.device_name, sm.device_ip`
+      query += ` GROUP BY sm.device_name, sm.device_host, sm.agent_id, sm.server_id, s.name`
+      query += ` ORDER BY sm.device_name, sm.device_host`
 
       const { rows } = await dbPool.query(query, params)
 

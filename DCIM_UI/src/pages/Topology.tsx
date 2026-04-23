@@ -5,6 +5,11 @@ import { api } from '@/lib/api'
 import * as d3 from 'd3'
 import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar, Box, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { getMockTopologyData } from '@/lib/topology-mock-data'
+import { computeLayeredLayout } from '@/lib/topology-layered'
+
+// ── Toggle this to use 500+ node mock data for testing ──
+const USE_MOCK_DATA = false
 
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
@@ -21,25 +26,46 @@ interface TopoNode extends d3.SimulationNodeDatum {
   agentName?: string
 }
 
+interface D2DInfo {
+  sourceIp: string
+  sourceName: string
+  sourcePort?: number
+  targetIp: string
+  targetName: string
+  targetPort?: string
+  lastSeen: string
+  sourceStatus?: 'online' | 'offline'
+  targetStatus?: 'online' | 'offline'
+}
+
 interface TopoLink extends d3.SimulationLinkDatum<TopoNode> {
   source: string | TopoNode
   target: string | TopoNode
   strength: number
   distance?: number
-  linkType?: 'agent-server' | 'device-agent'
+  linkType?: 'agent-server' | 'device-agent' | 'device-device'
+  d2dInfo?: D2DInfo
 }
 
 type TimeFilter = 'today' | '30days' | 'all'
 
 export default function Topology() {
-  const { data: agents, isLoading } = useAgents()
-  const { data: servers } = useQuery({
+  const mockData = USE_MOCK_DATA ? getMockTopologyData() : null
+  const { data: realAgents, isLoading: realLoading } = useAgents()
+  const { data: realServers } = useQuery({
     queryKey: ['servers'],
     queryFn: () => api.getServers(),
     staleTime: 60000,
+    enabled: !USE_MOCK_DATA,
   })
+
+  const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
+  const servers = USE_MOCK_DATA ? mockData!.servers : realServers
+  const isLoading = USE_MOCK_DATA ? false : realLoading
+
   const navigate = useNavigate()
   const svgRef = useRef<SVGSVGElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
   const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null)
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all')
   const simulationRef = useRef<d3.Simulation<TopoNode, TopoLink> | null>(null)
@@ -71,12 +97,12 @@ export default function Topology() {
   }, [])
 
   // Fetch filtered metrics and alerts for each agent
-  const { data: filteredData } = useQuery({
+  const { data: realFilteredData } = useQuery({
     queryKey: ['topology-filtered-data', timeFilter, agents?.map(a => a.agent_id).join(',')],
     queryFn: async () => {
       if (!agents) return null
 
-      const timeRangeMap = {
+      const timeRangeMap: Record<TimeFilter, '24h' | '30d' | undefined> = {
         today: '24h',
         '30days': '30d',
         all: undefined,
@@ -115,16 +141,34 @@ export default function Topology() {
 
       return results
     },
-    enabled: !!agents && agents.length > 0,
-    refetchInterval: 30000,
+    enabled: !USE_MOCK_DATA && !!agents && agents.length > 0,
+    refetchInterval: USE_MOCK_DATA ? false : 30000,
   })
 
-  const { data: snmpDevices } = useQuery({
+  const filteredData = USE_MOCK_DATA
+    ? agents?.map(a => ({ agent_id: a.agent_id, metrics_count: a.total_metrics, alerts_count: a.total_alerts })) ?? null
+    : realFilteredData
+
+  const { data: realSnmpDevices } = useQuery({
     queryKey: ['snmp-devices'],
     queryFn: () => api.getSNMPDevices(),
     staleTime: 30000,
-    refetchInterval: 60000,
+    refetchInterval: USE_MOCK_DATA ? false : 60000,
+    enabled: !USE_MOCK_DATA,
   })
+
+  const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
+
+  // Device↔device wiring from the topology_links table (walker LLDP/CDP + discovery deep-scan)
+  const { data: realTopologyLinks } = useQuery({
+    queryKey: ['topology-links'],
+    queryFn: () => api.getTopologyLinks(),
+    staleTime: 30000,
+    refetchInterval: USE_MOCK_DATA ? false : 60000,
+    enabled: !USE_MOCK_DATA,
+  })
+
+  const topologyLinks = USE_MOCK_DATA ? mockData!.topologyLinks : realTopologyLinks
 
   useEffect(() => {
     if (!agents || !svgRef.current) return
@@ -179,17 +223,17 @@ export default function Topology() {
 
     // Compute agent counts per server (always use full list)
     const agentCountByServer: Record<string, number> = {}
-    const onlineCountByServer: Record<string, number> = {}
-    const offlineCountByServer: Record<string, number> = {}
     agents.forEach(a => {
       const sid = `server-${a.server_id}`
       agentCountByServer[sid] = (agentCountByServer[sid] || 0) + 1
-      if (a.status === 'online') {
-        onlineCountByServer[sid] = (onlineCountByServer[sid] || 0) + 1
-      } else {
-        offlineCountByServer[sid] = (offlineCountByServer[sid] || 0) + 1
-      }
     })
+
+    // ── O(1) lookup Maps ──
+    const filteredDataMap = new Map(
+      (filteredData || []).map(f => [f.agent_id, f])
+    )
+    const serverConfigMap = new Map(enabledServers.map(s => [s.id, s]))
+    const serverNodeMap = new Map(serverNodes.map(s => [s.id, s]))
 
     // Only show agents for expanded servers
     const visibleAgents = agents.filter(agent =>
@@ -198,8 +242,8 @@ export default function Topology() {
 
     // Create agent nodes with filtered data
     const agentNodes: TopoNode[] = visibleAgents.map((agent) => {
-      const filtered = filteredData?.find(f => f.agent_id === agent.agent_id)
-      const parentServer = enabledServers.find(s => s.id === agent.server_id)
+      const filtered = filteredDataMap.get(agent.agent_id)
+      const parentServer = serverConfigMap.get(agent.server_id)
       return {
         id: `${agent.server_id}:${agent.agent_id}`,
         name: agent.hostname,
@@ -214,52 +258,156 @@ export default function Topology() {
       }
     })
 
-    // Build SNMP device nodes for visible agents
-    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
-    const deviceNodes: TopoNode[] = []
-    const deviceLinks: TopoLink[] = []
+    // Build device nodes directly from topology_links source_ip / target_ip.
+    // snmpDevices is used only for display-name and agent enrichment.
+    const isIPv4 = (s: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(s)
 
+    const snmpDeviceByIp = new Map<string, NonNullable<typeof snmpDevices>[0]>()
     if (snmpDevices) {
-      snmpDevices.forEach(device => {
-        const agentNodeId = `${device.server_id}:${device.agent_id}`
-        const isAgentVisible = expandedServers.has(`server-${device.server_id}`)
-        if (!isAgentVisible) return
+      snmpDevices.forEach(d => { if (d.device_ip) snmpDeviceByIp.set(d.device_ip, d) })
+    }
 
-        const deviceNodeId = `device-${device.server_id}-${device.agent_id}-${device.device_ip || device.device_name}`
-        if (deviceNodes.find(n => n.id === deviceNodeId)) return  // deduplicate
-
-        const isActive = new Date(device.last_seen).getTime() > twoHoursAgo
-        const agentData = agents?.find(a => a.agent_id === device.agent_id && a.server_id === device.server_id)
-
-        deviceNodes.push({
-          id: deviceNodeId,
-          name: device.device_name || device.device_ip,
-          type: 'network' as const,
-          status: isActive ? 'online' : 'offline',
-          ip: device.device_ip,
-          serverId: device.server_id,
-          agentId: device.agent_id,
-          agentName: agentData?.hostname || device.agent_id,
-        })
-
-        if (agentNodes.find(n => n.id === agentNodeId)) {
-          deviceLinks.push({
-            source: deviceNodeId,
-            target: agentNodeId,
-            strength: isActive ? 0.8 : 0.3,
-            distance: 130,
-            linkType: 'device-agent',
-          })
+    // Collect unique device IPs from every link row, tracking most-recent
+    // last_seen, display name, and owning server_id per IP.
+    const ipMeta = new Map<string, { serverId: string; name: string; lastSeen: number }>()
+    if (topologyLinks) {
+      topologyLinks.forEach(tl => {
+        const ts = new Date(tl.last_seen).getTime()
+        if (isIPv4(tl.source_ip)) {
+          const prev = ipMeta.get(tl.source_ip)
+          if (!prev || ts > prev.lastSeen)
+            ipMeta.set(tl.source_ip, { serverId: tl.server_id, name: tl.source_name, lastSeen: ts })
+        }
+        if (isIPv4(tl.target_ip)) {
+          const prev = ipMeta.get(tl.target_ip)
+          if (!prev || ts > prev.lastSeen)
+            ipMeta.set(tl.target_ip, { serverId: tl.server_id, name: tl.target_name, lastSeen: ts })
         }
       })
     }
 
+    // Per-device BFS depth. Seeds are IPs that appear as the direct target
+    // of a server→seed link (rows where source_ip is a non-IP server-ID
+    // string). This gives stable depth layering without the removed
+    // source_depth / target_depth columns.
+    const deviceDepth = new Map<string, number>()
+    if (topologyLinks && topologyLinks.length > 0) {
+      const adj = new Map<string, Set<string>>()
+      const seeds = new Set<string>()
+      topologyLinks.forEach(tl => {
+        if (!isIPv4(tl.source_ip)) {
+          if (isIPv4(tl.target_ip)) seeds.add(tl.target_ip)
+          return
+        }
+        if (!isIPv4(tl.target_ip)) return
+        if (!adj.has(tl.source_ip)) adj.set(tl.source_ip, new Set())
+        if (!adj.has(tl.target_ip)) adj.set(tl.target_ip, new Set())
+        adj.get(tl.source_ip)!.add(tl.target_ip)
+        adj.get(tl.target_ip)!.add(tl.source_ip)
+      })
+      if (seeds.size === 0 && adj.size > 0) {
+        let best: string | null = null
+        let bestDeg = -1
+        adj.forEach((nbrs, ip) => {
+          if (nbrs.size > bestDeg) { bestDeg = nbrs.size; best = ip }
+        })
+        if (best) seeds.add(best)
+      }
+      const queue: string[] = []
+      seeds.forEach(s => { deviceDepth.set(s, 0); queue.push(s) })
+      while (queue.length > 0) {
+        const cur = queue.shift()!
+        const d = deviceDepth.get(cur)!
+        const nbrs = adj.get(cur)
+        if (!nbrs) continue
+        for (const n of nbrs) {
+          if (!deviceDepth.has(n)) { deviceDepth.set(n, d + 1); queue.push(n) }
+        }
+      }
+    }
+
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000
+    const deviceNodes: TopoNode[] = []
+    const deviceLinks: TopoLink[] = []
+    const deviceNodeByIp = new Map<string, TopoNode>()
+    // One node per unique IP, visible only when its server is expanded.
+    ipMeta.forEach((meta, ip) => {
+      if (!expandedServers.has(`server-${meta.serverId}`)) return
+      const snmpDev = snmpDeviceByIp.get(ip)
+      const isActive = meta.lastSeen > twoHoursAgo
+      const node: TopoNode = {
+        id: `device-${meta.serverId}-${ip}`,
+        name: snmpDev?.device_name || meta.name || ip,
+        type: 'network' as const,
+        status: isActive ? 'online' : 'offline',
+        ip,
+        serverId: meta.serverId,
+        agentId: snmpDev?.agent_id,
+        agentName: snmpDev?.agent_id,
+      }
+      deviceNodes.push(node)
+      deviceNodeByIp.set(ip, node)
+    })
+
+    // Server→seed edges: rows where source_ip is a non-IP server-ID string.
+    if (topologyLinks) {
+      topologyLinks.forEach(tl => {
+        if (isIPv4(tl.source_ip)) return
+        if (!expandedServers.has(`server-${tl.server_id}`)) return
+        const serverNode = serverNodeMap.get(`server-${tl.server_id}`)
+        const tgtNode = deviceNodeByIp.get(tl.target_ip)
+        if (!serverNode || !tgtNode) return
+        deviceLinks.push({
+          source: serverNode.id,
+          target: tgtNode.id,
+          strength: 0.8,
+          distance: 200,
+          linkType: 'device-agent',
+        })
+      })
+    }
+
     const nodes: TopoNode[] = [...serverNodes, ...agentNodes, ...deviceNodes]
+    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+
+    // Device↔device edges from topology_links.
+    if (topologyLinks && topologyLinks.length > 0) {
+      const seenPairs = new Set<string>()
+      topologyLinks.forEach(tl => {
+        if (!isIPv4(tl.source_ip) || !isIPv4(tl.target_ip)) return
+        const srcNode = deviceNodeByIp.get(tl.source_ip)
+        const tgtNode = deviceNodeByIp.get(tl.target_ip)
+        if (!srcNode || !tgtNode || srcNode.id === tgtNode.id) return
+        const pairKey = [srcNode.id, tgtNode.id].sort().join('|')
+        if (seenPairs.has(pairKey)) return
+        seenPairs.add(pairKey)
+        const bothOnline = srcNode.status === 'online' && tgtNode.status === 'online'
+        deviceLinks.push({
+          source: srcNode.id,
+          target: tgtNode.id,
+          strength: bothOnline ? 0.9 : 0.3,
+          distance: 130,
+          linkType: 'device-device',
+          d2dInfo: {
+            sourceIp: tl.source_ip,
+            sourceName: tl.source_name,
+            sourcePort: tl.source_port,
+            targetIp: tl.target_ip,
+            targetName: tl.target_name,
+            targetPort: tl.target_port,
+            lastSeen: tl.last_seen,
+            sourceStatus: srcNode.status,
+            targetStatus: tgtNode.status,
+          },
+        })
+      })
+    }
 
     // Create links — each agent connects to its own server
     const links: TopoLink[] = [
       ...visibleAgents.map(agent => {
-        const serverNodeId = serverNodes.find(s => s.id === `server-${agent.server_id}`)?.id || serverNodes[0]?.id
+        const sid = `server-${agent.server_id}`
+        const serverNodeId = serverNodeMap.get(sid)?.id || serverNodes[0]?.id
         return {
           source: `${agent.server_id}:${agent.agent_id}`,
           target: serverNodeId || 'server-unknown',
@@ -271,17 +419,157 @@ export default function Topology() {
       ...deviceLinks,
     ]
 
-    // Create force simulation
-    const simulation = d3.forceSimulation<TopoNode>(nodes)
-      .force('link', d3.forceLink<TopoNode, TopoLink>(links)
-        .id(d => d.id)
-        .distance(d => d.distance ?? 200)
-        .strength(d => d.strength))
-      .force('charge', d3.forceManyBody().strength(-1200))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(70))
+    const nodeCount = nodes.length
 
-    simulationRef.current = simulation
+    // ── Layered (multipartite) layout ───────────────────────────────────────
+    // NetworkX-style. Every node is assigned a fixed LAYER (0 = top row), then
+    // a barycenter sweep reorders nodes within each layer to minimize edge
+    // crossings, and a per-layer x-pass spaces them evenly. This replaces the
+    // old d3.tree-per-server rendering, which couldn't draw Clos/fat-tree
+    // topologies (full mesh between aggregation tiers) because d3.tree is a
+    // strict single-parent hierarchy.
+    //
+    // Layer assignment:
+    //   0 — server (config-side DCIM server)
+    //   1 — agent (aggregator agent running on a host)
+    //   2 + N — SNMP devices at BFS depth N from their agent. N comes from
+    //           topology_links.source_depth / target_depth populated by the
+    //           walker. A device that never appears in any link row lands on
+    //           layer 2.
+    //
+    // Edges fed to the layout:
+    //   - agent → server (via the visibleAgents list)
+    //   - device → agent (for devices whose agent is in scope)
+    //   - device ↔ device (from topology_links; direction is whichever way
+    //     source_depth < target_depth points)
+    // Same-layer edges (not currently produced by the walker, but reserved
+    // for peer links like cluster-R1 ↔ cluster-R2) are ignored by the layout
+    // but still rendered.
+
+    const TOP_Y = 100
+
+    // Role-based layer assignment. Six device tiers, each pinned to a
+    // fixed layer so the diagram always reads top-to-bottom as:
+    //
+    //     0  server (config-side DCIM server)
+    //     1  agent  (aggregator agent)
+    //     2  routers / LBs                 — top of the fabric
+    //     3  fabric / spine / core switches
+    //     4  pod / aggregation switches
+    //     5  ToR / leaf switches
+    //     6  compute / generic servers
+    //     7  storage / GPU / specialty servers
+    //
+    // Name-pattern detection is the primary signal (real-world naming is
+    // pretty consistent: "Cluster-R1", "Fabric-GW", "Pod-GW", "ToR-P3",
+    // "Compute-17", "GPU-4", etc). Devices that don't match any pattern
+    // fall back to `2 + BFS depth`, so generic / unknown devices still
+    // slot into a sensible tier based on their graph distance from the
+    // walker's seed.
+    const roleLayerOf = (name: string): number | null => {
+      if (!name) return null
+      // Order matters: check specific patterns before generic ones, and
+      // check specialty servers (gpu/storage) before generic "server".
+      if (/\brouter\b|\brtr\b|cluster-?r\b|^r[-\d]|core-?r\b/i.test(name)) return 2
+      if (/\blb\b|load-?balancer/i.test(name)) return 2
+      if (/fabric|spine|super-?spine/i.test(name)) return 3
+      if (/\bpod\b|aggregation|\bagg\b/i.test(name)) return 4
+      if (/\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
+      if (/gpu|storage|\bnas\b|\bsan\b/i.test(name)) return 7
+      if (/compute|host|\bsrv?\b|^server\b/i.test(name)) return 6
+      return null
+    }
+
+    const layerOf = (n: TopoNode): number => {
+      if (n.type === 'server') return 0
+      if (n.type === 'agent') return 1
+      const byRole = roleLayerOf(n.name || '')
+      if (byRole !== null) return byRole
+      const d = n.ip ? deviceDepth.get(n.ip) ?? 0 : 0
+      return 2 + d
+    }
+
+    const layeredInput = nodes.map(n => ({ id: n.id, layer: layerOf(n) }))
+    const layeredEdges = links.map(l => ({
+      source: typeof l.source === 'string' ? l.source : (l.source as TopoNode).id,
+      target: typeof l.target === 'string' ? l.target : (l.target as TopoNode).id,
+    }))
+
+    const layered = computeLayeredLayout(layeredInput, layeredEdges, {
+      nodeGapX: 95,          // horizontal spacing between sibling nodes
+      layerGapY: 180,        // vertical spacing between layers
+      iterations: 28,        // barycenter sweeps (down+up per round)
+      originX: width / 2,    // center on SVG viewport
+      originY: TOP_Y,
+    })
+
+    // Apply computed positions onto the TopoNode objects so downstream
+    // rendering (circles, links, labels) reads them transparently.
+    nodes.forEach(n => {
+      const p = layered.positions.get(n.id)
+      if (p) {
+        n.x = p.x
+        n.y = p.y
+      }
+    })
+
+    // No force simulation — positions are static
+    simulationRef.current = null
+
+    const unpositioned = new Set<string>()
+    nodes.forEach(n => {
+      if (typeof n.x !== 'number' || typeof n.y !== 'number' || !isFinite(n.x) || !isFinite(n.y)) {
+        unpositioned.add(n.id)
+      }
+    })
+    if (unpositioned.size > 0) {
+      console.warn('[Topology] dropping', unpositioned.size, 'unpositioned nodes:', Array.from(unpositioned))
+    }
+    // Rebuild nodes + links excluding unpositioned ones so d3 never tries
+    // to render lines into (0,0).
+    const visibleNodes = nodes.filter(n => !unpositioned.has(n.id))
+    const visibleLinks = links.filter(l => {
+      const sid = typeof l.source === 'string' ? l.source : (l.source as TopoNode).id
+      const tid = typeof l.target === 'string' ? l.target : (l.target as TopoNode).id
+      return !unpositioned.has(sid) && !unpositioned.has(tid)
+    })
+
+    // Replace the originals so the downstream render uses the filtered set.
+    nodes.length = 0
+    nodes.push(...visibleNodes)
+    links.length = 0
+    links.push(...visibleLinks)
+
+    // ── Auto-fit: compute bounding box and set initial zoom so the entire
+    // tree is visible. Prevents branches from extending off-screen the
+    // moment a server with a wide fan-out (e.g. /24 sweep hit) is expanded.
+    let bboxMinX = Infinity, bboxMaxX = -Infinity
+    let bboxMinY = Infinity, bboxMaxY = -Infinity
+    nodes.forEach(n => {
+      const x = n.x as number, y = n.y as number
+      if (x < bboxMinX) bboxMinX = x
+      if (x > bboxMaxX) bboxMaxX = x
+      if (y < bboxMinY) bboxMinY = y
+      if (y > bboxMaxY) bboxMaxY = y
+    })
+    if (isFinite(bboxMinX) && isFinite(bboxMinY)) {
+      const pad = 100
+      const contentW = (bboxMaxX - bboxMinX) + pad * 2
+      const contentH = (bboxMaxY - bboxMinY) + pad * 2
+      const fitScale = Math.min(width / contentW, height / contentH, 1)
+      const contentCenterX = (bboxMinX + bboxMaxX) / 2
+      const contentCenterY = (bboxMinY + bboxMaxY) / 2
+      const tx = width / 2 - contentCenterX * fitScale
+      const ty = height / 2 - contentCenterY * fitScale
+      svg.call(zoom.transform as any, d3.zoomIdentity.translate(tx, ty).scale(fitScale))
+    }
+
+    // Resolve link source/target strings to node objects
+    const nodeMapFiltered = new Map(nodes.map(n => [n.id, n]))
+    links.forEach(l => {
+      if (typeof l.source === 'string') l.source = nodeMapFiltered.get(l.source) || l.source
+      if (typeof l.target === 'string') l.target = nodeMapFiltered.get(l.target) || l.target
+    })
 
     // Build a set of offline server IDs for quick lookup
     const offlineServerIds = new Set(
@@ -292,8 +580,8 @@ export default function Topology() {
     const isLinkDisconnected = (d: TopoLink) => {
       const sourceId = typeof d.source === 'string' ? d.source : d.source.id
       const targetId = typeof d.target === 'string' ? d.target : d.target.id
-      const sourceNode = nodes.find(n => n.id === sourceId)
-      const targetNode = nodes.find(n => n.id === targetId)
+      const sourceNode = nodeMap.get(sourceId)
+      const targetNode = nodeMap.get(targetId)
       return sourceNode?.status === 'offline' || targetNode?.status === 'offline'
     }
 
@@ -336,34 +624,116 @@ export default function Topology() {
     glowMerge.append('feMergeNode').attr('in', 'glow')
     glowMerge.append('feMergeNode').attr('in', 'SourceGraphic')
 
-    // Create links
+    // Create links as straight lines
     const link = g.append('g')
       .selectAll('line')
       .data(links)
       .enter().append('line')
       .attr('stroke', d => {
+        if (d.linkType === 'device-device') {
+          return isLinkDisconnected(d) ? '#ef4444' : '#f59e0b' // amber for physical wiring
+        }
         if (d.linkType === 'device-agent') return '#06b6d4'
         return isLinkDisconnected(d) ? '#ef4444' : '#10b981'
       })
-      .attr('stroke-width', d => d.linkType === 'device-agent' ? 1.5 : isLinkDisconnected(d) ? 2.5 : 2)
-      .attr('stroke-opacity', d => d.linkType === 'device-agent' ? 0.5 : isLinkDisconnected(d) ? 0.8 : 0.6)
+      .attr('stroke-width', d => {
+        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 2 : 2
+        return d.linkType === 'device-agent' ? 1.5 : isLinkDisconnected(d) ? 2.5 : 2
+      })
+      .attr('stroke-opacity', d => {
+        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 0.6 : 0.8
+        return d.linkType === 'device-agent' ? 0.4 : isLinkDisconnected(d) ? 0.7 : 0.5
+      })
       .attr('stroke-dasharray', d => {
-        if (d.linkType === 'device-agent') return '4,3'
+        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? '8,6' : 'none'
+        if (d.linkType === 'device-agent') return '6,4'
         return isLinkDisconnected(d) ? '8,6' : 'none'
       })
-      .attr('marker-end', d => {
-        if (d.linkType === 'device-agent') return 'url(#arrow-device)'
-        return isLinkDisconnected(d) ? 'url(#arrow-disconnected)' : 'url(#arrow-online)'
-      })
+      .attr('x1', d => (d.source as TopoNode).x || 0)
+      .attr('y1', d => (d.source as TopoNode).y || 0)
+      .attr('x2', d => (d.target as TopoNode).x || 0)
+      .attr('y2', d => (d.target as TopoNode).y || 0)
 
-    // Animate dashed lines for disconnected links
-    link.filter(d => d.linkType !== 'device-agent' && isLinkDisconnected(d))
-      .append('animate')
-      .attr('attributeName', 'stroke-dashoffset')
-      .attr('from', '0')
-      .attr('to', '28')
-      .attr('dur', '1.5s')
-      .attr('repeatCount', 'indefinite')
+    // Widen the invisible pointer target for links so they're easy to hover
+    // without losing the thin visible stroke.
+    link.attr('stroke-linecap', 'round')
+
+    // Tooltip on device↔device links: shows the two endpoints, LLDP port
+    // mapping, last_seen age, and the fault reason when either side is
+    // offline. Only wired for device-device links since the agent/device
+    // hierarchy edges are implicit from the node tooltips.
+    const linkTooltipHtml = (d: TopoLink): string => {
+      if (d.linkType !== 'device-device' || !d.d2dInfo) return ''
+      const info = d.d2dInfo
+      const faulted = info.sourceStatus === 'offline' || info.targetStatus === 'offline'
+      const ageMs = Date.now() - new Date(info.lastSeen).getTime()
+      const ageMin = Math.max(0, Math.round(ageMs / 60000))
+      const ageText = ageMin < 2 ? 'just now' : ageMin < 60 ? `${ageMin} min ago` : `${Math.round(ageMin / 60)} h ago`
+      const statusColor = faulted ? 'text-red-400' : 'text-green-400'
+      const statusText = faulted ? 'Link down' : 'Link up'
+      let faultReason = ''
+      if (info.sourceStatus === 'offline' && info.targetStatus === 'offline') {
+        faultReason = 'Both endpoints offline'
+      } else if (info.sourceStatus === 'offline') {
+        faultReason = `${info.sourceName} offline`
+      } else if (info.targetStatus === 'offline') {
+        faultReason = `${info.targetName} offline`
+      }
+      return `
+        <div class="font-bold text-base mb-1.5 text-amber-300">Link</div>
+        <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          <span class="text-slate-400">Status</span>
+          <span class="${statusColor} font-semibold">${statusText}</span>
+          ${faultReason ? `<span class="text-slate-400">Fault</span><span class="text-red-300">${faultReason}</span>` : ''}
+          <span class="text-slate-400">Source</span>
+          <span class="text-slate-200">${info.sourceName} <span class="text-slate-500 font-mono text-[11px]">(${info.sourceIp})</span></span>
+          ${info.sourcePort ? `<span class="text-slate-400">Src port</span><span class="text-slate-300 font-mono text-[11px]">${info.sourcePort}</span>` : ''}
+          <span class="text-slate-400">Target</span>
+          <span class="text-slate-200">${info.targetName} <span class="text-slate-500 font-mono text-[11px]">(${info.targetIp})</span></span>
+          ${info.targetPort ? `<span class="text-slate-400">Tgt port</span><span class="text-slate-300 font-mono text-[11px]">${info.targetPort}</span>` : ''}
+          <span class="text-slate-400">Last seen</span>
+          <span class="text-slate-300">${ageText}</span>
+        </div>
+      `
+    }
+
+    const moveTip = (event: MouseEvent) => {
+      const tip = tooltipRef.current
+      if (!tip) return
+      const container = svgRef.current?.parentElement
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      const tipW = 300
+      let left = event.clientX - rect.left + 16
+      let top = event.clientY - rect.top - 10
+      if (left + tipW > rect.width) left = left - tipW - 32
+      if (top < 0) top = 10
+      tip.style.left = `${left}px`
+      tip.style.top = `${top}px`
+    }
+
+    link.on('mouseenter', function (event, d) {
+      const tip = tooltipRef.current
+      if (!tip) return
+      const html = linkTooltipHtml(d)
+      if (!html) return
+      tip.innerHTML = html
+      tip.style.opacity = '1'
+      tip.style.pointerEvents = 'none'
+      moveTip(event)
+      d3.select(this).attr('stroke-width', 4)
+    })
+    link.on('mousemove', function (event, d) {
+      if (d.linkType !== 'device-device') return
+      moveTip(event)
+    })
+    link.on('mouseleave', function (event, d) {
+      const tip = tooltipRef.current
+      if (tip) tip.style.opacity = '0'
+      if (d.linkType === 'device-device') {
+        d3.select(this).attr('stroke-width', isLinkDisconnected(d) ? 2 : 2)
+      }
+    })
 
     // Create node groups with drag
     const node = g.append('g')
@@ -411,6 +781,101 @@ export default function Topology() {
       }
     })
 
+    // ── Tooltip on hover ──
+    node.on('mouseenter', function (event, d) {
+      const tip = tooltipRef.current
+      if (!tip) return
+
+      const agentCount = agentCountByServer[d.id] || 0
+      let html = ''
+
+      if (d.type === 'server') {
+        html = `
+          <div class="font-bold text-base mb-1.5" style="color:${d.color || '#a78bfa'}">${d.name}</div>
+          <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <span class="text-slate-400">Status</span>
+            <span class="${d.status === 'online' ? 'text-green-400' : 'text-red-400'} font-semibold">${d.status === 'online' ? 'Healthy' : 'Disconnected'}</span>
+            <span class="text-slate-400">Type</span>
+            <span class="text-slate-200">Server</span>
+            ${d.ip ? `<span class="text-slate-400">URL</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
+            <span class="text-slate-400">Agents</span>
+            <span class="text-slate-200 font-semibold">${agentCount}</span>
+            <span class="text-slate-400">Expanded</span>
+            <span class="text-slate-200">${expandedServers.has(d.id) ? 'Yes' : 'No'}</span>
+          </div>
+          <div class="text-[10px] text-slate-500 mt-2 border-t border-white/10 pt-1.5">Double-click to ${expandedServers.has(d.id) ? 'collapse' : 'expand'} agents</div>
+        `
+      } else if (d.type === 'agent') {
+        html = `
+          <div class="font-bold text-base mb-1.5 text-white">${d.name}</div>
+          <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <span class="text-slate-400">Status</span>
+            <span class="${d.status === 'online' ? 'text-green-400' : 'text-red-400'} font-semibold">${d.status === 'online' ? 'Online' : 'Offline'}</span>
+            <span class="text-slate-400">Type</span>
+            <span class="text-slate-200">Agent</span>
+            ${d.ip ? `<span class="text-slate-400">IP</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
+            ${d.serverName ? `<span class="text-slate-400">Server</span><span class="text-purple-300">${d.serverName}</span>` : ''}
+            ${d.agentId ? `<span class="text-slate-400">Agent ID</span><span class="text-slate-200 font-mono text-[11px]">${d.agentId}</span>` : ''}
+            <span class="text-slate-400">Metrics</span>
+            <span class="text-blue-400 font-semibold">${d.metrics != null ? d.metrics.toLocaleString() : '—'}</span>
+            <span class="text-slate-400">Alerts</span>
+            <span class="${(d.alerts || 0) > 0 ? 'text-red-400 font-semibold' : 'text-slate-300'}">${d.alerts || 0}</span>
+          </div>
+        `
+      } else {
+        // network / SNMP device
+        html = `
+          <div class="font-bold text-base mb-1.5 text-cyan-300">${d.name}</div>
+          <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <span class="text-slate-400">Status</span>
+            <span class="${d.status === 'online' ? 'text-green-400' : 'text-slate-400'} font-semibold">${d.status === 'online' ? 'Active' : 'Inactive'}</span>
+            <span class="text-slate-400">Type</span>
+            <span class="text-slate-200">SNMP Device</span>
+            ${d.ip ? `<span class="text-slate-400">IP</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
+            ${d.agentName ? `<span class="text-slate-400">Monitored By</span><span class="text-blue-300">${d.agentName}</span>` : ''}
+          </div>
+        `
+      }
+
+      tip.innerHTML = html
+      tip.style.opacity = '1'
+      tip.style.pointerEvents = 'none'
+
+      // Position near cursor, clamped to container bounds
+      const container = svgRef.current?.parentElement
+      if (container) {
+        const rect = container.getBoundingClientRect()
+        const tipW = 280
+        let left = event.clientX - rect.left + 16
+        let top = event.clientY - rect.top - 10
+        if (left + tipW > rect.width) left = left - tipW - 32
+        if (top < 0) top = 10
+        tip.style.left = `${left}px`
+        tip.style.top = `${top}px`
+      }
+    })
+
+    node.on('mousemove', function (event) {
+      const tip = tooltipRef.current
+      if (!tip) return
+      const container = svgRef.current?.parentElement
+      if (container) {
+        const rect = container.getBoundingClientRect()
+        const tipW = 280
+        let left = event.clientX - rect.left + 16
+        let top = event.clientY - rect.top - 10
+        if (left + tipW > rect.width) left = left - tipW - 32
+        if (top < 0) top = 10
+        tip.style.left = `${left}px`
+        tip.style.top = `${top}px`
+      }
+    })
+
+    node.on('mouseleave', function () {
+      const tip = tooltipRef.current
+      if (tip) tip.style.opacity = '0'
+    })
+
     // Add circles for nodes
     node.append('circle')
       .attr('r', d => d.type === 'server' ? 40 : d.type === 'network' ? 20 : 30)
@@ -432,38 +897,65 @@ export default function Topology() {
       .style('cursor', 'pointer')
       .attr('filter', d => d.status === 'offline' && d.type !== 'network' ? 'url(#glow-red)' : null)
 
-    // Add green pulse for ONLINE agents (not devices)
-    node.filter(d => d.status === 'online' && d.type === 'agent')
-      .append('circle')
-      .attr('r', 30)
-      .attr('fill', 'none')
-      .attr('stroke', '#10b981')
-      .attr('stroke-width', 2)
-      .attr('opacity', 0)
-      .call(pulseGreen)
+    // Pulse animations — skip for large node counts (invisible at that zoom, heavy on perf)
+    if (nodeCount <= 100) {
+      // Online agents — SVG <animate> (GPU-composited, no JS timer overhead)
+      node.filter(d => d.status === 'online' && d.type === 'agent')
+        .append('circle')
+        .attr('r', 30)
+        .attr('fill', 'none')
+        .attr('stroke', '#10b981')
+        .attr('stroke-width', 2)
+        .attr('opacity', 0.6)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '30;42;30')
+            .attr('dur', '2s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.6;0;0.6')
+            .attr('dur', '2s').attr('repeatCount', 'indefinite')
+        })
 
-    // Add red danger pulse for OFFLINE servers
-    node.filter(d => d.status === 'offline' && d.type === 'server')
-      .append('circle')
-      .attr('r', 40)
-      .attr('fill', 'none')
-      .attr('stroke', '#ef4444')
-      .attr('stroke-width', 3)
-      .attr('opacity', 0)
-      .call(pulseRed)
+      // Offline servers
+      node.filter(d => d.status === 'offline' && d.type === 'server')
+        .append('circle')
+        .attr('r', 40)
+        .attr('fill', 'none')
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 3)
+        .attr('opacity', 0.9)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '40;55;40')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.9;0;0.9')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+        })
 
-    // Add red danger pulse for OFFLINE agents
-    node.filter(d => d.status === 'offline' && d.type === 'agent')
-      .append('circle')
-      .attr('r', 30)
-      .attr('fill', 'none')
-      .attr('stroke', '#ef4444')
-      .attr('stroke-width', 2)
-      .attr('opacity', 0)
-      .call(pulseRed)
+      // Offline agents
+      node.filter(d => d.status === 'offline' && d.type === 'agent')
+        .append('circle')
+        .attr('r', 30)
+        .attr('fill', 'none')
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 2)
+        .attr('opacity', 0.9)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '30;45;30')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.9;0;0.9')
+            .attr('dur', '1.2s').attr('repeatCount', 'indefinite')
+        })
+    }
 
     // Add warning ring for agents connected to an offline server
-    node.filter(d => d.type === 'agent' && d.status === 'online' && d.serverId && offlineServerIds.has(`server-${d.serverId}`))
+    node.filter(d => d.type === 'agent' && d.status === 'online' && !!d.serverId && offlineServerIds.has(`server-${d.serverId}`))
       .append('circle')
       .attr('r', 36)
       .attr('fill', 'none')
@@ -653,68 +1145,27 @@ export default function Topology() {
         return `▸ ${count} agents`
       })
 
-    // Update positions on simulation tick
-    simulation.on('tick', () => {
-      link
-        .attr('x1', d => (d.source as TopoNode).x || 0)
-        .attr('y1', d => (d.source as TopoNode).y || 0)
-        .attr('x2', d => (d.target as TopoNode).x || 0)
-        .attr('y2', d => (d.target as TopoNode).y || 0)
+    // ── Static placement — no simulation tick needed ──
+    node.attr('transform', d => `translate(${d.x},${d.y})`)
 
-      node.attr('transform', d => `translate(${d.x},${d.y})`)
-    })
-
-    // Drag functions
-    function dragstarted(event: any, d: TopoNode) {
-      if (!event.active) simulation.alphaTarget(0.3).restart()
-      d.fx = d.x
-      d.fy = d.y
-    }
+    // Drag functions — reposition node and update links in-place
+    function dragstarted(_event: any, _d: TopoNode) {}
 
     function dragged(event: any, d: TopoNode) {
-      d.fx = event.x
-      d.fy = event.y
+      d.x = event.x
+      d.y = event.y
+      d3.select(event.sourceEvent.target.closest('g')).attr('transform', `translate(${d.x},${d.y})`)
+      // Update straight line endpoints
+      link
+        .attr('x1', (l: TopoLink) => (l.source as TopoNode).x || 0)
+        .attr('y1', (l: TopoLink) => (l.source as TopoNode).y || 0)
+        .attr('x2', (l: TopoLink) => (l.target as TopoNode).x || 0)
+        .attr('y2', (l: TopoLink) => (l.target as TopoNode).y || 0)
     }
 
-    function dragended(event: any, d: TopoNode) {
-      if (!event.active) simulation.alphaTarget(0)
-      d.fx = null
-      d.fy = null
-    }
+    function dragended(_event: any, _d: TopoNode) {}
 
-    // Green pulse for online agents
-    function pulseGreen(selection: any) {
-      (function repeat() {
-        selection
-          .transition()
-          .duration(2000)
-          .attr('r', 42)
-          .attr('opacity', 0)
-          .transition()
-          .duration(0)
-          .attr('r', 30)
-          .attr('opacity', 0.6)
-          .on('end', repeat)
-      })()
-    }
-
-    // Red danger pulse for offline nodes
-    function pulseRed(selection: any) {
-      (function repeat() {
-        selection
-          .transition()
-          .duration(1200)
-          .attr('r', 55)
-          .attr('opacity', 0)
-          .transition()
-          .duration(0)
-          .attr('r', d => (d as TopoNode).type === 'server' ? 40 : 30)
-          .attr('opacity', 0.9)
-          .on('end', repeat)
-      })()
-    }
-
-    // Auto-fit to view after simulation settles
+    // Auto-fit to view immediately
     const fitTimer = setTimeout(() => {
       const xValues = nodes.map(n => n.x || 0)
       const yValues = nodes.map(n => n.y || 0)
@@ -739,11 +1190,10 @@ export default function Topology() {
         zoom.transform,
         d3.zoomIdentity.translate(translateX, translateY).scale(scale)
       )
-    }, 1500)
+    }, 100)
 
     // Cleanup
     return () => {
-      simulation.stop()
       clearTimeout(fitTimer)
       if (clickTimerRef.current) {
         clearTimeout(clickTimerRef.current)
@@ -769,40 +1219,16 @@ export default function Topology() {
   }
 
   const handleReset = () => {
-    if (!svgRef.current || !zoomRef.current || !simulationRef.current) return
-
+    if (!svgRef.current || !zoomRef.current) return
     const svg = d3.select(svgRef.current)
-    const width = svgRef.current.clientWidth
-    const height = svgRef.current.clientHeight
-    const nodes = simulationRef.current.nodes()
-
-    const xValues = nodes.map(n => n.x || 0)
-    const yValues = nodes.map(n => n.y || 0)
-    if (xValues.length === 0) return
-
-    const xMin = Math.min(...xValues)
-    const xMax = Math.max(...xValues)
-    const yMin = Math.min(...yValues)
-    const yMax = Math.max(...yValues)
-
-    const padding = 100
-    const boundsWidth = (xMax - xMin) + padding * 2
-    const boundsHeight = (yMax - yMin) + padding * 2
-
-    const scale = Math.min(width / boundsWidth, height / boundsHeight, 1)
-    const centerX = (xMin + xMax) / 2
-    const centerY = (yMin + yMax) / 2
-    const translateX = width / 2 - scale * centerX
-    const translateY = height / 2 - scale * centerY
-
     svg.transition().duration(500).call(
       zoomRef.current.transform,
-      d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+      d3.zoomIdentity
     )
   }
 
   const handleRestart = () => {
-    simulationRef.current?.alpha(1).restart()
+    // No simulation — this is a no-op in hierarchical mode
   }
 
   if (isLoading) {
@@ -926,6 +1352,13 @@ export default function Topology() {
         {/* Main visualization */}
         <div className="flex-1 bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden relative">
           <svg ref={svgRef} className="w-full h-full" />
+
+          {/* Hover tooltip */}
+          <div
+            ref={tooltipRef}
+            className="absolute z-50 w-[280px] bg-slate-900/95 border border-white/15 rounded-xl px-4 py-3 backdrop-blur-md shadow-2xl transition-opacity duration-150"
+            style={{ opacity: 0, pointerEvents: 'none', top: 0, left: 0 }}
+          />
 
           {/* Legend */}
           <div className="absolute bottom-4 left-4 bg-slate-900/90 border border-white/20 rounded-lg p-4 backdrop-blur-sm">

@@ -353,6 +353,8 @@ type SNMPWalkerConfig struct {
 	Retries          int           `yaml:"retries"`
 	Interval         time.Duration `yaml:"interval"`
 	UseIPAsCommunity bool          `yaml:"use_ip_as_community"`
+	Subnets          []string      `yaml:"subnets"`
+	CombineDiscovery bool          `yaml:"combine_discovery"`
 }
 
 // Load loads configuration from a YAML file

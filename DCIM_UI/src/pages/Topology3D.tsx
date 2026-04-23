@@ -1,6 +1,6 @@
-import { useMemo, useState, useRef, useCallback } from 'react'
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float } from '@react-three/drei'
+import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float, Html } from '@react-three/drei'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -8,6 +8,10 @@ import { computeHierarchicalLayout, type LayoutNode, type LayoutLink } from '@/l
 import { useNavigate } from 'react-router-dom'
 import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react'
 import * as THREE from 'three'
+import { getMockTopologyData } from '@/lib/topology-mock-data'
+
+// ── Toggle this to use 500+ node mock data for testing ──
+const USE_MOCK_DATA = false
 
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
 
@@ -304,11 +308,13 @@ function AgentNode({
   isSelected,
   onSelect,
   onHover,
+  useFloat = true,
 }: {
   node: LayoutNode
   isSelected: boolean
   onSelect: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
+  useFloat?: boolean
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -493,8 +499,8 @@ function AgentNode({
     </group>
   )
 
-  // Online agents get a gentle float bob
-  if (node.status === 'online') {
+  // Online agents get a gentle float bob (disabled for large counts)
+  if (node.status === 'online' && useFloat) {
     return (
       <Float speed={2} rotationIntensity={0} floatIntensity={0.3} floatingRange={[-0.2, 0.2]}>
         {serverUnit}
@@ -524,10 +530,11 @@ function DeviceNode({
   useFrame(() => {
     if (!glowRef.current) return
     const mat = glowRef.current.material as THREE.MeshBasicMaterial
-    if (node.status === 'online') {
-      mat.opacity = 0.08 + Math.sin(Date.now() * 0.003) * 0.06
+    if (node.status === 'offline') {
+      // Red pulse when not responding — matches server behavior.
+      mat.opacity = 0.15 + Math.sin(Date.now() * 0.004) * 0.15
     } else {
-      mat.opacity = hovered || isSelected ? 0.08 : 0
+      mat.opacity = hovered || isSelected ? 0.12 : 0
     }
   })
 
@@ -553,8 +560,14 @@ function DeviceNode({
     onHover(false)
   }, [onHover])
 
-  const coreColor = node.status === 'online' ? '#06b6d4' : '#334155'
-  const ringColor = node.status === 'online' ? '#22d3ee' : '#475569'
+  const online = node.status === 'online'
+  // Blue chassis when responding, red when not — matches the server's online/offline palette.
+  const chassisColor = online ? '#7dd3fc' : '#b91c1c'
+  const accentColor = online ? '#3b82f6' : '#ef4444'
+  const ledOn = online ? '#22d3ee' : '#fca5a5'
+  const ledOff = online ? '#0ea5e9' : '#7f1d1d'
+  const labelColor = online ? '#93c5fd' : '#fca5a5'
+  const portCount = 8
 
   return (
     <group
@@ -563,49 +576,94 @@ function DeviceNode({
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
-      {/* Core sphere */}
+      {/* ── Rackmount switch chassis ── */}
       <mesh>
-        <sphereGeometry args={[1.2, 16, 16]} />
+        <boxGeometry args={[3.4, 0.75, 1.7]} />
         <meshStandardMaterial
-          color={coreColor}
-          emissive={coreColor}
-          emissiveIntensity={node.status === 'online' ? 0.5 : 0.05}
-          metalness={0.3}
-          roughness={0.4}
+          color={chassisColor}
+          metalness={0.55}
+          roughness={0.35}
         />
       </mesh>
 
-      {/* Equatorial ring */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.8, 0.15, 8, 32]} />
+      {/* Top accent strip — brand color */}
+      <mesh position={[0, 0.4, 0]}>
+        <boxGeometry args={[3.3, 0.03, 1.5]} />
         <meshStandardMaterial
-          color={ringColor}
-          emissive={ringColor}
-          emissiveIntensity={node.status === 'online' ? 0.6 : 0.05}
-          metalness={0.5}
-          roughness={0.2}
+          color={accentColor}
+          emissive={accentColor}
+          emissiveIntensity={online ? 0.35 : 0.5}
+          metalness={0.4}
+          roughness={0.3}
         />
       </mesh>
 
-      {/* Pulsing glow */}
+      {/* Front bezel */}
+      <mesh position={[0, 0, 0.86]}>
+        <boxGeometry args={[3.35, 0.7, 0.02]} />
+        <meshStandardMaterial color={online ? '#1e3a8a' : '#450a0a'} metalness={0.3} roughness={0.5} />
+      </mesh>
+
+      {/* Port LEDs — two rows */}
+      {Array.from({ length: portCount }).map((_, i) => {
+        const xOff = -1.35 + i * (2.7 / (portCount - 1))
+        return (
+          <group key={i}>
+            <mesh position={[xOff, 0.12, 0.88]}>
+              <boxGeometry args={[0.22, 0.15, 0.03]} />
+              <meshStandardMaterial
+                color={i % 2 === 0 ? ledOn : ledOff}
+                emissive={i % 2 === 0 ? ledOn : ledOff}
+                emissiveIntensity={online ? 0.8 : 0.15}
+              />
+            </mesh>
+            <mesh position={[xOff, -0.12, 0.88]}>
+              <boxGeometry args={[0.22, 0.15, 0.03]} />
+              <meshStandardMaterial
+                color={ledOff}
+                emissive={ledOff}
+                emissiveIntensity={online ? 0.4 : 0.1}
+              />
+            </mesh>
+          </group>
+        )
+      })}
+
+      {/* Status LED (left front) */}
+      <mesh position={[-1.58, 0, 0.88]}>
+        <circleGeometry args={[0.09, 12]} />
+        <meshBasicMaterial color={online ? '#22c55e' : '#ef4444'} />
+      </mesh>
+
+      {/* Rack ears */}
+      <mesh position={[-1.78, 0, 0.6]}>
+        <boxGeometry args={[0.18, 0.72, 0.08]} />
+        <meshStandardMaterial color={chassisColor} metalness={0.5} roughness={0.4} />
+      </mesh>
+      <mesh position={[1.78, 0, 0.6]}>
+        <boxGeometry args={[0.18, 0.72, 0.08]} />
+        <meshStandardMaterial color={chassisColor} metalness={0.5} roughness={0.4} />
+      </mesh>
+
+      {/* Pulsing glow (offline pulses red, online gets a subtle hover tint) */}
       <mesh ref={glowRef}>
-        <sphereGeometry args={[2.8, 12, 12]} />
-        <meshBasicMaterial color={coreColor} transparent opacity={0} depthWrite={false} />
+        <boxGeometry args={[4, 1.4, 2.3]} />
+        <meshBasicMaterial color={accentColor} transparent opacity={0} depthWrite={false} />
       </mesh>
 
       {/* Selection wireframe */}
       {isSelected && (
         <mesh>
-          <sphereGeometry args={[3.2, 12, 12]} />
-          <meshBasicMaterial color="#06b6d4" wireframe transparent opacity={0.5} />
+          <boxGeometry args={[3.7, 1.05, 2]} />
+          <meshBasicMaterial color={accentColor} wireframe transparent opacity={0.6} />
         </mesh>
       )}
 
       {/* Label */}
-      <Billboard position={[0, 3.2, 0]}>
+      <Billboard position={[0, 1.5, 0]}>
         <Text
-          fontSize={0.7}
-          color="#67e8f9"
+          fontSize={0.6}
+          color={labelColor}
           anchorX="center"
           anchorY="middle"
           outlineWidth={0.04}
@@ -616,9 +674,9 @@ function DeviceNode({
       </Billboard>
 
       {node.agentName && (
-        <Billboard position={[0, 2.1, 0]}>
+        <Billboard position={[0, 1, 0]}>
           <Text
-            fontSize={0.5}
+            fontSize={0.42}
             color="#94a3b8"
             anchorX="center"
             anchorY="middle"
@@ -630,17 +688,17 @@ function DeviceNode({
         </Billboard>
       )}
 
-      {node.status === 'offline' && (
-        <Billboard position={[0, -2.8, 0]}>
+      {!online && (
+        <Billboard position={[0, -1.1, 0]}>
           <Text
-            fontSize={0.55}
-            color="#64748b"
+            fontSize={0.45}
+            color="#fca5a5"
             anchorX="center"
             anchorY="middle"
             outlineWidth={0.03}
             outlineColor="#000000"
           >
-            INACTIVE
+            NOT RESPONDING
           </Text>
         </Billboard>
       )}
@@ -652,6 +710,7 @@ function DeviceNode({
 
 function ConnectionLine({ link }: { link: LayoutLink }) {
   const ref = useRef<any>(null)
+  const [hovered, setHovered] = useState(false)
 
   useFrame(() => {
     if (ref.current && (link.linkType === 'device-agent' || !link.connected)) {
@@ -659,21 +718,281 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
     }
   })
 
-  const isDevice = link.linkType === 'device-agent'
-  const color = isDevice ? '#06b6d4' : link.connected ? '#10b981' : '#ef4444'
+  const isAgentLink = link.linkType === 'device-agent'
+  const isD2D = link.linkType === 'device-device'
+  const color = isD2D
+    ? (link.connected ? '#f59e0b' : '#ef4444')     // amber for physical wiring, red if broken
+    : isAgentLink
+    ? '#06b6d4'
+    : link.connected ? '#10b981' : '#ef4444'
+
+  // Midpoint for the hover tooltip anchor.
+  const midPoint: [number, number, number] = [
+    (link.sourcePos[0] + link.targetPos[0]) / 2,
+    (link.sourcePos[1] + link.targetPos[1]) / 2,
+    (link.sourcePos[2] + link.targetPos[2]) / 2,
+  ]
+
+  const renderTooltip = () => {
+    if (!isD2D || !link.d2dInfo || !hovered) return null
+    const info = link.d2dInfo
+    const faulted = info.sourceStatus === 'offline' || info.targetStatus === 'offline'
+    const ageMs = Date.now() - new Date(info.lastSeen).getTime()
+    const ageMin = Math.max(0, Math.round(ageMs / 60000))
+    const ageText = ageMin < 2 ? 'just now' : ageMin < 60 ? `${ageMin} min ago` : `${Math.round(ageMin / 60)} h ago`
+    let faultReason = ''
+    if (info.sourceStatus === 'offline' && info.targetStatus === 'offline') {
+      faultReason = 'Both endpoints offline'
+    } else if (info.sourceStatus === 'offline') {
+      faultReason = `${info.sourceName} offline`
+    } else if (info.targetStatus === 'offline') {
+      faultReason = `${info.targetName} offline`
+    }
+    return (
+      <Html position={midPoint} center zIndexRange={[100, 0]} wrapperClass="pointer-events-none">
+        <div className="bg-slate-900/95 border border-white/10 rounded-lg p-3 text-xs shadow-lg min-w-[240px]">
+          <div className="font-bold text-base mb-1.5 text-amber-300">Link</div>
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <span className="text-slate-400">Status</span>
+            <span className={`${faulted ? 'text-red-400' : 'text-green-400'} font-semibold`}>
+              {faulted ? 'Link down' : 'Link up'}
+            </span>
+            {faultReason && (
+              <>
+                <span className="text-slate-400">Fault</span>
+                <span className="text-red-300">{faultReason}</span>
+              </>
+            )}
+            <span className="text-slate-400">Source</span>
+            <span className="text-slate-200">
+              {info.sourceName} <span className="text-slate-500 font-mono text-[11px]">({info.sourceIp})</span>
+            </span>
+            {info.sourcePort ? (
+              <>
+                <span className="text-slate-400">Src port</span>
+                <span className="text-slate-300 font-mono text-[11px]">{info.sourcePort}</span>
+              </>
+            ) : null}
+            <span className="text-slate-400">Target</span>
+            <span className="text-slate-200">
+              {info.targetName} <span className="text-slate-500 font-mono text-[11px]">({info.targetIp})</span>
+            </span>
+            {info.targetPort ? (
+              <>
+                <span className="text-slate-400">Tgt port</span>
+                <span className="text-slate-300 font-mono text-[11px]">{info.targetPort}</span>
+              </>
+            ) : null}
+            <span className="text-slate-400">Last seen</span>
+            <span className="text-slate-300">{ageText}</span>
+          </div>
+        </div>
+      </Html>
+    )
+  }
 
   return (
-    <Line
-      ref={ref}
-      points={[link.sourcePos, link.targetPos]}
-      color={color}
-      lineWidth={isDevice ? 1 : link.connected ? 1.5 : 2}
-      dashed={isDevice || !link.connected}
-      dashSize={isDevice ? 0.5 : 1}
-      gapSize={isDevice ? 0.5 : 0.8}
-      transparent
-      opacity={isDevice ? 0.5 : link.connected ? 0.6 : 0.8}
-    />
+    <>
+      <Line
+        ref={ref}
+        points={[link.sourcePos, link.targetPos]}
+        color={color}
+        lineWidth={isD2D ? (hovered ? 3 : 2) : isAgentLink ? 1 : link.connected ? 1.5 : 2}
+        dashed={isAgentLink || !link.connected}
+        dashSize={isAgentLink ? 0.5 : 1}
+        gapSize={isAgentLink ? 0.5 : 0.8}
+        transparent
+        opacity={isD2D ? (link.connected ? 0.85 : 0.7) : isAgentLink ? 0.5 : link.connected ? 0.6 : 0.8}
+        onPointerOver={isD2D ? (e: any) => { e.stopPropagation?.(); setHovered(true) } : undefined}
+        onPointerOut={isD2D ? () => setHovered(false) : undefined}
+      />
+      {renderTooltip()}
+    </>
+  )
+}
+
+// ── Joystick Navigator ──────────────────────────────────────────────────────
+
+function JoystickNav({ onVelocity }: { onVelocity: (vx: number, vy: number) => void }) {
+  const padRef = useRef<HTMLDivElement>(null)
+  const [knobPos, setKnobPos] = useState({ x: 0, y: 0 })
+  const [active, setActive] = useState(false)
+  const dragging = useRef(false)
+  const PAD_R = 50
+  const KNOB_R = 18
+  const MAX_OFFSET = PAD_R - KNOB_R
+
+  const updateFromPointer = useCallback((clientX: number, clientY: number) => {
+    if (!padRef.current) return
+    const rect = padRef.current.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    let dx = clientX - cx
+    let dy = clientY - cy
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist > MAX_OFFSET) {
+      dx = (dx / dist) * MAX_OFFSET
+      dy = (dy / dist) * MAX_OFFSET
+    }
+    setKnobPos({ x: dx, y: dy })
+    onVelocity(dx / MAX_OFFSET, -dy / MAX_OFFSET)
+  }, [onVelocity, MAX_OFFSET])
+
+  const handleDown = useCallback((e: React.PointerEvent) => {
+    dragging.current = true
+    setActive(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+    updateFromPointer(e.clientX, e.clientY)
+  }, [updateFromPointer])
+
+  const handleMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return
+    updateFromPointer(e.clientX, e.clientY)
+  }, [updateFromPointer])
+
+  const handleUp = useCallback(() => {
+    dragging.current = false
+    setActive(false)
+    setKnobPos({ x: 0, y: 0 })
+    onVelocity(0, 0)
+  }, [onVelocity])
+
+  // Compass tick marks
+  const ticks = useMemo(() =>
+    [0, 45, 90, 135, 180, 225, 270, 315].map(deg => ({
+      deg,
+      isMajor: deg % 90 === 0,
+    })),
+    []
+  )
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        ref={padRef}
+        className="relative select-none touch-none"
+        style={{
+          width: PAD_R * 2,
+          height: PAD_R * 2,
+          borderRadius: '50%',
+          cursor: active ? 'grabbing' : 'grab',
+          background: 'radial-gradient(circle at 40% 35%, rgba(15,23,42,0.98), rgba(8,12,28,0.95))',
+          boxShadow: active
+            ? '0 0 35px rgba(6,182,212,0.35), 0 0 60px rgba(6,182,212,0.1), inset 0 0 25px rgba(6,182,212,0.12)'
+            : '0 0 20px rgba(59,130,246,0.12), inset 0 0 15px rgba(59,130,246,0.05)',
+          border: active ? '1.5px solid rgba(6,182,212,0.5)' : '1px solid rgba(59,130,246,0.25)',
+          transition: 'box-shadow 0.3s, border-color 0.3s',
+        }}
+        onPointerDown={handleDown}
+        onPointerMove={handleMove}
+        onPointerUp={handleUp}
+        onPointerCancel={handleUp}
+      >
+        {/* Compass tick marks */}
+        {ticks.map(({ deg, isMajor }) => (
+          <div
+            key={deg}
+            className="absolute"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: isMajor ? 2 : 1,
+              height: isMajor ? 6 : 4,
+              background: active && isMajor ? 'rgba(6,182,212,0.5)' : 'rgba(6,182,212,0.25)',
+              borderRadius: 1,
+              transformOrigin: '50% 50%',
+              transform: `translate(-50%, -50%) rotate(${deg}deg) translateY(-${PAD_R - (isMajor ? 5 : 4)}px)`,
+              transition: 'background 0.3s',
+            }}
+          />
+        ))}
+
+        {/* Crosshair lines */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2"
+          style={{
+            top: 12, bottom: 12, width: 1,
+            background: 'linear-gradient(to bottom, rgba(6,182,212,0.15), rgba(6,182,212,0.08), transparent, rgba(6,182,212,0.08), rgba(6,182,212,0.15))',
+          }}
+        />
+        <div
+          className="absolute top-1/2 -translate-y-1/2"
+          style={{
+            left: 12, right: 12, height: 1,
+            background: 'linear-gradient(to right, rgba(6,182,212,0.15), rgba(6,182,212,0.08), transparent, rgba(6,182,212,0.08), rgba(6,182,212,0.15))',
+          }}
+        />
+
+        {/* Inner track ring */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            inset: 14,
+            border: active ? '1px solid rgba(6,182,212,0.15)' : '1px solid rgba(59,130,246,0.08)',
+            transition: 'border-color 0.3s',
+          }}
+        />
+
+        {/* Outer orbit ring (decorative, pulsing) */}
+        <div
+          className="absolute rounded-full"
+          style={{
+            inset: 6,
+            border: '1px solid rgba(6,182,212,0.06)',
+          }}
+        />
+
+        {/* Knob */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: '50%',
+            top: '50%',
+            width: KNOB_R * 2,
+            height: KNOB_R * 2,
+            borderRadius: '50%',
+            transform: `translate(calc(-50% + ${knobPos.x}px), calc(-50% + ${knobPos.y}px))`,
+            background: active
+              ? 'radial-gradient(circle at 35% 30%, #22d3ee, #06b6d4, #0e7490)'
+              : 'radial-gradient(circle at 35% 30%, #93c5fd, #3b82f6, #1d4ed8)',
+            boxShadow: active
+              ? '0 0 16px rgba(6,182,212,0.7), 0 0 35px rgba(6,182,212,0.25), 0 2px 8px rgba(0,0,0,0.5)'
+              : '0 0 8px rgba(59,130,246,0.4), 0 0 20px rgba(59,130,246,0.1), 0 2px 6px rgba(0,0,0,0.4)',
+            border: active ? '1px solid rgba(103,232,249,0.5)' : '1px solid rgba(147,197,253,0.3)',
+            transition: active ? 'background 0.15s, box-shadow 0.15s, border-color 0.15s' : 'all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          }}
+        >
+          {/* Knob specular highlight */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              inset: 3,
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%)',
+              borderRadius: '50%',
+            }}
+          />
+          {/* Knob center dot */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: 4, height: 4,
+              left: '50%', top: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: active ? '#67e8f9' : '#93c5fd',
+              boxShadow: active ? '0 0 6px rgba(103,232,249,0.8)' : '0 0 4px rgba(147,197,253,0.5)',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Label */}
+      <div
+        className="text-[10px] font-medium tracking-wider uppercase"
+        style={{ color: active ? '#22d3ee' : '#64748b', transition: 'color 0.3s' }}
+      >
+        Navigate
+      </div>
+    </div>
   )
 }
 
@@ -685,19 +1004,31 @@ export const FLOORS = [
   { name: 'Server Racks',  label: 'L3', y: 20,  color: '#a855f7' },
 ]
 
-function CameraFloorRunner({ targetFloorY }: { targetFloorY: number }) {
+function CameraFloorRunner({ targetFloorY, targetPanX }: { targetFloorY: number; targetPanX: number }) {
   const { camera, controls } = useThree()
 
   useFrame(() => {
     if (!controls) return
     const ctrl = controls as any
-    const diff = targetFloorY - ctrl.target.y
-    if (Math.abs(diff) > 0.01) {
-      const step = diff * 0.07
+    let needsUpdate = false
+
+    const diffY = targetFloorY - ctrl.target.y
+    if (Math.abs(diffY) > 0.01) {
+      const step = diffY * 0.07
       ctrl.target.y += step
       camera.position.y += step
-      ctrl.update()
+      needsUpdate = true
     }
+
+    const diffX = targetPanX - ctrl.target.x
+    if (Math.abs(diffX) > 0.05) {
+      const step = diffX * 0.07
+      ctrl.target.x += step
+      camera.position.x += step
+      needsUpdate = true
+    }
+
+    if (needsUpdate) ctrl.update()
   })
 
   return null
@@ -716,6 +1047,7 @@ function SceneContent({
   agentCounts,
   onDoubleClickServer,
   currentFloorY,
+  targetPanX,
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
@@ -727,6 +1059,7 @@ function SceneContent({
   agentCounts: Record<string, number>
   onDoubleClickServer: (node: LayoutNode) => void
   currentFloorY: number
+  targetPanX: number
 }) {
   return (
     <>
@@ -773,17 +1106,20 @@ function SceneContent({
         ))}
 
       {/* Agent nodes */}
-      {nodes
-        .filter((n) => n.type === 'agent')
-        .map((node) => (
+      {(() => {
+        const agentNodes = nodes.filter((n) => n.type === 'agent')
+        const enableFloat = agentNodes.length < 50
+        return agentNodes.map((node) => (
           <AgentNode
             key={node.id}
             node={node}
             isSelected={selectedNode?.id === node.id}
             onSelect={onSelectNode}
             onHover={onHover}
+            useFloat={enableFloat}
           />
-        ))}
+        ))
+      })()}
 
       {/* Device nodes (SNMP) */}
       {nodes
@@ -804,14 +1140,15 @@ function SceneContent({
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
-      <CameraFloorRunner targetFloorY={currentFloorY} />
+      <CameraFloorRunner targetFloorY={currentFloorY} targetPanX={targetPanX} />
 
       <OrbitControls
         makeDefault
+        enablePan
         enableDamping
         dampingFactor={0.1}
         minDistance={15}
-        maxDistance={250}
+        maxDistance={2000}
       />
     </>
   )
@@ -820,18 +1157,34 @@ function SceneContent({
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Topology3D() {
-  const { data: agents, isLoading: agentsLoading } = useAgents()
-  const { data: servers, isLoading: serversLoading } = useQuery({
+  const mockData = USE_MOCK_DATA ? getMockTopologyData() : null
+  const { data: realAgents, isLoading: realAgentsLoading } = useAgents()
+  const { data: realServers, isLoading: realServersLoading } = useQuery({
     queryKey: ['servers'],
     queryFn: () => api.getServers(),
     staleTime: 60000,
+    enabled: !USE_MOCK_DATA,
   })
-  const { data: snmpDevices } = useQuery({
+  const { data: realSnmpDevices } = useQuery({
     queryKey: ['snmp-devices-3d'],
     queryFn: () => api.getSNMPDevices(),
     staleTime: 15000,
-    refetchInterval: 15000,
+    refetchInterval: USE_MOCK_DATA ? false : 15000,
+    enabled: !USE_MOCK_DATA,
   })
+  const { data: realTopologyLinks } = useQuery({
+    queryKey: ['topology-links-3d'],
+    queryFn: () => api.getTopologyLinks(),
+    staleTime: 30000,
+    refetchInterval: USE_MOCK_DATA ? false : 60000,
+    enabled: !USE_MOCK_DATA,
+  })
+
+  const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
+  const servers = USE_MOCK_DATA ? mockData!.servers : realServers
+  const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
+  const agentsLoading = USE_MOCK_DATA ? false : realAgentsLoading
+  const serversLoading = USE_MOCK_DATA ? false : realServersLoading
   const navigate = useNavigate()
   const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
   const [cursorPointer, setCursorPointer] = useState(false)
@@ -875,13 +1228,49 @@ export default function Topology3D() {
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
     const visibleAgents = agents.filter(a => expandedServers.has(`server-${a.server_id}`))
-    // Only pass devices whose agents are visible
-    const visibleAgentKeys = new Set(visibleAgents.map(a => `${a.server_id}:${a.agent_id}`))
+    // Show every device whose parent server is expanded — this includes
+    // SNMP-walker-discovered devices (agent_id="snmp-walker") that have no
+    // matching agent record and would otherwise be filtered out.
     const visibleDevices = (snmpDevices || []).filter(
-      d => visibleAgentKeys.has(`${d.server_id}:${d.agent_id}`)
+      d => expandedServers.has(`server-${d.server_id}`)
     )
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices)
-  }, [servers, agents, expandedServers, snmpDevices])
+    const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks)
+  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData])
+
+  // ── Joystick-driven camera panning ──
+  const panVelocityRef = useRef({ x: 0, y: 0 })
+  const [panX, setPanX] = useState(0)
+  const [panYOffset, setPanYOffset] = useState(0)
+
+  useEffect(() => {
+    let frame: number
+    let last = performance.now()
+    const tick = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05)
+      last = now
+      const vx = panVelocityRef.current.x
+      const vy = panVelocityRef.current.y
+      if (Math.abs(vx) > 0.01) {
+        setPanX(prev => prev + vx * dt * 400)
+      }
+      if (Math.abs(vy) > 0.01) {
+        setPanYOffset(prev => prev + vy * dt * 120)
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  const handleJoystickVelocity = useCallback((vx: number, vy: number) => {
+    panVelocityRef.current = { x: vx, y: vy }
+  }, [])
+
+  const resetPan = useCallback(() => {
+    setPanX(0)
+    setPanYOffset(0)
+  }, [])
 
   const handleSelectNode = useCallback((node: LayoutNode) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node))
@@ -952,7 +1341,7 @@ export default function Topology3D() {
           style={{ cursor: cursorPointer ? 'pointer' : 'grab' }}
         >
           <Canvas
-            camera={{ position: [0, 60, 100], fov: 50 }}
+            camera={{ position: [0, 80, 160], fov: 50, near: 0.1, far: 2000 }}
             style={{ background: 'transparent' }}
             onPointerMissed={handleDeselect}
           >
@@ -966,7 +1355,8 @@ export default function Topology3D() {
               expandedServers={expandedServers}
               agentCounts={agentCounts}
               onDoubleClickServer={toggleServerExpansion}
-              currentFloorY={FLOORS[currentFloor].y}
+              currentFloorY={FLOORS[currentFloor].y + panYOffset}
+              targetPanX={panX}
             />
           </Canvas>
 
@@ -1030,10 +1420,40 @@ export default function Topology3D() {
             </div>
           </div>
 
+          {/* Joystick + Reset — bottom right */}
+          <div className="absolute bottom-4 right-4 flex items-end gap-3 z-10">
+            <JoystickNav onVelocity={handleJoystickVelocity} />
+            <button
+              onClick={resetPan}
+              className="w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-200"
+              style={{
+                background: panX === 0 && panYOffset === 0
+                  ? 'rgba(30,41,59,0.8)'
+                  : 'rgba(6,182,212,0.15)',
+                border: panX === 0 && panYOffset === 0
+                  ? '1px solid rgba(100,116,139,0.3)'
+                  : '1px solid rgba(6,182,212,0.4)',
+                boxShadow: panX === 0 && panYOffset === 0
+                  ? 'none'
+                  : '0 0 10px rgba(6,182,212,0.2)',
+              }}
+              title="Reset camera to center"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="8" cy="8" r="6.5" stroke={panX === 0 && panYOffset === 0 ? '#64748b' : '#22d3ee'} strokeWidth="1" />
+                <circle cx="8" cy="8" r="1.5" fill={panX === 0 && panYOffset === 0 ? '#64748b' : '#22d3ee'} />
+                <line x1="8" y1="0.5" x2="8" y2="3.5" stroke={panX === 0 && panYOffset === 0 ? '#64748b' : '#22d3ee'} strokeWidth="1" />
+                <line x1="8" y1="12.5" x2="8" y2="15.5" stroke={panX === 0 && panYOffset === 0 ? '#64748b' : '#22d3ee'} strokeWidth="1" />
+                <line x1="0.5" y1="8" x2="3.5" y2="8" stroke={panX === 0 && panYOffset === 0 ? '#64748b' : '#22d3ee'} strokeWidth="1" />
+                <line x1="12.5" y1="8" x2="15.5" y2="8" stroke={panX === 0 && panYOffset === 0 ? '#64748b' : '#22d3ee'} strokeWidth="1" />
+              </svg>
+            </button>
+          </div>
+
           {/* Floor Navigator */}
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 bg-slate-900/90 border border-white/20 rounded-xl p-3 backdrop-blur-sm select-none z-10">
             <button
-              onClick={() => setCurrentFloor(f => Math.min(f + 1, FLOORS.length - 1))}
+              onClick={() => { setCurrentFloor(f => Math.min(f + 1, FLOORS.length - 1)); setPanYOffset(0) }}
               disabled={currentFloor === FLOORS.length - 1}
               className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-25 disabled:cursor-not-allowed text-white transition-colors"
               title="Go up one floor"
@@ -1049,7 +1469,7 @@ export default function Topology3D() {
                 return (
                   <button
                     key={fi}
-                    onClick={() => setCurrentFloor(fi)}
+                    onClick={() => { setCurrentFloor(fi); setPanYOffset(0) }}
                     title={floor.name}
                     className={`rounded-full transition-all duration-200 ${
                       isActive
@@ -1063,7 +1483,7 @@ export default function Topology3D() {
             </div>
 
             <button
-              onClick={() => setCurrentFloor(f => Math.max(f - 1, 0))}
+              onClick={() => { setCurrentFloor(f => Math.max(f - 1, 0)); setPanYOffset(0) }}
               disabled={currentFloor === 0}
               className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-25 disabled:cursor-not-allowed text-white transition-colors"
               title="Go down one floor"

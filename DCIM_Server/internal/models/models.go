@@ -129,11 +129,16 @@ func (j *JSONMap) Scan(value interface{}) error {
 		*j = nil
 		return nil
 	}
-	bytes, ok := value.([]byte)
-	if !ok {
+	var b []byte
+	switch v := value.(type) {
+	case []byte:
+		b = v
+	case string:
+		b = []byte(v)
+	default:
 		return nil
 	}
-	return json.Unmarshal(bytes, j)
+	return json.Unmarshal(b, j)
 }
 
 // JSONArray is a custom type for JSON array storage

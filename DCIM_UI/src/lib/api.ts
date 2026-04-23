@@ -5,6 +5,7 @@ import type {
   DeduplicatedAlert,
   SNMPMetric,
   SNMPDevice,
+  TopologyLink,
   License,
   AggregatedMetric,
   AgentFilter,
@@ -209,6 +210,14 @@ class APIClient {
   async getSNMPDevices(agentId?: string): Promise<SNMPDevice[]> {
     const queryString = agentId ? `?agent_id=${agentId}` : ''
     return this.request<SNMPDevice[]>(`/snmp/devices${queryString}`)
+  }
+
+  // Topology links — device↔device edges discovered via LLDP/CDP/ARP by the
+  // SNMP walker and CIDR-sweep deep-scan. Used by the Topology page to render
+  // the actual network wiring between discovered devices.
+  async getTopologyLinks(serverId?: string): Promise<TopologyLink[]> {
+    const queryString = serverId ? `?server_id=${serverId}` : ''
+    return this.request<TopologyLink[]>(`/topology/links${queryString}`)
   }
 
   // License endpoints

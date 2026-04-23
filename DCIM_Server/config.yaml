@@ -378,9 +378,11 @@ snmp_walker:
   version: "2c"
   port: 161
   max_depth: 5
-  timeout: 5s
-  retries: 1
+  timeout: 2s
+  retries: 0
   interval: 15m
+  use_ip_as_community: true
+  combine_discovery: true
 
 # SNMP Auto-Discovery
 snmp_discovery:

@@ -47,6 +47,12 @@ type WalkConfig struct {
 	// the community string (required by some simulators like SNMP Network
 	// Topology Simulator).
 	UseIPAsCommunity bool
+	// Subnets lists CIDRs whose hosts are pre-seeded into the BFS queue so
+	// isolated devices unreachable via LLDP are still probed.
+	Subnets []string
+	// CombineDiscovery: when true, fallback discovery (CDP/ARP/routes) runs
+	// even on devices that already returned LLDP neighbors.
+	CombineDiscovery bool
 }
 
 // WalkSession tracks a running or completed walk
@@ -165,7 +171,7 @@ func (w *Walker) StartWalk(cfg WalkConfig) (string, error) {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 5 * time.Second
 	}
-	if cfg.Retries <= 0 {
+	if cfg.Retries < 0 {
 		cfg.Retries = 1
 	}
 
@@ -217,6 +223,30 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 	visited := make(map[string]bool)
 	depth := map[string]int{cfg.SeedIP: 0}
 	parent := map[string]string{cfg.SeedIP: ""}
+
+	// Pre-seed all hosts in configured subnets so isolated devices are probed
+	// even if LLDP doesn't link them to the seed.
+	for _, cidr := range cfg.Subnets {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			w.logger.Printf("[WALKER] Invalid subnet %s: %v", cidr, err)
+			continue
+		}
+		for ip := cloneIP(network.IP); network.Contains(ip); incIP(ip) {
+			s := ip.String()
+			if s == cfg.SeedIP {
+				continue
+			}
+			if !isRoutable(s) {
+				continue
+			}
+			if _, seen := depth[s]; !seen {
+				depth[s] = 0
+				queue = append(queue, s)
+			}
+		}
+		w.logger.Printf("[WALKER] Seeded subnet %s (%d hosts in queue)", cidr, len(queue)-1)
+	}
 
 	var collected []DiscoveredMetric
 	var collectedLinks []TopologyLink
@@ -371,18 +401,21 @@ func (w *Walker) probeDevice(ip string, cfg WalkConfig) ([]DiscoveredMetric, []D
 	// Close GET connection immediately — reusing it for BulkWalk confuses some simulators
 	g.Conn.Close()
 
+	// If the device doesn't respond to SNMP GET it is not reachable; skip neighbor discovery.
+	if err != nil {
+		return nil, nil, fmt.Errorf("get sysInfo: %w", err)
+	}
+
 	sysName := ip
 	sysDescr := ""
-	if err == nil {
-		for _, v := range getResult.Variables {
-			switch v.Name {
-			case "." + oidSysName, oidSysName:
-				if s := snmpString(v); s != "" {
-					sysName = strings.TrimSpace(s)
-				}
-			case "." + oidSysDescr, oidSysDescr:
-				sysDescr = strings.TrimSpace(snmpString(v))
+	for _, v := range getResult.Variables {
+		switch v.Name {
+		case "." + oidSysName, oidSysName:
+			if s := snmpString(v); s != "" {
+				sysName = strings.TrimSpace(s)
 			}
+		case "." + oidSysDescr, oidSysDescr:
+			sysDescr = strings.TrimSpace(snmpString(v))
 		}
 	}
 
@@ -500,12 +533,19 @@ func (w *Walker) discoverNeighbors(ip string, cfg WalkConfig) []DiscoveredNeighb
 		if len(result) > 0 {
 			w.logger.Printf("[WALKER] LLDP discovered %d neighbor(s) for %s: %v",
 				len(result), ip, neighborIPs(result))
-			return result
+			if !cfg.CombineDiscovery {
+				return result
+			}
+			// CombineDiscovery: also run fallback methods and merge results
 		}
 	}
 
 	// ── Fallback: IP-only methods ────────────────────────────────────────────
-	w.logger.Printf("[WALKER] LLDP returned no neighbors for %s — trying CDP/ARP/routes", ip)
+	if len(result) == 0 {
+		w.logger.Printf("[WALKER] LLDP returned no neighbors for %s — trying CDP/ARP/routes", ip)
+	} else {
+		w.logger.Printf("[WALKER] CombineDiscovery: supplementing LLDP results for %s with CDP/ARP/routes", ip)
+	}
 
 	addIP := func(neighborIP, name string) {
 		if neighborIP == "" || neighborIP == ip || seen[neighborIP] || !isRoutable(neighborIP) {
@@ -677,10 +717,32 @@ func isRoutable(ip string) bool {
 	if parsed.IsLoopback() || parsed.IsMulticast() || parsed.IsUnspecified() {
 		return false
 	}
+	// Reject limited broadcast and common subnet broadcasts (last octet = 255 or 0)
 	if parsed.Equal(net.IPv4bcast) {
 		return false
 	}
+	v4 := parsed.To4()
+	if v4 != nil && (v4[3] == 0 || v4[3] == 255) {
+		return false
+	}
 	return true
+}
+
+// cloneIP returns a copy of ip so that incIP does not mutate the original.
+func cloneIP(ip net.IP) net.IP {
+	clone := make(net.IP, len(ip))
+	copy(clone, ip)
+	return clone
+}
+
+// incIP increments an IP address in place (big-endian byte order).
+func incIP(ip net.IP) {
+	for j := len(ip) - 1; j >= 0; j-- {
+		ip[j]++
+		if ip[j] != 0 {
+			break
+		}
+	}
 }
 
 func guessDeviceType(sysDescr string) string {

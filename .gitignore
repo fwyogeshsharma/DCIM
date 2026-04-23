@@ -1,0 +1,52 @@
+# Build outputs
+DCIM_Server/build/
+DCIM_Agent/build/
+DCIM_UI/dist/
+DCIM_UI/node_modules/
+DCIM_Aggregator/dist/
+node_modules/
+
+# Images and media
+image/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
+*.glb
+*.pptx
+
+# Certificates and secrets
+certs/
+*.crt
+*.key
+*.pem
+*.srl
+
+# Databases and logs
+*.db
+*.db-shm
+*.db-wal
+*.log
+combined.log
+error.log
+logs/
+
+# Runtime / temp
+*.exe
+*.exe~
+dcim-agent
+dcim-serv
+dcim-server
+output/
+metrics_temp.json
+prediction_service/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
