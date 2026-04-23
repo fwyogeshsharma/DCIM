@@ -6,6 +6,7 @@ import { config } from './config/database'
 import { setupRoutes } from './api/routes'
 import { startWorkers } from './workers'
 import { logger } from './utils/logger'
+import { runMigrations } from './database/migrate'
 import { errorHandler, notFoundHandler } from './api/middleware/errorHandler'
 
 const app = express()
@@ -72,6 +73,9 @@ async function start() {
     const dbClient = await dbPool.connect()
     logger.info('PostgreSQL connected')
     dbClient.release()
+
+    // Run migrations automatically on every startup
+    await runMigrations(dbPool)
 
     // Connect Redis
     await redisClient.connect()
