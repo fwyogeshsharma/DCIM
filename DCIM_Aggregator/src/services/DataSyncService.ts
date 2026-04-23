@@ -264,26 +264,32 @@ export class DataSyncService {
         }
 
         placeholders.push(
-          `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7})`
+          `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9})`
         )
         params_array.push(
           serverId,
           m.agent_id,
           m.device_name,
-          m.device_host || m.device_ip,
+          m.device_host,
           m.metric_name,
-          String(m.value ?? m.metric_value ?? ''),
+          m.value ?? null,
           m.oid,
-          m.timestamp || new Date()
+          m.timestamp || new Date(),
+          m.value_type || null,
+          m.metadata ? JSON.stringify(m.metadata) : null
         )
-        paramIndex += 8
+        paramIndex += 10
       }
 
       if (placeholders.length > 0) {
         const query = `
-          INSERT INTO snmp_metrics (server_id, agent_id, device_name, device_ip, metric_name, metric_value, oid, timestamp)
+          INSERT INTO snmp_metrics (server_id, agent_id, device_name, device_host, metric_name, value, oid, timestamp, value_type, metadata)
           VALUES ${placeholders.join(', ')}
-          ON CONFLICT DO NOTHING
+          ON CONFLICT (server_id, agent_id, device_host, metric_name, timestamp)
+          DO UPDATE SET
+            value      = EXCLUDED.value,
+            value_type = EXCLUDED.value_type,
+            metadata   = EXCLUDED.metadata
         `
         await this.dbPool.query(query, params_array)
       }
@@ -374,26 +380,18 @@ export class DataSyncService {
       for (const link of links) {
         try {
           const result = await this.dbPool.query(
-            `INSERT INTO topology_links (server_id, source_ip, source_name, source_depth, source_port, target_ip, target_name, target_depth, target_port, last_seen)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            `INSERT INTO topology_links (server_id, source_ip, source_name, target_ip, target_name, last_seen)
+             VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (server_id, source_ip, target_ip)
-             DO UPDATE SET source_name  = EXCLUDED.source_name,
-                           source_depth = EXCLUDED.source_depth,
-                           source_port  = EXCLUDED.source_port,
-                           target_name  = EXCLUDED.target_name,
-                           target_depth = EXCLUDED.target_depth,
-                           target_port  = EXCLUDED.target_port,
-                           last_seen    = EXCLUDED.last_seen`,
+             DO UPDATE SET source_name = EXCLUDED.source_name,
+                           target_name = EXCLUDED.target_name,
+                           last_seen   = EXCLUDED.last_seen`,
             [
               serverId,
               link.source_ip,
               link.source_name || '',
-              link.source_depth ?? 0,
-              link.source_port ?? 0,
               link.target_ip,
               link.target_name || '',
-              link.target_depth ?? 0,
-              link.target_port || '',
               link.last_seen || new Date(),
             ]
           )
