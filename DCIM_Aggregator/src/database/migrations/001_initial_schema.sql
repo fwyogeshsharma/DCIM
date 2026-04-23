@@ -75,9 +75,11 @@ CREATE TABLE IF NOT EXISTS snmp_metrics (
     server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
     agent_id VARCHAR(255) NOT NULL,
     device_name VARCHAR(255) NOT NULL,
-    device_ip VARCHAR(45) NOT NULL,
+    device_host VARCHAR(45) NOT NULL,
     metric_name VARCHAR(255) NOT NULL,
-    metric_value VARCHAR(500),
+    value DOUBLE PRECISION,
+    value_type TEXT,
+    metadata TEXT,
     oid VARCHAR(255),
     timestamp TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()

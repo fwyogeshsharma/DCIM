@@ -23,7 +23,7 @@ SELECT add_compression_policy('metrics', INTERVAL '7 days', if_not_exists => TRU
 
 ALTER TABLE snmp_metrics SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'server_id, agent_id, device_ip'
+    timescaledb.compress_segmentby = 'server_id, agent_id, device_host'
 );
 
 SELECT add_compression_policy('snmp_metrics', INTERVAL '7 days', if_not_exists => TRUE);

@@ -11,7 +11,7 @@ WHERE id IN (
     SELECT id FROM (
         SELECT id,
                ROW_NUMBER() OVER (
-                   PARTITION BY server_id, agent_id, device_ip, metric_name
+                   PARTITION BY server_id, agent_id, device_host, metric_name
                    ORDER BY timestamp DESC
                ) AS rn
         FROM snmp_metrics
