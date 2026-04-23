@@ -1,0 +1,1024 @@
+2026/04/23 14:04:44 Loading configuration from: config.yaml
+2026/04/23 14:04:44 Configuration loaded successfully
+2026/04/23 14:04:44 Initializing database (postgres)...
+2026/04/23 14:04:44 [MIGRATIONS] All migrations up to date (9 total)
+2026/04/23 14:04:44 Database initialized successfully
+2026/04/23 14:04:44 Initializing license manager...
+2026/04/23 14:04:44 License manager initialized successfully
+2026/04/23 14:04:44 Creating server...
+[SERVER] 2026/04/23 14:04:44 Server initialized with ID: JPR_MP_SERVER_WIN_HP_AY_01
+[SERVER] 2026/04/23 14:04:44 TLS configured: ClientAuth=require_and_verify, MinVersion=1.2
+[SERVER] 2026/04/23 14:04:44 Loaded cooling configuration from cooling_config.yaml
+[SERVER] 2026/04/23 14:04:44 [WALKER] Waiting for SNMP agent at 10.100.0.2:161 to become available...
+[SERVER] 2026/04/23 14:04:44 ================================================================================
+[SERVER] 2026/04/23 14:04:44   DCIM Server - Data Center Infrastructure Monitor
+[SERVER] 2026/04/23 14:04:44 ================================================================================
+[SERVER] 2026/04/23 14:04:44 
+[SERVER] 2026/04/23 14:04:44 License Information:
+[SERVER] 2026/04/23 14:04:44   Company: faber
+[SERVER] 2026/04/23 14:04:44   Max Agents: 100
+[SERVER] 2026/04/23 14:04:44   Max SNMP Devices: 500
+[SERVER] 2026/04/23 14:04:44   Expires: 2027-02-04 (287 days)
+[SERVER] 2026/04/23 14:04:44 
+[SERVER] 2026/04/23 14:04:44 Server Configuration:
+[SERVER] 2026/04/23 14:04:44   Address: 0.0.0.0:8443
+[SERVER] 2026/04/23 14:04:44   TLS Enabled: true
+[SERVER] 2026/04/23 14:04:44   Client Authentication: require_and_verify
+[SERVER] 2026/04/23 14:04:44   Database: postgres
+[SERVER] 2026/04/23 14:04:44 
+[SERVER] 2026/04/23 14:04:44 [WALKER] SNMP agent at 10.100.0.2 is ready — starting walk
+[SERVER] 2026/04/23 14:04:44 API Endpoints:
+[SERVER] 2026/04/23 14:04:44   POST /api/v1/metrics
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/metrics
+[SERVER] 2026/04/23 14:04:44 [WALKER] Auto-starting walk from seed 10.100.0.2 (depth 5)
+[SERVER] 2026/04/23 14:04:44   POST /api/v1/alerts
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/alerts
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/alerts/{id}
+[SERVER] 2026/04/23 14:04:44   PUT  /api/v1/alerts/{id}/resolve
+[SERVER] 2026/04/23 14:04:44 [WALKER] Seeded subnet 10.100.0.0/24 (255 hosts in queue)
+[SERVER] 2026/04/23 14:04:44 [WALKER] Auto-started session walk-1776933284314448600
+[SERVER] 2026/04/23 14:04:44   POST /api/v1/snmp-metrics
+[SERVER] 2026/04/23 14:04:44 [WALKER] Probing 10.100.0.2 (depth 0)
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/snmp-metrics
+[SERVER] 2026/04/23 14:04:44   POST /api/v1/cooling-metrics
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/agent-status-history
+[SERVER] 2026/04/23 14:04:44   POST /api/v1/register
+[SERVER] 2026/04/23 14:04:44 [WALKER] Failed to store server→seed link: upsert topology link 10.100.0.2->10.100.0.2: pq: column "source_depth" of relation "topology_links" does not exist at position 1:64 (42703)
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/agents
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/agents/{id}/metrics
+[SERVER] 2026/04/23 14:04:44   GET  /api/v1/events
+[SERVER] 2026/04/23 14:04:44   GET  /health
+[SERVER] 2026/04/23 14:04:44 
+[SERVER] 2026/04/23 14:04:44 ================================================================================
+[SERVER] 2026/04/23 14:04:44 
+[SERVER] 2026/04/23 14:04:44 Server starting with mTLS on https://0.0.0.0:8443
+[SERVER] 2026/04/23 14:04:44 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [2401:4900:1c7a:a585:ed53:106d:74f7:bba5]:53667)
+[SERVER] 2026/04/23 14:04:44 [WALKER] LLDP discovered 4 neighbor(s) for 10.100.0.2: [10.100.0.3 10.100.0.4 10.100.0.6 10.100.0.7]
+[SERVER] 2026/04/23 14:04:44 [WALKER] LLDP returned no neighbors for 10.100.0.2 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:04:44 <- GET /api/v1/alerts completed in 9.4117ms
+[SERVER] 2026/04/23 14:04:44 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [2401:4900:1c7a:a585:ed53:106d:74f7:bba5]:53668)
+[SERVER] 2026/04/23 14:04:44 <- GET /api/v1/traps completed in 15.1287ms
+[SERVER] 2026/04/23 14:04:44 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53669)
+[SERVER] 2026/04/23 14:04:44 <- GET /api/v1/alerts completed in 5.3452ms
+[SERVER] 2026/04/23 14:04:44 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53670)
+[SERVER] 2026/04/23 14:04:44 <- GET /api/v1/alerts completed in 3.7728ms
+[SERVER] 2026/04/23 14:04:45 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64324)
+[SERVER] 2026/04/23 14:04:45 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:64325)
+[SERVER] 2026/04/23 14:04:45 <- GET /api/v1/alerts completed in 3.0111ms
+[SERVER] 2026/04/23 14:04:45 <- GET /api/v1/traps completed in 4.7113ms
+[SERVER] 2026/04/23 14:04:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64326)
+[SERVER] 2026/04/23 14:04:45 <- GET /api/v1/alerts completed in 5.6275ms
+[SERVER] 2026/04/23 14:04:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64327)
+[SERVER] 2026/04/23 14:04:45 [WALKER] Fallback discovered 4 neighbor(s) for 10.100.0.2: [10.100.0.3 10.100.0.4 10.100.0.6 10.100.0.7]
+[SERVER] 2026/04/23 14:04:45 [WALKER] Probing 10.100.0.0 (depth 0)
+[SERVER] 2026/04/23 14:04:45 <- GET /api/v1/alerts completed in 3.6647ms
+[SERVER] 2026/04/23 14:04:46 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [2401:4900:1c7a:a585:ed53:106d:74f7:bba5]:53647)
+[SERVER] 2026/04/23 14:04:46 <- GET /api/v1/metrics completed in 3.9031ms
+[SERVER] 2026/04/23 14:04:46 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53677)
+[SERVER] 2026/04/23 14:04:46 <- GET /api/v1/snmp-metrics completed in 6.5645ms
+[SERVER] 2026/04/23 14:04:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53685)
+[SERVER] 2026/04/23 14:04:48 <- GET /api/v1/metrics completed in 3.4626ms
+[SERVER] 2026/04/23 14:04:48 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53686)
+[SERVER] 2026/04/23 14:04:48 <- GET /api/v1/metrics completed in 35.5625ms
+[SERVER] 2026/04/23 14:04:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53688)
+[SERVER] 2026/04/23 14:04:48 <- GET /api/v1/metrics completed in 2.173ms
+[SERVER] 2026/04/23 14:04:50 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64330)
+[SERVER] 2026/04/23 14:04:50 <- GET /api/v1/metrics completed in 11.7502ms
+[SERVER] 2026/04/23 14:04:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64331)
+[SERVER] 2026/04/23 14:04:50 <- GET /api/v1/metrics completed in 3.3002ms
+[SERVER] 2026/04/23 14:04:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64332)
+[SERVER] 2026/04/23 14:04:50 <- GET /api/v1/metrics completed in 2.0424ms
+[SERVER] 2026/04/23 14:04:50 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64333)
+[SERVER] 2026/04/23 14:04:50 <- GET /api/v1/snmp-metrics completed in 2.6432ms
+[SERVER] 2026/04/23 14:04:52 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53694)
+[SERVER] 2026/04/23 14:04:52 <- GET /api/v1/snmp-metrics completed in 3.4171ms
+[SERVER] 2026/04/23 14:04:58 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53713)
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53712)
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53714)
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/alerts completed in 2.8511ms
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/metrics completed in 5.6447ms
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/agents completed in 39.098ms
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53715)
+[SERVER] 2026/04/23 14:04:59 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53718)
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/topology/links completed in 3.3754ms
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53721)
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53720)
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/traps completed in 6.9362ms
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/alerts completed in 7.2098ms
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/metrics completed in 41.4048ms
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53723)
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/alerts completed in 3.2565ms
+[SERVER] 2026/04/23 14:04:59 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53726)
+[SERVER] 2026/04/23 14:04:59 <- GET /api/v1/metrics completed in 1.915ms
+[SERVER] 2026/04/23 14:05:00 -> GET /health (Agent: , IP: 127.0.0.1:64337)
+[SERVER] 2026/04/23 14:05:00 <- GET /health completed in 6.7207ms
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/agents (Agent: , IP: [::1]:64338)
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64339)
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/agents completed in 1.4327ms
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [::1]:64341)
+[SERVER] 2026/04/23 14:05:00 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/topology/links completed in 3.102ms
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64340)
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/metrics completed in 18.0468ms
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/alerts completed in 3.4338ms
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:64342)
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/traps completed in 5.34ms
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64343)
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64344)
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/metrics completed in 1.8147ms
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/alerts completed in 2.4157ms
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64345)
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64346)
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/metrics completed in 24.8816ms
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/alerts completed in 23.0947ms
+[SERVER] 2026/04/23 14:05:00 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64347)
+[SERVER] 2026/04/23 14:05:00 <- GET /api/v1/snmp-metrics completed in 3.7923ms
+[SERVER] 2026/04/23 14:05:02 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53755)
+[SERVER] 2026/04/23 14:05:02 <- GET /api/v1/snmp-metrics completed in 2.0733ms
+[SERVER] 2026/04/23 14:05:02 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53757)
+[SERVER] 2026/04/23 14:05:02 <- GET /health completed in 4.0551ms
+[SERVER] 2026/04/23 14:05:05 [WALKER] BulkWalk LLDPSysName on 10.100.0.0 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:05:09 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53766)
+[SERVER] 2026/04/23 14:05:09 <- GET /api/v1/metrics completed in 6.9318ms
+[SERVER] 2026/04/23 14:05:09 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53767)
+[SERVER] 2026/04/23 14:05:09 <- GET /api/v1/metrics completed in 42.0536ms
+[SERVER] 2026/04/23 14:05:09 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53514)
+[SERVER] 2026/04/23 14:05:09 <- GET /api/v1/metrics completed in 4.1001ms
+[SERVER] 2026/04/23 14:05:10 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64349)
+[SERVER] 2026/04/23 14:05:10 <- GET /api/v1/metrics completed in 9.2206ms
+[SERVER] 2026/04/23 14:05:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64350)
+[SERVER] 2026/04/23 14:05:10 <- GET /api/v1/metrics completed in 3.0376ms
+[SERVER] 2026/04/23 14:05:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64351)
+[SERVER] 2026/04/23 14:05:10 <- GET /api/v1/metrics completed in 1.351ms
+[SERVER] 2026/04/23 14:05:10 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64352)
+[SERVER] 2026/04/23 14:05:10 <- GET /api/v1/snmp-metrics completed in 5.0218ms
+[SERVER] 2026/04/23 14:05:12 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53526)
+[SERVER] 2026/04/23 14:05:12 <- GET /api/v1/snmp-metrics completed in 4.6993ms
+[SERVER] 2026/04/23 14:05:14 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53537)
+[SERVER] 2026/04/23 14:05:14 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53538)
+[SERVER] 2026/04/23 14:05:14 <- GET /api/v1/alerts completed in 1.7274ms
+[SERVER] 2026/04/23 14:05:14 <- GET /api/v1/traps completed in 2.2934ms
+[SERVER] 2026/04/23 14:05:14 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53543)
+[SERVER] 2026/04/23 14:05:14 <- GET /api/v1/alerts completed in 3.2992ms
+[SERVER] 2026/04/23 14:05:14 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53544)
+[SERVER] 2026/04/23 14:05:14 <- GET /api/v1/alerts completed in 3.415ms
+[SERVER] 2026/04/23 14:05:15 [WALKER] Walk LLDPSysName on 10.100.0.0 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:05:15 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64353)
+[SERVER] 2026/04/23 14:05:15 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:64354)
+[SERVER] 2026/04/23 14:05:15 <- GET /api/v1/alerts completed in 1.9093ms
+[SERVER] 2026/04/23 14:05:15 <- GET /api/v1/traps completed in 2.1406ms
+[SERVER] 2026/04/23 14:05:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64355)
+[SERVER] 2026/04/23 14:05:15 <- GET /api/v1/alerts completed in 1.5117ms
+[SERVER] 2026/04/23 14:05:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64356)
+[SERVER] 2026/04/23 14:05:15 <- GET /api/v1/alerts completed in 3.6222ms
+[SERVER] 2026/04/23 14:05:19 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53558)
+[SERVER] 2026/04/23 14:05:19 <- GET /api/v1/metrics completed in 2.8401ms
+[SERVER] 2026/04/23 14:05:19 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53559)
+[SERVER] 2026/04/23 14:05:19 <- GET /api/v1/metrics completed in 52.1876ms
+[SERVER] 2026/04/23 14:05:19 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53561)
+[SERVER] 2026/04/23 14:05:19 <- GET /api/v1/metrics completed in 2.1968ms
+[SERVER] 2026/04/23 14:05:20 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64357)
+[SERVER] 2026/04/23 14:05:20 <- GET /api/v1/metrics completed in 10.3424ms
+[SERVER] 2026/04/23 14:05:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64358)
+[SERVER] 2026/04/23 14:05:20 <- GET /api/v1/metrics completed in 3.706ms
+[SERVER] 2026/04/23 14:05:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64359)
+[SERVER] 2026/04/23 14:05:20 <- GET /api/v1/metrics completed in 2.1179ms
+[SERVER] 2026/04/23 14:05:20 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64360)
+[SERVER] 2026/04/23 14:05:20 <- GET /api/v1/snmp-metrics completed in 2.0911ms
+[SERVER] 2026/04/23 14:05:22 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53566)
+[SERVER] 2026/04/23 14:05:22 <- GET /api/v1/snmp-metrics completed in 2.7597ms
+[SERVER] 2026/04/23 14:05:25 [WALKER] BulkWalk LLDPChassisId on 10.100.0.0 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53585)
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/agents completed in 7.3582ms
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53591)
+[SERVER] 2026/04/23 14:05:29 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53586)
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/topology/links completed in 3.3101ms
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53588)
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53587)
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/alerts completed in 4.1339ms
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/metrics completed in 4.5904ms
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/traps completed in 7.4741ms
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53596)
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53597)
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/alerts completed in 8.9735ms
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53598)
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/metrics completed in 79.8085ms
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/alerts completed in 3.2542ms
+[SERVER] 2026/04/23 14:05:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53599)
+[SERVER] 2026/04/23 14:05:29 <- GET /api/v1/metrics completed in 3.3631ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/agents (Agent: , IP: [::1]:64365)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/agents completed in 3.2604ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64366)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/metrics completed in 9.7485ms
+[SERVER] 2026/04/23 14:05:30 -> GET /health (Agent: , IP: 127.0.0.1:64367)
+[SERVER] 2026/04/23 14:05:30 <- GET /health completed in 3.7963ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64368)
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64371)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/traps completed in 2.4375ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64370)
+[SERVER] 2026/04/23 14:05:30 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/topology/links completed in 1.4ms
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/metrics completed in 4.9406ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64369)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/alerts completed in 2.0342ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64372)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/metrics completed in 5.511ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64373)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/alerts completed in 2.2701ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64374)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/alerts completed in 4.0532ms
+[SERVER] 2026/04/23 14:05:30 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64375)
+[SERVER] 2026/04/23 14:05:30 <- GET /api/v1/snmp-metrics completed in 3.9554ms
+[SERVER] 2026/04/23 14:05:32 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53632)
+[SERVER] 2026/04/23 14:05:32 <- GET /health completed in 4.6689ms
+[SERVER] 2026/04/23 14:05:32 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53631)
+[SERVER] 2026/04/23 14:05:32 <- GET /api/v1/snmp-metrics completed in 1.9113ms
+[SERVER] 2026/04/23 14:05:35 [WALKER] Walk LLDPChassisId on 10.100.0.0 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:05:38 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53656)
+[SERVER] 2026/04/23 14:05:38 <- GET /api/v1/metrics completed in 3.7554ms
+[SERVER] 2026/04/23 14:05:38 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53657)
+[SERVER] 2026/04/23 14:05:38 <- GET /api/v1/metrics completed in 31.3615ms
+[SERVER] 2026/04/23 14:05:38 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53658)
+[SERVER] 2026/04/23 14:05:38 <- GET /api/v1/metrics completed in 1.9434ms
+[SERVER] 2026/04/23 14:05:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64377)
+[SERVER] 2026/04/23 14:05:40 <- GET /api/v1/metrics completed in 5.0569ms
+[SERVER] 2026/04/23 14:05:40 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64378)
+[SERVER] 2026/04/23 14:05:40 <- GET /api/v1/metrics completed in 8.1574ms
+[SERVER] 2026/04/23 14:05:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64379)
+[SERVER] 2026/04/23 14:05:40 <- GET /api/v1/metrics completed in 3.1751ms
+[SERVER] 2026/04/23 14:05:40 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64380)
+[SERVER] 2026/04/23 14:05:40 <- GET /api/v1/snmp-metrics completed in 4.22ms
+[SERVER] 2026/04/23 14:05:41 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53665)
+[SERVER] 2026/04/23 14:05:41 <- GET /api/v1/snmp-metrics completed in 4.0028ms
+[SERVER] 2026/04/23 14:05:43 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53674)
+[SERVER] 2026/04/23 14:05:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53673)
+[SERVER] 2026/04/23 14:05:43 <- GET /api/v1/traps completed in 1.7305ms
+[SERVER] 2026/04/23 14:05:43 <- GET /api/v1/alerts completed in 2.2319ms
+[SERVER] 2026/04/23 14:05:43 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53675)
+[SERVER] 2026/04/23 14:05:43 <- GET /api/v1/alerts completed in 3.1178ms
+[SERVER] 2026/04/23 14:05:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53676)
+[SERVER] 2026/04/23 14:05:43 <- GET /api/v1/alerts completed in 4.6482ms
+[SERVER] 2026/04/23 14:05:45 [WALKER] BulkWalk LLDPPortId on 10.100.0.0 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:05:45 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64381)
+[SERVER] 2026/04/23 14:05:45 <- GET /api/v1/traps completed in 2.567ms
+[SERVER] 2026/04/23 14:05:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64382)
+[SERVER] 2026/04/23 14:05:45 <- GET /api/v1/alerts completed in 2.269ms
+[SERVER] 2026/04/23 14:05:45 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64383)
+[SERVER] 2026/04/23 14:05:45 <- GET /api/v1/alerts completed in 1.9702ms
+[SERVER] 2026/04/23 14:05:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64384)
+[SERVER] 2026/04/23 14:05:45 <- GET /api/v1/alerts completed in 2.6769ms
+[SERVER] 2026/04/23 14:05:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53690)
+[SERVER] 2026/04/23 14:05:48 <- GET /api/v1/metrics completed in 3.5691ms
+[SERVER] 2026/04/23 14:05:48 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53691)
+[SERVER] 2026/04/23 14:05:48 <- GET /api/v1/metrics completed in 54.6955ms
+[SERVER] 2026/04/23 14:05:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53692)
+[SERVER] 2026/04/23 14:05:48 <- GET /api/v1/metrics completed in 10.6376ms
+[SERVER] 2026/04/23 14:05:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64385)
+[SERVER] 2026/04/23 14:05:50 <- GET /api/v1/metrics completed in 3.1362ms
+[SERVER] 2026/04/23 14:05:50 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64386)
+[SERVER] 2026/04/23 14:05:50 <- GET /api/v1/metrics completed in 5.874ms
+[SERVER] 2026/04/23 14:05:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64387)
+[SERVER] 2026/04/23 14:05:50 <- GET /api/v1/metrics completed in 2.3716ms
+[SERVER] 2026/04/23 14:05:50 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64388)
+[SERVER] 2026/04/23 14:05:50 <- GET /api/v1/snmp-metrics completed in 4.1503ms
+[SERVER] 2026/04/23 14:05:51 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53714)
+[SERVER] 2026/04/23 14:05:51 <- GET /api/v1/snmp-metrics completed in 3.4342ms
+[SERVER] 2026/04/23 14:05:55 [WALKER] Walk LLDPPortId on 10.100.0.0 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:05:55 [WALKER] LLDP returned no neighbors for 10.100.0.0 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53723)
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53728)
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/agents completed in 18.4302ms
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53730)
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53732)
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/metrics completed in 4.0678ms
+[SERVER] 2026/04/23 14:05:58 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/topology/links completed in 1.8142ms
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/traps completed in 3.514ms
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53729)
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/alerts completed in 2.9984ms
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53733)
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53734)
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/alerts completed in 572µs
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/metrics completed in 67.6031ms
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53735)
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/alerts completed in 3.2949ms
+[SERVER] 2026/04/23 14:05:58 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53736)
+[SERVER] 2026/04/23 14:05:58 <- GET /api/v1/metrics completed in 4.721ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/agents (Agent: , IP: [::1]:64393)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/agents completed in 2.4558ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64394)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/metrics completed in 3.0262ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64395)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/metrics completed in 17.7027ms
+[SERVER] 2026/04/23 14:06:00 -> GET /health (Agent: , IP: 127.0.0.1:64396)
+[SERVER] 2026/04/23 14:06:00 <- GET /health completed in 4.7268ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64399)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/metrics completed in 1.7199ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64397)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/traps completed in 3.9856ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64398)
+[SERVER] 2026/04/23 14:06:00 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/topology/links completed in 3.6351ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64400)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/alerts completed in 2.9692ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64401)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/alerts completed in 3.4528ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64402)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/alerts completed in 3.6814ms
+[SERVER] 2026/04/23 14:06:00 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64403)
+[SERVER] 2026/04/23 14:06:00 <- GET /api/v1/snmp-metrics completed in 3.4307ms
+[SERVER] 2026/04/23 14:06:02 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53769)
+[SERVER] 2026/04/23 14:06:02 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53770)
+[SERVER] 2026/04/23 14:06:02 <- GET /api/v1/snmp-metrics completed in 6.9902ms
+[SERVER] 2026/04/23 14:06:02 <- GET /health completed in 5.4706ms
+[SERVER] 2026/04/23 14:06:05 [WALKER] BulkWalk CDP on 10.100.0.0 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:06:08 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53779)
+[SERVER] 2026/04/23 14:06:08 <- GET /api/v1/metrics completed in 3.3806ms
+[SERVER] 2026/04/23 14:06:08 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53780)
+[SERVER] 2026/04/23 14:06:08 <- GET /api/v1/metrics completed in 3.7686ms
+[SERVER] 2026/04/23 14:06:08 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:53781)
+[SERVER] 2026/04/23 14:06:08 <- GET /api/v1/metrics completed in 34.9963ms
+[SERVER] 2026/04/23 14:06:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64404)
+[SERVER] 2026/04/23 14:06:10 <- GET /api/v1/metrics completed in 2.6071ms
+[SERVER] 2026/04/23 14:06:10 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64405)
+[SERVER] 2026/04/23 14:06:10 <- GET /api/v1/metrics completed in 9.6267ms
+[SERVER] 2026/04/23 14:06:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64406)
+[SERVER] 2026/04/23 14:06:10 <- GET /api/v1/metrics completed in 3.0305ms
+[SERVER] 2026/04/23 14:06:10 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64407)
+[SERVER] 2026/04/23 14:06:10 <- GET /api/v1/snmp-metrics completed in 5.3565ms
+[SERVER] 2026/04/23 14:06:12 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60758)
+[SERVER] 2026/04/23 14:06:12 <- GET /api/v1/snmp-metrics completed in 4.8542ms
+[SERVER] 2026/04/23 14:06:14 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60765)
+[SERVER] 2026/04/23 14:06:14 <- GET /api/v1/alerts completed in 4.2478ms
+[SERVER] 2026/04/23 14:06:14 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60767)
+[SERVER] 2026/04/23 14:06:14 <- GET /api/v1/traps completed in 3.9037ms
+[SERVER] 2026/04/23 14:06:14 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60769)
+[SERVER] 2026/04/23 14:06:14 <- GET /api/v1/alerts completed in 2.4792ms
+[SERVER] 2026/04/23 14:06:14 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60771)
+[SERVER] 2026/04/23 14:06:14 <- GET /api/v1/alerts completed in 2.3034ms
+[SERVER] 2026/04/23 14:06:15 [WALKER] Walk CDP on 10.100.0.0 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:06:15 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64410)
+[SERVER] 2026/04/23 14:06:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64411)
+[SERVER] 2026/04/23 14:06:15 <- GET /api/v1/traps completed in 2.7501ms
+[SERVER] 2026/04/23 14:06:15 <- GET /api/v1/alerts completed in 3.0505ms
+[SERVER] 2026/04/23 14:06:15 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64412)
+[SERVER] 2026/04/23 14:06:15 <- GET /api/v1/alerts completed in 2.3196ms
+[SERVER] 2026/04/23 14:06:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64413)
+[SERVER] 2026/04/23 14:06:15 <- GET /api/v1/alerts completed in 2.3978ms
+[SERVER] 2026/04/23 14:06:19 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60783)
+[SERVER] 2026/04/23 14:06:19 <- GET /api/v1/metrics completed in 3.3268ms
+[SERVER] 2026/04/23 14:06:19 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60784)
+[SERVER] 2026/04/23 14:06:19 <- GET /api/v1/metrics completed in 2.2696ms
+[SERVER] 2026/04/23 14:06:19 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60785)
+[SERVER] 2026/04/23 14:06:19 <- GET /api/v1/metrics completed in 32.0183ms
+[SERVER] 2026/04/23 14:06:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64414)
+[SERVER] 2026/04/23 14:06:20 <- GET /api/v1/metrics completed in 8.418ms
+[SERVER] 2026/04/23 14:06:20 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64415)
+[SERVER] 2026/04/23 14:06:20 <- GET /api/v1/metrics completed in 6.0848ms
+[SERVER] 2026/04/23 14:06:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64416)
+[SERVER] 2026/04/23 14:06:20 <- GET /api/v1/metrics completed in 2.5446ms
+[SERVER] 2026/04/23 14:06:20 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64417)
+[SERVER] 2026/04/23 14:06:20 <- GET /api/v1/snmp-metrics completed in 2.7265ms
+[SERVER] 2026/04/23 14:06:22 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60792)
+[SERVER] 2026/04/23 14:06:22 <- GET /api/v1/snmp-metrics completed in 2.331ms
+[SERVER] 2026/04/23 14:06:25 [WALKER] BulkWalk ARP on 10.100.0.0 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:06:29 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60807)
+[SERVER] 2026/04/23 14:06:29 <- GET /api/v1/agents completed in 3.7587ms
+[SERVER] 2026/04/23 14:06:29 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60811)
+[SERVER] 2026/04/23 14:06:29 <- GET /api/v1/alerts completed in 2.7381ms
+[SERVER] 2026/04/23 14:06:29 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60814)
+[SERVER] 2026/04/23 14:06:29 <- GET /api/v1/alerts completed in 2.768ms
+[SERVER] 2026/04/23 14:06:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60815)
+[SERVER] 2026/04/23 14:06:29 <- GET /api/v1/metrics completed in 6.2004ms
+[SERVER] 2026/04/23 14:06:29 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60820)
+[SERVER] 2026/04/23 14:06:29 <- GET /api/v1/traps completed in 2.0222ms
+[SERVER] 2026/04/23 14:06:29 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60822)
+[SERVER] 2026/04/23 14:06:29 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:06:29 <- GET /api/v1/topology/links completed in 2.0821ms
+[SERVER] 2026/04/23 14:06:29 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60826)
+[SERVER] 2026/04/23 14:06:29 <- GET /api/v1/alerts completed in 3.7692ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60827)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/metrics completed in 135.3219ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60843)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/metrics completed in 4.4159ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/agents (Agent: , IP: [::1]:64422)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/agents completed in 1.2443ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64423)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/metrics completed in 3.2347ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64424)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/metrics completed in 9.2554ms
+[SERVER] 2026/04/23 14:06:30 -> GET /health (Agent: , IP: 127.0.0.1:64425)
+[SERVER] 2026/04/23 14:06:30 <- GET /health completed in 4.8071ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64429)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/metrics completed in 2.4619ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [::1]:64428)
+[SERVER] 2026/04/23 14:06:30 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/topology/links completed in 2.4136ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:64427)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/traps completed in 2.4137ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64426)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/alerts completed in 2.7056ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64430)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/alerts completed in 5.113ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64431)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/alerts completed in 3.0022ms
+[SERVER] 2026/04/23 14:06:30 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64432)
+[SERVER] 2026/04/23 14:06:30 <- GET /api/v1/snmp-metrics completed in 3.1555ms
+[SERVER] 2026/04/23 14:06:32 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60853)
+[SERVER] 2026/04/23 14:06:32 <- GET /health completed in 9.7194ms
+[SERVER] 2026/04/23 14:06:32 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60854)
+[SERVER] 2026/04/23 14:06:32 <- GET /api/v1/snmp-metrics completed in 1.9527ms
+[SERVER] 2026/04/23 14:06:35 [WALKER] Walk ARP on 10.100.0.0 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:06:39 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60866)
+[SERVER] 2026/04/23 14:06:39 <- GET /api/v1/metrics completed in 4.7041ms
+[SERVER] 2026/04/23 14:06:39 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60867)
+[SERVER] 2026/04/23 14:06:39 <- GET /api/v1/metrics completed in 2.9055ms
+[SERVER] 2026/04/23 14:06:39 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60868)
+[SERVER] 2026/04/23 14:06:39 <- GET /api/v1/metrics completed in 55.3137ms
+[SERVER] 2026/04/23 14:06:40 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64433)
+[SERVER] 2026/04/23 14:06:40 <- GET /api/v1/metrics completed in 8.9083ms
+[SERVER] 2026/04/23 14:06:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64434)
+[SERVER] 2026/04/23 14:06:40 <- GET /api/v1/metrics completed in 2.0516ms
+[SERVER] 2026/04/23 14:06:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64435)
+[SERVER] 2026/04/23 14:06:40 <- GET /api/v1/metrics completed in 2.7445ms
+[SERVER] 2026/04/23 14:06:41 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64436)
+[SERVER] 2026/04/23 14:06:41 <- GET /api/v1/snmp-metrics completed in 2.8569ms
+[SERVER] 2026/04/23 14:06:42 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60875)
+[SERVER] 2026/04/23 14:06:42 <- GET /api/v1/snmp-metrics completed in 2.3692ms
+[SERVER] 2026/04/23 14:06:44 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60882)
+[SERVER] 2026/04/23 14:06:44 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60884)
+[SERVER] 2026/04/23 14:06:44 <- GET /api/v1/alerts completed in 4.1893ms
+[SERVER] 2026/04/23 14:06:44 <- GET /api/v1/traps completed in 2.8415ms
+[SERVER] 2026/04/23 14:06:44 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60885)
+[SERVER] 2026/04/23 14:06:44 <- GET /api/v1/alerts completed in 2.68ms
+[SERVER] 2026/04/23 14:06:44 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60886)
+[SERVER] 2026/04/23 14:06:44 <- GET /api/v1/alerts completed in 4.6778ms
+[SERVER] 2026/04/23 14:06:45 [WALKER] BulkWalk RouteNextHop on 10.100.0.0 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:06:45 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:64438)
+[SERVER] 2026/04/23 14:06:46 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64439)
+[SERVER] 2026/04/23 14:06:46 <- GET /api/v1/traps completed in 32.736ms
+[SERVER] 2026/04/23 14:06:46 <- GET /api/v1/alerts completed in 3.1124ms
+[SERVER] 2026/04/23 14:06:46 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64440)
+[SERVER] 2026/04/23 14:06:46 <- GET /api/v1/alerts completed in 1.9519ms
+[SERVER] 2026/04/23 14:06:46 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64441)
+[SERVER] 2026/04/23 14:06:46 <- GET /api/v1/alerts completed in 1.692ms
+[SERVER] 2026/04/23 14:06:49 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60901)
+[SERVER] 2026/04/23 14:06:49 <- GET /api/v1/metrics completed in 3.2163ms
+[SERVER] 2026/04/23 14:06:49 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60902)
+[SERVER] 2026/04/23 14:06:49 <- GET /api/v1/metrics completed in 3.421ms
+[SERVER] 2026/04/23 14:06:49 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60903)
+[SERVER] 2026/04/23 14:06:49 <- GET /api/v1/metrics completed in 58.2959ms
+[SERVER] 2026/04/23 14:06:50 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64442)
+[SERVER] 2026/04/23 14:06:50 <- GET /api/v1/metrics completed in 9.0402ms
+[SERVER] 2026/04/23 14:06:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64443)
+[SERVER] 2026/04/23 14:06:50 <- GET /api/v1/metrics completed in 4.6903ms
+[SERVER] 2026/04/23 14:06:51 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64444)
+[SERVER] 2026/04/23 14:06:51 <- GET /api/v1/metrics completed in 3.3838ms
+[SERVER] 2026/04/23 14:06:51 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64445)
+[SERVER] 2026/04/23 14:06:51 <- GET /api/v1/snmp-metrics completed in 2.298ms
+[SERVER] 2026/04/23 14:06:52 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60909)
+[SERVER] 2026/04/23 14:06:52 <- GET /api/v1/snmp-metrics completed in 2.2789ms
+[SERVER] 2026/04/23 14:06:55 [WALKER] Walk RouteNextHop on 10.100.0.0 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:06:58 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60917)
+[SERVER] 2026/04/23 14:06:58 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:06:58 <- GET /api/v1/topology/links completed in 3.2767ms
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60924)
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/agents completed in 2.1331ms
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60929)
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/alerts completed in 2.4987ms
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60930)
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/alerts completed in 3.1291ms
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60931)
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60932)
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60933)
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/alerts completed in 6.2267ms
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/traps completed in 5.153ms
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/metrics completed in 4.5081ms
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60940)
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/metrics completed in 71.2871ms
+[SERVER] 2026/04/23 14:06:59 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60941)
+[SERVER] 2026/04/23 14:06:59 <- GET /api/v1/metrics completed in 2.2729ms
+[SERVER] 2026/04/23 14:07:00 -> GET /health (Agent: , IP: 127.0.0.1:64446)
+[SERVER] 2026/04/23 14:07:00 <- GET /health completed in 2.7377ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/agents (Agent: , IP: [::1]:64447)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/agents completed in 1.7224ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64448)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/alerts completed in 2.6731ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:64450)
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [::1]:64451)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/traps completed in 3.1797ms
+[SERVER] 2026/04/23 14:07:00 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/topology/links completed in 2.8594ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64449)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/metrics completed in 10.0958ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64452)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/alerts completed in 3.2725ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64453)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/metrics completed in 2.8209ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64454)
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64455)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/alerts completed in 2.9082ms
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/metrics completed in 2.5659ms
+[SERVER] 2026/04/23 14:07:00 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64456)
+[SERVER] 2026/04/23 14:07:00 <- GET /api/v1/snmp-metrics completed in 5.8469ms
+[SERVER] 2026/04/23 14:07:02 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60965)
+[SERVER] 2026/04/23 14:07:02 <- GET /health completed in 4.6743ms
+[SERVER] 2026/04/23 14:07:02 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60966)
+[SERVER] 2026/04/23 14:07:03 <- GET /api/v1/snmp-metrics completed in 2.39ms
+[SERVER] 2026/04/23 14:07:05 [WALKER] BulkWalk LLDPMgmtAddr on 10.100.0.0 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:07:08 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60974)
+[SERVER] 2026/04/23 14:07:08 <- GET /api/v1/metrics completed in 3.612ms
+[SERVER] 2026/04/23 14:07:08 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60975)
+[SERVER] 2026/04/23 14:07:08 <- GET /api/v1/metrics completed in 31.661ms
+[SERVER] 2026/04/23 14:07:08 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:60976)
+[SERVER] 2026/04/23 14:07:08 <- GET /api/v1/metrics completed in 4.0986ms
+[SERVER] 2026/04/23 14:07:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64457)
+[SERVER] 2026/04/23 14:07:10 <- GET /api/v1/metrics completed in 4.2256ms
+[SERVER] 2026/04/23 14:07:10 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64458)
+[SERVER] 2026/04/23 14:07:10 <- GET /api/v1/metrics completed in 7.8613ms
+[SERVER] 2026/04/23 14:07:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64459)
+[SERVER] 2026/04/23 14:07:10 <- GET /api/v1/metrics completed in 1.902ms
+[SERVER] 2026/04/23 14:07:10 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64460)
+[SERVER] 2026/04/23 14:07:10 <- GET /api/v1/snmp-metrics completed in 2.7484ms
+[SERVER] 2026/04/23 14:07:11 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56140)
+[SERVER] 2026/04/23 14:07:11 <- GET /api/v1/snmp-metrics completed in 3.581ms
+[SERVER] 2026/04/23 14:07:13 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56149)
+[SERVER] 2026/04/23 14:07:13 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56150)
+[SERVER] 2026/04/23 14:07:13 <- GET /api/v1/traps completed in 9.1004ms
+[SERVER] 2026/04/23 14:07:13 <- GET /api/v1/alerts completed in 8.9836ms
+[SERVER] 2026/04/23 14:07:13 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56153)
+[SERVER] 2026/04/23 14:07:13 <- GET /api/v1/alerts completed in 3.9207ms
+[SERVER] 2026/04/23 14:07:13 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56154)
+[SERVER] 2026/04/23 14:07:13 <- GET /api/v1/alerts completed in 2.5863ms
+[SERVER] 2026/04/23 14:07:15 [WALKER] Walk LLDPMgmtAddr on 10.100.0.0 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:07:15 [WALKER] No neighbors discovered for 10.100.0.0
+[SERVER] 2026/04/23 14:07:15 [WALKER] Probing 10.100.0.1 (depth 0)
+[SERVER] 2026/04/23 14:07:15 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64462)
+[SERVER] 2026/04/23 14:07:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64463)
+[SERVER] 2026/04/23 14:07:15 <- GET /api/v1/traps completed in 3.6507ms
+[SERVER] 2026/04/23 14:07:15 <- GET /api/v1/alerts completed in 3.4634ms
+[SERVER] 2026/04/23 14:07:15 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:64464)
+[SERVER] 2026/04/23 14:07:15 <- GET /api/v1/alerts completed in 2.9417ms
+[SERVER] 2026/04/23 14:07:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64465)
+[SERVER] 2026/04/23 14:07:15 <- GET /api/v1/alerts completed in 3.0166ms
+[SERVER] 2026/04/23 14:07:18 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56171)
+[SERVER] 2026/04/23 14:07:18 <- GET /api/v1/metrics completed in 4.4778ms
+[SERVER] 2026/04/23 14:07:18 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56172)
+[SERVER] 2026/04/23 14:07:18 <- GET /api/v1/metrics completed in 41.9491ms
+[SERVER] 2026/04/23 14:07:18 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56173)
+[SERVER] 2026/04/23 14:07:18 <- GET /api/v1/metrics completed in 3.0994ms
+[SERVER] 2026/04/23 14:07:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64466)
+[SERVER] 2026/04/23 14:07:20 <- GET /api/v1/metrics completed in 2.6785ms
+[SERVER] 2026/04/23 14:07:20 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:64467)
+[SERVER] 2026/04/23 14:07:20 <- GET /api/v1/metrics completed in 7.286ms
+[SERVER] 2026/04/23 14:07:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:64468)
+[SERVER] 2026/04/23 14:07:20 <- GET /api/v1/metrics completed in 1.2938ms
+[SERVER] 2026/04/23 14:07:20 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:64469)
+[SERVER] 2026/04/23 14:07:20 <- GET /api/v1/snmp-metrics completed in 2.3014ms
+[SERVER] 2026/04/23 14:07:22 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56180)
+[SERVER] 2026/04/23 14:07:22 <- GET /api/v1/snmp-metrics completed in 4.0844ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56196)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/agents completed in 2.127ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56197)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/metrics completed in 1.7469ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56200)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/alerts completed in 1.6692ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56202)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/traps completed in 1.9815ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56204)
+[SERVER] 2026/04/23 14:07:29 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/topology/links completed in 2.0783ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56206)
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56207)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/alerts completed in 7.0272ms
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/metrics completed in 34.3166ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56209)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/alerts completed in 1.7665ms
+[SERVER] 2026/04/23 14:07:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56210)
+[SERVER] 2026/04/23 14:07:29 <- GET /api/v1/metrics completed in 1.9544ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/agents (Agent: , IP: [::1]:53653)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/agents completed in 2.4162ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53654)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/metrics completed in 3.0396ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53655)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/metrics completed in 9.9398ms
+[SERVER] 2026/04/23 14:07:30 -> GET /health (Agent: , IP: 127.0.0.1:53656)
+[SERVER] 2026/04/23 14:07:30 <- GET /health completed in 3.4643ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53658)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/metrics completed in 1.9008ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53657)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/traps completed in 3.3725ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53660)
+[SERVER] 2026/04/23 14:07:30 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/topology/links completed in 1.8288ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53659)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/alerts completed in 2.8411ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53661)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/alerts completed in 2.2729ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53662)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/alerts completed in 3.716ms
+[SERVER] 2026/04/23 14:07:30 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53663)
+[SERVER] 2026/04/23 14:07:30 <- GET /api/v1/snmp-metrics completed in 3.9634ms
+[SERVER] 2026/04/23 14:07:32 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56241)
+[SERVER] 2026/04/23 14:07:32 <- GET /api/v1/snmp-metrics completed in 2.0022ms
+[SERVER] 2026/04/23 14:07:32 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56242)
+[SERVER] 2026/04/23 14:07:32 <- GET /health completed in 4.1945ms
+[SERVER] 2026/04/23 14:07:35 [WALKER] BulkWalk LLDPSysName on 10.100.0.1 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:07:39 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56250)
+[SERVER] 2026/04/23 14:07:39 <- GET /api/v1/metrics completed in 5.6208ms
+[SERVER] 2026/04/23 14:07:39 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56251)
+[SERVER] 2026/04/23 14:07:39 <- GET /api/v1/metrics completed in 3.8024ms
+[SERVER] 2026/04/23 14:07:39 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56252)
+[SERVER] 2026/04/23 14:07:39 <- GET /api/v1/metrics completed in 34.616ms
+[SERVER] 2026/04/23 14:07:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53666)
+[SERVER] 2026/04/23 14:07:40 <- GET /api/v1/metrics completed in 2.8787ms
+[SERVER] 2026/04/23 14:07:40 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53667)
+[SERVER] 2026/04/23 14:07:40 <- GET /api/v1/metrics completed in 7.6415ms
+[SERVER] 2026/04/23 14:07:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53668)
+[SERVER] 2026/04/23 14:07:40 <- GET /api/v1/metrics completed in 1.8595ms
+[SERVER] 2026/04/23 14:07:40 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53669)
+[SERVER] 2026/04/23 14:07:40 <- GET /api/v1/snmp-metrics completed in 1.6871ms
+[SERVER] 2026/04/23 14:07:42 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56260)
+[SERVER] 2026/04/23 14:07:42 <- GET /api/v1/snmp-metrics completed in 3.5325ms
+[SERVER] 2026/04/23 14:07:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56264)
+[SERVER] 2026/04/23 14:07:43 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56266)
+[SERVER] 2026/04/23 14:07:43 <- GET /api/v1/alerts completed in 4.1332ms
+[SERVER] 2026/04/23 14:07:43 <- GET /api/v1/traps completed in 3.4147ms
+[SERVER] 2026/04/23 14:07:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56267)
+[SERVER] 2026/04/23 14:07:43 <- GET /api/v1/alerts completed in 2.4924ms
+[SERVER] 2026/04/23 14:07:43 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56269)
+[SERVER] 2026/04/23 14:07:43 <- GET /api/v1/alerts completed in 2.7801ms
+[SERVER] 2026/04/23 14:07:45 [WALKER] Walk LLDPSysName on 10.100.0.1 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:07:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53671)
+[SERVER] 2026/04/23 14:07:45 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53672)
+[SERVER] 2026/04/23 14:07:45 <- GET /api/v1/alerts completed in 2.1218ms
+[SERVER] 2026/04/23 14:07:45 <- GET /api/v1/traps completed in 2.3036ms
+[SERVER] 2026/04/23 14:07:45 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53673)
+[SERVER] 2026/04/23 14:07:45 <- GET /api/v1/alerts completed in 3.8087ms
+[SERVER] 2026/04/23 14:07:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53674)
+[SERVER] 2026/04/23 14:07:45 <- GET /api/v1/alerts completed in 3.4036ms
+[SERVER] 2026/04/23 14:07:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56288)
+[SERVER] 2026/04/23 14:07:48 <- GET /api/v1/metrics completed in 3.1897ms
+[SERVER] 2026/04/23 14:07:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56289)
+[SERVER] 2026/04/23 14:07:48 <- GET /api/v1/metrics completed in 3.4893ms
+[SERVER] 2026/04/23 14:07:48 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56290)
+[SERVER] 2026/04/23 14:07:48 <- GET /api/v1/metrics completed in 30.2845ms
+[SERVER] 2026/04/23 14:07:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53675)
+[SERVER] 2026/04/23 14:07:50 <- GET /api/v1/metrics completed in 2.2926ms
+[SERVER] 2026/04/23 14:07:50 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53676)
+[SERVER] 2026/04/23 14:07:50 <- GET /api/v1/metrics completed in 8.6848ms
+[SERVER] 2026/04/23 14:07:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53677)
+[SERVER] 2026/04/23 14:07:50 <- GET /api/v1/metrics completed in 4.1453ms
+[SERVER] 2026/04/23 14:07:50 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53678)
+[SERVER] 2026/04/23 14:07:50 <- GET /api/v1/snmp-metrics completed in 2.6957ms
+[SERVER] 2026/04/23 14:07:51 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56297)
+[SERVER] 2026/04/23 14:07:51 <- GET /api/v1/snmp-metrics completed in 3.3326ms
+[SERVER] 2026/04/23 14:07:55 [WALKER] BulkWalk LLDPChassisId on 10.100.0.1 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56313)
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/agents completed in 2.7134ms
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56318)
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/alerts completed in 4.2824ms
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56314)
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/metrics completed in 3.3913ms
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56319)
+[SERVER] 2026/04/23 14:07:58 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/topology/links completed in 1.5344ms
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56323)
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56324)
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/alerts completed in 2.4015ms
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/metrics completed in 1.719ms
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56325)
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/traps completed in 1.5248ms
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56327)
+[SERVER] 2026/04/23 14:07:58 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56326)
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/alerts completed in 5.6857ms
+[SERVER] 2026/04/23 14:07:58 <- GET /api/v1/metrics completed in 26.9058ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/agents (Agent: , IP: [::1]:53683)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/agents completed in 3.5432ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53684)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/metrics completed in 2.3053ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53685)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/metrics completed in 8.6778ms
+[SERVER] 2026/04/23 14:08:00 -> GET /health (Agent: , IP: 127.0.0.1:53686)
+[SERVER] 2026/04/23 14:08:00 <- GET /health completed in 3.9169ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53689)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/metrics completed in 2.6018ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [::1]:53690)
+[SERVER] 2026/04/23 14:08:00 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/topology/links completed in 3.0272ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53687)
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:53688)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/alerts completed in 2.7426ms
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/traps completed in 2.5237ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53691)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/alerts completed in 4.8895ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53692)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/alerts completed in 3.6315ms
+[SERVER] 2026/04/23 14:08:00 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53693)
+[SERVER] 2026/04/23 14:08:00 <- GET /api/v1/snmp-metrics completed in 1.7848ms
+[SERVER] 2026/04/23 14:08:03 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56360)
+[SERVER] 2026/04/23 14:08:03 <- GET /health completed in 5.1153ms
+[SERVER] 2026/04/23 14:08:03 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56365)
+[SERVER] 2026/04/23 14:08:03 <- GET /api/v1/snmp-metrics completed in 3.9855ms
+[SERVER] 2026/04/23 14:08:05 [WALKER] Walk LLDPChassisId on 10.100.0.1 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:08:08 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56385)
+[SERVER] 2026/04/23 14:08:09 <- GET /api/v1/metrics completed in 66.8504ms
+[SERVER] 2026/04/23 14:08:09 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56387)
+[SERVER] 2026/04/23 14:08:09 <- GET /api/v1/metrics completed in 3.2063ms
+[SERVER] 2026/04/23 14:08:09 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:56388)
+[SERVER] 2026/04/23 14:08:09 <- GET /api/v1/metrics completed in 3.363ms
+[SERVER] 2026/04/23 14:08:10 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53694)
+[SERVER] 2026/04/23 14:08:10 <- GET /api/v1/metrics completed in 6.5761ms
+[SERVER] 2026/04/23 14:08:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53695)
+[SERVER] 2026/04/23 14:08:10 <- GET /api/v1/metrics completed in 3.3105ms
+[SERVER] 2026/04/23 14:08:10 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53696)
+[SERVER] 2026/04/23 14:08:10 <- GET /api/v1/metrics completed in 2.7214ms
+[SERVER] 2026/04/23 14:08:10 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53697)
+[SERVER] 2026/04/23 14:08:10 <- GET /api/v1/snmp-metrics completed in 1.2865ms
+[SERVER] 2026/04/23 14:08:12 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63634)
+[SERVER] 2026/04/23 14:08:12 <- GET /api/v1/snmp-metrics completed in 1.6484ms
+[SERVER] 2026/04/23 14:08:15 [WALKER] BulkWalk LLDPPortId on 10.100.0.1 failed: request timeout (after 1 retries) — retrying with Walk
+2026/04/23 14:08:15 http: TLS handshake error from [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63658: EOF
+[SERVER] 2026/04/23 14:08:15 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [::1]:53699)
+[SERVER] 2026/04/23 14:08:15 <- GET /api/v1/traps completed in 3.528ms
+[SERVER] 2026/04/23 14:08:15 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53700)
+[SERVER] 2026/04/23 14:08:15 <- GET /api/v1/alerts completed in 1.9713ms
+[SERVER] 2026/04/23 14:08:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53701)
+[SERVER] 2026/04/23 14:08:15 <- GET /api/v1/alerts completed in 2.3798ms
+[SERVER] 2026/04/23 14:08:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53702)
+[SERVER] 2026/04/23 14:08:15 <- GET /api/v1/alerts completed in 2.3501ms
+2026/04/23 14:08:16 http: TLS handshake error from 192.168.1.4:63661: EOF
+2026/04/23 14:08:16 http: TLS handshake error from [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63662: EOF
+2026/04/23 14:08:16 http: TLS handshake error from 192.168.1.4:63666: EOF
+[SERVER] 2026/04/23 14:08:16 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [2401:4900:1c7a:a585:ed53:106d:74f7:bba5]:63665)
+[SERVER] 2026/04/23 14:08:16 <- GET /api/v1/alerts completed in 4.7011ms
+[SERVER] 2026/04/23 14:08:17 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [2401:4900:1c7a:a585:ed53:106d:74f7:bba5]:63669)
+[SERVER] 2026/04/23 14:08:17 <- GET /api/v1/traps completed in 2.8991ms
+[SERVER] 2026/04/23 14:08:17 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63672)
+[SERVER] 2026/04/23 14:08:17 <- GET /api/v1/alerts completed in 5.0714ms
+2026/04/23 14:08:19 http: TLS handshake error from [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63677: EOF
+2026/04/23 14:08:19 http: TLS handshake error from 192.168.1.4:63678: EOF
+[SERVER] 2026/04/23 14:08:20 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53703)
+[SERVER] 2026/04/23 14:08:20 <- GET /api/v1/metrics completed in 7.6943ms
+[SERVER] 2026/04/23 14:08:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53704)
+[SERVER] 2026/04/23 14:08:20 <- GET /api/v1/metrics completed in 2.5776ms
+[SERVER] 2026/04/23 14:08:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53705)
+[SERVER] 2026/04/23 14:08:20 <- GET /api/v1/metrics completed in 1.7831ms
+[SERVER] 2026/04/23 14:08:20 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53706)
+[SERVER] 2026/04/23 14:08:20 <- GET /api/v1/snmp-metrics completed in 2.2939ms
+2026/04/23 14:08:20 http: TLS handshake error from [2401:4900:1c7a:a585:ed53:106d:74f7:bba5]:63681: EOF
+[SERVER] 2026/04/23 14:08:21 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [2401:4900:1c7a:a585:ed53:106d:74f7:bba5]:63683)
+[SERVER] 2026/04/23 14:08:21 <- GET /api/v1/alerts completed in 3.7632ms
+[SERVER] 2026/04/23 14:08:21 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63684)
+[SERVER] 2026/04/23 14:08:21 <- GET /api/v1/metrics completed in 38.8966ms
+[SERVER] 2026/04/23 14:08:22 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63687)
+[SERVER] 2026/04/23 14:08:22 <- GET /api/v1/metrics completed in 3.9565ms
+[SERVER] 2026/04/23 14:08:22 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63689)
+[SERVER] 2026/04/23 14:08:22 <- GET /api/v1/metrics completed in 2.1942ms
+[SERVER] 2026/04/23 14:08:25 [WALKER] Walk LLDPPortId on 10.100.0.1 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:08:25 [WALKER] LLDP returned no neighbors for 10.100.0.1 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:08:25 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63691)
+[SERVER] 2026/04/23 14:08:25 <- GET /api/v1/snmp-metrics completed in 5.3431ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63703)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/agents completed in 4.1923ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63706)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/alerts completed in 3.3842ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63708)
+[SERVER] 2026/04/23 14:08:28 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/topology/links completed in 1.5076ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63710)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/traps completed in 2.2601ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63712)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/metrics completed in 47.3842ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63713)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/alerts completed in 2.8289ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63714)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/metrics completed in 2.1888ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63715)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/alerts completed in 3.2674ms
+[SERVER] 2026/04/23 14:08:28 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63716)
+[SERVER] 2026/04/23 14:08:28 <- GET /api/v1/metrics completed in 2.3204ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/agents (Agent: , IP: [::1]:53711)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/agents completed in 4.2549ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53712)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/metrics completed in 10.8894ms
+[SERVER] 2026/04/23 14:08:30 -> GET /health (Agent: , IP: 127.0.0.1:53713)
+[SERVER] 2026/04/23 14:08:30 <- GET /health completed in 3.3458ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53714)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/metrics completed in 3.4477ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53715)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/alerts completed in 3.6597ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53716)
+[SERVER] 2026/04/23 14:08:30 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/topology/links completed in 1.7415ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53717)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/traps completed in 2.3804ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53718)
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53719)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/metrics completed in 2.6546ms
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/alerts completed in 2.6323ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53720)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/alerts completed in 2.776ms
+[SERVER] 2026/04/23 14:08:30 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53721)
+[SERVER] 2026/04/23 14:08:30 <- GET /api/v1/snmp-metrics completed in 4.6985ms
+[SERVER] 2026/04/23 14:08:31 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63748)
+[SERVER] 2026/04/23 14:08:31 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63749)
+[SERVER] 2026/04/23 14:08:31 <- GET /health completed in 4.9485ms
+[SERVER] 2026/04/23 14:08:31 <- GET /api/v1/snmp-metrics completed in 1.8529ms
+[SERVER] 2026/04/23 14:08:35 [WALKER] BulkWalk CDP on 10.100.0.1 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:08:38 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63759)
+[SERVER] 2026/04/23 14:08:38 <- GET /api/v1/metrics completed in 142.0396ms
+[SERVER] 2026/04/23 14:08:38 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63761)
+[SERVER] 2026/04/23 14:08:38 <- GET /api/v1/metrics completed in 4.0751ms
+[SERVER] 2026/04/23 14:08:38 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63762)
+[SERVER] 2026/04/23 14:08:38 <- GET /api/v1/metrics completed in 3.2291ms
+[SERVER] 2026/04/23 14:08:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53722)
+[SERVER] 2026/04/23 14:08:40 <- GET /api/v1/metrics completed in 1.9727ms
+[SERVER] 2026/04/23 14:08:40 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53723)
+[SERVER] 2026/04/23 14:08:40 <- GET /api/v1/metrics completed in 1.9387ms
+[SERVER] 2026/04/23 14:08:40 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53724)
+[SERVER] 2026/04/23 14:08:40 <- GET /api/v1/metrics completed in 6.047ms
+[SERVER] 2026/04/23 14:08:40 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53725)
+[SERVER] 2026/04/23 14:08:40 <- GET /api/v1/snmp-metrics completed in 4.319ms
+[SERVER] 2026/04/23 14:08:41 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63769)
+[SERVER] 2026/04/23 14:08:41 <- GET /api/v1/snmp-metrics completed in 2.7781ms
+[SERVER] 2026/04/23 14:08:43 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63776)
+[SERVER] 2026/04/23 14:08:43 <- GET /api/v1/alerts completed in 2.8487ms
+[SERVER] 2026/04/23 14:08:43 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63778)
+[SERVER] 2026/04/23 14:08:43 <- GET /api/v1/traps completed in 4.8034ms
+[SERVER] 2026/04/23 14:08:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63779)
+[SERVER] 2026/04/23 14:08:43 <- GET /api/v1/alerts completed in 3.0272ms
+[SERVER] 2026/04/23 14:08:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63780)
+[SERVER] 2026/04/23 14:08:43 <- GET /api/v1/alerts completed in 3.0729ms
+[SERVER] 2026/04/23 14:08:45 [WALKER] Walk CDP on 10.100.0.1 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:08:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53728)
+[SERVER] 2026/04/23 14:08:45 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53729)
+[SERVER] 2026/04/23 14:08:45 <- GET /api/v1/alerts completed in 3.1254ms
+[SERVER] 2026/04/23 14:08:45 <- GET /api/v1/traps completed in 3.3245ms
+[SERVER] 2026/04/23 14:08:45 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53730)
+[SERVER] 2026/04/23 14:08:45 <- GET /api/v1/alerts completed in 3.3489ms
+[SERVER] 2026/04/23 14:08:45 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53731)
+[SERVER] 2026/04/23 14:08:45 <- GET /api/v1/alerts completed in 4.3941ms
+[SERVER] 2026/04/23 14:08:48 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63793)
+[SERVER] 2026/04/23 14:08:48 <- GET /api/v1/metrics completed in 39.7797ms
+[SERVER] 2026/04/23 14:08:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63794)
+[SERVER] 2026/04/23 14:08:48 <- GET /api/v1/metrics completed in 4.2245ms
+[SERVER] 2026/04/23 14:08:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63795)
+[SERVER] 2026/04/23 14:08:48 <- GET /api/v1/metrics completed in 2.6418ms
+[SERVER] 2026/04/23 14:08:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53739)
+[SERVER] 2026/04/23 14:08:50 <- GET /api/v1/metrics completed in 2.7462ms
+[SERVER] 2026/04/23 14:08:50 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53742)
+[SERVER] 2026/04/23 14:08:50 <- GET /api/v1/metrics completed in 1.7562ms
+[SERVER] 2026/04/23 14:08:50 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53743)
+[SERVER] 2026/04/23 14:08:50 <- GET /api/v1/metrics completed in 7.4001ms
+[SERVER] 2026/04/23 14:08:50 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53744)
+[SERVER] 2026/04/23 14:08:50 <- GET /api/v1/snmp-metrics completed in 2.6329ms
+[SERVER] 2026/04/23 14:08:51 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63803)
+[SERVER] 2026/04/23 14:08:51 <- GET /api/v1/snmp-metrics completed in 1.8672ms
+[SERVER] 2026/04/23 14:08:55 [WALKER] BulkWalk ARP on 10.100.0.1 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63813)
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/agents completed in 2.6357ms
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63817)
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63818)
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/alerts completed in 4.0533ms
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/traps completed in 2.9668ms
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63819)
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63820)
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/alerts completed in 5.7425ms
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63821)
+[SERVER] 2026/04/23 14:08:58 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/topology/links completed in 1.1552ms
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/metrics completed in 81.7633ms
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63824)
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/alerts completed in 2.7634ms
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63825)
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/metrics completed in 2.4059ms
+[SERVER] 2026/04/23 14:08:58 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63826)
+[SERVER] 2026/04/23 14:08:58 <- GET /api/v1/metrics completed in 1.9841ms
+[SERVER] 2026/04/23 14:09:00 -> GET /api/v1/agents (Agent: , IP: [::1]:53748)
+[SERVER] 2026/04/23 14:09:00 <- GET /api/v1/agents completed in 4.4252ms
+[SERVER] 2026/04/23 14:09:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53749)
+[SERVER] 2026/04/23 14:09:00 <- GET /api/v1/metrics completed in 3.4766ms
+[SERVER] 2026/04/23 14:09:00 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53750)
+[SERVER] 2026/04/23 14:09:00 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:09:00 <- GET /api/v1/topology/links completed in 1.962ms
+[SERVER] 2026/04/23 14:09:00 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53751)
+[SERVER] 2026/04/23 14:09:00 <- GET /api/v1/metrics completed in 3.058ms
+[SERVER] 2026/04/23 14:09:01 -> GET /health (Agent: , IP: 127.0.0.1:53752)
+[SERVER] 2026/04/23 14:09:01 <- GET /health completed in 3.4128ms
+[SERVER] 2026/04/23 14:09:01 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53754)
+[SERVER] 2026/04/23 14:09:01 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53753)
+[SERVER] 2026/04/23 14:09:01 <- GET /api/v1/metrics completed in 10.6689ms
+[SERVER] 2026/04/23 14:09:01 <- GET /api/v1/alerts completed in 3.2637ms
+[SERVER] 2026/04/23 14:09:01 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53755)
+[SERVER] 2026/04/23 14:09:01 <- GET /api/v1/traps completed in 3.2577ms
+[SERVER] 2026/04/23 14:09:01 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53756)
+[SERVER] 2026/04/23 14:09:01 <- GET /api/v1/alerts completed in 2.891ms
+[SERVER] 2026/04/23 14:09:01 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53757)
+[SERVER] 2026/04/23 14:09:01 <- GET /api/v1/alerts completed in 2.5631ms
+[SERVER] 2026/04/23 14:09:01 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53758)
+[SERVER] 2026/04/23 14:09:01 <- GET /api/v1/snmp-metrics completed in 1.7063ms
+[SERVER] 2026/04/23 14:09:02 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63861)
+[SERVER] 2026/04/23 14:09:02 <- GET /health completed in 4.4621ms
+[SERVER] 2026/04/23 14:09:02 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63860)
+[SERVER] 2026/04/23 14:09:02 <- GET /api/v1/snmp-metrics completed in 2.633ms
+[SERVER] 2026/04/23 14:09:05 [WALKER] Walk ARP on 10.100.0.1 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:09:08 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63871)
+[SERVER] 2026/04/23 14:09:08 <- GET /api/v1/metrics completed in 38.4691ms
+[SERVER] 2026/04/23 14:09:08 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63872)
+[SERVER] 2026/04/23 14:09:08 <- GET /api/v1/metrics completed in 2.4772ms
+[SERVER] 2026/04/23 14:09:08 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:63873)
+[SERVER] 2026/04/23 14:09:08 <- GET /api/v1/metrics completed in 1.7838ms
+[SERVER] 2026/04/23 14:09:11 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53760)
+[SERVER] 2026/04/23 14:09:11 <- GET /api/v1/metrics completed in 28.8252ms
+[SERVER] 2026/04/23 14:09:11 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53761)
+[SERVER] 2026/04/23 14:09:11 <- GET /api/v1/metrics completed in 30.9301ms
+[SERVER] 2026/04/23 14:09:11 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53762)
+[SERVER] 2026/04/23 14:09:11 <- GET /api/v1/metrics completed in 62.7519ms
+[SERVER] 2026/04/23 14:09:11 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53763)
+[SERVER] 2026/04/23 14:09:11 <- GET /api/v1/snmp-metrics completed in 2.3879ms
+[SERVER] 2026/04/23 14:09:12 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49384)
+[SERVER] 2026/04/23 14:09:12 <- GET /api/v1/snmp-metrics completed in 2.8886ms
+[SERVER] 2026/04/23 14:09:13 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49392)
+[SERVER] 2026/04/23 14:09:13 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49393)
+[SERVER] 2026/04/23 14:09:13 <- GET /api/v1/alerts completed in 3.3459ms
+[SERVER] 2026/04/23 14:09:13 <- GET /api/v1/traps completed in 3.3126ms
+[SERVER] 2026/04/23 14:09:13 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49394)
+[SERVER] 2026/04/23 14:09:13 <- GET /api/v1/alerts completed in 4.2706ms
+[SERVER] 2026/04/23 14:09:13 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49395)
+[SERVER] 2026/04/23 14:09:13 <- GET /api/v1/alerts completed in 3.8874ms
+[SERVER] 2026/04/23 14:09:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53765)
+[SERVER] 2026/04/23 14:09:15 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53766)
+[SERVER] 2026/04/23 14:09:15 <- GET /api/v1/alerts completed in 3.4762ms
+[SERVER] 2026/04/23 14:09:15 <- GET /api/v1/traps completed in 1.6438ms
+[SERVER] 2026/04/23 14:09:15 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53767)
+[SERVER] 2026/04/23 14:09:15 <- GET /api/v1/alerts completed in 1.8659ms
+[SERVER] 2026/04/23 14:09:15 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53768)
+[SERVER] 2026/04/23 14:09:15 <- GET /api/v1/alerts completed in 1.8767ms
+[SERVER] 2026/04/23 14:09:15 [WALKER] BulkWalk RouteNextHop on 10.100.0.1 failed: request timeout (after 1 retries) — retrying with Walk
+[SERVER] 2026/04/23 14:09:18 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49896)
+[SERVER] 2026/04/23 14:09:18 <- GET /api/v1/metrics completed in 36.4616ms
+[SERVER] 2026/04/23 14:09:18 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49897)
+[SERVER] 2026/04/23 14:09:18 <- GET /api/v1/metrics completed in 3.6855ms
+[SERVER] 2026/04/23 14:09:18 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49898)
+[SERVER] 2026/04/23 14:09:18 <- GET /api/v1/metrics completed in 4.3891ms
+[SERVER] 2026/04/23 14:09:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53770)
+[SERVER] 2026/04/23 14:09:20 <- GET /api/v1/metrics completed in 5.5716ms
+[SERVER] 2026/04/23 14:09:20 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53771)
+[SERVER] 2026/04/23 14:09:20 <- GET /api/v1/metrics completed in 2.3286ms
+[SERVER] 2026/04/23 14:09:20 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53772)
+[SERVER] 2026/04/23 14:09:20 <- GET /api/v1/metrics completed in 6.5062ms
+[SERVER] 2026/04/23 14:09:20 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53773)
+[SERVER] 2026/04/23 14:09:20 <- GET /api/v1/snmp-metrics completed in 5.2215ms
+[SERVER] 2026/04/23 14:09:22 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49906)
+[SERVER] 2026/04/23 14:09:22 <- GET /api/v1/snmp-metrics completed in 3.0683ms
+[SERVER] 2026/04/23 14:09:25 [WALKER] Walk RouteNextHop on 10.100.0.1 failed: request timeout (after 1 retries)
+[SERVER] 2026/04/23 14:09:28 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49935)
+[SERVER] 2026/04/23 14:09:28 <- GET /api/v1/agents completed in 3.9427ms
+[SERVER] 2026/04/23 14:09:28 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49939)
+[SERVER] 2026/04/23 14:09:28 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49940)
+[SERVER] 2026/04/23 14:09:28 <- GET /api/v1/alerts completed in 3.2231ms
+[SERVER] 2026/04/23 14:09:28 <- GET /api/v1/traps completed in 3.6547ms
+[SERVER] 2026/04/23 14:09:28 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49942)
+[SERVER] 2026/04/23 14:09:28 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49941)
+[SERVER] 2026/04/23 14:09:28 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:09:28 <- GET /api/v1/topology/links completed in 2.8995ms
+[SERVER] 2026/04/23 14:09:28 <- GET /api/v1/alerts completed in 4.5006ms
+[SERVER] 2026/04/23 14:09:28 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49943)
+[SERVER] 2026/04/23 14:09:28 <- GET /api/v1/metrics completed in 30.0974ms
+[SERVER] 2026/04/23 14:09:28 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49946)
+[SERVER] 2026/04/23 14:09:28 <- GET /api/v1/alerts completed in 3.5544ms
+[SERVER] 2026/04/23 14:09:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49947)
+[SERVER] 2026/04/23 14:09:29 <- GET /api/v1/metrics completed in 3.277ms
+[SERVER] 2026/04/23 14:09:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49948)
+[SERVER] 2026/04/23 14:09:29 <- GET /api/v1/metrics completed in 2.8407ms
+[SERVER] 2026/04/23 14:09:30 -> GET /health (Agent: , IP: 127.0.0.1:53775)
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/agents (Agent: , IP: [::1]:53777)
+[SERVER] 2026/04/23 14:09:30 <- GET /health completed in 7.0153ms
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/agents completed in 4.021ms
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53778)
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/metrics completed in 4.2284ms
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/traps (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53779)
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [::1]:53780)
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/traps completed in 3.7096ms
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/alerts completed in 2.4968ms
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53781)
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53782)
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/metrics completed in 2.6495ms
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/alerts completed in 2.7452ms
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/topology/links (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53783)
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [::1]:53785)
+[SERVER] 2026/04/23 14:09:30 Failed to query topology links: query topology links: pq: column "source_depth" does not exist at position 1:32 (42703)
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/topology/links completed in 1.7439ms
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [::1]:53784)
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/alerts completed in 3.1522ms
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/metrics completed in 11.1673ms
+[SERVER] 2026/04/23 14:09:30 -> GET /api/v1/snmp-metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [::1]:53786)
+[SERVER] 2026/04/23 14:09:30 <- GET /api/v1/snmp-metrics completed in 2.1802ms
+[SERVER] 2026/04/23 14:09:32 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49984)
+[SERVER] 2026/04/23 14:09:32 <- GET /health completed in 8.6306ms
+[SERVER] 2026/04/23 14:09:32 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:49985)
+[SERVER] 2026/04/23 14:09:32 <- GET /api/v1/snmp-metrics completed in 3.8876ms
+[SERVER] 2026/04/23 14:09:35 [WALKER] BulkWalk LLDPMgmtAddr on 10.100.0.1 failed: request timeout (after 1 retries) — retrying with Walk

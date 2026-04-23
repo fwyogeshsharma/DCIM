@@ -1,0 +1,42 @@
+﻿# Certificate Information
+# Generated: 2026-04-08 14:15:21
+
+## Certificate Authority (CA)
+- Valid for: 1 year
+- Expires: 2027-04-08
+- Files: ca.crt, ca.key
+
+## Server Certificate
+- Server ID: DESKTOP-LEN7780
+- Hostname: localhost
+- Valid for: 1 year
+- Expires: 2027-04-08
+- Location: servers/DESKTOP-LEN7780/
+- Files: ca.crt, server.crt, server.key
+
+## Client Certificate
+- Client ID: AGENT-01
+- Valid for: 1 year
+- Expires: 2027-04-08
+- Location: servers/DESKTOP-LEN7780/agents/AGENT-01/
+- Files: ca.crt, client.crt, client.key
+
+## Renewal Reminders
+Set calendar reminders to renew certificates at least 30 days before expiry:
+- CA: Renew by 2027-03-09
+- Server: Renew by 2027-03-09
+- Client: Renew by 2027-03-09
+
+## Verification Commands
+View CA certificate:
+  openssl x509 -in ..\..\certs/ca.crt -text -noout
+
+View server certificate:
+  openssl x509 -in ..\..\certs\servers\DESKTOP-LEN7780/server.crt -text -noout
+
+View client certificate:
+  openssl x509 -in ..\..\certs\servers\DESKTOP-LEN7780\agents\AGENT-01/client.crt -text -noout
+
+Verify certificate chains:
+  openssl verify -CAfile ..\..\certs/ca.crt ..\..\certs\servers\DESKTOP-LEN7780/server.crt
+  openssl verify -CAfile ..\..\certs\servers\DESKTOP-LEN7780\agents\AGENT-01/ca.crt ..\..\certs\servers\DESKTOP-LEN7780\agents\AGENT-01/client.crt

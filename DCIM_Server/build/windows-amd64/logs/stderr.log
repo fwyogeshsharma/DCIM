@@ -1,0 +1,574 @@
+2026/04/23 14:39:37 Loading configuration from: config.yaml
+2026/04/23 14:39:37 Configuration loaded successfully
+2026/04/23 14:39:37 Initializing database (postgres)...
+2026/04/23 14:39:37 [MIGRATIONS] All migrations up to date (9 total)
+2026/04/23 14:39:37 Database initialized successfully
+2026/04/23 14:39:37 Initializing license manager...
+2026/04/23 14:39:38 License manager initialized successfully
+2026/04/23 14:39:38 Creating server...
+[SERVER] 2026/04/23 14:39:38 Server initialized with ID: JPR_MP_SERVER_WIN_HP_AY_01
+[SERVER] 2026/04/23 14:39:38 TLS configured: ClientAuth=require_and_verify, MinVersion=1.2
+[SERVER] 2026/04/23 14:39:38 Loaded cooling configuration from cooling_config.yaml
+[SERVER] 2026/04/23 14:39:38 ================================================================================
+[SERVER] 2026/04/23 14:39:38   DCIM Server - Data Center Infrastructure Monitor
+[SERVER] 2026/04/23 14:39:38 ================================================================================
+[SERVER] 2026/04/23 14:39:38 
+[SERVER] 2026/04/23 14:39:38 [WALKER] Waiting for SNMP agent at 10.100.0.2:161 to become available...
+[SERVER] 2026/04/23 14:39:38 License Information:
+[SERVER] 2026/04/23 14:39:38   Company: faber
+[SERVER] 2026/04/23 14:39:38   Max Agents: 100
+[SERVER] 2026/04/23 14:39:38   Max SNMP Devices: 500
+[SERVER] 2026/04/23 14:39:38   Expires: 2027-02-04 (287 days)
+[SERVER] 2026/04/23 14:39:38 
+[SERVER] 2026/04/23 14:39:38 Server Configuration:
+[SERVER] 2026/04/23 14:39:38   Address: 0.0.0.0:8443
+[SERVER] 2026/04/23 14:39:38   TLS Enabled: true
+[SERVER] 2026/04/23 14:39:38   Client Authentication: require_and_verify
+[SERVER] 2026/04/23 14:39:38   Database: postgres
+[SERVER] 2026/04/23 14:39:38 
+[SERVER] 2026/04/23 14:39:38 API Endpoints:
+[SERVER] 2026/04/23 14:39:38   POST /api/v1/metrics
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/metrics
+[SERVER] 2026/04/23 14:39:38   POST /api/v1/alerts
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/alerts
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/alerts/{id}
+[SERVER] 2026/04/23 14:39:38   PUT  /api/v1/alerts/{id}/resolve
+[SERVER] 2026/04/23 14:39:38   POST /api/v1/snmp-metrics
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/snmp-metrics
+[SERVER] 2026/04/23 14:39:38   POST /api/v1/cooling-metrics
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/agent-status-history
+[SERVER] 2026/04/23 14:39:38   POST /api/v1/register
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/agents
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/agents/{id}/metrics
+[SERVER] 2026/04/23 14:39:38   GET  /api/v1/events
+[SERVER] 2026/04/23 14:39:38   GET  /health
+[SERVER] 2026/04/23 14:39:38 
+[SERVER] 2026/04/23 14:39:38 ================================================================================
+[SERVER] 2026/04/23 14:39:38 
+[SERVER] 2026/04/23 14:39:38 Server starting with mTLS on https://0.0.0.0:8443
+[SERVER] 2026/04/23 14:39:38 [WALKER] SNMP agent at 10.100.0.2 is ready — starting walk
+[SERVER] 2026/04/23 14:39:38 [WALKER] Auto-starting walk from seed 10.100.0.2 (depth 5)
+[SERVER] 2026/04/23 14:39:38 [WALKER] Auto-started session walk-1776935378024018700
+[SERVER] 2026/04/23 14:39:38 [WALKER] Probing 10.100.0.2 (depth 0)
+[SERVER] 2026/04/23 14:39:38 [WALKER] LLDP discovered 4 neighbor(s) for 10.100.0.2: [10.100.0.3 10.100.0.4 10.100.0.6 10.100.0.7]
+[SERVER] 2026/04/23 14:39:38 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.2 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:38 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54053)
+[SERVER] 2026/04/23 14:39:38 [WALKER] Fallback discovered 4 neighbor(s) for 10.100.0.2: [10.100.0.3 10.100.0.4 10.100.0.6 10.100.0.7]
+[SERVER] 2026/04/23 14:39:38 [WALKER] Probing 10.100.0.3 (depth 1)
+[SERVER] 2026/04/23 14:39:38 <- GET /api/v1/metrics completed in 63.8964ms
+[SERVER] 2026/04/23 14:39:38 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54058)
+[SERVER] 2026/04/23 14:39:38 <- GET /api/v1/metrics completed in 2.1465ms
+[SERVER] 2026/04/23 14:39:38 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54059)
+[SERVER] 2026/04/23 14:39:38 <- GET /api/v1/metrics completed in 3.8838ms
+[SERVER] 2026/04/23 14:39:38 [WALKER] LLDP discovered 4 neighbor(s) for 10.100.0.3: [10.100.0.2 10.100.0.5 10.100.0.6 10.100.0.7]
+[SERVER] 2026/04/23 14:39:38 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.3 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:38 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54061)
+[SERVER] 2026/04/23 14:39:38 <- GET /api/v1/snmp-metrics completed in 3.8492ms
+[SERVER] 2026/04/23 14:39:38 [WALKER] Fallback discovered 4 neighbor(s) for 10.100.0.3: [10.100.0.2 10.100.0.5 10.100.0.6 10.100.0.7]
+[SERVER] 2026/04/23 14:39:38 [WALKER] Probing 10.100.0.4 (depth 1)
+[SERVER] 2026/04/23 14:39:38 [WALKER] LLDP returned no neighbors for 10.100.0.4 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:39 [WALKER] No neighbors discovered for 10.100.0.4
+[SERVER] 2026/04/23 14:39:39 [WALKER] Probing 10.100.0.6 (depth 1)
+[SERVER] 2026/04/23 14:39:39 [WALKER] LLDP discovered 7 neighbor(s) for 10.100.0.6: [10.100.0.11 10.100.0.2 10.100.0.3 10.100.0.7 10.100.0.8 10.100.0.9 10.100.0.10]
+[SERVER] 2026/04/23 14:39:39 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.6 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:39 [WALKER] Fallback discovered 7 neighbor(s) for 10.100.0.6: [10.100.0.11 10.100.0.2 10.100.0.3 10.100.0.7 10.100.0.8 10.100.0.9 10.100.0.10]
+[SERVER] 2026/04/23 14:39:39 [WALKER] Probing 10.100.0.7 (depth 1)
+[SERVER] 2026/04/23 14:39:39 [WALKER] LLDP discovered 7 neighbor(s) for 10.100.0.7: [10.100.0.11 10.100.0.2 10.100.0.3 10.100.0.6 10.100.0.8 10.100.0.9 10.100.0.10]
+[SERVER] 2026/04/23 14:39:39 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.7 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:39 [WALKER] Fallback discovered 7 neighbor(s) for 10.100.0.7: [10.100.0.11 10.100.0.2 10.100.0.3 10.100.0.6 10.100.0.8 10.100.0.9 10.100.0.10]
+[SERVER] 2026/04/23 14:39:39 [WALKER] Probing 10.100.0.5 (depth 2)
+[SERVER] 2026/04/23 14:39:39 [WALKER] LLDP returned no neighbors for 10.100.0.5 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:40 [WALKER] No neighbors discovered for 10.100.0.5
+[SERVER] 2026/04/23 14:39:40 [WALKER] Probing 10.100.0.11 (depth 2)
+[SERVER] 2026/04/23 14:39:40 [WALKER] LLDP discovered 4 neighbor(s) for 10.100.0.11: [10.100.0.6 10.100.0.7 10.100.0.18 10.100.0.19]
+[SERVER] 2026/04/23 14:39:40 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.11 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:40 [WALKER] Fallback discovered 4 neighbor(s) for 10.100.0.11: [10.100.0.6 10.100.0.7 10.100.0.18 10.100.0.19]
+[SERVER] 2026/04/23 14:39:40 [WALKER] Probing 10.100.0.8 (depth 2)
+[SERVER] 2026/04/23 14:39:40 [WALKER] LLDP discovered 4 neighbor(s) for 10.100.0.8: [10.100.0.6 10.100.0.7 10.100.0.12 10.100.0.13]
+[SERVER] 2026/04/23 14:39:40 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.8 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:40 [WALKER] Fallback discovered 4 neighbor(s) for 10.100.0.8: [10.100.0.6 10.100.0.7 10.100.0.12 10.100.0.13]
+[SERVER] 2026/04/23 14:39:40 [WALKER] Probing 10.100.0.9 (depth 2)
+[SERVER] 2026/04/23 14:39:40 [WALKER] LLDP discovered 4 neighbor(s) for 10.100.0.9: [10.100.0.15 10.100.0.6 10.100.0.7 10.100.0.14]
+[SERVER] 2026/04/23 14:39:40 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.9 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:41 [WALKER] Fallback discovered 4 neighbor(s) for 10.100.0.9: [10.100.0.15 10.100.0.6 10.100.0.7 10.100.0.14]
+[SERVER] 2026/04/23 14:39:41 [WALKER] Probing 10.100.0.10 (depth 2)
+[SERVER] 2026/04/23 14:39:41 [WALKER] LLDP discovered 4 neighbor(s) for 10.100.0.10: [10.100.0.6 10.100.0.7 10.100.0.16 10.100.0.17]
+[SERVER] 2026/04/23 14:39:41 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.10 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:41 [WALKER] Fallback discovered 4 neighbor(s) for 10.100.0.10: [10.100.0.6 10.100.0.7 10.100.0.16 10.100.0.17]
+[SERVER] 2026/04/23 14:39:41 [WALKER] Probing 10.100.0.18 (depth 3)
+[SERVER] 2026/04/23 14:39:41 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.18: [10.100.0.11 10.100.0.114 10.100.0.116 10.100.0.104 10.100.0.105 10.100.0.112 10.100.0.113 10.100.0.107 10.100.0.108 10.100.0.111 10.100.0.115 10.100.0.117 10.100.0.106 10.100.0.109 10.100.0.110 10.100.0.138]
+[SERVER] 2026/04/23 14:39:41 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.18 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:42 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.18: [10.100.0.11 10.100.0.114 10.100.0.116 10.100.0.104 10.100.0.105 10.100.0.112 10.100.0.113 10.100.0.107 10.100.0.108 10.100.0.111 10.100.0.115 10.100.0.117 10.100.0.106 10.100.0.109 10.100.0.110 10.100.0.138]
+[SERVER] 2026/04/23 14:39:42 [WALKER] Probing 10.100.0.19 (depth 3)
+[SERVER] 2026/04/23 14:39:42 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.19: [10.100.0.118 10.100.0.130 10.100.0.139 10.100.0.119 10.100.0.124 10.100.0.128 10.100.0.129 10.100.0.120 10.100.0.121 10.100.0.123 10.100.0.125 10.100.0.126 10.100.0.127 10.100.0.131 10.100.0.11 10.100.0.122]
+[SERVER] 2026/04/23 14:39:42 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.19 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:42 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.19: [10.100.0.118 10.100.0.130 10.100.0.139 10.100.0.119 10.100.0.124 10.100.0.128 10.100.0.129 10.100.0.120 10.100.0.121 10.100.0.123 10.100.0.125 10.100.0.126 10.100.0.127 10.100.0.131 10.100.0.11 10.100.0.122]
+[SERVER] 2026/04/23 14:39:42 [WALKER] Probing 10.100.0.12 (depth 3)
+[SERVER] 2026/04/23 14:39:42 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.12: [10.100.0.20 10.100.0.21 10.100.0.24 10.100.0.26 10.100.0.31 10.100.0.8 10.100.0.23 10.100.0.27 10.100.0.29 10.100.0.132 10.100.0.22 10.100.0.28 10.100.0.25 10.100.0.30 10.100.0.32 10.100.0.33]
+[SERVER] 2026/04/23 14:39:42 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.12 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:42 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.12: [10.100.0.20 10.100.0.21 10.100.0.24 10.100.0.26 10.100.0.31 10.100.0.8 10.100.0.23 10.100.0.27 10.100.0.29 10.100.0.132 10.100.0.22 10.100.0.28 10.100.0.25 10.100.0.30 10.100.0.32 10.100.0.33]
+[SERVER] 2026/04/23 14:39:42 [WALKER] Probing 10.100.0.13 (depth 3)
+[SERVER] 2026/04/23 14:39:42 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.13: [10.100.0.8 10.100.0.40 10.100.0.46 10.100.0.133 10.100.0.38 10.100.0.39 10.100.0.41 10.100.0.47 10.100.0.35 10.100.0.37 10.100.0.43 10.100.0.34 10.100.0.36 10.100.0.42 10.100.0.44 10.100.0.45]
+[SERVER] 2026/04/23 14:39:42 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.13 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:43 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.13: [10.100.0.8 10.100.0.40 10.100.0.46 10.100.0.133 10.100.0.38 10.100.0.39 10.100.0.41 10.100.0.47 10.100.0.35 10.100.0.37 10.100.0.43 10.100.0.34 10.100.0.36 10.100.0.42 10.100.0.44 10.100.0.45]
+[SERVER] 2026/04/23 14:39:43 [WALKER] Probing 10.100.0.15 (depth 3)
+[SERVER] 2026/04/23 14:39:43 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.15: [10.100.0.66 10.100.0.135 10.100.0.9 10.100.0.62 10.100.0.63 10.100.0.67 10.100.0.70 10.100.0.71 10.100.0.64 10.100.0.65 10.100.0.68 10.100.0.69 10.100.0.72 10.100.0.74 10.100.0.75 10.100.0.73]
+[SERVER] 2026/04/23 14:39:43 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.15 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:43 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54068)
+[SERVER] 2026/04/23 14:39:43 <- GET /api/v1/traps completed in 4.5098ms
+[SERVER] 2026/04/23 14:39:43 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54069)
+[SERVER] 2026/04/23 14:39:43 <- GET /api/v1/alerts completed in 8.8968ms
+[SERVER] 2026/04/23 14:39:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54071)
+[SERVER] 2026/04/23 14:39:43 <- GET /api/v1/alerts completed in 3.3974ms
+[SERVER] 2026/04/23 14:39:43 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54072)
+[SERVER] 2026/04/23 14:39:43 <- GET /api/v1/alerts completed in 2.2984ms
+[SERVER] 2026/04/23 14:39:43 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.15: [10.100.0.66 10.100.0.135 10.100.0.9 10.100.0.62 10.100.0.63 10.100.0.67 10.100.0.70 10.100.0.71 10.100.0.64 10.100.0.65 10.100.0.68 10.100.0.69 10.100.0.72 10.100.0.74 10.100.0.75 10.100.0.73]
+[SERVER] 2026/04/23 14:39:43 [WALKER] Probing 10.100.0.14 (depth 3)
+[SERVER] 2026/04/23 14:39:43 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.14: [10.100.0.9 10.100.0.50 10.100.0.52 10.100.0.60 10.100.0.61 10.100.0.134 10.100.0.55 10.100.0.58 10.100.0.51 10.100.0.54 10.100.0.56 10.100.0.57 10.100.0.48 10.100.0.49 10.100.0.53 10.100.0.59]
+[SERVER] 2026/04/23 14:39:43 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.14 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:43 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.14: [10.100.0.9 10.100.0.50 10.100.0.52 10.100.0.60 10.100.0.61 10.100.0.134 10.100.0.55 10.100.0.58 10.100.0.51 10.100.0.54 10.100.0.56 10.100.0.57 10.100.0.48 10.100.0.49 10.100.0.53 10.100.0.59]
+[SERVER] 2026/04/23 14:39:43 [WALKER] Probing 10.100.0.16 (depth 3)
+[SERVER] 2026/04/23 14:39:44 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.16: [10.100.0.10 10.100.0.80 10.100.0.81 10.100.0.83 10.100.0.87 10.100.0.136 10.100.0.76 10.100.0.86 10.100.0.88 10.100.0.77 10.100.0.78 10.100.0.79 10.100.0.84 10.100.0.85 10.100.0.89 10.100.0.82]
+[SERVER] 2026/04/23 14:39:44 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.16 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:44 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.16: [10.100.0.10 10.100.0.80 10.100.0.81 10.100.0.83 10.100.0.87 10.100.0.136 10.100.0.76 10.100.0.86 10.100.0.88 10.100.0.77 10.100.0.78 10.100.0.79 10.100.0.84 10.100.0.85 10.100.0.89 10.100.0.82]
+[SERVER] 2026/04/23 14:39:44 [WALKER] Probing 10.100.0.17 (depth 3)
+[SERVER] 2026/04/23 14:39:44 [WALKER] LLDP discovered 16 neighbor(s) for 10.100.0.17: [10.100.0.91 10.100.0.93 10.100.0.95 10.100.0.101 10.100.0.137 10.100.0.92 10.100.0.97 10.100.0.98 10.100.0.100 10.100.0.102 10.100.0.10 10.100.0.90 10.100.0.103 10.100.0.94 10.100.0.96 10.100.0.99]
+[SERVER] 2026/04/23 14:39:44 [WALKER] CombineDiscovery: supplementing LLDP results for 10.100.0.17 with CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:44 [WALKER] Fallback discovered 16 neighbor(s) for 10.100.0.17: [10.100.0.91 10.100.0.93 10.100.0.95 10.100.0.101 10.100.0.137 10.100.0.92 10.100.0.97 10.100.0.98 10.100.0.100 10.100.0.102 10.100.0.10 10.100.0.90 10.100.0.103 10.100.0.94 10.100.0.96 10.100.0.99]
+[SERVER] 2026/04/23 14:39:44 [WALKER] Probing 10.100.0.114 (depth 4)
+[SERVER] 2026/04/23 14:39:44 [WALKER] LLDP returned no neighbors for 10.100.0.114 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:44 [WALKER] No neighbors discovered for 10.100.0.114
+[SERVER] 2026/04/23 14:39:44 [WALKER] Probing 10.100.0.116 (depth 4)
+[SERVER] 2026/04/23 14:39:45 [WALKER] LLDP returned no neighbors for 10.100.0.116 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:45 [WALKER] No neighbors discovered for 10.100.0.116
+[SERVER] 2026/04/23 14:39:45 [WALKER] Probing 10.100.0.104 (depth 4)
+[SERVER] 2026/04/23 14:39:45 [WALKER] LLDP returned no neighbors for 10.100.0.104 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:45 [WALKER] No neighbors discovered for 10.100.0.104
+[SERVER] 2026/04/23 14:39:45 [WALKER] Probing 10.100.0.105 (depth 4)
+[SERVER] 2026/04/23 14:39:46 [WALKER] LLDP returned no neighbors for 10.100.0.105 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:46 [WALKER] No neighbors discovered for 10.100.0.105
+[SERVER] 2026/04/23 14:39:46 [WALKER] Probing 10.100.0.112 (depth 4)
+[SERVER] 2026/04/23 14:39:46 [WALKER] LLDP returned no neighbors for 10.100.0.112 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:46 [WALKER] No neighbors discovered for 10.100.0.112
+[SERVER] 2026/04/23 14:39:46 [WALKER] Probing 10.100.0.113 (depth 4)
+[SERVER] 2026/04/23 14:39:46 [WALKER] LLDP returned no neighbors for 10.100.0.113 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:46 [WALKER] No neighbors discovered for 10.100.0.113
+[SERVER] 2026/04/23 14:39:46 [WALKER] Probing 10.100.0.107 (depth 4)
+[SERVER] 2026/04/23 14:39:47 [WALKER] LLDP returned no neighbors for 10.100.0.107 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:47 [WALKER] No neighbors discovered for 10.100.0.107
+[SERVER] 2026/04/23 14:39:47 [WALKER] Probing 10.100.0.108 (depth 4)
+[SERVER] 2026/04/23 14:39:47 [WALKER] LLDP returned no neighbors for 10.100.0.108 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:47 [WALKER] No neighbors discovered for 10.100.0.108
+[SERVER] 2026/04/23 14:39:47 [WALKER] Probing 10.100.0.111 (depth 4)
+[SERVER] 2026/04/23 14:39:47 [WALKER] LLDP returned no neighbors for 10.100.0.111 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:47 [WALKER] No neighbors discovered for 10.100.0.111
+[SERVER] 2026/04/23 14:39:47 [WALKER] Probing 10.100.0.115 (depth 4)
+[SERVER] 2026/04/23 14:39:48 [WALKER] LLDP returned no neighbors for 10.100.0.115 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:48 [WALKER] No neighbors discovered for 10.100.0.115
+[SERVER] 2026/04/23 14:39:48 [WALKER] Probing 10.100.0.117 (depth 4)
+[SERVER] 2026/04/23 14:39:48 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54077)
+[SERVER] 2026/04/23 14:39:48 <- GET /api/v1/metrics completed in 90.3369ms
+[SERVER] 2026/04/23 14:39:48 [WALKER] LLDP returned no neighbors for 10.100.0.117 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54078)
+[SERVER] 2026/04/23 14:39:48 <- GET /api/v1/metrics completed in 3.4489ms
+[SERVER] 2026/04/23 14:39:48 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54079)
+[SERVER] 2026/04/23 14:39:48 <- GET /api/v1/metrics completed in 3.1661ms
+[SERVER] 2026/04/23 14:39:48 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:54080)
+[SERVER] 2026/04/23 14:39:48 <- GET /api/v1/snmp-metrics completed in 4.2064ms
+[SERVER] 2026/04/23 14:39:48 [WALKER] No neighbors discovered for 10.100.0.117
+[SERVER] 2026/04/23 14:39:48 [WALKER] Probing 10.100.0.106 (depth 4)
+[SERVER] 2026/04/23 14:39:48 [WALKER] LLDP returned no neighbors for 10.100.0.106 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:49 [WALKER] No neighbors discovered for 10.100.0.106
+[SERVER] 2026/04/23 14:39:49 [WALKER] Probing 10.100.0.109 (depth 4)
+[SERVER] 2026/04/23 14:39:49 [WALKER] LLDP returned no neighbors for 10.100.0.109 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:49 [WALKER] No neighbors discovered for 10.100.0.109
+[SERVER] 2026/04/23 14:39:49 [WALKER] Probing 10.100.0.110 (depth 4)
+[SERVER] 2026/04/23 14:39:49 [WALKER] LLDP returned no neighbors for 10.100.0.110 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:50 [WALKER] No neighbors discovered for 10.100.0.110
+[SERVER] 2026/04/23 14:39:50 [WALKER] Probing 10.100.0.138 (depth 4)
+[SERVER] 2026/04/23 14:39:50 [WALKER] LLDP returned no neighbors for 10.100.0.138 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:50 [WALKER] No neighbors discovered for 10.100.0.138
+[SERVER] 2026/04/23 14:39:50 [WALKER] Probing 10.100.0.118 (depth 4)
+[SERVER] 2026/04/23 14:39:50 [WALKER] LLDP returned no neighbors for 10.100.0.118 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:51 [WALKER] No neighbors discovered for 10.100.0.118
+[SERVER] 2026/04/23 14:39:51 [WALKER] Probing 10.100.0.130 (depth 4)
+[SERVER] 2026/04/23 14:39:51 [WALKER] LLDP returned no neighbors for 10.100.0.130 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:51 [WALKER] No neighbors discovered for 10.100.0.130
+[SERVER] 2026/04/23 14:39:51 [WALKER] Probing 10.100.0.139 (depth 4)
+[SERVER] 2026/04/23 14:39:51 [WALKER] LLDP returned no neighbors for 10.100.0.139 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:51 [WALKER] No neighbors discovered for 10.100.0.139
+[SERVER] 2026/04/23 14:39:51 [WALKER] Probing 10.100.0.119 (depth 4)
+[SERVER] 2026/04/23 14:39:52 [WALKER] LLDP returned no neighbors for 10.100.0.119 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:52 [WALKER] No neighbors discovered for 10.100.0.119
+[SERVER] 2026/04/23 14:39:52 [WALKER] Probing 10.100.0.124 (depth 4)
+[SERVER] 2026/04/23 14:39:52 [WALKER] LLDP returned no neighbors for 10.100.0.124 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:52 [WALKER] No neighbors discovered for 10.100.0.124
+[SERVER] 2026/04/23 14:39:52 [WALKER] Probing 10.100.0.128 (depth 4)
+[SERVER] 2026/04/23 14:39:52 [WALKER] LLDP returned no neighbors for 10.100.0.128 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:52 [WALKER] No neighbors discovered for 10.100.0.128
+[SERVER] 2026/04/23 14:39:52 [WALKER] Probing 10.100.0.129 (depth 4)
+[SERVER] 2026/04/23 14:39:53 [WALKER] LLDP returned no neighbors for 10.100.0.129 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:53 [WALKER] No neighbors discovered for 10.100.0.129
+[SERVER] 2026/04/23 14:39:53 [WALKER] Probing 10.100.0.120 (depth 4)
+[SERVER] 2026/04/23 14:39:53 [WALKER] LLDP returned no neighbors for 10.100.0.120 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:53 [WALKER] No neighbors discovered for 10.100.0.120
+[SERVER] 2026/04/23 14:39:53 [WALKER] Probing 10.100.0.121 (depth 4)
+[SERVER] 2026/04/23 14:39:53 [WALKER] LLDP returned no neighbors for 10.100.0.121 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:53 [WALKER] No neighbors discovered for 10.100.0.121
+[SERVER] 2026/04/23 14:39:53 [WALKER] Probing 10.100.0.123 (depth 4)
+[SERVER] 2026/04/23 14:39:54 [WALKER] LLDP returned no neighbors for 10.100.0.123 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:54 [WALKER] No neighbors discovered for 10.100.0.123
+[SERVER] 2026/04/23 14:39:54 [WALKER] Probing 10.100.0.125 (depth 4)
+[SERVER] 2026/04/23 14:39:54 [WALKER] LLDP returned no neighbors for 10.100.0.125 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:54 [WALKER] No neighbors discovered for 10.100.0.125
+[SERVER] 2026/04/23 14:39:54 [WALKER] Probing 10.100.0.126 (depth 4)
+[SERVER] 2026/04/23 14:39:54 [WALKER] LLDP returned no neighbors for 10.100.0.126 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:54 [WALKER] No neighbors discovered for 10.100.0.126
+[SERVER] 2026/04/23 14:39:54 [WALKER] Probing 10.100.0.127 (depth 4)
+[SERVER] 2026/04/23 14:39:55 [WALKER] LLDP returned no neighbors for 10.100.0.127 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:55 [WALKER] No neighbors discovered for 10.100.0.127
+[SERVER] 2026/04/23 14:39:55 [WALKER] Probing 10.100.0.131 (depth 4)
+[SERVER] 2026/04/23 14:39:55 [WALKER] LLDP returned no neighbors for 10.100.0.131 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:55 [WALKER] No neighbors discovered for 10.100.0.131
+[SERVER] 2026/04/23 14:39:55 [WALKER] Probing 10.100.0.122 (depth 4)
+[SERVER] 2026/04/23 14:39:55 [WALKER] LLDP returned no neighbors for 10.100.0.122 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:56 [WALKER] No neighbors discovered for 10.100.0.122
+[SERVER] 2026/04/23 14:39:56 [WALKER] Probing 10.100.0.20 (depth 4)
+[SERVER] 2026/04/23 14:39:56 [WALKER] LLDP returned no neighbors for 10.100.0.20 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:56 [WALKER] No neighbors discovered for 10.100.0.20
+[SERVER] 2026/04/23 14:39:56 [WALKER] Probing 10.100.0.21 (depth 4)
+[SERVER] 2026/04/23 14:39:56 [WALKER] LLDP returned no neighbors for 10.100.0.21 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:56 [WALKER] No neighbors discovered for 10.100.0.21
+[SERVER] 2026/04/23 14:39:56 [WALKER] Probing 10.100.0.24 (depth 4)
+[SERVER] 2026/04/23 14:39:57 [WALKER] LLDP returned no neighbors for 10.100.0.24 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:57 [WALKER] No neighbors discovered for 10.100.0.24
+[SERVER] 2026/04/23 14:39:57 [WALKER] Probing 10.100.0.26 (depth 4)
+[SERVER] 2026/04/23 14:39:57 [WALKER] LLDP returned no neighbors for 10.100.0.26 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:57 [WALKER] No neighbors discovered for 10.100.0.26
+[SERVER] 2026/04/23 14:39:57 [WALKER] Probing 10.100.0.31 (depth 4)
+[SERVER] 2026/04/23 14:39:57 [WALKER] LLDP returned no neighbors for 10.100.0.31 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:57 [WALKER] No neighbors discovered for 10.100.0.31
+[SERVER] 2026/04/23 14:39:57 [WALKER] Probing 10.100.0.23 (depth 4)
+[SERVER] 2026/04/23 14:39:57 [WALKER] LLDP returned no neighbors for 10.100.0.23 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:58 [WALKER] No neighbors discovered for 10.100.0.23
+[SERVER] 2026/04/23 14:39:58 [WALKER] Probing 10.100.0.27 (depth 4)
+[SERVER] 2026/04/23 14:39:58 [WALKER] LLDP returned no neighbors for 10.100.0.27 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:58 [WALKER] No neighbors discovered for 10.100.0.27
+[SERVER] 2026/04/23 14:39:58 [WALKER] Probing 10.100.0.29 (depth 4)
+[SERVER] 2026/04/23 14:39:58 [WALKER] LLDP returned no neighbors for 10.100.0.29 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:58 [WALKER] No neighbors discovered for 10.100.0.29
+[SERVER] 2026/04/23 14:39:58 [WALKER] Probing 10.100.0.132 (depth 4)
+[SERVER] 2026/04/23 14:39:58 [WALKER] LLDP returned no neighbors for 10.100.0.132 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:59 [WALKER] No neighbors discovered for 10.100.0.132
+[SERVER] 2026/04/23 14:39:59 [WALKER] Probing 10.100.0.22 (depth 4)
+[SERVER] 2026/04/23 14:39:59 [WALKER] LLDP returned no neighbors for 10.100.0.22 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:59 [WALKER] No neighbors discovered for 10.100.0.22
+[SERVER] 2026/04/23 14:39:59 [WALKER] Probing 10.100.0.28 (depth 4)
+[SERVER] 2026/04/23 14:39:59 [WALKER] LLDP returned no neighbors for 10.100.0.28 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:39:59 [WALKER] No neighbors discovered for 10.100.0.28
+[SERVER] 2026/04/23 14:39:59 [WALKER] Probing 10.100.0.25 (depth 4)
+[SERVER] 2026/04/23 14:40:00 [WALKER] LLDP returned no neighbors for 10.100.0.25 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:00 -> GET /api/v1/agents (Agent: , IP: 192.168.1.4:54089)
+[SERVER] 2026/04/23 14:40:00 <- GET /api/v1/agents completed in 2.5198ms
+[SERVER] 2026/04/23 14:40:00 [WALKER] No neighbors discovered for 10.100.0.25
+[SERVER] 2026/04/23 14:40:00 [WALKER] Probing 10.100.0.30 (depth 4)
+[SERVER] 2026/04/23 14:40:00 [WALKER] LLDP returned no neighbors for 10.100.0.30 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:00 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: 192.168.1.4:54096)
+[SERVER] 2026/04/23 14:40:00 -> GET /health (Agent: , IP: 192.168.1.4:54103)
+[SERVER] 2026/04/23 14:40:00 <- GET /health completed in 5.3412ms
+[SERVER] 2026/04/23 14:40:00 [WALKER] No neighbors discovered for 10.100.0.30
+[SERVER] 2026/04/23 14:40:00 [WALKER] Probing 10.100.0.32 (depth 4)
+[SERVER] 2026/04/23 14:40:00 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: 192.168.1.4:54099)
+[SERVER] 2026/04/23 14:40:00 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: 192.168.1.4:54092)
+[SERVER] 2026/04/23 14:40:00 <- GET /api/v1/traps completed in 7.1135ms
+[SERVER] 2026/04/23 14:40:00 <- GET /api/v1/alerts completed in 9.1467ms
+[SERVER] 2026/04/23 14:40:00 [WALKER] LLDP returned no neighbors for 10.100.0.32 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:00 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: 192.168.1.4:54098)
+[SERVER] 2026/04/23 14:40:00 <- GET /api/v1/topology/links completed in 6.7058ms
+[SERVER] 2026/04/23 14:40:00 <- GET /api/v1/metrics completed in 388.0238ms
+[SERVER] 2026/04/23 14:40:00 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: 192.168.1.4:54104)
+[SERVER] 2026/04/23 14:40:00 <- GET /api/v1/alerts completed in 5.0549ms
+[SERVER] 2026/04/23 14:40:01 [WALKER] No neighbors discovered for 10.100.0.32
+[SERVER] 2026/04/23 14:40:01 [WALKER] Probing 10.100.0.33 (depth 4)
+[SERVER] 2026/04/23 14:40:01 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: 192.168.1.4:54105)
+[SERVER] 2026/04/23 14:40:01 <- GET /api/v1/metrics completed in 20.9347ms
+[SERVER] 2026/04/23 14:40:01 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: 192.168.1.4:54106)
+[SERVER] 2026/04/23 14:40:01 <- GET /api/v1/alerts completed in 5.305ms
+[SERVER] 2026/04/23 14:40:01 [WALKER] LLDP returned no neighbors for 10.100.0.33 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:01 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: 192.168.1.4:54107)
+[SERVER] 2026/04/23 14:40:01 <- GET /api/v1/metrics completed in 2.6851ms
+[SERVER] 2026/04/23 14:40:01 [WALKER] No neighbors discovered for 10.100.0.33
+[SERVER] 2026/04/23 14:40:01 [WALKER] Probing 10.100.0.40 (depth 4)
+[SERVER] 2026/04/23 14:40:01 [WALKER] LLDP returned no neighbors for 10.100.0.40 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:01 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: 192.168.1.4:54108)
+[SERVER] 2026/04/23 14:40:01 <- GET /api/v1/snmp-metrics completed in 3.9816ms
+[SERVER] 2026/04/23 14:40:02 [WALKER] No neighbors discovered for 10.100.0.40
+[SERVER] 2026/04/23 14:40:02 [WALKER] Probing 10.100.0.46 (depth 4)
+[SERVER] 2026/04/23 14:40:02 [WALKER] LLDP returned no neighbors for 10.100.0.46 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:02 [WALKER] No neighbors discovered for 10.100.0.46
+[SERVER] 2026/04/23 14:40:02 [WALKER] Probing 10.100.0.133 (depth 4)
+[SERVER] 2026/04/23 14:40:02 [WALKER] LLDP returned no neighbors for 10.100.0.133 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:02 [WALKER] No neighbors discovered for 10.100.0.133
+[SERVER] 2026/04/23 14:40:02 [WALKER] Probing 10.100.0.38 (depth 4)
+[SERVER] 2026/04/23 14:40:02 [WALKER] LLDP returned no neighbors for 10.100.0.38 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:02 [WALKER] No neighbors discovered for 10.100.0.38
+[SERVER] 2026/04/23 14:40:02 [WALKER] Probing 10.100.0.39 (depth 4)
+[SERVER] 2026/04/23 14:40:03 [WALKER] LLDP returned no neighbors for 10.100.0.39 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:03 [WALKER] No neighbors discovered for 10.100.0.39
+[SERVER] 2026/04/23 14:40:03 [WALKER] Probing 10.100.0.41 (depth 4)
+[SERVER] 2026/04/23 14:40:03 [WALKER] LLDP returned no neighbors for 10.100.0.41 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:03 [WALKER] No neighbors discovered for 10.100.0.41
+[SERVER] 2026/04/23 14:40:03 [WALKER] Probing 10.100.0.47 (depth 4)
+[SERVER] 2026/04/23 14:40:03 [WALKER] LLDP returned no neighbors for 10.100.0.47 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:04 [WALKER] No neighbors discovered for 10.100.0.47
+[SERVER] 2026/04/23 14:40:04 [WALKER] Probing 10.100.0.35 (depth 4)
+[SERVER] 2026/04/23 14:40:04 [WALKER] LLDP returned no neighbors for 10.100.0.35 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:04 [WALKER] No neighbors discovered for 10.100.0.35
+[SERVER] 2026/04/23 14:40:04 [WALKER] Probing 10.100.0.37 (depth 4)
+[SERVER] 2026/04/23 14:40:04 [WALKER] LLDP returned no neighbors for 10.100.0.37 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:04 [WALKER] No neighbors discovered for 10.100.0.37
+[SERVER] 2026/04/23 14:40:04 [WALKER] Probing 10.100.0.43 (depth 4)
+[SERVER] 2026/04/23 14:40:04 [WALKER] LLDP returned no neighbors for 10.100.0.43 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:05 [WALKER] No neighbors discovered for 10.100.0.43
+[SERVER] 2026/04/23 14:40:05 [WALKER] Probing 10.100.0.34 (depth 4)
+[SERVER] 2026/04/23 14:40:05 [WALKER] LLDP returned no neighbors for 10.100.0.34 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:05 [WALKER] No neighbors discovered for 10.100.0.34
+[SERVER] 2026/04/23 14:40:05 [WALKER] Probing 10.100.0.36 (depth 4)
+[SERVER] 2026/04/23 14:40:05 [WALKER] LLDP returned no neighbors for 10.100.0.36 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:05 [WALKER] No neighbors discovered for 10.100.0.36
+[SERVER] 2026/04/23 14:40:05 [WALKER] Probing 10.100.0.42 (depth 4)
+[SERVER] 2026/04/23 14:40:05 [WALKER] LLDP returned no neighbors for 10.100.0.42 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:06 [WALKER] No neighbors discovered for 10.100.0.42
+[SERVER] 2026/04/23 14:40:06 [WALKER] Probing 10.100.0.44 (depth 4)
+[SERVER] 2026/04/23 14:40:06 [WALKER] LLDP returned no neighbors for 10.100.0.44 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:06 [WALKER] No neighbors discovered for 10.100.0.44
+[SERVER] 2026/04/23 14:40:06 [WALKER] Probing 10.100.0.45 (depth 4)
+[SERVER] 2026/04/23 14:40:06 [WALKER] LLDP returned no neighbors for 10.100.0.45 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:06 [WALKER] No neighbors discovered for 10.100.0.45
+[SERVER] 2026/04/23 14:40:06 [WALKER] Probing 10.100.0.66 (depth 4)
+[SERVER] 2026/04/23 14:40:07 [WALKER] LLDP returned no neighbors for 10.100.0.66 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:07 [WALKER] No neighbors discovered for 10.100.0.66
+[SERVER] 2026/04/23 14:40:07 [WALKER] Probing 10.100.0.135 (depth 4)
+[SERVER] 2026/04/23 14:40:07 [WALKER] LLDP returned no neighbors for 10.100.0.135 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:07 [WALKER] No neighbors discovered for 10.100.0.135
+[SERVER] 2026/04/23 14:40:07 [WALKER] Probing 10.100.0.62 (depth 4)
+[SERVER] 2026/04/23 14:40:07 [WALKER] LLDP returned no neighbors for 10.100.0.62 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:08 [WALKER] No neighbors discovered for 10.100.0.62
+[SERVER] 2026/04/23 14:40:08 [WALKER] Probing 10.100.0.63 (depth 4)
+[SERVER] 2026/04/23 14:40:08 [WALKER] LLDP returned no neighbors for 10.100.0.63 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:08 [WALKER] No neighbors discovered for 10.100.0.63
+[SERVER] 2026/04/23 14:40:08 [WALKER] Probing 10.100.0.67 (depth 4)
+[SERVER] 2026/04/23 14:40:08 [WALKER] LLDP returned no neighbors for 10.100.0.67 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:08 [WALKER] No neighbors discovered for 10.100.0.67
+[SERVER] 2026/04/23 14:40:08 [WALKER] Probing 10.100.0.70 (depth 4)
+[SERVER] 2026/04/23 14:40:09 [WALKER] LLDP returned no neighbors for 10.100.0.70 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:09 [WALKER] No neighbors discovered for 10.100.0.70
+[SERVER] 2026/04/23 14:40:09 [WALKER] Probing 10.100.0.71 (depth 4)
+[SERVER] 2026/04/23 14:40:09 [WALKER] LLDP returned no neighbors for 10.100.0.71 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:09 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: 192.168.1.4:54113)
+[SERVER] 2026/04/23 14:40:09 [WALKER] No neighbors discovered for 10.100.0.71
+[SERVER] 2026/04/23 14:40:09 [WALKER] Probing 10.100.0.64 (depth 4)
+[SERVER] 2026/04/23 14:40:09 <- GET /api/v1/metrics completed in 75.9221ms
+[SERVER] 2026/04/23 14:40:09 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57346)
+[SERVER] 2026/04/23 14:40:09 <- GET /api/v1/metrics completed in 3.1372ms
+[SERVER] 2026/04/23 14:40:09 [WALKER] LLDP returned no neighbors for 10.100.0.64 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:09 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57348)
+[SERVER] 2026/04/23 14:40:09 <- GET /api/v1/metrics completed in 2.6699ms
+[SERVER] 2026/04/23 14:40:09 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57349)
+[SERVER] 2026/04/23 14:40:09 <- GET /api/v1/snmp-metrics completed in 2.0796ms
+[SERVER] 2026/04/23 14:40:10 [WALKER] No neighbors discovered for 10.100.0.64
+[SERVER] 2026/04/23 14:40:10 [WALKER] Probing 10.100.0.65 (depth 4)
+[SERVER] 2026/04/23 14:40:10 [WALKER] LLDP returned no neighbors for 10.100.0.65 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:10 [WALKER] No neighbors discovered for 10.100.0.65
+[SERVER] 2026/04/23 14:40:10 [WALKER] Probing 10.100.0.68 (depth 4)
+[SERVER] 2026/04/23 14:40:11 [WALKER] LLDP returned no neighbors for 10.100.0.68 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:12 [WALKER] No neighbors discovered for 10.100.0.68
+[SERVER] 2026/04/23 14:40:12 [WALKER] Probing 10.100.0.69 (depth 4)
+[SERVER] 2026/04/23 14:40:12 [WALKER] LLDP returned no neighbors for 10.100.0.69 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:12 [WALKER] No neighbors discovered for 10.100.0.69
+[SERVER] 2026/04/23 14:40:12 [WALKER] Probing 10.100.0.72 (depth 4)
+[SERVER] 2026/04/23 14:40:12 [WALKER] LLDP returned no neighbors for 10.100.0.72 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:12 [WALKER] No neighbors discovered for 10.100.0.72
+[SERVER] 2026/04/23 14:40:12 [WALKER] Probing 10.100.0.74 (depth 4)
+[SERVER] 2026/04/23 14:40:12 [WALKER] LLDP returned no neighbors for 10.100.0.74 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:13 [WALKER] No neighbors discovered for 10.100.0.74
+[SERVER] 2026/04/23 14:40:13 [WALKER] Probing 10.100.0.75 (depth 4)
+[SERVER] 2026/04/23 14:40:13 [WALKER] LLDP returned no neighbors for 10.100.0.75 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:13 [WALKER] No neighbors discovered for 10.100.0.75
+[SERVER] 2026/04/23 14:40:13 [WALKER] Probing 10.100.0.73 (depth 4)
+[SERVER] 2026/04/23 14:40:13 [WALKER] LLDP returned no neighbors for 10.100.0.73 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:13 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57354)
+[SERVER] 2026/04/23 14:40:13 <- GET /api/v1/alerts completed in 2.8299ms
+[SERVER] 2026/04/23 14:40:13 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57357)
+[SERVER] 2026/04/23 14:40:13 <- GET /api/v1/traps completed in 4.6663ms
+[SERVER] 2026/04/23 14:40:13 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57358)
+[SERVER] 2026/04/23 14:40:13 <- GET /api/v1/alerts completed in 5.7916ms
+[SERVER] 2026/04/23 14:40:13 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57359)
+[SERVER] 2026/04/23 14:40:13 <- GET /api/v1/alerts completed in 2.2122ms
+[SERVER] 2026/04/23 14:40:13 [WALKER] No neighbors discovered for 10.100.0.73
+[SERVER] 2026/04/23 14:40:13 [WALKER] Probing 10.100.0.50 (depth 4)
+[SERVER] 2026/04/23 14:40:13 [WALKER] LLDP returned no neighbors for 10.100.0.50 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:14 [WALKER] No neighbors discovered for 10.100.0.50
+[SERVER] 2026/04/23 14:40:14 [WALKER] Probing 10.100.0.52 (depth 4)
+[SERVER] 2026/04/23 14:40:14 [WALKER] LLDP returned no neighbors for 10.100.0.52 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:14 [WALKER] No neighbors discovered for 10.100.0.52
+[SERVER] 2026/04/23 14:40:14 [WALKER] Probing 10.100.0.60 (depth 4)
+[SERVER] 2026/04/23 14:40:14 [WALKER] LLDP returned no neighbors for 10.100.0.60 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:14 [WALKER] No neighbors discovered for 10.100.0.60
+[SERVER] 2026/04/23 14:40:14 [WALKER] Probing 10.100.0.61 (depth 4)
+[SERVER] 2026/04/23 14:40:14 [WALKER] LLDP returned no neighbors for 10.100.0.61 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:15 [WALKER] No neighbors discovered for 10.100.0.61
+[SERVER] 2026/04/23 14:40:15 [WALKER] Probing 10.100.0.134 (depth 4)
+[SERVER] 2026/04/23 14:40:15 [WALKER] LLDP returned no neighbors for 10.100.0.134 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:15 [WALKER] No neighbors discovered for 10.100.0.134
+[SERVER] 2026/04/23 14:40:15 [WALKER] Probing 10.100.0.55 (depth 4)
+[SERVER] 2026/04/23 14:40:15 [WALKER] LLDP returned no neighbors for 10.100.0.55 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:15 [WALKER] No neighbors discovered for 10.100.0.55
+[SERVER] 2026/04/23 14:40:15 [WALKER] Probing 10.100.0.58 (depth 4)
+[SERVER] 2026/04/23 14:40:16 [WALKER] LLDP returned no neighbors for 10.100.0.58 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:16 [WALKER] No neighbors discovered for 10.100.0.58
+[SERVER] 2026/04/23 14:40:16 [WALKER] Probing 10.100.0.51 (depth 4)
+[SERVER] 2026/04/23 14:40:16 [WALKER] LLDP returned no neighbors for 10.100.0.51 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:16 [WALKER] No neighbors discovered for 10.100.0.51
+[SERVER] 2026/04/23 14:40:16 [WALKER] Probing 10.100.0.54 (depth 4)
+[SERVER] 2026/04/23 14:40:16 [WALKER] LLDP returned no neighbors for 10.100.0.54 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:16 [WALKER] No neighbors discovered for 10.100.0.54
+[SERVER] 2026/04/23 14:40:16 [WALKER] Probing 10.100.0.56 (depth 4)
+[SERVER] 2026/04/23 14:40:17 [WALKER] LLDP returned no neighbors for 10.100.0.56 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:17 [WALKER] No neighbors discovered for 10.100.0.56
+[SERVER] 2026/04/23 14:40:17 [WALKER] Probing 10.100.0.57 (depth 4)
+[SERVER] 2026/04/23 14:40:17 [WALKER] LLDP returned no neighbors for 10.100.0.57 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:17 [WALKER] No neighbors discovered for 10.100.0.57
+[SERVER] 2026/04/23 14:40:17 [WALKER] Probing 10.100.0.48 (depth 4)
+[SERVER] 2026/04/23 14:40:17 [WALKER] LLDP returned no neighbors for 10.100.0.48 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:17 [WALKER] No neighbors discovered for 10.100.0.48
+[SERVER] 2026/04/23 14:40:17 [WALKER] Probing 10.100.0.49 (depth 4)
+[SERVER] 2026/04/23 14:40:18 [WALKER] LLDP returned no neighbors for 10.100.0.49 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:18 [WALKER] No neighbors discovered for 10.100.0.49
+[SERVER] 2026/04/23 14:40:18 [WALKER] Probing 10.100.0.53 (depth 4)
+[SERVER] 2026/04/23 14:40:18 [WALKER] LLDP returned no neighbors for 10.100.0.53 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:18 [WALKER] No neighbors discovered for 10.100.0.53
+[SERVER] 2026/04/23 14:40:18 [WALKER] Probing 10.100.0.59 (depth 4)
+[SERVER] 2026/04/23 14:40:18 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57363)
+[SERVER] 2026/04/23 14:40:18 <- GET /api/v1/metrics completed in 55.0753ms
+[SERVER] 2026/04/23 14:40:18 [WALKER] LLDP returned no neighbors for 10.100.0.59 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:18 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57364)
+[SERVER] 2026/04/23 14:40:18 <- GET /api/v1/metrics completed in 3.0955ms
+[SERVER] 2026/04/23 14:40:18 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57365)
+[SERVER] 2026/04/23 14:40:18 <- GET /api/v1/metrics completed in 2.4456ms
+[SERVER] 2026/04/23 14:40:18 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57366)
+[SERVER] 2026/04/23 14:40:18 <- GET /api/v1/snmp-metrics completed in 5.495ms
+[SERVER] 2026/04/23 14:40:18 [WALKER] No neighbors discovered for 10.100.0.59
+[SERVER] 2026/04/23 14:40:18 [WALKER] Probing 10.100.0.80 (depth 4)
+[SERVER] 2026/04/23 14:40:19 [WALKER] LLDP returned no neighbors for 10.100.0.80 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:19 [WALKER] No neighbors discovered for 10.100.0.80
+[SERVER] 2026/04/23 14:40:19 [WALKER] Probing 10.100.0.81 (depth 4)
+[SERVER] 2026/04/23 14:40:19 [WALKER] LLDP returned no neighbors for 10.100.0.81 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:19 [WALKER] No neighbors discovered for 10.100.0.81
+[SERVER] 2026/04/23 14:40:19 [WALKER] Probing 10.100.0.83 (depth 4)
+[SERVER] 2026/04/23 14:40:19 [WALKER] LLDP returned no neighbors for 10.100.0.83 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:19 [WALKER] No neighbors discovered for 10.100.0.83
+[SERVER] 2026/04/23 14:40:19 [WALKER] Probing 10.100.0.87 (depth 4)
+[SERVER] 2026/04/23 14:40:19 [WALKER] LLDP returned no neighbors for 10.100.0.87 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:20 [WALKER] No neighbors discovered for 10.100.0.87
+[SERVER] 2026/04/23 14:40:20 [WALKER] Probing 10.100.0.136 (depth 4)
+[SERVER] 2026/04/23 14:40:20 [WALKER] LLDP returned no neighbors for 10.100.0.136 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:20 [WALKER] No neighbors discovered for 10.100.0.136
+[SERVER] 2026/04/23 14:40:20 [WALKER] Probing 10.100.0.76 (depth 4)
+[SERVER] 2026/04/23 14:40:20 [WALKER] LLDP returned no neighbors for 10.100.0.76 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:20 [WALKER] No neighbors discovered for 10.100.0.76
+[SERVER] 2026/04/23 14:40:20 [WALKER] Probing 10.100.0.86 (depth 4)
+[SERVER] 2026/04/23 14:40:21 [WALKER] LLDP returned no neighbors for 10.100.0.86 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:21 [WALKER] No neighbors discovered for 10.100.0.86
+[SERVER] 2026/04/23 14:40:21 [WALKER] Probing 10.100.0.88 (depth 4)
+[SERVER] 2026/04/23 14:40:21 [WALKER] LLDP returned no neighbors for 10.100.0.88 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:21 [WALKER] No neighbors discovered for 10.100.0.88
+[SERVER] 2026/04/23 14:40:21 [WALKER] Probing 10.100.0.77 (depth 4)
+[SERVER] 2026/04/23 14:40:21 [WALKER] LLDP returned no neighbors for 10.100.0.77 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:22 [WALKER] No neighbors discovered for 10.100.0.77
+[SERVER] 2026/04/23 14:40:22 [WALKER] Probing 10.100.0.78 (depth 4)
+[SERVER] 2026/04/23 14:40:22 [WALKER] LLDP returned no neighbors for 10.100.0.78 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:22 [WALKER] No neighbors discovered for 10.100.0.78
+[SERVER] 2026/04/23 14:40:22 [WALKER] Probing 10.100.0.79 (depth 4)
+[SERVER] 2026/04/23 14:40:22 [WALKER] LLDP returned no neighbors for 10.100.0.79 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:22 [WALKER] No neighbors discovered for 10.100.0.79
+[SERVER] 2026/04/23 14:40:22 [WALKER] Probing 10.100.0.84 (depth 4)
+[SERVER] 2026/04/23 14:40:23 [WALKER] LLDP returned no neighbors for 10.100.0.84 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:23 [WALKER] No neighbors discovered for 10.100.0.84
+[SERVER] 2026/04/23 14:40:23 [WALKER] Probing 10.100.0.85 (depth 4)
+[SERVER] 2026/04/23 14:40:23 [WALKER] LLDP returned no neighbors for 10.100.0.85 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:23 [WALKER] No neighbors discovered for 10.100.0.85
+[SERVER] 2026/04/23 14:40:23 [WALKER] Probing 10.100.0.89 (depth 4)
+[SERVER] 2026/04/23 14:40:23 [WALKER] LLDP returned no neighbors for 10.100.0.89 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:23 [WALKER] No neighbors discovered for 10.100.0.89
+[SERVER] 2026/04/23 14:40:23 [WALKER] Probing 10.100.0.82 (depth 4)
+[SERVER] 2026/04/23 14:40:24 [WALKER] LLDP returned no neighbors for 10.100.0.82 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:24 [WALKER] No neighbors discovered for 10.100.0.82
+[SERVER] 2026/04/23 14:40:24 [WALKER] Probing 10.100.0.91 (depth 4)
+[SERVER] 2026/04/23 14:40:24 [WALKER] LLDP returned no neighbors for 10.100.0.91 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:24 [WALKER] No neighbors discovered for 10.100.0.91
+[SERVER] 2026/04/23 14:40:24 [WALKER] Probing 10.100.0.93 (depth 4)
+[SERVER] 2026/04/23 14:40:24 [WALKER] LLDP returned no neighbors for 10.100.0.93 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:24 [WALKER] No neighbors discovered for 10.100.0.93
+[SERVER] 2026/04/23 14:40:24 [WALKER] Probing 10.100.0.95 (depth 4)
+[SERVER] 2026/04/23 14:40:25 [WALKER] LLDP returned no neighbors for 10.100.0.95 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:25 [WALKER] No neighbors discovered for 10.100.0.95
+[SERVER] 2026/04/23 14:40:25 [WALKER] Probing 10.100.0.101 (depth 4)
+[SERVER] 2026/04/23 14:40:25 [WALKER] LLDP returned no neighbors for 10.100.0.101 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:25 [WALKER] No neighbors discovered for 10.100.0.101
+[SERVER] 2026/04/23 14:40:25 [WALKER] Probing 10.100.0.137 (depth 4)
+[SERVER] 2026/04/23 14:40:25 [WALKER] LLDP returned no neighbors for 10.100.0.137 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:26 [WALKER] No neighbors discovered for 10.100.0.137
+[SERVER] 2026/04/23 14:40:26 [WALKER] Probing 10.100.0.92 (depth 4)
+[SERVER] 2026/04/23 14:40:26 [WALKER] LLDP returned no neighbors for 10.100.0.92 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:26 [WALKER] No neighbors discovered for 10.100.0.92
+[SERVER] 2026/04/23 14:40:26 [WALKER] Probing 10.100.0.97 (depth 4)
+[SERVER] 2026/04/23 14:40:26 [WALKER] LLDP returned no neighbors for 10.100.0.97 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:26 [WALKER] No neighbors discovered for 10.100.0.97
+[SERVER] 2026/04/23 14:40:26 [WALKER] Probing 10.100.0.98 (depth 4)
+[SERVER] 2026/04/23 14:40:26 [WALKER] LLDP returned no neighbors for 10.100.0.98 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:27 [WALKER] No neighbors discovered for 10.100.0.98
+[SERVER] 2026/04/23 14:40:27 [WALKER] Probing 10.100.0.100 (depth 4)
+[SERVER] 2026/04/23 14:40:27 [WALKER] LLDP returned no neighbors for 10.100.0.100 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:27 [WALKER] No neighbors discovered for 10.100.0.100
+[SERVER] 2026/04/23 14:40:27 [WALKER] Probing 10.100.0.102 (depth 4)
+[SERVER] 2026/04/23 14:40:27 [WALKER] LLDP returned no neighbors for 10.100.0.102 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:27 [WALKER] No neighbors discovered for 10.100.0.102
+[SERVER] 2026/04/23 14:40:27 [WALKER] Probing 10.100.0.90 (depth 4)
+[SERVER] 2026/04/23 14:40:27 [WALKER] LLDP returned no neighbors for 10.100.0.90 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:28 [WALKER] No neighbors discovered for 10.100.0.90
+[SERVER] 2026/04/23 14:40:28 [WALKER] Probing 10.100.0.103 (depth 4)
+[SERVER] 2026/04/23 14:40:28 [WALKER] LLDP returned no neighbors for 10.100.0.103 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:28 [WALKER] No neighbors discovered for 10.100.0.103
+[SERVER] 2026/04/23 14:40:28 [WALKER] Probing 10.100.0.94 (depth 4)
+[SERVER] 2026/04/23 14:40:28 [WALKER] LLDP returned no neighbors for 10.100.0.94 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:28 [WALKER] No neighbors discovered for 10.100.0.94
+[SERVER] 2026/04/23 14:40:28 [WALKER] Probing 10.100.0.96 (depth 4)
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/agents (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57378)
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/agents completed in 3.3723ms
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/alerts (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57380)
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/traps (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57382)
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/alerts completed in 6.6844ms
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57384)
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/topology/links (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57385)
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/traps completed in 4.6148ms
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/topology/links completed in 11.0388ms
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57389)
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/alerts completed in 2.41ms
+[SERVER] 2026/04/23 14:40:28 [WALKER] LLDP returned no neighbors for 10.100.0.96 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:28 -> GET /health (Agent: , IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57388)
+[SERVER] 2026/04/23 14:40:28 <- GET /health completed in 4.3521ms
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/metrics completed in 82.0213ms
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/alerts (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57390)
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/alerts completed in 1.931ms
+[SERVER] 2026/04/23 14:40:28 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AT_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57391)
+[SERVER] 2026/04/23 14:40:28 <- GET /api/v1/metrics completed in 2.3857ms
+[SERVER] 2026/04/23 14:40:29 -> GET /api/v1/metrics (Agent: JPR_MP_AGENT_WIN_HP_AY_01, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57392)
+[SERVER] 2026/04/23 14:40:29 <- GET /api/v1/metrics completed in 3.4649ms
+[SERVER] 2026/04/23 14:40:29 -> GET /api/v1/snmp-metrics (Agent: DESKTOP-LEN7780, IP: [fe80::9ddf:6215:76de:d70%Wi-Fi 2]:57394)
+[SERVER] 2026/04/23 14:40:29 <- GET /api/v1/snmp-metrics completed in 2.8559ms
+[SERVER] 2026/04/23 14:40:29 [WALKER] No neighbors discovered for 10.100.0.96
+[SERVER] 2026/04/23 14:40:29 [WALKER] Probing 10.100.0.99 (depth 4)
+[SERVER] 2026/04/23 14:40:29 [WALKER] LLDP returned no neighbors for 10.100.0.99 — trying CDP/ARP/routes
+[SERVER] 2026/04/23 14:40:29 [WALKER] No neighbors discovered for 10.100.0.99
+[SERVER] 2026/04/23 14:40:30 [WALKER] Session walk-1776935378024018700 complete — 138 nodes found

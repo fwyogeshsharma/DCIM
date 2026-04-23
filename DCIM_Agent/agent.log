@@ -1,0 +1,2007 @@
+2026/02/04 17:59:28.800538 [INFO] TLS is disabled - using standard HTTP client
+2026/02/04 17:59:28.801632 [INFO] SNMP Manager enabled with 2 devices
+2026/02/04 17:59:28.871708 [INFO] System info: Faber (windows x86_64) - 8 cores, 7834 MB RAM
+2026/02/04 17:59:28.871708 [INFO] Running in interactive mode. Press Ctrl+C to stop.
+2026/02/04 17:59:28.871708 [INFO] Agent starting (ID: Faber-1770208168, Name: Faber)
+2026/02/04 17:59:28.872279 [INFO] Agent running. Collection interval: 30s, Send interval: 2m0s
+2026/02/04 17:59:28.872279 [INFO] Starting SNMP polling (interval: 30s)
+2026/02/04 17:59:28.872279 [INFO] ========================================
+2026/02/04 17:59:28.872279 [INFO] 📡 SNMP DEVICE MONITORING
+2026/02/04 17:59:28.872801 [INFO] ========================================
+2026/02/04 17:59:28.872801 [INFO] Polling 2 SNMP devices...
+2026/02/04 17:59:28.872801 [INFO] 
+2026/02/04 17:59:28.872801 [INFO] Processing 1 unsent alerts
+2026/02/04 17:59:28.883925 [WARN] Retrying alert send (attempt 1/3)
+2026/02/04 17:59:33.887498 [WARN] Retrying alert send (attempt 2/3)
+2026/02/04 17:59:38.892302 [WARN] Retrying alert send (attempt 3/3)
+2026/02/04 17:59:43.411657 [INFO] ========================================
+2026/02/04 17:59:43.412776 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/02/04 17:59:43.412776 [INFO] ========================================
+2026/02/04 17:59:43.412776 [INFO] ✅ CPU: 5.47% (8 cores) - ✅ NORMAL
+2026/02/04 17:59:43.412776 [INFO]    Cores: C0:6.2% C1:7.7% C2:7.8% C3:15.4% 
+2026/02/04 17:59:43.412776 [INFO]           C4:17.2% C5:6.2% C6:6.2% C7:3.1% 
+2026/02/04 17:59:43.412776 [INFO] ✅ Memory: 84.00% (6.47 GB / 7.65 GB, 1.18 GB available) - ✅ NORMAL
+2026/02/04 17:59:43.412776 [INFO]    Swap: 59.95% (18.38 GB / 30.65 GB)
+2026/02/04 17:59:43.412776 [INFO] 💾 Disk Usage:
+2026/02/04 17:59:43.412776 [INFO]    ✅ C:: 77.21% (367.35 GB / 475.76 GB, 108.41 GB free) - ✅ OK
+2026/02/04 17:59:43.412776 [INFO] 💿 Disk I/O Performance:
+2026/02/04 17:59:43.412776 [INFO]    ✅ C:: Read: 58363947 ops (1888477998080 bytes), Write: 16750037 ops (763069832704 bytes)
+2026/02/04 17:59:43.413289 [INFO]       ℹ️  Rate metrics available after next collection cycle
+2026/02/04 17:59:43.413289 [INFO] 🌐 Network: ↑ 914.46 MB sent, ↓ 1091.40 MB received
+2026/02/04 17:59:43.413289 [WARN]    ⚠️  Network Errors: 0 in, 9 out
+2026/02/04 17:59:43.413289 [INFO] ⏱️  Uptime: 472.32 hours | Processes: 295
+2026/02/04 17:59:43.413289 [INFO] ========================================
+2026/02/04 17:59:43.413289 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/02/04 17:59:43.413289 [INFO] ========================================
+2026/02/04 17:59:43.413289 [INFO] Interface: Ethernet 2
+2026/02/04 17:59:43.413289 [INFO]    MAC: 00:ff:a0:88:c0:20
+2026/02/04 17:59:43.413289 [INFO]    IPv4: [169.254.226.149]
+2026/02/04 17:59:43.413289 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/02/04 17:59:43.413289 [INFO]    Duplex: full | Auto-Neg: false
+2026/02/04 17:59:43.413289 [INFO]    Link State: down
+2026/02/04 17:59:43.413289 [INFO]    Driver: tapexpressvpn v9.24.2.45
+2026/02/04 17:59:43.413289 [INFO] 
+2026/02/04 17:59:43.413289 [INFO] Interface: vEthernet (WSL (Hyper-V firewall))
+2026/02/04 17:59:43.413289 [INFO]    MAC: 00:15:5d:8c:0b:b7
+2026/02/04 17:59:43.413289 [INFO]    IPv4: [172.20.16.1]
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Local Area Connection* 1
+2026/02/04 17:59:43.414293 [INFO]    MAC: 62:a4:b7:83:04:a6
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [169.254.61.38]
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Local Area Connection* 12
+2026/02/04 17:59:43.414293 [INFO]    MAC: 60:a4:b7:83:04:a6
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [169.254.61.161]
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Wi-Fi
+2026/02/04 17:59:43.414293 [INFO]    MAC: 90:0f:0c:92:62:c5
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [192.168.0.52 192.168.0.52]
+2026/02/04 17:59:43.414293 [INFO]    Speed: 780 Mbps (780 Mbps)
+2026/02/04 17:59:43.414293 [INFO]    Duplex: full | Auto-Neg: false
+2026/02/04 17:59:43.414293 [INFO]    Link State: up
+2026/02/04 17:59:43.414293 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/02/04 17:59:43.414293 [INFO] 
+2026/02/04 17:59:43.414293 [INFO] Interface: Wi-Fi 3
+2026/02/04 17:59:43.414293 [INFO]    MAC: 60:a4:b7:83:04:a6
+2026/02/04 17:59:43.414293 [INFO]    IPv4: [192.168.1.5 192.168.1.5]
+2026/02/04 17:59:43.415301 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/02/04 17:59:43.415301 [INFO]    Duplex: full | Auto-Neg: false
+2026/02/04 17:59:43.415301 [INFO]    Link State: up
+2026/02/04 17:59:43.415301 [INFO]    Driver: RtlWlanu v1030.52.731.2025
+2026/02/04 17:59:43.415301 [INFO] 
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] BIOS: AMI vF.33 (2023-10-04)
+2026/02/04 17:59:43.415301 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/02/04 17:59:43.415301 [INFO] Motherboard: HP 87FE
+2026/02/04 17:59:43.415301 [INFO]    UUID: 31444335-3033-4233-445A-5A4230334435
+2026/02/04 17:59:43.415301 [INFO] Component Firmware:
+2026/02/04 17:59:43.415301 [INFO]    GPU Intel(R) Iris(R) Xe Graphics: 
+2026/02/04 17:59:43.415301 [INFO]    USB Intel(R) USB 3.10 eXtensible Host Controller - 1.20 (Microsoft): 
+2026/02/04 17:59:43.415301 [INFO] 
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 🔧 OS PATCH LEVEL
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.7623)
+2026/02/04 17:59:43.415301 [INFO] Windows Edition: Unknown SKU (100)
+2026/02/04 17:59:43.415301 [INFO] Updates Installed: 0
+2026/02/04 17:59:43.415301 [INFO] 
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 🔬 HARDWARE SENSORS
+2026/02/04 17:59:43.415301 [INFO] ========================================
+2026/02/04 17:59:43.415301 [INFO] 🌡️  Temperatures:
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/02/04 17:59:43.415301 [INFO] ⚡ Voltages:
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/02/04 17:59:43.415301 [INFO] 💨 Fans:
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Cooling Device
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Cooling Device
+2026/02/04 17:59:43.415301 [INFO]    ℹ️  Cooling Device
+2026/02/04 17:59:43.416299 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/02/04 17:59:43.416299 [INFO] 🔌 Power Supply:
+2026/02/04 17:59:43.416299 [INFO]    Status: ✅ OK
+2026/02/04 17:59:43.416299 [INFO] ⚡ Power Consumption:
+2026/02/04 17:59:43.416299 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/02/04 17:59:43.416299 [INFO] 💧 Water Cooling / AIO:
+2026/02/04 17:59:43.416299 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] 🔍 ANOMALY DETECTION
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/02/04 17:59:43.416299 [INFO]    Collecting data for anomaly detection...
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] ✅ No critical issues identified - System operating normally
+2026/02/04 17:59:43.416299 [INFO]    RCA actively monitoring metric correlations
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] ✅ ALL SYSTEMS NORMAL - No Active Alerts
+2026/02/04 17:59:43.416299 [INFO] ========================================
+2026/02/04 17:59:43.416299 [INFO] 
+2026/02/04 17:59:43.932520 [ERROR] Failed to send alerts: failed to send alerts after 3 attempts: send request: Post "http://localhost:8443/api/v1/alerts": dial tcp [::1]:8443: connectex: No connection could be made because the target machine actively refused it.
+2026/02/04 17:59:43.933862 [INFO] Processing 57 unsent metrics
+2026/02/04 17:59:45.200480 [INFO] Received signal: interrupt. Initiating graceful shutdown...
+2026/02/04 17:59:45.200480 [INFO] Agent stopping...
+2026/02/04 17:59:50.199805 [WARN] Shutdown timeout reached, some goroutines may still be running
+2026/03/18 13:48:56.941815 [INFO] Configuring mTLS (Mutual TLS) authentication...
+2026/03/18 13:48:56.943654 [INFO] Minimum TLS version: 1.2
+2026/03/18 13:48:56.945375 [INFO] ✓ Loaded client certificate from: ./certs/client.crt
+2026/03/18 13:48:56.946028 [INFO] ✓ Loaded client key from: ./certs/client.key
+2026/03/18 13:48:56.946028 [INFO]   Client cert Subject: faber-HP-630-Notebook-PC
+2026/03/18 13:48:56.946028 [INFO]   Client cert Issuer: DCIM-RootCA
+2026/03/18 13:48:56.946684 [INFO]   Client cert Valid: 2026-02-06 to 2027-02-06
+2026/03/18 13:48:56.947750 [INFO] ✓ Loaded CA certificate from: ./certs/ca.crt
+2026/03/18 13:48:56.947750 [INFO]   TLS ServerName: Faber
+2026/03/18 13:48:56.947750 [INFO] ✓ mTLS client configured successfully
+2026/03/18 13:48:56.948320 [INFO] SNMP Manager enabled with 2 devices
+2026/03/18 13:48:57.031196 [INFO] System info: LAPTOP-KH1JURCU (windows x86_64) - 8 cores, 12091 MB RAM
+2026/03/18 13:48:57.031196 [INFO] Running in interactive mode. Press Ctrl+C to stop.
+2026/03/18 13:48:57.031196 [INFO] Agent starting (ID: LAPTOP-KH1JURCU, Name: LAPTOP-KH1JURCU)
+2026/03/18 13:48:57.031196 [INFO] Agent running. Collection interval: 30s, Send interval: 2m0s
+2026/03/18 13:48:57.031196 [INFO] Starting SNMP polling (interval: 30s)
+2026/03/18 13:48:57.031739 [INFO] ========================================
+2026/03/18 13:48:57.031739 [INFO] 📡 SNMP DEVICE MONITORING
+2026/03/18 13:48:57.031739 [INFO] ========================================
+2026/03/18 13:48:57.031739 [INFO] Polling 2 SNMP devices...
+2026/03/18 13:48:57.031739 [INFO] 
+2026/03/18 13:48:57.032282 [INFO] Processing 1 unsent alerts
+2026/03/18 13:49:17.678591 [INFO] ========================================
+2026/03/18 13:49:17.678591 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:49:17.679259 [INFO] ========================================
+2026/03/18 13:49:17.679259 [INFO] ✅ CPU: 11.09% (8 cores) - ✅ NORMAL
+2026/03/18 13:49:17.679259 [INFO]    Cores: C0:20.3% C1:12.3% C2:15.6% C3:10.9% 
+2026/03/18 13:49:17.679817 [INFO]           C4:12.5% C5:10.9% C6:10.9% C7:26.2% 
+2026/03/18 13:49:17.679817 [INFO] ✅ Memory: 84.00% (10.04 GB / 11.81 GB, 1.77 GB available) - ✅ NORMAL
+2026/03/18 13:49:17.679817 [INFO]    Swap: 73.64% (21.07 GB / 28.61 GB)
+2026/03/18 13:49:17.680546 [INFO] 💾 Disk Usage:
+2026/03/18 13:49:17.680546 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:49:17.680546 [INFO]    ✅ D:: 16.96% (16.96 GB / 100.00 GB, 83.04 GB free) - ✅ OK
+2026/03/18 13:49:17.681181 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:49:17.681181 [INFO]    ✅ C:: Read: 23323980 ops (962188961792 bytes), Write: 5337827 ops (378692304896 bytes)
+2026/03/18 13:49:17.681181 [INFO]       ℹ️  Rate metrics available after next collection cycle
+2026/03/18 13:49:17.681181 [INFO]    ✅ D:: Read: 2206300 ops (52592678400 bytes), Write: 987459 ops (35341221376 bytes)
+2026/03/18 13:49:17.681747 [INFO]       ℹ️  Rate metrics available after next collection cycle
+2026/03/18 13:49:17.681747 [INFO] 🌐 Network: ↑ 64.17 MB sent, ↓ 98.37 MB received
+2026/03/18 13:49:17.681747 [INFO] ⏱️  Uptime: 117.73 hours | Processes: 306
+2026/03/18 13:49:17.682290 [INFO] ========================================
+2026/03/18 13:49:17.682290 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:49:17.682290 [INFO] ========================================
+2026/03/18 13:49:17.682847 [INFO] Interface: Local Area Connection
+2026/03/18 13:49:17.682847 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:49:17.682847 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:49:17.682847 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:49:17.683400 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:17.683400 [INFO]    Link State: down
+2026/03/18 13:49:17.683400 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:49:17.683949 [INFO] 
+2026/03/18 13:49:17.683949 [INFO] Interface: Ethernet
+2026/03/18 13:49:17.683949 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:49:17.683949 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:49:17.684501 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:49:17.684501 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:17.684501 [INFO]    Link State: down
+2026/03/18 13:49:17.684501 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:49:17.685050 [INFO] 
+2026/03/18 13:49:17.685050 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:49:17.685050 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:49:17.685050 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:49:17.685050 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:17.685634 [INFO]    Link State: down
+2026/03/18 13:49:17.685634 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:49:17.685634 [INFO] 
+2026/03/18 13:49:17.685634 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:49:17.686193 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:49:17.686193 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:49:17.686193 [INFO] 
+2026/03/18 13:49:17.686193 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:49:17.686193 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:49:17.686193 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:49:17.686726 [INFO] 
+2026/03/18 13:49:17.686726 [INFO] Interface: Wi-Fi
+2026/03/18 13:49:17.686726 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:49:17.686726 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:49:17.686726 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:49:17.687270 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:17.687270 [INFO]    Link State: up
+2026/03/18 13:49:17.687270 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:49:17.687270 [INFO] 
+2026/03/18 13:49:17.687823 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:49:17.687823 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:49:17.687823 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:49:17.687823 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:49:17.687823 [INFO]    Link State: down
+2026/03/18 13:49:17.688374 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:49:17.688374 [INFO] 
+2026/03/18 13:49:17.688374 [INFO] ========================================
+2026/03/18 13:49:17.688374 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:49:17.688931 [INFO] ========================================
+2026/03/18 13:49:17.688931 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:49:17.688931 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:49:17.688931 [INFO] Motherboard: HP 85F1
+2026/03/18 13:49:17.689490 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:49:17.689490 [INFO] Component Firmware:
+2026/03/18 13:49:17.689490 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:49:17.689490 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:49:17.690053 [INFO] 
+2026/03/18 13:49:17.690053 [INFO] ========================================
+2026/03/18 13:49:17.690053 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:49:17.690053 [INFO] ========================================
+2026/03/18 13:49:17.690613 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:49:17.690613 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:49:17.690613 [INFO] Updates Installed: 0
+2026/03/18 13:49:17.691167 [INFO] 
+2026/03/18 13:49:17.691167 [INFO] ========================================
+2026/03/18 13:49:17.691167 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:49:17.691167 [INFO] ========================================
+2026/03/18 13:49:17.691737 [INFO] 🌡️  Temperatures:
+2026/03/18 13:49:17.691737 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:49:17.691737 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:49:17.691737 [INFO] ⚡ Voltages:
+2026/03/18 13:49:17.691737 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:49:17.692432 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:49:17.692432 [INFO] 💨 Fans:
+2026/03/18 13:49:17.692432 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:49:17.692432 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:49:17.692986 [INFO] 🔌 Power Supply:
+2026/03/18 13:49:17.692986 [INFO]    Status: ✅ OK
+2026/03/18 13:49:17.692986 [INFO] ⚡ Power Consumption:
+2026/03/18 13:49:17.692986 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:49:17.692986 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:49:17.693551 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:49:17.693551 [INFO] 
+2026/03/18 13:49:17.693551 [INFO] ========================================
+2026/03/18 13:49:17.693551 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:49:17.693551 [INFO] ========================================
+2026/03/18 13:49:17.694102 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:49:17.694102 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:49:17.694102 [INFO] 
+2026/03/18 13:49:17.694102 [INFO] ========================================
+2026/03/18 13:49:17.694102 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:49:17.694649 [INFO] ========================================
+2026/03/18 13:49:17.694649 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:49:17.694649 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:49:17.694649 [INFO] 
+2026/03/18 13:49:17.695196 [WARN] ========================================
+2026/03/18 13:49:17.695196 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:49:17.695196 [WARN] ========================================
+2026/03/18 13:49:17.695196 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:49:17.695196 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:49:17.695760 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:49:17.695760 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:49:17.696433 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:49:17.696433 [WARN] ========================================
+2026/03/18 13:49:17.696433 [INFO] 
+2026/03/18 13:49:27.031956 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:49:45.950873 [INFO] ========================================
+2026/03/18 13:49:45.951424 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:49:45.951424 [INFO] ========================================
+2026/03/18 13:49:45.951424 [INFO] ✅ CPU: 15.22% (8 cores) - ✅ NORMAL
+2026/03/18 13:49:45.951424 [INFO]    Cores: C0:21.5% C1:18.8% C2:17.2% C3:7.7% 
+2026/03/18 13:49:45.951424 [INFO]           C4:23.1% C5:4.7% C6:10.9% C7:4.6% 
+2026/03/18 13:49:45.952064 [INFO] ✅ Memory: 84.00% (9.99 GB / 11.81 GB, 1.82 GB available) - ✅ NORMAL
+2026/03/18 13:49:45.952064 [INFO]    Swap: 73.60% (21.06 GB / 28.61 GB)
+2026/03/18 13:49:45.952064 [INFO] 💾 Disk Usage:
+2026/03/18 13:49:45.952064 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:49:45.952064 [INFO]    ✅ D:: 16.96% (16.96 GB / 100.00 GB, 83.04 GB free) - ✅ OK
+2026/03/18 13:49:45.952064 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:49:45.952602 [INFO]    ✅ C:: Read: 23327247 ops (962340721664 bytes), Write: 5338299 ops (378703782400 bytes)
+2026/03/18 13:49:45.952602 [INFO]       IOPS: 125 (R:109 W:16), Throughput: 5.19 MB/s
+2026/03/18 13:49:45.952602 [INFO]       Latency: 0.00ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:49:45.952602 [INFO]    ✅ D:: Read: 2206300 ops (52592678400 bytes), Write: 987585 ops (35342750720 bytes)
+2026/03/18 13:49:45.952602 [INFO]       IOPS: 4 (R:0 W:4), Throughput: 0.05 MB/s
+2026/03/18 13:49:45.952602 [INFO] 🌐 Network: ↑ 64.19 MB sent, ↓ 98.41 MB received
+2026/03/18 13:49:45.952602 [INFO] ⏱️  Uptime: 117.74 hours | Processes: 307
+2026/03/18 13:49:45.953148 [INFO] ========================================
+2026/03/18 13:49:45.953148 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:49:45.953148 [INFO] ========================================
+2026/03/18 13:49:45.953148 [INFO] Interface: Local Area Connection
+2026/03/18 13:49:45.953148 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:49:45.953148 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:49:45.953148 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:49:45.953707 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:45.953707 [INFO]    Link State: down
+2026/03/18 13:49:45.953707 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:49:45.953707 [INFO] 
+2026/03/18 13:49:45.953707 [INFO] Interface: Ethernet
+2026/03/18 13:49:45.953707 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:49:45.953707 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:49:45.953707 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:49:45.954234 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:45.954234 [INFO]    Link State: down
+2026/03/18 13:49:45.954234 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:49:45.954234 [INFO] 
+2026/03/18 13:49:45.954234 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:49:45.954234 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:49:45.954234 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:49:45.954234 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:45.954789 [INFO]    Link State: down
+2026/03/18 13:49:45.954789 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:49:45.954789 [INFO] 
+2026/03/18 13:49:45.954789 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:49:45.954789 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:49:45.954789 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:49:45.954789 [INFO] 
+2026/03/18 13:49:45.954789 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:49:45.955319 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:49:45.955319 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:49:45.955319 [INFO] 
+2026/03/18 13:49:45.955319 [INFO] Interface: Wi-Fi
+2026/03/18 13:49:45.955319 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:49:45.955319 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:49:45.955319 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:49:45.955863 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:49:45.955863 [INFO]    Link State: up
+2026/03/18 13:49:45.955863 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:49:45.955863 [INFO] 
+2026/03/18 13:49:45.955863 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:49:45.956410 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:49:45.956410 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:49:45.956410 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:49:45.956410 [INFO]    Link State: down
+2026/03/18 13:49:45.956410 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:49:45.956410 [INFO] 
+2026/03/18 13:49:45.956410 [INFO] ========================================
+2026/03/18 13:49:45.956410 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:49:45.956410 [INFO] ========================================
+2026/03/18 13:49:45.956942 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:49:45.956942 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:49:45.956942 [INFO] Motherboard: HP 85F1
+2026/03/18 13:49:45.956942 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:49:45.956942 [INFO] Component Firmware:
+2026/03/18 13:49:45.956942 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:49:45.956942 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:49:45.957491 [INFO] 
+2026/03/18 13:49:45.957491 [INFO] ========================================
+2026/03/18 13:49:45.957491 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:49:45.957491 [INFO] ========================================
+2026/03/18 13:49:45.957491 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:49:45.957491 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:49:45.957491 [INFO] Updates Installed: 0
+2026/03/18 13:49:45.957491 [INFO] 
+2026/03/18 13:49:45.958016 [INFO] ========================================
+2026/03/18 13:49:45.958016 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:49:45.958016 [INFO] ========================================
+2026/03/18 13:49:45.958016 [INFO] 🌡️  Temperatures:
+2026/03/18 13:49:45.958016 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:49:45.958016 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:49:45.958016 [INFO] ⚡ Voltages:
+2026/03/18 13:49:45.958016 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:49:45.958016 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:49:45.958540 [INFO] 💨 Fans:
+2026/03/18 13:49:45.958540 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:49:45.958540 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:49:45.958540 [INFO] 🔌 Power Supply:
+2026/03/18 13:49:45.958540 [INFO]    Status: ✅ OK
+2026/03/18 13:49:45.958540 [INFO] ⚡ Power Consumption:
+2026/03/18 13:49:45.958540 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:49:45.958540 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:49:45.959079 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:49:45.959079 [INFO] 
+2026/03/18 13:49:45.959079 [INFO] ========================================
+2026/03/18 13:49:45.959079 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:49:45.959079 [INFO] ========================================
+2026/03/18 13:49:45.959079 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:49:45.959079 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:49:45.959648 [INFO] 
+2026/03/18 13:49:45.959648 [INFO] ========================================
+2026/03/18 13:49:45.959648 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:49:45.959648 [INFO] ========================================
+2026/03/18 13:49:45.959648 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:49:45.959648 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:49:45.959648 [INFO] 
+2026/03/18 13:49:45.959648 [WARN] ========================================
+2026/03/18 13:49:45.959648 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:49:45.960176 [WARN] ========================================
+2026/03/18 13:49:45.960176 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:49:45.960176 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:49:45.960176 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:49:45.960176 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:49:45.960176 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:49:45.960980 [WARN] ========================================
+2026/03/18 13:49:45.960980 [INFO] 
+2026/03/18 13:49:47.697438 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:50:02.032371 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:50:14.713191 [INFO] ========================================
+2026/03/18 13:50:14.713191 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:50:14.716302 [INFO] ========================================
+2026/03/18 13:50:14.716302 [INFO] ✅ CPU: 17.88% (8 cores) - ✅ NORMAL
+2026/03/18 13:50:14.716302 [INFO]    Cores: C0:17.2% C1:10.8% C2:28.1% C3:18.5% 
+2026/03/18 13:50:14.716302 [INFO]           C4:21.9% C5:15.6% C6:12.5% C7:18.8% 
+2026/03/18 13:50:14.716302 [INFO] ⚠️ Memory: 85.00% (10.04 GB / 11.81 GB, 1.76 GB available) - ⚠️  WARNING
+2026/03/18 13:50:14.716302 [INFO]    Swap: 73.74% (21.10 GB / 28.61 GB)
+2026/03/18 13:50:14.716302 [INFO] 💾 Disk Usage:
+2026/03/18 13:50:14.716302 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:50:14.716302 [INFO]    ✅ D:: 16.96% (16.96 GB / 100.00 GB, 83.04 GB free) - ✅ OK
+2026/03/18 13:50:14.716302 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:50:14.716302 [INFO]    ✅ C:: Read: 23327563 ops (962359016960 bytes), Write: 5338411 ops (378705759744 bytes)
+2026/03/18 13:50:14.716302 [INFO]       IOPS: 14 (R:11 W:4), Throughput: 0.64 MB/s
+2026/03/18 13:50:14.716302 [INFO]       Latency: 0.00ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:50:14.716302 [INFO]    ✅ D:: Read: 2206727 ops (52627631616 bytes), Write: 987695 ops (35344237568 bytes)
+2026/03/18 13:50:14.716302 [INFO]       IOPS: 18 (R:14 W:4), Throughput: 1.16 MB/s
+2026/03/18 13:50:14.716302 [INFO]       Latency: 0.00ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:50:14.716302 [INFO] 🌐 Network: ↑ 64.23 MB sent, ↓ 98.45 MB received
+2026/03/18 13:50:14.716302 [INFO] ⏱️  Uptime: 117.75 hours | Processes: 309
+2026/03/18 13:50:14.718053 [INFO] ========================================
+2026/03/18 13:50:14.718053 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:50:14.718053 [INFO] ========================================
+2026/03/18 13:50:14.718053 [INFO] Interface: Local Area Connection
+2026/03/18 13:50:14.718053 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:50:14.718053 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:50:14.718053 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:50:14.718053 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:14.718053 [INFO]    Link State: down
+2026/03/18 13:50:14.718053 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:50:14.718053 [INFO] 
+2026/03/18 13:50:14.720002 [INFO] Interface: Ethernet
+2026/03/18 13:50:14.720002 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:50:14.720002 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:50:14.720002 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:50:14.720515 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:14.720515 [INFO]    Link State: down
+2026/03/18 13:50:14.720515 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:50:14.720515 [INFO] 
+2026/03/18 13:50:14.721083 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:50:14.721083 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:50:14.721083 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:50:14.721083 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:14.721083 [INFO]    Link State: down
+2026/03/18 13:50:14.721083 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:50:14.721615 [INFO] 
+2026/03/18 13:50:14.721615 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:50:14.721615 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:50:14.721615 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:50:14.721615 [INFO] 
+2026/03/18 13:50:14.722147 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:50:14.722147 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:50:14.722147 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:50:14.722147 [INFO] 
+2026/03/18 13:50:14.722147 [INFO] Interface: Wi-Fi
+2026/03/18 13:50:14.722147 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:50:14.722147 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:50:14.722147 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:50:14.722703 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:14.722703 [INFO]    Link State: up
+2026/03/18 13:50:14.722703 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:50:14.722703 [INFO] 
+2026/03/18 13:50:14.722703 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:50:14.723267 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:50:14.723267 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:50:14.723267 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:50:14.723267 [INFO]    Link State: down
+2026/03/18 13:50:14.723267 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:50:14.723267 [INFO] 
+2026/03/18 13:50:14.723267 [INFO] ========================================
+2026/03/18 13:50:14.723267 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:50:14.723812 [INFO] ========================================
+2026/03/18 13:50:14.723812 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:50:14.723812 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:50:14.723812 [INFO] Motherboard: HP 85F1
+2026/03/18 13:50:14.723812 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:50:14.723812 [INFO] Component Firmware:
+2026/03/18 13:50:14.723812 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:50:14.723812 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:50:14.723812 [INFO] 
+2026/03/18 13:50:14.724349 [INFO] ========================================
+2026/03/18 13:50:14.724349 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:50:14.724349 [INFO] ========================================
+2026/03/18 13:50:14.724349 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:50:14.724349 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:50:14.724349 [INFO] Updates Installed: 0
+2026/03/18 13:50:14.724349 [INFO] 
+2026/03/18 13:50:14.724349 [INFO] ========================================
+2026/03/18 13:50:14.724349 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:50:14.724349 [INFO] ========================================
+2026/03/18 13:50:14.724876 [INFO] 🌡️  Temperatures:
+2026/03/18 13:50:14.724876 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:50:14.724876 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:50:14.724876 [INFO] ⚡ Voltages:
+2026/03/18 13:50:14.724876 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:50:14.724876 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:50:14.724876 [INFO] 💨 Fans:
+2026/03/18 13:50:14.724876 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:50:14.724876 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:50:14.725405 [INFO] 🔌 Power Supply:
+2026/03/18 13:50:14.725405 [INFO]    Status: ✅ OK
+2026/03/18 13:50:14.725405 [INFO] ⚡ Power Consumption:
+2026/03/18 13:50:14.725405 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:50:14.725405 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:50:14.725405 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:50:14.725405 [INFO] 
+2026/03/18 13:50:14.725405 [INFO] ========================================
+2026/03/18 13:50:14.725405 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:50:14.725943 [INFO] ========================================
+2026/03/18 13:50:14.725943 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:50:14.725943 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:50:14.725943 [INFO] 
+2026/03/18 13:50:14.725943 [INFO] ========================================
+2026/03/18 13:50:14.725943 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:50:14.725943 [INFO] ========================================
+2026/03/18 13:50:14.725943 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:50:14.725943 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:50:14.726476 [INFO] 
+2026/03/18 13:50:14.726476 [WARN] ========================================
+2026/03/18 13:50:14.726476 [WARN] 🚨 ACTIVE ALERTS: 6
+2026/03/18 13:50:14.726476 [WARN] ========================================
+2026/03/18 13:50:14.726476 [WARN] 1. ⚠️ [WARNING] memory WARNING: 85.00% (threshold: 85.00%)
+2026/03/18 13:50:14.726476 [WARN] 2. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:50:14.726476 [WARN] 3. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:50:14.726476 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:50:14.726476 [WARN] 5. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:50:14.727003 [WARN] 6. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:50:14.727003 [WARN] ========================================
+2026/03/18 13:50:14.727003 [INFO] 
+2026/03/18 13:50:15.960965 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:50:22.698125 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:50:37.032724 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:50:43.209036 [INFO] ========================================
+2026/03/18 13:50:43.209036 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:50:43.209036 [INFO] ========================================
+2026/03/18 13:50:43.209036 [INFO] ✅ CPU: 17.93% (8 cores) - ✅ NORMAL
+2026/03/18 13:50:43.209036 [INFO]    Cores: C0:26.2% C1:6.2% C2:6.3% C3:15.4% 
+2026/03/18 13:50:43.209036 [INFO]           C4:4.7% C5:4.8% C6:14.3% C7:7.6% 
+2026/03/18 13:50:43.209587 [INFO] ⚠️ Memory: 85.00% (10.07 GB / 11.81 GB, 1.74 GB available) - ⚠️  WARNING
+2026/03/18 13:50:43.209587 [INFO]    Swap: 73.85% (21.13 GB / 28.61 GB)
+2026/03/18 13:50:43.209587 [INFO] 💾 Disk Usage:
+2026/03/18 13:50:43.209587 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:50:43.209587 [INFO]    ✅ D:: 16.96% (16.96 GB / 100.00 GB, 83.04 GB free) - ✅ OK
+2026/03/18 13:50:43.209587 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:50:43.210142 [INFO]    ✅ C:: Read: 23327654 ops (962362805248 bytes), Write: 5338584 ops (378707874304 bytes)
+2026/03/18 13:50:43.210142 [INFO]       IOPS: 9 (R:3 W:6), Throughput: 0.19 MB/s
+2026/03/18 13:50:43.210142 [INFO]    ✅ D:: Read: 2206727 ops (52627631616 bytes), Write: 987806 ops (35345778176 bytes)
+2026/03/18 13:50:43.210142 [INFO]       IOPS: 4 (R:0 W:4), Throughput: 0.05 MB/s
+2026/03/18 13:50:43.210142 [INFO] 🌐 Network: ↑ 64.24 MB sent, ↓ 98.48 MB received
+2026/03/18 13:50:43.210142 [INFO] ⏱️  Uptime: 117.75 hours | Processes: 309
+2026/03/18 13:50:43.210142 [INFO] ========================================
+2026/03/18 13:50:43.210677 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:50:43.210677 [INFO] ========================================
+2026/03/18 13:50:43.210677 [INFO] Interface: Local Area Connection
+2026/03/18 13:50:43.210677 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:50:43.210677 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:50:43.210677 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:50:43.210677 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:43.211208 [INFO]    Link State: down
+2026/03/18 13:50:43.211208 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:50:43.211208 [INFO] 
+2026/03/18 13:50:43.211208 [INFO] Interface: Ethernet
+2026/03/18 13:50:43.211208 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:50:43.211208 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:50:43.211208 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:50:43.211208 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:43.211744 [INFO]    Link State: down
+2026/03/18 13:50:43.211744 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:50:43.211744 [INFO] 
+2026/03/18 13:50:43.211744 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:50:43.211744 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:50:43.212310 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:50:43.212310 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:43.212310 [INFO]    Link State: down
+2026/03/18 13:50:43.212310 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:50:43.212310 [INFO] 
+2026/03/18 13:50:43.212310 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:50:43.212310 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:50:43.212310 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:50:43.212310 [INFO] 
+2026/03/18 13:50:43.212310 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:50:43.212844 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:50:43.212844 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:50:43.212844 [INFO] 
+2026/03/18 13:50:43.212844 [INFO] Interface: Wi-Fi
+2026/03/18 13:50:43.212844 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:50:43.213362 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:50:43.213362 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:50:43.213362 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:50:43.213362 [INFO]    Link State: up
+2026/03/18 13:50:43.213362 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:50:43.213362 [INFO] 
+2026/03/18 13:50:43.213362 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:50:43.213941 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:50:43.213941 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:50:43.213941 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:50:43.213941 [INFO]    Link State: down
+2026/03/18 13:50:43.213941 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:50:43.213941 [INFO] 
+2026/03/18 13:50:43.213941 [INFO] ========================================
+2026/03/18 13:50:43.214475 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:50:43.214475 [INFO] ========================================
+2026/03/18 13:50:43.214475 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:50:43.214475 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:50:43.214475 [INFO] Motherboard: HP 85F1
+2026/03/18 13:50:43.215010 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:50:43.215010 [INFO] Component Firmware:
+2026/03/18 13:50:43.215010 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:50:43.215010 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:50:43.215010 [INFO] 
+2026/03/18 13:50:43.215010 [INFO] ========================================
+2026/03/18 13:50:43.215010 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:50:43.215557 [INFO] ========================================
+2026/03/18 13:50:43.215557 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:50:43.215557 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:50:43.215557 [INFO] Updates Installed: 0
+2026/03/18 13:50:43.215557 [INFO] 
+2026/03/18 13:50:43.215557 [INFO] ========================================
+2026/03/18 13:50:43.216113 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:50:43.216113 [INFO] ========================================
+2026/03/18 13:50:43.216113 [INFO] 🌡️  Temperatures:
+2026/03/18 13:50:43.216113 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:50:43.216113 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:50:43.216113 [INFO] ⚡ Voltages:
+2026/03/18 13:50:43.216113 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:50:43.216113 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:50:43.216651 [INFO] 💨 Fans:
+2026/03/18 13:50:43.217377 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:50:43.217377 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:50:43.217377 [INFO] 🔌 Power Supply:
+2026/03/18 13:50:43.217377 [INFO]    Status: ✅ OK
+2026/03/18 13:50:43.217377 [INFO] ⚡ Power Consumption:
+2026/03/18 13:50:43.217377 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:50:43.218216 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:50:43.218216 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:50:43.218216 [INFO] 
+2026/03/18 13:50:43.218216 [INFO] ========================================
+2026/03/18 13:50:43.218216 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:50:43.218216 [INFO] ========================================
+2026/03/18 13:50:43.218776 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:50:43.218776 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:50:43.218776 [INFO] 
+2026/03/18 13:50:43.219331 [INFO] ========================================
+2026/03/18 13:50:43.219331 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:50:43.219331 [INFO] ========================================
+2026/03/18 13:50:43.219331 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:50:43.219331 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:50:43.219331 [INFO] 
+2026/03/18 13:50:43.219868 [WARN] ========================================
+2026/03/18 13:50:43.219868 [WARN] 🚨 ACTIVE ALERTS: 6
+2026/03/18 13:50:43.219868 [WARN] ========================================
+2026/03/18 13:50:43.219868 [WARN] 1. ⚠️ [WARNING] memory WARNING: 85.00% (threshold: 85.00%)
+2026/03/18 13:50:43.219868 [WARN] 2. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:50:43.219868 [WARN] 3. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:50:43.220411 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:50:43.220411 [WARN] 5. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:50:43.220411 [WARN] 6. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:50:43.220411 [WARN] ========================================
+2026/03/18 13:50:43.220411 [INFO] 
+2026/03/18 13:50:44.727013 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:50:50.962024 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:50:57.699454 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:51:12.041370 [ERROR] Failed to send alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:51:12.044453 [INFO] Processing 100 unsent metrics
+2026/03/18 13:51:13.220329 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:51:16.681535 [INFO] ========================================
+2026/03/18 13:51:16.682146 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:51:16.682146 [INFO] ========================================
+2026/03/18 13:51:16.682146 [INFO] ✅ CPU: 13.20% (8 cores) - ✅ NORMAL
+2026/03/18 13:51:16.682146 [INFO]    Cores: C0:14.1% C1:6.3% C2:7.7% C3:4.6% 
+2026/03/18 13:51:16.682772 [INFO]           C4:7.8% C5:7.7% C6:3.1% C7:7.8% 
+2026/03/18 13:51:16.682772 [INFO] ✅ Memory: 84.00% (10.02 GB / 11.81 GB, 1.79 GB available) - ✅ NORMAL
+2026/03/18 13:51:16.682772 [INFO]    Swap: 73.64% (21.07 GB / 28.61 GB)
+2026/03/18 13:51:16.682772 [INFO] 💾 Disk Usage:
+2026/03/18 13:51:16.683351 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:51:16.683351 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:51:16.683351 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:51:16.683920 [INFO]    ✅ C:: Read: 23327730 ops (962364787712 bytes), Write: 5338939 ops (378710361088 bytes)
+2026/03/18 13:51:16.683920 [INFO]       IOPS: 14 (R:3 W:12), Throughput: 0.14 MB/s
+2026/03/18 13:51:16.683920 [INFO]    ✅ D:: Read: 2206727 ops (52627631616 bytes), Write: 987912 ops (35347230208 bytes)
+2026/03/18 13:51:16.683920 [INFO]       IOPS: 4 (R:0 W:4), Throughput: 0.05 MB/s
+2026/03/18 13:51:16.684496 [INFO] 🌐 Network: ↑ 64.25 MB sent, ↓ 98.50 MB received
+2026/03/18 13:51:16.684496 [INFO] ⏱️  Uptime: 117.76 hours | Processes: 308
+2026/03/18 13:51:16.684496 [INFO] ========================================
+2026/03/18 13:51:16.684496 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:51:16.685059 [INFO] ========================================
+2026/03/18 13:51:16.685059 [INFO] Interface: Local Area Connection
+2026/03/18 13:51:16.685059 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:51:16.685059 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:51:16.685977 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:51:16.685977 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:16.685977 [INFO]    Link State: down
+2026/03/18 13:51:16.686489 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:51:16.686489 [INFO] 
+2026/03/18 13:51:16.686489 [INFO] Interface: Ethernet
+2026/03/18 13:51:16.686489 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:51:16.687061 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:51:16.687061 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:51:16.687061 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:16.687061 [INFO]    Link State: down
+2026/03/18 13:51:16.687638 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:51:16.687638 [INFO] 
+2026/03/18 13:51:16.687638 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:51:16.687638 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:51:16.688182 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:51:16.688182 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:16.688182 [INFO]    Link State: down
+2026/03/18 13:51:16.688182 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:51:16.688182 [INFO] 
+2026/03/18 13:51:16.688771 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:51:16.688771 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:51:16.688771 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:51:16.688771 [INFO] 
+2026/03/18 13:51:16.689310 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:51:16.689310 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:51:16.689310 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:51:16.689310 [INFO] 
+2026/03/18 13:51:16.689310 [INFO] Interface: Wi-Fi
+2026/03/18 13:51:16.689918 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:51:16.689918 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:51:16.689918 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:51:16.689918 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:16.690474 [INFO]    Link State: up
+2026/03/18 13:51:16.690474 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:51:16.690474 [INFO] 
+2026/03/18 13:51:16.690474 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:51:16.691034 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:51:16.691034 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:51:16.691034 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:51:16.691034 [INFO]    Link State: down
+2026/03/18 13:51:16.691034 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:51:16.691602 [INFO] 
+2026/03/18 13:51:16.691602 [INFO] ========================================
+2026/03/18 13:51:16.691602 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:51:16.691602 [INFO] ========================================
+2026/03/18 13:51:16.692143 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:51:16.692143 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:51:16.692143 [INFO] Motherboard: HP 85F1
+2026/03/18 13:51:16.692143 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:51:16.692720 [INFO] Component Firmware:
+2026/03/18 13:51:16.692720 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:51:16.692720 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:51:16.692720 [INFO] 
+2026/03/18 13:51:16.693280 [INFO] ========================================
+2026/03/18 13:51:16.693280 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:51:16.693280 [INFO] ========================================
+2026/03/18 13:51:16.693280 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:51:16.693280 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:51:16.693837 [INFO] Updates Installed: 0
+2026/03/18 13:51:16.693837 [INFO] 
+2026/03/18 13:51:16.693837 [INFO] ========================================
+2026/03/18 13:51:16.693837 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:51:16.694445 [INFO] ========================================
+2026/03/18 13:51:16.694445 [INFO] 🌡️  Temperatures:
+2026/03/18 13:51:16.694445 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:51:16.694445 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:51:16.694445 [INFO] ⚡ Voltages:
+2026/03/18 13:51:16.695000 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:51:16.695000 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:51:16.695000 [INFO] 💨 Fans:
+2026/03/18 13:51:16.695000 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:51:16.695561 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:51:16.695561 [INFO] 🔌 Power Supply:
+2026/03/18 13:51:16.695561 [INFO]    Status: ✅ OK
+2026/03/18 13:51:16.695561 [INFO] ⚡ Power Consumption:
+2026/03/18 13:51:16.696114 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:51:16.696114 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:51:16.696114 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:51:16.696114 [INFO] 
+2026/03/18 13:51:16.696657 [INFO] ========================================
+2026/03/18 13:51:16.696657 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:51:16.696657 [INFO] ========================================
+2026/03/18 13:51:16.696657 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:51:16.697220 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:51:16.697220 [INFO] 
+2026/03/18 13:51:16.697220 [INFO] ========================================
+2026/03/18 13:51:16.697220 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:51:16.697220 [INFO] ========================================
+2026/03/18 13:51:16.697791 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:51:16.697791 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:51:16.697791 [INFO] 
+2026/03/18 13:51:16.697791 [WARN] ========================================
+2026/03/18 13:51:16.698436 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:51:16.698436 [WARN] ========================================
+2026/03/18 13:51:16.698436 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:51:16.698436 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:51:16.698436 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:51:16.699044 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:51:16.699044 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:51:16.699044 [WARN] ========================================
+2026/03/18 13:51:16.699044 [INFO] 
+2026/03/18 13:51:19.728639 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:51:25.963632 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:51:32.710872 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:51:42.893531 [INFO] ========================================
+2026/03/18 13:51:42.893531 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:51:42.894174 [INFO] ========================================
+2026/03/18 13:51:42.894174 [INFO] ✅ CPU: 8.35% (8 cores) - ✅ NORMAL
+2026/03/18 13:51:42.894174 [INFO]    Cores: C0:15.2% C1:13.8% C2:6.2% C3:13.6% 
+2026/03/18 13:51:42.894742 [INFO]           C4:9.4% C5:7.8% C6:12.1% C7:10.9% 
+2026/03/18 13:51:42.894742 [INFO] ⚠️ Memory: 85.00% (10.14 GB / 11.81 GB, 1.67 GB available) - ⚠️  WARNING
+2026/03/18 13:51:42.894742 [INFO]    Swap: 73.90% (21.14 GB / 28.61 GB)
+2026/03/18 13:51:42.894742 [INFO] 💾 Disk Usage:
+2026/03/18 13:51:42.894742 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:51:42.895407 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:51:42.895407 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:51:42.895407 [INFO]    ✅ C:: Read: 23329752 ops (962413996032 bytes), Write: 5340056 ops (378775660544 bytes)
+2026/03/18 13:51:42.895407 [INFO]       IOPS: 105 (R:67 W:37), Throughput: 3.64 MB/s
+2026/03/18 13:51:42.896025 [INFO]       Latency: 0.00ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:51:42.896025 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 988036 ops (35348838912 bytes)
+2026/03/18 13:51:42.896025 [INFO]       IOPS: 4 (R:0 W:4), Throughput: 0.05 MB/s
+2026/03/18 13:51:42.896025 [INFO] 🌐 Network: ↑ 64.31 MB sent, ↓ 98.58 MB received
+2026/03/18 13:51:42.896025 [INFO] ⏱️  Uptime: 117.77 hours | Processes: 310
+2026/03/18 13:51:42.896650 [INFO] ========================================
+2026/03/18 13:51:42.896650 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:51:42.896650 [INFO] ========================================
+2026/03/18 13:51:42.896650 [INFO] Interface: Local Area Connection
+2026/03/18 13:51:42.897199 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:51:42.897199 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:51:42.897199 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:51:42.897199 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:42.897754 [INFO]    Link State: down
+2026/03/18 13:51:42.897754 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:51:42.897754 [INFO] 
+2026/03/18 13:51:42.897754 [INFO] Interface: Ethernet
+2026/03/18 13:51:42.898423 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:51:42.898423 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:51:42.898423 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:51:42.899000 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:42.899000 [INFO]    Link State: down
+2026/03/18 13:51:42.899000 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:51:42.899000 [INFO] 
+2026/03/18 13:51:42.899580 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:51:42.899580 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:51:42.899580 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:51:42.899580 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:42.900129 [INFO]    Link State: down
+2026/03/18 13:51:42.900129 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:51:42.900129 [INFO] 
+2026/03/18 13:51:42.900129 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:51:42.900129 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:51:42.900785 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:51:42.900785 [INFO] 
+2026/03/18 13:51:42.900785 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:51:42.900785 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:51:42.901331 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:51:42.901331 [INFO] 
+2026/03/18 13:51:42.901331 [INFO] Interface: Wi-Fi
+2026/03/18 13:51:42.901331 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:51:42.901331 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:51:42.901869 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:51:42.901869 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:51:42.901869 [INFO]    Link State: up
+2026/03/18 13:51:42.901869 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:51:42.902403 [INFO] 
+2026/03/18 13:51:42.902403 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:51:42.902403 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:51:42.902990 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:51:42.902990 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:51:42.902990 [INFO]    Link State: down
+2026/03/18 13:51:42.902990 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:51:42.902990 [INFO] 
+2026/03/18 13:51:42.903547 [INFO] ========================================
+2026/03/18 13:51:42.903547 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:51:42.903547 [INFO] ========================================
+2026/03/18 13:51:42.903547 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:51:42.904099 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:51:42.904099 [INFO] Motherboard: HP 85F1
+2026/03/18 13:51:42.904099 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:51:42.904099 [INFO] Component Firmware:
+2026/03/18 13:51:42.904653 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:51:42.904653 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:51:42.904653 [INFO] 
+2026/03/18 13:51:42.904653 [INFO] ========================================
+2026/03/18 13:51:42.904653 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:51:42.905213 [INFO] ========================================
+2026/03/18 13:51:42.905213 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:51:42.905213 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:51:42.905213 [INFO] Updates Installed: 0
+2026/03/18 13:51:42.905790 [INFO] 
+2026/03/18 13:51:42.905790 [INFO] ========================================
+2026/03/18 13:51:42.905790 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:51:42.905790 [INFO] ========================================
+2026/03/18 13:51:42.905790 [INFO] 🌡️  Temperatures:
+2026/03/18 13:51:42.906348 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:51:42.906348 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:51:42.906348 [INFO] ⚡ Voltages:
+2026/03/18 13:51:42.906348 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:51:42.906929 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:51:42.906929 [INFO] 💨 Fans:
+2026/03/18 13:51:42.906929 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:51:42.906929 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:51:42.907500 [INFO] 🔌 Power Supply:
+2026/03/18 13:51:42.907500 [INFO]    Status: ✅ OK
+2026/03/18 13:51:42.907500 [INFO] ⚡ Power Consumption:
+2026/03/18 13:51:42.907500 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:51:42.907500 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:51:42.908061 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:51:42.908061 [INFO] 
+2026/03/18 13:51:42.908061 [INFO] ========================================
+2026/03/18 13:51:42.908061 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:51:42.908644 [INFO] ========================================
+2026/03/18 13:51:42.908644 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:51:42.908644 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:51:42.908644 [INFO] 
+2026/03/18 13:51:42.908644 [INFO] ========================================
+2026/03/18 13:51:42.909214 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:51:42.909214 [INFO] ========================================
+2026/03/18 13:51:42.909214 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:51:42.909214 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:51:42.909747 [INFO] 
+2026/03/18 13:51:42.909747 [WARN] ========================================
+2026/03/18 13:51:42.909747 [WARN] 🚨 ACTIVE ALERTS: 6
+2026/03/18 13:51:42.909747 [WARN] ========================================
+2026/03/18 13:51:42.910318 [WARN] 1. ⚠️ [WARNING] memory WARNING: 85.00% (threshold: 85.00%)
+2026/03/18 13:51:42.910318 [WARN] 2. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:51:42.910318 [WARN] 3. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:51:42.910318 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:51:42.910878 [WARN] 5. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:51:42.910878 [WARN] 6. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:51:42.910878 [WARN] ========================================
+2026/03/18 13:51:42.910878 [INFO] 
+2026/03/18 13:51:46.699734 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:51:48.220748 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:51:54.730890 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:52:00.980123 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:52:12.911387 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:52:14.812600 [INFO] ========================================
+2026/03/18 13:52:14.812600 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:52:14.812600 [INFO] ========================================
+2026/03/18 13:52:14.812600 [INFO] ✅ CPU: 8.33% (8 cores) - ✅ NORMAL
+2026/03/18 13:52:14.812600 [INFO]    Cores: C0:14.1% C1:6.3% C2:7.9% C3:4.8% 
+2026/03/18 13:52:14.812600 [INFO]           C4:7.9% C5:6.3% C6:9.4% C7:9.4% 
+2026/03/18 13:52:14.812600 [INFO] ⚠️ Memory: 85.00% (10.11 GB / 11.81 GB, 1.70 GB available) - ⚠️  WARNING
+2026/03/18 13:52:14.812600 [INFO]    Swap: 73.83% (21.12 GB / 28.61 GB)
+2026/03/18 13:52:14.812600 [INFO] 💾 Disk Usage:
+2026/03/18 13:52:14.812600 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:52:14.812600 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:52:14.812600 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:52:14.812600 [INFO]    ✅ C:: Read: 23329838 ops (962419095552 bytes), Write: 5340723 ops (378809955840 bytes)
+2026/03/18 13:52:14.812600 [INFO]       IOPS: 25 (R:3 W:22), Throughput: 1.25 MB/s
+2026/03/18 13:52:14.812600 [INFO]       Latency: 0.00ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:52:14.812600 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 988166 ops (35350447104 bytes)
+2026/03/18 13:52:14.812600 [INFO]       IOPS: 4 (R:0 W:4), Throughput: 0.05 MB/s
+2026/03/18 13:52:14.818273 [INFO] 🌐 Network: ↑ 64.33 MB sent, ↓ 98.61 MB received
+2026/03/18 13:52:14.818273 [INFO] ⏱️  Uptime: 117.78 hours | Processes: 309
+2026/03/18 13:52:14.818273 [INFO] ========================================
+2026/03/18 13:52:14.818273 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:52:14.818273 [INFO] ========================================
+2026/03/18 13:52:14.818273 [INFO] Interface: Local Area Connection
+2026/03/18 13:52:14.818273 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:52:14.818273 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:52:14.818273 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:52:14.818273 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:14.818273 [INFO]    Link State: down
+2026/03/18 13:52:14.818273 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:52:14.818273 [INFO] 
+2026/03/18 13:52:14.818273 [INFO] Interface: Ethernet
+2026/03/18 13:52:14.819612 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:52:14.819612 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:52:14.819612 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:52:14.819612 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:14.819612 [INFO]    Link State: down
+2026/03/18 13:52:14.819612 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:52:14.819612 [INFO] 
+2026/03/18 13:52:14.819612 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:52:14.819612 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:52:14.819612 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:52:14.819612 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:14.819612 [INFO]    Link State: down
+2026/03/18 13:52:14.819612 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:52:14.819612 [INFO] 
+2026/03/18 13:52:14.819612 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:52:14.819612 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:52:14.819612 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:52:14.819612 [INFO] 
+2026/03/18 13:52:14.819612 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:52:14.819612 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:52:14.819612 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:52:14.819612 [INFO] 
+2026/03/18 13:52:14.819612 [INFO] Interface: Wi-Fi
+2026/03/18 13:52:14.819612 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:52:14.819612 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:52:14.819612 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:52:14.819612 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:14.819612 [INFO]    Link State: up
+2026/03/18 13:52:14.819612 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:52:14.819612 [INFO] 
+2026/03/18 13:52:14.819612 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:52:14.819612 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:52:14.819612 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:52:14.819612 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:52:14.819612 [INFO]    Link State: down
+2026/03/18 13:52:14.819612 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:52:14.819612 [INFO] 
+2026/03/18 13:52:14.819612 [INFO] ========================================
+2026/03/18 13:52:14.819612 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:52:14.822583 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:52:14.822583 [INFO] Motherboard: HP 85F1
+2026/03/18 13:52:14.822583 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:52:14.822583 [INFO] Component Firmware:
+2026/03/18 13:52:14.822583 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:52:14.822583 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:52:14.822583 [INFO] 
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:52:14.822583 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:52:14.822583 [INFO] Updates Installed: 0
+2026/03/18 13:52:14.822583 [INFO] 
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] 🌡️  Temperatures:
+2026/03/18 13:52:14.822583 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:52:14.822583 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:52:14.822583 [INFO] ⚡ Voltages:
+2026/03/18 13:52:14.822583 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:52:14.822583 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:52:14.822583 [INFO] 💨 Fans:
+2026/03/18 13:52:14.822583 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:52:14.822583 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:52:14.822583 [INFO] 🔌 Power Supply:
+2026/03/18 13:52:14.822583 [INFO]    Status: ✅ OK
+2026/03/18 13:52:14.822583 [INFO] ⚡ Power Consumption:
+2026/03/18 13:52:14.822583 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:52:14.822583 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:52:14.822583 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:52:14.822583 [INFO] 
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:52:14.822583 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:52:14.822583 [INFO] 
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:52:14.822583 [INFO] ========================================
+2026/03/18 13:52:14.822583 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:52:14.822583 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:52:14.822583 [INFO] 
+2026/03/18 13:52:14.822583 [WARN] ========================================
+2026/03/18 13:52:14.822583 [WARN] 🚨 ACTIVE ALERTS: 6
+2026/03/18 13:52:14.822583 [WARN] ========================================
+2026/03/18 13:52:14.822583 [WARN] 1. ⚠️ [WARNING] memory WARNING: 85.00% (threshold: 85.00%)
+2026/03/18 13:52:14.822583 [WARN] 2. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:52:14.822583 [WARN] 3. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:52:14.822583 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:52:14.822583 [WARN] 5. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:52:14.822583 [WARN] 6. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:52:14.822583 [WARN] ========================================
+2026/03/18 13:52:14.822583 [INFO] 
+2026/03/18 13:52:21.701906 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:52:23.221815 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:52:29.747769 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:52:42.874726 [INFO] ========================================
+2026/03/18 13:52:42.874726 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:52:42.875262 [INFO] ========================================
+2026/03/18 13:52:42.875262 [INFO] ✅ CPU: 29.67% (8 cores) - ✅ NORMAL
+2026/03/18 13:52:42.875262 [INFO]    Cores: C0:15.6% C1:20.3% C2:9.4% C3:15.4% 
+2026/03/18 13:52:42.875262 [INFO]           C4:12.5% C5:13.8% C6:14.1% C7:10.9% 
+2026/03/18 13:52:42.875262 [INFO] ✅ Memory: 83.00% (9.82 GB / 11.81 GB, 1.99 GB available) - ✅ NORMAL
+2026/03/18 13:52:42.875262 [INFO]    Swap: 73.54% (21.04 GB / 28.61 GB)
+2026/03/18 13:52:42.875797 [INFO] 💾 Disk Usage:
+2026/03/18 13:52:42.875797 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:52:42.875797 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:52:42.875797 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:52:42.875797 [INFO]    ✅ C:: Read: 23330167 ops (962435163648 bytes), Write: 5341037 ops (378830629376 bytes)
+2026/03/18 13:52:42.875797 [INFO]       IOPS: 21 (R:11 W:10), Throughput: 1.17 MB/s
+2026/03/18 13:52:42.875797 [INFO]       Latency: 0.00ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:52:42.875797 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 988294 ops (35352080384 bytes)
+2026/03/18 13:52:42.876362 [INFO]       IOPS: 4 (R:0 W:4), Throughput: 0.05 MB/s
+2026/03/18 13:52:42.876362 [INFO] 🌐 Network: ↑ 64.41 MB sent, ↓ 98.75 MB received
+2026/03/18 13:52:42.876362 [INFO] ⏱️  Uptime: 117.79 hours | Processes: 307
+2026/03/18 13:52:42.876362 [INFO] ========================================
+2026/03/18 13:52:42.876362 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:52:42.876362 [INFO] ========================================
+2026/03/18 13:52:42.876362 [INFO] Interface: Local Area Connection
+2026/03/18 13:52:42.876884 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:52:42.876884 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:52:42.876884 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:52:42.876884 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:42.876884 [INFO]    Link State: down
+2026/03/18 13:52:42.876884 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:52:42.876884 [INFO] 
+2026/03/18 13:52:42.877414 [INFO] Interface: Ethernet
+2026/03/18 13:52:42.877414 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:52:42.877414 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:52:42.877414 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:52:42.877414 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:42.877414 [INFO]    Link State: down
+2026/03/18 13:52:42.877414 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:52:42.877414 [INFO] 
+2026/03/18 13:52:42.877950 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:52:42.877950 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:52:42.877950 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:52:42.877950 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:42.877950 [INFO]    Link State: down
+2026/03/18 13:52:42.877950 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:52:42.877950 [INFO] 
+2026/03/18 13:52:42.878473 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:52:42.878473 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:52:42.878473 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:52:42.878473 [INFO] 
+2026/03/18 13:52:42.878473 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:52:42.878473 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:52:42.878473 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:52:42.878473 [INFO] 
+2026/03/18 13:52:42.879009 [INFO] Interface: Wi-Fi
+2026/03/18 13:52:42.879009 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:52:42.879009 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:52:42.879009 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:52:42.879009 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:52:42.879009 [INFO]    Link State: up
+2026/03/18 13:52:42.879009 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:52:42.879009 [INFO] 
+2026/03/18 13:52:42.879540 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:52:42.879540 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:52:42.879540 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:52:42.879540 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:52:42.879540 [INFO]    Link State: down
+2026/03/18 13:52:42.879540 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:52:42.879540 [INFO] 
+2026/03/18 13:52:42.879540 [INFO] ========================================
+2026/03/18 13:52:42.880076 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:52:42.880076 [INFO] ========================================
+2026/03/18 13:52:42.880076 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:52:42.880076 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:52:42.880076 [INFO] Motherboard: HP 85F1
+2026/03/18 13:52:42.880076 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:52:42.880076 [INFO] Component Firmware:
+2026/03/18 13:52:42.880076 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:52:42.880613 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:52:42.880613 [INFO] 
+2026/03/18 13:52:42.880613 [INFO] ========================================
+2026/03/18 13:52:42.880613 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:52:42.880613 [INFO] ========================================
+2026/03/18 13:52:42.880613 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:52:42.880613 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:52:42.880613 [INFO] Updates Installed: 0
+2026/03/18 13:52:42.881136 [INFO] 
+2026/03/18 13:52:42.881136 [INFO] ========================================
+2026/03/18 13:52:42.881136 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:52:42.881136 [INFO] ========================================
+2026/03/18 13:52:42.881136 [INFO] 🌡️  Temperatures:
+2026/03/18 13:52:42.881136 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:52:42.881136 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:52:42.881136 [INFO] ⚡ Voltages:
+2026/03/18 13:52:42.881136 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:52:42.881673 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:52:42.881673 [INFO] 💨 Fans:
+2026/03/18 13:52:42.881673 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:52:42.881673 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:52:42.881673 [INFO] 🔌 Power Supply:
+2026/03/18 13:52:42.881673 [INFO]    Status: ✅ OK
+2026/03/18 13:52:42.881673 [INFO] ⚡ Power Consumption:
+2026/03/18 13:52:42.881673 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:52:42.881673 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:52:42.882315 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:52:42.882315 [INFO] 
+2026/03/18 13:52:42.882315 [INFO] ========================================
+2026/03/18 13:52:42.882315 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:52:42.882315 [INFO] ========================================
+2026/03/18 13:52:42.882315 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:52:42.882315 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:52:42.882315 [INFO] 
+2026/03/18 13:52:42.882315 [INFO] ========================================
+2026/03/18 13:52:42.882853 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:52:42.882853 [INFO] ========================================
+2026/03/18 13:52:42.882853 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:52:42.882853 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:52:42.882853 [INFO] 
+2026/03/18 13:52:42.882853 [WARN] ========================================
+2026/03/18 13:52:42.882853 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:52:42.882853 [WARN] ========================================
+2026/03/18 13:52:42.883383 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:52:42.883383 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:52:42.883383 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:52:42.883383 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:52:42.883383 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:52:42.883383 [WARN] ========================================
+2026/03/18 13:52:42.883383 [INFO] 
+2026/03/18 13:52:44.822305 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:52:47.911775 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:52:56.704050 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:52:58.252301 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:53:12.883738 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:53:13.866149 [INFO] ========================================
+2026/03/18 13:53:13.866149 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:53:13.866149 [INFO] ========================================
+2026/03/18 13:53:13.866149 [INFO] ✅ CPU: 7.41% (8 cores) - ✅ NORMAL
+2026/03/18 13:53:13.866149 [INFO]    Cores: C0:14.1% C1:9.4% C2:7.8% C3:9.2% 
+2026/03/18 13:53:13.866149 [INFO]           C4:7.8% C5:9.5% C6:7.8% C7:12.5% 
+2026/03/18 13:53:13.866149 [INFO] ✅ Memory: 82.00% (9.79 GB / 11.81 GB, 2.02 GB available) - ✅ NORMAL
+2026/03/18 13:53:13.866149 [INFO]    Swap: 73.46% (21.02 GB / 28.61 GB)
+2026/03/18 13:53:13.866149 [INFO] 💾 Disk Usage:
+2026/03/18 13:53:13.866149 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:53:13.866149 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:53:13.866149 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:53:13.866149 [INFO]    ✅ C:: Read: 23330186 ops (962435794944 bytes), Write: 5341295 ops (378832578048 bytes)
+2026/03/18 13:53:13.866149 [INFO]       IOPS: 9 (R:1 W:9), Throughput: 0.08 MB/s
+2026/03/18 13:53:13.866149 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 988447 ops (35353891840 bytes)
+2026/03/18 13:53:13.866149 [INFO]       IOPS: 5 (R:0 W:5), Throughput: 0.06 MB/s
+2026/03/18 13:53:13.866149 [INFO] 🌐 Network: ↑ 64.42 MB sent, ↓ 98.77 MB received
+2026/03/18 13:53:13.866149 [INFO] ⏱️  Uptime: 117.80 hours | Processes: 307
+2026/03/18 13:53:13.866149 [INFO] ========================================
+2026/03/18 13:53:13.866149 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:53:13.868861 [INFO] ========================================
+2026/03/18 13:53:13.868861 [INFO] Interface: Local Area Connection
+2026/03/18 13:53:13.868861 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:53:13.868861 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:53:13.868861 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:53:13.868861 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:13.868861 [INFO]    Link State: down
+2026/03/18 13:53:13.868861 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:53:13.868861 [INFO] 
+2026/03/18 13:53:13.868861 [INFO] Interface: Ethernet
+2026/03/18 13:53:13.868861 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:53:13.868861 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:53:13.868861 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:53:13.868861 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:13.868861 [INFO]    Link State: down
+2026/03/18 13:53:13.868861 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:53:13.868861 [INFO] 
+2026/03/18 13:53:13.868861 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:53:13.868861 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:53:13.868861 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:53:13.868861 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:13.868861 [INFO]    Link State: down
+2026/03/18 13:53:13.868861 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:53:13.868861 [INFO] 
+2026/03/18 13:53:13.868861 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:53:13.868861 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:53:13.868861 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:53:13.868861 [INFO] 
+2026/03/18 13:53:13.868861 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:53:13.868861 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:53:13.868861 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:53:13.868861 [INFO] 
+2026/03/18 13:53:13.868861 [INFO] Interface: Wi-Fi
+2026/03/18 13:53:13.868861 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:53:13.868861 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:53:13.868861 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:53:13.868861 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:13.868861 [INFO]    Link State: up
+2026/03/18 13:53:13.868861 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:53:13.868861 [INFO] 
+2026/03/18 13:53:13.872134 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:53:13.872134 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:53:13.872134 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:53:13.872134 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:53:13.872134 [INFO]    Link State: down
+2026/03/18 13:53:13.872134 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:53:13.872134 [INFO] 
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:53:13.872134 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:53:13.872134 [INFO] Motherboard: HP 85F1
+2026/03/18 13:53:13.872134 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:53:13.872134 [INFO] Component Firmware:
+2026/03/18 13:53:13.872134 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:53:13.872134 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:53:13.872134 [INFO] 
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:53:13.872134 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:53:13.872134 [INFO] Updates Installed: 0
+2026/03/18 13:53:13.872134 [INFO] 
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] 🌡️  Temperatures:
+2026/03/18 13:53:13.872134 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:53:13.872134 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:53:13.872134 [INFO] ⚡ Voltages:
+2026/03/18 13:53:13.872134 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:53:13.872134 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:53:13.872134 [INFO] 💨 Fans:
+2026/03/18 13:53:13.872134 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:53:13.872134 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:53:13.872134 [INFO] 🔌 Power Supply:
+2026/03/18 13:53:13.872134 [INFO]    Status: ✅ OK
+2026/03/18 13:53:13.872134 [INFO] ⚡ Power Consumption:
+2026/03/18 13:53:13.872134 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:53:13.872134 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:53:13.872134 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:53:13.872134 [INFO] 
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:53:13.872134 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:53:13.872134 [INFO] 
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:53:13.872134 [INFO] ========================================
+2026/03/18 13:53:13.872134 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:53:13.872134 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:53:13.872134 [INFO] 
+2026/03/18 13:53:13.872134 [WARN] ========================================
+2026/03/18 13:53:13.872134 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:53:13.872134 [WARN] ========================================
+2026/03/18 13:53:13.872134 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:53:13.872134 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:53:13.872134 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:53:13.872134 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:53:13.872134 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:53:13.872134 [WARN] ========================================
+2026/03/18 13:53:13.872134 [INFO] 
+2026/03/18 13:53:19.823483 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:53:22.913605 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:53:27.177156 [ERROR] Failed to send metrics: failed to send metrics after 3 attempts: send request: Post "https://Faber:8443/api/v1/metrics": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:53:27.177683 [ERROR] Failed to process send queue: failed to send metrics after 3 attempts: send request: Post "https://Faber:8443/api/v1/metrics": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:53:27.178225 [INFO] Processing 50 unsent alerts
+2026/03/18 13:53:31.725928 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:53:40.085080 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:53:42.228518 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:53:42.969164 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:53:43.871898 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:53:45.612878 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:53:45.895181 [INFO] ========================================
+2026/03/18 13:53:45.895181 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:53:45.895181 [INFO] ========================================
+2026/03/18 13:53:45.895181 [INFO] ✅ CPU: 16.67% (8 cores) - ✅ NORMAL
+2026/03/18 13:53:45.895181 [INFO]    Cores: C0:50.0% C1:46.2% C2:47.7% C3:46.2% 
+2026/03/18 13:53:45.895181 [INFO]           C4:43.1% C5:44.6% C6:46.9% C7:47.7% 
+2026/03/18 13:53:45.895181 [INFO] ✅ Memory: 84.00% (10.02 GB / 11.81 GB, 1.79 GB available) - ✅ NORMAL
+2026/03/18 13:53:45.895181 [INFO]    Swap: 73.46% (21.02 GB / 28.61 GB)
+2026/03/18 13:53:45.895181 [INFO] 💾 Disk Usage:
+2026/03/18 13:53:45.895181 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:53:45.895181 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:53:45.895181 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:53:45.895181 [INFO]    ✅ C:: Read: 23330253 ops (962438052864 bytes), Write: 5341441 ops (378834088448 bytes)
+2026/03/18 13:53:45.895181 [INFO]       IOPS: 7 (R:2 W:5), Throughput: 0.12 MB/s
+2026/03/18 13:53:45.895181 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 988768 ops (35357720064 bytes)
+2026/03/18 13:53:45.896792 [INFO]       IOPS: 11 (R:0 W:11), Throughput: 0.12 MB/s
+2026/03/18 13:53:45.896792 [INFO] 🌐 Network: ↑ 64.44 MB sent, ↓ 98.79 MB received
+2026/03/18 13:53:45.896792 [INFO] ⏱️  Uptime: 117.80 hours | Processes: 306
+2026/03/18 13:53:45.896792 [INFO] ========================================
+2026/03/18 13:53:45.896792 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:53:45.896792 [INFO] ========================================
+2026/03/18 13:53:45.896792 [INFO] Interface: Local Area Connection
+2026/03/18 13:53:45.896792 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:53:45.896792 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:53:45.896792 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:53:45.896792 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:45.896792 [INFO]    Link State: down
+2026/03/18 13:53:45.896792 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:53:45.898215 [INFO] 
+2026/03/18 13:53:45.898215 [INFO] Interface: Ethernet
+2026/03/18 13:53:45.898215 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:53:45.898215 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:53:45.898215 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:53:45.898215 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:45.898215 [INFO]    Link State: down
+2026/03/18 13:53:45.898215 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:53:45.898215 [INFO] 
+2026/03/18 13:53:45.898215 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:53:45.898215 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:53:45.898215 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:53:45.898215 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:45.898215 [INFO]    Link State: down
+2026/03/18 13:53:45.898215 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:53:45.898215 [INFO] 
+2026/03/18 13:53:45.898215 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:53:45.898215 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:53:45.898215 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:53:45.898215 [INFO] 
+2026/03/18 13:53:45.898215 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:53:45.898215 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:53:45.898215 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:53:45.898215 [INFO] 
+2026/03/18 13:53:45.898215 [INFO] Interface: Wi-Fi
+2026/03/18 13:53:45.898215 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:53:45.898215 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:53:45.898215 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:53:45.900223 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:53:45.900223 [INFO]    Link State: up
+2026/03/18 13:53:45.900223 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:53:45.900223 [INFO] 
+2026/03/18 13:53:45.900223 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:53:45.900223 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:53:45.900223 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:53:45.900223 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:53:45.900223 [INFO]    Link State: down
+2026/03/18 13:53:45.900223 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:53:45.900223 [INFO] 
+2026/03/18 13:53:45.900223 [INFO] ========================================
+2026/03/18 13:53:45.900223 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:53:45.900223 [INFO] ========================================
+2026/03/18 13:53:45.900223 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:53:45.900223 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:53:45.900223 [INFO] Motherboard: HP 85F1
+2026/03/18 13:53:45.900223 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:53:45.900223 [INFO] Component Firmware:
+2026/03/18 13:53:45.900223 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:53:45.900223 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:53:45.900223 [INFO] 
+2026/03/18 13:53:45.900223 [INFO] ========================================
+2026/03/18 13:53:45.900223 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:53:45.902229 [INFO] ========================================
+2026/03/18 13:53:45.902229 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:53:45.902229 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:53:45.902229 [INFO] Updates Installed: 0
+2026/03/18 13:53:45.902229 [INFO] 
+2026/03/18 13:53:45.902229 [INFO] ========================================
+2026/03/18 13:53:45.902229 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:53:45.902229 [INFO] ========================================
+2026/03/18 13:53:45.902229 [INFO] 🌡️  Temperatures:
+2026/03/18 13:53:45.902229 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:53:45.902229 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:53:45.902229 [INFO] ⚡ Voltages:
+2026/03/18 13:53:45.902229 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:53:45.902229 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:53:45.902229 [INFO] 💨 Fans:
+2026/03/18 13:53:45.902229 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:53:45.902229 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:53:45.902229 [INFO] 🔌 Power Supply:
+2026/03/18 13:53:45.902229 [INFO]    Status: ✅ OK
+2026/03/18 13:53:45.902229 [INFO] ⚡ Power Consumption:
+2026/03/18 13:53:45.902229 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:53:45.902229 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:53:45.902229 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:53:45.902229 [INFO] 
+2026/03/18 13:53:45.902229 [INFO] ========================================
+2026/03/18 13:53:45.902229 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:53:45.902229 [INFO] ========================================
+2026/03/18 13:53:45.902229 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:53:45.902229 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:53:45.902229 [INFO] 
+2026/03/18 13:53:45.902229 [INFO] ========================================
+2026/03/18 13:53:45.902229 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:53:45.902229 [INFO] ========================================
+2026/03/18 13:53:45.904232 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:53:45.904232 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:53:45.904232 [INFO] 
+2026/03/18 13:53:45.904232 [WARN] ========================================
+2026/03/18 13:53:45.904232 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:53:45.904232 [WARN] ========================================
+2026/03/18 13:53:45.904232 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:53:45.904232 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:53:45.904232 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:53:45.904232 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:53:45.904232 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:53:45.904232 [WARN] ========================================
+2026/03/18 13:53:45.904232 [INFO] 
+2026/03/18 13:53:46.220774 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:53:47.546945 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:53:47.884060 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:53:49.189654 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:53:51.560533 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:53:52.863986 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:53:53.203908 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:53:54.506554 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:54:15.437886 [INFO] ========================================
+2026/03/18 13:54:15.438485 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:54:15.438485 [INFO] ========================================
+2026/03/18 13:54:15.439023 [INFO] ✅ CPU: 13.70% (8 cores) - ✅ NORMAL
+2026/03/18 13:54:15.439023 [INFO]    Cores: C0:28.8% C1:9.2% C2:7.8% C3:18.2% 
+2026/03/18 13:54:15.439023 [INFO]           C4:15.6% C5:10.8% C6:7.8% C7:10.8% 
+2026/03/18 13:54:15.439595 [INFO] ✅ Memory: 83.00% (9.82 GB / 11.81 GB, 1.99 GB available) - ✅ NORMAL
+2026/03/18 13:54:15.439595 [INFO]    Swap: 73.44% (21.01 GB / 28.61 GB)
+2026/03/18 13:54:15.439595 [INFO] 💾 Disk Usage:
+2026/03/18 13:54:15.440170 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:54:15.440170 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:54:15.440170 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:54:15.440726 [INFO]    ✅ C:: Read: 23330365 ops (962442677248 bytes), Write: 5341617 ops (378839873536 bytes)
+2026/03/18 13:54:15.441283 [INFO]       IOPS: 10 (R:4 W:6), Throughput: 0.33 MB/s
+2026/03/18 13:54:15.441283 [INFO]       Latency: 0.00ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:54:15.441283 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 988951 ops (35359772160 bytes)
+2026/03/18 13:54:15.441798 [INFO]       IOPS: 6 (R:0 W:6), Throughput: 0.07 MB/s
+2026/03/18 13:54:15.441798 [INFO] 🌐 Network: ↑ 64.47 MB sent, ↓ 98.83 MB received
+2026/03/18 13:54:15.441798 [INFO] ⏱️  Uptime: 117.81 hours | Processes: 306
+2026/03/18 13:54:15.442399 [INFO] ========================================
+2026/03/18 13:54:15.442399 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:54:15.442399 [INFO] ========================================
+2026/03/18 13:54:15.442399 [INFO] Interface: Local Area Connection
+2026/03/18 13:54:15.442983 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:54:15.442983 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:54:15.442983 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:54:15.442983 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:15.443530 [INFO]    Link State: down
+2026/03/18 13:54:15.443530 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:54:15.444111 [INFO] 
+2026/03/18 13:54:15.444111 [INFO] Interface: Ethernet
+2026/03/18 13:54:15.444111 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:54:15.444111 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:54:15.444700 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:54:15.444700 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:15.444700 [INFO]    Link State: down
+2026/03/18 13:54:15.445302 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:54:15.445302 [INFO] 
+2026/03/18 13:54:15.445302 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:54:15.445878 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:54:15.445878 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:54:15.445878 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:15.445878 [INFO]    Link State: down
+2026/03/18 13:54:15.446469 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:54:15.446469 [INFO] 
+2026/03/18 13:54:15.446469 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:54:15.447022 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:54:15.447022 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:54:15.447022 [INFO] 
+2026/03/18 13:54:15.447022 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:54:15.447690 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:54:15.447690 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:54:15.447690 [INFO] 
+2026/03/18 13:54:15.448268 [INFO] Interface: Wi-Fi
+2026/03/18 13:54:15.448268 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:54:15.448268 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:54:15.448837 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:54:15.448837 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:15.448837 [INFO]    Link State: up
+2026/03/18 13:54:15.448837 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:54:15.449383 [INFO] 
+2026/03/18 13:54:15.449383 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:54:15.449383 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:54:15.449383 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:54:15.449992 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:54:15.449992 [INFO]    Link State: down
+2026/03/18 13:54:15.449992 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:54:15.450583 [INFO] 
+2026/03/18 13:54:15.450583 [INFO] ========================================
+2026/03/18 13:54:15.450583 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:54:15.451177 [INFO] ========================================
+2026/03/18 13:54:15.451177 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:54:15.451177 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:54:15.451729 [INFO] Motherboard: HP 85F1
+2026/03/18 13:54:15.451729 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:54:15.451729 [INFO] Component Firmware:
+2026/03/18 13:54:15.451729 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:54:15.452303 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:54:15.452303 [INFO] 
+2026/03/18 13:54:15.452303 [INFO] ========================================
+2026/03/18 13:54:15.452303 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:54:15.452889 [INFO] ========================================
+2026/03/18 13:54:15.452889 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:54:15.452889 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:54:15.453480 [INFO] Updates Installed: 0
+2026/03/18 13:54:15.453480 [INFO] 
+2026/03/18 13:54:15.453480 [INFO] ========================================
+2026/03/18 13:54:15.454049 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:54:15.454049 [INFO] ========================================
+2026/03/18 13:54:15.454049 [INFO] 🌡️  Temperatures:
+2026/03/18 13:54:15.454598 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:54:15.454598 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:54:15.455155 [INFO] ⚡ Voltages:
+2026/03/18 13:54:15.455155 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:54:15.455155 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:54:15.455720 [INFO] 💨 Fans:
+2026/03/18 13:54:15.455720 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:54:15.455720 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:54:15.456284 [INFO] 🔌 Power Supply:
+2026/03/18 13:54:15.456284 [INFO]    Status: ✅ OK
+2026/03/18 13:54:15.456284 [INFO] ⚡ Power Consumption:
+2026/03/18 13:54:15.456981 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:54:15.456981 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:54:15.457501 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:54:15.457501 [INFO] 
+2026/03/18 13:54:15.457501 [INFO] ========================================
+2026/03/18 13:54:15.457501 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:54:15.458098 [INFO] ========================================
+2026/03/18 13:54:15.458098 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:54:15.458098 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:54:15.458717 [INFO] 
+2026/03/18 13:54:15.458717 [INFO] ========================================
+2026/03/18 13:54:15.458717 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:54:15.459330 [INFO] ========================================
+2026/03/18 13:54:15.459330 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:54:15.459922 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:54:15.459922 [INFO] 
+2026/03/18 13:54:15.459922 [WARN] ========================================
+2026/03/18 13:54:15.459922 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:54:15.460493 [WARN] ========================================
+2026/03/18 13:54:15.460493 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:54:15.460493 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:54:15.461061 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:54:15.461061 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:54:15.461061 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:54:15.461666 [WARN] ========================================
+2026/03/18 13:54:15.461666 [INFO] 
+2026/03/18 13:54:15.615398 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:54:20.663283 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:54:25.859610 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:54:26.561772 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:54:27.978382 [ERROR] Failed to send alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:54:27.979460 [INFO] Processing 100 unsent metrics
+2026/03/18 13:54:28.221350 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:54:29.529316 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:54:30.891462 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:54:31.590661 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:54:43.277956 [ERROR] Failed to send metrics: failed to send metrics after 3 attempts: send request: Post "https://Faber:8443/api/v1/metrics": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:54:43.277956 [ERROR] Failed to process send queue: failed to send metrics after 3 attempts: send request: Post "https://Faber:8443/api/v1/metrics": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:54:44.635564 [INFO] ========================================
+2026/03/18 13:54:44.635564 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:54:44.635564 [INFO] ========================================
+2026/03/18 13:54:44.636607 [INFO] ✅ CPU: 8.61% (8 cores) - ✅ NORMAL
+2026/03/18 13:54:44.636607 [INFO]    Cores: C0:15.4% C1:10.9% C2:15.6% C3:14.1% 
+2026/03/18 13:54:44.636607 [INFO]           C4:21.2% C5:15.9% C6:12.3% C7:18.8% 
+2026/03/18 13:54:44.636607 [INFO] ✅ Memory: 80.00% (9.49 GB / 11.81 GB, 2.32 GB available) - ✅ NORMAL
+2026/03/18 13:54:44.636607 [INFO]    Swap: 73.15% (20.93 GB / 28.61 GB)
+2026/03/18 13:54:44.636607 [INFO] 💾 Disk Usage:
+2026/03/18 13:54:44.636607 [INFO]    ✅ C:: 35.79% (134.20 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:54:44.636607 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:54:44.636607 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:54:44.637726 [INFO]    ✅ C:: Read: 23330454 ops (962445523968 bytes), Write: 5341871 ops (378842501632 bytes)
+2026/03/18 13:54:44.637726 [INFO]       IOPS: 11 (R:3 W:8), Throughput: 0.17 MB/s
+2026/03/18 13:54:44.637726 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 989270 ops (35362943488 bytes)
+2026/03/18 13:54:44.637726 [INFO]       IOPS: 11 (R:0 W:11), Throughput: 0.10 MB/s
+2026/03/18 13:54:44.637726 [INFO] 🌐 Network: ↑ 64.53 MB sent, ↓ 98.92 MB received
+2026/03/18 13:54:44.637726 [INFO] ⏱️  Uptime: 117.82 hours | Processes: 306
+2026/03/18 13:54:44.637726 [INFO] ========================================
+2026/03/18 13:54:44.637726 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:54:44.637726 [INFO] ========================================
+2026/03/18 13:54:44.637726 [INFO] Interface: Local Area Connection
+2026/03/18 13:54:44.637726 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:54:44.637726 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:54:44.637726 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:54:44.637726 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:44.637726 [INFO]    Link State: down
+2026/03/18 13:54:44.637726 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:54:44.637726 [INFO] 
+2026/03/18 13:54:44.637726 [INFO] Interface: Ethernet
+2026/03/18 13:54:44.637726 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:54:44.637726 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:54:44.637726 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:54:44.637726 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:44.637726 [INFO]    Link State: down
+2026/03/18 13:54:44.637726 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:54:44.637726 [INFO] 
+2026/03/18 13:54:44.637726 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:54:44.637726 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:54:44.637726 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:54:44.637726 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:44.637726 [INFO]    Link State: down
+2026/03/18 13:54:44.637726 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:54:44.637726 [INFO] 
+2026/03/18 13:54:44.640676 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:54:44.640676 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:54:44.640676 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:54:44.640676 [INFO] 
+2026/03/18 13:54:44.640676 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:54:44.640676 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:54:44.640676 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:54:44.640676 [INFO] 
+2026/03/18 13:54:44.640676 [INFO] Interface: Wi-Fi
+2026/03/18 13:54:44.640676 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:54:44.640676 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:54:44.640676 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:54:44.640676 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:54:44.640676 [INFO]    Link State: up
+2026/03/18 13:54:44.640676 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:54:44.640676 [INFO] 
+2026/03/18 13:54:44.640676 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:54:44.640676 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:54:44.640676 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:54:44.640676 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:54:44.640676 [INFO]    Link State: down
+2026/03/18 13:54:44.640676 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:54:44.640676 [INFO] 
+2026/03/18 13:54:44.640676 [INFO] ========================================
+2026/03/18 13:54:44.640676 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:54:44.640676 [INFO] ========================================
+2026/03/18 13:54:44.640676 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:54:44.640676 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:54:44.640676 [INFO] Motherboard: HP 85F1
+2026/03/18 13:54:44.640676 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:54:44.640676 [INFO] Component Firmware:
+2026/03/18 13:54:44.640676 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:54:44.640676 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:54:44.640676 [INFO] 
+2026/03/18 13:54:44.640676 [INFO] ========================================
+2026/03/18 13:54:44.640676 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:54:44.640676 [INFO] ========================================
+2026/03/18 13:54:44.643311 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:54:44.643311 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:54:44.643311 [INFO] Updates Installed: 0
+2026/03/18 13:54:44.643311 [INFO] 
+2026/03/18 13:54:44.643311 [INFO] ========================================
+2026/03/18 13:54:44.643311 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:54:44.643311 [INFO] ========================================
+2026/03/18 13:54:44.643311 [INFO] 🌡️  Temperatures:
+2026/03/18 13:54:44.643311 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:54:44.643311 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:54:44.643311 [INFO] ⚡ Voltages:
+2026/03/18 13:54:44.643311 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:54:44.643311 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:54:44.643311 [INFO] 💨 Fans:
+2026/03/18 13:54:44.643311 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:54:44.643311 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:54:44.643311 [INFO] 🔌 Power Supply:
+2026/03/18 13:54:44.643311 [INFO]    Status: ✅ OK
+2026/03/18 13:54:44.644601 [INFO] ⚡ Power Consumption:
+2026/03/18 13:54:44.644601 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:54:44.644601 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:54:44.644601 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:54:44.644601 [INFO] 
+2026/03/18 13:54:44.644601 [INFO] ========================================
+2026/03/18 13:54:44.644601 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:54:44.644601 [INFO] ========================================
+2026/03/18 13:54:44.644601 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:54:44.644601 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:54:44.644601 [INFO] 
+2026/03/18 13:54:44.644601 [INFO] ========================================
+2026/03/18 13:54:44.644601 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:54:44.644601 [INFO] ========================================
+2026/03/18 13:54:44.645611 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:54:44.646366 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:54:44.646366 [INFO] 
+2026/03/18 13:54:44.646366 [WARN] ========================================
+2026/03/18 13:54:44.646366 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:54:44.646879 [WARN] ========================================
+2026/03/18 13:54:44.646879 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:54:44.646879 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:54:44.646879 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:54:44.646879 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:54:44.647597 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:54:44.647597 [WARN] ========================================
+2026/03/18 13:54:44.647597 [INFO] 
+2026/03/18 13:54:44.657647 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:54:50.115172 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:54:55.456604 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:54:57.025496 [INFO] Processing 65 unsent alerts
+2026/03/18 13:54:57.337275 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:55:14.822896 [INFO] ========================================
+2026/03/18 13:55:14.822896 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:55:14.823556 [INFO] ========================================
+2026/03/18 13:55:14.823556 [INFO] ✅ CPU: 16.41% (8 cores) - ✅ NORMAL
+2026/03/18 13:55:14.823556 [INFO]    Cores: C0:6.2% C1:4.7% C2:7.7% C3:10.9% 
+2026/03/18 13:55:14.823556 [INFO]           C4:10.9% C5:14.1% C6:10.9% C7:14.1% 
+2026/03/18 13:55:14.823556 [INFO] ✅ Memory: 79.00% (9.33 GB / 11.81 GB, 2.47 GB available) - ✅ NORMAL
+2026/03/18 13:55:14.823556 [INFO]    Swap: 73.13% (20.92 GB / 28.61 GB)
+2026/03/18 13:55:14.823556 [INFO] 💾 Disk Usage:
+2026/03/18 13:55:14.824095 [INFO]    ✅ C:: 35.79% (134.21 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:55:14.824095 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:55:14.824095 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:55:14.824644 [INFO]    ✅ C:: Read: 23330467 ops (962445952000 bytes), Write: 5342037 ops (378845442048 bytes)
+2026/03/18 13:55:14.824644 [INFO]       IOPS: 6 (R:0 W:6), Throughput: 0.11 MB/s
+2026/03/18 13:55:14.824644 [INFO]       Latency: 0.01ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:55:14.824644 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 989662 ops (35367444480 bytes)
+2026/03/18 13:55:14.824644 [INFO]       IOPS: 13 (R:0 W:13), Throughput: 0.14 MB/s
+2026/03/18 13:55:14.825167 [INFO] 🌐 Network: ↑ 64.55 MB sent, ↓ 98.96 MB received
+2026/03/18 13:55:14.825167 [INFO] ⏱️  Uptime: 117.83 hours | Processes: 305
+2026/03/18 13:55:14.825167 [INFO] ========================================
+2026/03/18 13:55:14.825167 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:55:14.825696 [INFO] ========================================
+2026/03/18 13:55:14.825696 [INFO] Interface: Local Area Connection
+2026/03/18 13:55:14.825696 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:55:14.825696 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:55:14.825696 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:55:14.825696 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:14.826262 [INFO]    Link State: down
+2026/03/18 13:55:14.826262 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:55:14.826262 [INFO] 
+2026/03/18 13:55:14.826262 [INFO] Interface: Ethernet
+2026/03/18 13:55:14.826262 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:55:14.826262 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:55:14.826262 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:55:14.826262 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:14.826262 [INFO]    Link State: down
+2026/03/18 13:55:14.826262 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:55:14.826815 [INFO] 
+2026/03/18 13:55:14.826815 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:55:14.826815 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:55:14.826815 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:55:14.826815 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:14.826815 [INFO]    Link State: down
+2026/03/18 13:55:14.826815 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:55:14.826815 [INFO] 
+2026/03/18 13:55:14.827338 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:55:14.827338 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:55:14.827338 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:55:14.827338 [INFO] 
+2026/03/18 13:55:14.827338 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:55:14.827338 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:55:14.827338 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:55:14.827867 [INFO] 
+2026/03/18 13:55:14.827867 [INFO] Interface: Wi-Fi
+2026/03/18 13:55:14.827867 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:55:14.827867 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:55:14.827867 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:55:14.827867 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:14.827867 [INFO]    Link State: up
+2026/03/18 13:55:14.827867 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:55:14.828395 [INFO] 
+2026/03/18 13:55:14.828395 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:55:14.828395 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:55:14.828395 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:55:14.828395 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:55:14.828395 [INFO]    Link State: down
+2026/03/18 13:55:14.828395 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:55:14.828395 [INFO] 
+2026/03/18 13:55:14.828395 [INFO] ========================================
+2026/03/18 13:55:14.828915 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:55:14.828915 [INFO] ========================================
+2026/03/18 13:55:14.828915 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:55:14.828915 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:55:14.828915 [INFO] Motherboard: HP 85F1
+2026/03/18 13:55:14.828915 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:55:14.828915 [INFO] Component Firmware:
+2026/03/18 13:55:14.828915 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:55:14.828915 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:55:14.828915 [INFO] 
+2026/03/18 13:55:14.829442 [INFO] ========================================
+2026/03/18 13:55:14.829442 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:55:14.829442 [INFO] ========================================
+2026/03/18 13:55:14.829442 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:55:14.829442 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:55:14.829442 [INFO] Updates Installed: 0
+2026/03/18 13:55:14.829442 [INFO] 
+2026/03/18 13:55:14.829442 [INFO] ========================================
+2026/03/18 13:55:14.829442 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:55:14.829442 [INFO] ========================================
+2026/03/18 13:55:14.829962 [INFO] 🌡️  Temperatures:
+2026/03/18 13:55:14.829962 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:55:14.829962 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:55:14.829962 [INFO] ⚡ Voltages:
+2026/03/18 13:55:14.829962 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:55:14.829962 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:55:14.829962 [INFO] 💨 Fans:
+2026/03/18 13:55:14.829962 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:55:14.829962 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:55:14.830484 [INFO] 🔌 Power Supply:
+2026/03/18 13:55:14.830484 [INFO]    Status: ✅ OK
+2026/03/18 13:55:14.830484 [INFO] ⚡ Power Consumption:
+2026/03/18 13:55:14.830484 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:55:14.830484 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:55:14.830484 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:55:14.830484 [INFO] 
+2026/03/18 13:55:14.830484 [INFO] ========================================
+2026/03/18 13:55:14.830484 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:55:14.830484 [INFO] ========================================
+2026/03/18 13:55:14.831013 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:55:14.831013 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:55:14.831013 [INFO] 
+2026/03/18 13:55:14.831013 [INFO] ========================================
+2026/03/18 13:55:14.831013 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:55:14.831013 [INFO] ========================================
+2026/03/18 13:55:14.831013 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:55:14.831013 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:55:14.831013 [INFO] 
+2026/03/18 13:55:14.831013 [WARN] ========================================
+2026/03/18 13:55:14.831539 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:55:14.831539 [WARN] ========================================
+2026/03/18 13:55:14.831539 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:55:14.831539 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:55:14.831539 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:55:14.831539 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:55:14.831539 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:55:14.831539 [WARN] ========================================
+2026/03/18 13:55:14.831539 [INFO] 
+2026/03/18 13:55:15.007269 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:55:20.045694 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:55:25.242247 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:55:30.280319 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:55:30.486286 [ERROR] Failed to send immediate alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/03/18 13:55:32.337504 [WARN] Retrying alert send (attempt 2/3)
+2026/03/18 13:55:37.533701 [WARN] Retrying alert send (attempt 3/3)
+2026/03/18 13:55:41.440513 [INFO] Received signal: interrupt. Initiating graceful shutdown...
+2026/03/18 13:55:41.440513 [INFO] Agent stopping...
+2026/03/18 13:55:42.713464 [ERROR] Failed to send alerts: failed to send alerts after 3 attempts: send request: Post "https://Faber:8443/api/v1/alerts": tls: failed to verify certificate: x509: certificate signed by unknown authority (possibly because of "crypto/rsa: verification error" while trying to verify candidate authority certificate "DCIM-RootCA")
+2026/03/18 13:55:42.715038 [INFO] Processing 100 unsent metrics
+2026/03/18 13:55:43.849553 [INFO] ========================================
+2026/03/18 13:55:43.849553 [INFO] 📊 SYSTEM HEALTH REPORT
+2026/03/18 13:55:43.851313 [INFO] ========================================
+2026/03/18 13:55:43.851313 [INFO] ✅ CPU: 9.39% (8 cores) - ✅ NORMAL
+2026/03/18 13:55:43.851313 [INFO]    Cores: C0:15.4% C1:9.4% C2:6.2% C3:14.1% 
+2026/03/18 13:55:43.851313 [INFO]           C4:17.2% C5:12.5% C6:17.2% C7:17.2% 
+2026/03/18 13:55:43.851313 [INFO] ✅ Memory: 80.00% (9.47 GB / 11.81 GB, 2.34 GB available) - ✅ NORMAL
+2026/03/18 13:55:43.851313 [INFO]    Swap: 73.27% (20.96 GB / 28.61 GB)
+2026/03/18 13:55:43.851313 [INFO] 💾 Disk Usage:
+2026/03/18 13:55:43.851313 [INFO]    ✅ C:: 35.79% (134.21 GB / 374.99 GB, 240.79 GB free) - ✅ OK
+2026/03/18 13:55:43.852331 [INFO]    ✅ D:: 16.97% (16.97 GB / 100.00 GB, 83.03 GB free) - ✅ OK
+2026/03/18 13:55:43.852331 [INFO] 💿 Disk I/O Performance:
+2026/03/18 13:55:43.852331 [INFO]    ✅ C:: Read: 23330804 ops (962479204352 bytes), Write: 5342284 ops (378847572992 bytes)
+2026/03/18 13:55:43.852942 [INFO]       IOPS: 19 (R:11 W:8), Throughput: 1.12 MB/s
+2026/03/18 13:55:43.852942 [INFO]       Latency: 0.01ms avg, Queue Depth: 0.00, Util: 0.0% - OK
+2026/03/18 13:55:43.852942 [INFO]    ✅ D:: Read: 2206728 ops (52627635712 bytes), Write: 989764 ops (35368805888 bytes)
+2026/03/18 13:55:43.852942 [INFO]       IOPS: 3 (R:0 W:3), Throughput: 0.04 MB/s
+2026/03/18 13:55:43.852942 [INFO] 🌐 Network: ↑ 64.57 MB sent, ↓ 99.00 MB received
+2026/03/18 13:55:43.853729 [INFO] ⏱️  Uptime: 117.84 hours | Processes: 307
+2026/03/18 13:55:43.853729 [INFO] ========================================
+2026/03/18 13:55:43.853729 [INFO] 🔌 NETWORK INTERFACE DETAILS
+2026/03/18 13:55:43.853729 [INFO] ========================================
+2026/03/18 13:55:43.854280 [INFO] Interface: Local Area Connection
+2026/03/18 13:55:43.854280 [INFO]    MAC: 00:ff:26:e6:fd:1e
+2026/03/18 13:55:43.854280 [INFO]    IPv4: [169.254.177.205]
+2026/03/18 13:55:43.854280 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:55:43.854802 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:43.854802 [INFO]    Link State: down
+2026/03/18 13:55:43.854802 [INFO]    Driver: tap_ovpnconnect v9.27.0.0
+2026/03/18 13:55:43.854802 [INFO] 
+2026/03/18 13:55:43.855340 [INFO] Interface: Ethernet
+2026/03/18 13:55:43.855340 [INFO]    MAC: f8:0d:ac:56:92:0b
+2026/03/18 13:55:43.855340 [INFO]    IPv4: [169.254.253.220]
+2026/03/18 13:55:43.855340 [INFO]    Speed: 9223372036854 Mbps (9223372036 Gbps)
+2026/03/18 13:55:43.855340 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:43.855340 [INFO]    Link State: down
+2026/03/18 13:55:43.855857 [INFO]    Driver: rt640x64 v10.60.615.2022
+2026/03/18 13:55:43.855857 [INFO] 
+2026/03/18 13:55:43.855857 [INFO] Interface: OpenVPN Connect DCO Adapter
+2026/03/18 13:55:43.855857 [INFO]    IPv4: [169.254.245.194]
+2026/03/18 13:55:43.855857 [INFO]    Speed: 1000 Mbps (1 Gbps)
+2026/03/18 13:55:43.855857 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:43.855857 [INFO]    Link State: down
+2026/03/18 13:55:43.855857 [INFO]    Driver: ovpn-dco v1.3.3.0
+2026/03/18 13:55:43.855857 [INFO] 
+2026/03/18 13:55:43.855857 [INFO] Interface: Local Area Connection* 1
+2026/03/18 13:55:43.856377 [INFO]    MAC: 5e:ba:ef:7d:5f:83
+2026/03/18 13:55:43.856377 [INFO]    IPv4: [169.254.12.134]
+2026/03/18 13:55:43.856377 [INFO] 
+2026/03/18 13:55:43.856377 [INFO] Interface: Local Area Connection* 2
+2026/03/18 13:55:43.856377 [INFO]    MAC: de:ba:ef:7d:5f:83
+2026/03/18 13:55:43.856377 [INFO]    IPv4: [169.254.25.199]
+2026/03/18 13:55:43.856377 [INFO] 
+2026/03/18 13:55:43.856377 [INFO] Interface: Wi-Fi
+2026/03/18 13:55:43.856377 [INFO]    MAC: 5c:ba:ef:7d:5f:83
+2026/03/18 13:55:43.856897 [INFO]    IPv4: [192.168.1.9 192.168.1.9]
+2026/03/18 13:55:43.856897 [INFO]    Speed: 433 Mbps (433 Mbps)
+2026/03/18 13:55:43.856897 [INFO]    Duplex: full | Auto-Neg: false
+2026/03/18 13:55:43.856897 [INFO]    Link State: up
+2026/03/18 13:55:43.856897 [INFO]    Driver: RTWlanE v2024.0.10.226
+2026/03/18 13:55:43.856897 [INFO] 
+2026/03/18 13:55:43.856897 [INFO] Interface: Bluetooth Network Connection
+2026/03/18 13:55:43.856897 [INFO]    MAC: 5c:ba:ef:7d:5f:84
+2026/03/18 13:55:43.856897 [INFO]    IPv4: [169.254.129.69]
+2026/03/18 13:55:43.856897 [INFO]    Speed: 3 Mbps (3 Mbps)
+2026/03/18 13:55:43.857421 [INFO]    Link State: down
+2026/03/18 13:55:43.857421 [INFO]    Driver: BthPan v10.0.26100.5074
+2026/03/18 13:55:43.857421 [INFO] 
+2026/03/18 13:55:43.857421 [INFO] ========================================
+2026/03/18 13:55:43.857421 [INFO] 💻 HARDWARE & FIRMWARE INFO
+2026/03/18 13:55:43.857421 [INFO] ========================================
+2026/03/18 13:55:43.857421 [INFO] BIOS: Insyde vF.69 (2025-04-16)
+2026/03/18 13:55:43.857421 [INFO]    Mode: Legacy | Secure Boot: Unknown
+2026/03/18 13:55:43.857421 [INFO] Motherboard: HP 85F1
+2026/03/18 13:55:43.857421 [INFO]    UUID: 7C0790AF-1AE9-EA11-8107-F80DAC56920B
+2026/03/18 13:55:43.858017 [INFO] Component Firmware:
+2026/03/18 13:55:43.858017 [INFO]    GPU Intel(R) UHD Graphics: 
+2026/03/18 13:55:43.858017 [INFO]    USB Intel(R) USB 3.1 eXtensible Host Controller - 1.10 (Microsoft): 
+2026/03/18 13:55:43.858017 [INFO] 
+2026/03/18 13:55:43.858017 [INFO] ========================================
+2026/03/18 13:55:43.858017 [INFO] 🔧 OS PATCH LEVEL
+2026/03/18 13:55:43.858017 [INFO] ========================================
+2026/03/18 13:55:43.858017 [INFO] OS: Microsoft Windows 11 Home Single Language 25H2 (Build: 26200.8037)
+2026/03/18 13:55:43.858017 [INFO] Windows Edition: Unknown SKU (100)
+2026/03/18 13:55:43.858017 [INFO] Updates Installed: 0
+2026/03/18 13:55:43.858558 [INFO] 
+2026/03/18 13:55:43.858558 [INFO] ========================================
+2026/03/18 13:55:43.858558 [INFO] 🔬 HARDWARE SENSORS
+2026/03/18 13:55:43.858558 [INFO] ========================================
+2026/03/18 13:55:43.858558 [INFO] 🌡️  Temperatures:
+2026/03/18 13:55:43.858558 [INFO]    ℹ️  No sensors detected - install OpenHardwareMonitor for detailed readings
+2026/03/18 13:55:43.858558 [INFO]    ℹ️  Temperature sensor feature available but no sensors detected
+2026/03/18 13:55:43.858558 [INFO] ⚡ Voltages:
+2026/03/18 13:55:43.858558 [INFO]    ℹ️  Install OpenHardwareMonitor or HWiNFO for detailed voltage readings
+2026/03/18 13:55:43.858558 [INFO]    ℹ️  Voltage sensor feature available but no sensors detected
+2026/03/18 13:55:43.859082 [INFO] 💨 Fans:
+2026/03/18 13:55:43.859082 [INFO]    ℹ️  Cooling Device
+2026/03/18 13:55:43.859082 [INFO]    ℹ️  Fan sensor feature available but no sensors detected
+2026/03/18 13:55:43.859082 [INFO] 🔌 Power Supply:
+2026/03/18 13:55:43.859082 [INFO]    Status: ✅ OK
+2026/03/18 13:55:43.859082 [INFO] ⚡ Power Consumption:
+2026/03/18 13:55:43.859082 [INFO]    🔋 Battery: 100% - Charging (AC Connected)
+2026/03/18 13:55:43.859082 [INFO] 💧 Water Cooling / AIO:
+2026/03/18 13:55:43.859082 [INFO]    ℹ️  No water cooling or AIO detected (air cooling in use)
+2026/03/18 13:55:43.859082 [INFO] 
+2026/03/18 13:55:43.859618 [INFO] ========================================
+2026/03/18 13:55:43.859618 [INFO] 🔍 ANOMALY DETECTION
+2026/03/18 13:55:43.859618 [INFO] ========================================
+2026/03/18 13:55:43.859618 [INFO] ℹ️  Building baselines: 0/5 metrics ready
+2026/03/18 13:55:43.859618 [INFO]    Collecting data for anomaly detection...
+2026/03/18 13:55:43.859618 [INFO] 
+2026/03/18 13:55:43.859618 [INFO] ========================================
+2026/03/18 13:55:43.859618 [INFO] 🔬 ROOT CAUSE ANALYSIS
+2026/03/18 13:55:43.859618 [INFO] ========================================
+2026/03/18 13:55:43.859618 [INFO] ✅ No critical issues identified - System operating normally
+2026/03/18 13:55:43.860142 [INFO]    RCA actively monitoring metric correlations
+2026/03/18 13:55:43.860142 [INFO] 
+2026/03/18 13:55:43.860142 [WARN] ========================================
+2026/03/18 13:55:43.860142 [WARN] 🚨 ACTIVE ALERTS: 5
+2026/03/18 13:55:43.860142 [WARN] ========================================
+2026/03/18 13:55:43.860142 [WARN] 1. 🔥 [CRITICAL] Network interface Local Area Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 00:ff:26:e6:fd:1e)
+2026/03/18 13:55:43.860142 [WARN] 2. 🔥 [CRITICAL] Network interface Ethernet is DOWN (LinkState: down, OperState: DOWN, MAC: f8:0d:ac:56:92:0b)
+2026/03/18 13:55:43.860142 [WARN] 3. 🔥 [CRITICAL] Network interface Local Area Connection* 1 is DOWN (LinkState: , OperState: , MAC: 5e:ba:ef:7d:5f:83)
+2026/03/18 13:55:43.860142 [WARN] 4. 🔥 [CRITICAL] Network interface Local Area Connection* 2 is DOWN (LinkState: , OperState: , MAC: de:ba:ef:7d:5f:83)
+2026/03/18 13:55:43.860142 [WARN] 5. 🔥 [CRITICAL] Network interface Bluetooth Network Connection is DOWN (LinkState: down, OperState: DOWN, MAC: 5c:ba:ef:7d:5f:84)
+2026/03/18 13:55:43.860672 [WARN] ========================================
+2026/03/18 13:55:43.860672 [INFO] 
+2026/03/18 13:55:43.869829 [WARN] Retrying alert send (attempt 1/3)
+2026/03/18 13:55:46.442326 [WARN] Shutdown timeout reached, some goroutines may still be running
