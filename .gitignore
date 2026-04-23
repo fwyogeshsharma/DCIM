@@ -1,0 +1,20 @@
+
+# Build artifacts and runtime files — should never be tracked
+DCIM_Agent/build/windows/agent.db
+DCIM_Agent/build/windows/agent.db-shm
+DCIM_Agent/build/windows/agent.db-wal
+DCIM_Agent/build/windows/agent.log
+DCIM_Agent/build/windows/agent.db.agent_id
+DCIM_Agent/build/windows/dcim-agent.exe
+DCIM_Server/build/windows-amd64/dcim-server.exe
+DCIM_Server/build/windows-amd64/dcim-server.exe~
+DCIM_Server/build/windows-amd64/data/
+
+# Claude Code settings in build dirs and server dirs
+**/.claude/
+DCIM_Server/certs/ca.key
+DCIM_Server/certs/ca.crt
+DCIM_Server/certs/servers/
+DCIM_Agent/build/windows/agent.db.agent_id
+DCIM_Agent/dcim-server.exe
+image/
