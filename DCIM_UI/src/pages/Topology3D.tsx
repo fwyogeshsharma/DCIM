@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float, Html } from '@react-three/drei'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
+import { useActiveTrapStream } from '@/hooks/useActiveTrapStream'
 import { api } from '@/lib/api'
 import { computeHierarchicalLayout, type LayoutNode, type LayoutLink } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
@@ -518,11 +519,13 @@ function DeviceNode({
   isSelected,
   onSelect,
   onHover,
+  trapBadge,
 }: {
   node: LayoutNode
   isSelected: boolean
   onSelect: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
+  trapBadge?: { label: string; color: string; count: number } | null
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -702,26 +705,45 @@ function DeviceNode({
           </Text>
         </Billboard>
       )}
+
+      {trapBadge && (
+        <Billboard position={[0, 2.1, 0]}>
+          <Text
+            fontSize={0.48}
+            color={trapBadge.color}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.04}
+            outlineColor="#000000"
+          >
+            ⚠ {trapBadge.label}{trapBadge.count > 1 ? ` +${trapBadge.count - 1}` : ''}
+          </Text>
+        </Billboard>
+      )}
     </group>
   )
 }
 
 // ── Connection Line ──────────────────────────────────────────────────────────
 
-function ConnectionLine({ link }: { link: LayoutLink }) {
+function ConnectionLine({ link, brokenPairs }: { link: LayoutLink; brokenPairs: Set<string> }) {
   const ref = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
 
-  useFrame(() => {
-    if (ref.current && (link.linkType === 'device-agent' || !link.connected)) {
-      ref.current.material.dashOffset -= link.linkType === 'device-agent' ? 0.02 : 0.05
-    }
-  })
-
   const isAgentLink = link.linkType === 'device-agent'
   const isD2D = link.linkType === 'device-device'
-  const color = isD2D
-    ? (link.connected ? '#f59e0b' : '#ef4444')     // amber for physical wiring, red if broken
+  const hasTrap = isD2D && link.d2dInfo != null &&
+    brokenPairs.has([link.d2dInfo.sourceIp, link.d2dInfo.targetIp].sort().join('|'))
+
+  useFrame(() => {
+    if (ref.current && (isAgentLink || !link.connected || hasTrap)) {
+      ref.current.material.dashOffset -= isAgentLink ? 0.02 : 0.05
+    }
+  })
+  const color = hasTrap
+    ? '#ef4444'
+    : isD2D
+    ? (link.connected ? '#f59e0b' : '#ef4444')
     : isAgentLink
     ? '#06b6d4'
     : link.connected ? '#10b981' : '#ef4444'
@@ -736,7 +758,7 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
   const renderTooltip = () => {
     if (!isD2D || !link.d2dInfo || !hovered) return null
     const info = link.d2dInfo
-    const faulted = info.sourceStatus === 'offline' || info.targetStatus === 'offline'
+    const faulted = hasTrap || info.sourceStatus === 'offline' || info.targetStatus === 'offline'
     const ageMs = Date.now() - new Date(info.lastSeen).getTime()
     const ageMin = Math.max(0, Math.round(ageMs / 60000))
     const ageText = ageMin < 2 ? 'just now' : ageMin < 60 ? `${ageMin} min ago` : `${Math.round(ageMin / 60)} h ago`
@@ -747,6 +769,8 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
       faultReason = `${info.sourceName} offline`
     } else if (info.targetStatus === 'offline') {
       faultReason = `${info.targetName} offline`
+    } else if (hasTrap) {
+      faultReason = 'SNMP linkDown trap'
     }
     return (
       <Html position={midPoint} center zIndexRange={[100, 0]} wrapperClass="pointer-events-none">
@@ -798,7 +822,7 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
         points={[link.sourcePos, link.targetPos]}
         color={color}
         lineWidth={isD2D ? (hovered ? 3 : 2) : isAgentLink ? 1 : link.connected ? 1.5 : 2}
-        dashed={isAgentLink || !link.connected}
+        dashed={isAgentLink || !link.connected || hasTrap}
         dashSize={isAgentLink ? 0.5 : 1}
         gapSize={isAgentLink ? 0.5 : 0.8}
         transparent
@@ -1039,6 +1063,8 @@ function CameraFloorRunner({ targetFloorY, targetPanX }: { targetFloorY: number;
 function SceneContent({
   nodes,
   links,
+  brokenPairs,
+  deviceTrapMap,
   selectedNode,
   onSelectNode,
   onHover,
@@ -1051,6 +1077,8 @@ function SceneContent({
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
+  brokenPairs: Set<string>
+  deviceTrapMap: Map<string, { label: string; color: string; count: number }>
   selectedNode: LayoutNode | null
   onSelectNode: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
@@ -1086,7 +1114,7 @@ function SceneContent({
 
       {/* Connection lines */}
       {links.map((link, i) => (
-        <ConnectionLine key={`${link.sourceId}-${link.targetId}-${i}`} link={link} />
+        <ConnectionLine key={`${link.sourceId}-${link.targetId}-${i}`} link={link} brokenPairs={brokenPairs} />
       ))}
 
       {/* Server nodes */}
@@ -1131,6 +1159,7 @@ function SceneContent({
             isSelected={selectedNode?.id === node.id}
             onSelect={onSelectNode}
             onHover={onHover}
+            trapBadge={node.ip ? (deviceTrapMap.get(node.ip) ?? null) : null}
           />
         ))}
 
@@ -1179,6 +1208,90 @@ export default function Topology3D() {
     refetchInterval: USE_MOCK_DATA ? false : 60000,
     enabled: !USE_MOCK_DATA,
   })
+  // DB polling — reliable baseline (5s; SSE handles real-time on top)
+  const { data: dbTraps } = useQuery({
+    queryKey: ['snmp-traps-active-3d'],
+    queryFn: () => api.getSNMPTraps({ resolved: false, limit: 500 }),
+    staleTime: 0,
+    refetchInterval: USE_MOCK_DATA ? false : 5000,
+    enabled: !USE_MOCK_DATA,
+  })
+  // SSE stream — instant real-time updates
+  const streamTraps = useActiveTrapStream()
+  // Merge: keyed by server|ip|trapType|ifIndex so multiple interfaces stay separate
+  const activeTraps = useMemo(() => {
+    if (USE_MOCK_DATA) return []
+    const OID_IF_DESCR = '1.3.6.1.2.1.2.2.1.2.'
+    const ifIdx = (v?: Record<string, any>) => {
+      if (!v) return ''
+      for (const oid of Object.keys(v)) if (oid.startsWith(OID_IF_DESCR)) return oid.slice(OID_IF_DESCR.length)
+      return ''
+    }
+    const map = new Map<string, any>()
+    for (const t of (dbTraps || [])) map.set(`${t.server_id}|${t.source_ip}|${t.trap_type}|${ifIdx(t.varbinds)}`, t)
+    for (const t of streamTraps) map.set(`${t.server_id}|${t.source_ip}|${t.trap_type}|${ifIdx(t.varbinds as any)}`, t)
+    return Array.from(map.values())
+  }, [dbTraps, streamTraps])
+  const TRAP_BADGE_CFG: Record<string, { label: string; color: string }> = {
+    coldStart:             { label: 'REBOOT',    color: '#60a5fa' },
+    warmStart:             { label: 'RESTART',   color: '#22d3ee' },
+    authenticationFailure: { label: 'AUTH FAIL', color: '#fb923c' },
+    highTemperature:       { label: 'HIGH TEMP', color: '#f87171' },
+    highCPU:               { label: 'HIGH CPU',  color: '#fbbf24' },
+    highMemory:            { label: 'HIGH MEM',  color: '#fbbf24' },
+    fanFailure:            { label: 'FAN FAIL',  color: '#facc15' },
+    powerAlert:            { label: 'PWR FAIL',  color: '#f87171' },
+    environmentalAlert:    { label: 'ENV ALERT', color: '#facc15' },
+    thresholdRising:       { label: 'THRESHOLD', color: '#fbbf24' },
+    enterpriseTrap:        { label: 'ALERT',     color: '#94a3b8' },
+  }
+  const TRAP_PRI: Record<string, number> = {
+    authenticationFailure: 1, highTemperature: 1, powerAlert: 1,
+    highCPU: 2, highMemory: 2, fanFailure: 2, environmentalAlert: 2,
+    thresholdRising: 3, coldStart: 4, warmStart: 5,
+  }
+
+  const deviceTrapMap = useMemo(() => {
+    const map = new Map<string, { label: string; color: string; count: number }>()
+    const active = (activeTraps || []).filter(
+      t => !t.resolved && t.trap_type !== 'linkDown' && t.trap_type !== 'linkUp' && t.trap_type !== 'thresholdFalling'
+    )
+    const byIp = new Map<string, typeof active>()
+    for (const t of active) {
+      if (!byIp.has(t.source_ip)) byIp.set(t.source_ip, [])
+      byIp.get(t.source_ip)!.push(t)
+    }
+    for (const [ip, traps] of byIp) {
+      traps.sort((a, b) => (TRAP_PRI[a.trap_type] ?? 6) - (TRAP_PRI[b.trap_type] ?? 6))
+      const top = traps[0]
+      const cfg = TRAP_BADGE_CFG[top.trap_type] || { label: 'ALERT', color: '#94a3b8' }
+      map.set(ip, { ...cfg, count: traps.length })
+    }
+    return map
+  }, [activeTraps])
+
+  const brokenPairs = useMemo(() => {
+    const pairs = new Set<string>()
+    const validLinkPairs = new Set<string>()
+    const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
+    for (const tl of effectiveLinks) {
+      validLinkPairs.add([tl.source_ip, tl.target_ip].sort().join('|'))
+    }
+    const linkDownTraps = (activeTraps || []).filter(t => t.trap_type === 'linkDown')
+    for (let i = 0; i < linkDownTraps.length; i++) {
+      for (let j = i + 1; j < linkDownTraps.length; j++) {
+        const t1 = linkDownTraps[i], t2 = linkDownTraps[j]
+        if (t1.source_ip === t2.source_ip) continue
+        const pair = [t1.source_ip, t2.source_ip].sort().join('|')
+        if (!validLinkPairs.has(pair)) continue
+        const diff = Math.abs(new Date(t1.timestamp).getTime() - new Date(t2.timestamp).getTime())
+        if (diff <= 30000) {
+          pairs.add(pair)
+        }
+      }
+    }
+    return pairs
+  }, [activeTraps, realTopologyLinks, mockData])
 
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
@@ -1348,6 +1461,8 @@ export default function Topology3D() {
             <SceneContent
               nodes={layout.nodes}
               links={layout.links}
+              brokenPairs={brokenPairs}
+              deviceTrapMap={deviceTrapMap}
               selectedNode={selectedNode}
               onSelectNode={handleSelectNode}
               onHover={handleHover}

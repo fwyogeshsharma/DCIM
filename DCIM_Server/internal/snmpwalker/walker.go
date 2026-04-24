@@ -255,6 +255,11 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 	// from earlier LLDP walks without waiting for the target to be probed.
 	nameByIP := make(map[string]string)
 
+	// seenLinks deduplicates edges within this walk run using a sorted pair key.
+	// Keeps peer links (e.g. Fabric-SW1 ↔ Fabric-SW2 at the same BFS depth)
+	// that the old parent-only approach dropped entirely.
+	seenLinks := make(map[string]bool)
+
 	for len(queue) > 0 {
 		ip := queue[0]
 		queue = queue[1:]
@@ -309,36 +314,51 @@ func (w *Walker) walkBFS(session *WalkSession, cfg WalkConfig) {
 			session.mu.Unlock()
 		}
 
-		// Enqueue unvisited neighbors and record topology links
+		// Enqueue unvisited neighbors and record ALL topology links.
+		// Link recording is intentionally outside the visited/parent checks so
+		// that peer links between same-depth nodes (e.g. spine↔spine, fabric↔fabric)
+		// are captured — not just the BFS spanning-tree edges.
 		for _, n := range neighbors {
+			// Record link for every neighbor (visited or not), deduped by sorted pair.
+			a, b := ip, n.IP
+			if a > b {
+				a, b = b, a
+			}
+			linkKey := a + "|" + b
+			if !seenLinks[linkKey] {
+				seenLinks[linkKey] = true
+
+				srcName := nameByIP[ip]
+				if srcName == "" {
+					srcName = ip
+				}
+				targetName := n.Name
+				if targetName == "" {
+					targetName = n.IP
+				}
+				tgtDepth := depth[n.IP]
+				if tgtDepth == 0 && n.IP != cfg.SeedIP {
+					tgtDepth = depth[ip] + 1
+				}
+
+				collectedLinks = append(collectedLinks, TopologyLink{
+					SourceIP:    ip,
+					SourceName:  srcName,
+					SourceDepth: depth[ip],
+					SourcePort:  n.LocalPort,
+					TargetIP:    n.IP,
+					TargetName:  targetName,
+					TargetDepth: tgtDepth,
+					TargetPort:  n.RemotePort,
+				})
+			}
+
 			if !visited[n.IP] {
 				if _, seen := depth[n.IP]; !seen {
 					depth[n.IP] = depth[ip] + 1
 				}
 				if _, hasParent := parent[n.IP]; !hasParent {
 					parent[n.IP] = ip
-
-					srcName := nameByIP[ip]
-					if srcName == "" {
-						srcName = ip
-					}
-					// Use LLDP-discovered target name if available; will be
-					// overwritten with actual sysName when target is probed.
-					targetName := n.Name
-					if targetName == "" {
-						targetName = n.IP
-					}
-
-					collectedLinks = append(collectedLinks, TopologyLink{
-						SourceIP:    ip,
-						SourceName:  srcName,
-						SourceDepth: depth[ip],
-						SourcePort:  n.LocalPort,
-						TargetIP:    n.IP,
-						TargetName:  targetName,
-						TargetDepth: depth[n.IP],
-						TargetPort:  n.RemotePort,
-					})
 				}
 				queue = append(queue, n.IP)
 			}

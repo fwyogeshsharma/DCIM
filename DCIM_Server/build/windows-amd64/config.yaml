@@ -383,3 +383,8 @@ snmp_walker:
   interval: 15m
   use_ip_as_community: true
   combine_discovery: true
+
+# SNMP Trap Receiver
+snmp_trap:
+  enabled: true
+  port: 162

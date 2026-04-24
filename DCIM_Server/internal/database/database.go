@@ -1665,6 +1665,26 @@ func (d *Database) GetAlertByID(alertID int64) (map[string]interface{}, error) {
 
 // ── SNMP Trap operations ──────────────────────────────────────────────────────
 
+// GetDeviceNameByIP looks up the friendly device name for an IP.
+// It checks topology_links (source then target side) then snmp_metrics as fallback.
+// Returns an empty string when no match is found.
+func (d *Database) GetDeviceNameByIP(serverID, ip string) string {
+	var name string
+	q := d.preparePlaceholders(`SELECT COALESCE(source_name,'') FROM topology_links WHERE server_id=? AND source_ip=? AND source_name!='' LIMIT 1`)
+	if err := d.db.QueryRow(q, serverID, ip).Scan(&name); err == nil && name != "" {
+		return name
+	}
+	q = d.preparePlaceholders(`SELECT COALESCE(target_name,'') FROM topology_links WHERE server_id=? AND target_ip=? AND target_name!='' LIMIT 1`)
+	if err := d.db.QueryRow(q, serverID, ip).Scan(&name); err == nil && name != "" {
+		return name
+	}
+	q = d.preparePlaceholders(`SELECT device_name FROM snmp_metrics WHERE server_id=? AND device_host=? AND device_name!='' ORDER BY timestamp DESC LIMIT 1`)
+	if err := d.db.QueryRow(q, serverID, ip).Scan(&name); err == nil && name != "" {
+		return name
+	}
+	return ""
+}
+
 // InsertSNMPTrap stores a trap, ignoring duplicates (same server+ip+oid within same second).
 // For linkUp traps it also auto-resolves any open linkDown for the same source IP.
 func (d *Database) InsertSNMPTrap(serverID string, trap models.SNMPTrap) error {
@@ -1725,6 +1745,17 @@ func (d *Database) InsertSNMPTrap(serverID string, trap models.SNMPTrap) error {
 	}
 
 	return nil
+}
+
+// ResolveLinkDownTraps marks all unresolved linkDown traps for a given source IP
+// as resolved. Called automatically when a linkUp trap arrives for the same device.
+func (d *Database) ResolveLinkDownTraps(serverID, sourceIP string) error {
+	q := d.preparePlaceholders(`
+		UPDATE snmp_traps
+		SET resolved = true, resolved_at = ?
+		WHERE server_id = ? AND source_ip = ? AND trap_type = 'linkDown' AND resolved = false`)
+	_, err := d.db.Exec(q, time.Now(), serverID, sourceIP)
+	return err
 }
 
 // GetSNMPTraps retrieves traps with optional filters.

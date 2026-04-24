@@ -65,7 +65,21 @@
       "Bash(docker-compose:*)",
       "Bash(psql:*)",
       "Bash(\"/c/Program Files/PostgreSQL/17/bin/psql.exe\" -U postgres -p 5435 -d dcim_aggregator -c \"SELECT s.id, s.name, s.url, COUNT\\(a.id\\) as agent_count FROM servers s LEFT JOIN agents a ON a.server_id = s.id GROUP BY s.id, s.name, s.url ORDER BY s.name;\")",
-      "Bash(PGPASSWORD=postgres \"/c/Program Files/PostgreSQL/17/bin/psql.exe\":*)"
+      "Bash(PGPASSWORD=postgres \"/c/Program Files/PostgreSQL/17/bin/psql.exe\":*)",
+      "Bash(grep -r \"AgentAddress\" --include=\"*.go\" .)",
+      "Bash(grep -r \"PacketVersion\\\\|snmpTrapAddress\\\\|agent\" --include=\"*.go\" internal/snmptrap/)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell($env:PGPASSWORD = \"admin\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -U postgres -p 5433 -d dcim_db -c \"\\\\d servers\" 2>&1)",
+      "PowerShell($env:PGPASSWORD = \"admin\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -U postgres -p 5433 -d dcim_db -c \"\\\\d topology_links; \\\\d snmp_metrics;\" 2>&1)",
+      "PowerShell(docker exec dcim-postgres *)",
+      "PowerShell(docker restart dcim-aggregator *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'count={d[\\\\\"count\\\\\"]}'\\); print\\(json.dumps\\(d[\\\\\"data\\\\\"][:2], indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'count={d[\\\\\"count\\\\\"]}'\\); [print\\(f' {r[\\\\\"source_ip\\\\\"]} {r[\\\\\"device_name\\\\\"]} {r[\\\\\"trap_type\\\\\"]} resolved={r[\\\\\"resolved\\\\\"]}'\\) for r in d['data'][:5]]\")",
+      "PowerShell(docker stop dcim-aggregator *)",
+      "PowerShell($data = Invoke-RestMethod \"http://localhost:3002/api/v1/topology/links\"; $trapIps = @\\('10.100.0.6','10.100.0.7','10.100.0.9'\\); $data.data | Where-Object { $trapIps -contains $_.source_ip -or $trapIps -contains $_.target_ip } | Select-Object source_name, source_ip, target_name, target_ip | Format-Table -AutoSize)",
+      "PowerShell(Invoke-WebRequest -Uri \"https://localhost:8443/health\" -SkipCertificateCheck -TimeoutSec 3 2>&1 | Select-Object StatusCode, StatusDescription)",
+      "PowerShell(Get-Process | Where-Object { $_.Id -eq 17364 } | Select-Object Id, Name, MainWindowTitle)",
+      "Bash(wmic process *)"
     ]
   }
 }

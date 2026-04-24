@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
+import { useActiveTrapStream } from '@/hooks/useActiveTrapStream'
 import { api } from '@/lib/api'
 import * as d3 from 'd3'
 import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calendar, Box, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
@@ -170,7 +171,59 @@ export default function Topology() {
 
   const topologyLinks = USE_MOCK_DATA ? mockData!.topologyLinks : realTopologyLinks
 
+  // DB polling — reliable baseline (15s; SSE handles real-time on top)
+  const { data: dbTraps } = useQuery({
+    queryKey: ['snmp-traps-active'],
+    queryFn: () => api.getSNMPTraps({ resolved: false, limit: 500 }),
+    staleTime: 0,
+    refetchInterval: USE_MOCK_DATA ? false : 5000,
+    enabled: !USE_MOCK_DATA,
+  })
+  // SSE stream — instant real-time updates from aggregator
+  const streamTraps = useActiveTrapStream()
+  // Merge: keyed by server|ip|trapType|ifIndex so multiple interfaces on same device stay separate.
+  // SSE overwrites DB entry for the same event (SSE is more recent).
+  const activeTraps = useMemo(() => {
+    if (USE_MOCK_DATA) return []
+    const OID_IF_DESCR = '1.3.6.1.2.1.2.2.1.2.'
+    const ifIdx = (v?: Record<string, any>) => {
+      if (!v) return ''
+      for (const oid of Object.keys(v)) if (oid.startsWith(OID_IF_DESCR)) return oid.slice(OID_IF_DESCR.length)
+      return ''
+    }
+    const map = new Map<string, any>()
+    for (const t of (dbTraps || [])) map.set(`${t.server_id}|${t.source_ip}|${t.trap_type}|${ifIdx(t.varbinds)}`, t)
+    for (const t of streamTraps) map.set(`${t.server_id}|${t.source_ip}|${t.trap_type}|${ifIdx(t.varbinds as any)}`, t)
+    return Array.from(map.values())
+  }, [dbTraps, streamTraps])
+
   useEffect(() => {
+    // Build set of actual topology link pairs to prevent spurious broken-pair matches
+    const validLinkPairs = new Set<string>()
+    if (topologyLinks) {
+      for (const tl of topologyLinks) {
+        validLinkPairs.add([tl.source_ip, tl.target_ip].sort().join('|'))
+      }
+    }
+
+    // Match traps by timestamp proximity (≤30s) AND only for pairs that exist in topology
+    const brokenPairs = new Set<string>()
+    const linkDownTraps = (activeTraps || []).filter(t => t.trap_type === 'linkDown')
+    for (let i = 0; i < linkDownTraps.length; i++) {
+      for (let j = i + 1; j < linkDownTraps.length; j++) {
+        const t1 = linkDownTraps[i], t2 = linkDownTraps[j]
+        if (t1.source_ip === t2.source_ip) continue
+        const pair = [t1.source_ip, t2.source_ip].sort().join('|')
+        if (!validLinkPairs.has(pair)) continue
+        const diff = Math.abs(new Date(t1.timestamp).getTime() - new Date(t2.timestamp).getTime())
+        if (diff <= 30000) {
+          brokenPairs.add(pair)
+        }
+      }
+    }
+    const isLinkBroken = (srcIp: string, tgtIp: string) =>
+      brokenPairs.has([srcIp, tgtIp].sort().join('|'))
+
     if (!agents || !svgRef.current) return
 
     // Clear previous visualization
@@ -371,8 +424,8 @@ export default function Topology() {
     const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
     // Device↔device edges from topology_links.
+    const seenPairs = new Set<string>()
     if (topologyLinks && topologyLinks.length > 0) {
-      const seenPairs = new Set<string>()
       topologyLinks.forEach(tl => {
         if (!isIPv4(tl.source_ip) || !isIPv4(tl.target_ip)) return
         const srcNode = deviceNodeByIp.get(tl.source_ip)
@@ -402,6 +455,7 @@ export default function Topology() {
         })
       })
     }
+
 
     // Create links — each agent connects to its own server
     const links: TopoLink[] = [
@@ -631,21 +685,32 @@ export default function Topology() {
       .enter().append('line')
       .attr('stroke', d => {
         if (d.linkType === 'device-device') {
-          return isLinkDisconnected(d) ? '#ef4444' : '#f59e0b' // amber for physical wiring
+          const broken = d.d2dInfo && isLinkBroken(d.d2dInfo.sourceIp, d.d2dInfo.targetIp)
+          if (broken || isLinkDisconnected(d)) return '#ef4444'
+          return '#f59e0b'
         }
         if (d.linkType === 'device-agent') return '#06b6d4'
         return isLinkDisconnected(d) ? '#ef4444' : '#10b981'
       })
       .attr('stroke-width', d => {
-        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 2 : 2
+        if (d.linkType === 'device-device') {
+          const broken = d.d2dInfo && isLinkBroken(d.d2dInfo.sourceIp, d.d2dInfo.targetIp)
+          return (broken || isLinkDisconnected(d)) ? 2.5 : 2
+        }
         return d.linkType === 'device-agent' ? 1.5 : isLinkDisconnected(d) ? 2.5 : 2
       })
       .attr('stroke-opacity', d => {
-        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 0.6 : 0.8
+        if (d.linkType === 'device-device') {
+          const broken = d.d2dInfo && isLinkBroken(d.d2dInfo.sourceIp, d.d2dInfo.targetIp)
+          return (broken || isLinkDisconnected(d)) ? 0.9 : 0.8
+        }
         return d.linkType === 'device-agent' ? 0.4 : isLinkDisconnected(d) ? 0.7 : 0.5
       })
       .attr('stroke-dasharray', d => {
-        if (d.linkType === 'device-device') return isLinkDisconnected(d) ? '8,6' : 'none'
+        if (d.linkType === 'device-device') {
+          const broken = d.d2dInfo && isLinkBroken(d.d2dInfo.sourceIp, d.d2dInfo.targetIp)
+          return (broken || isLinkDisconnected(d)) ? '8,6' : 'none'
+        }
         if (d.linkType === 'device-agent') return '6,4'
         return isLinkDisconnected(d) ? '8,6' : 'none'
       })
@@ -665,7 +730,8 @@ export default function Topology() {
     const linkTooltipHtml = (d: TopoLink): string => {
       if (d.linkType !== 'device-device' || !d.d2dInfo) return ''
       const info = d.d2dInfo
-      const faulted = info.sourceStatus === 'offline' || info.targetStatus === 'offline'
+      const trapFaulted = isLinkBroken(info.sourceIp, info.targetIp)
+      const faulted = trapFaulted || info.sourceStatus === 'offline' || info.targetStatus === 'offline'
       const ageMs = Date.now() - new Date(info.lastSeen).getTime()
       const ageMin = Math.max(0, Math.round(ageMs / 60000))
       const ageText = ageMin < 2 ? 'just now' : ageMin < 60 ? `${ageMin} min ago` : `${Math.round(ageMin / 60)} h ago`
@@ -678,6 +744,8 @@ export default function Topology() {
         faultReason = `${info.sourceName} offline`
       } else if (info.targetStatus === 'offline') {
         faultReason = `${info.targetName} offline`
+      } else if (trapFaulted) {
+        faultReason = 'SNMP linkDown trap'
       }
       return `
         <div class="font-bold text-base mb-1.5 text-amber-300">Link</div>
@@ -731,7 +799,8 @@ export default function Topology() {
       const tip = tooltipRef.current
       if (tip) tip.style.opacity = '0'
       if (d.linkType === 'device-device') {
-        d3.select(this).attr('stroke-width', isLinkDisconnected(d) ? 2 : 2)
+        const broken = d.d2dInfo && isLinkBroken(d.d2dInfo.sourceIp, d.d2dInfo.targetIp)
+        d3.select(this).attr('stroke-width', (broken || isLinkDisconnected(d)) ? 2.5 : 2)
       }
     })
 
@@ -1030,7 +1099,99 @@ export default function Topology() {
       .attr('font-weight', 'bold')
       .text('!')
 
-    // Add "NOT REACHABLE" label for offline agents
+    // ── Trap badges on device nodes ──────────────────────────────────────
+    // Shows active non-link traps (coldStart, authFailure, highTemp, etc.) as
+    // a colored ring + corner badge so operators know WHY a device is alarming.
+    const DEVICE_TRAP_BADGE: Record<string, { label: string; fill: string; ring: string }> = {
+      coldStart:             { label: 'R', fill: '#1d4ed8', ring: '#3b82f6' },
+      warmStart:             { label: 'W', fill: '#0369a1', ring: '#06b6d4' },
+      authenticationFailure: { label: 'A', fill: '#c2410c', ring: '#f97316' },
+      highTemperature:       { label: 'T', fill: '#b91c1c', ring: '#ef4444' },
+      highCPU:               { label: 'C', fill: '#92400e', ring: '#f59e0b' },
+      highMemory:            { label: 'M', fill: '#92400e', ring: '#f59e0b' },
+      fanFailure:            { label: 'F', fill: '#713f12', ring: '#eab308' },
+      powerAlert:            { label: 'P', fill: '#b91c1c', ring: '#ef4444' },
+      environmentalAlert:    { label: 'E', fill: '#713f12', ring: '#eab308' },
+      thresholdRising:       { label: '↑', fill: '#92400e', ring: '#f59e0b' },
+      enterpriseTrap:        { label: '!', fill: '#374151', ring: '#9ca3af' },
+    }
+    const TRAP_PRIORITY: Record<string, number> = {
+      authenticationFailure: 1, highTemperature: 1, powerAlert: 1,
+      highCPU: 2, highMemory: 2, fanFailure: 2, environmentalAlert: 2,
+      thresholdRising: 3, coldStart: 4, warmStart: 5,
+    }
+    const getDeviceTrapBadge = (ip: string) => {
+      const nodeTraps = (activeTraps || []).filter(
+        t => !t.resolved && t.source_ip === ip &&
+          t.trap_type !== 'linkDown' && t.trap_type !== 'linkUp' && t.trap_type !== 'thresholdFalling'
+      )
+      if (nodeTraps.length === 0) return null
+      nodeTraps.sort((a, b) => (TRAP_PRIORITY[a.trap_type] ?? 6) - (TRAP_PRIORITY[b.trap_type] ?? 6))
+      const top = nodeTraps[0]
+      return {
+        ...(DEVICE_TRAP_BADGE[top.trap_type] || { label: '!', fill: '#374151', ring: '#9ca3af' }),
+        count: nodeTraps.length,
+        trapType: top.trap_type,
+        severity: top.severity,
+      }
+    }
+
+    const devNodesWithTraps = node.filter(d => d.type === 'network' && !!d.ip && !!getDeviceTrapBadge(d.ip!))
+
+    // Dashed colored ring around the device
+    devNodesWithTraps
+      .append('circle')
+      .attr('r', 25)
+      .attr('fill', 'none')
+      .attr('stroke', d => getDeviceTrapBadge(d.ip!)!.ring)
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', '4,3')
+      .attr('opacity', 0.85)
+
+    // Pulsing ring for critical severity
+    if (nodeCount <= 100) {
+      devNodesWithTraps
+        .filter(d => (getDeviceTrapBadge(d.ip!)?.severity || '') === 'critical')
+        .append('circle')
+        .attr('r', 25)
+        .attr('fill', 'none')
+        .attr('stroke', d => getDeviceTrapBadge(d.ip!)!.ring)
+        .attr('stroke-width', 2.5)
+        .attr('opacity', 0.7)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '25;34;25')
+            .attr('dur', '1.4s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.7;0;0.7')
+            .attr('dur', '1.4s').attr('repeatCount', 'indefinite')
+        })
+    }
+
+    // Corner badge circle
+    devNodesWithTraps
+      .append('circle')
+      .attr('cx', 15)
+      .attr('cy', -15)
+      .attr('r', 8)
+      .attr('fill', d => getDeviceTrapBadge(d.ip!)!.fill)
+      .attr('stroke', '#0f172a')
+      .attr('stroke-width', 1.5)
+
+    // Corner badge label
+    devNodesWithTraps
+      .append('text')
+      .attr('x', 15)
+      .attr('y', -15)
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.35em')
+      .attr('font-size', '9px')
+      .attr('font-weight', 'bold')
+      .attr('fill', 'white')
+      .text(d => getDeviceTrapBadge(d.ip!)!.label)
+
+    // "Add "NOT REACHABLE" label for offline agents
     node.filter(d => d.type === 'agent' && d.status === 'offline')
       .append('text')
       .attr('text-anchor', 'middle')
@@ -1200,7 +1361,7 @@ export default function Topology() {
         clickTimerRef.current = null
       }
     }
-  }, [agents, servers, filteredData, expandedServers, snmpDevices])
+  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, activeTraps])
 
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomRef.current) return

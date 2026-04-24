@@ -4,6 +4,19 @@ import fs from 'fs'
 import path from 'path'
 import { logger } from './logger'
 
+const HOST_GATEWAY = process.env.DCIM_HOST_GATEWAY
+
+/**
+ * If DCIM_HOST_GATEWAY is set (Docker deployment), rewrite server URLs that use
+ * localhost/127.0.0.1 so they reach the host machine instead of the container.
+ */
+export function rewriteServerUrl(url: string): string {
+  if (!HOST_GATEWAY) return url
+  return url.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/g, (_, _host, port) =>
+    `https://${HOST_GATEWAY}${port || ''}`
+  )
+}
+
 // Try to load client certificates for mTLS
 function loadCerts(): { cert?: Buffer; key?: Buffer; ca?: Buffer } {
   const certPaths = [

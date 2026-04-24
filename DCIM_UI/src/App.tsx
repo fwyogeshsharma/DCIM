@@ -17,6 +17,7 @@ import AIAnalytics from './pages/AIAnalytics'
 import NaturalLanguageQuery from './pages/NaturalLanguageQuery'
 import Settings from './pages/Settings'
 import ServerManagement from './pages/ServerManagement'
+import Traps from './pages/Traps'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,7 @@ function App() {
               <Route path="topology-editor" element={<TopologyEditor />} />
               <Route path="ai-analytics" element={<AIAnalytics />} />
               <Route path="nl-query" element={<NaturalLanguageQuery />} />
+              <Route path="traps" element={<Traps />} />
               <Route path="servers" element={<ServerManagement />} />
               <Route path="settings" element={<Settings />} />
             </Route>

@@ -76,6 +76,7 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - ./dist:/app/dist
       - ./logs:/app/logs
       - ./certs:/app/certs
     restart: unless-stopped

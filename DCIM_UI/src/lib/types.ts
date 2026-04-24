@@ -134,6 +134,23 @@ export interface SNMPMetric {
   created_at: string
 }
 
+export interface SNMPTrap {
+  id: number
+  server_id: string
+  server_name?: string
+  timestamp: string
+  source_ip: string
+  device_name: string
+  trap_type: string
+  trap_oid: string
+  severity: string
+  varbinds?: Record<string, any>
+  description: string
+  resolved: boolean
+  resolved_at?: string
+  created_at: string
+}
+
 export interface AgentStatus {
   id: number
   agent_id: string

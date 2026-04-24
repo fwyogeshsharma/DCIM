@@ -54,8 +54,10 @@ func (s *Server) handleSNMPTraps(w http.ResponseWriter, r *http.Request) {
 // onTrapReceived is called by the trap receiver for every incoming trap.
 // It persists the trap to the database.
 func (s *Server) onTrapReceived(trap snmptrap.Trap) {
-	// Look up device name from topology nodes if available
-	deviceName := trap.SourceIP
+	deviceName := s.db.GetDeviceNameByIP(s.serverID, trap.SourceIP)
+	if deviceName == "" {
+		deviceName = trap.SourceIP
+	}
 
 	row := models.SNMPTrap{
 		ServerID:    s.serverID,
@@ -72,6 +74,23 @@ func (s *Server) onTrapReceived(trap snmptrap.Trap) {
 	if err := s.db.InsertSNMPTrap(s.serverID, row); err != nil {
 		s.logger.Printf("[TRAP] Failed to store trap from %s: %v", trap.SourceIP, err)
 		return
+	}
+
+	// Push the new trap to all connected SSE clients immediately
+	s.broadcastEvent("trap_event", row)
+
+	// A linkUp event means the interface recovered — auto-resolve any open linkDown
+	// traps for this device so the UI stops showing the link as broken.
+	if trap.TrapType == "linkUp" {
+		if err := s.db.ResolveLinkDownTraps(s.serverID, trap.SourceIP); err != nil {
+			s.logger.Printf("[TRAP] Failed to resolve linkDown traps for %s: %v", trap.SourceIP, err)
+		} else {
+			s.logger.Printf("[TRAP] linkUp from %s — resolved open linkDown traps", trap.SourceIP)
+			s.broadcastEvent("trap_resolve", map[string]string{
+				"source_ip": trap.SourceIP,
+				"trap_type": "linkDown",
+			})
+		}
 	}
 
 	s.logger.Printf("[TRAP] %s from %s — %s", trap.TrapType, trap.SourceIP, trap.Description)

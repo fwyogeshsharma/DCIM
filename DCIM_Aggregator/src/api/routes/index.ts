@@ -6,6 +6,7 @@ import { createServersRouter } from './servers'
 import { createAgentsRouter } from './agents'
 import { createMetricsRouter } from './metrics'
 import { createAlertsRouter } from './alerts'
+import { trapStreamService } from '../../workers/trapStream'
 
 export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClientType) {
   const cacheService = new CacheService(redisClient)
@@ -115,7 +116,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       const safeLimit = Math.max(1, Math.min(parseInt(String(limit), 10) || 1000, 10000))
 
       let query = `
-        SELECT sm.*, s.name as server_name
+        SELECT sm.*, s.name AS server_name
         FROM snmp_metrics sm
         JOIN servers s ON sm.server_id = s.id
         WHERE sm.timestamp >= NOW() - INTERVAL '24 hours'
@@ -213,6 +214,43 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     }
   })
 
+  // Real-time trap SSE stream — UI subscribes here instead of polling
+  app.get('/api/v1/traps/stream', (req, res) => {
+    if (!trapStreamService) {
+      res.status(503).json({ success: false, error: 'Trap stream not ready' })
+      return
+    }
+    trapStreamService.addClient(res)
+  })
+
+  // SNMP traps endpoint
+  app.get('/api/v1/snmp/traps', async (req, res) => {
+    try {
+      const { server_id, resolved, limit = 200 } = req.query
+      const safeLimit = Math.min(parseInt(String(limit), 10) || 200, 1000)
+
+      let query = `
+        SELECT t.*, s.name AS server_name
+        FROM snmp_traps t
+        JOIN servers s ON t.server_id::uuid = s.id
+        WHERE 1=1
+      `
+      const params: any[] = []
+      let i = 1
+
+      if (server_id) { params.push(server_id); query += ` AND t.server_id = $${i++}` }
+      if (resolved !== undefined) { params.push(resolved === 'true'); query += ` AND t.resolved = $${i++}` }
+
+      params.push(safeLimit)
+      query += ` ORDER BY t.timestamp DESC LIMIT $${i++}`
+
+      const { rows } = await dbPool.query(query, params)
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // SNMP devices listing endpoint
   app.get('/api/v1/snmp/devices', async (req, res) => {
     try {
@@ -224,7 +262,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
           sm.device_host AS device_ip,
           sm.agent_id,
           sm.server_id,
-          s.name as server_name,
+          s.name AS server_name,
           MAX(sm.timestamp) as last_seen
         FROM snmp_metrics sm
         JOIN servers s ON sm.server_id = s.id

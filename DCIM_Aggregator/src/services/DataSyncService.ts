@@ -325,7 +325,11 @@ export class DataSyncService {
                (server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
                 severity, varbinds, description, resolved, resolved_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-             ON CONFLICT DO NOTHING`,
+             ON CONFLICT (server_id, source_ip, trap_oid, timestamp)
+             DO UPDATE SET
+               resolved = EXCLUDED.resolved,
+               resolved_at = EXCLUDED.resolved_at
+             WHERE snmp_traps.resolved = false AND EXCLUDED.resolved = true`,
             [
               serverId,
               trap.timestamp || new Date(),

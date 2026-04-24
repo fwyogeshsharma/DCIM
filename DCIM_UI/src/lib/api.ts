@@ -5,6 +5,7 @@ import type {
   DeduplicatedAlert,
   SNMPMetric,
   SNMPDevice,
+  SNMPTrap,
   TopologyLink,
   License,
   AggregatedMetric,
@@ -215,6 +216,14 @@ class APIClient {
   // Topology links — device↔device edges discovered via LLDP/CDP/ARP by the
   // SNMP walker and CIDR-sweep deep-scan. Used by the Topology page to render
   // the actual network wiring between discovered devices.
+  async getSNMPTraps(params?: { server_id?: string; resolved?: boolean; limit?: number }): Promise<SNMPTrap[]> {
+    const q = new URLSearchParams()
+    if (params?.server_id) q.set('server_id', params.server_id)
+    if (params?.resolved !== undefined) q.set('resolved', String(params.resolved))
+    if (params?.limit) q.set('limit', String(params.limit))
+    return this.request<SNMPTrap[]>(`/snmp/traps${q.toString() ? '?' + q.toString() : ''}`)
+  }
+
   async getTopologyLinks(serverId?: string): Promise<TopologyLink[]> {
     const queryString = serverId ? `?server_id=${serverId}` : ''
     return this.request<TopologyLink[]>(`/topology/links${queryString}`)
