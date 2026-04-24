@@ -111,31 +111,67 @@ class DeviceResult:
 async def _snmp_get(ip: str, community: str, port: int,
                     oids: List[str], timeout: int) -> Dict[str, str]:
     """Return {oid_str: value_str} for a list of OIDs via SNMPv2c GET."""
-    from pysnmp.hlapi.asyncio import (
-        getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-        ContextData, ObjectType, ObjectIdentity,
-    )
-    engine = SnmpEngine()
-    results = {}
-    for oid in oids:
+    from pysnmp.entity.engine import SnmpEngine
+    from pysnmp.entity import config as snmp_config
+    from pysnmp.entity.rfc3413 import cmdgen
+    from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
+    from pysnmp.carrier.asyncio.dgram import udp as udp_mod
+    from pyasn1.type import univ
+
+    loop = asyncio.get_running_loop()
+    results: Dict[str, str] = {}
+
+    snmp_engine = SnmpEngine()
+    dispatcher = AsyncioDispatcher(loop=loop)
+    snmp_engine.register_transport_dispatcher(dispatcher)
+    snmp_config.add_transport(snmp_engine, udp_mod.DOMAIN_NAME,
+                              udp_mod.UdpAsyncioTransport().open_client_mode())
+    snmp_config.add_v1_system(snmp_engine, 'comm-area', community)
+    snmp_config.add_target_parameters(snmp_engine, 'my-params', 'comm-area', 'noAuthNoPriv', 1)
+    snmp_config.add_target_address(snmp_engine, 'my-target', udp_mod.DOMAIN_NAME,
+                                   (ip, port), 'my-params',
+                                   timeout=float(timeout), retryCount=1)
+
+    pending_oids = list(oids)
+    done = loop.create_future()
+    oid_iter = iter(pending_oids)
+    current_oid = [None]
+
+    def _cb(snmpEngine, handle, errorInd, errorStat, errorIdx, varBinds, cbCtx):
+        oid = current_oid[0]
+        if errorInd:
+            results[oid] = f"ERROR: {errorInd}"
+        elif errorStat:
+            results[oid] = f"ERROR: {errorStat.prettyPrint()}"
+        elif varBinds:
+            for name, val in varBinds:
+                results[oid] = val.prettyPrint()
         try:
-            errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-                engine,
-                CommunityData(community, mpModel=1),
-                UdpTransportTarget((ip, port), timeout=timeout, retries=1),
-                ContextData(),
-                ObjectType(ObjectIdentity(oid)),
-            )
-            if errorIndication:
-                results[oid] = f"ERROR: {errorIndication}"
-            elif errorStatus:
-                results[oid] = f"ERROR: {errorStatus.prettyPrint()}"
-            else:
-                for vb in varBinds:
-                    results[oid] = vb[1].prettyPrint()
-        except Exception as exc:
-            results[oid] = f"ERROR: {exc}"
-    engine.transportDispatcher.closeDispatcher()
+            current_oid[0] = next(oid_iter)
+            oid_tuple = tuple(int(x) for x in current_oid[0].split('.'))
+            cmdgen.GetCommandGenerator().send_varbinds(
+                snmpEngine, 'my-target', None, b'',
+                [(univ.ObjectIdentifier(oid_tuple), univ.Null())], _cb)
+        except StopIteration:
+            if not done.done():
+                done.set_result(None)
+
+    try:
+        current_oid[0] = next(iter(pending_oids))
+        oid_tuple = tuple(int(x) for x in current_oid[0].split('.'))
+        cmdgen.GetCommandGenerator().send_varbinds(
+            snmp_engine, 'my-target', None, b'',
+            [(univ.ObjectIdentifier(oid_tuple), univ.Null())], _cb)
+        await asyncio.wait_for(done, timeout=timeout * len(oids) + 2)
+    except (asyncio.TimeoutError, StopIteration):
+        pass
+    finally:
+        try:
+            dispatcher.close_dispatcher()
+            snmp_engine.unregister_transport_dispatcher()
+        except Exception:
+            pass
+
     return results
 
 
@@ -143,34 +179,68 @@ async def _snmp_walk(ip: str, community: str, port: int,
                      base_oid: str, timeout: int,
                      max_rows: int = 200) -> List[Tuple[str, str]]:
     """Return [(oid_str, value_str)] for a subtree walk."""
-    from pysnmp.hlapi.asyncio import (
-        walkCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-        ContextData, ObjectType, ObjectIdentity,
-    )
-    engine = SnmpEngine()
-    rows = []
-    try:
-        async for errorIndication, errorStatus, _, varBinds in walkCmd(
-            engine,
-            CommunityData(community, mpModel=1),
-            UdpTransportTarget((ip, port), timeout=timeout, retries=1),
-            ContextData(),
-            ObjectType(ObjectIdentity(base_oid)),
-            lexicographicMode=False,
-        ):
-            if errorIndication or errorStatus:
-                break
-            for vb in varBinds:
-                rows.append((str(vb[0]), vb[1].prettyPrint()))
+    from pysnmp.entity.engine import SnmpEngine
+    from pysnmp.entity import config as snmp_config
+    from pysnmp.entity.rfc3413 import cmdgen
+    from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
+    from pysnmp.carrier.asyncio.dgram import udp as udp_mod
+    from pyasn1.type import univ
+
+    loop = asyncio.get_running_loop()
+    done = loop.create_future()
+    rows: List[Tuple[str, str]] = []
+
+    snmp_engine = SnmpEngine()
+    dispatcher = AsyncioDispatcher(loop=loop)
+    snmp_engine.register_transport_dispatcher(dispatcher)
+    snmp_config.add_transport(snmp_engine, udp_mod.DOMAIN_NAME,
+                              udp_mod.UdpAsyncioTransport().open_client_mode())
+    snmp_config.add_v1_system(snmp_engine, 'comm-area', community)
+    snmp_config.add_target_parameters(snmp_engine, 'my-params', 'comm-area', 'noAuthNoPriv', 1)
+    snmp_config.add_target_address(snmp_engine, 'my-target', udp_mod.DOMAIN_NAME,
+                                   (ip, port), 'my-params',
+                                   timeout=float(timeout), retryCount=1)
+
+    oid_prefix = base_oid + '.'
+    gen = cmdgen.NextCommandGenerator()
+
+    def _cb(snmpEngine, handle, errorInd, errorStat, errorIdx, varBinds, cbCtx):
+        if done.done():
+            return False
+        if errorInd or errorStat or not varBinds:
+            done.set_result(None)
+            return False
+        next_oids = []
+        for name, val in varBinds:
+            name_str = str(name)
+            if not name_str.startswith(oid_prefix):
+                done.set_result(None)
+                return False
+            rows.append((name_str, val.prettyPrint()))
+            next_oids.append((name, univ.Null()))
             if len(rows) >= max_rows:
-                break
-    except Exception:
+                done.set_result(None)
+                return False
+        # NextCommandGenerator does NOT auto-continue — chain manually
+        gen.send_varbinds(snmp_engine, 'my-target', None, b'', next_oids, _cb)
+        return False
+
+    oid_tuple = tuple(int(x) for x in base_oid.split('.'))
+    gen.send_varbinds(
+        snmp_engine, 'my-target', None, b'',
+        [(univ.ObjectIdentifier(oid_tuple), univ.Null())], _cb)
+
+    try:
+        await asyncio.wait_for(done, timeout=timeout + 2)
+    except asyncio.TimeoutError:
         pass
     finally:
         try:
-            engine.transportDispatcher.closeDispatcher()
+            dispatcher.close_dispatcher()
+            snmp_engine.unregister_transport_dispatcher()
         except Exception:
             pass
+
     return rows
 
 

@@ -69,7 +69,9 @@ class TrapEngine(QObject):
     def start(self):
         if self._loop and self._loop.is_running():
             return
-        self._loop = asyncio.new_event_loop()
+        import sys
+        self._loop = (asyncio.ProactorEventLoop() if sys.platform == "win32"
+                      else asyncio.new_event_loop())
         self._thread = threading.Thread(
             target=self._run_loop, daemon=True, name="TrapEngine"
         )
@@ -160,98 +162,121 @@ class TrapEngine(QObject):
 
     async def _send_async(self, device: Device, trap_type: TrapType, **kwargs):
         defn = TRAP_DEFINITIONS[trap_type]
+        snmp_engine = None
+        dispatcher = None
         try:
-            from pysnmp.hlapi.asyncio import (
-                SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
-                sendNotification, NotificationType, ObjectIdentity,
-                ObjectType, OctetString, Integer, Gauge32,
+            from pysnmp.entity.engine import SnmpEngine
+            from pysnmp.entity import config as snmp_config
+            from pysnmp.entity.rfc3413 import ntforg
+            from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
+            from pysnmp.carrier.asyncio.dgram import udp as udp_mod
+            from pysnmp.proto.api import v2c as proto_v2c
+            from pysnmp.proto import rfc1902
+            from pyasn1.type import univ
+
+            loop = asyncio.get_running_loop()
+
+            snmp_engine = SnmpEngine()
+            dispatcher = AsyncioDispatcher(loop=loop)
+            snmp_engine.register_transport_dispatcher(dispatcher)
+            snmp_config.add_transport(
+                snmp_engine, udp_mod.DOMAIN_NAME,
+                udp_mod.UdpAsyncioTransport().open_client_mode(),
+            )
+            snmp_config.add_v1_system(snmp_engine, 'trap-comm', device.snmp_community)
+            snmp_config.add_target_parameters(
+                snmp_engine, 'trap-params', 'trap-comm', 'noAuthNoPriv', 1,
+            )
+            snmp_config.add_target_address(
+                snmp_engine, 'trap-target', udp_mod.DOMAIN_NAME,
+                (self._receiver_ip, self._receiver_port),
+                'trap-params', tagList='trap-tag',
+                timeout=100, retryCount=0,
             )
 
-            varbinds = self._build_varbinds(device, trap_type, **kwargs)
-            notif = NotificationType(ObjectIdentity(defn.oid))
-            if varbinds:
-                notif = notif.addVarBinds(*varbinds)
+            def _oid(s: str):
+                return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
 
-            engine = SnmpEngine()
-            try:
-                errInd, errStatus, errIdx, _ = await sendNotification(
-                    engine,
-                    CommunityData(device.snmp_community, mpModel=1),
-                    UdpTransportTarget(
-                        (self._receiver_ip, self._receiver_port),
-                        timeout=1, retries=0,
-                    ),
-                    ContextData(),
-                    "trap",
-                    notif,
-                )
-            finally:
-                engine.closeDispatcher()
+            # Build PDU directly so we bypass VACM access checks in send_varbinds
+            pdu = proto_v2c.SNMPv2TrapPDU()
+            proto_v2c.apiPDU.set_defaults(pdu)
+            all_varbinds = (
+                [(_oid('1.3.6.1.2.1.1.3.0'), rfc1902.TimeTicks(0)),
+                 (_oid('1.3.6.1.6.3.1.1.4.1.0'), _oid(defn.oid))]
+                + self._build_extra_varbinds(device, trap_type, **kwargs)
+            )
+            proto_v2c.apiPDU.set_varbinds(pdu, all_varbinds)
 
-            if errInd:
-                self.trap_error.emit(
-                    f"Trap send error ({device.name} / {trap_type.value}): {errInd}"
-                )
-                return
+            ntforg.NotificationOriginator().send_pdu(
+                snmp_engine, 'trap-target', None, b'', pdu,
+            )
+
+            await asyncio.sleep(0.3)  # yield to event loop to flush UDP send
 
         except Exception as ex:
             self.trap_error.emit(
                 f"Trap exception ({device.name} / {trap_type.value}): {ex}"
             )
             return
+        finally:
+            try:
+                if dispatcher is not None:
+                    dispatcher.close_dispatcher()
+                if snmp_engine is not None:
+                    snmp_engine.unregister_transport_dispatcher()
+            except Exception:
+                pass
 
         details = self._format_details(device, trap_type, **kwargs)
         self.trap_sent.emit(TrapEvent(device, trap_type, details))
 
     @staticmethod
-    def _build_varbinds(device: Device, trap_type: TrapType, **kwargs):
-        from pysnmp.hlapi.asyncio import (
-            ObjectType, ObjectIdentity, OctetString, Integer, Gauge32,
-        )
+    def _build_extra_varbinds(device: Device, trap_type: TrapType, **kwargs):
+        """Return the type-specific extra varbinds (excluding sysUpTime and snmpTrapOID)."""
+        from pyasn1.type import univ
+        from pysnmp.proto import rfc1902
+
+        def _oid(s: str):
+            return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
 
         if trap_type in (TrapType.LINK_DOWN, TrapType.LINK_UP):
             idx   = kwargs.get("iface_index", 1)
             iface = next((i for i in device.interfaces if i.index == idx), None)
             oper  = 2 if trap_type == TrapType.LINK_DOWN else 1
             return [
-                ObjectType(ObjectIdentity("1.3.6.1.2.1.2.2.1.1.1"), Integer(idx)),
-                ObjectType(ObjectIdentity("1.3.6.1.2.1.2.2.1.7.1"), Integer(1)),    # ifAdminStatus up
-                ObjectType(ObjectIdentity("1.3.6.1.2.1.2.2.1.8.1"), Integer(oper)), # ifOperStatus
-                ObjectType(ObjectIdentity("1.3.6.1.2.1.2.2.1.2.1"),
-                           OctetString(iface.name if iface else f"iface{idx}")),
+                (_oid('1.3.6.1.2.1.2.2.1.1.1'), rfc1902.Integer32(idx)),
+                (_oid('1.3.6.1.2.1.2.2.1.7.1'), rfc1902.Integer32(1)),
+                (_oid('1.3.6.1.2.1.2.2.1.8.1'), rfc1902.Integer32(oper)),
+                (_oid('1.3.6.1.2.1.2.2.1.2.1'),
+                 rfc1902.OctetString(iface.name if iface else f"iface{idx}")),
             ]
 
         if trap_type == TrapType.COLD_START:
             return [
-                ObjectType(ObjectIdentity("1.3.6.1.2.1.1.1.0"),
-                           OctetString(device.sys_descr)),
+                (_oid('1.3.6.1.2.1.1.1.0'), rfc1902.OctetString(device.sys_descr)),
             ]
 
-        if trap_type == TrapType.AUTH_FAILURE:
+        if trap_type in (TrapType.AUTH_FAILURE,):
             return []
 
         if trap_type == TrapType.CPU_HIGH:
             return [
-                ObjectType(ObjectIdentity("1.3.6.1.4.1.9999.1.1"),
-                           Gauge32(device.cpu_usage)),
-                ObjectType(ObjectIdentity("1.3.6.1.4.1.9999.1.4"),
-                           Gauge32(80)),  # threshold
+                (_oid('1.3.6.1.4.1.9999.1.1'), rfc1902.Gauge32(device.cpu_usage)),
+                (_oid('1.3.6.1.4.1.9999.1.4'), rfc1902.Gauge32(80)),
             ]
 
         if trap_type == TrapType.TEMPERATURE_ALERT:
             temp = kwargs.get("temperature", random.randint(62, 90))
             return [
-                ObjectType(ObjectIdentity("1.3.6.1.4.1.9999.1.2"), Gauge32(temp)),
-                ObjectType(ObjectIdentity("1.3.6.1.4.1.9999.1.3"), Gauge32(60)),  # threshold
+                (_oid('1.3.6.1.4.1.9999.1.2'), rfc1902.Gauge32(temp)),
+                (_oid('1.3.6.1.4.1.9999.1.3'), rfc1902.Gauge32(60)),
             ]
 
         if trap_type == TrapType.BGP_DOWN:
             peer = kwargs.get("peer_addr", "10.0.0.1")
             return [
-                ObjectType(ObjectIdentity("1.3.6.1.2.1.15.3.1.7.0"),
-                           OctetString(peer)),
-                ObjectType(ObjectIdentity("1.3.6.1.2.1.15.3.1.14.0"),
-                           Integer(1)),  # bgpPeerState idle
+                (_oid('1.3.6.1.2.1.15.3.1.7.0'), rfc1902.OctetString(peer)),
+                (_oid('1.3.6.1.2.1.15.3.1.14.0'), rfc1902.Integer32(1)),
             ]
 
         return []
