@@ -134,11 +134,13 @@ class ConsolePanel(QWidget):
         self._tabs.setStyleSheet(_TAB_STYLE)
         self._tabs.setDocumentMode(True)
 
-        snmp_widget, self._snmp_te = _make_tab("SNMP Simulator log")
-        gnmi_widget, self._gnmi_te = _make_tab("gNMI Simulator log")
+        snmp_widget,  self._snmp_te  = _make_tab("SNMP Simulator log")
+        gnmi_widget,  self._gnmi_te  = _make_tab("gNMI Simulator log")
+        sflow_widget, self._sflow_te = _make_tab("sFlow Simulator log")
 
-        self._tabs.addTab(snmp_widget, "SNMP Simulator")
-        self._tabs.addTab(gnmi_widget, "gNMI Simulator")
+        self._tabs.addTab(snmp_widget,  "SNMP Simulator")
+        self._tabs.addTab(gnmi_widget,  "gNMI Simulator")
+        self._tabs.addTab(sflow_widget, "sFlow Simulator")
 
         layout.addWidget(self._tabs)
 
@@ -167,7 +169,14 @@ class ConsolePanel(QWidget):
         self._append(self._gnmi_te,
                      f'<span style="color:{color};">{message}</span>')
 
-    def log_batch(self, snmp_lines: list, gnmi_lines: list) -> None:
+    def log_sflow(self, message: str, level: str = "info"):
+        """Append a message to the sFlow Simulator tab."""
+        color = _COLORS.get(level, "#58a6ff")
+        self._append(self._sflow_te,
+                     f'<span style="color:{color};">{message}</span>')
+
+    def log_batch(self, snmp_lines: list, gnmi_lines: list,
+                  sflow_lines: list = None) -> None:
         """Append multiple pre-formatted (message, level) pairs in one pass.
         Called by _drain_log_queue to avoid N individual append() calls per tick."""
         if snmp_lines:
@@ -184,10 +193,20 @@ class ConsolePanel(QWidget):
                 for msg, lvl in gnmi_lines
             )
             self._append(self._gnmi_te, html)
+        if sflow_lines:
+            html = "".join(
+                f'<span style="color:{_COLORS.get(lvl, _COLORS["info"])};">'
+                f'{msg}</span>'
+                for msg, lvl in sflow_lines
+            )
+            self._append(self._sflow_te, html)
 
     def clear_log(self):
         """Clear the currently visible tab."""
-        if self._tabs.currentIndex() == 0:
+        idx = self._tabs.currentIndex()
+        if idx == 0:
             self._snmp_te.clear()
-        else:
+        elif idx == 1:
             self._gnmi_te.clear()
+        else:
+            self._sflow_te.clear()

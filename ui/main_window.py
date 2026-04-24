@@ -34,12 +34,14 @@ from core.ip_binder import (
 )
 from simulator.snmpsim_controller import SNMPSimController
 from simulator.gnmi_controller import GNMIController
+from simulator.sflow_controller import SFlowController
 from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
 from core.trap_engine import TrapEngine
 from ui.device_dialog import DeviceDialog
 from ui.topology_view import TopologyView
 from ui.snmp_panel import SNMPPanel
 from ui.gnmi_panel import GNMIPanel
+from ui.sflow_panel import SFlowPanel
 from ui.console_panel import ConsolePanel
 from ui.binding_panel import BindingPanel
 from ui.discovery_dialog import DiscoveryDialog
@@ -414,12 +416,16 @@ class MainWindow(QMainWindow):
         self.topology = TopologyEngine()
         self.ip_manager = IPManager()
         self.snmpsim = SNMPSimController(self._snmp_datasets_dir)
-        self.gnmi = GNMIController(self._gnmi_datasets_dir)
+        self.gnmi  = GNMIController(self._gnmi_datasets_dir)
+        self.sflow = SFlowController()
         self.state_store = DeviceStateStore(
             self.device_manager, self.topology, self._snmp_datasets_dir,
             tick_interval=60.0, snmp_sync_every=1,   # 60 s reduces I/O pressure for large topologies
         )
         self.gnmi.set_state_store(self.state_store)
+        self.sflow.set_state_store(self.state_store)
+        self.sflow.set_topology(self.topology)
+        self.sflow.set_device_manager(self.device_manager)
         self._trap_engine = TrapEngine(self)
         self._generated_files: list = []
         self._gnmi_files: list = []
@@ -614,7 +620,12 @@ class MainWindow(QMainWindow):
         self._gnmi_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._gnmi_panel)
 
-        # Panel 4 — Console
+        # Panel 4 — sFlow Simulator
+        self._sflow_panel = SFlowPanel()
+        self._sflow_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._sflow_panel)
+
+        # Panel 5 — Console
         self._console_panel = ConsolePanel()
         self._console_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._console_panel)
@@ -623,11 +634,13 @@ class MainWindow(QMainWindow):
         self._right_splitter.setStretchFactor(1, 1)
         self._right_splitter.setStretchFactor(2, 1)
         self._right_splitter.setStretchFactor(3, 1)
-        self._right_splitter.setSizes([250, 250, 250, 250])
+        self._right_splitter.setStretchFactor(4, 1)
+        self._right_splitter.setSizes([250, 250, 250, 250, 250])
 
         # Only the IP Binder panel visible on startup
         self._sim_panel.setVisible(False)
         self._gnmi_panel.setVisible(False)
+        self._sflow_panel.setVisible(False)
         self._console_panel.setVisible(False)
 
         self._right_dock = QDockWidget(self)
@@ -707,6 +720,16 @@ class MainWindow(QMainWindow):
 
         tb.addSeparator()
 
+        # ── sFlow Simulator ───────────────────────────────────────────────
+        self._act_panel_sflow = QAction("📶", self)
+        self._act_panel_sflow.setCheckable(True)
+        self._act_panel_sflow.setChecked(False)
+        self._act_panel_sflow.setToolTip("sFlow Simulator")
+        self._act_panel_sflow.toggled.connect(self._on_toggle_sflow_panel)
+        tb.addAction(self._act_panel_sflow)
+
+        tb.addSeparator()
+
         # ── Console ───────────────────────────────────────────────────────
         self._act_panel_console = QAction(">_", self)
         self._act_panel_console.setCheckable(True)
@@ -730,6 +753,7 @@ class MainWindow(QMainWindow):
             self._act_panel_binding.isChecked(),
             self._act_panel_sim.isChecked(),
             self._act_panel_gnmi.isChecked(),
+            self._act_panel_sflow.isChecked(),
             self._act_panel_console.isChecked(),
         ])
 
@@ -762,6 +786,15 @@ class MainWindow(QMainWindow):
         if visible:
             self._right_dock.show()
         self._gnmi_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
+            self._right_dock.hide()
+        else:
+            self._resize_right_dock()
+
+    def _on_toggle_sflow_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+        self._sflow_panel.setVisible(visible)
         if self._visible_panel_count() == 0:
             self._right_dock.hide()
         else:
@@ -856,8 +889,10 @@ class MainWindow(QMainWindow):
         self._act_stop     = QAction("S&top SNMP Simulator",    self, shortcut="F7")
         self._act_clear    = QAction("&Clear Simulation",       self)
         self._act_discover = QAction("&Discover Topology via SNMP...", self, shortcut="F8")
-        self._act_gnmi_start = QAction("Start &gNMI Server",   self, shortcut="F9")
-        self._act_gnmi_stop  = QAction("Stop g&NMI Server",    self, shortcut="F10")
+        self._act_gnmi_start  = QAction("Start &gNMI Server",    self, shortcut="F9")
+        self._act_gnmi_stop   = QAction("Stop g&NMI Server",     self, shortcut="F10")
+        self._act_sflow_start = QAction("Start s&Flow Agent",    self, shortcut="F11")
+        self._act_sflow_stop  = QAction("Sto&p sFlow Agent",     self, shortcut="F12")
         sim_menu.addAction(self._act_generate)
         sim_menu.addSeparator()
         sim_menu.addAction(self._act_start)
@@ -865,6 +900,9 @@ class MainWindow(QMainWindow):
         sim_menu.addSeparator()
         sim_menu.addAction(self._act_gnmi_start)
         sim_menu.addAction(self._act_gnmi_stop)
+        sim_menu.addSeparator()
+        sim_menu.addAction(self._act_sflow_start)
+        sim_menu.addAction(self._act_sflow_stop)
         sim_menu.addSeparator()
         sim_menu.addAction(self._act_clear)
         sim_menu.addSeparator()
@@ -917,6 +955,25 @@ class MainWindow(QMainWindow):
         # gNMI menu actions
         self._act_gnmi_start.triggered.connect(self._start_gnmi_server)
         self._act_gnmi_stop.triggered.connect(self._stop_gnmi_server)
+
+        # sFlow panel signals
+        self._sflow_panel.sig_start.connect(self._start_sflow)
+        self._sflow_panel.sig_stop.connect(self._stop_sflow)
+
+        # sFlow menu actions
+        self._act_sflow_start.triggered.connect(self._start_sflow)
+        self._act_sflow_stop.triggered.connect(self._stop_sflow)
+
+        # sFlow controller callbacks
+        self.sflow.set_log_callback(
+            lambda msg: self._log_queue.put(("log_sflow", msg, "info"))
+        )
+        self.sflow.set_status_callback(
+            lambda s: self._log_queue.put(("sflow_status", s))
+        )
+        self.sflow.set_ready_callback(
+            lambda: self._log_queue.put(("sflow_ready",))
+        )
 
         # gNMI controller callbacks
         self.gnmi.set_log_callback(
@@ -2298,6 +2355,50 @@ class MainWindow(QMainWindow):
         self._binding_panel.set_gnmi_locked(False)
         self._status_label.setText("gNMI stopped.")
 
+    # ------------------------------------------------------------------ #
+    #  sFlow lifecycle                                                     #
+    # ------------------------------------------------------------------ #
+
+    def _start_sflow(self):
+        if self.sflow.is_running():
+            return
+        devices = self.device_manager.get_all_devices()
+        if not devices:
+            QMessageBox.warning(self, "sFlow", "Add devices to the topology first.")
+            return
+        if not self.state_store.is_running():
+            self.state_store.start()
+        cfg = self._sflow_panel.get_config()
+        device_ips = [d.ip_address for d in devices]
+        self.sflow.start(
+            device_ips    = device_ips,
+            collector_ip  = cfg["collector_ip"],
+            collector_port= cfg["collector_port"],
+            interval      = cfg["interval"],
+            sample_rate   = cfg["sample_rate"],
+        )
+
+    def _stop_sflow(self):
+        if not self.sflow.is_running():
+            return
+        self.sflow.stop()
+        self._sflow_panel.set_running(False)
+        self._sflow_panel.set_status("Stopped")
+        self._status_label.setText("sFlow stopped.")
+
+    def _on_sflow_ready(self):
+        counts: dict = {}
+        for d in self.device_manager.get_all_devices():
+            key = d.device_type.value
+            counts[key] = counts.get(key, 0) + 1
+        self._sflow_panel.set_device_counts(counts)
+        self._sflow_panel.set_running(True)
+        self._sflow_panel.set_collector_info(self.sflow.get_collector())
+        self._status_label.setText(
+            f"sFlow running — {self.sflow.get_device_count()} agent(s) → "
+            f"{self.sflow.get_collector()}"
+        )
+
     def _on_gnmi_proxy_toggle(self, enable: bool):
         """Enable or disable the gNMI proxy server independently of device simulation."""
         if enable:
@@ -2396,6 +2497,9 @@ class MainWindow(QMainWindow):
 
         if self.snmpsim.is_running():
             self.snmpsim.stop()
+        if self.sflow.is_running():
+            self.sflow.stop()
+            self._sflow_panel.set_running(False)
         self.state_store.stop()
         self._finish_clear()
 
@@ -2686,8 +2790,9 @@ class MainWindow(QMainWindow):
         than N individual append() calls.
         """
         _MAX_PER_TICK = 100
-        snmp_lines: list = []
-        gnmi_lines: list = []
+        snmp_lines:  list = []
+        gnmi_lines:  list = []
+        sflow_lines: list = []
         processed = 0
         try:
             while processed < _MAX_PER_TICK:
@@ -2697,6 +2802,8 @@ class MainWindow(QMainWindow):
                     snmp_lines.append((item[1], item[2]))
                 elif item[0] == "log_gnmi":
                     gnmi_lines.append((item[1], item[2]))
+                elif item[0] == "log_sflow":
+                    sflow_lines.append((item[1], item[2]))
                 elif item[0] == "status":
                     self._sim_panel.set_status(item[1])
                 elif item[0] == "snmpsim_ready":
@@ -2705,10 +2812,14 @@ class MainWindow(QMainWindow):
                     self._gnmi_panel.set_gnmi_status(item[1])
                 elif item[0] == "gnmi_ready":
                     self._on_gnmi_ready()
+                elif item[0] == "sflow_status":
+                    self._sflow_panel.set_status(item[1])
+                elif item[0] == "sflow_ready":
+                    self._on_sflow_ready()
         except queue.Empty:
             pass
-        if snmp_lines or gnmi_lines:
-            self._console_panel.log_batch(snmp_lines, gnmi_lines)
+        if snmp_lines or gnmi_lines or sflow_lines:
+            self._console_panel.log_batch(snmp_lines, gnmi_lines, sflow_lines)
 
     def _refresh_status(self):
         if self.snmpsim.is_running():
