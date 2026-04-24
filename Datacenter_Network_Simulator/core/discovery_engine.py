@@ -167,53 +167,83 @@ class DiscoveryEngine:
 
         async def _run() -> List[Tuple[str, str]]:
             try:
-                from pysnmp.hlapi.asyncio import (
-                    SnmpEngine, CommunityData, UdpTransportTarget,
-                    ContextData, ObjectType, ObjectIdentity, walkCmd,
-                )
+                from pysnmp.entity.engine import SnmpEngine
+                from pysnmp.entity import config as snmp_config
+                from pysnmp.entity.rfc3413 import cmdgen
+                from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
+                from pysnmp.carrier.asyncio.dgram import udp as udp_mod
+                from pyasn1.type import univ
             except ImportError:
-                raise RuntimeError(
-                    "pysnmp is not installed. Run: "
-                    "pip install --force-reinstall pysnmp-lextudio"
-                )
+                raise RuntimeError("pysnmp is not installed. Run: pip install pysnmp")
 
+            loop = asyncio.get_running_loop()
+            done = loop.create_future()
             results: List[Tuple[str, str]] = []
+
             snmp_engine = SnmpEngine()
+            dispatcher = AsyncioDispatcher(loop=loop)
+            snmp_engine.register_transport_dispatcher(dispatcher)
+            snmp_config.add_transport(
+                snmp_engine, udp_mod.DOMAIN_NAME,
+                udp_mod.UdpAsyncioTransport().open_client_mode(),
+            )
+            snmp_config.add_v1_system(snmp_engine, 'comm-area', community)
+            snmp_config.add_target_parameters(
+                snmp_engine, 'my-params', 'comm-area', 'noAuthNoPriv', 1,
+            )
+            snmp_config.add_target_address(
+                snmp_engine, 'my-target', udp_mod.DOMAIN_NAME,
+                (target, self.port), 'my-params', timeout=2.0, retryCount=1,
+            )
+
+            oid_prefix = oid + '.'
+            gen = cmdgen.NextCommandGenerator()
+
+            def _cb(snmpEngine, handle, errorInd, errorStat, errorIdx, varBinds, cbCtx):
+                if done.done():
+                    return False
+                if errorInd or errorStat or not varBinds:
+                    done.set_result(None)
+                    return False
+                next_oids = []
+                for name, val in varBinds:
+                    name_str = str(name)
+                    if not name_str.startswith(oid_prefix):
+                        done.set_result(None)
+                        return False
+                    results.append((name_str, val.prettyPrint()))
+                    next_oids.append((name, univ.Null()))
+                # NextCommandGenerator does NOT auto-continue — chain manually
+                gen.send_varbinds(snmp_engine, 'my-target', None, b'', next_oids, _cb)
+                return False
+
+            oid_tuple = tuple(int(x) for x in oid.split('.'))
+            gen.send_varbinds(
+                snmp_engine, 'my-target', None, b'',
+                [(univ.ObjectIdentifier(oid_tuple), univ.Null())],
+                _cb,
+            )
+
             try:
-                async for err_ind, err_status, _err_idx, var_binds in walkCmd(
-                    snmp_engine,
-                    CommunityData(community),
-                    UdpTransportTarget((target, self.port), timeout=2, retries=1),
-                    ContextData(),
-                    ObjectType(ObjectIdentity(oid)),
-                    lexicographicMode=False,
-                ):
-                    if err_ind or err_status:
-                        break
-                    for vb in var_binds:
-                        results.append((str(vb[0]), str(vb[1])))
+                await asyncio.wait_for(done, timeout=5)
+            except asyncio.TimeoutError:
+                pass
             finally:
                 try:
-                    snmp_engine.closeDispatcher()
+                    dispatcher.close_dispatcher()
+                    snmp_engine.unregister_transport_dispatcher()
                 except Exception:
                     pass
+
             return results
 
-        # On Windows, SelectorEventLoop does not support UDP datagrams;
-        # ProactorEventLoop must be used explicitly in non-main threads.
         if sys.platform == "win32":
             loop = asyncio.ProactorEventLoop()
+            asyncio.set_event_loop(loop)
         else:
             loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         try:
             return loop.run_until_complete(_run())
         finally:
-            # Drain pending async-generator cleanup tasks (walkCmd leaves
-            # athrow tasks scheduled when the generator is not fully
-            # exhausted).  Without this, loop.close() destroys them and
-            # Python prints hundreds of "Task was destroyed but pending" lines.
-            try:
-                loop.run_until_complete(loop.shutdown_asyncgens())
-            except Exception:
-                pass
             loop.close()
