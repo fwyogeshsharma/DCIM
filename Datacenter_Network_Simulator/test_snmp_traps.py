@@ -127,11 +127,11 @@ class TrapProtocol(asyncio.DatagramProtocol):
             print(f"[{datetime.now():%H:%M:%S}] #{self._count}  Decode error from {src_ip}: {ex}")
             return
 
-        if msg_ver not in snmp_api.protoModules:
+        if msg_ver not in snmp_api.PROTOCOL_MODULES:
             print(f"[{datetime.now():%H:%M:%S}] #{self._count}  Unsupported SNMP version {msg_ver} from {src_ip}")
             return
 
-        pMod = snmp_api.protoModules[msg_ver]
+        pMod = snmp_api.PROTOCOL_MODULES[msg_ver]
 
         try:
             msg, _ = ber_decoder.decode(data, asn1Spec=pMod.Message())
@@ -140,9 +140,9 @@ class TrapProtocol(asyncio.DatagramProtocol):
             return
 
         community = bytes(msg.getComponentByPosition(1)).decode("ascii", errors="replace")
-        pdu = pMod.apiMessage.getPDU(msg)
+        pdu = pMod.apiMessage.get_pdu(msg)
 
-        if msg_ver == snmp_api.protoVersion1:
+        if msg_ver == snmp_api.SNMP_VERSION_1:
             # SNMPv1 Trap-PDU
             self._handle_v1(pMod, pdu, src_ip, community)
         else:
@@ -150,22 +150,22 @@ class TrapProtocol(asyncio.DatagramProtocol):
             self._handle_v2c(pMod, pdu, src_ip, community)
 
     def _handle_v1(self, pMod, pdu, src_ip: str, community: str):
-        enterprise = str(pMod.apiTrapPDU.getEnterprise(pdu))
-        agent_addr = str(pMod.apiTrapPDU.getAgentAddr(pdu))
-        specific   = int(pMod.apiTrapPDU.getSpecificTrap(pdu))
-        generic    = int(pMod.apiTrapPDU.getGenericTrap(pdu))
+        enterprise = str(pMod.apiTrapPDU.get_enterprise(pdu))
+        agent_addr = str(pMod.apiTrapPDU.get_agent_address(pdu))
+        specific   = int(pMod.apiTrapPDU.get_specific_trap(pdu))
+        generic    = int(pMod.apiTrapPDU.get_generic_trap(pdu))
 
         label = TRAP_OID_LABELS.get(enterprise, f"enterprise={enterprise} generic={generic} specific={specific}")
         print(_hdr(label, src_ip, community, "SNMPv1", self._count))
         print(f"  Agent address: {agent_addr}")
 
-        for oid, val in pMod.apiTrapPDU.getVarBinds(pdu):
+        for oid, val in pMod.apiTrapPDU.get_varbinds(pdu):
             oid_str = str(oid)
             lbl = OID_LABELS.get(oid_str, oid_str)
             print(f"  {lbl:<35} = {_fmt_val(oid_str, val)}")
 
     def _handle_v2c(self, pMod, pdu, src_ip: str, community: str):
-        var_binds = list(pMod.apiPDU.getVarBinds(pdu))
+        var_binds = list(pMod.apiPDU.get_varbinds(pdu))
 
         # Extract snmpTrapOID.0
         trap_oid = ""

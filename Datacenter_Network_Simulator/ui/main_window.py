@@ -32,7 +32,7 @@ from core.ip_manager import IPManager
 from core.ip_binder import (
     add_ips_batch, remove_ips_batch, is_admin,
 )
-from simulator.snmpsim_controller import SNMPSimController
+from simulator.snmp_agent import SNMPAgent
 from simulator.gnmi_controller import GNMIController
 from simulator.sflow_controller import SFlowController
 from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
@@ -66,34 +66,33 @@ def _default_model_name(device) -> str:
 class GeneratorWorker(QObject):
     progress = Signal(int, int)
     log      = Signal(str, str)
-    finished = Signal()   # no args – result stored in self.result / self.gnmi_result
+    finished = Signal()   # result stored in self.result
     error    = Signal(str)
 
-    def __init__(self, topology: TopologyEngine, output_dir: str):
+    def __init__(self, topology: TopologyEngine, agent=None):
         super().__init__()
         self.topology = topology
-        self.output_dir = output_dir
+        self._agent   = agent
 
     def run(self):
         try:
-            snmp_gen = SNMPRecGenerator(self.output_dir)
+            snmp_gen = SNMPRecGenerator()
             devices  = self.topology.get_all_devices()
             total    = len(devices)
-            snmp_files  = []
-            # Emit at most ~100 progress updates regardless of topology size.
+            loaded   = []
             step = max(1, total // 100)
             for i, device in enumerate(devices):
-                fp = snmp_gen.generate_device(device, self.topology)
-                snmp_files.append(fp)
+                entries = snmp_gen.build_entries(device, self.topology)
+                if self._agent:
+                    self._agent.update_device(device.ip_address, entries)
+                loaded.append(device.ip_address)
                 self.log.emit(
                     f"[SNMP] {device.ip_address}  {device.device_type.value}  ({device.interface_count} ifaces)",
-                    "info"
+                    "info",
                 )
-
                 if (i + 1) % step == 0 or i == total - 1:
                     self.progress.emit(i + 1, total)
-
-            self.result = snmp_files
+            self.result = loaded
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
@@ -129,32 +128,6 @@ class _GNMIGenWorker(QObject):
                     self.progress.emit(i + 1, total)
             self.result = files
             self.finished.emit()
-        except Exception as e:
-            self.error.emit(str(e))
-
-
-# ------------------------------------------------------------------ #
-#  Background worker for snmpsim index pre-building                   #
-# ------------------------------------------------------------------ #
-
-class IndexWorker(QObject):
-    """Pre-builds snmpsim .dbm indexes in parallel after dataset generation."""
-    progress = Signal(int, int)   # (completed, total)
-    finished = Signal(int)        # total files indexed
-    error    = Signal(str)
-
-    def __init__(self, snmpsim_controller: "SNMPSimController", data_dir: str):
-        super().__init__()
-        self._ctrl = snmpsim_controller
-        self._data_dir = data_dir
-
-    def run(self):
-        try:
-            count = self._ctrl.preindex_datasets(
-                self._data_dir,
-                progress_cb=lambda c, t: self.progress.emit(c, t),
-            )
-            self.finished.emit(count)
         except Exception as e:
             self.error.emit(str(e))
 
@@ -415,7 +388,7 @@ class MainWindow(QMainWindow):
         self.device_manager = DeviceManager()
         self.topology = TopologyEngine()
         self.ip_manager = IPManager()
-        self.snmpsim = SNMPSimController(self._snmp_datasets_dir)
+        self.snmpsim = SNMPAgent()
         self.gnmi  = GNMIController(self._gnmi_datasets_dir)
         self.sflow = SFlowController()
         self.state_store = DeviceStateStore(
@@ -434,8 +407,6 @@ class MainWindow(QMainWindow):
         self._algo_layout_active: bool = False  # True after an algo layout; drags no longer update default
         self._worker_thread: QThread = None
         self._worker: GeneratorWorker = None
-        self._index_thread: QThread = None
-        self._index_worker: IndexWorker = None
         self._link_mode = False
 
         # SNMP IP binding state
@@ -990,7 +961,7 @@ class MainWindow(QMainWindow):
         # Using a queue instead of direct signal emission prevents crashes when
         # the daemon thread emits while Qt is mid-repaint (e.g. on maximize).
         self.snmpsim.set_log_callback(
-            lambda msg: self._log_queue.put(("log", msg, "info"))
+            lambda msg, level="info": self._log_queue.put(("log", msg, level))
         )
         self.snmpsim.set_status_callback(
             lambda s: self._log_queue.put(("status", s))
@@ -1497,8 +1468,9 @@ class MainWindow(QMainWindow):
         device = self.device_manager.get_device(device_id)
         if not device:
             return
-        # SNMP
-        SNMPRecGenerator(output_dir=self._snmp_datasets_dir).generate_device(device, self.topology)
+        # Reload SNMP in-memory table for this device
+        entries = SNMPRecGenerator().build_entries(device, self.topology)
+        self.snmpsim.update_device(device.ip_address, entries)
         # gNMI
         if device.device_type in (DeviceType.SWITCH, DeviceType.ROUTER):
             GNMIDataGenerator(self._gnmi_datasets_dir).regenerate(device, self.topology)
@@ -1607,7 +1579,7 @@ class MainWindow(QMainWindow):
         # mouse input until the workers finish.
         self._topology_view.setInteractive(False)
 
-        self._worker = GeneratorWorker(self.topology, self._snmp_datasets_dir)
+        self._worker = GeneratorWorker(self.topology, agent=self.snmpsim)
         self._worker_thread = QThread()
         self._worker.moveToThread(self._worker_thread)
         self._worker_thread.started.connect(self._worker.run)
@@ -1623,44 +1595,13 @@ class MainWindow(QMainWindow):
     def _on_gen_finished(self):
         self._worker_thread.quit()
         self._worker_thread.wait()
-        files = self._worker.result
-        self._generated_files = files
+        loaded = self._worker.result
+        self._generated_files = loaded
         self._console_panel.log(
-            f"[SNMP] {len(files)} .snmprec files generated",
-            "success"
+            f"[SNMP] {len(loaded)} devices loaded into SNMP agent", "success"
         )
         self._refresh_stats()
-        # Pre-build snmpsim indexes now so simulator starts instantly
-        self._sim_panel.set_status("Building indexes…")
-        self._console_panel.log("Pre-building SNMP indexes (parallel)…", "info")
-        self._sim_panel.show_progress(0, len(files))
-
-        self._index_worker = IndexWorker(self.snmpsim, self.snmpsim.datasets_dir)
-        self._index_thread = QThread()
-        self._index_worker.moveToThread(self._index_thread)
-        self._index_thread.started.connect(self._index_worker.run)
-        self._index_worker.progress.connect(
-            lambda c, t: self._sim_panel.show_progress(c, t)
-        )
-        self._index_worker.finished.connect(self._on_index_finished)
-        self._index_worker.error.connect(self._on_index_error)
-        # LowPriority: index building is a background task — UI must stay responsive
-        self._index_thread.start(QThread.LowPriority)
-
-    def _on_index_finished(self, count: int):
-        self._index_thread.quit()
-        self._index_thread.wait()
-        self._console_panel.log(f"Indexes built for {count} datasets — simulator will start instantly.", "success")
-        self._sim_panel.set_status("Datasets ready")
-        self._sim_panel.set_datasets_ready(True)
-        self._gnmi_panel.set_datasets_ready(bool(self._gnmi_files))
-        self._topology_view.setInteractive(True)
-
-    def _on_index_error(self, error: str):
-        self._index_thread.quit()
-        self._index_thread.wait()
-        self._console_panel.log(f"Index pre-build warning: {error}", "warning")
-        # Still mark datasets ready — snmpsim will build indexes itself on start
+        self._sim_panel.show_progress(len(loaded), len(loaded))
         self._sim_panel.set_status("Datasets ready")
         self._sim_panel.set_datasets_ready(True)
         self._gnmi_panel.set_datasets_ready(bool(self._gnmi_files))
@@ -1809,15 +1750,13 @@ class MainWindow(QMainWindow):
             )
 
         self._console_panel.log(
-            f"Launching SNMPSim on port 161 with {len(bound_ips)} device(s)...", "success"
+            f"Starting SNMP agent on port 161 with {len(bound_ips)} device(s)...", "success"
         )
         ok = self.snmpsim.start(device_ips=bound_ips, port=161)
         if ok:
             self.state_store.set_log_callback(self._console_panel.log)
             self.state_store.start()
             self.state_store.enable_snmp_sync(self.snmpsim)
-            # Process launched — show stop button but keep traps disabled until
-            # snmpsim logs "Listening at UDP/IPv4 endpoint" (ready callback).
             self._sim_panel.set_simulator_running(True)
             self._update_topology_edit_actions()
             self._binding_panel.set_snmp_locked(True)
@@ -1829,11 +1768,11 @@ class MainWindow(QMainWindow):
                 len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER)),
             )
             self._status_label.setText(
-                f"SNMPSim starting — loading datasets… ({len(bound_ips)} devices)"
+                f"SNMP Agent starting… ({len(bound_ips)} devices)"
             )
             self._console_panel.log(
-                "SNMPSim is loading pre-built datasets — devices will respond once 'Running' is shown.",
-                "info"
+                "SNMP agent is starting — devices will respond once 'Running' is shown.",
+                "info",
             )
         else:
             self._sim_panel.set_simulator_running(False)
@@ -1956,12 +1895,12 @@ class MainWindow(QMainWindow):
         self._console_panel.log("All IPs removed from adapter.", "warning")
 
     def _on_snmpsim_ready(self):
-        """Called (via queue) when SNMPSim logs its 'Listening at UDP/IPv4 endpoint' line."""
+        """Called (via queue) when the SNMP agent signals ready."""
         n_bound = len(self._bound_ips)
         self._status_label.setText(
-            f"SNMPSim running — {n_bound} devices — PID {self.snmpsim.get_pid()}"
+            f"SNMP Agent running — {n_bound} devices on port 161"
         )
-        self._console_panel.log("SNMPSim is ready — devices are now responding to SNMP polls.", "success")
+        self._console_panel.log("SNMP Agent is ready — devices are now responding to SNMP polls.", "success")
 
         # Run one SNMP topology discovery scan as soon as the simulator is ready.
         self._start_live_discovery()
@@ -2553,12 +2492,13 @@ class MainWindow(QMainWindow):
                     f"[gNMI] Hot-reloaded metrics for {reloaded} device(s).", "success"
                 )
 
-        # Regenerate SNMP .snmprec files
+        # Push fresh OID tables to the SNMP agent
         if self._generated_files:
-            snmp_gen = SNMPRecGenerator(self._snmp_datasets_dir)
+            snmp_gen = SNMPRecGenerator()
             for device in self.device_manager.get_all_devices():
-                snmp_gen.generate_device(device, self.topology)
-            self._console_panel.log("SNMP datasets regenerated with new metrics.", "success")
+                entries = snmp_gen.build_entries(device, self.topology)
+                self.snmpsim.update_device(device.ip_address, entries)
+            self._console_panel.log("SNMP agent updated with new metrics.", "success")
 
     def _randomize_gnmi_metrics(self):
         """Randomize device metrics and hot-reload gNMI datasets only."""
@@ -2826,13 +2766,12 @@ class MainWindow(QMainWindow):
             n_bound = len(self._bound_ips)
             if self.snmpsim.is_ready():
                 self._status_label.setText(
-                    f"SNMPSim running — {n_bound} IPs on port 161 "
-                    f"— PID {self.snmpsim.get_pid()}"
+                    f"SNMP Agent running — {n_bound} IPs on port 161"
                 )
                 self._sim_panel.set_status("Running")
             else:
                 self._status_label.setText(
-                    f"SNMPSim starting — loading datasets… ({n_bound} devices)"
+                    f"SNMP Agent starting… ({n_bound} devices)"
                 )
                 self._sim_panel.set_status("Starting…")
 
@@ -2851,7 +2790,7 @@ class MainWindow(QMainWindow):
             "<p>Visually build network topologies and simulate both SNMP and gNMI "
             "protocols for routers, switches, and servers.</p>"
             "<br>"
-            "<b>Tech Stack:</b> Python 3.11+, PySide6, NetworkX, SNMPSim, gRPC<br>"
+            "<b>Tech Stack:</b> Python 3.11+, PySide6, NetworkX, pysnmp, gRPC<br>"
             "<b>Supports:</b> Routers, Switches, Servers<br>"
             "<b>SNMP Versions:</b> v1, v2c<br>"
             "<b>gNMI:</b> OpenConfig — Interfaces, LLDP, BGP, OSPF, AFT, System<br>"
@@ -2875,7 +2814,7 @@ class MainWindow(QMainWindow):
             self, "SNMP Walk Command",
             f"Each device responds on its own IP at port 161.\n\n"
             f"Example (first device):\n\n  {cmd}\n\n"
-            f"Device IPs are bound to the selected network adapter via netsh.\n"
+            f"Device IPs are bound to the selected network adapter.\n"
             f"Point your monitoring tool to any device IP on port 161."
         )
 

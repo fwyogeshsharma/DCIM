@@ -163,7 +163,7 @@ class TrapEngine(QObject):
         try:
             from pysnmp.hlapi.asyncio import (
                 SnmpEngine, CommunityData, UdpTransportTarget, ContextData,
-                sendNotification, NotificationType, ObjectIdentity,
+                send_notification, NotificationType, ObjectIdentity,
                 ObjectType, OctetString, Integer, Gauge32,
             )
 
@@ -174,10 +174,10 @@ class TrapEngine(QObject):
 
             engine = SnmpEngine()
             try:
-                errInd, errStatus, errIdx, _ = await sendNotification(
+                errInd, errStatus, errIdx, _ = await send_notification(
                     engine,
                     CommunityData(device.snmp_community, mpModel=1),
-                    UdpTransportTarget(
+                    await UdpTransportTarget.create(
                         (self._receiver_ip, self._receiver_port),
                         timeout=1, retries=0,
                     ),
@@ -186,7 +186,10 @@ class TrapEngine(QObject):
                     notif,
                 )
             finally:
-                engine.closeDispatcher()
+                try:
+                    engine.closeDispatcher()
+                except Exception:
+                    pass
 
             if errInd:
                 self.trap_error.emit(

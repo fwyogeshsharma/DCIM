@@ -21,7 +21,7 @@ from __future__ import annotations
 import os
 import random
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from core.device_manager import Device, DeviceType, Vendor, SERVER_OS_INFO
 from core.lldp_generator import generate_lldp_entries, generate_cdp_entries
@@ -66,9 +66,12 @@ def _oid_entry(oid: str, typ: str, val: str) -> OidEntry:
 
 
 class SNMPRecGenerator:
-    def __init__(self, output_dir: str = "datasets/snmp"):
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, output_dir: str = None):
+        if output_dir is not None:
+            self.output_dir = Path(output_dir)
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            self.output_dir = None
         self._cache_dir: Optional[str] = None   # lazily resolved from snmpsim.confdir
 
     # ------------------------------------------------------------------ #
@@ -122,9 +125,96 @@ class SNMPRecGenerator:
         # SNMPSim routes community "<device_ip>" → this file, so set the
         # SNMP community string in openDCIM/your NMS to the device's IP address.
         entries = _sort_oids(entries)
+        if self.output_dir is None:
+            return ""
         filepath = str(self.output_dir / f"{device.ip_address}.snmprec")
         self._write_file(filepath, entries)
         return filepath
+
+    def build_entries(self, device: Device, topology: TopologyEngine) -> List[OidEntry]:
+        """Return sorted OID entries for *device* without writing to disk."""
+        entries: List[OidEntry] = []
+        entries += self._system_entries(device)
+        entries += self._interface_entries(device)
+        entries += self._ip_entries(device)
+        entries += self._snmp_entries(device)
+
+        neighbor_tuples = self._build_neighbor_tuples(device, topology)
+        _NETWORK_TYPES = (DeviceType.ROUTER, DeviceType.SWITCH,
+                          DeviceType.FIREWALL, DeviceType.LOAD_BALANCER)
+        if device.device_type in _NETWORK_TYPES:
+            entries += generate_lldp_entries(device, neighbor_tuples)
+            if device.vendor == Vendor.CISCO_SYSTEMS:
+                entries += generate_cdp_entries(device, neighbor_tuples)
+        else:
+            peer_tuples = [
+                (n, lp, rp) for n, lp, rp in neighbor_tuples
+                if n.device_type not in _NETWORK_TYPES
+            ]
+            if peer_tuples:
+                entries += generate_lldp_entries(device, peer_tuples)
+
+        if device.device_type == DeviceType.SWITCH:
+            neighbor_port_tuples = self._build_switch_port_tuples(device, topology)
+            entries += generate_mac_table(device, neighbor_port_tuples)
+            entries += generate_stp_entries(device)
+
+        if device.device_type == DeviceType.SERVER:
+            entries += self._server_entries(device)
+
+        return _sort_oids(entries)
+
+    def build_metric_updates(self, device: Device) -> Dict[str, Tuple[str, str]]:
+        """Return only the dynamic OIDs that change each tick, without touching disk."""
+        updates: Dict[str, Tuple[str, str]] = {}
+
+        updates[f"{SYSTEM_BASE}.3.0"] = ("67", str(device.sys_uptime))
+        updates[f"{SYSTEM_BASE}.8.0"] = ("67", str(device.sys_uptime))
+
+        ifx_base = "1.3.6.1.2.1.31.1.1.1"
+        for iface in device.interfaces:
+            i = iface.index
+            in_pkts  = iface.in_octets  // 1500
+            out_pkts = iface.out_octets // 1500
+            updates[f"{IF_TABLE}.10.{i}"] = ("41", str(iface.in_octets))
+            updates[f"{IF_TABLE}.11.{i}"] = ("41", str(in_pkts))
+            updates[f"{IF_TABLE}.13.{i}"] = ("41", str(iface.in_errors // 10))
+            updates[f"{IF_TABLE}.14.{i}"] = ("41", str(iface.in_errors))
+            updates[f"{IF_TABLE}.16.{i}"] = ("41", str(iface.out_octets))
+            updates[f"{IF_TABLE}.17.{i}"] = ("41", str(out_pkts))
+            updates[f"{IF_TABLE}.19.{i}"] = ("41", str(iface.out_errors // 10))
+            updates[f"{IF_TABLE}.20.{i}"] = ("41", str(iface.out_errors))
+            updates[f"{ifx_base}.6.{i}"]  = ("44", str(iface.in_octets  * 4))
+            updates[f"{ifx_base}.10.{i}"] = ("44", str(iface.out_octets * 4))
+
+        if device.device_type == DeviceType.SERVER:
+            mem_total_kb  = device.memory_total // 1024
+            mem_used_kb   = device.memory_used  // 1024
+            mem_free      = device.memory_total - device.memory_used
+            disk_total_kb = device.disk_total   // 1024
+            disk_used_kb  = device.disk_used    // 1024
+            disk_avail_kb = (device.disk_total  - device.disk_used) // 1024
+            disk_pct = int(device.disk_used * 100 / device.disk_total) if device.disk_total else 0
+
+            updates[f"{HR_STORAGE}.2.1.5.1"] = ("2",  str(mem_total_kb))
+            updates[f"{HR_STORAGE}.2.1.6.1"] = ("2",  str(mem_used_kb))
+            updates[f"{HR_STORAGE}.2.1.5.2"] = ("2",  str(disk_total_kb // 4))
+            updates[f"{HR_STORAGE}.2.1.6.2"] = ("2",  str(disk_used_kb  // 4))
+
+            cpu_user   = device.cpu_usage
+            cpu_system = random.randint(2, 20)
+            cpu_idle   = max(1, 100 - cpu_user - cpu_system)
+            updates[f"{UCD_CPU}.1.0"]  = ("2",  str(cpu_user))
+            updates[f"{UCD_CPU}.2.0"]  = ("2",  str(cpu_system))
+            updates[f"{UCD_CPU}.4.0"]  = ("2",  str(cpu_idle))
+            updates[f"{UCD_MEM}.4.0"]  = ("42", str(device.memory_total // 1024))
+            updates[f"{UCD_MEM}.5.0"]  = ("42", str(mem_free // 1024))
+            updates[f"{UCD_MEM}.11.0"] = ("42", str(device.memory_used  // 1024))
+            updates[f"{UCD_DISK}.5.1"] = ("2",  str(disk_pct))
+            updates[f"{UCD_DISK}.6.1"] = ("2",  str(disk_total_kb))
+            updates[f"{UCD_DISK}.7.1"] = ("2",  str(disk_avail_kb))
+
+        return updates
 
     def patch_metrics(self, device: Device) -> str:
         """
@@ -237,13 +327,13 @@ class SNMPRecGenerator:
 
             # Index is fresh; now atomically expose the new snmprec.
             os.replace(tmp_snmprec, str(filepath))
-        except OSError:
+            tmp_snmprec = None
+        finally:
             if tmp_snmprec:
                 try:
                     os.unlink(tmp_snmprec)
                 except OSError:
                     pass
-            return str(filepath)
 
         return str(filepath)
 

@@ -33,7 +33,7 @@ from typing import Callable, List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from core.device_manager import Device, DeviceManager
     from core.topology_engine import TopologyEngine
-    from simulator.snmpsim_controller import SNMPSimController
+    from simulator.snmp_agent import SNMPAgent
 
 log = logging.getLogger(__name__)
 
@@ -49,10 +49,10 @@ class DeviceStateStore:
         gnmi_controller.set_state_store(store)       # gNMI reads live
         store.start()
 
-        # When SNMPSim starts:
-        store.enable_snmp_sync(snmpsim_controller)
+        # When SNMP agent starts:
+        store.enable_snmp_sync(snmp_agent)
 
-        # When SNMPSim stops:
+        # When SNMP agent stops:
         store.disable_snmp_sync()
 
         # When everything stops:
@@ -79,7 +79,7 @@ class DeviceStateStore:
         self._boot_times: dict = {}
 
         # SNMP sync
-        self._snmp_ctrl: Optional["SNMPSimController"] = None
+        self._snmp_ctrl: Optional["SNMPAgent"] = None
         self._snmp_enabled: bool = False
 
         # Background ticker
@@ -97,8 +97,8 @@ class DeviceStateStore:
         """cb(message, level) — level ∈ {"info", "success", "warning", "error"}"""
         self._log_cb = cb
 
-    def enable_snmp_sync(self, snmp_ctrl: "SNMPSimController"):
-        """Start regenerating .snmprec + .dbm files every tick so SNMPSim serves live values."""
+    def enable_snmp_sync(self, snmp_ctrl: "SNMPAgent"):
+        """Start pushing live metric updates to the in-process SNMP agent every tick."""
         self._snmp_ctrl    = snmp_ctrl
         self._snmp_enabled = True
         self._log("[StateStore] SNMP sync enabled — devices will converge on next tick.", "info")
@@ -257,62 +257,22 @@ class DeviceStateStore:
     # ------------------------------------------------------------------ #
 
     def _sync_snmp(self, devices: list):
+        """Push live metric deltas to the in-process SNMP agent for all devices.
+
+        In-memory updates take ~1 µs per device so no sharding or worker threads
+        are needed — the entire fleet is patched in a single tight loop.
         """
-        Patch dynamic metric OIDs in .snmprec files for a rotating shard of
-        devices rather than all of them at once.
-
-        Writing all N files in one burst causes an I/O storm that starves the
-        Windows kernel scheduler and freezes the cursor on large topologies.
-        Spreading writes across multiple ticks eliminates the burst: each tick
-        processes at most BATCH_MAX devices, cycling through the full list over
-        ceil(N / BATCH_MAX) ticks.  At the default 60-second tick interval this
-        means every device is refreshed at most every few minutes — acceptable
-        for an SNMP simulator whose consumers poll on their own schedule anyway.
-
-        Worker threads run at below-normal OS priority so disk I/O from this
-        background task cannot starve the Qt event loop or the system cursor.
-        """
-        total = len(devices)
-        if total == 0:
+        if not self._snmp_ctrl or not devices:
             return
-
-        # At most 100 files per sync cycle; for small topologies process all.
-        BATCH_MAX = 100
-        num_shards = max(1, (total + BATCH_MAX - 1) // BATCH_MAX)
-        shard_idx  = (self._tick_count - 1) % num_shards
-        batch      = devices[shard_idx * BATCH_MAX : (shard_idx + 1) * BATCH_MAX]
-        if not batch:
-            return
-
         try:
-            import sys as _sys
-            import ctypes as _ctypes
             from core.snmprec_generator import SNMPRecGenerator
-            from concurrent.futures import ThreadPoolExecutor
-
-            snmp_gen = SNMPRecGenerator(self._datasets_dir)
-
-            def _patch_below_normal(device):
-                # Depress this worker thread's priority so the UI and cursor
-                # remain responsive even when the disk is under write pressure.
-                if _sys.platform == "win32":
-                    try:
-                        _ctypes.windll.kernel32.SetThreadPriority(
-                            _ctypes.windll.kernel32.GetCurrentThread(), -1
-                        )
-                    except Exception:
-                        pass
-                snmp_gen.patch_metrics(device)
-
-            with ThreadPoolExecutor(max_workers=2) as pool:
-                list(pool.map(_patch_below_normal, batch))
-
-            log.debug(
-                "[StateStore] SNMP sync — %d/%d file(s) patched (shard %d/%d).",
-                len(batch), total, shard_idx + 1, num_shards,
-            )
-        except Exception as e:
-            log.error("[StateStore] SNMP sync error: %s", e)
+            snmp_gen = SNMPRecGenerator()
+            for device in devices:
+                updates = snmp_gen.build_metric_updates(device)
+                self._snmp_ctrl.update_metrics(device.ip_address, updates)
+            log.debug("[StateStore] SNMP in-memory sync — %d device(s).", len(devices))
+        except Exception as exc:
+            log.error("[StateStore] SNMP sync error: %s", exc)
 
     # ------------------------------------------------------------------ #
     #  Helpers                                                             #

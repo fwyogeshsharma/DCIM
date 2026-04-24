@@ -112,17 +112,17 @@ async def _snmp_get(ip: str, community: str, port: int,
                     oids: List[str], timeout: int) -> Dict[str, str]:
     """Return {oid_str: value_str} for a list of OIDs via SNMPv2c GET."""
     from pysnmp.hlapi.asyncio import (
-        getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
+        get_cmd, SnmpEngine, CommunityData, UdpTransportTarget,
         ContextData, ObjectType, ObjectIdentity,
     )
     engine = SnmpEngine()
     results = {}
     for oid in oids:
         try:
-            errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+            errorIndication, errorStatus, errorIndex, varBinds = await get_cmd(
                 engine,
                 CommunityData(community, mpModel=1),
-                UdpTransportTarget((ip, port), timeout=timeout, retries=1),
+                await UdpTransportTarget.create((ip, port), timeout=timeout, retries=1),
                 ContextData(),
                 ObjectType(ObjectIdentity(oid)),
             )
@@ -135,7 +135,6 @@ async def _snmp_get(ip: str, community: str, port: int,
                     results[oid] = vb[1].prettyPrint()
         except Exception as exc:
             results[oid] = f"ERROR: {exc}"
-    engine.transportDispatcher.closeDispatcher()
     return results
 
 
@@ -144,16 +143,16 @@ async def _snmp_walk(ip: str, community: str, port: int,
                      max_rows: int = 200) -> List[Tuple[str, str]]:
     """Return [(oid_str, value_str)] for a subtree walk."""
     from pysnmp.hlapi.asyncio import (
-        walkCmd, SnmpEngine, CommunityData, UdpTransportTarget,
+        walk_cmd, SnmpEngine, CommunityData, UdpTransportTarget,
         ContextData, ObjectType, ObjectIdentity,
     )
     engine = SnmpEngine()
     rows = []
     try:
-        async for errorIndication, errorStatus, _, varBinds in walkCmd(
+        async for errorIndication, errorStatus, _, varBinds in walk_cmd(
             engine,
             CommunityData(community, mpModel=1),
-            UdpTransportTarget((ip, port), timeout=timeout, retries=1),
+            await UdpTransportTarget.create((ip, port), timeout=timeout, retries=1),
             ContextData(),
             ObjectType(ObjectIdentity(base_oid)),
             lexicographicMode=False,
@@ -166,11 +165,6 @@ async def _snmp_walk(ip: str, community: str, port: int,
                 break
     except Exception:
         pass
-    finally:
-        try:
-            engine.transportDispatcher.closeDispatcher()
-        except Exception:
-            pass
     return rows
 
 

@@ -169,21 +169,20 @@ class DiscoveryEngine:
             try:
                 from pysnmp.hlapi.asyncio import (
                     SnmpEngine, CommunityData, UdpTransportTarget,
-                    ContextData, ObjectType, ObjectIdentity, walkCmd,
+                    ContextData, ObjectType, ObjectIdentity, walk_cmd,
                 )
             except ImportError:
                 raise RuntimeError(
-                    "pysnmp is not installed. Run: "
-                    "pip install --force-reinstall pysnmp-lextudio"
+                    "pysnmp is not installed. Run: pip install pysnmp"
                 )
 
             results: List[Tuple[str, str]] = []
             snmp_engine = SnmpEngine()
             try:
-                async for err_ind, err_status, _err_idx, var_binds in walkCmd(
+                async for err_ind, err_status, _err_idx, var_binds in walk_cmd(
                     snmp_engine,
                     CommunityData(community),
-                    UdpTransportTarget((target, self.port), timeout=2, retries=1),
+                    await UdpTransportTarget.create((target, self.port), timeout=2, retries=1),
                     ContextData(),
                     ObjectType(ObjectIdentity(oid)),
                     lexicographicMode=False,
