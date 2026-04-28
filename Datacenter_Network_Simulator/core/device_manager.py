@@ -207,6 +207,13 @@ class Device:
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     interfaces: List[Interface] = field(default_factory=list)
 
+    # Physical location
+    datacenter: str = ""
+    datacenter_city: str = ""
+    rack_row: int = 0
+    rack_num: int = 0
+    rack_unit: int = 0
+
     # Dynamic metrics (randomized per device)
     cpu_usage: int = field(default_factory=lambda: random.randint(5, 95))
     memory_total: int = field(default_factory=lambda: random.choice([2, 4, 8, 16, 32]) * 1024 * 1024 * 1024)
@@ -278,6 +285,21 @@ class Device:
         if self.model_name and self.model_name in MODEL_SYSOID:
             return MODEL_SYSOID[self.model_name]
         return VENDOR_SYSOID.get(self.vendor, "1.3.6.1.4.1.0.0")
+
+    @property
+    def sys_location(self) -> str:
+        if self.datacenter:
+            parts = [self.datacenter]
+            if self.datacenter_city:
+                parts.append(self.datacenter_city)
+            if self.rack_row:
+                parts.append(f"Row{self.rack_row}")
+            if self.rack_num:
+                parts.append(f"Rack{self.rack_num}")
+            if self.rack_unit:
+                parts.append(f"U{self.rack_unit}")
+            return "-".join(parts)
+        return "Network Lab"
 
     @property
     def os_name(self) -> str:
