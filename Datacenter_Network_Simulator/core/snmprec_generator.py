@@ -258,7 +258,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{SYSTEM_BASE}.3.0", "67", str(device.sys_uptime)),
             _oid_entry(f"{SYSTEM_BASE}.4.0", "4", f"admin@{device.name.lower()}.example.com"),
             _oid_entry(f"{SYSTEM_BASE}.5.0", "4", device.name),
-            _oid_entry(f"{SYSTEM_BASE}.6.0", "4", "Network Lab"),
+            _oid_entry(f"{SYSTEM_BASE}.6.0", "4", device.sys_location),
             _oid_entry(f"{SYSTEM_BASE}.7.0", "2", "72"),  # sysServices
             _oid_entry(f"{SYSTEM_BASE}.8.0", "67", str(device.sys_uptime)),  # hrSystemUptime
             # SNMPv2-MIB::sysORLastChange
