@@ -135,7 +135,12 @@
         "disk_total": 107374182400,
         "disk_used": 20476219382,
         "sys_uptime": 4714226,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -273,7 +278,12 @@
         "disk_total": 107374182400,
         "disk_used": 50322739535,
         "sys_uptime": 3639704,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -931,7 +941,12 @@
         "disk_total": 536870912000,
         "disk_used": 280472497770,
         "sys_uptime": 6793979,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -1589,7 +1604,12 @@
         "disk_total": 536870912000,
         "disk_used": 183003761979,
         "sys_uptime": 9037982,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -2247,7 +2267,12 @@
         "disk_total": 1073741824000,
         "disk_used": 765642278919,
         "sys_uptime": 519843,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -2307,7 +2332,12 @@
         "disk_total": 536870912000,
         "disk_used": 105106775960,
         "sys_uptime": 7638325,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -2367,7 +2397,12 @@
         "disk_total": 536870912000,
         "disk_used": 102121034572,
         "sys_uptime": 8026478,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -2427,7 +2462,12 @@
         "disk_total": 1073741824000,
         "disk_used": 691325471906,
         "sys_uptime": 7769093,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 3
       }
     },
     {
@@ -2487,7 +2527,12 @@
         "disk_total": 536870912000,
         "disk_used": 178300746050,
         "sys_uptime": 4355545,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 4
       }
     },
     {
@@ -2547,7 +2592,12 @@
         "disk_total": 268435456000,
         "disk_used": 181398950554,
         "sys_uptime": 834947,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 5
       }
     },
     {
@@ -2607,7 +2657,12 @@
         "disk_total": 536870912000,
         "disk_used": 227305885555,
         "sys_uptime": 3234272,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 6
       }
     },
     {
@@ -2667,7 +2722,12 @@
         "disk_total": 107374182400,
         "disk_used": 41093315902,
         "sys_uptime": 6014963,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 7
       }
     },
     {
@@ -2727,7 +2787,12 @@
         "disk_total": 1073741824000,
         "disk_used": 476901274708,
         "sys_uptime": 1389923,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 8
       }
     },
     {
@@ -2787,7 +2852,12 @@
         "disk_total": 107374182400,
         "disk_used": 60525799191,
         "sys_uptime": 7684017,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 9
       }
     },
     {
@@ -3445,7 +3515,12 @@
         "disk_total": 536870912000,
         "disk_used": 246193166337,
         "sys_uptime": 7941768,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -3505,7 +3580,12 @@
         "disk_total": 107374182400,
         "disk_used": 38812811788,
         "sys_uptime": 4205957,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 10
       }
     },
     {
@@ -3565,7 +3645,12 @@
         "disk_total": 1073741824000,
         "disk_used": 764537643345,
         "sys_uptime": 886584,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 11
       }
     },
     {
@@ -3625,7 +3710,12 @@
         "disk_total": 1073741824000,
         "disk_used": 378464338062,
         "sys_uptime": 9449720,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 12
       }
     },
     {
@@ -3685,7 +3775,12 @@
         "disk_total": 107374182400,
         "disk_used": 77883907385,
         "sys_uptime": 3653544,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 13
       }
     },
     {
@@ -3745,7 +3840,12 @@
         "disk_total": 536870912000,
         "disk_used": 198134685518,
         "sys_uptime": 3507913,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 14
       }
     },
     {
@@ -3805,7 +3905,12 @@
         "disk_total": 536870912000,
         "disk_used": 244413228069,
         "sys_uptime": 2939807,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 15
       }
     },
     {
@@ -3865,7 +3970,12 @@
         "disk_total": 1073741824000,
         "disk_used": 478822405268,
         "sys_uptime": 8284838,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 16
       }
     },
     {
@@ -3925,7 +4035,12 @@
         "disk_total": 1073741824000,
         "disk_used": 798489686425,
         "sys_uptime": 7800704,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 17
       }
     },
     {
@@ -3985,7 +4100,12 @@
         "disk_total": 268435456000,
         "disk_used": 147636014653,
         "sys_uptime": 3646989,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 18
       }
     },
     {
@@ -4643,7 +4763,12 @@
         "disk_total": 536870912000,
         "disk_used": 102525103255,
         "sys_uptime": 6539870,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 3
       }
     },
     {
@@ -4703,7 +4828,12 @@
         "disk_total": 1073741824000,
         "disk_used": 178861401336,
         "sys_uptime": 1598726,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 19
       }
     },
     {
@@ -4763,7 +4893,12 @@
         "disk_total": 1073741824000,
         "disk_used": 326876414913,
         "sys_uptime": 5997789,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 20
       }
     },
     {
@@ -4823,7 +4958,12 @@
         "disk_total": 1073741824000,
         "disk_used": 789740350062,
         "sys_uptime": 1291383,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 21
       }
     },
     {
@@ -4883,7 +5023,12 @@
         "disk_total": 107374182400,
         "disk_used": 21393477824,
         "sys_uptime": 9102063,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 22
       }
     },
     {
@@ -4943,7 +5088,12 @@
         "disk_total": 107374182400,
         "disk_used": 56665010465,
         "sys_uptime": 5289026,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 23
       }
     },
     {
@@ -5003,7 +5153,12 @@
         "disk_total": 536870912000,
         "disk_used": 226825769783,
         "sys_uptime": 9774609,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 24
       }
     },
     {
@@ -5063,7 +5218,12 @@
         "disk_total": 268435456000,
         "disk_used": 186311919228,
         "sys_uptime": 693302,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 25
       }
     },
     {
@@ -5123,7 +5283,12 @@
         "disk_total": 536870912000,
         "disk_used": 213076019620,
         "sys_uptime": 5591198,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 26
       }
     },
     {
@@ -5183,7 +5348,12 @@
         "disk_total": 107374182400,
         "disk_used": 56612769515,
         "sys_uptime": 5720658,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 27
       }
     },
     {
@@ -5841,7 +6011,12 @@
         "disk_total": 268435456000,
         "disk_used": 125918636080,
         "sys_uptime": 6716116,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 4
       }
     },
     {
@@ -5901,7 +6076,12 @@
         "disk_total": 1073741824000,
         "disk_used": 751616935444,
         "sys_uptime": 8574614,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 28
       }
     },
     {
@@ -5961,7 +6141,12 @@
         "disk_total": 268435456000,
         "disk_used": 73794068247,
         "sys_uptime": 3876753,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 29
       }
     },
     {
@@ -6021,7 +6206,12 @@
         "disk_total": 536870912000,
         "disk_used": 192279861319,
         "sys_uptime": 8834854,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 30
       }
     },
     {
@@ -6081,7 +6271,12 @@
         "disk_total": 1073741824000,
         "disk_used": 610780940932,
         "sys_uptime": 5461758,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 31
       }
     },
     {
@@ -6141,7 +6336,12 @@
         "disk_total": 268435456000,
         "disk_used": 124385091991,
         "sys_uptime": 4439457,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 32
       }
     },
     {
@@ -6201,7 +6401,12 @@
         "disk_total": 107374182400,
         "disk_used": 45667345022,
         "sys_uptime": 8022531,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 33
       }
     },
     {
@@ -6261,7 +6466,12 @@
         "disk_total": 536870912000,
         "disk_used": 149139040544,
         "sys_uptime": 1073306,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 34
       }
     },
     {
@@ -6321,7 +6531,12 @@
         "disk_total": 107374182400,
         "disk_used": 28103584837,
         "sys_uptime": 169186,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 35
       }
     },
     {
@@ -6381,7 +6596,12 @@
         "disk_total": 268435456000,
         "disk_used": 65983820445,
         "sys_uptime": 6867788,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 36
       }
     },
     {
@@ -7039,7 +7259,12 @@
         "disk_total": 107374182400,
         "disk_used": 59723059959,
         "sys_uptime": 9281874,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 5
       }
     },
     {
@@ -7099,7 +7324,12 @@
         "disk_total": 1073741824000,
         "disk_used": 166786955584,
         "sys_uptime": 9111915,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 37
       }
     },
     {
@@ -7159,7 +7389,12 @@
         "disk_total": 536870912000,
         "disk_used": 256295287866,
         "sys_uptime": 1747562,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 38
       }
     },
     {
@@ -7219,7 +7454,12 @@
         "disk_total": 268435456000,
         "disk_used": 138659007066,
         "sys_uptime": 3816584,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 39
       }
     },
     {
@@ -7279,7 +7519,12 @@
         "disk_total": 107374182400,
         "disk_used": 64422379746,
         "sys_uptime": 9862502,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 40
       }
     },
     {
@@ -7339,7 +7584,12 @@
         "disk_total": 268435456000,
         "disk_used": 51335851680,
         "sys_uptime": 2882393,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 41
       }
     },
     {
@@ -7399,7 +7649,12 @@
         "disk_total": 107374182400,
         "disk_used": 78328060591,
         "sys_uptime": 5537011,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 42
       }
     },
     {
@@ -7459,7 +7714,12 @@
         "disk_total": 1073741824000,
         "disk_used": 466489097746,
         "sys_uptime": 2878404,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 1
       }
     },
     {
@@ -7519,7 +7779,12 @@
         "disk_total": 268435456000,
         "disk_used": 50350607918,
         "sys_uptime": 9721507,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 2
       }
     },
     {
@@ -7579,7 +7844,12 @@
         "disk_total": 1073741824000,
         "disk_used": 679994863590,
         "sys_uptime": 2494312,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 3
       }
     },
     {
@@ -8237,7 +8507,12 @@
         "disk_total": 107374182400,
         "disk_used": 18939266488,
         "sys_uptime": 9015915,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 3
       }
     },
     {
@@ -8895,7 +9170,12 @@
         "disk_total": 107374182400,
         "disk_used": 78599640253,
         "sys_uptime": 9075319,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 4
       }
     },
     {
@@ -9553,7 +9833,12 @@
         "disk_total": 268435456000,
         "disk_used": 197100073301,
         "sys_uptime": 7315281,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 6
       }
     },
     {
@@ -9613,7 +9898,12 @@
         "disk_total": 268435456000,
         "disk_used": 111009745098,
         "sys_uptime": 9293059,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 4
       }
     },
     {
@@ -9673,7 +9963,12 @@
         "disk_total": 107374182400,
         "disk_used": 52362471721,
         "sys_uptime": 1924432,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 5
       }
     },
     {
@@ -9733,7 +10028,12 @@
         "disk_total": 536870912000,
         "disk_used": 373032214295,
         "sys_uptime": 7393509,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 6
       }
     },
     {
@@ -9793,7 +10093,12 @@
         "disk_total": 1073741824000,
         "disk_used": 487830129498,
         "sys_uptime": 6912097,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 7
       }
     },
     {
@@ -9853,7 +10158,12 @@
         "disk_total": 268435456000,
         "disk_used": 182758537025,
         "sys_uptime": 7076896,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 8
       }
     },
     {
@@ -9913,7 +10223,12 @@
         "disk_total": 1073741824000,
         "disk_used": 443451497801,
         "sys_uptime": 6283722,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 9
       }
     },
     {
@@ -9973,7 +10288,12 @@
         "disk_total": 1073741824000,
         "disk_used": 401214874235,
         "sys_uptime": 9729539,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 10
       }
     },
     {
@@ -10033,7 +10353,12 @@
         "disk_total": 268435456000,
         "disk_used": 71677962518,
         "sys_uptime": 4813926,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 11
       }
     },
     {
@@ -10093,7 +10418,12 @@
         "disk_total": 1073741824000,
         "disk_used": 619908437577,
         "sys_uptime": 2906547,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 12
       }
     },
     {
@@ -10751,7 +11081,12 @@
         "disk_total": 107374182400,
         "disk_used": 42062054118,
         "sys_uptime": 4945129,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 7
       }
     },
     {
@@ -10811,7 +11146,12 @@
         "disk_total": 536870912000,
         "disk_used": 174159462576,
         "sys_uptime": 1013687,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 13
       }
     },
     {
@@ -10871,7 +11211,12 @@
         "disk_total": 107374182400,
         "disk_used": 71806005666,
         "sys_uptime": 2582256,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 14
       }
     },
     {
@@ -10931,7 +11276,12 @@
         "disk_total": 536870912000,
         "disk_used": 296868852178,
         "sys_uptime": 8256216,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 15
       }
     },
     {
@@ -10991,7 +11341,12 @@
         "disk_total": 536870912000,
         "disk_used": 346585387041,
         "sys_uptime": 3158159,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 16
       }
     },
     {
@@ -11051,7 +11406,12 @@
         "disk_total": 268435456000,
         "disk_used": 187443669732,
         "sys_uptime": 9053043,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 17
       }
     },
     {
@@ -11111,7 +11471,12 @@
         "disk_total": 107374182400,
         "disk_used": 53836265637,
         "sys_uptime": 5268761,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 18
       }
     },
     {
@@ -11171,7 +11536,12 @@
         "disk_total": 1073741824000,
         "disk_used": 405838235922,
         "sys_uptime": 2582120,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 19
       }
     },
     {
@@ -11231,7 +11601,12 @@
         "disk_total": 107374182400,
         "disk_used": 43862196153,
         "sys_uptime": 2509867,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 20
       }
     },
     {
@@ -11291,7 +11666,12 @@
         "disk_total": 536870912000,
         "disk_used": 215416066983,
         "sys_uptime": 8389630,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 21
       }
     },
     {
@@ -11949,7 +12329,12 @@
         "disk_total": 1073741824000,
         "disk_used": 287378945665,
         "sys_uptime": 9588767,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 8
       }
     },
     {
@@ -12009,7 +12394,12 @@
         "disk_total": 268435456000,
         "disk_used": 103524554430,
         "sys_uptime": 3692146,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 22
       }
     },
     {
@@ -12069,7 +12459,12 @@
         "disk_total": 107374182400,
         "disk_used": 65790498229,
         "sys_uptime": 1017249,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 23
       }
     },
     {
@@ -12129,7 +12524,12 @@
         "disk_total": 1073741824000,
         "disk_used": 163274753480,
         "sys_uptime": 668440,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 24
       }
     },
     {
@@ -12189,7 +12589,12 @@
         "disk_total": 107374182400,
         "disk_used": 32062564323,
         "sys_uptime": 6821990,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 25
       }
     },
     {
@@ -12249,7 +12654,12 @@
         "disk_total": 1073741824000,
         "disk_used": 724584529766,
         "sys_uptime": 6430379,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 26
       }
     },
     {
@@ -12309,7 +12719,12 @@
         "disk_total": 1073741824000,
         "disk_used": 452256695016,
         "sys_uptime": 7711954,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 27
       }
     },
     {
@@ -12369,7 +12784,12 @@
         "disk_total": 536870912000,
         "disk_used": 370313880245,
         "sys_uptime": 4050793,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 28
       }
     },
     {
@@ -12429,7 +12849,12 @@
         "disk_total": 268435456000,
         "disk_used": 200757678988,
         "sys_uptime": 8000934,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 29
       }
     },
     {
@@ -12489,7 +12914,12 @@
         "disk_total": 107374182400,
         "disk_used": 40952972513,
         "sys_uptime": 5423702,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 30
       }
     },
     {
@@ -13147,7 +13577,12 @@
         "disk_total": 1073741824000,
         "disk_used": 145458364795,
         "sys_uptime": 992920,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 9
       }
     },
     {
@@ -13207,7 +13642,12 @@
         "disk_total": 107374182400,
         "disk_used": 68556746774,
         "sys_uptime": 2558755,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 31
       }
     },
     {
@@ -13267,7 +13707,12 @@
         "disk_total": 268435456000,
         "disk_used": 150927263095,
         "sys_uptime": 8585679,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 32
       }
     },
     {
@@ -13327,7 +13772,12 @@
         "disk_total": 107374182400,
         "disk_used": 36872170157,
         "sys_uptime": 6332188,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 33
       }
     },
     {
@@ -13387,7 +13837,12 @@
         "disk_total": 536870912000,
         "disk_used": 171575950031,
         "sys_uptime": 9591944,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 34
       }
     },
     {
@@ -13447,7 +13902,12 @@
         "disk_total": 536870912000,
         "disk_used": 300478922264,
         "sys_uptime": 1585285,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 35
       }
     },
     {
@@ -13507,7 +13967,12 @@
         "disk_total": 1073741824000,
         "disk_used": 530917694066,
         "sys_uptime": 1520156,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 36
       }
     },
     {
@@ -13567,7 +14032,12 @@
         "disk_total": 536870912000,
         "disk_used": 385960295858,
         "sys_uptime": 1603717,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 37
       }
     },
     {
@@ -13627,7 +14097,12 @@
         "disk_total": 268435456000,
         "disk_used": 114856502300,
         "sys_uptime": 8370822,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 38
       }
     },
     {
@@ -13687,7 +14162,12 @@
         "disk_total": 268435456000,
         "disk_used": 198763211918,
         "sys_uptime": 2488522,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 39
       }
     },
     {
@@ -14345,7 +14825,12 @@
         "disk_total": 107374182400,
         "disk_used": 59483047703,
         "sys_uptime": 5143874,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 10
       }
     },
     {
@@ -14405,7 +14890,12 @@
         "disk_total": 268435456000,
         "disk_used": 28532742849,
         "sys_uptime": 5226646,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 40
       }
     },
     {
@@ -14465,7 +14955,12 @@
         "disk_total": 107374182400,
         "disk_used": 43873678856,
         "sys_uptime": 9067263,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 41
       }
     },
     {
@@ -14525,7 +15020,12 @@
         "disk_total": 536870912000,
         "disk_used": 73736303158,
         "sys_uptime": 8897899,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 42
       }
     },
     {
@@ -14585,7 +15085,12 @@
         "disk_total": 536870912000,
         "disk_used": 303816231980,
         "sys_uptime": 9956479,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 1
       }
     },
     {
@@ -14645,7 +15150,12 @@
         "disk_total": 1073741824000,
         "disk_used": 232707525079,
         "sys_uptime": 3038131,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 2
       }
     },
     {
@@ -14705,7 +15215,12 @@
         "disk_total": 107374182400,
         "disk_used": 33490924293,
         "sys_uptime": 8562341,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 3
       }
     },
     {
@@ -14765,7 +15280,12 @@
         "disk_total": 1073741824000,
         "disk_used": 490140112216,
         "sys_uptime": 7840286,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 4
       }
     },
     {
@@ -14825,7 +15345,12 @@
         "disk_total": 268435456000,
         "disk_used": 182602415977,
         "sys_uptime": 3735160,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 5
       }
     },
     {
@@ -14885,7 +15410,12 @@
         "disk_total": 1073741824000,
         "disk_used": 342658737466,
         "sys_uptime": 568825,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 6
       }
     }
   ],

@@ -18,6 +18,7 @@ from PySide6.QtGui import (
 )
 
 from core.device_manager import Device, DeviceType
+from core.device_models import DEVICE_MODELS
 
 
 # ------------------------------------------------------------------ #
@@ -310,6 +311,13 @@ class LinkEdge(QGraphicsLineItem):
             painter.drawEllipse(mid, 4, 4)
 
 
+def _resolve_model_name(device) -> str:
+    if device.model_name:
+        return device.model_name
+    models = DEVICE_MODELS.get((device.device_type, device.vendor), [])
+    return models[0].name if models else "—"
+
+
 # ------------------------------------------------------------------ #
 #  Modern link tooltip                                                 #
 # ------------------------------------------------------------------ #
@@ -397,7 +405,7 @@ class _LinkTooltip(QWidget):
         rows = [
             ("Type",      device.device_type.value.capitalize()),
             ("Vendor",    device.vendor.value),
-            ("Model",     device.model_name or "—"),
+            ("Model",     _resolve_model_name(device)),
             ("OS",        device.os_name),
             ("Version",   device.os_version),
             ("IP",        f'<span style="{mono}">{device.ip_address}</span>'),

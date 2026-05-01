@@ -1,5 +1,12 @@
 """
 SNMP Trap Definitions — OIDs, severity levels, and applicable device types.
+
+Enterprise OID tree: 1.3.6.1.4.1.99999
+  .1.1  highCpuUsage
+  .1.2  highMemoryUsage
+  .1.3  highTemperature
+  .1.4  linkFlap
+  .1.5  rackFailure
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -7,13 +14,23 @@ from enum import Enum
 
 
 class TrapType(str, Enum):
+    # SNMPv2-MIB standard traps
     COLD_START        = "coldStart"
+    WARM_START        = "warmStart"
     LINK_DOWN         = "linkDown"
     LINK_UP           = "linkUp"
     AUTH_FAILURE      = "authenticationFailure"
-    CPU_HIGH          = "cpuHighUsage"
-    TEMPERATURE_ALERT = "temperatureAlert"
+    # Routing protocol traps
     BGP_DOWN          = "bgpSessionDown"
+# UPS-MIB power traps
+    UPS_ON_BATTERY    = "upsOnBattery"
+    UPS_LOW_BATTERY   = "upsLowBattery"
+    # Enterprise resource traps (1.3.6.1.4.1.99999)
+    CPU_HIGH          = "cpuHighUsage"
+    MEMORY_HIGH       = "memoryHighUsage"
+    TEMPERATURE_ALERT = "temperatureAlert"
+    LINK_FLAP         = "linkFlap"
+    RACK_FAILURE      = "rackFailure"
 
 
 SEVERITY_COLOR = {
@@ -41,6 +58,13 @@ TRAP_DEFINITIONS: dict[TrapType, TrapDefinition] = {
         "Device has restarted from a power cycle",
         "informational",
     ),
+    TrapType.WARM_START: TrapDefinition(
+        TrapType.WARM_START,
+        "1.3.6.1.6.3.1.1.5.2",
+        "Warm Start",
+        "Device has restarted without a power cycle",
+        "informational",
+    ),
     TrapType.LINK_DOWN: TrapDefinition(
         TrapType.LINK_DOWN,
         "1.3.6.1.6.3.1.1.5.3",
@@ -62,95 +86,128 @@ TRAP_DEFINITIONS: dict[TrapType, TrapDefinition] = {
         "SNMP request received with incorrect community string",
         "major",
     ),
-    TrapType.CPU_HIGH: TrapDefinition(
-        TrapType.CPU_HIGH,
-        "1.3.6.1.4.1.9999.0.1",
-        "CPU High Usage",
-        "CPU utilisation has exceeded 80 %",
-        "major",
-    ),
-    TrapType.TEMPERATURE_ALERT: TrapDefinition(
-        TrapType.TEMPERATURE_ALERT,
-        "1.3.6.1.4.1.9999.0.2",
-        "Temperature Alert",
-        "Device chassis temperature has exceeded safe threshold",
-        "critical",
-    ),
     TrapType.BGP_DOWN: TrapDefinition(
         TrapType.BGP_DOWN,
-        "1.3.6.1.2.1.15.7",
+        "1.3.6.1.2.1.15.0.2",
         "BGP Session Down",
         "A BGP peer session has transitioned to Idle/Active",
         "critical",
     ),
+TrapType.UPS_ON_BATTERY: TrapDefinition(
+        TrapType.UPS_ON_BATTERY,
+        "1.3.6.1.2.1.33.2.0.1",
+        "UPS On Battery",
+        "UPS has switched to battery power",
+        "critical",
+    ),
+    TrapType.UPS_LOW_BATTERY: TrapDefinition(
+        TrapType.UPS_LOW_BATTERY,
+        "1.3.6.1.2.1.33.2.0.2",
+        "UPS Low Battery",
+        "UPS battery level is critically low",
+        "critical",
+    ),
+    TrapType.CPU_HIGH: TrapDefinition(
+        TrapType.CPU_HIGH,
+        "1.3.6.1.4.1.99999.1.1",
+        "CPU High Usage",
+        "CPU utilisation has exceeded 90 %",
+        "major",
+    ),
+    TrapType.MEMORY_HIGH: TrapDefinition(
+        TrapType.MEMORY_HIGH,
+        "1.3.6.1.4.1.99999.1.2",
+        "Memory High Usage",
+        "Memory utilisation has exceeded 85 %",
+        "major",
+    ),
+    TrapType.TEMPERATURE_ALERT: TrapDefinition(
+        TrapType.TEMPERATURE_ALERT,
+        "1.3.6.1.4.1.99999.1.3",
+        "Temperature Alert",
+        "Device chassis temperature has exceeded safe threshold",
+        "critical",
+    ),
+    TrapType.LINK_FLAP: TrapDefinition(
+        TrapType.LINK_FLAP,
+        "1.3.6.1.4.1.99999.1.4",
+        "Link Flap",
+        "Interface has flapped more than 3 times in 60 seconds",
+        "critical",
+    ),
+    TrapType.RACK_FAILURE: TrapDefinition(
+        TrapType.RACK_FAILURE,
+        "1.3.6.1.4.1.99999.1.5",
+        "Rack Failure",
+        "Three or more devices in the same rack are unreachable",
+        "critical",
+    ),
+}
+
+# Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)
+OID_TO_TRAP_TYPE: dict[str, TrapType] = {
+    defn.oid: trap_type
+    for trap_type, defn in TRAP_DEFINITIONS.items()
 }
 
 # Traps that make sense for each device type
 APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
-    "router": list(TrapType),
-    "switch": [
-        TrapType.COLD_START,
-        TrapType.LINK_DOWN,
-        TrapType.LINK_UP,
+    "router": [
+        TrapType.COLD_START, TrapType.WARM_START,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
         TrapType.AUTH_FAILURE,
-        TrapType.CPU_HIGH,
-        TrapType.TEMPERATURE_ALERT,
+        TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,
+        TrapType.BGP_DOWN,
+    ],
+    "switch": [
+        TrapType.COLD_START, TrapType.WARM_START,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
+        TrapType.AUTH_FAILURE,
+        TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,
+        TrapType.LINK_FLAP,
     ],
     "server": [
         TrapType.COLD_START,
-        TrapType.LINK_DOWN,
-        TrapType.LINK_UP,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
         TrapType.AUTH_FAILURE,
-        TrapType.CPU_HIGH,
-        TrapType.TEMPERATURE_ALERT,
+        TrapType.CPU_HIGH, TrapType.MEMORY_HIGH, TrapType.TEMPERATURE_ALERT,
+        TrapType.UPS_ON_BATTERY, TrapType.UPS_LOW_BATTERY,
     ],
-    # Firewalls behave like routers: they run routing protocols (BGP/OSPF between
-    # security zones) and can generate the full trap set including BGP_DOWN.
-    "firewall": list(TrapType),
-    # Load balancers are L4-7 appliances: no routing protocols, but they do
-    # generate link, CPU, and temperature alerts.
+    "firewall": [
+        TrapType.COLD_START, TrapType.WARM_START,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
+        TrapType.AUTH_FAILURE,
+        TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,
+        TrapType.BGP_DOWN,
+    ],
     "load_balancer": [
         TrapType.COLD_START,
-        TrapType.LINK_DOWN,
-        TrapType.LINK_UP,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
         TrapType.AUTH_FAILURE,
-        TrapType.CPU_HIGH,
-        TrapType.TEMPERATURE_ALERT,
+        TrapType.CPU_HIGH, TrapType.MEMORY_HIGH, TrapType.TEMPERATURE_ALERT,
     ],
 }
 
 # Switch model name substrings that indicate BGP support.
-# Vendor-level checks are too broad (e.g. Cisco 2960-X is Cisco but has no BGP).
-# Each entry is matched as a substring of the device's model_name.
-#
-# Cisco  : Nexus (NX-OS) and Catalyst 9xxx (IOS XE DC) — NOT 2960/3850 (L2 campus)
-# Juniper: QFX leaf-spine and EX9xxx core — NOT EX2300/EX4300 (campus)
-# Arista : all EOS platforms (BGP is universally available)
-# HPE    : AOS-CX DC line (6300M, 8325) and FlexFabric 5940 — NOT Aruba 2930F (campus)
-# Extreme: X695 and X870 DC spine/leaf — NOT X460-G2 (campus)
-# Huawei : CloudEngine CE6xxx/CE8xxx and S6730-H DC — NOT general S-series
-# Dell   : all OS10 open-networking switches (S5xxx-ON, Z92xx-ON)
 _BGP_CAPABLE_SWITCH_MODELS: set[str] = {
-    "Nexus",          "Catalyst 9",       # Cisco DC
-    "QFX",            "EX9",              # Juniper DC
-    "Arista",                             # Arista (EOS universal)
-    "Aruba 6300",     "Aruba 8325",       # HPE AOS-CX DC
-    "FlexFabric 5940",                    # HPE FlexFabric DC
-    "X695",           "X870",             # Extreme DC
-    "CE6",            "CE8",   "S6730-H", # Huawei CloudEngine / DC
-    "S5248F",         "S5296F", "Z9264F", # Dell OS10
+    "Nexus",          "Catalyst 9",
+    "QFX",            "EX9",
+    "Arista",
+    "Aruba 6300",     "Aruba 8325",
+    "FlexFabric 5940",
+    "X695",           "X870",
+    "CE6",            "CE8",   "S6730-H",
+    "S5248F",         "S5296F", "Z9264F",
 }
 
 
 def get_applicable_traps(device_type: str, vendor: str,
                          model_name: str = "") -> list[TrapType]:
-    """Return applicable trap types for a device.
-
-    BGP_DOWN is added for switches only when the specific model is known to
-    support BGP (data-centre fabric platforms).  Vendor alone is not sufficient
-    — e.g. a Cisco Catalyst 2960-X is Cisco but has no BGP capability.
-    """
-    base = list(APPLICABLE_TRAPS.get(device_type, list(TrapType)))
+    """Return applicable trap types for a device."""
+    base = list(APPLICABLE_TRAPS.get(device_type, [
+        TrapType.COLD_START, TrapType.LINK_DOWN, TrapType.LINK_UP,
+        TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,
+    ]))
     if device_type == "switch" and any(kw in model_name for kw in _BGP_CAPABLE_SWITCH_MODELS):
         if TrapType.BGP_DOWN not in base:
             base.append(TrapType.BGP_DOWN)

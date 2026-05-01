@@ -15,6 +15,9 @@ class DeviceType(str, Enum):
     SERVER        = "server"
     FIREWALL      = "firewall"
     LOAD_BALANCER = "load_balancer"
+    UPS           = "ups"
+    PDU           = "pdu"
+    FLOOR_PDU     = "floor_pdu"
 
 
 class Vendor(str, Enum):
@@ -34,6 +37,12 @@ class Vendor(str, Enum):
     PALO_ALTO_NETWORKS = "Palo Alto Networks"
     # Load balancer vendors
     F5_NETWORKS = "F5 Networks"
+    # UPS / PDU vendors
+    APC               = "APC by Schneider Electric"
+    EATON             = "Eaton"
+    VERTIV            = "Vertiv (Liebert)"
+    RARITAN           = "Raritan"
+    SERVER_TECHNOLOGY = "Server Technology"
 
 
 class InterfaceType(str, Enum):
@@ -95,6 +104,11 @@ VENDOR_SYSOID = {
     Vendor.LENOVO:          "1.3.6.1.4.1.19046.11.1.1",
     Vendor.SUPERMICRO:      "1.3.6.1.4.1.10876.2.1",
     Vendor.IBM:             "1.3.6.1.4.1.2.6.190",
+    Vendor.APC:               "1.3.6.1.4.1.318.1.3.2.7",
+    Vendor.EATON:             "1.3.6.1.4.1.534.2.14",
+    Vendor.VERTIV:            "1.3.6.1.4.1.476.1.42.2.10.2.1.1",
+    Vendor.RARITAN:           "1.3.6.1.4.1.13742.6",
+    Vendor.SERVER_TECHNOLOGY: "1.3.6.1.4.1.1718.3.1",
 }
 
 VENDOR_SYSDESCR = {
@@ -110,6 +124,11 @@ VENDOR_SYSDESCR = {
     Vendor.IBM:             "IBM System x3850 X6, Red Hat Enterprise Linux 9.2",
     Vendor.PALO_ALTO_NETWORKS: "Palo Alto Networks PAN-OS, Version 11.0.2",
     Vendor.F5_NETWORKS:     "F5 Networks BIG-IP, TMOS Version 17.1.0",
+    Vendor.APC:               "APC Web/SNMP Management Card (AP9630), firmware v6.9.6, APC Smart-UPS",
+    Vendor.EATON:             "Eaton Network Management Card 2, firmware version 2.6, Eaton 9PX UPS",
+    Vendor.VERTIV:            "Liebert IntelliSlot Web/SNMP Card, firmware version 1.55, Liebert GXT5 UPS",
+    Vendor.RARITAN:           "Raritan PX3 Rack PDU SNMP Agent, firmware version 3.7.0",
+    Vendor.SERVER_TECHNOLOGY: "Server Technology Sentry SNMP Agent, firmware version 8.2a",
 }
 
 # Per-model sysDescr overrides — more specific than vendor defaults.
@@ -136,6 +155,36 @@ MODEL_SYSDESCR = {
     "Dell S5296F-ON":              "Enterprise SONiC Distribution by Dell Technologies - 4.2.0 - HwSku: DellEMC-S5296f-P-25G-DPB - Distribution: Debian - Kernel: 5.10.0-18-2-amd64",
     "Dell Z9264F-ON":              "Enterprise SONiC Distribution by Dell Technologies - 4.2.0 - HwSku: DellEMC-Z9264f-ON - Distribution: Debian - Kernel: 5.10.0-18-2-amd64",
     "Dell EMC PowerSwitch Z9332F-ON": "Enterprise SONiC Distribution by Dell Technologies - 4.2.0 - HwSku: DellEMC-Z9332f-ON - Distribution: Debian - Kernel: 5.10.0-18-2-amd64",
+    # APC Rack PDU
+    "APC AP8941":      "APC Rack PDU 2G, Switched, ZeroU, 30A, 208V, (21)C13&(3)C19, NMC3 fw v1.4.2",
+    "APC AP8886":      "APC Rack PDU 2G, Metered, ZeroU, 20A, 208V, (21)C13&(3)C19, NMC3 fw v1.4.2",
+    "APC AP8959":      "APC Rack PDU 2G, Switched, 1U, 30A, 208V, (12)C13&(4)C19, NMC3 fw v1.4.2",
+    "APC AP8681":      "APC Rack PDU 2G, Metered-by-Outlet, 1U, 16A, 230V, (12)C13&(4)C19, NMC3 fw v1.4.2",
+    # Raritan PX3
+    "Raritan PX3-5190R":  "Raritan PX3 Rack PDU, 1U, 30A, 208V, (24)C13&(6)C19, fw 3.7.0",
+    "Raritan PX3-5161R":  "Raritan PX3 Rack PDU, 1U, 16A, 208V, (12)C13&(4)C19, fw 3.7.0",
+    "Raritan PX2-5170CR": "Raritan PX2 Rack PDU, 0U, 30A, 208V, (24)C13&(6)C19, fw 3.5.20",
+    # Eaton ePDU G3
+    "Eaton ePDU G3 MA 1U 16A":  "Eaton ePDU G3 Managed, 1U, 16A, 230V, (12)C13&(4)C19, fw 3.0.8",
+    "Eaton ePDU G3 MA 1U 32A":  "Eaton ePDU G3 Managed, 1U, 32A, 230V, (18)C13&(6)C19, fw 3.0.8",
+    "Eaton ePDU G3 MI 1U 32A":  "Eaton ePDU G3 Metered Input, 1U, 32A, 230V, (18)C13&(6)C19, fw 3.0.8",
+    # Vertiv Geist rPDU2
+    "Vertiv Geist rPDU2 15A":   "Geist rPDU2 Intelligent Rack PDU, 0U, 15A, 120V, (16)NEMA 5-20R, fw 4.6.0",
+    "Vertiv Geist rPDU2 30A":   "Geist rPDU2 Intelligent Rack PDU, 0U, 30A, 208V, (24)C13&(6)C19, fw 4.6.0",
+    # Server Technology Sentry
+    "Sentry PT40":     "Server Technology Sentry Power Tower, 40-outlet, 30A, 208V, fw 8.2a",
+    "Sentry 4805-XLS": "Server Technology Sentry 4800 series, 1U, 48-outlet, 30A, 208V, fw 8.2a",
+    # APC Floor PDU / RPP
+    "APC FlexPDU 40kVA":  "APC FlexPDU 40kVA, 3-phase, (6) 3-phase breakers, NMC3 fw v1.4.2",
+    "APC Galaxy RPP 80A": "APC Galaxy Remote Power Panel, 80A, 3-phase, (12) branch circuits, NMC3 fw v1.4.2",
+    # Eaton Floor PDU
+    "Eaton PDU 80kVA":    "Eaton Power Distribution Unit, 80kVA, 3-phase, floor-mounted, fw 3.0.8",
+    "Eaton PDU 160kVA":   "Eaton Power Distribution Unit, 160kVA, 3-phase, floor-mounted, fw 3.0.8",
+    # Vertiv Liebert Floor PDU
+    "Vertiv Liebert MPX 60kVA":  "Liebert MPX Floor PDU, 60kVA, 3-phase, (12) 30A branch circuits, fw 2.1.0",
+    "Vertiv Liebert MPH2 24kVA": "Liebert MPH2 Modular Power Hub, 24kVA, 3-phase, wall/floor mount, fw 2.1.0",
+    # Raritan Floor PDU
+    "Raritan PX3-5000 Floor 30A": "Raritan PX3 Floor PDU, 30A, 208V, (24)C19 outlets, fw 3.7.0",
 }
 
 # Per-model sysObjectID overrides (vendor-level fallback in VENDOR_SYSOID).
@@ -157,6 +206,36 @@ MODEL_SYSOID = {
     "Dell S5296F-ON":              "1.3.6.1.4.1.674.10895.3254",
     "Dell Z9264F-ON":              "1.3.6.1.4.1.674.10895.3272",
     "Dell EMC PowerSwitch Z9332F-ON": "1.3.6.1.4.1.674.10895.3278",
+    # APC Rack PDU OIDs
+    "APC AP8941":      "1.3.6.1.4.1.318.1.3.5.1",
+    "APC AP8886":      "1.3.6.1.4.1.318.1.3.5.4",
+    "APC AP8959":      "1.3.6.1.4.1.318.1.3.5.8",
+    "APC AP8681":      "1.3.6.1.4.1.318.1.3.5.16",
+    # Raritan PDU OIDs
+    "Raritan PX3-5190R":  "1.3.6.1.4.1.13742.6.3.2.21",
+    "Raritan PX3-5161R":  "1.3.6.1.4.1.13742.6.3.2.22",
+    "Raritan PX2-5170CR": "1.3.6.1.4.1.13742.6.3.2.14",
+    # Eaton ePDU OIDs
+    "Eaton ePDU G3 MA 1U 16A":  "1.3.6.1.4.1.534.6.6.7.1",
+    "Eaton ePDU G3 MA 1U 32A":  "1.3.6.1.4.1.534.6.6.7.2",
+    "Eaton ePDU G3 MI 1U 32A":  "1.3.6.1.4.1.534.6.6.7.3",
+    # Vertiv Geist rPDU OIDs
+    "Vertiv Geist rPDU2 15A":   "1.3.6.1.4.1.21239.5.1.1",
+    "Vertiv Geist rPDU2 30A":   "1.3.6.1.4.1.21239.5.1.2",
+    # Server Technology Sentry OIDs
+    "Sentry PT40":     "1.3.6.1.4.1.1718.3.1.1",
+    "Sentry 4805-XLS": "1.3.6.1.4.1.1718.3.1.3",
+    # APC Floor PDU / RPP OIDs
+    "APC FlexPDU 40kVA":  "1.3.6.1.4.1.318.1.3.5.32",
+    "APC Galaxy RPP 80A": "1.3.6.1.4.1.318.1.3.5.33",
+    # Eaton Floor PDU OIDs
+    "Eaton PDU 80kVA":    "1.3.6.1.4.1.534.6.6.7.10",
+    "Eaton PDU 160kVA":   "1.3.6.1.4.1.534.6.6.7.11",
+    # Vertiv Liebert Floor PDU OIDs
+    "Vertiv Liebert MPX 60kVA":  "1.3.6.1.4.1.476.1.42.2.10.3.1.1",
+    "Vertiv Liebert MPH2 24kVA": "1.3.6.1.4.1.476.1.42.2.10.3.1.2",
+    # Raritan Floor PDU OIDs
+    "Raritan PX3-5000 Floor 30A": "1.3.6.1.4.1.13742.6.3.2.50",
 }
 
 # OS name + version for server vendors (used in sysDescr and hrSWInstalled).
@@ -278,6 +357,11 @@ class Device:
             os_name, os_ver = SERVER_OS_INFO.get(self.vendor, ("Linux", "5.15"))
             hw = self.model_name or self.vendor.value
             return f"{hw} running {os_name} {os_ver}"
+        if self.device_type in (DeviceType.UPS, DeviceType.PDU):
+            base = VENDOR_SYSDESCR.get(self.vendor, "SNMP Management Card")
+            if self.model_name:
+                return f"{self.model_name}, {base}"
+            return base
         return VENDOR_SYSDESCR.get(self.vendor, "Generic Device")
 
     @property
@@ -306,6 +390,27 @@ class Device:
         """Human-readable OS family name for this device."""
         if self.device_type == DeviceType.SERVER:
             return SERVER_OS_INFO.get(self.vendor, ("Linux", ""))[0]
+        if self.device_type == DeviceType.UPS:
+            return {
+                Vendor.APC:    "APC NMC firmware",
+                Vendor.EATON:  "Eaton NMC firmware",
+                Vendor.VERTIV: "Liebert IntelliSlot firmware",
+            }.get(self.vendor, "UPS firmware")
+        if self.device_type == DeviceType.PDU:
+            return {
+                Vendor.APC:               "APC NMC firmware",
+                Vendor.EATON:             "Eaton ePDU firmware",
+                Vendor.VERTIV:            "Geist rPDU firmware",
+                Vendor.RARITAN:           "Raritan PDU firmware",
+                Vendor.SERVER_TECHNOLOGY: "Sentry firmware",
+            }.get(self.vendor, "PDU firmware")
+        if self.device_type == DeviceType.FLOOR_PDU:
+            return {
+                Vendor.APC:    "APC NMC firmware",
+                Vendor.EATON:  "Eaton PDU firmware",
+                Vendor.VERTIV: "Liebert MPX firmware",
+                Vendor.RARITAN:"Raritan PDU firmware",
+            }.get(self.vendor, "Floor PDU firmware")
         descr = self.sys_descr
         if "NX-OS"     in descr: return "Cisco NX-OS"
         if "IOS XR"    in descr: return "Cisco IOS XR"

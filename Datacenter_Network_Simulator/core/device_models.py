@@ -358,4 +358,148 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
                     [_g(_25G, 2)],
                     "2 × 25GE (blade)"),
     ],
+
+    # ── APC — UPS ─────────────────────────────────────────────────────────────
+    (DeviceType.UPS, Vendor.APC): [
+        DeviceModel("APC Smart-UPS 1500", Vendor.APC, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "1500VA/1000W, 1 × GE management"),
+        DeviceModel("APC Smart-UPS 3000", Vendor.APC, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "3000VA/2700W, 1 × GE management"),
+        DeviceModel("APC Smart-UPS SRT 5000", Vendor.APC, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "5000VA/4500W, 1 × GE management"),
+        DeviceModel("APC Symmetra PX 100", Vendor.APC, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "100kVA scalable, 1 × GE management"),
+    ],
+
+    # ── Eaton — UPS ───────────────────────────────────────────────────────────
+    (DeviceType.UPS, Vendor.EATON): [
+        DeviceModel("Eaton 5PX 2200", Vendor.EATON, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "2200VA/2200W, 1 × GE management"),
+        DeviceModel("Eaton 9PX 5000", Vendor.EATON, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "5000VA/4500W, 1 × GE management"),
+        DeviceModel("Eaton 9E 20kVA", Vendor.EATON, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "20kVA/18kW, 1 × GE management"),
+        DeviceModel("Eaton 93E 40kVA", Vendor.EATON, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "40kVA/36kW, 1 × GE management"),
+    ],
+
+    # ── Vertiv — UPS ──────────────────────────────────────────────────────────
+    (DeviceType.UPS, Vendor.VERTIV): [
+        DeviceModel("Vertiv Liebert GXT5 2000VA", Vendor.VERTIV, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "2000VA/1800W, 1 × GE management"),
+        DeviceModel("Vertiv Liebert EXL S1 20kVA", Vendor.VERTIV, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "20kVA/18kW, 1 × GE management"),
+        DeviceModel("Vertiv Liebert APS 20kVA", Vendor.VERTIV, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "20kVA/18kW, 1 × GE management"),
+    ],
+
+    # ── APC — PDU ─────────────────────────────────────────────────────────────
+    (DeviceType.PDU, Vendor.APC): [
+        DeviceModel("APC AP8941", Vendor.APC, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Switched ZeroU, 30A/208V, 21×C13 + 3×C19"),
+        DeviceModel("APC AP8886", Vendor.APC, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Metered ZeroU, 20A/208V, 21×C13 + 3×C19"),
+        DeviceModel("APC AP8959", Vendor.APC, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Switched 1U, 30A/208V, 12×C13 + 4×C19"),
+        DeviceModel("APC AP8681", Vendor.APC, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Metered-by-Outlet 1U, 16A/230V, 12×C13 + 4×C19"),
+    ],
+
+    # ── Raritan — PDU ─────────────────────────────────────────────────────────
+    (DeviceType.PDU, Vendor.RARITAN): [
+        DeviceModel("Raritan PX3-5190R", Vendor.RARITAN, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Switched 1U, 30A/208V, 24×C13 + 6×C19"),
+        DeviceModel("Raritan PX3-5161R", Vendor.RARITAN, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Switched 1U, 16A/208V, 12×C13 + 4×C19"),
+        DeviceModel("Raritan PX2-5170CR", Vendor.RARITAN, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Switched 0U, 30A/208V, 24×C13 + 6×C19"),
+    ],
+
+    # ── Eaton — PDU ───────────────────────────────────────────────────────────
+    (DeviceType.PDU, Vendor.EATON): [
+        DeviceModel("Eaton ePDU G3 MA 1U 16A", Vendor.EATON, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Managed 1U, 16A/230V, 12×C13 + 4×C19"),
+        DeviceModel("Eaton ePDU G3 MA 1U 32A", Vendor.EATON, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Managed 1U, 32A/230V, 18×C13 + 6×C19"),
+        DeviceModel("Eaton ePDU G3 MI 1U 32A", Vendor.EATON, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Metered Input 1U, 32A/230V, 18×C13 + 6×C19"),
+    ],
+
+    # ── Vertiv Geist — PDU ────────────────────────────────────────────────────
+    (DeviceType.PDU, Vendor.VERTIV): [
+        DeviceModel("Vertiv Geist rPDU2 15A", Vendor.VERTIV, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Intelligent 0U, 15A/120V, 16×NEMA 5-20R"),
+        DeviceModel("Vertiv Geist rPDU2 30A", Vendor.VERTIV, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Intelligent 0U, 30A/208V, 24×C13 + 6×C19"),
+    ],
+
+    # ── Server Technology — PDU ───────────────────────────────────────────────
+    (DeviceType.PDU, Vendor.SERVER_TECHNOLOGY): [
+        DeviceModel("Sentry PT40", Vendor.SERVER_TECHNOLOGY, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Power Tower 0U, 30A/208V, 40 outlets"),
+        DeviceModel("Sentry 4805-XLS", Vendor.SERVER_TECHNOLOGY, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Switched 1U, 30A/208V, 48 outlets"),
+    ],
+
+    # ── APC — Floor PDU / RPP ─────────────────────────────────────────────────
+    (DeviceType.FLOOR_PDU, Vendor.APC): [
+        DeviceModel("APC FlexPDU 40kVA", Vendor.APC, DeviceType.FLOOR_PDU,
+                    [_g(_GE, 1)],
+                    "40kVA 3-phase, 6 breaker groups, floor-mounted"),
+        DeviceModel("APC Galaxy RPP 80A", Vendor.APC, DeviceType.FLOOR_PDU,
+                    [_g(_GE, 1)],
+                    "80A 3-phase RPP, 12 branch circuits, floor-mounted"),
+    ],
+
+    # ── Eaton — Floor PDU / RPP ───────────────────────────────────────────────
+    (DeviceType.FLOOR_PDU, Vendor.EATON): [
+        DeviceModel("Eaton PDU 80kVA", Vendor.EATON, DeviceType.FLOOR_PDU,
+                    [_g(_GE, 1)],
+                    "80kVA 3-phase, floor-mounted, feeds rack PDUs"),
+        DeviceModel("Eaton PDU 160kVA", Vendor.EATON, DeviceType.FLOOR_PDU,
+                    [_g(_GE, 1)],
+                    "160kVA 3-phase, floor-mounted, feeds rack PDUs"),
+    ],
+
+    # ── Vertiv — Floor PDU / RPP ──────────────────────────────────────────────
+    (DeviceType.FLOOR_PDU, Vendor.VERTIV): [
+        DeviceModel("Vertiv Liebert MPX 60kVA", Vendor.VERTIV, DeviceType.FLOOR_PDU,
+                    [_g(_GE, 1)],
+                    "60kVA 3-phase, 12×30A branch circuits, floor-mounted"),
+        DeviceModel("Vertiv Liebert MPH2 24kVA", Vendor.VERTIV, DeviceType.FLOOR_PDU,
+                    [_g(_GE, 1)],
+                    "24kVA 3-phase modular, wall/floor mounted"),
+    ],
+
+    # ── Raritan — Floor PDU ───────────────────────────────────────────────────
+    (DeviceType.FLOOR_PDU, Vendor.RARITAN): [
+        DeviceModel("Raritan PX3-5000 Floor 30A", Vendor.RARITAN, DeviceType.FLOOR_PDU,
+                    [_g(_GE, 1)],
+                    "30A/208V, 24×C19 outlets, floor-mounted"),
+    ],
 }

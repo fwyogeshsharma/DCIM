@@ -59,9 +59,9 @@ class SNMPPanel(QWidget):
     sig_stop      = Signal()
     sig_cancel    = Signal()
     sig_clear     = Signal()
-    # SNMP Trap signals (forwarded from embedded trap section)
-    sig_trap_apply    = Signal(str, int)   # (ip, port)
-    sig_trap_simulate = Signal(bool)
+    # SNMP Trap signals
+    sig_trap_apply  = Signal(str, int)   # (ip, port)
+    sig_rule_engine = Signal(bool)       # enable/disable rule engine
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -122,9 +122,13 @@ class SNMPPanel(QWidget):
         self.lbl_firewalls      = QLabel("Firewalls: 0")
         self.lbl_load_balancers = QLabel("Load Balancers: 0")
         self.lbl_servers        = QLabel("Servers: 0")
+        self.lbl_ups            = QLabel("UPS: 0")
+        self.lbl_pdus           = QLabel("Rack PDUs: 0")
+        self.lbl_floor_pdus     = QLabel("Floor PDUs: 0")
         self.lbl_total          = QLabel("Total: 0")
         for lbl in (self.lbl_switches, self.lbl_routers, self.lbl_firewalls,
-                    self.lbl_load_balancers, self.lbl_servers):
+                    self.lbl_load_balancers, self.lbl_servers, self.lbl_ups,
+                    self.lbl_pdus, self.lbl_floor_pdus):
             lbl.setFont(QFont("Consolas", 9))
             lbl.setStyleSheet("color: #e6edf3;")
             lbl.hide()
@@ -211,12 +215,17 @@ class SNMPPanel(QWidget):
         recv_row.addWidget(trap_apply)
         traps_layout.addLayout(recv_row)
 
-        # Simulate button
-        self._trap_sim_btn = QPushButton("▶  Simulate Traps")
-        self._trap_sim_btn.setCheckable(True)
-        self._trap_sim_btn.setStyleSheet(self._btn_secondary_style())
-        self._trap_sim_btn.toggled.connect(self._on_trap_simulate_toggled)
-        traps_layout.addWidget(self._trap_sim_btn)
+        # Rule Engine toggle
+        self._rule_engine_btn = QPushButton("⚙  Rule Engine  OFF")
+        self._rule_engine_btn.setCheckable(True)
+        self._rule_engine_btn.setEnabled(False)
+        self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
+        self._rule_engine_btn.toggled.connect(self._on_rule_engine_toggled)
+        self._rule_engine_btn.setToolTip(
+            "Enable rule-driven trap generation based on simulated device metrics\n"
+            "(available only while the SNMP simulator is running)"
+        )
+        traps_layout.addWidget(self._rule_engine_btn)
 
         # Severity counter badges + clear
         sev_row = QHBoxLayout()
@@ -247,11 +256,13 @@ class SNMPPanel(QWidget):
             ["Time", "Device", "IP", "Trap Type", "Details"]
         )
         hdr = self._trap_table.horizontalHeader()
-        hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        hdr.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        hdr.setSectionResizeMode(4, QHeaderView.Stretch)
+        hdr.setSectionResizeMode(QHeaderView.Interactive)
+        hdr.setStretchLastSection(False)
+        self._trap_table.setColumnWidth(0, 68)   # Time
+        self._trap_table.setColumnWidth(1, 120)  # Device
+        self._trap_table.setColumnWidth(2, 100)  # IP
+        self._trap_table.setColumnWidth(3, 120)  # Trap Type
+        self._trap_table.setColumnWidth(4, 200)  # Details
         self._trap_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self._trap_table.setSelectionBehavior(QTableWidget.SelectRows)
         self._trap_table.setAlternatingRowColors(True)
@@ -284,13 +295,17 @@ class SNMPPanel(QWidget):
         self.status_badge.set_status(status)
 
     def set_device_counts(self, switches: int, routers: int, servers: int,
-                          firewalls: int = 0, load_balancers: int = 0):
+                          firewalls: int = 0, load_balancers: int = 0,
+                          ups: int = 0, pdus: int = 0, floor_pdus: int = 0):
         _entries = [
             (self.lbl_switches,       "Switches",       switches),
             (self.lbl_routers,        "Routers",        routers),
             (self.lbl_firewalls,      "Firewalls",      firewalls),
             (self.lbl_load_balancers, "Load Balancers", load_balancers),
             (self.lbl_servers,        "Servers",        servers),
+            (self.lbl_ups,            "UPS",            ups),
+            (self.lbl_pdus,           "Rack PDUs",      pdus),
+            (self.lbl_floor_pdus,     "Floor PDUs",     floor_pdus),
         ]
         for lbl, name, n in _entries:
             if n > 0:
@@ -298,7 +313,7 @@ class SNMPPanel(QWidget):
                 lbl.show()
             else:
                 lbl.hide()
-        total = switches + routers + servers + firewalls + load_balancers
+        total = switches + routers + servers + firewalls + load_balancers + ups + pdus + floor_pdus
         if total > 0:
             self.lbl_total.setText(f"Total: {total}")
             self.lbl_total.show()
@@ -385,18 +400,44 @@ class SNMPPanel(QWidget):
         for lbl in self._sev_labels.values():
             lbl.setText("0")
 
-    def set_simulating(self, active: bool):
-        self._trap_sim_btn.blockSignals(True)
-        self._trap_sim_btn.setChecked(active)
-        self._trap_sim_btn.setText("⏹  Stop Simulation" if active else "▶  Simulate Traps")
-        self._trap_sim_btn.blockSignals(False)
-
     def _on_trap_apply(self):
         self.sig_trap_apply.emit(self._trap_ip.text().strip(), self._trap_port.value())
 
-    def _on_trap_simulate_toggled(self, checked: bool):
-        self._trap_sim_btn.setText("⏹  Stop Simulation" if checked else "▶  Simulate Traps")
-        self.sig_trap_simulate.emit(checked)
+    def _on_rule_engine_toggled(self, checked: bool):
+        if checked:
+            self._rule_engine_btn.setText("⚙  Rule Engine  ON")
+            self._rule_engine_btn.setStyleSheet(
+                "QPushButton { background:#1f6feb; color:white; border:none; "
+                "border-radius:6px; padding:8px; font-weight:bold; } "
+                "QPushButton:hover { background:#388bfd; } "
+                "QPushButton:checked { background:#1158c7; }"
+            )
+        else:
+            self._rule_engine_btn.setText("⚙  Rule Engine  OFF")
+            self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
+        self.sig_rule_engine.emit(checked)
+
+    def set_rule_engine_active(self, active: bool):
+        self._rule_engine_btn.blockSignals(True)
+        self._rule_engine_btn.setChecked(active)
+        if active:
+            self._rule_engine_btn.setText("⚙  Rule Engine  ON")
+            self._rule_engine_btn.setStyleSheet(
+                "QPushButton { background:#1f6feb; color:white; border:none; "
+                "border-radius:6px; padding:8px; font-weight:bold; } "
+                "QPushButton:hover { background:#388bfd; } "
+                "QPushButton:checked { background:#1158c7; }"
+            )
+        else:
+            self._rule_engine_btn.setText("⚙  Rule Engine  OFF")
+            self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
+        self._rule_engine_btn.blockSignals(False)
+
+    def set_rule_engine_available(self, available: bool):
+        """Enable or disable the Rule Engine button (grayed out when SNMP sim is not running)."""
+        self._rule_engine_btn.setEnabled(available)
+        if not available:
+            self.set_rule_engine_active(False)
 
     # ------------------------------------------------------------------ #
     #  Style helpers                                                       #
