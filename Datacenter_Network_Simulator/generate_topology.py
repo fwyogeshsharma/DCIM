@@ -399,6 +399,169 @@ def build_hyperscale_pod():
 
 
 # ------------------------------------------------------------------ #
+#  Topology 5: Dual DC Enterprise  (DC1 ~202 devices, DC2 ~149 devices)#
+# ------------------------------------------------------------------ #
+
+def _build_dc(t: "TopologyBuilder", dc: str, n_spine: int, n_leaf: int,
+              srv_per_leaf: int, x_offset: int,
+              switch_vendor: Vendor = Vendor.CISCO_SYSTEMS,
+              core_model: str = "Cisco Nexus 9364C",
+              spine_model: str = "Cisco Nexus 93180YC-FX",
+              leaf_model: str = "Cisco Nexus 93180YC-FX"):
+    """
+    Build one datacenter into topology builder t using the large_4dc_enterprise
+    architecture:
+
+      ER1/ER2 → FW1/FW2 → LB1/LB2 → CORE1/CORE2
+        → SPx (spine, full mesh to cores)
+          → LFx (leaf, full Clos to all spines)
+            → SRV (compute servers, srv_per_leaf each)
+      Special servers (DHCP×2, DNS×2, NTP×2, MON×2, STOR×2) on LF01..LF10
+    """
+    # Y levels
+    ER_Y    = 0
+    FW_Y    = 180
+    LB_Y    = 360
+    CORE_Y  = 540
+    SPINE_Y = 720
+    LEAF_Y  = 900
+    SRV_Y   = 1080
+
+    dc_w      = n_leaf * 160          # canvas width for this DC
+    dc_cx     = x_offset + dc_w // 2  # centre-x
+
+    # ── Edge routers ────────────────────────────────────────────────
+    er1 = t.add(f"{dc}-ER1", DeviceType.ROUTER, Vendor.CISCO_SYSTEMS,  8,
+                dc_cx - 120, ER_Y)
+    er2 = t.add(f"{dc}-ER2", DeviceType.ROUTER, Vendor.CISCO_SYSTEMS,  8,
+                dc_cx + 120, ER_Y)
+    _set_model(t, er1, "Cisco ASR 1001-X")
+    _set_model(t, er2, "Cisco ASR 1001-X")
+
+    # ── Firewalls ────────────────────────────────────────────────────
+    fw1 = t.add(f"{dc}-FW1", DeviceType.FIREWALL, Vendor.PALO_ALTO_NETWORKS, 12,
+                dc_cx - 120, FW_Y)
+    fw2 = t.add(f"{dc}-FW2", DeviceType.FIREWALL, Vendor.PALO_ALTO_NETWORKS, 12,
+                dc_cx + 120, FW_Y)
+    _set_model(t, fw1, "PA-5220"); _set_model(t, fw2, "PA-5220")
+    for er in (er1, er2):
+        for fw in (fw1, fw2):
+            t.link(er, fw)
+
+    # ── Load balancers ───────────────────────────────────────────────
+    lb1 = t.add(f"{dc}-LB1", DeviceType.LOAD_BALANCER, Vendor.F5_NETWORKS, 10,
+                dc_cx - 120, LB_Y)
+    lb2 = t.add(f"{dc}-LB2", DeviceType.LOAD_BALANCER, Vendor.F5_NETWORKS, 10,
+                dc_cx + 120, LB_Y)
+    _set_model(t, lb1, "BIG-IP i5800"); _set_model(t, lb2, "BIG-IP i5800")
+    for fw in (fw1, fw2):
+        for lb in (lb1, lb2):
+            t.link(fw, lb)
+
+    # ── Core switches ────────────────────────────────────────────────
+    core1 = t.add(f"{dc}-CORE1", DeviceType.SWITCH, switch_vendor, 64,
+                  dc_cx - 120, CORE_Y)
+    core2 = t.add(f"{dc}-CORE2", DeviceType.SWITCH, switch_vendor, 64,
+                  dc_cx + 120, CORE_Y)
+    _set_model(t, core1, core_model)
+    _set_model(t, core2, core_model)
+    for lb in (lb1, lb2):
+        for core in (core1, core2):
+            t.link(lb, core)
+
+    # ── Spine switches (full mesh to both cores) ─────────────────────
+    spine_xs = [x_offset + int((i + 0.5) * dc_w / n_spine) for i in range(n_spine)]
+    spines = []
+    for i, sx in enumerate(spine_xs):
+        sp = t.add(f"{dc}-SP{i+1}", DeviceType.SWITCH, switch_vendor, 54,
+                   sx, SPINE_Y)
+        _set_model(t, sp, spine_model)
+        spines.append(sp)
+        t.link(core1, sp)
+        t.link(core2, sp)
+
+    # ── Leaf switches (full Clos to all spines) ──────────────────────
+    leaf_xs = [x_offset + int((i + 0.5) * dc_w / n_leaf) for i in range(n_leaf)]
+    leaves = []
+    for i, lx in enumerate(leaf_xs):
+        lf = t.add(f"{dc}-LF{i+1:02d}", DeviceType.SWITCH, switch_vendor, 54,
+                   lx, LEAF_Y)
+        _set_model(t, lf, leaf_model)
+        leaves.append(lf)
+        for sp in spines:
+            t.link(sp, lf)
+
+    # ── Compute servers ──────────────────────────────────────────────
+    srv_idx = 1
+    for li, lf in enumerate(leaves):
+        lx = leaf_xs[li]
+        for si in range(srv_per_leaf):
+            sx = lx + (si - (srv_per_leaf - 1) / 2) * 60
+            vendor = _SERVER_VENDORS[srv_idx % len(_SERVER_VENDORS)]
+            srv = t.add(f"{dc}-SRV{srv_idx:03d}", DeviceType.SERVER, vendor, 2,
+                        sx, SRV_Y)
+            t.link(lf, srv)
+            srv_idx += 1
+
+    # ── Special servers (one per leaf, LF01–LF10) ────────────────────
+    specials = [
+        ("DHCP1", Vendor.DELL),   ("DHCP2", Vendor.DELL),
+        ("DNS1",  Vendor.HPE),    ("DNS2",  Vendor.HPE),
+        ("NTP1",  Vendor.DELL),   ("NTP2",  Vendor.DELL),
+        ("MON1",  Vendor.LENOVO), ("MON2",  Vendor.LENOVO),
+        ("STOR1", Vendor.IBM),    ("STOR2", Vendor.IBM),
+    ]
+    for (sname, svendor), lf in zip(specials, leaves):
+        lx = leaf_xs[leaves.index(lf)]
+        srv = t.add(f"{dc}-{sname}", DeviceType.SERVER, svendor, 2,
+                    lx + 90, SRV_Y + 140)
+        t.link(lf, srv)
+
+    return er1, er2
+
+
+def _set_model(t: "TopologyBuilder", dev, model_name: str):
+    """Patch the model_name into the already-stored node dict."""
+    for node in t.nodes:
+        if node["id"] == dev.id:
+            node["device"]["model_name"] = model_name
+            return
+
+
+def build_dual_dc_enterprise():
+    """
+    Two datacenters connected via redundant DCI links between their edge routers,
+    using the large_4dc_enterprise architecture:
+      Edge Routers → Firewalls → Load Balancers → Core → Spine → Leaf → Servers
+
+    DC1: 2 ER, 2 FW, 2 LB, 2 CORE, 4 SPINE, 10 LEAF, 170 compute + 10 special = 202 devices
+    DC2: 2 ER, 2 FW, 2 LB, 2 CORE, 3 SPINE,  8 LEAF, 120 compute + 10 special = 149 devices
+
+    Inter-DC (DCI):  DC1-ER1 ↔ DC2-ER1  (primary)
+                     DC1-ER2 ↔ DC2-ER2  (secondary)
+    """
+    t = TopologyBuilder("10.50.0.0/16")
+
+    DC1_X_OFFSET = 0
+    DC2_X_OFFSET = 1800
+
+    dc1_er1, dc1_er2 = _build_dc(t, "DC1", n_spine=4, n_leaf=10, srv_per_leaf=17,
+                                  x_offset=DC1_X_OFFSET)
+    dc2_er1, dc2_er2 = _build_dc(t, "DC2", n_spine=3, n_leaf=8,  srv_per_leaf=15,
+                                  x_offset=DC2_X_OFFSET,
+                                  switch_vendor=Vendor.DELL,
+                                  core_model="Dell Z9264F-ON",
+                                  spine_model="Dell Z9264F-ON",
+                                  leaf_model="Dell S5248F-ON")
+
+    # ── DCI links — redundant cross-connect between edge routers ────────
+    t.link(dc1_er1, dc2_er1)   # primary
+    t.link(dc1_er2, dc2_er2)   # secondary
+
+    return t
+
+
+# ------------------------------------------------------------------ #
 #  Main                                                                #
 # ------------------------------------------------------------------ #
 

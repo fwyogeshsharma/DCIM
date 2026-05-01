@@ -135,7 +135,12 @@
         "disk_total": 107374182400,
         "disk_used": 68450133300,
         "sys_uptime": 7829138,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -273,7 +278,12 @@
         "disk_total": 536870912000,
         "disk_used": 62550602186,
         "sys_uptime": 201106,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -359,7 +369,12 @@
         "disk_total": 107374182400,
         "disk_used": 11286246107,
         "sys_uptime": 7227485,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 3
       }
     },
     {
@@ -445,7 +460,12 @@
         "disk_total": 536870912000,
         "disk_used": 131812488817,
         "sys_uptime": 4791966,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 4
       }
     },
     {
@@ -1311,7 +1331,12 @@
         "disk_total": 107374182400,
         "disk_used": 60885681298,
         "sys_uptime": 2204511,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -2177,7 +2202,12 @@
         "disk_total": 268435456000,
         "disk_used": 148016667092,
         "sys_uptime": 2432014,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -2835,7 +2865,12 @@
         "disk_total": 1073741824000,
         "disk_used": 360973750498,
         "sys_uptime": 8109561,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 3
       }
     },
     {
@@ -3493,7 +3528,12 @@
         "disk_total": 107374182400,
         "disk_used": 30859964612,
         "sys_uptime": 1850356,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 4
       }
     },
     {
@@ -4151,7 +4191,12 @@
         "disk_total": 268435456000,
         "disk_used": 170297923264,
         "sys_uptime": 8766745,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 5
       }
     },
     {
@@ -4809,7 +4854,12 @@
         "disk_total": 1073741824000,
         "disk_used": 228722005076,
         "sys_uptime": 7304115,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 3,
+        "rack_num": 1,
+        "rack_unit": 6
       }
     },
     {
@@ -5467,7 +5517,12 @@
         "disk_total": 268435456000,
         "disk_used": 53892463969,
         "sys_uptime": 3136362,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -6125,7 +6180,12 @@
         "disk_total": 1073741824000,
         "disk_used": 408240589514,
         "sys_uptime": 6692092,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -6783,7 +6843,12 @@
         "disk_total": 107374182400,
         "disk_used": 33682148379,
         "sys_uptime": 1486066,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 3
       }
     },
     {
@@ -7441,7 +7506,12 @@
         "disk_total": 536870912000,
         "disk_used": 92051964121,
         "sys_uptime": 9480050,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 4
       }
     },
     {
@@ -8099,7 +8169,12 @@
         "disk_total": 1073741824000,
         "disk_used": 789224185339,
         "sys_uptime": 5354518,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 5
       }
     },
     {
@@ -8757,7 +8832,12 @@
         "disk_total": 1073741824000,
         "disk_used": 410024293434,
         "sys_uptime": 6429897,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 6
       }
     },
     {
@@ -9415,7 +9495,12 @@
         "disk_total": 268435456000,
         "disk_used": 53842640413,
         "sys_uptime": 1162236,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 7
       }
     },
     {
@@ -10073,7 +10158,12 @@
         "disk_total": 536870912000,
         "disk_used": 232357206894,
         "sys_uptime": 6771710,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 8
       }
     },
     {
@@ -10133,7 +10223,12 @@
         "disk_total": 536870912000,
         "disk_used": 169583562597,
         "sys_uptime": 3038555,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 1
       }
     },
     {
@@ -10193,7 +10288,12 @@
         "disk_total": 268435456000,
         "disk_used": 158753659654,
         "sys_uptime": 6274975,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 2
       }
     },
     {
@@ -10253,7 +10353,12 @@
         "disk_total": 107374182400,
         "disk_used": 61993881722,
         "sys_uptime": 536179,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 3
       }
     },
     {
@@ -10313,7 +10418,12 @@
         "disk_total": 107374182400,
         "disk_used": 24154856056,
         "sys_uptime": 8252593,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 4
       }
     },
     {
@@ -10373,7 +10483,12 @@
         "disk_total": 536870912000,
         "disk_used": 211959100586,
         "sys_uptime": 2034468,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 5
       }
     },
     {
@@ -10433,7 +10548,12 @@
         "disk_total": 268435456000,
         "disk_used": 100161124672,
         "sys_uptime": 4532484,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 6
       }
     },
     {
@@ -10493,7 +10613,12 @@
         "disk_total": 107374182400,
         "disk_used": 22057734251,
         "sys_uptime": 5819439,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 7
       }
     },
     {
@@ -10553,7 +10678,12 @@
         "disk_total": 1073741824000,
         "disk_used": 464531255739,
         "sys_uptime": 5828085,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 8
       }
     },
     {
@@ -10613,7 +10743,12 @@
         "disk_total": 268435456000,
         "disk_used": 117470557571,
         "sys_uptime": 6940467,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 9
       }
     },
     {
@@ -10673,7 +10808,12 @@
         "disk_total": 268435456000,
         "disk_used": 163869367111,
         "sys_uptime": 7549742,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 10
       }
     },
     {
@@ -10733,7 +10873,12 @@
         "disk_total": 107374182400,
         "disk_used": 51872607883,
         "sys_uptime": 2500778,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 11
       }
     },
     {
@@ -10793,7 +10938,12 @@
         "disk_total": 536870912000,
         "disk_used": 173603894030,
         "sys_uptime": 1615720,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 12
       }
     },
     {
@@ -10853,7 +11003,12 @@
         "disk_total": 107374182400,
         "disk_used": 41730240573,
         "sys_uptime": 5535540,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 13
       }
     },
     {
@@ -10913,7 +11068,12 @@
         "disk_total": 107374182400,
         "disk_used": 78050050855,
         "sys_uptime": 5569850,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 14
       }
     },
     {
@@ -10973,7 +11133,12 @@
         "disk_total": 1073741824000,
         "disk_used": 317044916997,
         "sys_uptime": 9787792,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 15
       }
     },
     {
@@ -11033,7 +11198,12 @@
         "disk_total": 107374182400,
         "disk_used": 44873167867,
         "sys_uptime": 1480245,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 16
       }
     },
     {
@@ -11093,7 +11263,12 @@
         "disk_total": 1073741824000,
         "disk_used": 299846385288,
         "sys_uptime": 9682345,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 17
       }
     },
     {
@@ -11153,7 +11328,12 @@
         "disk_total": 107374182400,
         "disk_used": 78982849829,
         "sys_uptime": 4455629,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 18
       }
     },
     {
@@ -11213,7 +11393,12 @@
         "disk_total": 536870912000,
         "disk_used": 69816363109,
         "sys_uptime": 1335037,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 19
       }
     },
     {
@@ -11273,7 +11458,12 @@
         "disk_total": 536870912000,
         "disk_used": 347627460548,
         "sys_uptime": 2195356,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 20
       }
     },
     {
@@ -11333,7 +11523,12 @@
         "disk_total": 268435456000,
         "disk_used": 131758479203,
         "sys_uptime": 6567261,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 21
       }
     },
     {
@@ -11393,7 +11588,12 @@
         "disk_total": 268435456000,
         "disk_used": 135482954265,
         "sys_uptime": 5848005,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 22
       }
     },
     {
@@ -11453,7 +11653,12 @@
         "disk_total": 268435456000,
         "disk_used": 177622022044,
         "sys_uptime": 5015917,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 23
       }
     },
     {
@@ -11513,7 +11718,12 @@
         "disk_total": 536870912000,
         "disk_used": 130747098672,
         "sys_uptime": 2680163,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 24
       }
     },
     {
@@ -11573,7 +11783,12 @@
         "disk_total": 1073741824000,
         "disk_used": 784130001297,
         "sys_uptime": 5607269,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 25
       }
     },
     {
@@ -11633,7 +11848,12 @@
         "disk_total": 1073741824000,
         "disk_used": 663800873658,
         "sys_uptime": 8174865,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 26
       }
     },
     {
@@ -11693,7 +11913,12 @@
         "disk_total": 107374182400,
         "disk_used": 78533835570,
         "sys_uptime": 9741016,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 27
       }
     },
     {
@@ -11753,7 +11978,12 @@
         "disk_total": 107374182400,
         "disk_used": 52521990234,
         "sys_uptime": 6820153,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 28
       }
     },
     {
@@ -11813,7 +12043,12 @@
         "disk_total": 268435456000,
         "disk_used": 147919637389,
         "sys_uptime": 8713156,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 29
       }
     },
     {
@@ -11873,7 +12108,12 @@
         "disk_total": 268435456000,
         "disk_used": 189706832229,
         "sys_uptime": 5017741,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 30
       }
     },
     {
@@ -11933,7 +12173,12 @@
         "disk_total": 107374182400,
         "disk_used": 36256437452,
         "sys_uptime": 8278451,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 31
       }
     },
     {
@@ -11993,7 +12238,12 @@
         "disk_total": 268435456000,
         "disk_used": 176175022813,
         "sys_uptime": 6329979,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 32
       }
     },
     {
@@ -12053,7 +12303,12 @@
         "disk_total": 536870912000,
         "disk_used": 96008471324,
         "sys_uptime": 6105275,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 33
       }
     },
     {
@@ -12113,7 +12368,12 @@
         "disk_total": 1073741824000,
         "disk_used": 325590253415,
         "sys_uptime": 7411819,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 34
       }
     },
     {
@@ -12173,7 +12433,12 @@
         "disk_total": 1073741824000,
         "disk_used": 618734820326,
         "sys_uptime": 1711400,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 35
       }
     },
     {
@@ -12233,7 +12498,12 @@
         "disk_total": 107374182400,
         "disk_used": 56859454507,
         "sys_uptime": 5980705,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 36
       }
     },
     {
@@ -12293,7 +12563,12 @@
         "disk_total": 1073741824000,
         "disk_used": 304692077292,
         "sys_uptime": 3636273,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 37
       }
     },
     {
@@ -12353,7 +12628,12 @@
         "disk_total": 536870912000,
         "disk_used": 205411095785,
         "sys_uptime": 9567360,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 38
       }
     },
     {
@@ -12413,7 +12693,12 @@
         "disk_total": 107374182400,
         "disk_used": 54415187261,
         "sys_uptime": 8552037,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 39
       }
     },
     {
@@ -12473,7 +12758,12 @@
         "disk_total": 1073741824000,
         "disk_used": 520482107670,
         "sys_uptime": 9448424,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 40
       }
     },
     {
@@ -12533,7 +12823,12 @@
         "disk_total": 536870912000,
         "disk_used": 64627424518,
         "sys_uptime": 5062489,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 41
       }
     },
     {
@@ -12593,7 +12888,12 @@
         "disk_total": 107374182400,
         "disk_used": 16283737351,
         "sys_uptime": 561323,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 1,
+        "rack_unit": 42
       }
     },
     {
@@ -12653,7 +12953,12 @@
         "disk_total": 1073741824000,
         "disk_used": 471603323549,
         "sys_uptime": 3365708,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 1
       }
     },
     {
@@ -12713,7 +13018,12 @@
         "disk_total": 1073741824000,
         "disk_used": 162379967828,
         "sys_uptime": 1812694,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 2
       }
     },
     {
@@ -12773,7 +13083,12 @@
         "disk_total": 536870912000,
         "disk_used": 268026029087,
         "sys_uptime": 4720628,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 3
       }
     },
     {
@@ -12833,7 +13148,12 @@
         "disk_total": 268435456000,
         "disk_used": 172779795010,
         "sys_uptime": 4312123,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 4
       }
     },
     {
@@ -12893,7 +13213,12 @@
         "disk_total": 268435456000,
         "disk_used": 93711517010,
         "sys_uptime": 9725980,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 5
       }
     },
     {
@@ -12953,7 +13278,12 @@
         "disk_total": 536870912000,
         "disk_used": 122783824764,
         "sys_uptime": 1416876,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 6
       }
     },
     {
@@ -13013,7 +13343,12 @@
         "disk_total": 1073741824000,
         "disk_used": 299229096520,
         "sys_uptime": 122876,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 7
       }
     },
     {
@@ -13073,7 +13408,12 @@
         "disk_total": 1073741824000,
         "disk_used": 424929101773,
         "sys_uptime": 4609601,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 8
       }
     },
     {
@@ -13133,7 +13473,12 @@
         "disk_total": 107374182400,
         "disk_used": 22450791821,
         "sys_uptime": 6564401,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 9
       }
     },
     {
@@ -13193,7 +13538,12 @@
         "disk_total": 536870912000,
         "disk_used": 189259517620,
         "sys_uptime": 3889292,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 10
       }
     },
     {
@@ -13253,7 +13603,12 @@
         "disk_total": 107374182400,
         "disk_used": 42562770134,
         "sys_uptime": 998541,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 11
       }
     },
     {
@@ -13313,7 +13668,12 @@
         "disk_total": 107374182400,
         "disk_used": 12386356528,
         "sys_uptime": 712597,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 12
       }
     },
     {
@@ -13373,7 +13733,12 @@
         "disk_total": 1073741824000,
         "disk_used": 614696011617,
         "sys_uptime": 544826,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 13
       }
     },
     {
@@ -13433,7 +13798,12 @@
         "disk_total": 536870912000,
         "disk_used": 107696694309,
         "sys_uptime": 7273466,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 14
       }
     },
     {
@@ -13493,7 +13863,12 @@
         "disk_total": 268435456000,
         "disk_used": 110875462292,
         "sys_uptime": 2186548,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 15
       }
     },
     {
@@ -13553,7 +13928,12 @@
         "disk_total": 268435456000,
         "disk_used": 95440668092,
         "sys_uptime": 6324253,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 16
       }
     },
     {
@@ -13613,7 +13993,12 @@
         "disk_total": 268435456000,
         "disk_used": 132290061883,
         "sys_uptime": 6175296,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 17
       }
     },
     {
@@ -13673,7 +14058,12 @@
         "disk_total": 1073741824000,
         "disk_used": 657192106912,
         "sys_uptime": 3330057,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 18
       }
     },
     {
@@ -13733,7 +14123,12 @@
         "disk_total": 268435456000,
         "disk_used": 72854038264,
         "sys_uptime": 3758293,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 19
       }
     },
     {
@@ -13793,7 +14188,12 @@
         "disk_total": 1073741824000,
         "disk_used": 375663840728,
         "sys_uptime": 4922224,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 20
       }
     },
     {
@@ -13853,7 +14253,12 @@
         "disk_total": 1073741824000,
         "disk_used": 277542758366,
         "sys_uptime": 4695532,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 21
       }
     },
     {
@@ -13913,7 +14318,12 @@
         "disk_total": 536870912000,
         "disk_used": 162920917681,
         "sys_uptime": 2875217,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 22
       }
     },
     {
@@ -13973,7 +14383,12 @@
         "disk_total": 1073741824000,
         "disk_used": 601183839102,
         "sys_uptime": 4420199,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 23
       }
     },
     {
@@ -14033,7 +14448,12 @@
         "disk_total": 268435456000,
         "disk_used": 73333967440,
         "sys_uptime": 365271,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 24
       }
     },
     {
@@ -14093,7 +14513,12 @@
         "disk_total": 1073741824000,
         "disk_used": 610921036367,
         "sys_uptime": 7958567,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 25
       }
     },
     {
@@ -14153,7 +14578,12 @@
         "disk_total": 268435456000,
         "disk_used": 194574227361,
         "sys_uptime": 8953438,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 26
       }
     },
     {
@@ -14213,7 +14643,12 @@
         "disk_total": 536870912000,
         "disk_used": 216423117180,
         "sys_uptime": 9472079,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 27
       }
     },
     {
@@ -14273,7 +14708,12 @@
         "disk_total": 107374182400,
         "disk_used": 49152526033,
         "sys_uptime": 7636142,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 28
       }
     },
     {
@@ -14333,7 +14773,12 @@
         "disk_total": 107374182400,
         "disk_used": 53900575837,
         "sys_uptime": 642928,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 29
       }
     },
     {
@@ -14393,7 +14838,12 @@
         "disk_total": 268435456000,
         "disk_used": 60065233670,
         "sys_uptime": 147321,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 30
       }
     },
     {
@@ -14453,7 +14903,12 @@
         "disk_total": 1073741824000,
         "disk_used": 579219121188,
         "sys_uptime": 9464233,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 31
       }
     },
     {
@@ -14513,7 +14968,12 @@
         "disk_total": 107374182400,
         "disk_used": 56513964689,
         "sys_uptime": 1775244,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 32
       }
     },
     {
@@ -14573,7 +15033,12 @@
         "disk_total": 536870912000,
         "disk_used": 139024043410,
         "sys_uptime": 6349141,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 33
       }
     },
     {
@@ -14633,7 +15098,12 @@
         "disk_total": 536870912000,
         "disk_used": 84026070301,
         "sys_uptime": 883879,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 34
       }
     },
     {
@@ -14693,7 +15163,12 @@
         "disk_total": 107374182400,
         "disk_used": 74142878781,
         "sys_uptime": 4092303,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 35
       }
     },
     {
@@ -14753,7 +15228,12 @@
         "disk_total": 536870912000,
         "disk_used": 165766334956,
         "sys_uptime": 9554479,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 36
       }
     },
     {
@@ -14813,7 +15293,12 @@
         "disk_total": 536870912000,
         "disk_used": 371791917066,
         "sys_uptime": 9002106,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 37
       }
     },
     {
@@ -14873,7 +15358,12 @@
         "disk_total": 268435456000,
         "disk_used": 181805806971,
         "sys_uptime": 8615901,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 38
       }
     },
     {
@@ -14933,7 +15423,12 @@
         "disk_total": 268435456000,
         "disk_used": 157386226103,
         "sys_uptime": 8838758,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 39
       }
     },
     {
@@ -14993,7 +15488,12 @@
         "disk_total": 536870912000,
         "disk_used": 350187255635,
         "sys_uptime": 9870923,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 40
       }
     },
     {
@@ -15053,7 +15553,12 @@
         "disk_total": 536870912000,
         "disk_used": 400389940076,
         "sys_uptime": 7682036,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 41
       }
     },
     {
@@ -15113,7 +15618,12 @@
         "disk_total": 107374182400,
         "disk_used": 32333536157,
         "sys_uptime": 6448778,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 2,
+        "rack_unit": 42
       }
     },
     {
@@ -15173,7 +15683,12 @@
         "disk_total": 268435456000,
         "disk_used": 52773859347,
         "sys_uptime": 6607952,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 1
       }
     },
     {
@@ -15233,7 +15748,12 @@
         "disk_total": 536870912000,
         "disk_used": 136703641215,
         "sys_uptime": 3381077,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 2
       }
     },
     {
@@ -15293,7 +15813,12 @@
         "disk_total": 107374182400,
         "disk_used": 35649053723,
         "sys_uptime": 9917356,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 3
       }
     },
     {
@@ -15353,7 +15878,12 @@
         "disk_total": 268435456000,
         "disk_used": 70338948105,
         "sys_uptime": 1908140,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 4
       }
     },
     {
@@ -15413,7 +15943,12 @@
         "disk_total": 536870912000,
         "disk_used": 176767834045,
         "sys_uptime": 7133786,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 5
       }
     },
     {
@@ -15473,7 +16008,12 @@
         "disk_total": 268435456000,
         "disk_used": 198912437649,
         "sys_uptime": 8289942,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 6
       }
     },
     {
@@ -15533,7 +16073,12 @@
         "disk_total": 1073741824000,
         "disk_used": 579549444521,
         "sys_uptime": 6383482,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 7
       }
     },
     {
@@ -15593,7 +16138,12 @@
         "disk_total": 1073741824000,
         "disk_used": 374258250148,
         "sys_uptime": 2844581,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 8
       }
     },
     {
@@ -15653,7 +16203,12 @@
         "disk_total": 268435456000,
         "disk_used": 36554103467,
         "sys_uptime": 7111249,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 9
       }
     },
     {
@@ -15713,7 +16268,12 @@
         "disk_total": 268435456000,
         "disk_used": 117322272679,
         "sys_uptime": 2763876,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 10
       }
     },
     {
@@ -15773,7 +16333,12 @@
         "disk_total": 107374182400,
         "disk_used": 77097358777,
         "sys_uptime": 7256941,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 11
       }
     },
     {
@@ -15833,7 +16398,12 @@
         "disk_total": 536870912000,
         "disk_used": 217039068191,
         "sys_uptime": 7088955,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 12
       }
     },
     {
@@ -15893,7 +16463,12 @@
         "disk_total": 107374182400,
         "disk_used": 71156481616,
         "sys_uptime": 121974,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 13
       }
     },
     {
@@ -15953,7 +16528,12 @@
         "disk_total": 268435456000,
         "disk_used": 159619818790,
         "sys_uptime": 2167132,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 14
       }
     },
     {
@@ -16013,7 +16593,12 @@
         "disk_total": 1073741824000,
         "disk_used": 179101876708,
         "sys_uptime": 8252030,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 15
       }
     },
     {
@@ -16073,7 +16658,12 @@
         "disk_total": 107374182400,
         "disk_used": 17129832338,
         "sys_uptime": 5594925,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 16
       }
     },
     {
@@ -16133,7 +16723,12 @@
         "disk_total": 268435456000,
         "disk_used": 199539404876,
         "sys_uptime": 649824,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 17
       }
     },
     {
@@ -16193,7 +16788,12 @@
         "disk_total": 536870912000,
         "disk_used": 82784095251,
         "sys_uptime": 2881050,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 18
       }
     },
     {
@@ -16253,7 +16853,12 @@
         "disk_total": 107374182400,
         "disk_used": 11072320515,
         "sys_uptime": 6420381,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 19
       }
     },
     {
@@ -16313,7 +16918,12 @@
         "disk_total": 1073741824000,
         "disk_used": 138873789103,
         "sys_uptime": 2967485,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 20
       }
     },
     {
@@ -16373,7 +16983,12 @@
         "disk_total": 536870912000,
         "disk_used": 141028177266,
         "sys_uptime": 1288167,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 21
       }
     },
     {
@@ -16433,7 +17048,12 @@
         "disk_total": 268435456000,
         "disk_used": 87243536701,
         "sys_uptime": 7122793,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 22
       }
     },
     {
@@ -16493,7 +17113,12 @@
         "disk_total": 536870912000,
         "disk_used": 380136282984,
         "sys_uptime": 3027706,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 23
       }
     },
     {
@@ -16553,7 +17178,12 @@
         "disk_total": 1073741824000,
         "disk_used": 539156444765,
         "sys_uptime": 8546439,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 24
       }
     },
     {
@@ -16613,7 +17243,12 @@
         "disk_total": 1073741824000,
         "disk_used": 779176480330,
         "sys_uptime": 154711,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 25
       }
     },
     {
@@ -16673,7 +17308,12 @@
         "disk_total": 1073741824000,
         "disk_used": 156163473502,
         "sys_uptime": 2093610,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 26
       }
     },
     {
@@ -16733,7 +17373,12 @@
         "disk_total": 268435456000,
         "disk_used": 79102799713,
         "sys_uptime": 7641537,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 27
       }
     },
     {
@@ -16793,7 +17438,12 @@
         "disk_total": 1073741824000,
         "disk_used": 496541630701,
         "sys_uptime": 9235710,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 28
       }
     },
     {
@@ -16879,7 +17529,12 @@
         "disk_total": 107374182400,
         "disk_used": 22270562526,
         "sys_uptime": 8872560,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 29
       }
     },
     {
@@ -16965,7 +17620,12 @@
         "disk_total": 1073741824000,
         "disk_used": 311854282259,
         "sys_uptime": 8873717,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 30
       }
     },
     {
@@ -17051,7 +17711,12 @@
         "disk_total": 268435456000,
         "disk_used": 151396010997,
         "sys_uptime": 7698671,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 31
       }
     },
     {
@@ -17137,7 +17802,12 @@
         "disk_total": 1073741824000,
         "disk_used": 773439026359,
         "sys_uptime": 9460303,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 7,
+        "rack_num": 3,
+        "rack_unit": 32
       }
     },
     {
@@ -17223,7 +17893,12 @@
         "disk_total": 536870912000,
         "disk_used": 64775052469,
         "sys_uptime": 2778648,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 9
       }
     },
     {
@@ -17309,7 +17984,12 @@
         "disk_total": 1073741824000,
         "disk_used": 565173745139,
         "sys_uptime": 455271,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 10
       }
     },
     {
@@ -17395,7 +18075,12 @@
         "disk_total": 268435456000,
         "disk_used": 182869788269,
         "sys_uptime": 1135204,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 11
       }
     },
     {
@@ -17481,7 +18166,12 @@
         "disk_total": 268435456000,
         "disk_used": 76698740612,
         "sys_uptime": 4873342,
-        "gnmi_port": 57400
+        "gnmi_port": 57400,
+        "datacenter": "DC1",
+        "datacenter_city": "Seattle",
+        "rack_row": 5,
+        "rack_num": 1,
+        "rack_unit": 12
       }
     }
   ],

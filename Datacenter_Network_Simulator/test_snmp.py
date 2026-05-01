@@ -4,13 +4,21 @@ SNMP Device Tester
 Tests one or more simulated devices by issuing SNMPv2c GET and WALK requests
 and printing a formatted results table.
 
+The simulator listens on 0.0.0.0:161 (one port, all interfaces) and routes
+each request to the correct device dataset via the SNMP community string,
+which is set to the device IP address.  Use --agent to tell the tester where
+snmpsim is actually running (default: 127.0.0.1).
+
 Usage examples
 --------------
-  # Test a single device (community = IP by default)
-  python test_snmp.py 10.0.0.1
+  # Test a single device (community = IP by default, agent = 127.0.0.1)
+  python test_snmp.py 10.50.0.4
 
-  # Test multiple devices
-  python test_snmp.py 10.0.0.1 10.0.0.2 10.0.0.3
+  # Test multiple devices via the local simulator
+  python test_snmp.py 10.50.0.1 10.50.0.2 10.50.0.3
+
+  # Simulator on a remote host
+  python test_snmp.py 10.50.0.4 --agent 192.168.1.50
 
   # Custom port / community / timeout
   python test_snmp.py 10.0.0.1 --port 1161 --community public --timeout 3
@@ -246,15 +254,15 @@ async def _snmp_walk(ip: str, community: str, port: int,
 
 # ── Per-device test ───────────────────────────────────────────────────────────
 
-async def _test_device(ip: str, community: str, port: int, timeout: int,
-                       do_interfaces: bool, do_lldp: bool) -> DeviceResult:
+async def _test_device(ip: str, agent_ip: str, community: str, port: int,
+                       timeout: int, do_interfaces: bool, do_lldp: bool) -> DeviceResult:
     result = DeviceResult(ip=ip, community=community, port=port)
     t0 = time.perf_counter()
 
     # ── System OIDs ───────────────────────────────────────────────────────────
     oid_list = [oid for oid, _ in SYSTEM_OIDS]
     try:
-        raw = await _snmp_get(ip, community, port, oid_list, timeout)
+        raw = await _snmp_get(agent_ip, community, port, oid_list, timeout)
     except Exception as exc:
         result.unreachable = True
         result.error = str(exc)
@@ -284,7 +292,7 @@ async def _test_device(ip: str, community: str, port: int, timeout: int,
     # IF-MIB stores each column for all interfaces before moving to the next
     # column.  With N interfaces and ~10 useful columns we need up to N*10 rows.
     if do_interfaces:
-        rows = await _snmp_walk(ip, community, port, IFACE_TABLE_OID, timeout, 2000)
+        rows = await _snmp_walk(agent_ip, community, port, IFACE_TABLE_OID, timeout, 2000)
         iface_map: Dict[int, dict] = {}
         for oid_str, val in rows:
             parts = oid_str.split(".")
@@ -306,7 +314,7 @@ async def _test_device(ip: str, community: str, port: int, timeout: int,
 
     # ── LLDP walk ─────────────────────────────────────────────────────────────
     if do_lldp:
-        rows = await _snmp_walk(ip, community, port, LLDP_REM_OID, timeout, 200)
+        rows = await _snmp_walk(agent_ip, community, port, LLDP_REM_OID, timeout, 200)
         # LLDP remote table OID: 1.0.8802.1.1.2.1.4.1.1.{col}.{timemark}.{port}.{idx}
         # parts[-4]=col  parts[-3]=timemark  parts[-2]=port  parts[-1]=idx
         nbr_map: Dict[str, dict] = {}
@@ -453,6 +461,10 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument("ips", nargs="+", metavar="IP",
                    help="One or more device IP addresses to test")
+    p.add_argument("--agent", "-a", default="127.0.0.1",
+                   help="Host where snmpsim is listening (default: 127.0.0.1). "
+                        "The simulator binds to 0.0.0.0 and routes by community "
+                        "string, so requests must go to this host not the device IP.")
     p.add_argument("--port", "-p", type=int, default=161,
                    help="SNMP UDP port (default: 161)")
     p.add_argument("--community", "-c", default=None,
@@ -475,13 +487,14 @@ async def _main(args: argparse.Namespace) -> int:
     do_lldp   = args.lldp or args.full
 
     print(bold(f"\ndataCenter SNMP Tester  —  {len(args.ips)} device(s)"))
-    print(grey(f"port={args.port}  timeout={args.timeout}s  "
+    print(grey(f"agent={args.agent}  port={args.port}  timeout={args.timeout}s  "
                f"interfaces={'yes' if do_ifaces else 'no'}  "
                f"lldp={'yes' if do_lldp else 'no'}\n"))
 
     tasks = [
         _test_device(
             ip        = ip,
+            agent_ip  = args.agent,
             community = args.community if args.community else ip,
             port      = args.port,
             timeout   = args.timeout,

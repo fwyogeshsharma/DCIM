@@ -22,43 +22,81 @@ from datetime import datetime
 from pyasn1.codec.ber import decoder as ber_decoder
 from pysnmp.proto import api as snmp_api
 
-# ── OID → human-readable label ────────────────────────────────────────────────
+# Pull trap OID → display name and severity directly from the simulator's
+# own definitions so this file never goes stale when new traps are added.
+try:
+    from core.trap_definitions import TRAP_DEFINITIONS, SEVERITY_COLOR
+    TRAP_OID_LABELS: dict[str, str] = {
+        defn.oid: defn.display_name for defn in TRAP_DEFINITIONS.values()
+    }
+    _TRAP_OID_SEVERITY: dict[str, str] = {
+        defn.oid: defn.severity for defn in TRAP_DEFINITIONS.values()
+    }
+except ImportError:
+    # Fallback when run outside the project root
+    TRAP_OID_LABELS = {
+        "1.3.6.1.6.3.1.1.5.1":  "Cold Start",
+        "1.3.6.1.6.3.1.1.5.2":  "Warm Start",
+        "1.3.6.1.6.3.1.1.5.3":  "Link Down",
+        "1.3.6.1.6.3.1.1.5.4":  "Link Up",
+        "1.3.6.1.6.3.1.1.5.5":  "Authentication Failure",
+        "1.3.6.1.2.1.15.0.2":   "BGP Session Down",
+        "1.3.6.1.2.1.33.2.0.1": "UPS On Battery",
+        "1.3.6.1.2.1.33.2.0.2": "UPS Low Battery",
+        "1.3.6.1.4.1.99999.1.1":"CPU High Usage",
+        "1.3.6.1.4.1.99999.1.2":"Memory High Usage",
+        "1.3.6.1.4.1.99999.1.3":"Temperature Alert",
+        "1.3.6.1.4.1.99999.1.4":"Link Flap",
+        "1.3.6.1.4.1.99999.1.5":"Rack Failure",
+    }
+    _TRAP_OID_SEVERITY = {
+        "1.3.6.1.6.3.1.1.5.3":  "major",
+        "1.3.6.1.6.3.1.1.5.5":  "major",
+        "1.3.6.1.2.1.15.0.2":   "critical",
+        "1.3.6.1.2.1.33.2.0.1": "critical",
+        "1.3.6.1.2.1.33.2.0.2": "critical",
+        "1.3.6.1.4.1.99999.1.1":"major",
+        "1.3.6.1.4.1.99999.1.2":"major",
+        "1.3.6.1.4.1.99999.1.3":"critical",
+        "1.3.6.1.4.1.99999.1.4":"critical",
+        "1.3.6.1.4.1.99999.1.5":"critical",
+    }
+
+# ── Varbind OID → human-readable label ───────────────────────────────────────
 
 OID_LABELS: dict[str, str] = {
-    # Standard MIB-II
-    "1.3.6.1.2.1.1.1.0":       "sysDescr",
-    "1.3.6.1.2.1.1.3.0":       "sysUpTime",
-    "1.3.6.1.2.1.1.5.0":       "sysName",
-    "1.3.6.1.2.1.2.2.1.1.1":   "ifIndex",
-    "1.3.6.1.2.1.2.2.1.2.1":   "ifDescr",
-    "1.3.6.1.2.1.2.2.1.7.1":   "ifAdminStatus",
-    "1.3.6.1.2.1.2.2.1.8.1":   "ifOperStatus",
-    # BGP MIB
-    "1.3.6.1.2.1.15.3.1.7.0":  "bgpPeerRemoteAddr",
-    "1.3.6.1.2.1.15.3.1.14.0": "bgpPeerState",
-    # Simulator-private enterprise MIB
-    "1.3.6.1.4.1.9999.1.1":    "cpuUsage (%)",
-    "1.3.6.1.4.1.9999.1.2":    "temperature (°C)",
-    "1.3.6.1.4.1.9999.1.3":    "temperatureThreshold (°C)",
-    "1.3.6.1.4.1.9999.1.4":    "cpuThreshold (%)",
-}
-
-# Trap notification OID → name (matches trap_definitions.py)
-TRAP_OID_LABELS: dict[str, str] = {
-    "1.3.6.1.6.3.1.1.5.1": "Cold Start",
-    "1.3.6.1.6.3.1.1.5.2": "Warm Start",
-    "1.3.6.1.6.3.1.1.5.3": "Link Down",
-    "1.3.6.1.6.3.1.1.5.4": "Link Up",
-    "1.3.6.1.6.3.1.1.5.5": "Authentication Failure",
-    "1.3.6.1.4.1.9999.0.1": "CPU High Usage",
-    "1.3.6.1.4.1.9999.0.2": "Temperature Alert",
-    "1.3.6.1.2.1.15.7":     "BGP Session Down",
+    # MIB-II system
+    "1.3.6.1.2.1.1.1.0":        "sysDescr",
+    "1.3.6.1.2.1.1.3.0":        "sysUpTime",
+    "1.3.6.1.2.1.1.5.0":        "sysName",
+    # IF-MIB
+    "1.3.6.1.2.1.2.2.1.1.1":    "ifIndex",
+    "1.3.6.1.2.1.2.2.1.2.1":    "ifDescr",
+    "1.3.6.1.2.1.2.2.1.7.1":    "ifAdminStatus",
+    "1.3.6.1.2.1.2.2.1.8.1":    "ifOperStatus",
+    # BGP4-MIB
+    "1.3.6.1.2.1.15.3.1.7.0":   "bgpPeerRemoteAddr",
+    "1.3.6.1.2.1.15.3.1.14.0":  "bgpPeerState",
+    # UPS-MIB
+    "1.3.6.1.2.1.33.1.2.1.0":   "upsAlarmId",
+    "1.3.6.1.2.1.33.1.2.4.0":   "upsEstimatedMinutesRemaining",
+    # Enterprise varbinds (1.3.6.1.4.1.99999.2.x)
+    "1.3.6.1.4.1.99999.2.1":    "cpuUsage (%)",
+    "1.3.6.1.4.1.99999.2.2":    "memoryUsage (%)",
+    "1.3.6.1.4.1.99999.2.3":    "temperature (°C)",
+    "1.3.6.1.4.1.99999.2.4":    "linkFlapCount",
+    "1.3.6.1.4.1.99999.2.5":    "cpuThreshold (%)",
+    "1.3.6.1.4.1.99999.2.6":    "memoryThreshold (%)",
+    "1.3.6.1.4.1.99999.2.7":    "temperatureThreshold (°C)",
+    "1.3.6.1.4.1.99999.2.8":    "linkFlapWindowSec",
+    "1.3.6.1.4.1.99999.2.9":    "rackId",
+    "1.3.6.1.4.1.99999.2.10":   "devicesDown",
 }
 
 # SNMPv2c snmpTrapOID.0 meta-OID
 SNMP_TRAP_OID = "1.3.6.1.6.3.1.1.4.1.0"
 
-# ── Value formatters ───────────────────────────────────────────────────────────
+# ── Value formatters ──────────────────────────────────────────────────────────
 
 _IF_STATUS = {1: "up(1)", 2: "down(2)", 3: "testing(3)"}
 _BGP_STATE = {
@@ -82,32 +120,40 @@ def _fmt_val(oid_str: str, val) -> str:
     return raw
 
 
-# ── Separator helpers ──────────────────────────────────────────────────────────
+# ── Severity marker ───────────────────────────────────────────────────────────
 
-_SEP = "─" * 62
+_SEV_MARKERS = {
+    "critical":      "[CRIT]",
+    "major":         "[ MAJ]",
+    "minor":         "[ MIN]",
+    "informational": "[ INF]",
+}
 
 
-def _hdr(trap_label: str, src_ip: str, community: str, version: str, count: int) -> str:
+def _severity_marker(trap_oid: str) -> str:
+    sev = _TRAP_OID_SEVERITY.get(trap_oid, "")
+    return _SEV_MARKERS.get(sev, "[    ]")
+
+
+# ── Separator helpers ─────────────────────────────────────────────────────────
+
+_SEP = "─" * 64
+
+
+def _hdr(trap_label: str, trap_oid: str, src_ip: str, community: str,
+         version: str, count: int) -> str:
     ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    sev_marker = _severity_marker(trap_label)
+    marker = _severity_marker(trap_oid)
     return (
         f"\n{_SEP}\n"
-        f"  #{count:<4}  [{ts}]  {sev_marker} {trap_label}\n"
-        f"  Source: {src_ip}   Community: {community}   ({version})\n"
+        f"  #{count:<4}  [{ts}]  {marker}  {trap_label}\n"
+        f"  OID:     {trap_oid}\n"
+        f"  Source:  {src_ip}   Community: {community}   ({version})\n"
         f"{_SEP}"
     )
 
 
-def _severity_marker(label: str) -> str:
-    label_lower = label.lower()
-    if "down" in label_lower or "high" in label_lower or "alert" in label_lower:
-        return "[!]"
-    if "failure" in label_lower or "bgp" in label_lower:
-        return "[!]"
-    return "[ ]"
-
-
-# ── Asyncio DatagramProtocol ───────────────────────────────────────────────────
+# ── Asyncio DatagramProtocol ──────────────────────────────────────────────────
 
 class TrapProtocol(asyncio.DatagramProtocol):
     def __init__(self):
@@ -118,7 +164,7 @@ class TrapProtocol(asyncio.DatagramProtocol):
         self._transport = transport
 
     def datagram_received(self, data: bytes, addr: tuple):
-        src_ip, src_port = addr
+        src_ip, _src_port = addr
         self._count += 1
 
         try:
@@ -143,10 +189,8 @@ class TrapProtocol(asyncio.DatagramProtocol):
         pdu = pMod.apiMessage.get_pdu(msg)
 
         if msg_ver == snmp_api.SNMP_VERSION_1:
-            # SNMPv1 Trap-PDU
             self._handle_v1(pMod, pdu, src_ip, community)
         else:
-            # SNMPv2c Trap / InformRequest
             self._handle_v2c(pMod, pdu, src_ip, community)
 
     def _handle_v1(self, pMod, pdu, src_ip: str, community: str):
@@ -155,14 +199,16 @@ class TrapProtocol(asyncio.DatagramProtocol):
         specific   = int(pMod.apiTrapPDU.get_specific_trap(pdu))
         generic    = int(pMod.apiTrapPDU.get_generic_trap(pdu))
 
-        label = TRAP_OID_LABELS.get(enterprise, f"enterprise={enterprise} generic={generic} specific={specific}")
-        print(_hdr(label, src_ip, community, "SNMPv1", self._count))
-        print(f"  Agent address: {agent_addr}")
+        label = TRAP_OID_LABELS.get(
+            enterprise, f"enterprise={enterprise} generic={generic} specific={specific}"
+        )
+        print(_hdr(label, enterprise, src_ip, community, "SNMPv1", self._count))
+        print(f"  Agent address : {agent_addr}")
 
         for oid, val in pMod.apiTrapPDU.get_varbinds(pdu):
             oid_str = str(oid)
             lbl = OID_LABELS.get(oid_str, oid_str)
-            print(f"  {lbl:<35} = {_fmt_val(oid_str, val)}")
+            print(f"  {lbl:<38} = {_fmt_val(oid_str, val)}")
 
     def _handle_v2c(self, pMod, pdu, src_ip: str, community: str):
         var_binds = list(pMod.apiPDU.get_varbinds(pdu))
@@ -175,14 +221,14 @@ class TrapProtocol(asyncio.DatagramProtocol):
                 break
 
         label = TRAP_OID_LABELS.get(trap_oid, trap_oid or "Unknown Trap")
-        print(_hdr(label, src_ip, community, "SNMPv2c", self._count))
+        print(_hdr(label, trap_oid, src_ip, community, "SNMPv2c", self._count))
 
         for oid, val in var_binds:
             oid_str = str(oid)
             if oid_str == SNMP_TRAP_OID:
                 continue  # already shown as trap type
             lbl = OID_LABELS.get(oid_str, oid_str)
-            print(f"  {lbl:<35} = {_fmt_val(oid_str, val)}")
+            print(f"  {lbl:<38} = {_fmt_val(oid_str, val)}")
 
     def error_received(self, exc):
         print(f"Socket error: {exc}", file=sys.stderr)
@@ -191,14 +237,20 @@ class TrapProtocol(asyncio.DatagramProtocol):
         pass
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 async def _run(host: str, port: int):
     loop = asyncio.get_running_loop()
-    print("=" * 62)
+    print("=" * 64)
     print("  SNMP Trap Receiver — SNMP Network Topology Simulator")
-    print("=" * 62)
-    print(f"  Listening on {host}:{port}   (Ctrl+C to stop)\n")
+    print("=" * 64)
+    print(f"  Listening on {host}:{port}   (Ctrl+C to stop)")
+    print(f"  Watching for {len(TRAP_OID_LABELS)} trap type(s):\n")
+    for oid, name in sorted(TRAP_OID_LABELS.items()):
+        sev = _TRAP_OID_SEVERITY.get(oid, "")
+        marker = _SEV_MARKERS.get(sev, "      ")
+        print(f"    {marker}  {name:<28} {oid}")
+    print()
 
     transport, _ = await loop.create_datagram_endpoint(
         TrapProtocol,

@@ -37,7 +37,10 @@ from simulator.gnmi_controller import GNMIController
 from simulator.sflow_controller import SFlowController
 from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
 from core.trap_engine import TrapEngine
+from core.rule_engine import RuleEngine
+from core.trap_rules import DEFAULT_RULES
 from ui.device_dialog import DeviceDialog
+from ui.rules_panel import RulesPanel
 from ui.topology_view import TopologyView
 from ui.snmp_panel import SNMPPanel
 from ui.gnmi_panel import GNMIPanel
@@ -420,13 +423,21 @@ class MainWindow(QMainWindow):
         self.sflow = SFlowController()
         self.state_store = DeviceStateStore(
             self.device_manager, self.topology, self._snmp_datasets_dir,
-            tick_interval=60.0, snmp_sync_every=1,   # 60 s reduces I/O pressure for large topologies
+            tick_interval=30.0, snmp_sync_every=1,
         )
         self.gnmi.set_state_store(self.state_store)
         self.sflow.set_state_store(self.state_store)
         self.sflow.set_topology(self.topology)
         self.sflow.set_device_manager(self.device_manager)
         self._trap_engine = TrapEngine(self)
+
+        # Rule engine — loaded with default rules; disabled until user enables it
+        self._rule_engine = RuleEngine()
+        for rule in DEFAULT_RULES:
+            self._rule_engine.add_rule(rule)
+        self._trap_engine.set_rule_engine(self._rule_engine, self.device_manager)
+        self.state_store.set_rule_engine_callback(self._rule_engine.evaluate_fact)
+
         self._generated_files: list = []
         self._gnmi_files: list = []
         self._default_positions: dict = {}         # {device_id: (x, y)} — snapshot at load/template time
@@ -542,15 +553,16 @@ class MainWindow(QMainWindow):
 
         # ── Table ────────────────────────────────────────────────────────
         self._device_table = QTableWidget()
-        self._device_table.setColumnCount(6)
+        self._device_table.setColumnCount(7)
         self._device_table.setHorizontalHeaderLabels(
-            ["Name", "Type", "Vendor", "IP Address", "Interfaces", "SNMP Port"]
+            ["Name", "Type", "Vendor", "IP Address", "Interfaces", "SNMP Port", "Location"]
         )
 
         hdr = self._device_table.horizontalHeader()
         hdr.setSectionResizeMode(QHeaderView.Interactive)
         hdr.setDefaultSectionSize(90)
         hdr.setMinimumSectionSize(50)
+        hdr.setSectionResizeMode(6, QHeaderView.Stretch)
         hdr.setStretchLastSection(True)
 
         self._device_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -630,18 +642,25 @@ class MainWindow(QMainWindow):
         self._console_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._console_panel)
 
+        # Panel 6 — Rule Engine
+        self._rules_panel = RulesPanel()
+        self._rules_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._rules_panel)
+
         self._right_splitter.setStretchFactor(0, 1)
         self._right_splitter.setStretchFactor(1, 1)
         self._right_splitter.setStretchFactor(2, 1)
         self._right_splitter.setStretchFactor(3, 1)
         self._right_splitter.setStretchFactor(4, 1)
-        self._right_splitter.setSizes([250, 250, 250, 250, 250])
+        self._right_splitter.setStretchFactor(5, 1)
+        self._right_splitter.setSizes([250, 250, 250, 250, 250, 250])
 
         # Only the IP Binder panel visible on startup
         self._sim_panel.setVisible(False)
         self._gnmi_panel.setVisible(False)
         self._sflow_panel.setVisible(False)
         self._console_panel.setVisible(False)
+        self._rules_panel.setVisible(False)
 
         self._right_dock = QDockWidget(self)
         self._right_dock.setObjectName("right_panels_dock")
@@ -743,6 +762,16 @@ class MainWindow(QMainWindow):
             _f.setBold(True)
             _btn.setFont(_f)
 
+        tb.addSeparator()
+
+        # ── Rule Engine ───────────────────────────────────────────────────
+        self._act_panel_rules = QAction("⚙", self)
+        self._act_panel_rules.setCheckable(True)
+        self._act_panel_rules.setChecked(False)
+        self._act_panel_rules.setToolTip("Rule Engine")
+        self._act_panel_rules.toggled.connect(self._on_toggle_rules_panel)
+        tb.addAction(self._act_panel_rules)
+
         self._right_dock.visibilityChanged.connect(self._on_right_dock_visibility)
         self.addToolBar(Qt.RightToolBarArea, tb)
 
@@ -755,6 +784,7 @@ class MainWindow(QMainWindow):
             self._act_panel_gnmi.isChecked(),
             self._act_panel_sflow.isChecked(),
             self._act_panel_console.isChecked(),
+            self._act_panel_rules.isChecked(),
         ])
 
     def _resize_right_dock(self):
@@ -809,11 +839,22 @@ class MainWindow(QMainWindow):
         else:
             self._resize_right_dock()
 
+    def _on_toggle_rules_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+            self._rules_panel.set_rule_engine(self._rule_engine)
+        self._rules_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
+            self._right_dock.hide()
+        else:
+            self._resize_right_dock()
+
     def _on_right_dock_visibility(self, visible: bool):
         """Outer dock hidden externally — uncheck all toolbar buttons."""
         if not visible:
             for btn in (self._act_panel_binding, self._act_panel_sim,
-                        self._act_panel_gnmi, self._act_panel_console):
+                        self._act_panel_gnmi, self._act_panel_console,
+                        self._act_panel_rules):
                 btn.blockSignals(True)
                 btn.setChecked(False)
                 btn.blockSignals(False)
@@ -842,7 +883,7 @@ class MainWindow(QMainWindow):
         # Device
         dev_menu = menubar.addMenu("&Devices")
         self._act_add_device = QAction("&Add Device...", self, shortcut="Ctrl+D")
-        self._act_bulk_add   = QAction("Bulk Add Devices...", self)
+        self._act_bulk_add      = QAction("Bulk Add Devices...", self)
         self._act_remove_selected = QAction("&Remove Selected", self, shortcut="Del")
         dev_menu.addAction(self._act_add_device)
         dev_menu.addAction(self._act_bulk_add)
@@ -1001,9 +1042,20 @@ class MainWindow(QMainWindow):
 
         # Trap section (embedded in SNMPPanel) ↔ trap engine
         self._sim_panel.sig_trap_apply.connect(self._trap_engine.configure)
-        self._sim_panel.sig_trap_simulate.connect(self._on_trap_simulate)
         self._trap_engine.trap_sent.connect(self._sim_panel.add_trap_event)
         self._trap_engine.trap_error.connect(self._sim_panel.add_trap_error)
+        # Rule engine toggle from SNMP panel
+        self._sim_panel.sig_rule_engine.connect(self._on_rule_engine_toggled)
+        # Rules panel signals
+        self._rules_panel.sig_rule_engine_toggled.connect(self._on_rule_engine_toggled)
+        self._rules_panel.sig_rule_toggled.connect(
+            lambda name, enabled: self._rule_engine.enable_rule(name, enabled)
+        )
+        self._rules_panel.sig_rules_imported.connect(self._on_rules_imported)
+        # Propagate trap_sent to rules panel stats
+        self._trap_engine.trap_sent.connect(self._on_rule_trap_sent)
+        # Update topology graph immediately when a link rule fires (before SNMP delivery)
+        self._trap_engine.link_state_changed.connect(self._on_link_state_changed)
 
         # Topology scene signals
         scene = self._topology_view.topology_scene
@@ -1108,7 +1160,7 @@ class MainWindow(QMainWindow):
             self._topology_view.topology_scene.add_device_node(device, x, y)
             self._refresh_device_table()
             self._refresh_stats()
-            self._sync_trap_devices()
+
             self._console_panel.log(f"Added device: {device.name} ({device.ip_address})", "success")
 
     def _edit_device(self, device_id: str):
@@ -1149,7 +1201,7 @@ class MainWindow(QMainWindow):
             self._topology_view.topology_scene.remove_device_node(device_id)
             self._refresh_device_table()
             self._refresh_stats()
-            self._sync_trap_devices()
+
             self._console_panel.log(f"Removed device: {device.name}", "warning")
 
     def _remove_selected(self):
@@ -1187,11 +1239,12 @@ class MainWindow(QMainWindow):
                 self._topology_view.topology_scene.add_device_node(device, x, y)
             self._refresh_device_table()
             self._refresh_stats()
-            self._sync_trap_devices()
+
             self._console_panel.log(
                 f"Added {len(devices)} devices ({values['device_type'].value}s)",
                 "success"
             )
+
 
     # ------------------------------------------------------------------ #
     #  Topology operations                                                 #
@@ -1475,23 +1528,111 @@ class MainWindow(QMainWindow):
     def _send_trap(self, device: Device, trap_type: TrapType):
         self._trap_engine.send_trap(device, trap_type)
 
-    def _on_trap_simulate(self, active: bool):
-        if active:
-            devices = self.device_manager.get_all_devices()
-            if not devices:
-                QMessageBox.warning(
-                    self, "No Devices",
-                    "Add devices to the topology before simulating traps."
-                )
-                self._sim_panel.set_simulating(False)
-                return
-            self._trap_engine.start_simulation(devices)
-        else:
-            self._trap_engine.stop_simulation()
+    def _on_rule_engine_toggled(self, enabled: bool):
+        self._trap_engine.set_rule_engine_enabled(enabled)
+        self._sim_panel.set_rule_engine_active(enabled)
+        self._rules_panel.set_engine_active(enabled)   # visual-only, no signal re-emission
+        status = "enabled" if enabled else "disabled"
+        if hasattr(self, '_console_panel'):
+            self._console_panel.log(f"[RuleEngine] Rule-driven trap generation {status}.", "info")
+        if enabled:
+            self._send_rule_engine_test_traps()
 
-    def _sync_trap_devices(self):
-        """Keep the trap engine's device list in sync with the topology."""
-        self._trap_engine.update_sim_devices(self.device_manager.get_all_devices())
+    def _send_rule_engine_test_traps(self):
+        """Send one trap of every type so the receiver can verify end-to-end connectivity."""
+        devices = self.device_manager.get_all_devices()
+        if not devices:
+            return
+
+        by_type = {}
+        for d in devices:
+            by_type.setdefault(d.device_type.value, d)
+
+        first  = devices[0]
+        router = by_type.get("router",  first)
+        server = by_type.get("server",  first)
+
+        test_traps = [
+            (first,  TrapType.COLD_START),
+            (first,  TrapType.WARM_START),
+            (first,  TrapType.LINK_DOWN),
+            (first,  TrapType.LINK_UP),
+            (first,  TrapType.AUTH_FAILURE),
+            (router, TrapType.BGP_DOWN),
+            (server, TrapType.UPS_ON_BATTERY),
+            (server, TrapType.UPS_LOW_BATTERY),
+            (first,  TrapType.CPU_HIGH),
+            (first,  TrapType.MEMORY_HIGH),
+            (first,  TrapType.TEMPERATURE_ALERT),
+            (first,  TrapType.LINK_FLAP),
+            (first,  TrapType.RACK_FAILURE),
+        ]
+
+        _trap_rule = {
+            TrapType.LINK_DOWN:         "LinkDown",
+            TrapType.LINK_UP:           "LinkUp",
+            TrapType.BGP_DOWN:          "BGPSessionDown",
+            TrapType.UPS_ON_BATTERY:    "UPSOnBattery",
+            TrapType.UPS_LOW_BATTERY:   "UPSLowBattery",
+            TrapType.CPU_HIGH:          "HighCPU",
+            TrapType.MEMORY_HIGH:       "HighMemory",
+            TrapType.TEMPERATURE_ALERT: "HighTemperature",
+            TrapType.LINK_FLAP:         "LinkFlap",
+            TrapType.RACK_FAILURE:      "RackFailure",
+        }
+
+        from core.trap_engine import TrapEvent
+        from datetime import datetime
+        now_ts = datetime.now().strftime("%H:%M:%S")
+        for device, trap_type in test_traps:
+            # Add to the in-app table immediately (guaranteed, no async path)
+            event = TrapEvent(device, trap_type, "Rule engine test — receiver connectivity check")
+            self._sim_panel.add_trap_event(event)
+            # Fire UDP to the external receiver; no_table=True avoids a duplicate
+            # entry if the async send also succeeds
+            self._trap_engine.send_trap(device, trap_type, no_table=True)
+            # Reflect the initial test fire in the rules panel Fired column
+            rule_name = _trap_rule.get(trap_type)
+            if rule_name:
+                self._rule_engine.record_manual_fire(rule_name)
+                self._rules_panel.update_rule_stats(
+                    rule_name,
+                    fired=self._rule_engine.get_total_fired_count(rule_name),
+                    last_ts=now_ts,
+                )
+
+        self._rules_panel.update_stats(self._rule_engine.get_grand_total_fired())
+
+        if hasattr(self, '_console_panel'):
+            self._console_panel.log(
+                f"[RuleEngine] Sent {len(test_traps)} test traps "
+                f"({len({t for _, t in test_traps})} types) to verify receiver connectivity.",
+                "info",
+            )
+
+    def _on_rules_imported(self, rules: list):
+        for rule in rules:
+            self._rule_engine.add_rule(rule)
+        self._rules_panel.refresh()
+
+    def _on_rule_trap_sent(self, event):
+        if event.rule_name:
+            self._rules_panel.update_rule_stats(
+                event.rule_name,
+                fired=self._rule_engine.get_total_fired_count(event.rule_name),
+                last_ts=event.timestamp.strftime("%H:%M:%S"),
+            )
+            self._rules_panel.update_stats(self._rule_engine.get_grand_total_fired())
+
+    def _on_link_state_changed(self, device, iface_index: int, is_up: bool):
+        """Update the topology graph when the rule engine fires LinkDown or LinkUp."""
+        iface = next((i for i in device.interfaces if i.index == iface_index), None)
+        if iface is None:
+            return
+        peer_id = iface.connected_to_device
+        if not peer_id:
+            return
+        self._topology_view.topology_scene.set_edge_broken(device.id, peer_id, not is_up)
 
     def _regenerate_device_live(self, device_id: str):
         device = self.device_manager.get_device(device_id)
@@ -1827,6 +1968,9 @@ class MainWindow(QMainWindow):
                 len(self.device_manager.get_devices_by_type(DeviceType.SERVER)),
                 len(self.device_manager.get_devices_by_type(DeviceType.FIREWALL)),
                 len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER)),
+                len(self.device_manager.get_devices_by_type(DeviceType.UPS)),
+                len(self.device_manager.get_devices_by_type(DeviceType.PDU)),
+                len(self.device_manager.get_devices_by_type(DeviceType.FLOOR_PDU)),
             )
             self._status_label.setText(
                 f"SNMPSim starting — loading datasets… ({len(bound_ips)} devices)"
@@ -1963,6 +2107,10 @@ class MainWindow(QMainWindow):
         )
         self._console_panel.log("SNMPSim is ready — devices are now responding to SNMP polls.", "success")
 
+        # Unlock the Rule Engine button now that SNMP is running.
+        self._sim_panel.set_rule_engine_available(True)
+        self._rules_panel.set_rule_engine_available(True)
+
         # Run one SNMP topology discovery scan as soon as the simulator is ready.
         self._start_live_discovery()
 
@@ -2072,7 +2220,10 @@ class MainWindow(QMainWindow):
         servers        = len(self.device_manager.get_devices_by_type(DeviceType.SERVER))
         firewalls      = len(self.device_manager.get_devices_by_type(DeviceType.FIREWALL))
         load_balancers = len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER))
-        self._sim_panel.set_device_counts(switches, routers, servers, firewalls, load_balancers)
+        ups            = len(self.device_manager.get_devices_by_type(DeviceType.UPS))
+        pdu            = len(self.device_manager.get_devices_by_type(DeviceType.PDU))
+        floor_pdu      = len(self.device_manager.get_devices_by_type(DeviceType.FLOOR_PDU))
+        self._sim_panel.set_device_counts(switches, routers, servers, firewalls, load_balancers, ups, pdu, floor_pdu)
 
         matched = len(result.matched)
         missing = len(result.missing)
@@ -2111,7 +2262,10 @@ class MainWindow(QMainWindow):
         servers        = len(self.device_manager.get_devices_by_type(DeviceType.SERVER))
         firewalls      = len(self.device_manager.get_devices_by_type(DeviceType.FIREWALL))
         load_balancers = len(self.device_manager.get_devices_by_type(DeviceType.LOAD_BALANCER))
-        self._sim_panel.set_device_counts(switches, routers, servers, firewalls, load_balancers)
+        ups            = len(self.device_manager.get_devices_by_type(DeviceType.UPS))
+        pdu            = len(self.device_manager.get_devices_by_type(DeviceType.PDU))
+        floor_pdu      = len(self.device_manager.get_devices_by_type(DeviceType.FLOOR_PDU))
+        self._sim_panel.set_device_counts(switches, routers, servers, firewalls, load_balancers, ups, pdu, floor_pdu)
 
     def _stop_simulator(self):
         # Stop any in-flight live discovery scan
@@ -2135,14 +2289,15 @@ class MainWindow(QMainWindow):
             scene.set_edge_broken(u, v, False)
         scene.set_all_faded(True)
 
+        self._on_rule_engine_toggled(False)
+        self._sim_panel.set_rule_engine_available(False)
+        self._rules_panel.set_rule_engine_available(False)
         self.snmpsim.stop()
         self.state_store.disable_snmp_sync()
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
         self._update_topology_edit_actions()
         self._binding_panel.set_snmp_locked(False)
-        self._trap_engine.stop_simulation()
-        self._sim_panel.set_simulating(False)
         # IP bindings are intentionally kept so the user can restart quickly
         # without waiting for rebind.  Use Clear Simulation to release IPs.
         self._sim_panel.set_status("Stopped")
@@ -2496,6 +2651,9 @@ class MainWindow(QMainWindow):
             return
 
         if self.snmpsim.is_running():
+            self._on_rule_engine_toggled(False)
+            self._sim_panel.set_rule_engine_available(False)
+            self._rules_panel.set_rule_engine_available(False)
             self.snmpsim.stop()
         if self.sflow.is_running():
             self.sflow.stop()
@@ -2522,9 +2680,9 @@ class MainWindow(QMainWindow):
         self._clear_thread = None
         self._clear_worker = None
 
-        self._trap_engine.stop_simulation()
-        self._sim_panel.set_simulating(False)
         self._generated_files = []
+        self._rule_engine.reset_fired_counts()
+        self._rules_panel.reset_stats()
         self._sim_panel.set_device_counts(0, 0, 0)
         self._sim_panel.set_simulator_running(False)
         self._update_topology_edit_actions()
@@ -2640,8 +2798,6 @@ class MainWindow(QMainWindow):
             )
             if reply != QMessageBox.Yes:
                 return
-        self._trap_engine.stop_simulation()
-        self._sim_panel.set_simulating(False)
         self.topology.clear()
         self.device_manager.clear()
         self.ip_manager.reset()
@@ -2710,7 +2866,6 @@ class MainWindow(QMainWindow):
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
         self._refresh_device_table()
         self._refresh_stats()
-        self._sync_trap_devices()
         self._topology_view.fit_view()
         self._snapshot_default_positions()
         # Fade the graph until SNMP confirms devices are live
@@ -2736,6 +2891,9 @@ class MainWindow(QMainWindow):
                 DeviceType.SERVER:        QColor("#8957e5"),
                 DeviceType.FIREWALL:      QColor("#e67e22"),
                 DeviceType.LOAD_BALANCER: QColor("#16a085"),
+                DeviceType.UPS:           QColor("#c9a227"),
+                DeviceType.PDU:           QColor("#d44f00"),
+                DeviceType.FLOOR_PDU:     QColor("#b03060"),
             }
             _consolas = QFont("Consolas", 9)
             for row, device in enumerate(devices):
@@ -2750,12 +2908,14 @@ class MainWindow(QMainWindow):
                 iface_item.setTextAlignment(Qt.AlignCenter)
                 port_item  = QTableWidgetItem(str(device.snmp_port))
                 port_item.setTextAlignment(Qt.AlignCenter)
+                loc_item   = QTableWidgetItem(device.sys_location)
                 t.setItem(row, 0, name_item)
                 t.setItem(row, 1, type_item)
                 t.setItem(row, 2, vendor_item)
                 t.setItem(row, 3, ip_item)
                 t.setItem(row, 4, iface_item)
                 t.setItem(row, 5, port_item)
+                t.setItem(row, 6, loc_item)
         finally:
             t.blockSignals(False)
             t.setUpdatesEnabled(True)
@@ -2903,6 +3063,7 @@ class MainWindow(QMainWindow):
             if reply == QMessageBox.No:
                 event.ignore()
                 return
+            self._trap_engine.set_rule_engine_enabled(False)
             self.snmpsim.stop()
             # Best-effort synchronous IP removal on exit
             if self._bound_ips and self._bound_interface:
