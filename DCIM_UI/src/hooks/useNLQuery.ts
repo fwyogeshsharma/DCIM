@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { aiAPI } from '@/lib/ai-api'
 import { api } from '@/lib/api'
+import type { TimeRange } from '@/lib/types'
 
 export function useNLQuery() {
   return useMutation({
@@ -14,7 +15,7 @@ export function useNLQuery() {
       if (nlResult.filters.metric_type) {
         data = await api.getMetrics({
           metric_type: nlResult.filters.metric_type,
-          time_range: nlResult.filters.time_range || '24h',
+          time_range: (nlResult.filters.time_range || '24h') as TimeRange,
         })
 
         // Apply threshold filter if present

@@ -35,6 +35,68 @@ const AGENT_SELECT = `
 export function createAgentsRouter(dbPool: Pool): Router {
   const router = Router()
 
+  // Create a manual device from the Topology Editor
+  router.post('/', async (req, res) => {
+    try {
+      const { server_id, hostname, ip_address, agent_group, certificate_cn, protocol, metadata } = req.body
+      if (!server_id || !hostname) {
+        return res.status(400).json({ success: false, error: 'server_id and hostname are required' })
+      }
+      const { rows: srv } = await dbPool.query('SELECT id FROM servers WHERE id = $1', [server_id])
+      if (srv.length === 0) {
+        return res.status(404).json({ success: false, error: 'Server not found' })
+      }
+      const agentId = `manual-${Date.now()}`
+      const meta = { ...(metadata || {}), manual: true }
+      const { rows } = await dbPool.query(
+        `INSERT INTO agents (server_id, agent_id, hostname, ip_address, agent_group, certificate_cn, protocol, approved, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8) RETURNING *`,
+        [server_id, agentId, hostname, ip_address || null, agent_group || 'manual', certificate_cn || null, protocol || null, JSON.stringify(meta)]
+      )
+      res.status(201).json({ success: true, data: rows[0] })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // Update agent (Topology Editor manual devices)
+  router.put('/:agentId', async (req, res) => {
+    try {
+      const { agentId } = req.params
+      const { hostname, ip_address, agent_group, certificate_cn, protocol, metadata } = req.body
+      const sets: string[] = []
+      const params: any[] = []
+      let i = 1
+      if (hostname !== undefined)       { sets.push(`hostname = $${i++}`);       params.push(hostname) }
+      if (ip_address !== undefined)     { sets.push(`ip_address = $${i++}`);     params.push(ip_address) }
+      if (agent_group !== undefined)    { sets.push(`agent_group = $${i++}`);    params.push(agent_group) }
+      if (certificate_cn !== undefined) { sets.push(`certificate_cn = $${i++}`); params.push(certificate_cn) }
+      if (protocol !== undefined)       { sets.push(`protocol = $${i++}`);       params.push(protocol) }
+      if (metadata !== undefined)       { sets.push(`metadata = $${i++}`);       params.push(JSON.stringify(metadata)) }
+      if (sets.length === 0) return res.status(400).json({ success: false, error: 'No fields to update' })
+      sets.push('updated_at = NOW()')
+      params.push(agentId)
+      const { rows } = await dbPool.query(
+        `UPDATE agents SET ${sets.join(', ')} WHERE agent_id = $${i} RETURNING *`,
+        params
+      )
+      if (rows.length === 0) return res.status(404).json({ success: false, error: 'Agent not found' })
+      res.json({ success: true, data: rows[0] })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // Delete agent
+  router.delete('/:agentId', async (req, res) => {
+    try {
+      await dbPool.query('DELETE FROM agents WHERE agent_id = $1', [req.params.agentId])
+      res.json({ success: true })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // Get all agents (aggregated from all servers)
   router.get('/', async (req, res) => {
     try {

@@ -80,6 +80,35 @@ class APIClient {
     })
   }
 
+  async createAgent(data: {
+    server_id: string
+    hostname: string
+    ip_address?: string
+    agent_group?: string
+    certificate_cn?: string
+    protocol?: string
+    metadata?: Record<string, any>
+  }): Promise<any> {
+    return this.request<any>('/agents', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateAgent(agentId: string, data: {
+    hostname?: string
+    ip_address?: string
+    agent_group?: string
+    certificate_cn?: string
+    protocol?: string
+    metadata?: Record<string, any>
+  }): Promise<any> {
+    return this.request<any>(`/agents/${agentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   async deleteAgent(agentId: string): Promise<void> {
     await this.request<void>(`/agents/${agentId}`, {
       method: 'DELETE',

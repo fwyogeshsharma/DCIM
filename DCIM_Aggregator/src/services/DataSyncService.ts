@@ -13,7 +13,7 @@ export class DataSyncService {
   private async getAgentIdForServer(serverId: string): Promise<string | null> {
     try {
       const result = await this.dbPool.query(
-        `SELECT agent_id FROM agents WHERE server_id = $1 LIMIT 1`,
+        `SELECT agent_id FROM agents WHERE server_id = $1 AND agent_id NOT LIKE 'manual-%' LIMIT 1`,
         [serverId]
       )
       return result.rows.length > 0 ? result.rows[0].agent_id : null
@@ -28,7 +28,7 @@ export class DataSyncService {
   private async getAllAgentIdsForServer(serverId: string): Promise<string[]> {
     try {
       const result = await this.dbPool.query(
-        `SELECT agent_id FROM agents WHERE server_id = $1`,
+        `SELECT agent_id FROM agents WHERE server_id = $1 AND agent_id NOT LIKE 'manual-%'`,
         [serverId]
       )
       return result.rows.map((r: any) => r.agent_id)
@@ -49,13 +49,14 @@ export class DataSyncService {
         return
       }
 
-      // Upsert agents to database
+      // Upsert agents to database — skip manual nodes (UI-created, not real agents)
       for (const agent of agents) {
+        if (agent.agent_id?.startsWith('manual-')) continue
         try {
           await this.dbPool.query(
             `
-            INSERT INTO agents (server_id, agent_id, hostname, ip_address, status, certificate_cn, agent_group, approved, last_seen, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            INSERT INTO agents (server_id, agent_id, hostname, ip_address, status, certificate_cn, agent_group, protocol, approved, last_seen, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
             ON CONFLICT (server_id, agent_id)
             DO UPDATE SET
               hostname = EXCLUDED.hostname,
@@ -63,6 +64,7 @@ export class DataSyncService {
               status = EXCLUDED.status,
               certificate_cn = EXCLUDED.certificate_cn,
               agent_group = EXCLUDED.agent_group,
+              protocol = EXCLUDED.protocol,
               approved = EXCLUDED.approved,
               last_seen = EXCLUDED.last_seen,
               updated_at = NOW()
@@ -75,6 +77,7 @@ export class DataSyncService {
               agent.status,
               agent.certificate_cn,
               agent.group,
+              agent.protocol || null,
               agent.approved,
               agent.last_seen || new Date(),
             ]

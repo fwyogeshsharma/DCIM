@@ -33,6 +33,7 @@ export interface Agent {
   certificate_cn: string
   hostname: string
   ip_address: string
+  protocol?: string
   status: 'online' | 'offline' | 'pending'
   group: string
   last_seen: string

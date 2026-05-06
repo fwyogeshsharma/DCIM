@@ -64,7 +64,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: dcim_aggregator
       POSTGRES_USER: dcim
-      POSTGRES_PASSWORD: dcim_password
+      POSTGRES_PASSWORD: dcim_pas
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: info
     ports:

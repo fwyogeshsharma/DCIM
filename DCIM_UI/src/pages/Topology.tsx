@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import type { TimeRange } from '@/lib/types'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -9,7 +10,7 @@ import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { computeLayeredLayout } from '@/lib/topology-layered'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
@@ -64,6 +65,17 @@ export default function Topology() {
   const isLoading = USE_MOCK_DATA ? false : realLoading
 
   const navigate = useNavigate()
+
+  // Load custom topology saved from the Advanced Editor
+  const [customTopology] = useState<{ nodes: any[]; links: any[] } | null>(() => {
+    try {
+      const raw = localStorage.getItem('dcim_custom_topology')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })
+
   const svgRef = useRef<SVGSVGElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [selectedNode, setSelectedNode] = useState<TopoNode | null>(null)
@@ -108,12 +120,12 @@ export default function Topology() {
         today: '24h',
         '30days': '30d',
         all: undefined,
-      }
+      } as const
 
-      const timeRange = timeRangeMap[timeFilter]
+      const timeRange = timeRangeMap[timeFilter] as TimeRange | undefined
 
       // Fetch metrics and alerts count for each agent
-      const results = await Promise.all(
+      return Promise.all(
         agents.map(async (agent) => {
           try {
             const [metrics, alerts] = await Promise.all([
@@ -140,8 +152,6 @@ export default function Topology() {
           }
         })
       )
-
-      return results
     },
     enabled: !USE_MOCK_DATA && !!agents && agents.length > 0,
     refetchInterval: USE_MOCK_DATA ? false : 30000,
@@ -393,7 +403,27 @@ export default function Topology() {
       })
     }
 
-    const nodes: TopoNode[] = [...serverNodes, ...agentNodes, ...deviceNodes]
+    // Inject custom nodes saved from the Advanced Editor, skipping any
+    // that already exist as real live nodes (same ID).
+    const existingNodeIds = new Set([
+      ...serverNodes.map(n => n.id),
+      ...agentNodes.map(n => n.id),
+      ...deviceNodes.map(n => n.id),
+    ])
+    const customTopoNodes: TopoNode[] = (customTopology?.nodes ?? [])
+      .filter((cn: any) => !existingNodeIds.has(cn.id))
+      .map((cn: any) => ({
+        id: cn.id,
+        name: cn.name,
+        type: (
+          cn.type === 'server' ? 'server' :
+          cn.type === 'agent'  ? 'agent'  : 'network'
+        ) as 'server' | 'agent' | 'network',
+        status: (cn.status ?? 'offline') as 'online' | 'offline',
+        color: cn.color,
+      }))
+
+    const nodes: TopoNode[] = [...serverNodes, ...agentNodes, ...deviceNodes, ...customTopoNodes]
     const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
     // Device↔device edges from topology_links. Resolve each row's source_ip
@@ -438,6 +468,17 @@ export default function Topology() {
       })
     }
 
+    // Custom links from Advanced Editor — only include if both endpoints are rendered
+    const allNodeIds = new Set(nodes.map(n => n.id))
+    const customTopoLinks: TopoLink[] = (customTopology?.links ?? [])
+      .filter((cl: any) => allNodeIds.has(cl.source) && allNodeIds.has(cl.target))
+      .map((cl: any) => ({
+        source: cl.source as string,
+        target: cl.target as string,
+        strength: 0.6,
+        distance: 160,
+      }))
+
     // Create links — each agent connects to its own server
     const links: TopoLink[] = [
       ...visibleAgents.map(agent => {
@@ -453,6 +494,7 @@ export default function Topology() {
       }).filter(l => l.target !== 'server-unknown'),
       ...deviceLinks,
       ...deviceToDeviceLinks,
+      ...customTopoLinks,
     ]
 
     const nodeCount = nodes.length
@@ -769,7 +811,7 @@ export default function Topology() {
       if (d.linkType !== 'device-device') return
       moveTip(event)
     })
-    link.on('mouseleave', function (event, d) {
+    link.on('mouseleave', function (_event, d) {
       const tip = tooltipRef.current
       if (tip) tip.style.opacity = '0'
       if (d.linkType === 'device-device') {
@@ -777,15 +819,11 @@ export default function Topology() {
       }
     })
 
-    // Create node groups with drag
+    // Create node groups (drag attached later, after `link` is defined)
     const node = g.append('g')
       .selectAll('g')
       .data(nodes)
       .enter().append('g')
-      .call(d3.drag<SVGGElement, TopoNode>()
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended) as any)
 
     // Click handler with debounce (to distinguish single click from double-click)
     node.on('click', (event, d) => {
@@ -1190,22 +1228,28 @@ export default function Topology() {
     // ── Static placement — no simulation tick needed ──
     node.attr('transform', d => `translate(${d.x},${d.y})`)
 
-    // Drag functions — reposition node and update links in-place
-    function dragstarted(_event: any, _d: TopoNode) {}
-
-    function dragged(event: any, d: TopoNode) {
-      d.x = event.x
-      d.y = event.y
-      d3.select(event.sourceEvent.target.closest('g')).attr('transform', `translate(${d.x},${d.y})`)
-      // Update straight line endpoints
-      link
-        .attr('x1', (l: TopoLink) => (l.source as TopoNode).x || 0)
-        .attr('y1', (l: TopoLink) => (l.source as TopoNode).y || 0)
-        .attr('x2', (l: TopoLink) => (l.target as TopoNode).x || 0)
-        .attr('y2', (l: TopoLink) => (l.target as TopoNode).y || 0)
-    }
-
-    function dragended(_event: any, _d: TopoNode) {}
+    // Attach drag AFTER `link` is defined so the closure captures it correctly.
+    // Use d3.pointer(event.sourceEvent, g.node()) to convert mouse coordinates
+    // into the zoom group's coordinate space — fixes the lag/desync when zoomed.
+    node.call(
+      d3.drag<SVGGElement, TopoNode>()
+        .on('start', function (event) {
+          d3.select(this).raise()
+          event.sourceEvent.stopPropagation()
+        })
+        .on('drag', function (event, d) {
+          const [x, y] = d3.pointer(event.sourceEvent, g.node())
+          d.x = x
+          d.y = y
+          d3.select(this).attr('transform', `translate(${x},${y})`)
+          link
+            .attr('x1', (l: TopoLink) => (l.source as TopoNode).x || 0)
+            .attr('y1', (l: TopoLink) => (l.source as TopoNode).y || 0)
+            .attr('x2', (l: TopoLink) => (l.target as TopoNode).x || 0)
+            .attr('y2', (l: TopoLink) => (l.target as TopoNode).y || 0)
+        })
+        .on('end', function () {})
+    )
 
     // Auto-fit to view immediately
     const fitTimer = setTimeout(() => {
@@ -1242,7 +1286,7 @@ export default function Topology() {
         clickTimerRef.current = null
       }
     }
-  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks])
+  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, customTopology])
 
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomRef.current) return

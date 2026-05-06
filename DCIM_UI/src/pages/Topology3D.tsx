@@ -11,7 +11,7 @@ import * as THREE from 'three'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
 

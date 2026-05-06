@@ -5,10 +5,10 @@ dotenv.config()
 export const config = {
   postgres: {
     host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5432'),
+    port: parseInt(process.env.POSTGRES_PORT || '5435'),
     database: process.env.POSTGRES_DB || 'dcim_aggregator',
     user: process.env.POSTGRES_USER || 'dcim',
-    password: process.env.POSTGRES_PASSWORD || 'dcim_password',
+    password: process.env.POSTGRES_PASSWORD || 'dcim_pas',
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
