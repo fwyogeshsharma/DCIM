@@ -314,7 +314,7 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
 
     # ── LLDP walk ─────────────────────────────────────────────────────────────
     if do_lldp:
-        rows = await _snmp_walk(agent_ip, community, port, LLDP_REM_OID, timeout, 200)
+        rows = await _snmp_walk(agent_ip, community, port, LLDP_REM_OID, timeout, 2000)
         # LLDP remote table OID: 1.0.8802.1.1.2.1.4.1.1.{col}.{timemark}.{port}.{idx}
         # parts[-4]=col  parts[-3]=timemark  parts[-2]=port  parts[-1]=idx
         nbr_map: Dict[str, dict] = {}
@@ -380,7 +380,7 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
         fmt = "    {idx:>4}  {descr:<28} {admin:>5}/{oper:<5}  {speed}"
         print(grey(fmt.format(idx="idx", descr="ifDescr", admin="admin",
                               oper="oper", speed="speed")))
-        for iface in result.interfaces[:20]:
+        for iface in result.interfaces:
             speed_raw = iface.get("speed", "")
             try:
                 speed_bps = int(speed_raw)
@@ -402,22 +402,18 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
                 oper  = oper,
                 speed = speed,
             )))
-        if len(result.interfaces) > 20:
-            print(grey(f"    … {len(result.interfaces) - 20} more interfaces not shown"))
 
     # LLDP
     if result.lldp_neighbours:
         print(f"\n  {bold('LLDP Neighbours')} ({len(result.lldp_neighbours)} found):")
         fmt2 = "    port={port:<4} {sys_name:<24} chassis={chassis_id:<18} port-id={port_id}"
-        for nbr in result.lldp_neighbours[:15]:
+        for nbr in result.lldp_neighbours:
             print(cyan(fmt2.format(
                 port       = nbr.get("port", "?"),
                 sys_name   = nbr.get("sys_name",   "—")[:24],
                 chassis_id = nbr.get("chassis_id", "—"),
                 port_id    = nbr.get("port_id",    "—"),
             )))
-        if len(result.lldp_neighbours) > 15:
-            print(grey(f"    … {len(result.lldp_neighbours) - 15} more neighbours not shown"))
 
 
 def _print_summary(results: List[DeviceResult]) -> None:

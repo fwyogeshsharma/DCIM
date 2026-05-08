@@ -21,7 +21,12 @@ from PySide6.QtCore import QObject, Signal
 from core.device_manager import Device
 from core.trap_definitions import (
     TrapType, TrapDefinition, TRAP_DEFINITIONS, OID_TO_TRAP_TYPE,
+    # sensor trap types imported explicitly for varbind dispatch
 )
+# Convenience aliases used in _build_extra_varbinds / _format_details
+_HUMIDITY_ALERT = TrapType.HUMIDITY_ALERT
+_DEWPOINT_ALERT = TrapType.DEWPOINT_ALERT
+_AIRFLOW_ALERT  = TrapType.AIRFLOW_ALERT
 
 if TYPE_CHECKING:
     from core.rule_engine import TrapAction, RuleEngine
@@ -416,6 +421,31 @@ class TrapEngine(QObject):
                 (_oid('1.3.6.1.2.1.15.3.1.14.0'), rfc1902.Integer32(state_code)),
             ]
 
+        if trap_type == _HUMIDITY_ALERT:
+            val = int(round(float(kwargs.get("metric_value", device.humidity))))
+            return [
+                (_oid('1.3.6.1.4.1.99999.2.12'), rfc1902.Gauge32(max(0, val))),   # humidity %
+                (_oid('1.3.6.1.4.1.99999.2.15'), rfc1902.Gauge32(70)),             # threshold %
+            ]
+
+        if trap_type == _DEWPOINT_ALERT:
+            # Encode as ×10 integer (e.g. 21.5°C → 215)
+            raw = float(kwargs.get("metric_value", device.dewpoint))
+            val = int(round(raw * 10))
+            return [
+                (_oid('1.3.6.1.4.1.99999.2.13'), rfc1902.Integer32(val)),   # dewpoint ×10 °C
+                (_oid('1.3.6.1.4.1.99999.2.16'), rfc1902.Integer32(210)),   # threshold 21.0°C ×10
+            ]
+
+        if trap_type == _AIRFLOW_ALERT:
+            # Encode as ×10 integer (e.g. 3.5 m/s → 35)
+            raw = float(kwargs.get("metric_value", device.airflow))
+            val = int(round(raw * 10))
+            return [
+                (_oid('1.3.6.1.4.1.99999.2.14'), rfc1902.Integer32(max(0, val))), # airflow ×10 m/s
+                (_oid('1.3.6.1.4.1.99999.2.17'), rfc1902.Integer32(35)),           # threshold 3.5×10
+            ]
+
         return []
 
     @staticmethod
@@ -453,4 +483,13 @@ class TrapEngine(QObject):
             return "Incorrect community string"
         if trap_type in (TrapType.COLD_START, TrapType.WARM_START):
             return "Device restarted"
+        if trap_type == _HUMIDITY_ALERT:
+            val = kwargs.get("metric_value", device.humidity)
+            return f"Humidity {float(val):.1f}%  (threshold 70%)"
+        if trap_type == _DEWPOINT_ALERT:
+            val = kwargs.get("metric_value", device.dewpoint)
+            return f"Dew point {float(val):.1f}°C  (threshold 21°C)"
+        if trap_type == _AIRFLOW_ALERT:
+            val = kwargs.get("metric_value", device.airflow)
+            return f"Airflow {float(val):.2f} m/s  (range 0.3–3.5 m/s)"
         return ""

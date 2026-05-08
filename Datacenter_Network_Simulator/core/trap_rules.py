@@ -162,6 +162,108 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.6.3.1.1.5.4",
           severity="informational", priority=100,
           recovery=True, recovery_of="HighTemperature"),
+
+    # ── Management layer: OOB switch link events ──────────────────────────────
+
+    _rule("OOBSwitchLinkDown",
+          _state_change("interface_status", "up", "down"),
+          "1.3.6.1.6.3.1.1.5.3",
+          severity="critical", priority=210,
+          device_types=["oob_switch"]),
+
+    _rule("OOBSwitchLinkUp",
+          _state_change("interface_status", "down", "up"),
+          "1.3.6.1.6.3.1.1.5.4",
+          severity="informational", priority=210,
+          device_types=["oob_switch"]),
+
+    # ── Environmental sensor alerts ───────────────────────────────────────────
+
+    _rule("SensorAmbientTempHigh",
+          _threshold("ambient_temp", ">", 32.0),
+          "1.3.6.1.4.1.99999.1.3",
+          severity="major", priority=180,
+          device_types=["sensor"]),
+
+    _rule("SensorAmbientTempCritical",
+          _threshold("ambient_temp", ">", 38.0),
+          "1.3.6.1.4.1.99999.1.3",
+          severity="critical", priority=185,
+          device_types=["sensor"]),
+
+    _rule("SensorAmbientTempNormal",
+          _threshold("ambient_temp", "<", 28.0),
+          "1.3.6.1.6.3.1.1.5.4",
+          severity="informational", priority=100,
+          recovery=True, recovery_of="SensorAmbientTempHigh"),
+
+    # ── Humidity alerts (Raritan + Vertiv + APC) ──────────────────────────────
+
+    _rule("SensorHighHumidity",
+          _threshold("humidity", ">", 70.0),
+          "1.3.6.1.4.1.99999.1.6",
+          severity="major", priority=175,
+          device_types=["sensor"]),
+
+    _rule("SensorCriticalHumidity",
+          _threshold("humidity", ">", 80.0),
+          "1.3.6.1.4.1.99999.1.6",
+          severity="critical", priority=180,
+          device_types=["sensor"]),
+
+    _rule("SensorLowHumidity",
+          _threshold("humidity", "<", 30.0),
+          "1.3.6.1.4.1.99999.1.6",
+          severity="major", priority=175,
+          device_types=["sensor"]),
+
+    _rule("SensorHumidityNormal",
+          _composite(
+              _threshold("humidity", ">=", 30.0),
+              _threshold("humidity", "<=", 70.0),
+              logic="AND",
+          ),
+          "1.3.6.1.6.3.1.1.5.4",
+          severity="informational", priority=100,
+          recovery=True, recovery_of="SensorHighHumidity"),
+
+    # ── Dew-point alert (Vertiv Geist GTHD — condensation risk) ──────────────
+
+    _rule("SensorHighDewPoint",
+          _threshold("dewpoint", ">", 21.0),
+          "1.3.6.1.4.1.99999.1.7",
+          severity="critical", priority=185,
+          device_types=["sensor"]),
+
+    _rule("SensorDewPointNormal",
+          _threshold("dewpoint", "<=", 17.0),
+          "1.3.6.1.6.3.1.1.5.4",
+          severity="informational", priority=100,
+          recovery=True, recovery_of="SensorHighDewPoint"),
+
+    # ── Airflow alert (APC NetBotz 250 — cooling anomaly) ────────────────────
+
+    _rule("SensorHighAirflow",
+          _threshold("airflow", ">", 3.5),
+          "1.3.6.1.4.1.99999.1.8",
+          severity="major", priority=170,
+          device_types=["sensor"]),
+
+    _rule("SensorLowAirflow",
+          _threshold("airflow", "<", 0.3),
+          "1.3.6.1.4.1.99999.1.8",
+          severity="critical", priority=180,
+          device_types=["sensor"]),
+
+    _rule("SensorAirflowNormal",
+          _composite(
+              _threshold("airflow", ">=", 0.3),
+              _threshold("airflow", "<=", 3.5),
+              logic="AND",
+          ),
+          "1.3.6.1.6.3.1.1.5.4",
+          severity="informational", priority=100,
+          recovery=True, recovery_of="SensorHighAirflow"),
 ]
 
 

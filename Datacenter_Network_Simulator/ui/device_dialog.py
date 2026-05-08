@@ -5,7 +5,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QDialog, QFormLayout, QLineEdit, QComboBox, QSpinBox,
     QCheckBox, QDialogButtonBox, QVBoxLayout, QGroupBox,
-    QLabel, QFrame,
+    QLabel, QFrame, QScrollArea, QWidget,
 )
 from PySide6.QtCore import Qt
 
@@ -91,13 +91,32 @@ class DeviceDialog(QDialog):
         if self._editing:
             self._populate()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        avail_h = self.screen().availableGeometry().height()
+        self.setMaximumHeight(int(avail_h * 0.85))
+
     # ------------------------------------------------------------------ #
     #  UI construction                                                     #
     # ------------------------------------------------------------------ #
 
     def _build_ui(self):
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setSpacing(0)
+        outer.setContentsMargins(8, 8, 8, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setFrameShape(QFrame.NoFrame)
+
+        _content = QWidget()
+        layout = QVBoxLayout(_content)
         layout.setSpacing(8)
+        layout.setContentsMargins(0, 0, 4, 8)
+        scroll.setWidget(_content)
+        outer.addWidget(scroll, stretch=1)
 
         # ---- Identity group ----
         id_group = QGroupBox("Device Identity")
@@ -135,8 +154,14 @@ class DeviceDialog(QDialog):
         self.net_form.setLabelAlignment(Qt.AlignRight)
 
         self.ip_edit = QLineEdit()
-        self.ip_edit.setPlaceholderText("192.168.1.x  (auto if blank)")
-        self.net_form.addRow("IP Address:", self.ip_edit)
+        self.ip_edit.setPlaceholderText("auto if blank")
+        self.net_form.addRow("Production IP:", self.ip_edit)
+
+        self.mgmt_ip_edit = QLineEdit()
+        self.mgmt_ip_edit.setReadOnly(True)
+        self.mgmt_ip_edit.setPlaceholderText("assigned by OOB management network")
+        self.mgmt_ip_edit.setStyleSheet("color: #00b4d8;")
+        self.net_form.addRow("Mgmt IP (OOB):", self.mgmt_ip_edit)
 
         self.port_spin = QSpinBox()
         self.port_spin.setRange(161, 65535)
@@ -163,13 +188,21 @@ class DeviceDialog(QDialog):
         loc_form = self.loc_form
         loc_form.setLabelAlignment(Qt.AlignRight)
 
+        self.country_edit = QLineEdit()
+        self.country_edit.setPlaceholderText("e.g. USA")
+        loc_form.addRow("Country:", self.country_edit)
+
+        self.dc_city_edit = QLineEdit()
+        self.dc_city_edit.setPlaceholderText("e.g. Dallas")
+        loc_form.addRow("City:", self.dc_city_edit)
+
         self.dc_edit = QLineEdit()
         self.dc_edit.setPlaceholderText("e.g. DC1")
         loc_form.addRow("Datacenter:", self.dc_edit)
 
-        self.dc_city_edit = QLineEdit()
-        self.dc_city_edit.setPlaceholderText("e.g. Chicago")
-        loc_form.addRow("City:", self.dc_city_edit)
+        self.room_edit = QLineEdit()
+        self.room_edit.setPlaceholderText("e.g. A")
+        loc_form.addRow("Room:", self.room_edit)
 
         self.rack_row_spin = QSpinBox()
         self.rack_row_spin.setRange(0, 999)
@@ -190,7 +223,7 @@ class DeviceDialog(QDialog):
         self.loc_preview.setStyleSheet("color: gray; font-style: italic;")
         loc_form.addRow("", self.loc_preview)
 
-        for w in (self.dc_edit, self.dc_city_edit):
+        for w in (self.country_edit, self.dc_edit, self.dc_city_edit, self.room_edit):
             w.textChanged.connect(self._update_loc_preview)
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):
             w.valueChanged.connect(self._update_loc_preview)
@@ -212,15 +245,16 @@ class DeviceDialog(QDialog):
 
         layout.addWidget(self.iface_group)
 
-        # ---- Buttons ----
+        # ---- Buttons — pinned outside the scroll area ----
         separator = QFrame()
         separator.setFrameShape(QFrame.HLine)
-        layout.addWidget(separator)
+        outer.addWidget(separator)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self._validate_and_accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        outer.addWidget(buttons)
+        outer.setContentsMargins(8, 8, 8, 8)
 
     # ------------------------------------------------------------------ #
     #  Cascading combo updates                                             #
@@ -252,22 +286,26 @@ class DeviceDialog(QDialog):
         if not dc:
             self.loc_preview.setText("sysLocation: Network Lab")
             return
-        parts = [dc]
-        city = self.dc_city_edit.text().strip()
-        if city:
-            parts.append(city)
+        parts = []
+        if self.country_edit.text().strip():
+            parts.append(self.country_edit.text().strip())
+        if self.dc_city_edit.text().strip():
+            parts.append(self.dc_city_edit.text().strip())
+        parts.append(dc)
+        if self.room_edit.text().strip():
+            parts.append(f"Room {self.room_edit.text().strip()}")
         dtype = self.type_combo.currentData()
         if dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU):
             row = self.rack_row_spin.value()
             if row:
-                parts.append(f"Row{row}")
+                parts.append(f"Row {row}")
             rack = self.rack_num_spin.value()
             if rack:
-                parts.append(f"Rack{rack}")
+                parts.append(f"Rack {rack}")
             unit = self.rack_unit_spin.value()
             if unit:
                 parts.append(f"U{unit}")
-        self.loc_preview.setText(f"sysLocation: {'-'.join(parts)}")
+        self.loc_preview.setText(f"sysLocation: {', '.join(parts)}")
 
     def _update_port_info(self, _=None):
         if not hasattr(self, 'port_info_label'):
@@ -328,12 +366,15 @@ class DeviceDialog(QDialog):
             self.model_combo.setCurrentIndex(idx)
 
         self.ip_edit.setText(self.device.ip_address)
+        self.mgmt_ip_edit.setText(self.device.mgmt_ip or "")
         self.port_spin.setValue(self.device.snmp_port)
         self.gnmi_port_spin.setValue(self.device.gnmi_port)
         self.metrics_check.setChecked(self.device.metrics_enabled)
 
-        self.dc_edit.setText(self.device.datacenter)
+        self.country_edit.setText(self.device.country)
         self.dc_city_edit.setText(self.device.datacenter_city)
+        self.dc_edit.setText(self.device.datacenter)
+        self.room_edit.setText(self.device.room)
         self.rack_row_spin.setValue(self.device.rack_row)
         self.rack_num_spin.setValue(self.device.rack_num)
         self.rack_unit_spin.setValue(self.device.rack_unit)
@@ -375,8 +416,10 @@ class DeviceDialog(QDialog):
             "snmp_community":   ip,
             "interface_groups": list(model.interface_groups) if model else [],
             "metrics_enabled":  self.metrics_check.isChecked(),
-            "datacenter":       self.dc_edit.text().strip(),
+            "country":          self.country_edit.text().strip(),
             "datacenter_city":  self.dc_city_edit.text().strip(),
+            "datacenter":       self.dc_edit.text().strip(),
+            "room":             self.room_edit.text().strip(),
             "rack_row":         self.rack_row_spin.value(),
             "rack_num":         self.rack_num_spin.value(),
             "rack_unit":        self.rack_unit_spin.value(),

@@ -198,11 +198,23 @@ class SFlowPanel(QWidget):
     # ------------------------------------------------------------------ #
 
     def get_config(self) -> dict:
+        def _spin_val(spin: QSpinBox) -> int:
+            # Read displayed text directly — bypasses Qt's Intermediate/Acceptable
+            # validation state so a partially-typed value isn't silently ignored.
+            txt = spin.lineEdit().text()
+            if spin.prefix():
+                txt = txt[len(spin.prefix()):]
+            if spin.suffix():
+                txt = txt[:len(txt) - len(spin.suffix())]
+            try:
+                return max(spin.minimum(), min(spin.maximum(), int(txt.strip())))
+            except ValueError:
+                return spin.value()
         return {
             "collector_ip":   self._ip_edit.text().strip() or "127.0.0.1",
-            "collector_port": self._port_spin.value(),
-            "interval":       self._interval_spin.value(),
-            "sample_rate":    self._rate_spin.value(),
+            "collector_port": _spin_val(self._port_spin),
+            "interval":       _spin_val(self._interval_spin),
+            "sample_rate":    _spin_val(self._rate_spin),
         }
 
     def set_status(self, status: str):
@@ -229,6 +241,9 @@ class SFlowPanel(QWidget):
         if total > 0:
             self._dev_group.show()
 
-    def set_collector_info(self, collector: str):
-        self._lbl_collector.setText(f"Exporting to {collector}")
+    def set_collector_info(self, collector: str, interval: int = 0):
+        text = f"Exporting to {collector}"
+        if interval > 0:
+            text += f"  ·  every {interval}s"
+        self._lbl_collector.setText(text)
         self._lbl_collector.show()

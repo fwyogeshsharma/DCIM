@@ -189,9 +189,12 @@ class GNMIDataGenerator:
 
         neighbors = topology.get_neighbors(device.id) if hasattr(topology, "get_neighbors") else []
         for neighbor in neighbors:
-            # Find which local interface connects to this neighbor
-            edge_data = topology.graph.edges.get((device.id, neighbor.id)) or \
-                        topology.graph.edges.get((neighbor.id, device.id))
+            # Find which local interface connects to this neighbor.
+            # MultiGraph: graph[u][v] returns {edge_key: attr_dict}; prefer production layer.
+            if not topology.graph.has_edge(device.id, neighbor.id):
+                continue
+            all_edges = topology.graph[device.id][neighbor.id]
+            edge_data = all_edges.get("production") or next(iter(all_edges.values()), None)
             if not edge_data:
                 continue
 
@@ -485,8 +488,10 @@ class GNMIDataGenerator:
         # OSPF
         ospf_ifaces = []
         for neighbor in router_neighbors:
-            edge_data = topology.graph.edges.get((device.id, neighbor.id)) or \
-                        topology.graph.edges.get((neighbor.id, device.id))
+            if not topology.graph.has_edge(device.id, neighbor.id):
+                continue
+            all_edges = topology.graph[device.id][neighbor.id]
+            edge_data = all_edges.get("production") or next(iter(all_edges.values()), None)
             if not edge_data:
                 continue
             if edge_data.get("src_node") == device.id:

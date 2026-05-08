@@ -211,6 +211,9 @@ class DeviceStateStore:
             "boot_time_ns": self._boot_times[ip],
             "cpu_temp":     device.cpu_temp,
             "inlet_temp":   device.inlet_temp,
+            "humidity":     device.humidity,
+            "dewpoint":     device.dewpoint,
+            "airflow":      device.airflow,
             "interfaces": {
                 iface.name: {
                     "in_octets":        iface.in_octets,
@@ -379,6 +382,16 @@ class DeviceStateStore:
         device.inlet_temp = round(max(15.0, min(55.0,
             18.0 + device.cpu_usage * 0.12 + random.uniform(-0.5, 0.5))), 1)
 
+        # Environmental readings — only sensor devices
+        if device.device_type == DeviceType.SENSOR:
+            device.humidity = round(max(10.0, min(90.0,
+                device.humidity + random.uniform(-1.5, 1.5))), 1)
+            device.dewpoint = round(
+                device.inlet_temp - ((100.0 - device.humidity) / 5.0), 1)
+            if "NetBotz" in device.model_name:
+                device.airflow = round(max(0.2, min(4.0,
+                    device.airflow + random.uniform(-0.15, 0.15))), 2)
+
         # Interface counters + queue drops — only UP interfaces
         congested  = device.cpu_usage > 70
         moderate   = device.cpu_usage > 50
@@ -492,6 +505,10 @@ class DeviceStateStore:
                         for i in device.interfaces
                     ],
                     temperature=float(device.cpu_temp),
+                    ambient_temp=float(device.inlet_temp),
+                    humidity=float(device.humidity),
+                    dewpoint=float(device.dewpoint),
+                    airflow=float(device.airflow),
                     ups_status=ext.get("ups_status", "normal"),
                     bgp_sessions=[
                         BGPSessionFact(peer_addr=s["peer"], state=s["state"])

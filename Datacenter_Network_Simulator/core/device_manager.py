@@ -18,6 +18,8 @@ class DeviceType(str, Enum):
     UPS           = "ups"
     PDU           = "pdu"
     FLOOR_PDU     = "floor_pdu"
+    OOB_SWITCH    = "oob_switch"   # Out-of-band management switch
+    SENSOR        = "sensor"       # Environmental sensor (temp/humidity)
 
 
 class Vendor(str, Enum):
@@ -185,6 +187,20 @@ MODEL_SYSDESCR = {
     "Vertiv Liebert MPH2 24kVA": "Liebert MPH2 Modular Power Hub, 24kVA, 3-phase, wall/floor mount, fw 2.1.0",
     # Raritan Floor PDU
     "Raritan PX3-5000 Floor 30A": "Raritan PX3 Floor PDU, 30A, 208V, (24)C19 outlets, fw 3.7.0",
+    # OOB Management Switches
+    "Cisco Catalyst 1000-48T": "Cisco IOS Software, Version 15.2(7)E6, RELEASE SOFTWARE (fc2), Catalyst 1000 48-port",
+    "Cisco Catalyst 1000-24T": "Cisco IOS Software, Version 15.2(7)E6, RELEASE SOFTWARE (fc2), Catalyst 1000 24-port",
+    "HPE Aruba 2530-48G":      "HP J9775A Aruba 2530-48G Switch, ProCurve OS, Version WB.16.10.0023",
+    "HPE Aruba 2530-24G":      "HP J9776A Aruba 2530-24G Switch, ProCurve OS, Version WB.16.10.0023",
+    "Dell N1148T-ON":          "Dell EMC Networking N1148T-ON, DNOS 6.5.1.9, 48-port GbE + 4-port SFP+",
+    "Dell N1124T-ON":          "Dell EMC Networking N1124T-ON, DNOS 6.5.1.9, 24-port GbE + 4-port SFP+",
+    # Environmental Sensors
+    "Raritan DPX2-T1H1":  "Raritan DPX2 Environmental Sensor, 1× temperature, 1× humidity, fw 3.7.0",
+    "Raritan DPX2-T3H1":  "Raritan DPX2 Environmental Sensor, 3× temperature, 1× humidity, fw 3.7.0",
+    "Vertiv Geist GTHD":  "Geist Temperature/Humidity/Dewpoint Sensor, fw 4.6.0",
+    "Vertiv Geist IMD-3": "Geist Intelligent Rack Monitoring Device, 3-sensor, fw 4.6.0",
+    "APC NetBotz 250":    "APC NetBotz Room Monitor 250, temperature/humidity/airflow, fw 5.2.0",
+    "APC NetBotz 355":    "APC NetBotz Rack Monitor 355, temperature/humidity/camera, fw 5.2.0",
 }
 
 # Per-model sysObjectID overrides (vendor-level fallback in VENDOR_SYSOID).
@@ -236,6 +252,20 @@ MODEL_SYSOID = {
     "Vertiv Liebert MPH2 24kVA": "1.3.6.1.4.1.476.1.42.2.10.3.1.2",
     # Raritan Floor PDU OIDs
     "Raritan PX3-5000 Floor 30A": "1.3.6.1.4.1.13742.6.3.2.50",
+    # OOB Management Switch OIDs
+    "Cisco Catalyst 1000-48T": "1.3.6.1.4.1.9.1.2776",
+    "Cisco Catalyst 1000-24T": "1.3.6.1.4.1.9.1.2775",
+    "HPE Aruba 2530-48G":      "1.3.6.1.4.1.11.2.3.7.11.136",
+    "HPE Aruba 2530-24G":      "1.3.6.1.4.1.11.2.3.7.11.137",
+    "Dell N1148T-ON":          "1.3.6.1.4.1.674.10895.5000",
+    "Dell N1124T-ON":          "1.3.6.1.4.1.674.10895.5001",
+    # Environmental Sensor OIDs
+    "Raritan DPX2-T1H1":  "1.3.6.1.4.1.13742.8.1.1",
+    "Raritan DPX2-T3H1":  "1.3.6.1.4.1.13742.8.1.2",
+    "Vertiv Geist GTHD":  "1.3.6.1.4.1.21239.5.2.1",
+    "Vertiv Geist IMD-3": "1.3.6.1.4.1.21239.5.2.2",
+    "APC NetBotz 250":    "1.3.6.1.4.1.318.1.3.8.1",
+    "APC NetBotz 355":    "1.3.6.1.4.1.318.1.3.8.2",
 }
 
 # OS name + version for server vendors (used in sysDescr and hrSWInstalled).
@@ -286,9 +316,20 @@ class Device:
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     interfaces: List[Interface] = field(default_factory=list)
 
+    # Management network
+    mgmt_ip: str = ""      # OOB management IP (192.168.x.y)
+    mgmt_vlan: int = 10    # VLAN tag for management segment
+
+    # Power chain
+    power_draw_w: int = 0   # typical power draw in watts
+    power_source: str = ""  # device ID of rack PDU feeding this device
+    ups_backup: str = ""    # device ID of UPS protecting this device
+
     # Physical location
-    datacenter: str = ""
+    country: str = ""
     datacenter_city: str = ""
+    datacenter: str = ""
+    room: str = ""
     rack_row: int = 0
     rack_num: int = 0
     rack_unit: int = 0
@@ -303,6 +344,10 @@ class Device:
     # Temperatures in °C — CPU/ASIC and chassis inlet
     cpu_temp: float = field(default_factory=lambda: round(random.uniform(38.0, 62.0), 1))
     inlet_temp: float = field(default_factory=lambda: round(random.uniform(22.0, 38.0), 1))
+    # Environmental sensor readings (populated for DeviceType.SENSOR; 0.0 on other devices)
+    humidity: float = 0.0   # relative humidity %RH
+    dewpoint: float = 0.0   # dew-point °C
+    airflow:  float = 0.0   # airflow m/s (APC NetBotz)
 
     def __post_init__(self):
         if isinstance(self.device_type, str):
@@ -332,6 +377,10 @@ class Device:
             self.snmp_community = self.ip_address
         self.memory_used = int(self.memory_total * random.uniform(0.2, 0.85))
         self.disk_used = int(self.disk_total * random.uniform(0.1, 0.75))
+        if self.device_type == DeviceType.SENSOR and self.humidity == 0.0:
+            self.humidity = round(random.uniform(30.0, 70.0), 1)
+            self.dewpoint = round(self.inlet_temp - ((100.0 - self.humidity) / 5.0), 1)
+            self.airflow  = round(random.uniform(0.5, 2.5), 2)
         if not self.interfaces:
             self._generate_interfaces()
 
@@ -362,6 +411,13 @@ class Device:
             if self.model_name:
                 return f"{self.model_name}, {base}"
             return base
+        if self.device_type == DeviceType.OOB_SWITCH:
+            return VENDOR_SYSDESCR.get(self.vendor, "Out-of-Band Management Switch")
+        if self.device_type == DeviceType.SENSOR:
+            base = VENDOR_SYSDESCR.get(self.vendor, "Environmental Monitoring Sensor")
+            if self.model_name:
+                return f"{self.model_name}, {base}"
+            return base
         return VENDOR_SYSDESCR.get(self.vendor, "Generic Device")
 
     @property
@@ -373,16 +429,21 @@ class Device:
     @property
     def sys_location(self) -> str:
         if self.datacenter:
-            parts = [self.datacenter]
+            parts = []
+            if self.country:
+                parts.append(self.country)
             if self.datacenter_city:
                 parts.append(self.datacenter_city)
+            parts.append(self.datacenter)
+            if self.room:
+                parts.append(f"Room {self.room}")
             if self.rack_row:
-                parts.append(f"Row{self.rack_row}")
+                parts.append(f"Row {self.rack_row}")
             if self.rack_num:
-                parts.append(f"Rack{self.rack_num}")
+                parts.append(f"Rack {self.rack_num}")
             if self.rack_unit:
                 parts.append(f"U{self.rack_unit}")
-            return "-".join(parts)
+            return ", ".join(parts)
         return "Network Lab"
 
     @property
@@ -411,6 +472,18 @@ class Device:
                 Vendor.VERTIV: "Liebert MPX firmware",
                 Vendor.RARITAN:"Raritan PDU firmware",
             }.get(self.vendor, "Floor PDU firmware")
+        if self.device_type == DeviceType.OOB_SWITCH:
+            return {
+                Vendor.CISCO_SYSTEMS: "Cisco IOS",
+                Vendor.HPE:           "HPE ArubaOS",
+                Vendor.DELL:          "Dell OS6",
+            }.get(self.vendor, "OOB Switch OS")
+        if self.device_type == DeviceType.SENSOR:
+            return {
+                Vendor.RARITAN: "Raritan DPX2 firmware",
+                Vendor.VERTIV:  "Geist GTHD firmware",
+                Vendor.APC:     "APC NetBotz firmware",
+            }.get(self.vendor, "Sensor firmware")
         descr = self.sys_descr
         if "NX-OS"     in descr: return "Cisco NX-OS"
         if "IOS XR"    in descr: return "Cisco IOS XR"
@@ -451,6 +524,10 @@ class Device:
         self.sys_uptime += random.randint(100, 1000)
         self.cpu_temp    = round(40.0 + self.cpu_usage * 0.35 + random.uniform(-3, 3), 1)
         self.inlet_temp  = round(22.0 + self.cpu_usage * 0.12 + random.uniform(-1, 1), 1)
+        if self.device_type == DeviceType.SENSOR:
+            self.humidity = round(random.uniform(30.0, 70.0), 1)
+            self.dewpoint = round(self.inlet_temp - ((100.0 - self.humidity) / 5.0), 1)
+            self.airflow  = round(random.uniform(0.5, 2.5), 2)
         for iface in self.interfaces:
             iface.in_octets  += random.randint(1000, 10_000_000)
             iface.out_octets += random.randint(1000, 10_000_000)
@@ -471,8 +548,11 @@ class Device:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Device":
+        from dataclasses import fields as _fields
         interfaces_data = data.pop("interfaces", [])
         data.pop("interface_type", None)  # removed field — drop from legacy JSON
+        valid = {f.name for f in _fields(cls)}
+        data = {k: v for k, v in data.items() if k in valid}
         device = cls(**data)
         device.interfaces = [Interface(**i) for i in interfaces_data]
         return device

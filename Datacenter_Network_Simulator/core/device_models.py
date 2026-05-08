@@ -502,4 +502,64 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
                     [_g(_GE, 1)],
                     "30A/208V, 24×C19 outlets, floor-mounted"),
     ],
+
+    # ── Cisco — OOB Management Switches ──────────────────────────────────────
+    (DeviceType.OOB_SWITCH, Vendor.CISCO_SYSTEMS): [
+        DeviceModel("Cisco Catalyst 1000-48T", Vendor.CISCO_SYSTEMS, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 48), _g(_10G, 4)],
+                    "48 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+        DeviceModel("Cisco Catalyst 1000-24T", Vendor.CISCO_SYSTEMS, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 24), _g(_10G, 4)],
+                    "24 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+    ],
+
+    # ── HPE — OOB Management Switches ────────────────────────────────────────
+    (DeviceType.OOB_SWITCH, Vendor.HPE): [
+        DeviceModel("HPE Aruba 2530-48G", Vendor.HPE, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 48), _g(_10G, 4)],
+                    "48 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+        DeviceModel("HPE Aruba 2530-24G", Vendor.HPE, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 24), _g(_10G, 4)],
+                    "24 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+    ],
+
+    # ── Dell — OOB Management Switches ───────────────────────────────────────
+    (DeviceType.OOB_SWITCH, Vendor.DELL): [
+        DeviceModel("Dell N1148T-ON", Vendor.DELL, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 48), _g(_10G, 4)],
+                    "48 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+        DeviceModel("Dell N1124T-ON", Vendor.DELL, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 24), _g(_10G, 4)],
+                    "24 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+    ],
+
+    # ── Raritan — Environmental Sensors ──────────────────────────────────────
+    (DeviceType.SENSOR, Vendor.RARITAN): [
+        DeviceModel("Raritan DPX2-T1H1", Vendor.RARITAN, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "Temperature + humidity sensor, 1 × GE management"),
+        DeviceModel("Raritan DPX2-T3H1", Vendor.RARITAN, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "3× temperature + humidity sensor, 1 × GE management"),
+    ],
+
+    # ── Vertiv Geist — Environmental Sensors ─────────────────────────────────
+    (DeviceType.SENSOR, Vendor.VERTIV): [
+        DeviceModel("Vertiv Geist GTHD", Vendor.VERTIV, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "Temperature + humidity + dewpoint sensor, 1 × GE management"),
+        DeviceModel("Vertiv Geist IMD-3", Vendor.VERTIV, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "Intelligent rack monitoring device, 1 × GE management"),
+    ],
+
+    # ── APC — Environmental Sensors ──────────────────────────────────────────
+    (DeviceType.SENSOR, Vendor.APC): [
+        DeviceModel("APC NetBotz 250", Vendor.APC, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "Room monitor: temp/humidity/airflow/door, 1 × GE"),
+        DeviceModel("APC NetBotz 355", Vendor.APC, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "Rack monitor with camera, temp/humidity, 1 × GE"),
+    ],
 }
