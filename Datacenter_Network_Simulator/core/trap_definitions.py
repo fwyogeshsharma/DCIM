@@ -7,6 +7,9 @@ Enterprise OID tree: 1.3.6.1.4.1.99999
   .1.3  highTemperature
   .1.4  linkFlap
   .1.5  rackFailure
+  .1.6  humidityAlert
+  .1.7  dewPointAlert
+  .1.8  airflowAlert
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -31,6 +34,10 @@ class TrapType(str, Enum):
     TEMPERATURE_ALERT = "temperatureAlert"
     LINK_FLAP         = "linkFlap"
     RACK_FAILURE      = "rackFailure"
+    # Environmental sensor traps
+    HUMIDITY_ALERT    = "humidityAlert"
+    DEWPOINT_ALERT    = "dewPointAlert"
+    AIRFLOW_ALERT     = "airflowAlert"
 
 
 SEVERITY_COLOR = {
@@ -142,6 +149,27 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
         "Three or more devices in the same rack are unreachable",
         "critical",
     ),
+    TrapType.HUMIDITY_ALERT: TrapDefinition(
+        TrapType.HUMIDITY_ALERT,
+        "1.3.6.1.4.1.99999.1.6",
+        "Humidity Alert",
+        "Sensor relative humidity is outside the safe 30–70% range",
+        "major",
+    ),
+    TrapType.DEWPOINT_ALERT: TrapDefinition(
+        TrapType.DEWPOINT_ALERT,
+        "1.3.6.1.4.1.99999.1.7",
+        "Dew Point Alert",
+        "Dew point exceeds condensation risk threshold (21°C)",
+        "critical",
+    ),
+    TrapType.AIRFLOW_ALERT: TrapDefinition(
+        TrapType.AIRFLOW_ALERT,
+        "1.3.6.1.4.1.99999.1.8",
+        "Airflow Alert",
+        "Airflow is outside safe operating range (0.3–3.5 m/s)",
+        "major",
+    ),
 }
 
 # Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)
@@ -185,6 +213,31 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.LINK_DOWN, TrapType.LINK_UP,
         TrapType.AUTH_FAILURE,
         TrapType.CPU_HIGH, TrapType.MEMORY_HIGH, TrapType.TEMPERATURE_ALERT,
+    ],
+    "oob_switch": [
+        TrapType.COLD_START, TrapType.WARM_START,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
+        TrapType.AUTH_FAILURE,
+        TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,
+    ],
+    "sensor": [
+        TrapType.COLD_START,
+        TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+        TrapType.HUMIDITY_ALERT,
+        TrapType.DEWPOINT_ALERT,
+        TrapType.AIRFLOW_ALERT,
+    ],
+    "ups": [
+        TrapType.COLD_START,
+        TrapType.AUTH_FAILURE,
+        TrapType.UPS_ON_BATTERY, TrapType.UPS_LOW_BATTERY,
+        TrapType.TEMPERATURE_ALERT,
+    ],
+    "pdu": [
+        TrapType.COLD_START,
+        TrapType.AUTH_FAILURE,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
     ],
 }
 

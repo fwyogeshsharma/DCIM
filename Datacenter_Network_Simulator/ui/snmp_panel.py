@@ -1,21 +1,17 @@
 """
-SNMP Simulation Panel — network binding, dataset generation, SNMPSim controls,
-and embedded SNMP Trap receiver / log.
+SNMP Simulation Panel — dataset generation and SNMPSim controls.
 
 The log console has been moved to ConsolePanel.
 The gNMI controls have been moved to GNMIPanel.
+The SNMP Trap receiver and Rule Engine controls have been moved to TrapPanel.
 """
 from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QGroupBox, QProgressBar, QLineEdit, QSizePolicy,
-    QTableWidget, QTableWidgetItem, QHeaderView, QSpinBox,
+    QLabel, QGroupBox, QProgressBar, QFrame,
 )
 from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QFont, QColor
-
-from core.trap_definitions import TRAP_DEFINITIONS, SEVERITY_COLOR
-from core.trap_engine import TrapEvent
+from PySide6.QtGui import QFont
 
 
 # ------------------------------------------------------------------ #
@@ -53,21 +49,16 @@ class StatusBadge(QLabel):
 # ------------------------------------------------------------------ #
 
 class SNMPPanel(QWidget):
-    # SNMP Simulator signals
     sig_generate  = Signal()
     sig_start     = Signal()
     sig_stop      = Signal()
     sig_cancel    = Signal()
     sig_clear     = Signal()
-    # SNMP Trap signals
-    sig_trap_apply  = Signal(str, int)   # (ip, port)
-    sig_rule_engine = Signal(bool)       # enable/disable rule engine
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._running = False
         self._binding = False
-        self._severity_counts: dict[str, int] = {s: 0 for s in SEVERITY_COLOR}
         self._build_ui()
 
     # ------------------------------------------------------------------ #
@@ -117,27 +108,65 @@ class SNMPPanel(QWidget):
         stats_layout = QVBoxLayout(self.stats_group)
         stats_layout.setContentsMargins(6, 4, 6, 6)
         stats_layout.setSpacing(2)
+
+        # Network devices
         self.lbl_switches       = QLabel("Switches: 0")
         self.lbl_routers        = QLabel("Routers: 0")
+        self.lbl_servers        = QLabel("Servers: 0")
         self.lbl_firewalls      = QLabel("Firewalls: 0")
         self.lbl_load_balancers = QLabel("Load Balancers: 0")
-        self.lbl_servers        = QLabel("Servers: 0")
+        # Infrastructure / mgmt devices
+        self.lbl_oob_switches   = QLabel("OOB Switches: 0")
+        self.lbl_sensors        = QLabel("Sensors: 0")
         self.lbl_ups            = QLabel("UPS: 0")
         self.lbl_pdus           = QLabel("Rack PDUs: 0")
         self.lbl_floor_pdus     = QLabel("Floor PDUs: 0")
         self.lbl_total          = QLabel("Total: 0")
-        for lbl in (self.lbl_switches, self.lbl_routers, self.lbl_firewalls,
-                    self.lbl_load_balancers, self.lbl_servers, self.lbl_ups,
-                    self.lbl_pdus, self.lbl_floor_pdus):
+
+        _net_lbls  = (self.lbl_switches, self.lbl_routers, self.lbl_servers,
+                      self.lbl_firewalls, self.lbl_load_balancers)
+        _infra_lbls = (self.lbl_oob_switches, self.lbl_sensors, self.lbl_ups,
+                       self.lbl_pdus, self.lbl_floor_pdus)
+
+        for lbl in _net_lbls:
             lbl.setFont(QFont("Consolas", 9))
             lbl.setStyleSheet("color: #e6edf3;")
             lbl.hide()
             stats_layout.addWidget(lbl)
+
+        self._stats_sep = QFrame()
+        self._stats_sep.setFrameShape(QFrame.HLine)
+        self._stats_sep.setStyleSheet("color: #30363d;")
+        self._stats_sep.hide()
+        stats_layout.addWidget(self._stats_sep)
+
+        for lbl in _infra_lbls:
+            lbl.setFont(QFont("Consolas", 9))
+            lbl.setStyleSheet("color: #e6edf3;")
+            lbl.hide()
+            stats_layout.addWidget(lbl)
+
         self.lbl_total.setFont(QFont("Consolas", 9))
         self.lbl_total.setStyleSheet("color: #8b949e;")
         self.lbl_total.hide()
         stats_layout.addWidget(self.lbl_total)
         layout.addWidget(self.stats_group)
+
+        # ── Network Links ──────────────────────────────────────────────────
+        self.links_group = QGroupBox("Network Links")
+        self.links_group.setStyleSheet(self._group_style())
+        self.links_group.hide()
+        links_layout = QVBoxLayout(self.links_group)
+        links_layout.setContentsMargins(6, 4, 6, 6)
+        links_layout.setSpacing(2)
+        self.lbl_prod_links = QLabel("Prod Links: 0")
+        self.lbl_mgmt_links = QLabel("Mgmt Links: 0")
+        self.lbl_pwr_links  = QLabel("Power Links: 0")
+        for lbl in (self.lbl_prod_links, self.lbl_mgmt_links, self.lbl_pwr_links):
+            lbl.setFont(QFont("Consolas", 9))
+            lbl.setStyleSheet("color: #e6edf3;")
+            links_layout.addWidget(lbl)
+        layout.addWidget(self.links_group)
 
         # ── Progress bar ───────────────────────────────────────────────────
         self.progress = QProgressBar()
@@ -183,109 +212,7 @@ class SNMPPanel(QWidget):
         misc_row.addWidget(self.btn_clear)
         layout.addLayout(misc_row)
 
-        # ── SNMP Traps section ─────────────────────────────────────────────
-        traps_group = QGroupBox("SNMP Traps")
-        traps_group.setStyleSheet(self._group_style())
-        traps_layout = QVBoxLayout(traps_group)
-        traps_layout.setContentsMargins(6, 4, 6, 6)
-        traps_layout.setSpacing(4)
-
-        # Receiver config row
-        recv_row = QHBoxLayout()
-        recv_row.setSpacing(4)
-        recv_row.addWidget(QLabel("IP:"))
-        self._trap_ip = QLineEdit("127.0.0.1")
-        self._trap_ip.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self._trap_ip.setStyleSheet(self._lineedit_style())
-        recv_row.addWidget(self._trap_ip, stretch=1)
-        recv_row.addWidget(QLabel("Port:"))
-        self._trap_port = QSpinBox()
-        self._trap_port.setRange(1, 65535)
-        self._trap_port.setValue(162)
-        self._trap_port.setFixedWidth(60)
-        self._trap_port.setStyleSheet(
-            "QSpinBox { background:#21262d; color:#e6edf3; "
-            "border:1px solid #30363d; border-radius:4px; padding:2px 4px; }"
-        )
-        recv_row.addWidget(self._trap_port)
-        trap_apply = QPushButton("Apply")
-        trap_apply.setFixedWidth(48)
-        trap_apply.setStyleSheet(self._btn_secondary_style())
-        trap_apply.clicked.connect(self._on_trap_apply)
-        recv_row.addWidget(trap_apply)
-        traps_layout.addLayout(recv_row)
-
-        # Rule Engine toggle
-        self._rule_engine_btn = QPushButton("⚙  Rule Engine  OFF")
-        self._rule_engine_btn.setCheckable(True)
-        self._rule_engine_btn.setEnabled(False)
-        self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
-        self._rule_engine_btn.toggled.connect(self._on_rule_engine_toggled)
-        self._rule_engine_btn.setToolTip(
-            "Enable rule-driven trap generation based on simulated device metrics\n"
-            "(available only while the SNMP simulator is running)"
-        )
-        traps_layout.addWidget(self._rule_engine_btn)
-
-        # Severity counter badges + clear
-        sev_row = QHBoxLayout()
-        sev_row.setSpacing(3)
-        self._sev_labels: dict[str, QLabel] = {}
-        for sev, color in SEVERITY_COLOR.items():
-            badge = QLabel("0")
-            badge.setAlignment(Qt.AlignCenter)
-            badge.setFixedWidth(32)
-            badge.setStyleSheet(
-                f"background:{color}; color:white; border-radius:3px;"
-                f" padding:1px 3px; font-weight:bold; font-size:10px;"
-            )
-            badge.setToolTip(sev.capitalize())
-            self._sev_labels[sev] = badge
-            sev_row.addWidget(badge)
-        sev_row.addStretch()
-        trap_clr = QPushButton("Clear")
-        trap_clr.setFixedWidth(46)
-        trap_clr.setStyleSheet(self._btn_secondary_style())
-        trap_clr.clicked.connect(self.clear_traps)
-        sev_row.addWidget(trap_clr)
-        traps_layout.addLayout(sev_row)
-
-        # Trap log table
-        self._trap_table = QTableWidget(0, 5)
-        self._trap_table.setHorizontalHeaderLabels(
-            ["Time", "Device", "IP", "Trap Type", "Details"]
-        )
-        hdr = self._trap_table.horizontalHeader()
-        hdr.setSectionResizeMode(QHeaderView.Interactive)
-        hdr.setStretchLastSection(False)
-        self._trap_table.setColumnWidth(0, 68)   # Time
-        self._trap_table.setColumnWidth(1, 120)  # Device
-        self._trap_table.setColumnWidth(2, 100)  # IP
-        self._trap_table.setColumnWidth(3, 120)  # Trap Type
-        self._trap_table.setColumnWidth(4, 200)  # Details
-        self._trap_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self._trap_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self._trap_table.setAlternatingRowColors(True)
-        self._trap_table.verticalHeader().setVisible(False)
-        self._trap_table.setFont(QFont("Consolas", 8))
-        self._trap_table.setMinimumHeight(120)
-        self._trap_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self._trap_table.setStyleSheet("""
-            QTableWidget {
-                background: #161b22; color: #e6edf3;
-                border: 1px solid #30363d;
-                alternate-background-color: #0d1117;
-                gridline-color: #30363d;
-            }
-            QHeaderView::section {
-                background: #21262d; color: #8b949e;
-                padding: 3px; border: none;
-                border-bottom: 1px solid #30363d;
-            }
-            QTableWidget::item:selected { background: #1f6feb; }
-        """)
-        traps_layout.addWidget(self._trap_table, stretch=1)
-        layout.addWidget(traps_group, stretch=1)
+        layout.addStretch(1)
 
     # ------------------------------------------------------------------ #
     #  Public API — SNMP simulator                                        #
@@ -296,24 +223,32 @@ class SNMPPanel(QWidget):
 
     def set_device_counts(self, switches: int, routers: int, servers: int,
                           firewalls: int = 0, load_balancers: int = 0,
-                          ups: int = 0, pdus: int = 0, floor_pdus: int = 0):
-        _entries = [
+                          ups: int = 0, pdus: int = 0, floor_pdus: int = 0,
+                          oob_switches: int = 0, sensors: int = 0):
+        _net_entries = [
             (self.lbl_switches,       "Switches",       switches),
             (self.lbl_routers,        "Routers",        routers),
+            (self.lbl_servers,        "Servers",        servers),
             (self.lbl_firewalls,      "Firewalls",      firewalls),
             (self.lbl_load_balancers, "Load Balancers", load_balancers),
-            (self.lbl_servers,        "Servers",        servers),
+        ]
+        _infra_entries = [
+            (self.lbl_oob_switches,   "OOB Switches",   oob_switches),
+            (self.lbl_sensors,        "Sensors",        sensors),
             (self.lbl_ups,            "UPS",            ups),
             (self.lbl_pdus,           "Rack PDUs",      pdus),
             (self.lbl_floor_pdus,     "Floor PDUs",     floor_pdus),
         ]
-        for lbl, name, n in _entries:
+        for lbl, name, n in _net_entries + _infra_entries:
             if n > 0:
                 lbl.setText(f"{name}: {n}")
                 lbl.show()
             else:
                 lbl.hide()
-        total = switches + routers + servers + firewalls + load_balancers + ups + pdus + floor_pdus
+        has_infra = any(n > 0 for _, _, n in _infra_entries)
+        self._stats_sep.setVisible(has_infra)
+        total = (switches + routers + servers + firewalls + load_balancers
+                 + ups + pdus + floor_pdus + oob_switches + sensors)
         if total > 0:
             self.lbl_total.setText(f"Total: {total}")
             self.lbl_total.show()
@@ -345,9 +280,17 @@ class SNMPPanel(QWidget):
         else:
             self.sig_stop.emit()
 
+    def set_link_counts(self, prod: int = 0, mgmt: int = 0, power: int = 0):
+        self.lbl_prod_links.setText(f"Prod Links: {prod}")
+        self.lbl_mgmt_links.setText(f"Mgmt Links: {mgmt}")
+        self.lbl_pwr_links.setText(f"Power Links: {power}")
+        self.links_group.setVisible(prod > 0 or mgmt > 0 or power > 0)
+
     def set_simulator_running(self, running: bool):
         self._running = running
         self.stats_group.setVisible(running)
+        if not running:
+            self.links_group.hide()
         self.btn_start.setEnabled(not running)
         self.btn_stop.setEnabled(running)
         self.btn_generate.setEnabled(not running)
@@ -355,89 +298,6 @@ class SNMPPanel(QWidget):
     def set_datasets_ready(self, ready: bool):
         self.btn_start.setEnabled(ready and not self._running)
         self.btn_clear.setEnabled(ready)
-
-    # ------------------------------------------------------------------ #
-    #  Public API — SNMP Traps                                            #
-    # ------------------------------------------------------------------ #
-
-    def add_trap_event(self, event: TrapEvent):
-        defn = event.defn
-        row  = self._trap_table.rowCount()
-        self._trap_table.insertRow(row)
-        bg = QColor(SEVERITY_COLOR.get(defn.severity, "#888"))
-        bg.setAlpha(45)
-        for col, text in enumerate([
-            event.timestamp.strftime("%H:%M:%S"),
-            event.device.name,
-            event.device.ip_address,
-            defn.display_name,
-            event.details,
-        ]):
-            item = QTableWidgetItem(text)
-            item.setBackground(bg)
-            if col == 3:
-                f = item.font(); f.setBold(True); item.setFont(f)
-            self._trap_table.setItem(row, col, item)
-        self._trap_table.scrollToBottom()
-        self._severity_counts[defn.severity] = (
-            self._severity_counts.get(defn.severity, 0) + 1
-        )
-        self._sev_labels[defn.severity].setText(
-            str(self._severity_counts[defn.severity])
-        )
-
-    def add_trap_error(self, msg: str):
-        row = self._trap_table.rowCount()
-        self._trap_table.insertRow(row)
-        item = QTableWidgetItem(msg)
-        item.setForeground(QColor("#e74c3c"))
-        self._trap_table.setItem(row, 4, item)
-        self._trap_table.scrollToBottom()
-
-    def clear_traps(self):
-        self._trap_table.setRowCount(0)
-        self._severity_counts = {s: 0 for s in SEVERITY_COLOR}
-        for lbl in self._sev_labels.values():
-            lbl.setText("0")
-
-    def _on_trap_apply(self):
-        self.sig_trap_apply.emit(self._trap_ip.text().strip(), self._trap_port.value())
-
-    def _on_rule_engine_toggled(self, checked: bool):
-        if checked:
-            self._rule_engine_btn.setText("⚙  Rule Engine  ON")
-            self._rule_engine_btn.setStyleSheet(
-                "QPushButton { background:#1f6feb; color:white; border:none; "
-                "border-radius:6px; padding:8px; font-weight:bold; } "
-                "QPushButton:hover { background:#388bfd; } "
-                "QPushButton:checked { background:#1158c7; }"
-            )
-        else:
-            self._rule_engine_btn.setText("⚙  Rule Engine  OFF")
-            self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
-        self.sig_rule_engine.emit(checked)
-
-    def set_rule_engine_active(self, active: bool):
-        self._rule_engine_btn.blockSignals(True)
-        self._rule_engine_btn.setChecked(active)
-        if active:
-            self._rule_engine_btn.setText("⚙  Rule Engine  ON")
-            self._rule_engine_btn.setStyleSheet(
-                "QPushButton { background:#1f6feb; color:white; border:none; "
-                "border-radius:6px; padding:8px; font-weight:bold; } "
-                "QPushButton:hover { background:#388bfd; } "
-                "QPushButton:checked { background:#1158c7; }"
-            )
-        else:
-            self._rule_engine_btn.setText("⚙  Rule Engine  OFF")
-            self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
-        self._rule_engine_btn.blockSignals(False)
-
-    def set_rule_engine_available(self, available: bool):
-        """Enable or disable the Rule Engine button (grayed out when SNMP sim is not running)."""
-        self._rule_engine_btn.setEnabled(available)
-        if not available:
-            self.set_rule_engine_active(False)
 
     # ------------------------------------------------------------------ #
     #  Style helpers                                                       #

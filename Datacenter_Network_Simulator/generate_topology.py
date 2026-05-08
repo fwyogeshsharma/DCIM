@@ -2,6 +2,7 @@
 Topology generator script - produces large example JSON files.
 Run from the project root:  python generate_topology.py
 """
+import math
 import sys, json, random
 from pathlib import Path
 
@@ -11,6 +12,17 @@ from core.device_manager import Device, DeviceType, Vendor
 from core.ip_manager import IPManager
 
 _SERVER_VENDORS = [Vendor.DELL, Vendor.HPE, Vendor.LENOVO, Vendor.SUPERMICRO]
+_SENSOR_VENDORS = [Vendor.RARITAN, Vendor.VERTIV, Vendor.APC]
+_OOB_MODELS = {
+    Vendor.CISCO_SYSTEMS: "Cisco Catalyst 1000-48T",
+    Vendor.HPE:           "HPE Aruba 2530-48G",
+    Vendor.DELL:          "Dell N1148T-ON",
+}
+_SENSOR_MODELS = {
+    Vendor.RARITAN: "Raritan DPX2-T1H1",
+    Vendor.VERTIV:  "Vertiv Geist GTHD",
+    Vendor.APC:     "APC NetBotz 250",
+}
 
 TOPOLOGIES_DIR = Path("topologies")
 TOPOLOGIES_DIR.mkdir(exist_ok=True)
@@ -27,19 +39,33 @@ class TopologyBuilder:
         self.edges = []
         self._edge_set = set()
         self._iface_next: dict = {}   # device_id -> next free interface index
+        self._all_devices: list = []  # all Device objects ever added
 
     def add(self, name, dtype, vendor, ifaces, x, y,
-            community="public", port=161):
+            community="public", port=161, ip_address=None, mgmt_only=False):
+        """Add a device node.
+
+        mgmt_only=True: device lives only on the management network (OOB switches,
+        sensors, PDUs, UPS).  No production IP is allocated; ip_address is left
+        empty so SNMP/binding uses mgmt_ip only.
+        """
+        if ip_address is not None:
+            actual_ip = ip_address
+        elif mgmt_only:
+            actual_ip = ""   # no prod IP; mgmt_ip assigned later by wire_to_mgmt
+        else:
+            actual_ip = self.ip.next_ip()
         dev = Device(
             name=name,
             device_type=dtype,
             vendor=vendor,
-            ip_address=self.ip.next_ip(),
+            ip_address=actual_ip,
             snmp_port=port,
             snmp_community=community,
             interface_count=ifaces,
         )
         self._iface_next[dev.id] = 0
+        self._all_devices.append(dev)
         self.nodes.append({
             "id": dev.id,
             "position": {"x": round(x), "y": round(y)},
@@ -53,8 +79,8 @@ class TopologyBuilder:
         self._iface_next[dev.id] = idx + 1
         return min(idx, iface_count - 1)
 
-    def link(self, a, b, ai=None, bi=None):
-        key = tuple(sorted([a.id, b.id]))
+    def link(self, a, b, ai=None, bi=None, layer="production"):
+        key = (tuple(sorted([a.id, b.id])), layer)
         if key not in self._edge_set:
             self._edge_set.add(key)
             if ai is None:
@@ -64,10 +90,261 @@ class TopologyBuilder:
             self.edges.append({
                 "src": a.id, "dst": b.id,
                 "src_iface": ai, "dst_iface": bi,
+                "layer": layer,
             })
 
+    # ---------------------------------------------------------------- #
+    #  Management network                                               #
+    # ---------------------------------------------------------------- #
+
+    def add_mgmt_network(self, devices: list, dc_id: int = 1,
+                         mgmt_subnet_base: str = "192.168",
+                         oob_vendor: Vendor = Vendor.CISCO_SYSTEMS,
+                         ports_per_oob: int = 46,
+                         n_sensors: int = 2) -> dict:
+        """Create OOB management switches, wire all devices via mgmt layer,
+        and add environmental sensors.
+
+        Returns {"oob_switches": [...], "sensors": [...]}.
+        """
+        if not devices:
+            return {"oob_switches": [], "sensors": []}
+
+        # Collect positions of all devices in this group
+        dev_ids = {dev.id for dev in devices}
+        pos_map: dict = {}
+        for node in self.nodes:
+            if node["id"] in dev_ids:
+                pos_map[node["id"]] = (node["position"]["x"], node["position"]["y"])
+
+        if not pos_map:
+            return {"oob_switches": [], "sensors": []}
+
+        xs = [p[0] for p in pos_map.values()]
+        ys = [p[1] for p in pos_map.values()]
+        x_min, x_max = min(xs), max(xs)
+        y_max = max(ys)
+        oob_y = y_max + 260
+
+        # How many OOB switches needed
+        n_oob = max(1, math.ceil(len(devices) / ports_per_oob))
+        if n_oob == 1:
+            oob_xs = [(x_min + x_max) / 2]
+        else:
+            oob_xs = [x_min + i * (x_max - x_min) / (n_oob - 1) for i in range(n_oob)]
+
+        # Separate management IP pool per DC
+        mgmt_ip_pool = IPManager(
+            subnet=f"{mgmt_subnet_base}.{dc_id}.0/24",
+            start_offset=0,
+        )
+
+        # Create OOB switches
+        oob_switches = []
+        oob_model = _OOB_MODELS.get(oob_vendor, "Cisco Catalyst 1000-48T")
+        for i, ox in enumerate(oob_xs):
+            oob_mgmt_ip = mgmt_ip_pool.next_ip()
+            oob = self.add(
+                f"OOB-SW-DC{dc_id}-{i+1:02d}",
+                DeviceType.OOB_SWITCH,
+                oob_vendor,
+                ports_per_oob + 4,
+                ox, oob_y,
+                mgmt_only=True,   # no prod IP; management-only device
+            )
+            for node in self.nodes:
+                if node["id"] == oob.id:
+                    node["device"]["model_name"] = oob_model
+                    node["device"]["mgmt_ip"] = oob_mgmt_ip
+                    node["device"]["snmp_community"] = oob_mgmt_ip
+                    break
+            oob_switches.append(oob)
+
+        # Uplink mesh between OOB switches
+        for i in range(len(oob_switches) - 1):
+            self.link(oob_switches[i], oob_switches[i + 1], layer="management")
+
+        # Update device_positions map with OOB switch positions
+        for oob in oob_switches:
+            for node in self.nodes:
+                if node["id"] == oob.id:
+                    pos_map[oob.id] = (node["position"]["x"], node["position"]["y"])
+                    break
+
+        # Assign mgmt IPs and wire each device to nearest OOB switch
+        for device in devices:
+            dev_x = pos_map.get(device.id, ((x_min + x_max) / 2, 0))[0]
+            nearest = min(
+                oob_switches,
+                key=lambda o: abs(pos_map[o.id][0] - dev_x)
+            )
+            dev_mgmt_ip = mgmt_ip_pool.next_ip()
+            for node in self.nodes:
+                if node["id"] == device.id:
+                    node["device"]["mgmt_ip"] = dev_mgmt_ip
+                    node["device"]["snmp_community"] = dev_mgmt_ip
+                    break
+            self.link(device, nearest, layer="management")
+
+        # Add environmental sensors
+        sensors = []
+        sensor_y = oob_y + 160
+        for s in range(n_sensors):
+            sv = _SENSOR_VENDORS[s % len(_SENSOR_VENDORS)]
+            sx = x_min + (s + 0.5) * (x_max - x_min + 100) / max(n_sensors, 1) - 50
+            sensor_mgmt_ip = mgmt_ip_pool.next_ip()
+            sensor = self.add(
+                f"SENSOR-DC{dc_id}-{s+1:02d}",
+                DeviceType.SENSOR,
+                sv,
+                1,
+                sx, sensor_y,
+                mgmt_only=True,   # no prod IP; management-only device
+            )
+            sensors.append(sensor)
+            sensor_model = _SENSOR_MODELS.get(sv, "Raritan DPX2-T1H1")
+            for node in self.nodes:
+                if node["id"] == sensor.id:
+                    node["device"]["model_name"] = sensor_model
+                    node["device"]["mgmt_ip"] = sensor_mgmt_ip
+                    node["device"]["snmp_community"] = sensor_mgmt_ip
+                    break
+            nearest = min(
+                oob_switches,
+                key=lambda o: abs(pos_map[o.id][0] - sx)
+            )
+            self.link(sensor, nearest, layer="management")
+
+        return {"oob_switches": oob_switches, "sensors": sensors,
+                "mgmt_ip_pool": mgmt_ip_pool}
+
+    # ---------------------------------------------------------------- #
+    #  Power chain                                                       #
+    # ---------------------------------------------------------------- #
+
+    def add_power_chain(self, devices: list, dc_id: int = 1,
+                        ups_vendor: Vendor = Vendor.APC,
+                        pdu_vendor: Vendor = Vendor.APC,
+                        floor_pdu_vendor: Vendor = Vendor.EATON,
+                        devices_per_rack: int = 20) -> dict:
+        """Create floor PDU → UPS → rack PDU → device power-layer edges.
+
+        Returns dict with keys 'floor_pdu', 'ups_list', 'rack_pdus'.
+        """
+        if not devices:
+            return {}
+
+        pos_map: dict = {}
+        dev_ids = {dev.id for dev in devices}
+        for node in self.nodes:
+            if node["id"] in dev_ids:
+                pos_map[node["id"]] = (node["position"]["x"], node["position"]["y"])
+
+        xs = [p[0] for p in pos_map.values()]
+        ys = [p[1] for p in pos_map.values()]
+        x_min, x_max = min(xs), max(xs)
+        y_max = max(ys)
+        power_y = y_max + 520
+
+        # Floor PDU (single, centred) — management-only, no prod IP
+        floor_pdu = self.add(
+            f"FPDU-DC{dc_id}", DeviceType.FLOOR_PDU, floor_pdu_vendor,
+            1, (x_min + x_max) / 2, power_y, mgmt_only=True,
+        )
+        for node in self.nodes:
+            if node["id"] == floor_pdu.id:
+                node["device"]["model_name"] = "Eaton PDU 80kVA"
+                break
+
+        # Split devices into racks
+        n_racks = max(1, math.ceil(len(devices) / devices_per_rack))
+        rack_width = (x_max - x_min + 200) / n_racks
+        ups_list = []
+        rack_pdus = []
+
+        for r in range(n_racks):
+            rack_cx = x_min + (r + 0.5) * rack_width - 100
+            ups_y = power_y - 160
+            rack_pdu_y = power_y - 320
+
+            ups = self.add(
+                f"UPS-DC{dc_id}-R{r+1}", DeviceType.UPS, ups_vendor,
+                1, rack_cx, ups_y, mgmt_only=True,
+            )
+            for node in self.nodes:
+                if node["id"] == ups.id:
+                    node["device"]["model_name"] = "APC Smart-UPS 3000"
+                    break
+            ups_list.append(ups)
+            self.link(floor_pdu, ups, layer="power")
+
+            rack_pdu = self.add(
+                f"PDU-DC{dc_id}-R{r+1}", DeviceType.PDU, pdu_vendor,
+                1, rack_cx, rack_pdu_y, mgmt_only=True,
+            )
+            for node in self.nodes:
+                if node["id"] == rack_pdu.id:
+                    node["device"]["model_name"] = "APC AP8941"
+                    break
+            rack_pdus.append(rack_pdu)
+            self.link(ups, rack_pdu, layer="power")
+
+            # Assign rack devices to this rack PDU by x-proximity
+            rack_x_start = x_min + r * rack_width - 100
+            rack_x_end = rack_x_start + rack_width
+            for device in devices:
+                dx = pos_map.get(device.id, (0, 0))[0]
+                if rack_x_start <= dx < rack_x_end:
+                    for node in self.nodes:
+                        if node["id"] == device.id:
+                            node["device"]["power_source"] = rack_pdu.id
+                            node["device"]["ups_backup"] = ups.id
+                            break
+                    self.link(rack_pdu, device, layer="power")
+
+        return {"floor_pdu": floor_pdu, "ups_list": ups_list, "rack_pdus": rack_pdus}
+
+    def wire_to_mgmt(self, devices: list, oob_switches: list,
+                     mgmt_ip_pool=None):
+        """Wire additional devices (e.g. power chain) to their nearest OOB switch.
+
+        If mgmt_ip_pool is provided (the IPManager returned by add_mgmt_network),
+        each device also gets a mgmt_ip assigned so the DCIM can reach it via SNMP.
+        """
+        if not devices or not oob_switches:
+            return
+        oob_pos = {}
+        for oob in oob_switches:
+            for node in self.nodes:
+                if node["id"] == oob.id:
+                    oob_pos[oob.id] = node["position"]["x"]
+                    break
+        for device in devices:
+            dev_x = 0
+            for node in self.nodes:
+                if node["id"] == device.id:
+                    dev_x = node["position"]["x"]
+                    break
+            nearest = min(oob_switches, key=lambda o: abs(oob_pos[o.id] - dev_x))
+            self.link(device, nearest, layer="management")
+            if mgmt_ip_pool:
+                mgmt_ip = mgmt_ip_pool.next_ip()
+                for node in self.nodes:
+                    if node["id"] == device.id:
+                        node["device"]["mgmt_ip"] = mgmt_ip
+                        node["device"]["snmp_community"] = mgmt_ip
+                        break
+
     def to_dict(self):
-        return {"nodes": self.nodes, "edges": self.edges}
+        layers = sorted({e.get("layer", "production") for e in self.edges})
+        return {
+            "metadata": {
+                "has_management_layer": "management" in layers,
+                "has_power_layer": "power" in layers,
+            },
+            "nodes": self.nodes,
+            "edges": self.edges,
+        }
 
     def save(self, filename):
         path = TOPOLOGIES_DIR / filename
@@ -75,7 +352,11 @@ class TopologyBuilder:
             json.dump(self.to_dict(), f, indent=2)
         n_dev = len(self.nodes)
         n_lnk = len(self.edges)
-        print(f"  Saved {path.name}  ({n_dev} devices, {n_lnk} links)")
+        prod  = sum(1 for e in self.edges if e.get("layer", "production") == "production")
+        mgmt  = sum(1 for e in self.edges if e.get("layer") == "management")
+        pwr   = sum(1 for e in self.edges if e.get("layer") == "power")
+        print(f"  Saved {path.name}  ({n_dev} devices, {n_lnk} links"
+              f"  [prod:{prod} mgmt:{mgmt} power:{pwr}])")
         return path
 
 
@@ -107,6 +388,7 @@ def build_three_tier_datacenter():
     t.link(core_r1, core_r2)
 
     all_tors = []
+    prod_devices = [core_r1, core_r2]
 
     for pod_idx, (pod_label, pod_cx) in enumerate([("A", 450), ("B", 1050)]):
         # ---- Aggregation layer (2 per pod) ----
@@ -116,6 +398,7 @@ def build_three_tier_datacenter():
             agg = t.add(f"Agg-SW{pod_idx*2+ai+1}",
                         DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, 48, ax, AGG_Y)
             aggs.append(agg)
+            prod_devices.append(agg)
             t.link(core_r1, agg)
             t.link(core_r2, agg)
 
@@ -128,6 +411,7 @@ def build_three_tier_datacenter():
             tor = t.add(f"ToR-{pod_label}{ti+1}",
                         DeviceType.SWITCH, Vendor.CISCO_SYSTEMS, 48, tx, TOR_Y)
             all_tors.append(tor)
+            prod_devices.append(tor)
             # Each ToR connects to both agg switches in its pod
             t.link(aggs[0], tor)
             t.link(aggs[1], tor)
@@ -140,7 +424,17 @@ def build_three_tier_datacenter():
                 vendor = _SERVER_VENDORS[si % len(_SERVER_VENDORS)]
                 srv = t.add(f"SRV-{pod_label}{ti+1}-{si+1:02d}",
                             DeviceType.SERVER, vendor, 2, sx, SRV_Y)
+                prod_devices.append(srv)
                 t.link(tor, srv)
+
+    # ---- Management network ----
+    mgmt = t.add_mgmt_network(prod_devices, dc_id=1, n_sensors=2)
+
+    # ---- Power chain (OOB switches and sensors also run on electricity) ----
+    all_powered = prod_devices + mgmt['oob_switches'] + mgmt['sensors']
+    power = t.add_power_chain(all_powered, dc_id=1)
+    t.wire_to_mgmt([power['floor_pdu']] + power['ups_list'] + power['rack_pdus'],
+                   mgmt['oob_switches'], mgmt_ip_pool=mgmt['mgmt_ip_pool'])
 
     return t
 
@@ -214,6 +508,16 @@ def build_spine_leaf():
         stor = t.add(f"Storage-{si+1}", DeviceType.SERVER, Vendor.IBM,
                      4, base_x + 120, SRV_Y + 160)
         t.link(leaf, stor)
+
+    # ---- Management network ----
+    prod_devices = t._all_devices[:]  # snapshot before mgmt/power devices are added
+    mgmt = t.add_mgmt_network(prod_devices, dc_id=1, n_sensors=2)
+
+    # ---- Power chain (OOB switches and sensors also run on electricity) ----
+    all_powered = prod_devices + mgmt['oob_switches'] + mgmt['sensors']
+    power = t.add_power_chain(all_powered, dc_id=1)
+    t.wire_to_mgmt([power['floor_pdu']] + power['ups_list'] + power['rack_pdus'],
+                   mgmt['oob_switches'], mgmt_ip_pool=mgmt['mgmt_ip_pool'])
 
     return t
 
@@ -300,6 +604,17 @@ def build_enterprise_wan():
             pc = t.add(f"SiteB-PC-{i*10+di+1:02d}",
                        DeviceType.SERVER, Vendor.HPE, 1, dx, 780)
             t.link(ac, pc)
+
+    # ---- Management network (single site — all sites share one mgmt domain) ----
+    prod_devices = t._all_devices[:]
+    mgmt = t.add_mgmt_network(prod_devices, dc_id=1, n_sensors=1)
+
+    # ---- Power chain (HQ only; OOB switches and sensors also run on electricity) ----
+    hq_devices = [d for d in prod_devices if d.name.startswith("HQ")]
+    all_powered = hq_devices + mgmt['oob_switches'] + mgmt['sensors']
+    power = t.add_power_chain(all_powered, dc_id=1)
+    t.wire_to_mgmt([power['floor_pdu']] + power['ups_list'] + power['rack_pdus'],
+                   mgmt['oob_switches'], mgmt_ip_pool=mgmt['mgmt_ip_pool'])
 
     return t
 
@@ -394,6 +709,16 @@ def build_hyperscale_pod():
         sto = t.add(f"Storage-{si+1}", DeviceType.SERVER, Vendor.IBM, 4,
                     cx - 200, SRV_Y + 120)
         t.link(tor, sto)
+
+    # ---- Management network ----
+    prod_devices = t._all_devices[:]
+    mgmt = t.add_mgmt_network(prod_devices, dc_id=1, n_sensors=4)
+
+    # ---- Power chain (OOB switches and sensors also run on electricity) ----
+    all_powered = prod_devices + mgmt['oob_switches'] + mgmt['sensors']
+    power = t.add_power_chain(all_powered, dc_id=1)
+    t.wire_to_mgmt([power['floor_pdu']] + power['ups_list'] + power['rack_pdus'],
+                   mgmt['oob_switches'], mgmt_ip_pool=mgmt['mgmt_ip_pool'])
 
     return t
 
@@ -517,7 +842,11 @@ def _build_dc(t: "TopologyBuilder", dc: str, n_spine: int, n_leaf: int,
                     lx + 90, SRV_Y + 140)
         t.link(lf, srv)
 
-    return er1, er2
+    # Collect all devices added by this DC build (snapshot before return)
+    all_dc_devices = [d for d in t._all_devices
+                      if d.name.startswith(f"{dc}-")]
+
+    return er1, er2, all_dc_devices
 
 
 def _set_model(t: "TopologyBuilder", dev, model_name: str):
@@ -530,12 +859,10 @@ def _set_model(t: "TopologyBuilder", dev, model_name: str):
 
 def build_dual_dc_enterprise():
     """
-    Two datacenters connected via redundant DCI links between their edge routers,
-    using the large_4dc_enterprise architecture:
-      Edge Routers → Firewalls → Load Balancers → Core → Spine → Leaf → Servers
+    Two datacenters connected via redundant DCI links between their edge routers.
 
-    DC1: 2 ER, 2 FW, 2 LB, 2 CORE, 4 SPINE, 10 LEAF, 170 compute + 10 special = 202 devices
-    DC2: 2 ER, 2 FW, 2 LB, 2 CORE, 3 SPINE,  8 LEAF, 120 compute + 10 special = 149 devices
+    DC1: Cisco fabric  → 202 prod devices + OOB mgmt + sensors + power chain
+    DC2: Dell fabric   → 149 prod devices + OOB mgmt + sensors + power chain
 
     Inter-DC (DCI):  DC1-ER1 ↔ DC2-ER1  (primary)
                      DC1-ER2 ↔ DC2-ER2  (secondary)
@@ -545,18 +872,44 @@ def build_dual_dc_enterprise():
     DC1_X_OFFSET = 0
     DC2_X_OFFSET = 1800
 
-    dc1_er1, dc1_er2 = _build_dc(t, "DC1", n_spine=4, n_leaf=10, srv_per_leaf=17,
-                                  x_offset=DC1_X_OFFSET)
-    dc2_er1, dc2_er2 = _build_dc(t, "DC2", n_spine=3, n_leaf=8,  srv_per_leaf=15,
-                                  x_offset=DC2_X_OFFSET,
-                                  switch_vendor=Vendor.DELL,
-                                  core_model="Dell Z9264F-ON",
-                                  spine_model="Dell Z9264F-ON",
-                                  leaf_model="Dell S5248F-ON")
+    dc1_er1, dc1_er2, dc1_devices = _build_dc(
+        t, "DC1", n_spine=4, n_leaf=10, srv_per_leaf=17,
+        x_offset=DC1_X_OFFSET)
+    dc2_er1, dc2_er2, dc2_devices = _build_dc(
+        t, "DC2", n_spine=3, n_leaf=8, srv_per_leaf=15,
+        x_offset=DC2_X_OFFSET,
+        switch_vendor=Vendor.DELL,
+        core_model="Dell Z9264F-ON",
+        spine_model="Dell Z9264F-ON",
+        leaf_model="Dell S5248F-ON")
 
-    # ── DCI links — redundant cross-connect between edge routers ────────
+    # ── DCI links ────────────────────────────────────────────────────
     t.link(dc1_er1, dc2_er1)   # primary
     t.link(dc1_er2, dc2_er2)   # secondary
+
+    # ── Management networks (separate OOB domain per DC) ─────────────
+    mgmt1 = t.add_mgmt_network(dc1_devices, dc_id=1,
+                                oob_vendor=Vendor.CISCO_SYSTEMS, n_sensors=4)
+    mgmt2 = t.add_mgmt_network(dc2_devices, dc_id=2,
+                                oob_vendor=Vendor.DELL, n_sensors=2)
+
+    # ── Power chains (OOB switches and sensors also run on electricity) ──
+    dc1_power = t.add_power_chain(
+        dc1_devices + mgmt1['oob_switches'] + mgmt1['sensors'], dc_id=1,
+        ups_vendor=Vendor.APC, pdu_vendor=Vendor.APC,
+        floor_pdu_vendor=Vendor.EATON)
+    dc2_power = t.add_power_chain(
+        dc2_devices + mgmt2['oob_switches'] + mgmt2['sensors'], dc_id=2,
+        ups_vendor=Vendor.EATON, pdu_vendor=Vendor.RARITAN,
+        floor_pdu_vendor=Vendor.VERTIV)
+
+    # Wire power devices into their DC's OOB management network
+    t.wire_to_mgmt(
+        [dc1_power['floor_pdu']] + dc1_power['ups_list'] + dc1_power['rack_pdus'],
+        mgmt1['oob_switches'], mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
+    t.wire_to_mgmt(
+        [dc2_power['floor_pdu']] + dc2_power['ups_list'] + dc2_power['rack_pdus'],
+        mgmt2['oob_switches'], mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
 
     return t
 
@@ -572,10 +925,11 @@ if __name__ == "__main__":
     print()
 
     builders = [
-        ("large_datacenter_3tier.json",    build_three_tier_datacenter),
+        ("large_datacenter_3tier.json",      build_three_tier_datacenter),
         ("large_datacenter_spine_leaf.json", build_spine_leaf),
-        ("large_enterprise_wan.json",      build_enterprise_wan),
-        ("large_hyperscale_pod.json",      build_hyperscale_pod),
+        ("large_enterprise_wan.json",        build_enterprise_wan),
+        ("large_hyperscale_pod.json",        build_hyperscale_pod),
+        ("dual_dc_enterprise.json",          build_dual_dc_enterprise),
     ]
 
     for filename, fn in builders:

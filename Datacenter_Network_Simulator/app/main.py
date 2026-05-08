@@ -52,6 +52,16 @@ os.chdir(_base_dir)
 _crash_log = open(os.path.join(_base_dir, "crash.log"), "w")
 faulthandler.enable(_crash_log)
 
+import logging as _logging
+_logging.basicConfig(
+    level=_logging.WARNING,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    handlers=[
+        _logging.StreamHandler(),
+        _logging.FileHandler(os.path.join(_base_dir, "app.log"), encoding="utf-8"),
+    ],
+)
+
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QObject, QEvent
 from PySide6.QtGui import QPalette, QColor
@@ -154,7 +164,7 @@ def main():
 
     app.setApplicationName("Datacenter Network Simulator")
     app.setOrganizationName("Datacenter Network Simulator")
-    app.setApplicationVersion("2.0.0")
+    app.setApplicationVersion("2.1.0")
 
     # Import MainWindow AFTER QApplication so all Qt objects in imported
     # modules (e.g. QColor in DEVICE_COLORS) are created with a live app.
@@ -163,8 +173,7 @@ def main():
 
     print("[4] constructing MainWindow", flush=True)
     window = MainWindow()
-    window.resize(1280, 800)
-    window.show()
+    window.showMaximized()
 
     print("[5] entering exec()", flush=True)
     sys.exit(app.exec())

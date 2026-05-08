@@ -48,6 +48,9 @@ except ImportError:
         "1.3.6.1.4.1.99999.1.3":"Temperature Alert",
         "1.3.6.1.4.1.99999.1.4":"Link Flap",
         "1.3.6.1.4.1.99999.1.5":"Rack Failure",
+        "1.3.6.1.4.1.99999.1.6":"Humidity Alert",
+        "1.3.6.1.4.1.99999.1.7":"Dew Point Alert",
+        "1.3.6.1.4.1.99999.1.8":"Airflow Alert",
     }
     _TRAP_OID_SEVERITY = {
         "1.3.6.1.6.3.1.1.5.3":  "major",
@@ -60,6 +63,9 @@ except ImportError:
         "1.3.6.1.4.1.99999.1.3":"critical",
         "1.3.6.1.4.1.99999.1.4":"critical",
         "1.3.6.1.4.1.99999.1.5":"critical",
+        "1.3.6.1.4.1.99999.1.6":"major",
+        "1.3.6.1.4.1.99999.1.7":"critical",
+        "1.3.6.1.4.1.99999.1.8":"major",
     }
 
 # ── Varbind OID → human-readable label ───────────────────────────────────────
@@ -91,6 +97,14 @@ OID_LABELS: dict[str, str] = {
     "1.3.6.1.4.1.99999.2.8":    "linkFlapWindowSec",
     "1.3.6.1.4.1.99999.2.9":    "rackId",
     "1.3.6.1.4.1.99999.2.10":   "devicesDown",
+    # Environmental sensor varbinds
+    "1.3.6.1.4.1.99999.2.11":   "ambientTemp (°C)",
+    "1.3.6.1.4.1.99999.2.12":   "humidity (%)",
+    "1.3.6.1.4.1.99999.2.13":   "dewpoint (°C×10)",
+    "1.3.6.1.4.1.99999.2.14":   "airflow (m/s×10)",
+    "1.3.6.1.4.1.99999.2.15":   "humidityThreshold (%)",
+    "1.3.6.1.4.1.99999.2.16":   "dewpointThreshold (°C×10)",
+    "1.3.6.1.4.1.99999.2.17":   "airflowThreshold (m/s×10)",
 }
 
 # SNMPv2c snmpTrapOID.0 meta-OID

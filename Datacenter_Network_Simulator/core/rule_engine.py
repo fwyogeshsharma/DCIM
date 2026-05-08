@@ -375,7 +375,10 @@ class RuleEngine:
             "memory_usage": fact.memory_usage,
             "disk_usage":   fact.disk_usage,
             "temperature":  fact.temperature,
+            "ambient_temp": fact.ambient_temp,
             "humidity":     fact.humidity,
+            "dewpoint":     fact.dewpoint,
+            "airflow":      fact.airflow,
             "ups_status":   fact.ups_status,
         }
 

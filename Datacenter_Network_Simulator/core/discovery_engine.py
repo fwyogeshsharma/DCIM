@@ -1,11 +1,13 @@
 """
 SNMP-based topology discovery engine.
-Walks LLDP-MIB on each simulated device and reconstructs the topology from
-the live SNMP responses, then compares with the actual configured topology.
+
+DiscoveryEngine  — production layer: walks LLDP-MIB, reconstructs adjacency.
+ReachabilityEngine — management / power layers: polls sysDescr.0 per device,
+                     infers link state from device reachability.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List, Tuple, Dict, Optional, Set
+from typing import List, Tuple, Dict, Optional, Set, FrozenSet
 
 
 # LLDP remote table OIDs (must match lldp_generator.py)
@@ -247,3 +249,49 @@ class DiscoveryEngine:
             return loop.run_until_complete(_run())
         finally:
             loop.close()
+
+
+# ── OID used for reachability probes ─────────────────────────────────────────
+_SYSNAME_OID = "1.3.6.1.2.1.1.5"   # sysName — short walk, always present
+
+
+class ReachabilityEngine(DiscoveryEngine):
+    """
+    Management / power layer discovery.
+
+    Instead of walking LLDP tables, polls sysName on each target device.
+    A device is 'reachable' if it returns any SNMP response.
+    Link state is inferred: matched if both endpoints reachable, missing otherwise.
+    """
+
+    def discover_layer(self, topology, device_types: set, layer: str,
+                       progress_cb=None, device_scanned_cb=None) -> DiscoveryResult:
+        result = DiscoveryResult()
+        all_devices = topology.get_all_devices()
+        devices = [d for d in all_devices if d.device_type in device_types]
+        result.devices_scanned = len(devices)
+
+        reachable: Set[str] = set()
+        for i, device in enumerate(devices):
+            if progress_cb:
+                progress_cb(i, len(devices),
+                            f"Checking {device.name} ({device.ip_address})…")
+            try:
+                vals = self._walk_oid(device.ip_address, _SYSNAME_OID,
+                                      device.ip_address)
+                if vals:
+                    reachable.add(device.id)
+            except Exception as exc:
+                result.errors.append(
+                    f"{device.name} ({device.ip_address}): {exc}")
+            finally:
+                if device_scanned_cb:
+                    device_scanned_cb(device.id)
+
+        for src_id, dst_id, _ in topology.get_edges_by_layer(layer):
+            if src_id in reachable and dst_id in reachable:
+                result.matched.append((src_id, dst_id))
+            else:
+                result.missing.append((src_id, dst_id))
+
+        return result

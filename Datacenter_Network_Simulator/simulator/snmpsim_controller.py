@@ -164,19 +164,21 @@ class SNMPSimController:
             "snmpsimd.exe",
         ]
 
-        # 1. PATH lookup — fastest; works whenever Python/Scripts is on PATH.
-        for name in candidates:
-            path = shutil.which(name)
-            if path:
-                return path
-
-        # 2. Same directory as the running executable — supports placing
-        #    snmpsim-command-responder.exe alongside the bundled .exe.
+        # 1. Same directory as the running Python interpreter — the venv's Scripts
+        #    folder.  Always preferred over PATH because PATH may list a system-wide
+        #    Python installation (with an incompatible/old snmpsim) before the venv.
         exe_dir = Path(sys.executable).parent
         for name in candidates:
             p = exe_dir / name
             if p.exists():
                 return str(p)
+
+        # 2. PATH lookup — fallback for setups where snmpsim is on PATH but the
+        #    venv's Scripts dir wasn't already checked above (e.g. standalone exe).
+        for name in candidates:
+            path = shutil.which(name)
+            if path:
+                return path
 
         # 3. Scripts folder next to the Python interpreter (dev + venv installs).
         #    In dev mode: sys.executable = C:\Python311\python.exe

@@ -23,6 +23,46 @@ from core.trap_definitions import SEVERITY_COLOR
 if TYPE_CHECKING:
     from core.rule_engine import Rule, RuleEngine
 
+# ── Rule categories (ordered; rules not listed fall into "Other") ──────────────
+
+_CATEGORIES: List[tuple] = [
+    ("Interface / Link", [
+        "LinkDown", "LinkUp", "LinkFlap",
+        "OOBSwitchLinkDown", "OOBSwitchLinkUp",
+    ]),
+    ("CPU", [
+        "HighCPU", "HighCPUSustained", "CPUNormal",
+    ]),
+    ("Memory", [
+        "HighMemory", "MemoryNormal",
+    ]),
+    ("Temperature", [
+        "HighTemperature", "TemperatureNormal", "CriticalCPUAndTemp",
+    ]),
+    ("Power / UPS", [
+        "UPSOnBattery", "UPSLowBattery",
+    ]),
+    ("Routing", [
+        "BGPSessionDown",
+    ]),
+    ("Infrastructure", [
+        "RackFailure",
+    ]),
+    ("Env. Sensors — Temperature", [
+        "SensorAmbientTempHigh", "SensorAmbientTempCritical", "SensorAmbientTempNormal",
+    ]),
+    ("Env. Sensors — Humidity", [
+        "SensorHighHumidity", "SensorCriticalHumidity",
+        "SensorLowHumidity", "SensorHumidityNormal",
+    ]),
+    ("Env. Sensors — Dew Point", [
+        "SensorHighDewPoint", "SensorDewPointNormal",
+    ]),
+    ("Env. Sensors — Airflow", [
+        "SensorHighAirflow", "SensorLowAirflow", "SensorAirflowNormal",
+    ]),
+]
+
 
 # ── Severity badge ─────────────────────────────────────────────────────────────
 
@@ -51,7 +91,12 @@ class RulesPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._rule_engine: Optional["RuleEngine"] = None
-        self._fired_cache: dict = {}   # rule_name → (fired_count, last_ts_str)
+        self._fired_cache: dict = {}          # rule_name → (fired_count, last_ts_str)
+        self._cat_rows: set = set()           # row indices that are category headers
+        self._cat_expanded: dict = {}         # label → bool  (persists across refreshes)
+        self._cat_row_to_label: dict = {}     # row_index → label
+        self._cat_label_to_children: dict = {}# label → [child_row, ...]
+        self._cat_label_to_detail: dict = {}  # label → detail string
         self._build_ui()
 
     # ── Build UI ───────────────────────────────────────────────────────────────
@@ -137,6 +182,9 @@ class RulesPanel(QWidget):
             }
             QTableWidget::item:selected { background:#1f6feb; }
         """)
+        self._table.setMouseTracking(True)
+        self._table.cellClicked.connect(self._on_cell_clicked)
+        self._table.cellEntered.connect(self._on_cell_entered)
         cl.addWidget(self._table, stretch=1)
 
         # Action buttons
@@ -177,6 +225,8 @@ class RulesPanel(QWidget):
         self._fired_cache.clear()
         self._lbl_fired.setText("Fired: 0")
         for row in range(self._table.rowCount()):
+            if row in self._cat_rows:
+                continue
             fired_item = self._table.item(row, self._COL_FIRED)
             last_item  = self._table.item(row, self._COL_LAST)
             if fired_item:
@@ -190,8 +240,10 @@ class RulesPanel(QWidget):
     def update_rule_stats(self, rule_name: str, fired: int, last_ts: str):
         self._fired_cache[rule_name] = (fired, last_ts)
         for row in range(self._table.rowCount()):
-            if self._table.item(row, self._COL_NAME) and \
-               self._table.item(row, self._COL_NAME).text() == rule_name:
+            if row in self._cat_rows:
+                continue
+            name_item = self._table.item(row, self._COL_NAME)
+            if name_item and name_item.text() == rule_name:
                 self._table.item(row, self._COL_FIRED).setText(str(fired))
                 self._table.item(row, self._COL_LAST).setText(last_ts)
                 break
@@ -200,38 +252,114 @@ class RulesPanel(QWidget):
 
     def _populate_table(self, rules: list):
         self._table.setRowCount(0)
-        for rule in rules:
-            row = self._table.rowCount()
-            self._table.insertRow(row)
+        self._cat_rows.clear()
+        self._cat_row_to_label.clear()
+        self._cat_label_to_children.clear()
+        self._cat_label_to_detail.clear()
 
-            # Enabled checkbox
-            cb = QCheckBox()
-            cb.setChecked(rule.enabled)
-            cb.setStyleSheet("QCheckBox { margin-left:6px; }")
-            name = rule.rule_name
-            cb.toggled.connect(lambda checked, n=name: self.sig_rule_toggled.emit(n, checked))
-            self._table.setCellWidget(row, self._COL_ENABLED, cb)
+        rule_map = {r.rule_name: r for r in rules}
+        placed: set = set()
 
-            # Name
-            name_item = QTableWidgetItem(rule.rule_name)
-            self._table.setItem(row, self._COL_NAME, name_item)
+        ordered: List[tuple] = []
+        for cat_label, names in _CATEGORIES:
+            cat_rules = [rule_map[n] for n in names if n in rule_map]
+            if cat_rules:
+                ordered.append((cat_label, cat_rules))
+                placed.update(n for n in names if n in rule_map)
 
-            # Full OID — tooltip as fallback when column is narrow
-            oid_item = QTableWidgetItem(rule.trap_oid)
-            oid_item.setToolTip(rule.trap_oid)
-            self._table.setItem(row, self._COL_OID, oid_item)
+        leftover = [r for r in rules if r.rule_name not in placed]
+        if leftover:
+            ordered.append(("Other", leftover))
 
-            # Severity badge via text colour
-            sev_item = QTableWidgetItem(rule.severity[:4])
-            color = SEVERITY_COLOR.get(rule.severity, "#888")
-            sev_item.setForeground(QColor(color))
-            sev_item.setFont(QFont("Consolas", 8, QFont.Bold))
-            self._table.setItem(row, self._COL_SEV, sev_item)
+        for cat_label, cat_rules in ordered:
+            # Preserve expansion state across refreshes; default = expanded
+            if cat_label not in self._cat_expanded:
+                self._cat_expanded[cat_label] = True
+            expanded = self._cat_expanded[cat_label]
 
-            # Fired count / last ts — restore from cache so refreshes preserve counts
-            cached_fired, cached_ts = self._fired_cache.get(rule.rule_name, (0, "—"))
-            self._table.setItem(row, self._COL_FIRED, QTableWidgetItem(str(cached_fired)))
-            self._table.setItem(row, self._COL_LAST,  QTableWidgetItem(cached_ts))
+            # Build detail string stored for later arrow updates
+            n_rules = len(cat_rules)
+            n_recovery = sum(1 for r in cat_rules if r.is_recovery)
+            detail = f"  {n_rules} rule{'s' if n_rules != 1 else ''}"
+            if n_recovery:
+                detail += f"  ·  {n_recovery} recovery"
+            self._cat_label_to_detail[cat_label] = detail
+
+            # ── Category header row ───────────────────────────────────────────
+            hdr_row = self._table.rowCount()
+            self._table.insertRow(hdr_row)
+            self._cat_rows.add(hdr_row)
+            self._cat_row_to_label[hdr_row] = cat_label
+            self._table.setSpan(hdr_row, 0, 1, 6)
+            arrow = "▾" if expanded else "▸"
+            hdr_item = QTableWidgetItem(f"  {arrow}  {cat_label}{detail}")
+            hdr_item.setFont(QFont("Arial", 8, QFont.Bold))
+            hdr_item.setForeground(QColor("#58a6ff"))
+            hdr_item.setBackground(QColor("#1c2128"))
+            hdr_item.setFlags(Qt.ItemIsEnabled)
+            hdr_item.setToolTip("Click to collapse / expand")
+            self._table.setItem(hdr_row, 0, hdr_item)
+            self._table.setRowHeight(hdr_row, 20)
+
+            # ── Rule rows ─────────────────────────────────────────────────────
+            children: List[int] = []
+            for rule in cat_rules:
+                row = self._table.rowCount()
+                self._table.insertRow(row)
+                children.append(row)
+                self._table.setRowHidden(row, not expanded)
+
+                cb = QCheckBox()
+                cb.setChecked(rule.enabled)
+                cb.setStyleSheet("QCheckBox { margin-left:6px; }")
+                rname = rule.rule_name
+                cb.toggled.connect(lambda checked, n=rname: self.sig_rule_toggled.emit(n, checked))
+                self._table.setCellWidget(row, self._COL_ENABLED, cb)
+
+                name_item = QTableWidgetItem(rule.rule_name)
+                if rule.is_recovery:
+                    name_item.setForeground(QColor("#8b949e"))
+                self._table.setItem(row, self._COL_NAME, name_item)
+
+                oid_item = QTableWidgetItem(rule.trap_oid)
+                oid_item.setToolTip(rule.trap_oid)
+                self._table.setItem(row, self._COL_OID, oid_item)
+
+                sev_item = QTableWidgetItem(rule.severity[:4])
+                color = SEVERITY_COLOR.get(rule.severity, "#888")
+                sev_item.setForeground(QColor(color))
+                sev_item.setFont(QFont("Consolas", 8, QFont.Bold))
+                self._table.setItem(row, self._COL_SEV, sev_item)
+
+                cached_fired, cached_ts = self._fired_cache.get(rule.rule_name, (0, "—"))
+                self._table.setItem(row, self._COL_FIRED, QTableWidgetItem(str(cached_fired)))
+                self._table.setItem(row, self._COL_LAST,  QTableWidgetItem(cached_ts))
+
+            self._cat_label_to_children[cat_label] = children
+
+    def _on_cell_clicked(self, row: int, col: int):
+        """Toggle collapse/expand when a category header row is clicked."""
+        if row not in self._cat_rows:
+            return
+        label = self._cat_row_to_label.get(row)
+        if label is None:
+            return
+        expanded = not self._cat_expanded.get(label, True)
+        self._cat_expanded[label] = expanded
+        for child_row in self._cat_label_to_children.get(label, []):
+            self._table.setRowHidden(child_row, not expanded)
+        item = self._table.item(row, 0)
+        if item:
+            arrow = "▾" if expanded else "▸"
+            detail = self._cat_label_to_detail.get(label, "")
+            item.setText(f"  {arrow}  {label}{detail}")
+
+    def _on_cell_entered(self, row: int, col: int):
+        """Show pointer cursor over category headers to hint they are clickable."""
+        if row in self._cat_rows:
+            self._table.viewport().setCursor(Qt.PointingHandCursor)
+        else:
+            self._table.viewport().setCursor(Qt.ArrowCursor)
 
     def set_engine_active(self, active: bool):
         """Update visual state only — does NOT emit any signal."""

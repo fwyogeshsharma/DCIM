@@ -118,6 +118,9 @@ class SFlowController:
     def get_collector(self) -> str:
         return f"{self._collector_ip}:{self._collector_port}"
 
+    def get_interval(self) -> int:
+        return self._interval
+
     def get_device_count(self) -> int:
         return len(self._device_ips)
 

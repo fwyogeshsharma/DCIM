@@ -35,10 +35,10 @@ def generate_lldp_entries(device: Device, neighbors: List[Tuple[Device, int, int
         # lldpRemChassisIdSubtype (5 = network address)
         entries.append((f"{LLDP_REM_TABLE}.4.{tm}.{lport}.{time_mark_idx}", "2", "5"))
 
-        # lldpRemChassisId - encode neighbor IP as OID-ready bytes
-        ip_bytes = neighbor.ip_address.split(".")
-        chassis_id = ".".join(ip_bytes)
-        entries.append((f"{LLDP_REM_TABLE}.5.{tm}.{lport}.{time_mark_idx}", "4", neighbor.ip_address))
+        # lldpRemChassisId — use mgmt_ip when available so DCIM can cross-reference
+        # by OOB address; fall back to production ip_address for legacy topologies.
+        chassis_ip = neighbor.mgmt_ip if neighbor.mgmt_ip else neighbor.ip_address
+        entries.append((f"{LLDP_REM_TABLE}.5.{tm}.{lport}.{time_mark_idx}", "4", chassis_ip))
 
         # lldpRemPortIdSubtype (5 = interface name)
         entries.append((f"{LLDP_REM_TABLE}.6.{tm}.{lport}.{time_mark_idx}", "2", "5"))

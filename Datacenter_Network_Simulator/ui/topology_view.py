@@ -55,6 +55,43 @@ DEVICE_COLORS = {
         "text": QColor("white"),
         "icon": "LB",
     },
+    DeviceType.UPS: {
+        "fill": QColor("#c9a227"),
+        "border": QColor("#7d6417"),
+        "text": QColor("white"),
+        "icon": "UPS",
+    },
+    DeviceType.PDU: {
+        "fill": QColor("#d44f00"),
+        "border": QColor("#7a2d00"),
+        "text": QColor("white"),
+        "icon": "PDU",
+    },
+    DeviceType.FLOOR_PDU: {
+        "fill": QColor("#b03060"),
+        "border": QColor("#6b1c3a"),
+        "text": QColor("white"),
+        "icon": "FPDU",
+    },
+    DeviceType.OOB_SWITCH: {
+        "fill": QColor("#7c3aed"),
+        "border": QColor("#4c1d95"),
+        "text": QColor("white"),
+        "icon": "OOB",
+    },
+    DeviceType.SENSOR: {
+        "fill": QColor("#0891b2"),
+        "border": QColor("#164e63"),
+        "text": QColor("white"),
+        "icon": "SNS",
+    },
+}
+
+# Edge color/style by network layer
+LAYER_EDGE_STYLE = {
+    "production": {"color": QColor("#7f8c8d"), "width": 2,   "style": Qt.SolidLine},
+    "management": {"color": QColor("#00b4d8"), "width": 1.5, "style": Qt.DashLine},
+    "power":      {"color": QColor("#f59e0b"), "width": 1.5, "style": Qt.DotLine},
 }
 
 NODE_W = 90
@@ -167,11 +204,12 @@ class DeviceNode(QGraphicsItem):
         name_rect = QRectF(-NODE_W / 2, NODE_H / 2 - 26, NODE_W, 14)
         painter.drawText(name_rect, Qt.AlignCenter, self.device.name)
 
-        # IP address
+        # IP address — prefer mgmt_ip (OOB / SNMP address) when available
         painter.setFont(self._FONT_IP)
         painter.setPen(QPen(self._color_ip_lbl))
         ip_rect = QRectF(-NODE_W / 2, NODE_H / 2 - 14, NODE_W, 12)
-        painter.drawText(ip_rect, Qt.AlignCenter, self.device.ip_address)
+        display_ip = self.device.mgmt_ip if self.device.mgmt_ip else self.device.ip_address
+        painter.drawText(ip_rect, Qt.AlignCenter, display_ip)
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
@@ -211,16 +249,19 @@ class LinkEdge(QGraphicsLineItem):
     _STROKER = QPainterPathStroker()
     _STROKER.setWidth(16)
 
-    def __init__(self, src_node: DeviceNode, dst_node: DeviceNode, parent=None):
+    def __init__(self, src_node: DeviceNode, dst_node: DeviceNode,
+                 layer: str = "production", parent=None):
         super().__init__(parent)
         self.src_node = src_node
         self.dst_node = dst_node
         self._broken = False
         self._faded = False
+        self._layer = layer
         src_node.add_edge(self)
         dst_node.add_edge(self)
         self.setZValue(0)
-        self.setPen(QPen(QColor("#7f8c8d"), 2, Qt.SolidLine, Qt.RoundCap))
+        style = LAYER_EDGE_STYLE.get(layer, LAYER_EDGE_STYLE["production"])
+        self.setPen(QPen(style["color"], style["width"], style["style"], Qt.RoundCap))
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setAcceptHoverEvents(True)
         self.adjust()
@@ -280,10 +321,10 @@ class LinkEdge(QGraphicsLineItem):
 
     def paint(self, painter, option, widget=None):
         if self._faded:
-            painter.setOpacity(0.15)
+            painter.setOpacity(0.10)
         selected = self.isSelected()
         if self._broken:
-            color = QColor("#e74c3c")      # red
+            color = QColor("#e74c3c")      # red for broken links
             width = 2.5
             style = Qt.DashLine
         elif selected:
@@ -291,14 +332,15 @@ class LinkEdge(QGraphicsLineItem):
             width = 3
             style = Qt.SolidLine
         else:
-            color = QColor("#7f8c8d")
-            width = 2
-            style = Qt.SolidLine
+            layer_style = LAYER_EDGE_STYLE.get(self._layer, LAYER_EDGE_STYLE["production"])
+            color = layer_style["color"]
+            width = layer_style["width"]
+            style = layer_style["style"]
 
         painter.setPen(QPen(color, width, style, Qt.RoundCap))
         painter.drawLine(self.line())
 
-        # Midpoint indicator: X for broken, dot for normal
+        # Midpoint indicator: X for broken, dot for normal (production only)
         line = self.line()
         mid = QPointF((line.x1() + line.x2()) / 2, (line.y1() + line.y2()) / 2)
         painter.setBrush(QBrush(color))
@@ -306,7 +348,7 @@ class LinkEdge(QGraphicsLineItem):
             painter.setPen(QPen(color, 2))
             painter.drawLine(QPointF(mid.x() - 5, mid.y() - 5), QPointF(mid.x() + 5, mid.y() + 5))
             painter.drawLine(QPointF(mid.x() + 5, mid.y() - 5), QPointF(mid.x() - 5, mid.y() + 5))
-        else:
+        elif self._layer == "production":
             painter.setPen(Qt.NoPen)
             painter.drawEllipse(mid, 4, 4)
 
@@ -408,7 +450,11 @@ class _LinkTooltip(QWidget):
             ("Model",     _resolve_model_name(device)),
             ("OS",        device.os_name),
             ("Version",   device.os_version),
-            ("IP",        f'<span style="{mono}">{device.ip_address}</span>'),
+            ("Prod IP",   f'<span style="{mono}">{device.ip_address}</span>'),
+        ]
+        if device.mgmt_ip:
+            rows.append(("Mgmt IP", f'<span style="{mono}">{device.mgmt_ip}</span>'))
+        rows += [
             ("SNMP Port", f'<span style="{mono}">{device.snmp_port}</span>'),
             ("gNMI Port", f'<span style="{mono}">{device.gnmi_port}</span>'),
         ]
@@ -446,6 +492,7 @@ class TopologyScene(QGraphicsScene):
         self._nodes: Dict[str, DeviceNode] = {}
         self._edges: Dict[tuple, LinkEdge] = {}
         self._discovery_running: bool = False
+        self._layer_filter: str = "all"
 
     def set_discovery_running(self, running: bool):
         self._discovery_running = running
@@ -467,8 +514,8 @@ class TopologyScene(QGraphicsScene):
     def remove_device_node(self, device_id: str):
         node = self._nodes.pop(device_id, None)
         if node:
-            # Remove associated edges
-            to_remove = [k for k in self._edges if device_id in k]
+            # Remove associated edges (key format is ((src, dst), layer))
+            to_remove = [k for k in self._edges if device_id in k[0]]
             for k in to_remove:
                 edge = self._edges.pop(k)
                 edge.src_node.remove_edge(edge)
@@ -476,23 +523,63 @@ class TopologyScene(QGraphicsScene):
                 self.removeItem(edge)
             self.removeItem(node)
 
-    def add_link_edge(self, src_id: str, dst_id: str) -> Optional[LinkEdge]:
-        key = tuple(sorted([src_id, dst_id]))
+    def add_link_edge(self, src_id: str, dst_id: str,
+                      layer: str = "production") -> Optional[LinkEdge]:
+        # Key includes layer so power + management edges between the same pair
+        # can both be stored (e.g. PDU↔OOB switch).
+        pair = tuple(sorted([src_id, dst_id]))
+        key = (pair, layer)
         if key in self._edges:
             return None
         src_node = self._nodes.get(src_id)
         dst_node = self._nodes.get(dst_id)
         if not src_node or not dst_node:
             return None
-        edge = LinkEdge(src_node, dst_node)
+        edge = LinkEdge(src_node, dst_node, layer=layer)
         self.addItem(edge)
         self._edges[key] = edge
+        # Apply current layer filter immediately
+        if self._layer_filter != "all":
+            edge.setVisible(edge._layer == self._layer_filter)
         return edge
 
+    def set_layer_filter(self, layer: str):
+        """Show only devices and edges that belong to the selected layer.
+        Use 'all' to show every layer.
+        """
+        self._layer_filter = layer
+        from core.device_manager import DeviceType as _DT
+        _MGMT_TYPES  = frozenset({_DT.OOB_SWITCH, _DT.SENSOR})
+        _POWER_TYPES = frozenset({_DT.UPS, _DT.PDU, _DT.FLOOR_PDU})
+
+        for node in self._nodes.values():
+            dtype = node.device.device_type
+            if layer == "production":
+                # Only production-class devices; OOB switches, sensors, UPS, PDU hidden
+                visible = dtype not in _MGMT_TYPES and dtype not in _POWER_TYPES
+            else:
+                # "all", "management", "power" — every device is reachable via mgmt/power
+                visible = True
+            node.setVisible(visible)
+
+        for edge in self._edges.values():
+            if layer == "all":
+                edge.setVisible(True)
+            else:
+                visible = (
+                    edge._layer == layer
+                    and edge.src_node.isVisible()
+                    and edge.dst_node.isVisible()
+                )
+                edge.setVisible(visible)
+
+        self.update()
+
     def remove_link_edge(self, src_id: str, dst_id: str):
-        key = tuple(sorted([src_id, dst_id]))
-        edge = self._edges.pop(key, None)
-        if edge:
+        pair = tuple(sorted([src_id, dst_id]))
+        # Remove all layer edges between this pair
+        for key in [k for k in self._edges if k[0] == pair]:
+            edge = self._edges.pop(key)
             edge.src_node.remove_edge(edge)
             edge.dst_node.remove_edge(edge)
             self.removeItem(edge)
@@ -501,8 +588,9 @@ class TopologyScene(QGraphicsScene):
         return self._nodes.get(device_id)
 
     def set_edge_broken(self, src_id: str, dst_id: str, broken: bool):
-        key = tuple(sorted([src_id, dst_id]))
-        edge = self._edges.get(key)
+        # Break/restore the production edge between this pair
+        pair = tuple(sorted([src_id, dst_id]))
+        edge = self._edges.get((pair, "production"))
         if edge:
             edge.set_broken(broken)
 
@@ -512,10 +600,11 @@ class TopologyScene(QGraphicsScene):
             node.set_faded(faded, repaint=repaint)
 
     def set_edge_faded(self, src_id: str, dst_id: str, faded: bool, repaint: bool = True):
-        key = tuple(sorted([src_id, dst_id]))
-        edge = self._edges.get(key)
-        if edge:
-            edge.set_faded(faded, repaint=repaint)
+        pair = tuple(sorted([src_id, dst_id]))
+        # Fade/unfade all layer edges between this pair
+        for key, edge in self._edges.items():
+            if key[0] == pair:
+                edge.set_faded(faded, repaint=repaint)
 
     def set_all_faded(self, faded: bool):
         # Set flags on every item without triggering individual repaints,
@@ -524,6 +613,30 @@ class TopologyScene(QGraphicsScene):
             node.set_faded(faded, repaint=False)
         for edge in self._edges.values():
             edge.set_faded(faded, repaint=False)
+        self.update()
+
+    def set_layer_faded(self, layer: str, faded: bool):
+        """Fade or unfade only devices and edges that belong to *layer*."""
+        from core.device_manager import DeviceType as _DT
+        _MGMT_TYPES  = frozenset({_DT.OOB_SWITCH, _DT.SENSOR})
+        _POWER_TYPES = frozenset({_DT.UPS, _DT.PDU, _DT.FLOOR_PDU})
+        _PROD_TYPES  = frozenset({
+            _DT.ROUTER, _DT.SWITCH, _DT.FIREWALL,
+            _DT.SERVER, _DT.LOAD_BALANCER,
+        })
+        if layer == "management":
+            node_types = _MGMT_TYPES
+        elif layer == "power":
+            node_types = _POWER_TYPES
+        else:  # production
+            node_types = _PROD_TYPES
+
+        for node in self._nodes.values():
+            if node.device.device_type in node_types:
+                node.set_faded(faded, repaint=False)
+        for edge in self._edges.values():
+            if edge._layer == layer:
+                edge.set_faded(faded, repaint=False)
         self.update()
 
     def mousePressEvent(self, event):
@@ -574,11 +687,24 @@ class TopologyScene(QGraphicsScene):
             self.node_right_clicked.emit(node.device.id, event.screenPos())
             return
 
-        # Check edge
-        for (src_id, dst_id), edge in self._edges.items():
-            if edge.contains(event.scenePos() - edge.pos()):
-                self.edge_right_clicked.emit(src_id, dst_id, event.screenPos())
-                return
+        # Check edge — key format is ((src_id, dst_id), layer)
+        # Prefer visible edges (current layer) over hidden ones when multiple
+        # layer edges share the same screen position.
+        hit_visible = None
+        hit_hidden  = None
+        for (pair, _layer), edge in self._edges.items():
+            if not edge.contains(event.scenePos() - edge.pos()):
+                continue
+            src_id, dst_id = pair
+            if edge.isVisible():
+                hit_visible = (src_id, dst_id)
+                break
+            elif hit_hidden is None:
+                hit_hidden = (src_id, dst_id)
+        hit = hit_visible or hit_hidden
+        if hit:
+            self.edge_right_clicked.emit(hit[0], hit[1], event.screenPos())
+            return
 
         super().contextMenuEvent(event)
 
@@ -615,6 +741,8 @@ class TopologyView(QGraphicsView):
     """The main topology canvas widget."""
 
     reset_current_layout_requested = Signal()   # undo drags, restore last applied layout
+    sig_live_discovery = Signal()               # user wants to start live discovery
+    sig_stop_discovery = Signal()               # user wants to stop live discovery
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -634,6 +762,9 @@ class TopologyView(QGraphicsView):
         self._spinner_label   = ""
         self._spinner_timer   = QTimer(self)
         self._spinner_timer.timeout.connect(self._spinner_tick)
+
+        self._discovery_busy = False
+        self._snmp_running = False
 
         # Overlay controls (children of viewport for correct hit-testing)
         self._build_overlay_controls()
@@ -714,6 +845,13 @@ class TopologyView(QGraphicsView):
         self._btn_zoom_out    = _btn("−", "Zoom Out")
         self._btn_fit         = _btn("⊡", "Fit to View")
         self._btn_reset_current_layout = _btn("↺", "Reset Current Layout\n(undo node drags)")
+        self._btn_live_discovery = _btn("●", "Live Discovery\n(poll all devices via SNMP)")
+        self._btn_live_discovery.setEnabled(False)
+        self._btn_live_discovery.setStyleSheet(self._BTN_STYLE + """
+            QPushButton { color: #e74c3c; }
+            QPushButton:disabled { color: #5a2020; }
+            QPushButton:hover { color: #ff6b6b; }
+        """)
 
         self._btn_search.setCheckable(True)
         self._btn_search.clicked.connect(self._toggle_search_bar)
@@ -721,6 +859,7 @@ class TopologyView(QGraphicsView):
         self._btn_zoom_out.clicked.connect(self.zoom_out)
         self._btn_fit.clicked.connect(self.fit_view)
         self._btn_reset_current_layout.clicked.connect(self.reset_current_layout_requested)
+        self._btn_live_discovery.clicked.connect(self._on_discovery_btn_clicked)
 
         panel.adjustSize()
         panel.raise_()
@@ -758,6 +897,125 @@ class TopologyView(QGraphicsView):
         bar.raise_()
         self._search_bar = bar
 
+        # ── Layer toggle panel ──────────────────────────────────────────
+        layer_panel = QWidget(vp)
+        layer_panel.setObjectName("layerPanel")
+        layer_panel.setStyleSheet("""
+            QWidget#layerPanel {
+                background: rgba(22,27,34,220);
+                border: 1px solid #30363d;
+                border-radius: 6px;
+            }
+        """)
+        layer_panel.setAttribute(Qt.WA_StyledBackground, True)
+
+        lhbox = QHBoxLayout(layer_panel)
+        lhbox.setContentsMargins(6, 2, 6, 2)
+        lhbox.setSpacing(2)
+
+        _lbl_layer = QLabel("Layer:")
+        _lbl_layer.setStyleSheet("color:#8b949e; font-size:10px; background:transparent; border:none;")
+        lhbox.addWidget(_lbl_layer)
+
+        _layer_btn_style = """
+            QPushButton {
+                background: transparent;
+                border: 1px solid #30363d;
+                color: #8b949e;
+                font-size: 9px;
+                border-radius: 3px;
+                padding: 2px 6px;
+            }
+            QPushButton:checked {
+                background: rgba(31,111,235,200);
+                color: white;
+                border-color: #1f6feb;
+            }
+            QPushButton:hover { background: rgba(31,111,235,100); color: white; }
+        """
+
+        def _layer_btn(text, tip):
+            b = QPushButton(text, layer_panel)
+            b.setCheckable(True)
+            b.setToolTip(tip)
+            b.setStyleSheet(_layer_btn_style)
+            b.setFixedHeight(20)
+            lhbox.addWidget(b)
+            return b
+
+        self._btn_layer_all  = _layer_btn("All",   "Show all network layers")
+        self._btn_layer_prod = _layer_btn("Prod",  "Production network only")
+        self._btn_layer_mgmt = _layer_btn("Mgmt",  "Management (OOB) network only")
+        self._btn_layer_pwr  = _layer_btn("Power", "Power chain only")
+        self._btn_layer_all.setChecked(True)
+
+        # Mutual exclusion
+        self._layer_btns = [self._btn_layer_all, self._btn_layer_prod,
+                            self._btn_layer_mgmt, self._btn_layer_pwr]
+        _layer_map = {"All": "all", "Prod": "production",
+                      "Mgmt": "management", "Power": "power"}
+        for btn in self._layer_btns:
+            label = btn.text()
+            btn.clicked.connect(lambda checked, b=btn, lbl=label: self._on_layer_btn(b, lbl))
+
+        layer_panel.adjustSize()
+        layer_panel.raise_()
+        self._layer_panel = layer_panel
+        self._layer_map = _layer_map
+
+    def get_active_layer(self) -> str:
+        """Return the currently selected layer filter ('all', 'production', 'management', 'power')."""
+        return self._scene._layer_filter
+
+    def set_snmp_running(self, running: bool):
+        """Enable or disable the Live Discovery button based on SNMP sim state."""
+        self._snmp_running = running
+        if not running:
+            self._apply_discovery_idle_style()
+        self._update_discovery_btn_state()
+
+    def set_discovery_busy(self, busy: bool):
+        """Switch the button between start (●) and stop (■) appearance."""
+        self._discovery_busy = busy
+        if busy:
+            self._apply_discovery_stop_style()
+        else:
+            self._apply_discovery_idle_style()
+        self._update_discovery_btn_state()
+
+    def _update_discovery_btn_state(self):
+        """Enable discovery button whenever SNMP simulator is running."""
+        self._btn_live_discovery.setEnabled(self._snmp_running)
+
+    def _apply_discovery_idle_style(self):
+        self._btn_live_discovery.setText("●")
+        self._btn_live_discovery.setToolTip("Live Discovery\n(poll all devices via SNMP)")
+        self._btn_live_discovery.setStyleSheet(self._BTN_STYLE + """
+            QPushButton { color: #e74c3c; }
+            QPushButton:disabled { color: #5a2020; }
+            QPushButton:hover { color: #ff6b6b; }
+        """)
+
+    def _apply_discovery_stop_style(self):
+        self._btn_live_discovery.setText("■")
+        self._btn_live_discovery.setToolTip("Stop Live Discovery")
+        self._btn_live_discovery.setStyleSheet(self._BTN_STYLE + """
+            QPushButton { color: #f39c12; }
+            QPushButton:hover { color: #f5c543; }
+        """)
+
+    def _on_discovery_btn_clicked(self):
+        if self._discovery_busy:
+            self.sig_stop_discovery.emit()
+        else:
+            self.sig_live_discovery.emit()
+
+    def _on_layer_btn(self, clicked_btn: QPushButton, label: str):
+        for btn in self._layer_btns:
+            btn.setChecked(btn is clicked_btn)
+        self._scene.set_layer_filter(self._layer_map.get(label, "all"))
+        self._update_discovery_btn_state()
+
     def _toggle_search_bar(self, checked: bool):
         if checked:
             self._search_bar.show()
@@ -787,9 +1045,6 @@ class TopologyView(QGraphicsView):
         bsz = self._BTN_SIZE
 
         # Button group: top-left
-        # adjustSize() is called once at construction; repeating it here during
-        # resizeEvent / scrollContentsBy causes a recursive repaint because Qt
-        # may still be painting the viewport's backing store.
         self._btn_group.move(m, m)
 
         # Search bar: same top edge, immediately right of the button group
@@ -797,8 +1052,16 @@ class TopologyView(QGraphicsView):
         bar_w = min(280, max(160, vw - bar_x - m))
         self._search_bar.setGeometry(bar_x, m, bar_w, bsz)
 
+        # Layer toggle panel: below search bar (right-aligned to search bar)
+        self._layer_panel.adjustSize()
+        lp_w = self._layer_panel.width()
+        lp_x = bar_x
+        lp_y = m + bsz + 4
+        self._layer_panel.setGeometry(lp_x, lp_y, lp_w, 26)
+
         self._btn_group.raise_()
         self._search_bar.raise_()
+        self._layer_panel.raise_()
 
     def _on_search(self, query: str):
         self._scene.clearSelection()
@@ -811,6 +1074,7 @@ class TopologyView(QGraphicsView):
             node for node in self._scene._nodes.values()
             if query in node.device.name.lower()
             or query in node.device.ip_address.lower()
+            or query in (node.device.mgmt_ip or "").lower()
         ]
 
         self._search_count.setText(f"{len(matches)}/{len(self._scene._nodes)}")

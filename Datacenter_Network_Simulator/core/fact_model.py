@@ -45,8 +45,11 @@ class DeviceFact:
     interfaces: List[InterfaceFact] = field(default_factory=list)
 
     # Environmental
-    temperature: float = 0.0    # °C (CPU/ASIC)
-    humidity: float = 0.0       # %
+    temperature: float = 0.0       # °C (CPU/ASIC temperature)
+    ambient_temp: float = 0.0      # °C (datacenter ambient/inlet temp; used by sensors)
+    humidity: float = 0.0          # % relative humidity
+    dewpoint: float = 0.0          # °C dew-point (Vertiv Geist only)
+    airflow: float = 0.0           # m/s (APC NetBotz only)
 
     # Power / UPS
     ups_status: str = "normal"  # normal | on_battery | low_battery
