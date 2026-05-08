@@ -10,7 +10,7 @@ import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { computeLayeredLayout } from '@/lib/topology-layered'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = false
+const USE_MOCK_DATA = true
 
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
@@ -407,7 +407,9 @@ export default function Topology() {
     // that already exist as real live nodes (same ID).
     const existingNodeIds = new Set([
       ...serverNodes.map(n => n.id),
-      ...agentNodes.map(n => n.id),
+      // Use ALL agents (not just visible) so collapsed servers still exclude real agent IDs
+      // from customTopoNodes — prevents saved custom topology from showing real agents when collapsed
+      ...agents.map(a => `${a.server_id}:${a.agent_id}`),
       ...deviceNodes.map(n => n.id),
     ])
     const customTopoNodes: TopoNode[] = (customTopology?.nodes ?? [])
