@@ -206,6 +206,7 @@ let _cached: MockTopologyData | null = null
 export function getMockTopologyData(): MockTopologyData {
   if (_cached) return _cached
 
+
   const specs = buildSpecs()
 
   const server: ServerConfig = {
@@ -250,14 +251,35 @@ export function getMockTopologyData(): MockTopologyData {
     updated_at: iso(0),
   }
 
-  const snmpDevices = specs.map(specToDevice)
+  const pduDevices: SNMPDevice[] = [
+    { device_name: 'PDU-Rack-A', device_ip: '10.7.0.1', agent_id: AGENT_ID, server_id: SERVER_ID, server_name: SERVER_NAME, last_seen: iso(30) },
+    { device_name: 'PDU-Rack-B', device_ip: '10.7.0.2', agent_id: AGENT_ID, server_id: SERVER_ID, server_name: SERVER_NAME, last_seen: iso(30) },
+    { device_name: 'PDU-Rack-C', device_ip: '10.7.0.3', agent_id: AGENT_ID, server_id: SERVER_ID, server_name: SERVER_NAME, last_seen: iso(4 * 60 * 60) },
+    { device_name: 'PDU-Rack-D', device_ip: '10.7.0.4', agent_id: AGENT_ID, server_id: SERVER_ID, server_name: SERVER_NAME, last_seen: iso(30) },
+  ]
+
+  const snmpDevices = [...specs.map(specToDevice), ...pduDevices]
   const topologyLinks = buildLinks(specs)
+
+  // PDU → ToR power-supply links. Each PDU sits at the rack level and supplies
+  // two adjacent ToR switches (representing the racks it powers). Offline PDU-C
+  // links are stamped stale so the layout marks them disconnected.
+  const pduLinks: TopologyLink[] = [
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.1', source_name: 'PDU-Rack-A', source_depth: 4, target_ip: '10.3.0.1', target_name: 'ToR-P1', target_depth: 3, target_port: 'PWR-A', last_seen: iso(30) },
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.1', source_name: 'PDU-Rack-A', source_depth: 4, target_ip: '10.3.0.2', target_name: 'ToR-P2', target_depth: 3, target_port: 'PWR-A', last_seen: iso(30) },
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.2', source_name: 'PDU-Rack-B', source_depth: 4, target_ip: '10.3.0.3', target_name: 'ToR-P3', target_depth: 3, target_port: 'PWR-B', last_seen: iso(30) },
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.2', source_name: 'PDU-Rack-B', source_depth: 4, target_ip: '10.3.0.4', target_name: 'ToR-P4', target_depth: 3, target_port: 'PWR-B', last_seen: iso(30) },
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.3', source_name: 'PDU-Rack-C', source_depth: 4, target_ip: '10.3.0.5', target_name: 'ToR-P5', target_depth: 3, target_port: 'PWR-C', last_seen: iso(4 * 60 * 60) },
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.3', source_name: 'PDU-Rack-C', source_depth: 4, target_ip: '10.3.0.6', target_name: 'ToR-P6', target_depth: 3, target_port: 'PWR-C', last_seen: iso(4 * 60 * 60) },
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.4', source_name: 'PDU-Rack-D', source_depth: 4, target_ip: '10.3.0.7', target_name: 'ToR-P7', target_depth: 3, target_port: 'PWR-D', last_seen: iso(30) },
+    { server_id: SERVER_ID, server_name: SERVER_NAME, source_ip: '10.7.0.4', source_name: 'PDU-Rack-D', source_depth: 4, target_ip: '10.3.0.8', target_name: 'ToR-P8', target_depth: 3, target_port: 'PWR-D', last_seen: iso(30) },
+  ]
 
   _cached = {
     servers: [server],
     agents: [agent],
     snmpDevices,
-    topologyLinks,
+    topologyLinks: [...topologyLinks, ...pduLinks],
   }
   return _cached
 }

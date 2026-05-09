@@ -5,6 +5,7 @@ export interface LayoutNode {
   id: string
   name: string
   type: 'server' | 'agent' | 'network'
+  isPDU?: boolean
   status: 'online' | 'offline'
   position: [number, number, number]
   color: string
@@ -36,7 +37,7 @@ export interface LayoutLink {
   sourcePos: [number, number, number]
   targetPos: [number, number, number]
   connected: boolean
-  linkType?: 'agent-server' | 'device-agent' | 'device-device'
+  linkType?: 'agent-server' | 'device-agent' | 'device-device' | 'pdu-power'
   d2dInfo?: D2DInfo
 }
 
@@ -67,6 +68,7 @@ function roleLayerOf(name: string): number | null {
   if (/fabric|spine|super-?spine/i.test(name)) return 3
   if (/\bpod\b|aggregation|\bagg\b/i.test(name)) return 4
   if (/\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
+  if (/\bpdu\b|power.?dist/i.test(name)) return 5   // rack-level, alongside ToR switches
   if (/gpu|storage|\bnas\b|\bsan\b/i.test(name)) return 7
   if (/compute|host|\bsrv?\b|^server\b/i.test(name)) return 6
   return null
@@ -247,10 +249,12 @@ export function computeHierarchicalLayout(
     nodeIdSet.add(deviceId)
 
     const active = isDeviceActive(device)
+    const deviceName = device.device_name || device.device_ip
     nodes.push({
       id: deviceId,
-      name: device.device_name || device.device_ip,
+      name: deviceName,
       type: 'network',
+      isPDU: /\bpdu\b|power.?dist/i.test(deviceName),
       status: active ? 'online' : 'offline',
       position: [0, 0, 0],
       color: active ? '#06b6d4' : '#475569',
@@ -296,13 +300,14 @@ export function computeHierarchicalLayout(
       if (seenPairs.has(pairKey)) return
       seenPairs.add(pairKey)
       const connected = srcN.status === 'online' && tgtN.status === 'online'
+      const isPowerLink = srcN.isPDU || tgtN.isPDU
       links.push({
         sourceId: srcN.id,
         targetId: tgtN.id,
         sourcePos: [0, 0, 0],
         targetPos: [0, 0, 0],
         connected,
-        linkType: 'device-device',
+        linkType: isPowerLink ? 'pdu-power' : 'device-device',
         d2dInfo: {
           sourceIp: tl.source_ip,
           sourceName: tl.source_name,

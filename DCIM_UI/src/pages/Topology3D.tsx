@@ -706,6 +706,223 @@ function DeviceNode({
   )
 }
 
+// ── PDU Node (Vertical Power Distribution Unit) ───────────────────────────────
+
+function PDUNode({
+  node,
+  isSelected,
+  onSelect,
+  onHover,
+}: {
+  node: LayoutNode
+  isSelected: boolean
+  onSelect: (node: LayoutNode) => void
+  onHover: (hovering: boolean) => void
+}) {
+  const glowRef = useRef<THREE.Mesh>(null)
+  const [hovered, setHovered] = useState(false)
+
+  useFrame(() => {
+    if (!glowRef.current) return
+    const mat = glowRef.current.material as THREE.MeshBasicMaterial
+    if (node.status === 'offline') {
+      mat.opacity = 0.12 + Math.sin(Date.now() * 0.005) * 0.12
+    } else {
+      mat.opacity = hovered || isSelected ? 0.1 : 0
+    }
+  })
+
+  const handleClick = useCallback(
+    (e: THREE.Event & { stopPropagation: () => void }) => {
+      e.stopPropagation()
+      onSelect(node)
+    },
+    [node, onSelect]
+  )
+
+  const handlePointerOver = useCallback(
+    (e: THREE.Event & { stopPropagation: () => void }) => {
+      e.stopPropagation()
+      setHovered(true)
+      onHover(true)
+    },
+    [onHover]
+  )
+
+  const handlePointerOut = useCallback(() => {
+    setHovered(false)
+    onHover(false)
+  }, [onHover])
+
+  const online = node.status === 'online'
+
+  const lightningShape = useMemo(() => {
+    const s = new THREE.Shape()
+    // 6-vertex filled ⚡ polygon — upper stroke then lower stroke
+    s.moveTo(0.18, 0.5)    // top-right tip
+    s.lineTo(-0.06, 0.04)  // upper-left wing point
+    s.lineTo(0.12, 0.04)   // inner-right notch (the kink)
+    s.lineTo(-0.18, -0.5)  // bottom-left tip
+    s.lineTo(0.06, -0.04)  // lower-right wing point
+    s.lineTo(-0.12, -0.04) // inner-left notch (the kink)
+    s.closePath()
+    return s
+  }, [])
+
+  // Slim dark enclosure — anthracite when online, deep red when offline
+  const bodyColor = online ? '#1e293b' : '#450a0a'
+  const stripColor = online ? '#eab308' : '#7f1d1d'
+  const socketColor = online ? '#334155' : '#3b0000'
+  const socketPinColor = online ? '#94a3b8' : '#6b7280'
+  const ledColor = online ? '#22c55e' : '#ef4444'
+  const boltColor = '#facc15'
+
+  return (
+    <group
+      position={node.position}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      {/* ── Main body — slim vertical tower ── */}
+      <mesh>
+        <boxGeometry args={[1.2, 5.0, 0.9]} />
+        <meshStandardMaterial color={bodyColor} metalness={0.6} roughness={0.25} />
+      </mesh>
+
+      {/* ── Vertical accent strip (brand color bar on front edge) ── */}
+      <mesh position={[0, 0, 0.46]}>
+        <boxGeometry args={[0.12, 5.0, 0.02]} />
+        <meshStandardMaterial
+          color={stripColor}
+          emissive={stripColor}
+          emissiveIntensity={online ? 0.6 : 0.2}
+          metalness={0.2}
+          roughness={0.3}
+        />
+      </mesh>
+
+      {/* ── Power sockets (6 stacked vertically on front face) ── */}
+      {[-1.8, -1.08, -0.36, 0.36, 1.08, 1.7].map((yOff, i) => (
+        <group key={`socket-${i}`} position={[0, yOff, 0.46]}>
+          {/* Socket housing — recessed square */}
+          <mesh>
+            <boxGeometry args={[0.58, 0.5, 0.04]} />
+            <meshStandardMaterial color={socketColor} metalness={0.4} roughness={0.5} />
+          </mesh>
+          {/* Left pin hole */}
+          <mesh position={[-0.1, 0.08, 0.03]}>
+            <boxGeometry args={[0.07, 0.14, 0.02]} />
+            <meshStandardMaterial color={socketPinColor} metalness={0.5} roughness={0.4} />
+          </mesh>
+          {/* Right pin hole */}
+          <mesh position={[0.1, 0.08, 0.03]}>
+            <boxGeometry args={[0.07, 0.14, 0.02]} />
+            <meshStandardMaterial color={socketPinColor} metalness={0.5} roughness={0.4} />
+          </mesh>
+          {/* Ground pin hole */}
+          <mesh position={[0, -0.1, 0.03]}>
+            <circleGeometry args={[0.05, 8]} />
+            <meshStandardMaterial color={socketPinColor} metalness={0.5} roughness={0.4} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* ── Status LED (top front) ── */}
+      <mesh position={[0.42, 2.3, 0.46]}>
+        <circleGeometry args={[0.09, 12]} />
+        <meshBasicMaterial color={ledColor} />
+      </mesh>
+
+      {/* ── Cable entry cap at bottom ── */}
+      <mesh position={[0, -2.55, 0]}>
+        <boxGeometry args={[1.0, 0.12, 0.7]} />
+        <meshStandardMaterial color={stripColor} metalness={0.5} roughness={0.3} />
+      </mesh>
+
+      {/* ── Glow effect ── */}
+      <mesh ref={glowRef}>
+        <boxGeometry args={[2.0, 6.0, 1.8]} />
+        <meshBasicMaterial
+          color={online ? '#eab308' : '#ef4444'}
+          transparent
+          opacity={0}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* ── Selection wireframe ── */}
+      {isSelected && (
+        <mesh>
+          <boxGeometry args={[1.6, 5.4, 1.3]} />
+          <meshBasicMaterial color="#eab308" wireframe transparent opacity={0.5} />
+        </mesh>
+      )}
+
+      {/* ── Top symbol — ⚡ when online, 🚫 when offline ── */}
+      {online ? (
+        <mesh position={[0, 3.2, 0]} scale={[1.1, 1.1, 1]}>
+          <extrudeGeometry args={[lightningShape, { depth: 0.18, bevelEnabled: false }]} />
+          <meshStandardMaterial
+            color={boltColor}
+            emissive={boltColor}
+            emissiveIntensity={1.8}
+            metalness={0.15}
+            roughness={0.2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ) : (
+        <group position={[0, 3.2, 0]}>
+          <mesh>
+            <torusGeometry args={[0.55, 0.08, 12, 48]} />
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
+          </mesh>
+          <mesh rotation={[0, 0, Math.PI * 0.25]}>
+            <boxGeometry args={[0.1, 1.1, 0.1]} />
+            <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.8} />
+          </mesh>
+        </group>
+      )}
+
+      {/* ── Label ── */}
+      <Billboard position={[0, 5.0, 0]}>
+        <Text
+          fontSize={0.7}
+          color="white"
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.05}
+          outlineColor="#000000"
+        >
+          {(() => {
+            const m = node.name.match(/([A-Za-z])(\s*)$/)
+            if (m) return `PDU ${m[1].toUpperCase().charCodeAt(0) - 64}`
+            const n = node.name.match(/(\d+)$/)
+            return n ? `PDU ${n[1]}` : 'PDU'
+          })()}
+        </Text>
+      </Billboard>
+
+      {node.agentName && (
+        <Billboard position={[0, 4.2, 0]}>
+          <Text
+            fontSize={0.45}
+            color="#94a3b8"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.03}
+            outlineColor="#000000"
+          >
+            via {node.agentName}
+          </Text>
+        </Billboard>
+      )}
+
+    </group>
+  )
+}
+
 // ── Connection Line ──────────────────────────────────────────────────────────
 
 function ConnectionLine({ link }: { link: LayoutLink }) {
@@ -713,15 +930,19 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
   const [hovered, setHovered] = useState(false)
 
   useFrame(() => {
-    if (ref.current && (link.linkType === 'device-agent' || !link.connected)) {
-      ref.current.material.dashOffset -= link.linkType === 'device-agent' ? 0.02 : 0.05
-    }
+    if (!ref.current) return
+    if (link.linkType === 'device-agent') ref.current.material.dashOffset -= 0.02
+    else if (link.linkType === 'pdu-power' && !link.connected) ref.current.material.dashOffset -= 0.04
+    else if (!link.connected) ref.current.material.dashOffset -= 0.05
   })
 
   const isAgentLink = link.linkType === 'device-agent'
-  const isD2D = link.linkType === 'device-device'
-  const color = isD2D
-    ? (link.connected ? '#f59e0b' : '#ef4444')     // amber for physical wiring, red if broken
+  const isD2D      = link.linkType === 'device-device'
+  const isPDULink  = link.linkType === 'pdu-power'
+  const color = isPDULink
+    ? (link.connected ? '#eab308' : '#ef4444')      // amber = live power, red = no power
+    : isD2D
+    ? (link.connected ? '#f59e0b' : '#ef4444')
     : isAgentLink
     ? '#06b6d4'
     : link.connected ? '#10b981' : '#ef4444'
@@ -791,22 +1012,63 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
     )
   }
 
+  const renderPDUTooltip = () => {
+    if (!isPDULink || !hovered || !link.d2dInfo) return null
+    const info = link.d2dInfo
+    return (
+      <Html position={midPoint} center zIndexRange={[100, 0]} wrapperClass="pointer-events-none">
+        <div className="bg-slate-900/95 border border-yellow-500/30 rounded-lg p-3 text-xs shadow-xl min-w-[200px]">
+          <div className="font-bold text-base mb-1.5 text-yellow-400 flex items-center gap-1.5">
+            ⚡ Power Supply
+          </div>
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <span className="text-slate-400">Status</span>
+            <span className={link.connected ? 'text-emerald-400 font-semibold' : 'text-red-400 font-semibold'}>
+              {link.connected ? 'Supplying' : 'Not supplying'}
+            </span>
+            <span className="text-slate-400">PDU</span>
+            <span className="text-slate-200">{info.sourceName}</span>
+            <span className="text-slate-400">Powers</span>
+            <span className="text-slate-200">{info.targetName}</span>
+            {info.targetPort && (
+              <>
+                <span className="text-slate-400">Outlet</span>
+                <span className="text-slate-300 font-mono">{info.targetPort}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </Html>
+    )
+  }
+
   return (
     <>
       <Line
         ref={ref}
         points={[link.sourcePos, link.targetPos]}
         color={color}
-        lineWidth={isD2D ? (hovered ? 3 : 2) : isAgentLink ? 1 : link.connected ? 1.5 : 2}
-        dashed={isAgentLink || !link.connected}
-        dashSize={isAgentLink ? 0.5 : 1}
-        gapSize={isAgentLink ? 0.5 : 0.8}
+        lineWidth={
+          isPDULink ? (hovered ? 4 : 2.5)
+          : isD2D    ? (hovered ? 3 : 2)
+          : isAgentLink ? 1
+          : link.connected ? 1.5 : 2
+        }
+        dashed={isAgentLink || (isPDULink && !link.connected) || (!isPDULink && !link.connected)}
+        dashSize={isAgentLink ? 0.5 : isPDULink ? 0.7 : 1}
+        gapSize={isAgentLink ? 0.5 : isPDULink ? 0.5 : 0.8}
         transparent
-        opacity={isD2D ? (link.connected ? 0.85 : 0.7) : isAgentLink ? 0.5 : link.connected ? 0.6 : 0.8}
-        onPointerOver={isD2D ? (e: any) => { e.stopPropagation?.(); setHovered(true) } : undefined}
-        onPointerOut={isD2D ? () => setHovered(false) : undefined}
+        opacity={
+          isPDULink  ? (link.connected ? 0.95 : 0.75)
+          : isD2D    ? (link.connected ? 0.85 : 0.7)
+          : isAgentLink ? 0.5
+          : link.connected ? 0.6 : 0.8
+        }
+        onPointerOver={(isPDULink || isD2D) ? (e: any) => { e.stopPropagation?.(); setHovered(true) } : undefined}
+        onPointerOut={(isPDULink || isD2D)  ? () => setHovered(false) : undefined}
       />
       {renderTooltip()}
+      {renderPDUTooltip()}
     </>
   )
 }
@@ -1121,18 +1383,28 @@ function SceneContent({
         ))
       })()}
 
-      {/* Device nodes (SNMP) */}
+      {/* Device nodes (SNMP) — PDUs get their own vertical visual */}
       {nodes
         .filter((n) => n.type === 'network')
-        .map((node) => (
-          <DeviceNode
-            key={node.id}
-            node={node}
-            isSelected={selectedNode?.id === node.id}
-            onSelect={onSelectNode}
-            onHover={onHover}
-          />
-        ))}
+        .map((node) =>
+          node.isPDU ? (
+            <PDUNode
+              key={node.id}
+              node={node}
+              isSelected={selectedNode?.id === node.id}
+              onSelect={onSelectNode}
+              onHover={onHover}
+            />
+          ) : (
+            <DeviceNode
+              key={node.id}
+              node={node}
+              isSelected={selectedNode?.id === node.id}
+              onSelect={onSelectNode}
+              onHover={onHover}
+            />
+          )
+        )}
 
       {/* Click on empty space to deselect */}
       <mesh position={[0, -14.9, 0]} rotation={[-Math.PI / 2, 0, 0]} onClick={onDeselect}>
@@ -1587,13 +1859,15 @@ export default function Topology3D() {
 
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-slate-400">Name</p>
+                <p className="text-sm text-slate-400">{selectedNode.isPDU ? 'PDU' : 'Name'}</p>
                 <p className="text-lg font-semibold text-white">{selectedNode.name}</p>
               </div>
 
               <div>
                 <p className="text-sm text-slate-400">Type</p>
-                <p className="text-lg font-semibold text-white capitalize">{selectedNode.type}</p>
+                <p className="text-lg font-semibold text-white capitalize">
+                  {selectedNode.type === 'network' ? 'Device' : selectedNode.type}
+                </p>
               </div>
 
               <div>
