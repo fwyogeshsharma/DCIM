@@ -40,8 +40,10 @@ export class DataSyncService {
   async syncAgentsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
       const agent = getAgentForServer(serverId)
-      const client = new HttpClient(serverUrl, 5000, agent)
-      const response: any = await client.get('/agents')
+      const client = new HttpClient(serverUrl.replace(/\/+$/, '') + '/api/v1', 5000, agent)
+      const response: any = await client.get('/agents', {
+        headers: { 'X-Agent-ID': 'aggregator' },
+      })
       const agents = response.data || response
 
       if (!Array.isArray(agents)) {
@@ -96,7 +98,7 @@ export class DataSyncService {
   async syncMetricsFromServer(serverId: string, serverUrl: string, agentId?: string): Promise<void> {
     try {
       const agent = getAgentForServer(serverId)
-      const client = new HttpClient(serverUrl, 15000, agent)
+      const client = new HttpClient(serverUrl.replace(/\/+$/, '') + '/api/v1', 15000, agent)
 
       // Get agent IDs for this server — we need to pass X-Agent-ID header
       const agentIds = agentId ? [agentId] : await this.getAllAgentIdsForServer(serverId)
@@ -105,16 +107,13 @@ export class DataSyncService {
         return
       }
 
-      // Fetch metrics per agent using /metrics?agent_id=X endpoint
-      // (the /agents/{id}/metrics endpoint has a PostgreSQL bug on the Go server)
-      // We request 7d window since the Go server defaults to 24h which may miss older data
+      // Fetch recent metrics per agent (short window — we sync every 10s so 5min catches any gaps)
       let allMetrics: any[] = []
       for (const aid of agentIds) {
         try {
           const params = new URLSearchParams()
           params.append('agent_id', aid)
-          params.append('time_range', '7d')
-          params.append('limit', '1000')
+          params.append('limit', '100')
           const url = `/metrics?${params.toString()}`
           const response: any = await client.get(url, {
             headers: { 'X-Agent-ID': aid },
@@ -128,40 +127,37 @@ export class DataSyncService {
         }
       }
 
-      const metrics = allMetrics
+      if (allMetrics.length === 0) return
 
-      if (!Array.isArray(metrics) || metrics.length === 0) {
-        return
-      }
+      // Insert in chunks of 500 rows to stay well under PostgreSQL's 65535 param limit
+      const CHUNK = 500
+      let totalInserted = 0
+      for (let i = 0; i < allMetrics.length; i += CHUNK) {
+        const chunk = allMetrics.slice(i, i + CHUNK)
+        const placeholders: string[] = []
+        const params_array: any[] = []
+        let paramIndex = 1
 
-      // Batch insert metrics
-      const values: string[] = []
-      const placeholders: string[] = []
-      const params_array: any[] = []
-      let paramIndex = 1
-
-      for (const m of metrics) {
-        if (!m.agent_id || !m.metric_type || m.value === undefined || !m.timestamp) {
-          continue
+        for (const m of chunk) {
+          if (!m.agent_id || !m.metric_type || m.value === undefined || !m.timestamp) continue
+          placeholders.push(
+            `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5})`
+          )
+          params_array.push(serverId, m.agent_id, m.metric_type, m.value, m.unit || '', m.timestamp)
+          paramIndex += 6
         }
 
-        placeholders.push(
-          `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5})`
+        if (placeholders.length === 0) continue
+        await this.dbPool.query(
+          `INSERT INTO metrics (server_id, agent_id, metric_type, value, unit, timestamp)
+           VALUES ${placeholders.join(', ')}
+           ON CONFLICT DO NOTHING`,
+          params_array
         )
-        params_array.push(serverId, m.agent_id, m.metric_type, m.value, m.unit || '', m.timestamp)
-        paramIndex += 6
+        totalInserted += placeholders.length
       }
 
-      if (placeholders.length > 0) {
-        const query = `
-          INSERT INTO metrics (server_id, agent_id, metric_type, value, unit, timestamp)
-          VALUES ${placeholders.join(', ')}
-          ON CONFLICT DO NOTHING
-        `
-        await this.dbPool.query(query, params_array)
-      }
-
-      logger.info(`Synced ${metrics.length} metrics from server ${serverId}`)
+      if (totalInserted > 0) logger.info(`Synced ${totalInserted} metrics from server ${serverId}`)
     } catch (error: any) {
       logger.error(`Failed to sync metrics from ${serverId}:`, error.message)
     }
@@ -170,7 +166,7 @@ export class DataSyncService {
   async syncAlertsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
       const agent = getAgentForServer(serverId)
-      const client = new HttpClient(serverUrl, 15000, agent)
+      const client = new HttpClient(serverUrl.replace(/\/+$/, '') + '/api/v1', 15000, agent)
 
       // Fetch alerts per agent so every agent gets its fair share
       const agentIds = await this.getAllAgentIdsForServer(serverId)
@@ -238,7 +234,7 @@ export class DataSyncService {
   async syncSNMPMetricsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
       const agent = getAgentForServer(serverId)
-      const client = new HttpClient(serverUrl, 5000, agent)
+      const client = new HttpClient(serverUrl.replace(/\/+$/, '') + '/api/v1', 5000, agent)
 
       // Get a known agent_id for authenticated access
       const agentId = await this.getAgentIdForServer(serverId)
@@ -300,7 +296,7 @@ export class DataSyncService {
   async syncTrapsFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
       const agent = getAgentForServer(serverId)
-      const client = new HttpClient(serverUrl, 10000, agent)
+      const client = new HttpClient(serverUrl.replace(/\/+$/, '') + '/api/v1', 10000, agent)
 
       // Get a known agent_id for authenticated access
       const agentId = await this.getAgentIdForServer(serverId)
@@ -357,7 +353,7 @@ export class DataSyncService {
   async syncTopologyLinksFromServer(serverId: string, serverUrl: string): Promise<void> {
     try {
       const agent = getAgentForServer(serverId)
-      const client = new HttpClient(serverUrl, 10000, agent)
+      const client = new HttpClient(serverUrl.replace(/\/+$/, '') + '/api/v1', 10000, agent)
 
       // Get a known agent_id for authenticated access
       const agentId = await this.getAgentIdForServer(serverId)

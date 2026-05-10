@@ -16,6 +16,8 @@ export interface LayoutNode {
   metrics?: number
   alerts?: number
   lastSeen?: string
+  /** Raw device type from orchestrator, e.g. "DeviceType.ROUTER" */
+  deviceType?: string
 }
 
 export interface D2DInfo {
@@ -45,30 +47,40 @@ export interface LayoutResult {
   links: LayoutLink[]
 }
 
-// ── Role-based layer assignment (mirrors Topology.tsx) ──────────────────────
-// Every node is pinned to a specific Y plane so the 3D view reads top-to-
-// bottom as the same six-tier Clos hierarchy as the 2D topology:
+// ── Floor navigation levels (one per tier in the hierarchy) ─────────────────
+// Listed bottom-to-top so index 0 = lowest Y plane (infrastructure) and
+// index 5 = highest Y plane (DCIM servers). The navigator renders them
+// reversed so the top button moves the camera "up".
+export const FLOORS = [
+  { name: 'Infrastructure', label: 'L6', y: -140, color: '#64748b' },
+  { name: 'Compute/Srvs',   label: 'L5', y: -112, color: '#10b981' },
+  { name: 'ToR Switches',   label: 'L4', y: -84,  color: '#06b6d4' },
+  { name: 'Agg Switches',   label: 'L3', y: -56,  color: '#f59e0b' },
+  { name: 'Core Routers',   label: 'L2', y: -28,  color: '#ef4444' },
+  { name: 'DCIM Servers',   label: 'L1', y: 20,   color: '#a855f7' },
+]
+
+// ── Role-based layer assignment ──────────────────────────────────────────────
+// Mirrors Topology.tsx exactly:
+//   0  server (DCIM server config node)
+//   1  routers / LBs
+//   2  aggregation / fabric / spine switches
+//   3  ToR / leaf switches
+//   4  compute servers
+//   5  infrastructure (OOB, PDU, UPS, sensors)
 //
-//   0  server
-//   1  agent
-//   2  routers / LBs
-//   3  fabric / spine switches
-//   4  pod / aggregation switches
-//   5  ToR / leaf switches
-//   6  compute servers
-//   7  storage / GPU / specialty servers
-//
-// Unknown devices fall back to `2 + BFS depth` so they still slot into a
-// sensible tier based on graph distance from the seed.
+// For SNMP devices that don't carry a DeviceType enum, name-pattern detection
+// is used as a fallback. Unrecognised devices fall back to `2 + BFS depth`.
 function roleLayerOf(name: string): number | null {
   if (!name) return null
-  if (/\brouter\b|\brtr\b|cluster-?r\b|^r[-\d]|core-?r\b/i.test(name)) return 2
-  if (/\blb\b|load-?balancer/i.test(name)) return 2
-  if (/fabric|spine|super-?spine/i.test(name)) return 3
-  if (/\bpod\b|aggregation|\bagg\b/i.test(name)) return 4
-  if (/\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
-  if (/gpu|storage|\bnas\b|\bsan\b/i.test(name)) return 7
-  if (/compute|host|\bsrv?\b|^server\b/i.test(name)) return 6
+  if (/core-?r\b|cluster-?r\b|\brouter\b|\brtr\b|^r\d/i.test(name)) return 1
+  if (/\blb\b|load-?balancer/i.test(name)) return 1
+  if (/^agg-|fabric|spine|super-?spine|\bagg\b/i.test(name)) return 2
+  if (/\bpod\b|aggregation/i.test(name)) return 2
+  if (/^tor-|\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 3
+  if (/^oob-|^sensor|^fpdu|^ups-|^pdu-/i.test(name)) return 5
+  if (/gpu|storage|\bnas\b|\bsan\b/i.test(name)) return 5
+  if (/^srv-|compute|host/i.test(name)) return 4
   return null
 }
 
@@ -83,11 +95,14 @@ const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const WIDE_LAYER_THRESHOLD = 40
 const WIDE_LAYER_ROW_DEPTH = 14 // Z step between wrap rows
 
+export type OrcDevice = { name: string; ip_address: string; type: string; vendor: string }
+
 export function computeHierarchicalLayout(
   servers: ServerConfig[],
   agents: Agent[],
   snmpDevices: SNMPDevice[] = [],
-  topologyLinks: TopologyLink[] = []
+  topologyLinks: TopologyLink[] = [],
+  orchDevicesByServerId?: Map<string, OrcDevice[]>
 ): LayoutResult {
   const enabledServers = servers.filter((s) => s.enabled)
   const nodes: LayoutNode[] = []
@@ -111,9 +126,7 @@ export function computeHierarchicalLayout(
     return effectiveTs > deviceActiveCutoff
   }
 
-  // ── BFS-based device depth (same logic as 2D) ──────────────────────
-  // Used only as a fallback when name-pattern detection can't classify a
-  // device into one of the 6 known tiers.
+  // ── BFS-based device depth (fallback for unknown SNMP devices) ──────
   const deviceDepth = new Map<string, number>()
   if (topologyLinks.length > 0) {
     const adj = new Map<string, Set<string>>()
@@ -155,10 +168,10 @@ export function computeHierarchicalLayout(
     }
   }
 
-  // ── Orphan-agent fallback (match the 2D behavior) ──────────────────
+  // ── Orphan-agent fallback — maps each agent to its effective server ──
   const fallbackServerId: string | null =
     enabledServers.length > 0 ? `server-${enabledServers[0].id}` : null
-  const agentEffectiveServer = new Map<string, string>() // agent_id → serverId
+  const agentEffectiveServer = new Map<string, string>()
   agents.forEach((a) => {
     if (agentEffectiveServer.has(a.agent_id)) return
     const desired = `server-${a.server_id}`
@@ -169,11 +182,16 @@ export function computeHierarchicalLayout(
     }
   })
 
-  // ── Build nodes with placeholder positions ─────────────────────────
-  // Actual (x, y, z) is filled in AFTER we know all node IDs and edges,
-  // because the layered layout places each node relative to its
-  // neighbors' positions — classic Sugiyama, same as the 2D view.
+  // Group DCIM agents by effective server ID for the fallback path
+  const agentsByEffectiveServer = new Map<string, Agent[]>()
+  agents.forEach((a) => {
+    const sid = agentEffectiveServer.get(a.agent_id)
+    if (!sid) return
+    if (!agentsByEffectiveServer.has(sid)) agentsByEffectiveServer.set(sid, [])
+    agentsByEffectiveServer.get(sid)!.push(a)
+  })
 
+  // ── Server nodes ────────────────────────────────────────────────────
   const serverStatusMap = new Map<string, 'online' | 'offline'>()
   enabledServers.forEach((server) => {
     const serverId = `server-${server.id}`
@@ -192,46 +210,88 @@ export function computeHierarchicalLayout(
     nodeIdSet.add(serverId)
   })
 
-  // Agents
-  agents.forEach((agent) => {
-    const sid = agentEffectiveServer.get(agent.agent_id)
-    if (!sid) return
-    const compoundId = `${agent.server_id}:${agent.agent_id}`
-    if (nodeIdSet.has(compoundId)) return
-    nodeIdSet.add(compoundId)
+  // ── Agent nodes: orchestrator devices (if available) or DCIM agents ─
+  enabledServers.forEach((server) => {
+    const serverId = `server-${server.id}`
+    const rawId = server.id
+    const orchDevs = orchDevicesByServerId?.get(rawId)
 
-    const parentServer = enabledServers.find((s) => `server-${s.id}` === sid)
-    nodes.push({
-      id: compoundId,
-      name: agent.hostname,
-      type: 'agent',
-      status: agent.status === 'online' ? 'online' : 'offline',
-      position: [0, 0, 0],
-      color: agent.status === 'online' ? '#10b981' : '#ef4444',
-      ip: agent.ip_address,
-      serverId: agent.server_id,
-      agentId: agent.agent_id,
-      serverName: parentServer?.name,
-      metrics: agent.total_metrics,
-      alerts: agent.total_alerts,
-    })
+    if (orchDevs && orchDevs.length > 0) {
+      // Use sim-network device list — richer names + type info
+      orchDevs.forEach((dev) => {
+        const orchId = `orc-${rawId}-${dev.name}`
+        if (nodeIdSet.has(orchId)) return
+        nodeIdSet.add(orchId)
 
-    // Agent → server link
-    const serverOnline = serverStatusMap.get(sid) === 'online'
-    const agentOnline = agent.status === 'online'
-    links.push({
-      sourceId: compoundId,
-      targetId: sid,
-      sourcePos: [0, 0, 0],
-      targetPos: [0, 0, 0],
-      connected: agentOnline && serverOnline,
-      linkType: 'agent-server',
-    })
+        const agentMatch = agents.find(
+          (a) => a.server_id === rawId && a.hostname.endsWith(dev.name)
+        )
+        const status = (agentMatch?.status ?? 'online') as 'online' | 'offline'
+
+        nodes.push({
+          id: orchId,
+          name: dev.name,
+          type: 'agent',
+          deviceType: dev.type,
+          status,
+          position: [0, 0, 0],
+          color: status === 'online' ? '#10b981' : '#ef4444',
+          ip: dev.ip_address,
+          serverId: rawId,
+          agentId: agentMatch?.agent_id ?? dev.name,
+          serverName: server.name,
+          metrics: agentMatch?.total_metrics,
+          alerts: agentMatch?.total_alerts,
+        })
+
+        const serverOnline = serverStatusMap.get(serverId) === 'online'
+        links.push({
+          sourceId: orchId,
+          targetId: serverId,
+          sourcePos: [0, 0, 0],
+          targetPos: [0, 0, 0],
+          connected: status === 'online' && serverOnline,
+          linkType: 'agent-server',
+        })
+      })
+    } else {
+      // Fallback: use DCIM agents
+      const serverAgents = agentsByEffectiveServer.get(serverId) || []
+      serverAgents.forEach((agent) => {
+        const compoundId = `${agent.server_id}:${agent.agent_id}`
+        if (nodeIdSet.has(compoundId)) return
+        nodeIdSet.add(compoundId)
+
+        nodes.push({
+          id: compoundId,
+          name: agent.hostname,
+          type: 'agent',
+          status: agent.status === 'online' ? 'online' : 'offline',
+          position: [0, 0, 0],
+          color: agent.status === 'online' ? '#10b981' : '#ef4444',
+          ip: agent.ip_address,
+          serverId: agent.server_id,
+          agentId: agent.agent_id,
+          serverName: server.name,
+          metrics: agent.total_metrics,
+          alerts: agent.total_alerts,
+        })
+
+        const serverOnline = serverStatusMap.get(serverId) === 'online'
+        const agentOnline = agent.status === 'online'
+        links.push({
+          sourceId: compoundId,
+          targetId: serverId,
+          sourcePos: [0, 0, 0],
+          targetPos: [0, 0, 0],
+          connected: agentOnline && serverOnline,
+          linkType: 'agent-server',
+        })
+      })
+    }
   })
 
-  // Devices (including orphan devices whose agent_id doesn't resolve to a
-  // visible agent — they still render; their connections surface through
-  // the topology_links pass below).
+  // ── SNMP device nodes ────────────────────────────────────────────────
   const agentIdToCompound = new Map<string, string>()
   agents.forEach((a) => {
     agentIdToCompound.set(a.agent_id, `${a.server_id}:${a.agent_id}`)
@@ -261,10 +321,6 @@ export function computeHierarchicalLayout(
       lastSeen: device.last_seen,
     })
 
-    // Device → agent link, but only for seeds. Deeper devices reach the
-    // agent transitively through their device↔device chain. Without this
-    // gate, a Clos fabric would draw an edge from every device up to the
-    // agent, cluttering every vertical level.
     const d = device.device_ip ? deviceDepth.get(device.device_ip) : undefined
     const isSeed = d === undefined || d === 0
     const compoundId = agentIdToCompound.get(device.agent_id)
@@ -280,8 +336,7 @@ export function computeHierarchicalLayout(
     }
   })
 
-  // Device ↔ device links from topology_links — one edge per distinct
-  // unordered pair.
+  // ── Device ↔ device links ────────────────────────────────────────────
   if (topologyLinks.length > 0) {
     const deviceByIp = new Map<string, LayoutNode>()
     nodes.forEach((n) => {
@@ -318,10 +373,25 @@ export function computeHierarchicalLayout(
     })
   }
 
-  // ── Layer each node and run the shared layered layout ──────────────
+  // ── Layer assignment (mirrors Topology.tsx layerOf exactly) ─────────
   const layerOfNode = (n: LayoutNode): number => {
     if (n.type === 'server') return 0
-    if (n.type === 'agent') return 1
+    if (n.type === 'agent') {
+      if (n.deviceType) {
+        const dt = n.deviceType
+        if (dt.includes('ROUTER')) return 1
+        if (dt.includes('SERVER')) return 4
+        if (dt.includes('OOB_SWITCH') || dt.includes('SENSOR') ||
+            dt.includes('FLOOR_PDU') || dt.includes('UPS') ||
+            dt.includes('PDU')) return 5
+        if (dt.includes('SWITCH')) {
+          if (/^agg-/i.test(n.name || '')) return 2
+          if (/^tor-/i.test(n.name || '')) return 3
+          return 2
+        }
+      }
+      return 1
+    }
     const byRole = roleLayerOf(n.name || '')
     if (byRole !== null) return byRole
     const d = n.ip ? deviceDepth.get(n.ip) ?? 0 : 0
@@ -340,21 +410,16 @@ export function computeHierarchicalLayout(
     }
   )
 
-  // ── Project the 2D layered result onto 3D ──────────────────────────
-  // X → 3D X, -Y → 3D Y (so layer 0 sits at the top of the 3D scene),
-  // Z stays 0 for normal layers. Wide layers (e.g. 120 compute servers)
-  // wrap onto multiple Z rows so the camera doesn't have to dolly across
-  // a mile-long strip.
+  // ── Project 2D layered result onto 3D ────────────────────────────────
+  // X → 3D X, -Y → 3D Y (layer 0 at top of scene), Z = 0 normally.
+  // Wide layers wrap onto multiple Z rows to keep the scene walkable.
 
-  // Count per layer so we can wrap wide tiers.
   const layerCounts = new Map<number, number>()
   nodes.forEach((n) => {
     const l = layerOfNode(n)
     layerCounts.set(l, (layerCounts.get(l) ?? 0) + 1)
   })
 
-  // For wide layers, group by layer and sort by computed X, then assign
-  // row/col on a grid that's roughly square-ish.
   const wrapIndexById = new Map<string, { row: number; col: number; cols: number }>()
   const byLayer = new Map<number, LayoutNode[]>()
   nodes.forEach((n) => {
@@ -369,8 +434,6 @@ export function computeHierarchicalLayout(
       const pb = layered.positions.get(b.id)?.x ?? 0
       return pa - pb
     })
-    // Aim for a grid that's wider than it is deep (4:1-ish) so we still
-    // read as "rows of servers" rather than a cube of them.
     const cols = Math.max(1, Math.ceil(Math.sqrt(sorted.length * 4)))
     sorted.forEach((n, idx) => {
       wrapIndexById.set(n.id, {
@@ -379,7 +442,6 @@ export function computeHierarchicalLayout(
         cols,
       })
     })
-    // Suppress layerCounts lookup warnings from TS when it's unused.
     void l
   })
 
@@ -388,7 +450,6 @@ export function computeHierarchicalLayout(
     if (!p) return
     const wrap = wrapIndexById.get(n.id)
     if (wrap) {
-      // Wrapped: override X with grid position so the row stays compact.
       const span = (wrap.cols - 1) * NODE_GAP_X
       const x = -span / 2 + wrap.col * NODE_GAP_X
       const z = wrap.row * WIDE_LAYER_ROW_DEPTH - ((wrap.cols > 0 ? Math.floor((layerCounts.get(layerOfNode(n)) ?? 1) / wrap.cols) : 0) * WIDE_LAYER_ROW_DEPTH) / 2
@@ -398,7 +459,6 @@ export function computeHierarchicalLayout(
     }
   })
 
-  // ── Refresh link endpoints with the final positions ────────────────
   const nodePosById = new Map<string, [number, number, number]>()
   nodes.forEach((n) => nodePosById.set(n.id, n.position))
   links.forEach((l) => {

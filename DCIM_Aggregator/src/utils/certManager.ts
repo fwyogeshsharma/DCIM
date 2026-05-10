@@ -46,28 +46,32 @@ export function serverHasCerts(serverId: string): boolean {
 
 /**
  * Build a per-server https.Agent if certs exist on disk, else return the shared fallback.
+ * CERTIFICATE CHECKS DISABLED - always returns shared fallback agent
  */
 export function getAgentForServer(serverId: string): https.Agent {
-  const dir = getServerCertDir(serverId)
-  const caPath = path.join(dir, 'ca.crt')
-  const certPath = path.join(dir, 'client.crt')
-  const keyPath = path.join(dir, 'client.key')
+  // CERTIFICATE CHECKS DISABLED - per-server cert loading commented out
+  // const dir = getServerCertDir(serverId)
+  // const caPath = path.join(dir, 'ca.crt')
+  // const certPath = path.join(dir, 'client.crt')
+  // const keyPath = path.join(dir, 'client.key')
+  //
+  // const hasCa = fs.existsSync(caPath)
+  // const hasCert = fs.existsSync(certPath)
+  // const hasKey = fs.existsSync(keyPath)
+  //
+  // if (!hasCa && !hasCert) {
+  //   return httpsAgent // fallback to shared agent
+  // }
+  //
+  // logger.debug(`Using per-server TLS certs for ${serverId}`)
+  // return new https.Agent({
+  //   rejectUnauthorized: hasCa,
+  //   ...(hasCa && { ca: fs.readFileSync(caPath) }),
+  //   ...(hasCert && { cert: fs.readFileSync(certPath) }),
+  //   ...(hasKey && { key: fs.readFileSync(keyPath) }),
+  // })
 
-  const hasCa = fs.existsSync(caPath)
-  const hasCert = fs.existsSync(certPath)
-  const hasKey = fs.existsSync(keyPath)
-
-  if (!hasCa && !hasCert) {
-    return httpsAgent // fallback to shared agent
-  }
-
-  logger.debug(`Using per-server TLS certs for ${serverId}`)
-  return new https.Agent({
-    rejectUnauthorized: hasCa,
-    ...(hasCa && { ca: fs.readFileSync(caPath) }),
-    ...(hasCert && { cert: fs.readFileSync(certPath) }),
-    ...(hasKey && { key: fs.readFileSync(keyPath) }),
-  })
+  return httpsAgent // always use shared fallback agent
 }
 
 /**

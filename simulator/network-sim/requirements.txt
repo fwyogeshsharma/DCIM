@@ -1,0 +1,17 @@
+# From existing Datacenter_Network_Simulator
+networkx>=3.2
+numpy>=1.24
+snmpsim-lextudio>=1.0.4
+grpcio>=1.60.0
+grpcio-tools>=1.60.0
+protobuf>=4.25.0
+
+# New bridge requirements
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+httpx>=0.27.0
+pyyaml>=6.0.1
+structlog>=24.1.0
+
+# pysnmp for sending SNMP traps
+pysnmp>=6.1.0

@@ -10,9 +10,10 @@
  */
 
 import express from 'express';
+import http from 'http';
 import https from 'https';
-import fs from 'fs';
-import path from 'path';
+// import fs from 'fs';   // CERTIFICATE CHECKS DISABLED
+// import path from 'path'; // CERTIFICATE CHECKS DISABLED
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -21,18 +22,21 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Configuration
+// Configuration — honour environment variables so Docker can override
+const _dcimUrl = process.env.DCIM_SERVER_URL || 'http://localhost:8080';
+const _parsed  = new URL(_dcimUrl);
+
 const CONFIG = {
   // Proxy server settings
   proxy: {
-    port: 3001,
+    port: parseInt(process.env.PROXY_PORT || '3001'),
     host: '0.0.0.0'
   },
 
   // DCIM server settings
   dcim: {
-    host: 'localhost',
-    port: 8443,
+    host: _parsed.hostname,
+    port: parseInt(_parsed.port || (_parsed.protocol === 'https:' ? '443' : '80')),
     baseUrl: '/api/v1'
   },
 
@@ -68,54 +72,193 @@ app.use((req, res, next) => {
   next();
 });
 
-// Load certificates
-let httpsAgent;
-try {
-  const certOptions = {
-    // Verify server certificate
-    ca: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.ca)),
+// CERTIFICATE CHECKS DISABLED - cert loading commented out
+// let httpsAgent;
+// try {
+//   const certOptions = {
+//     // Verify server certificate
+//     ca: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.ca)),
+//
+//     // Client certificate authentication
+//     cert: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.clientCert)),
+//     key: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.clientKey)),
+//
+//     // Alternative: Use .pfx file
+//     // pfx: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.pfx)),
+//     // passphrase: CONFIG.certs.passphrase,
+//
+//     // TLS options
+//     rejectUnauthorized: true, // Verify server certificate
+//     requestCert: true, // Request client certificate
+//     agent: false,
+//
+//     // Keep connections alive
+//     keepAlive: true,
+//     keepAliveMsecs: 30000
+//   };
+//
+//   httpsAgent = new https.Agent(certOptions);
+//
+//   console.log('✅ Certificates loaded successfully');
+//   console.log('   Client Cert:', path.resolve(__dirname, CONFIG.certs.clientCert));
+//   console.log('   Client Key:', path.resolve(__dirname, CONFIG.certs.clientKey));
+//   console.log('   CA Cert:', path.resolve(__dirname, CONFIG.certs.ca));
+// } catch (error) {
+//   console.error('❌ Failed to load certificates:', error.message);
+//   console.error('\n📋 Certificate Setup Instructions:');
+//   console.error('   1. Copy certificates to DCIM_UI/certs/ directory');
+//   console.error('   2. Ensure you have:');
+//   console.error('      - client.crt (client certificate)');
+//   console.error('      - client.key (client private key)');
+//   console.error('      - ca.crt (CA certificate)');
+//   console.error('\n   Or use .pfx/.p12 format by uncommenting the pfx option');
+//   process.exit(1);
+// }
+console.log('ℹ️  Certificate checks disabled - connecting without mTLS');
 
-    // Client certificate authentication
-    cert: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.clientCert)),
-    key: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.clientKey)),
+// Synthesise /api/v1/servers from live agent data so the topology gets
+// real server_ids (DCIM-assigned) mapped to friendly names and colours.
+app.get('/api/v1/servers', async (req, res) => {
+  try {
+    const agentUrl = `http://${CONFIG.dcim.host}:${CONFIG.dcim.port}/api/v1/agents`;
+    const agentRes = await new Promise((resolve, reject) => {
+      http.get(agentUrl, { headers: { 'X-Agent-ID': 'ui-dashboard' } }, resolve).on('error', reject);
+    });
+    let body = '';
+    for await (const chunk of agentRes) body += chunk;
+    const { data: agents = [] } = JSON.parse(body);
 
-    // Alternative: Use .pfx file
-    // pfx: fs.readFileSync(path.resolve(__dirname, CONFIG.certs.pfx)),
-    // passphrase: CONFIG.certs.passphrase,
+    // Group agents by server_id and derive server name from agent_id prefix
+    const groups = {};
+    for (const a of agents) {
+      if (!groups[a.server_id]) groups[a.server_id] = [];
+      groups[a.server_id].push(a);
+    }
 
-    // TLS options
-    rejectUnauthorized: true, // Verify server certificate
-    requestCert: true, // Request client certificate
-    agent: false,
+    const COLORS = ['#3b82f6', '#8b5cf6', '#10b981'];
+    const servers = Object.entries(groups).map(([id, agts], i) => {
+      // agent_ids look like "network-a-SRV-A1-01" — take first two segments
+      const prefix = agts[0].agent_id.split('-').slice(0, 2).join('-');
+      const letter = prefix.replace('network-', '');
+      const name = `dcim-server-${letter}`;
+      return {
+        id,
+        name,
+        url: `http://${name}:8080`,
+        enabled: true,
+        metadata: { color: COLORS[i % COLORS.length], network: prefix },
+        health: { status: 'healthy' },
+        hasCerts: false,
+      };
+    });
 
-    // Keep connections alive
-    keepAlive: true,
-    keepAliveMsecs: 30000
-  };
+    res.json({ success: true, data: servers });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-  httpsAgent = new https.Agent(certOptions);
-
-  console.log('✅ Certificates loaded successfully');
-  console.log('   Client Cert:', path.resolve(__dirname, CONFIG.certs.clientCert));
-  console.log('   Client Key:', path.resolve(__dirname, CONFIG.certs.clientKey));
-  console.log('   CA Cert:', path.resolve(__dirname, CONFIG.certs.ca));
-} catch (error) {
-  console.error('❌ Failed to load certificates:', error.message);
-  console.error('\n📋 Certificate Setup Instructions:');
-  console.error('   1. Copy certificates to DCIM_UI/certs/ directory');
-  console.error('   2. Ensure you have:');
-  console.error('      - client.crt (client certificate)');
-  console.error('      - client.key (client private key)');
-  console.error('      - ca.crt (CA certificate)');
-  console.error('\n   Or use .pfx/.p12 format by uncommenting the pfx option');
-  process.exit(1);
+// Helper: fetch all agents from DCIM server (reused by multiple routes)
+async function fetchAgents() {
+  const url = `http://${CONFIG.dcim.host}:${CONFIG.dcim.port}/api/v1/agents`;
+  const raw = await new Promise((resolve, reject) => {
+    http.get(url, { headers: { 'X-Agent-ID': 'ui-dashboard' } }, (r) => {
+      let b = ''; r.on('data', c => b += c); r.on('end', () => resolve(b)); r.on('error', reject);
+    }).on('error', reject);
+  });
+  return JSON.parse(raw).data || [];
 }
 
+// Synthesise /api/v1/snmp/devices from agents so the topology "Devices" count
+// shows the simulated network devices instead of always 0.
+app.get('/api/v1/snmp/devices', async (req, res) => {
+  try {
+    const agents = await fetchAgents();
+    const { agent_id: filterAgent, server_id: filterServer } = req.query;
+    const devices = agents
+      .filter(a => (!filterAgent || a.agent_id === filterAgent) && (!filterServer || a.server_id === filterServer))
+      .map(a => ({
+        device_name: a.hostname,
+        device_ip:   a.ip_address,
+        agent_id:    a.agent_id,
+        server_id:   a.server_id,
+        last_seen:   a.last_seen,
+      }));
+    res.json({ success: true, data: devices, count: devices.length });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Synthesise /api/v1/agents/stats/by-server so the Dashboard server summary works.
+app.get('/api/v1/agents/stats/by-server', async (req, res) => {
+  try {
+    const agents = await fetchAgents();
+    const limit = parseInt(req.query.limit) || 5;
+
+    const serverMap = {};
+    for (const a of agents) {
+      const sid = a.server_id;
+      if (!serverMap[sid]) {
+        const prefix = a.agent_id.split('-').slice(0, 2).join('-');
+        const letter = prefix.replace('network-', '');
+        serverMap[sid] = { server_id: sid, server_name: `dcim-server-${letter}`, color: null, total: 0, online: 0, offline: 0 };
+      }
+      serverMap[sid].total++;
+      if (a.status === 'online') serverMap[sid].online++;
+      else serverMap[sid].offline++;
+    }
+
+    const servers = Object.values(serverMap).slice(0, limit);
+    const totals = servers.reduce((t, s) => ({
+      total: t.total + s.total, online: t.online + s.online,
+      offline: t.offline + s.offline, servers: t.servers + 1,
+    }), { total: 0, online: 0, offline: 0, servers: 0 });
+
+    res.json({ success: true, data: { totals, servers } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Synthesise /api/v1/servers/health/summary for the Dashboard server health widget.
+app.get('/api/v1/servers/health/summary', async (req, res) => {
+  try {
+    const agents = await fetchAgents();
+    const groups = {};
+    for (const a of agents) {
+      if (!groups[a.server_id]) groups[a.server_id] = a;
+    }
+    const COLORS = ['#3b82f6', '#8b5cf6', '#10b981'];
+    const serverList = Object.entries(groups).map(([id, a], i) => {
+      const prefix = a.agent_id.split('-').slice(0, 2).join('-');
+      const name = `dcim-server-${prefix.replace('network-', '')}`;
+      return { id, name, url: `http://${name}:8080`, color: COLORS[i % COLORS.length], status: 'healthy', error: null, responseTime: 10 };
+    });
+    res.json({ success: true, data: { total: serverList.length, healthy: serverList.length, offline: 0, tls_error: 0, unknown: 0, needs_attention: [] } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Synthesise /api/v1/dashboard/stats
+app.get('/api/v1/dashboard/stats', async (req, res) => {
+  try {
+    const agents = await fetchAgents();
+    const online = agents.filter(a => a.status === 'online').length;
+    const serverIds = new Set(agents.map(a => a.server_id));
+    res.json({ success: true, data: { servers: serverIds.size, agents: { total: agents.length, online, offline: agents.length - online }, activeAlerts: 0 } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Proxy all /api/v1/* requests to DCIM server
+// CERTIFICATE CHECKS DISABLED - using plain HTTP instead of HTTPS
 app.all('/api/v1/*', async (req, res) => {
   const targetPath = req.path;
   const queryString = req.url.split('?')[1] || '';
-  const targetUrl = `https://${CONFIG.dcim.host}:${CONFIG.dcim.port}${targetPath}${queryString ? '?' + queryString : ''}`;
+  const targetUrl = `http://${CONFIG.dcim.host}:${CONFIG.dcim.port}${targetPath}${queryString ? '?' + queryString : ''}`;
 
   console.log(`  → Forwarding to: ${targetUrl}`);
 
@@ -127,14 +270,14 @@ app.all('/api/v1/*', async (req, res) => {
       // Add agent ID for UI dashboard authentication
       'X-Agent-ID': 'ui-dashboard'
     },
-    agent: httpsAgent
+    // agent: httpsAgent // CERTIFICATE CHECKS DISABLED
   };
 
   // Remove headers that shouldn't be forwarded
   delete options.headers['host'];
   delete options.headers['connection'];
 
-  const proxyReq = https.request(targetUrl, options, (proxyRes) => {
+  const proxyReq = http.request(targetUrl, options, (proxyRes) => {
     console.log(`  ← Response: ${proxyRes.statusCode}`);
 
     // Forward response headers
@@ -188,45 +331,47 @@ app.get('/health', (req, res) => {
     status: 'ok',
     proxy: 'running',
     dcimServer: `${CONFIG.dcim.host}:${CONFIG.dcim.port}`,
-    certificates: {
-      loaded: !!httpsAgent,
-      clientCert: CONFIG.certs.clientCert,
-      ca: CONFIG.certs.ca
-    }
+    // CERTIFICATE CHECKS DISABLED
+    // certificates: {
+    //   loaded: !!httpsAgent,
+    //   clientCert: CONFIG.certs.clientCert,
+    //   ca: CONFIG.certs.ca
+    // }
+    certificates: { loaded: false, note: 'certificate checks disabled' }
   });
 });
 
-// Certificate info endpoint
+// Certificate info endpoint - CERTIFICATE CHECKS DISABLED
 app.get('/cert-info', (req, res) => {
-  try {
-    const certPem = fs.readFileSync(path.resolve(__dirname, CONFIG.certs.clientCert), 'utf8');
-    const certLines = certPem.split('\n');
-
-    res.json({
-      certPath: CONFIG.certs.clientCert,
-      keyPath: CONFIG.certs.clientKey,
-      caPath: CONFIG.certs.ca,
-      preview: certLines.slice(0, 5).join('\n') + '\n...'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  res.json({ note: 'Certificate checks are disabled' });
+  // CERTIFICATE CHECKS DISABLED - original cert-info code below
+  // try {
+  //   const certPem = fs.readFileSync(path.resolve(__dirname, CONFIG.certs.clientCert), 'utf8');
+  //   const certLines = certPem.split('\n');
+  //   res.json({
+  //     certPath: CONFIG.certs.clientCert,
+  //     keyPath: CONFIG.certs.clientKey,
+  //     caPath: CONFIG.certs.ca,
+  //     preview: certLines.slice(0, 5).join('\n') + '\n...'
+  //   });
+  // } catch (error) {
+  //   res.status(500).json({ error: error.message });
+  // }
 });
 
 // Start server
 app.listen(CONFIG.proxy.port, CONFIG.proxy.host, () => {
   console.log('\n╔══════════════════════════════════════════════════════════════╗');
   console.log('║                                                              ║');
-  console.log('║               DCIM mTLS Proxy Server                         ║');
+  console.log('║               DCIM Proxy Server (no mTLS)                    ║');
   console.log('║                                                              ║');
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
   console.log(`✅ Proxy server running on http://${CONFIG.proxy.host}:${CONFIG.proxy.port}`);
-  console.log(`🔒 Forwarding to DCIM server: https://${CONFIG.dcim.host}:${CONFIG.dcim.port}`);
-  console.log(`📜 Using client certificate: ${CONFIG.certs.clientCert}`);
+  console.log(`→  Forwarding to DCIM server: http://${CONFIG.dcim.host}:${CONFIG.dcim.port}`);
   console.log('\n📋 Configuration:');
   console.log(`   Proxy URL: http://localhost:${CONFIG.proxy.port}/api/v1`);
-  console.log(`   DCIM Server: https://${CONFIG.dcim.host}:${CONFIG.dcim.port}`);
-  console.log(`   mTLS: Enabled with client certificates`);
+  console.log(`   DCIM Server: http://${CONFIG.dcim.host}:${CONFIG.dcim.port}`);
+  console.log(`   mTLS: Disabled (certificate checks commented out)`);
   console.log('\n🌐 Update your UI to use: http://localhost:3001/api/v1');
   console.log('   Set VITE_API_URL=http://localhost:3001/api/v1 in .env\n');
 });

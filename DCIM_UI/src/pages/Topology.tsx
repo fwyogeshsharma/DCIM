@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import type { TimeRange } from '@/lib/types'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
@@ -10,7 +10,7 @@ import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { computeLayeredLayout } from '@/lib/topology-layered'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
@@ -25,6 +25,8 @@ interface TopoNode extends d3.SimulationNodeDatum {
   agentId?: string
   serverName?: string
   agentName?: string
+  /** Raw device type from orchestrator, e.g. "DeviceType.ROUTER" */
+  deviceType?: string
 }
 
 interface D2DInfo {
@@ -171,6 +173,41 @@ export default function Topology() {
 
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
 
+  // Fetch live devices from every sim-network container via the orchestrator
+  const { data: orchDevices } = useQuery<{ container: string; data: { name: string; ip_address: string; type: string; vendor: string }[] }[]>({
+    queryKey: ['orc-devices'],
+    queryFn: () => fetch('/orchestrator/devices').then(r => r.json()),
+    staleTime: 30000,
+    refetchInterval: 30000,
+    enabled: !USE_MOCK_DATA,
+  })
+
+  // Map server_id → orchestrator device list, derived from server metadata
+  const orchDevicesByServerId = useMemo(() => {
+    if (!orchDevices || !servers) return new Map<string, typeof orchDevices[0]['data']>()
+    const map = new Map<string, typeof orchDevices[0]['data']>()
+    for (const srv of (servers ?? [])) {
+      const network = srv.metadata?.network as string | undefined      // e.g. "network-a"
+      if (!network) continue
+      const simName = 'sim-' + network                                 // "sim-network-a"
+      const entry = orchDevices.find(o => o.container === simName)
+      if (entry && srv.id) map.set(srv.id, entry.data)
+    }
+    return map
+  }, [orchDevices, servers])
+
+  // Topology edges (src_ip↔dst_ip) from the simulator's loaded topology JSON
+  const { data: orchTopology } = useQuery<{
+    nodes: { id: string; name: string; ip_address: string; type: string; container: string }[]
+    edges: { src_ip: string; dst_ip: string; src_iface: number; dst_iface: number; layer: string; container: string }[]
+  }>({
+    queryKey: ['orc-topology'],
+    queryFn: () => fetch('/orchestrator/topology').then(r => r.json()),
+    staleTime: 60000,
+    refetchInterval: 60000,
+    enabled: !USE_MOCK_DATA,
+  })
+
   // Device↔device wiring from the topology_links table (walker LLDP/CDP + discovery deep-scan)
   const { data: realTopologyLinks } = useQuery({
     queryKey: ['topology-links'],
@@ -255,23 +292,55 @@ export default function Topology() {
       expandedServers.has(`server-${agent.server_id}`)
     )
 
-    // Create agent nodes with filtered data
-    const agentNodes: TopoNode[] = visibleAgents.map((agent) => {
-      const filtered = filteredDataMap.get(agent.agent_id)
-      const parentServer = serverConfigMap.get(agent.server_id)
-      return {
-        id: `${agent.server_id}:${agent.agent_id}`,
-        name: agent.hostname,
-        type: 'agent' as const,
-        status: agent.status as 'online' | 'offline',
-        metrics: filtered?.metrics_count ?? agent.total_metrics,
-        alerts: filtered?.alerts_count ?? agent.total_alerts,
-        ip: agent.ip_address,
-        serverId: agent.server_id,
-        agentId: agent.agent_id,
-        serverName: parentServer?.name || agent.server_name,
+    // Build agent nodes — prefer orchestrator device names/info when available
+    const agentNodes: TopoNode[] = (() => {
+      const nodes: TopoNode[] = []
+      for (const sid of expandedServers) {
+        const rawServerId = sid.replace(/^server-/, '')
+        const parentServer = serverConfigMap.get(rawServerId)
+        const orchDevs = orchDevicesByServerId.get(rawServerId)
+
+        if (orchDevs && orchDevs.length > 0) {
+          // Use sim-network device list (richer names + type info)
+          orchDevs.forEach(dev => {
+            const agentMatch = agents.find(a => a.server_id === rawServerId && a.hostname.endsWith(dev.name))
+            nodes.push({
+              id: `orc-${rawServerId}-${dev.name}`,
+              name: dev.name,
+              type: 'agent' as const,
+              deviceType: dev.type,
+              status: (agentMatch?.status ?? 'online') as 'online' | 'offline',
+              metrics: agentMatch?.total_metrics,
+              alerts: agentMatch?.total_alerts,
+              ip: dev.ip_address,
+              serverId: rawServerId,
+              agentId: agentMatch?.agent_id ?? dev.name,
+              serverName: parentServer?.name,
+            })
+          })
+        } else {
+          // Fallback: use DCIM agents
+          visibleAgents
+            .filter(a => a.server_id === rawServerId)
+            .forEach(agent => {
+              const filtered = filteredDataMap.get(agent.agent_id)
+              nodes.push({
+                id: `${agent.server_id}:${agent.agent_id}`,
+                name: agent.hostname,
+                type: 'agent' as const,
+                status: agent.status as 'online' | 'offline',
+                metrics: filtered?.metrics_count ?? agent.total_metrics,
+                alerts: filtered?.alerts_count ?? agent.total_alerts,
+                ip: agent.ip_address,
+                serverId: agent.server_id,
+                agentId: agent.agent_id,
+                serverName: parentServer?.name || agent.server_name,
+              })
+            })
+        }
       }
-    })
+      return nodes
+    })()
 
     // Build SNMP device nodes for visible agents.
     // Device status (online/offline) is driven primarily by the freshest
@@ -470,6 +539,46 @@ export default function Topology() {
       })
     }
 
+    // Build IP→node lookup covering all rendered nodes (agents + SNMP devices)
+    const agentNodeByIp = new Map<string, TopoNode>()
+    agentNodes.forEach(an => { if (an.ip) agentNodeByIp.set(an.ip, an) })
+    const allNodeByIp = new Map<string, TopoNode>([...deviceNodeByIp, ...agentNodeByIp])
+
+    // Physical device↔device edges from the orchestrator's loaded topology JSON.
+    // These are the real wired connections between devices (Core-R1 → Fabric-SW1, etc.)
+    // Only edges where both endpoints are currently rendered will appear.
+    const orchTopoLinks: TopoLink[] = []
+    if (orchTopology && orchTopology.edges.length > 0) {
+      const seenPairs = new Set<string>()
+      orchTopology.edges.forEach(e => {
+        const srcNode = allNodeByIp.get(e.src_ip)
+        const tgtNode = allNodeByIp.get(e.dst_ip)
+        if (!srcNode || !tgtNode || srcNode.id === tgtNode.id) return
+        const pairKey = [srcNode.id, tgtNode.id].sort().join('|')
+        if (seenPairs.has(pairKey)) return
+        seenPairs.add(pairKey)
+        const bothOnline = srcNode.status === 'online' && tgtNode.status === 'online'
+        orchTopoLinks.push({
+          source: srcNode.id,
+          target: tgtNode.id,
+          strength: bothOnline ? 0.9 : 0.3,
+          distance: 120,
+          linkType: 'device-device',
+          d2dInfo: {
+            sourceIp: e.src_ip,
+            sourceName: srcNode.name,
+            sourcePort: e.src_iface,
+            targetIp: e.dst_ip,
+            targetName: tgtNode.name,
+            targetPort: String(e.dst_iface),
+            lastSeen: new Date().toISOString(),
+            sourceStatus: srcNode.status,
+            targetStatus: tgtNode.status,
+          },
+        })
+      })
+    }
+
     // Custom links from Advanced Editor — only include if both endpoints are rendered
     const allNodeIds = new Set(nodes.map(n => n.id))
     const customTopoLinks: TopoLink[] = (customTopology?.links ?? [])
@@ -481,21 +590,25 @@ export default function Topology() {
         distance: 160,
       }))
 
-    // Create links — each agent connects to its own server
+    // Always include server→agent management links AND physical device-device wiring.
+    // Prefer orchestrator topology edges for physical links; fall back to LLDP discovery.
+    const physicalLinks = orchTopoLinks.length > 0 ? orchTopoLinks : deviceToDeviceLinks
     const links: TopoLink[] = [
-      ...visibleAgents.map(agent => {
-        const sid = `server-${agent.server_id}`
+      // Management hierarchy: every agent connects up to its DCIM server
+      ...agentNodes.map(an => {
+        const sid = `server-${an.serverId}`
         const serverNodeId = serverNodeMap.get(sid)?.id || serverNodes[0]?.id
         return {
-          source: `${agent.server_id}:${agent.agent_id}`,
+          source: an.id,
           target: serverNodeId || 'server-unknown',
-          strength: agent.status === 'online' ? 1 : 0.3,
+          strength: an.status === 'online' ? 1 : 0.3,
           distance: 200,
           linkType: 'agent-server' as const,
         }
       }).filter(l => l.target !== 'server-unknown'),
+      // Physical wiring between devices (populated as servers are expanded)
       ...deviceLinks,
-      ...deviceToDeviceLinks,
+      ...physicalLinks,
       ...customTopoLinks,
     ]
 
@@ -562,7 +675,23 @@ export default function Topology() {
 
     const layerOf = (n: TopoNode): number => {
       if (n.type === 'server') return 0
-      if (n.type === 'agent') return 1
+      if (n.type === 'agent') {
+        // Orchestrator devices carry a deviceType — use it for tier placement
+        if (n.deviceType) {
+          const dt = n.deviceType
+          if (dt.includes('ROUTER')) return 1
+          if (dt.includes('SERVER')) return 4
+          if (dt.includes('OOB_SWITCH') || dt.includes('SENSOR') ||
+              dt.includes('FLOOR_PDU') || dt.includes('UPS') ||
+              dt.includes('PDU')) return 5
+          if (dt.includes('SWITCH')) {
+            if (/^agg-/i.test(n.name || '')) return 2
+            if (/^tor-/i.test(n.name || '')) return 3
+            return 2
+          }
+        }
+        return 1
+      }
       const byRole = roleLayerOf(n.name || '')
       if (byRole !== null) return byRole
       const d = n.ip ? deviceDepth.get(n.ip) ?? 0 : 0
@@ -661,6 +790,18 @@ export default function Topology() {
     const offlineServerIds = new Set(
       serverNodes.filter(s => s.status === 'offline').map(s => s.id)
     )
+
+    const isPowerNode = (d: TopoNode) => {
+      const dt = (d.deviceType ?? '').toUpperCase()
+      const aid = (d.agentId ?? d.name ?? '').toUpperCase()
+      return dt.includes('PDU') || dt.includes('UPS') ||
+             aid.includes('PDU') || aid.includes('FPDU') || aid.includes('UPS')
+    }
+    const isUPSNode = (d: TopoNode) => {
+      const dt = (d.deviceType ?? '').toUpperCase()
+      const aid = (d.agentId ?? d.name ?? '').toUpperCase()
+      return dt.includes('UPS') || aid.includes('UPS')
+    }
 
     // Helper: is link disconnected?
     const isLinkDisconnected = (d: TopoLink) => {
@@ -958,8 +1099,8 @@ export default function Topology() {
       if (tip) tip.style.opacity = '0'
     })
 
-    // Add circles for nodes
-    node.append('circle')
+    // Add circles for non-power nodes
+    node.filter(d => !isPowerNode(d)).append('circle')
       .attr('r', d => d.type === 'server' ? 40 : d.type === 'network' ? 20 : 30)
       .attr('fill', d => {
         if (d.type === 'server') return d.status === 'offline' ? '#991b1b' : (d.color || '#8b5cf6')
@@ -979,10 +1120,49 @@ export default function Topology() {
       .style('cursor', 'pointer')
       .attr('filter', d => d.status === 'offline' && d.type !== 'network' ? 'url(#glow-red)' : null)
 
+    // Power supply nodes (PDU / UPS) — vertical rack unit shape with outlets
+    {
+      const pwr = node.filter(isPowerNode)
+
+      pwr.append('rect')
+        .attr('x', -16).attr('y', -34)
+        .attr('width', 32).attr('height', 62)
+        .attr('rx', 5)
+        .attr('fill', d => d.status === 'offline' ? '#111' : (isUPSNode(d) ? '#0f1a07' : '#1c1917'))
+        .attr('stroke', d => d.status === 'offline' ? '#374151' : (isUPSNode(d) ? '#84cc16' : '#f59e0b'))
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .attr('filter', d => d.status === 'offline' ? 'url(#glow-red)' : null)
+
+      pwr.append('rect')
+        .attr('x', -16).attr('y', -34)
+        .attr('width', 32).attr('height', 9)
+        .attr('rx', 4)
+        .attr('fill', d => d.status === 'offline' ? '#1f2937' : (isUPSNode(d) ? '#84cc16' : '#f59e0b'))
+        .attr('opacity', d => d.status === 'offline' ? 0.4 : 1)
+
+      pwr.each(function(d) {
+        const g = d3.select(this)
+        const ups = isUPSNode(d as TopoNode)
+        const online = (d as TopoNode).status === 'online'
+        const slotFill = !online ? '#1a1a1a' : ups ? '#1a2e0a' : '#292524'
+        const slotStroke = !online ? '#374151' : ups ? '#a3e635' : '#fbbf24'
+        for (let i = 0; i < 3; i++) {
+          g.append('rect')
+            .attr('x', -8).attr('y', -18 + i * 17)
+            .attr('width', 16).attr('height', 11)
+            .attr('rx', 2)
+            .attr('fill', slotFill)
+            .attr('stroke', slotStroke)
+            .attr('stroke-width', 0.8)
+        }
+      })
+    }
+
     // Pulse animations — skip for large node counts (invisible at that zoom, heavy on perf)
     if (nodeCount <= 100) {
       // Online agents — SVG <animate> (GPU-composited, no JS timer overhead)
-      node.filter(d => d.status === 'online' && d.type === 'agent')
+      node.filter(d => d.status === 'online' && d.type === 'agent' && !isPowerNode(d))
         .append('circle')
         .attr('r', 30)
         .attr('fill', 'none')
@@ -1018,7 +1198,7 @@ export default function Topology() {
         })
 
       // Offline agents
-      node.filter(d => d.status === 'offline' && d.type === 'agent')
+      node.filter(d => d.status === 'offline' && d.type === 'agent' && !isPowerNode(d))
         .append('circle')
         .attr('r', 30)
         .attr('fill', 'none')
@@ -1037,7 +1217,7 @@ export default function Topology() {
     }
 
     // Add warning ring for agents connected to an offline server
-    node.filter(d => d.type === 'agent' && d.status === 'online' && d.serverId && offlineServerIds.has(`server-${d.serverId}`))
+    node.filter(d => d.type === 'agent' && !isPowerNode(d) && d.status === 'online' && d.serverId && offlineServerIds.has(`server-${d.serverId}`))
       .append('circle')
       .attr('r', 36)
       .attr('fill', 'none')
@@ -1047,19 +1227,32 @@ export default function Topology() {
       .attr('opacity', 0.8)
 
     // Add icons
-    node.append('text')
+    node.filter(d => !isPowerNode(d)).append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
       .attr('font-size', d => d.type === 'server' ? '24px' : d.type === 'network' ? '14px' : '20px')
       .attr('fill', 'white')
       .text(d => d.type === 'server' ? '🖥️' : d.type === 'network' ? '📡' : '💻')
 
+    // Lightning bolt above power nodes
+    node.filter(isPowerNode).append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '-38')
+      .attr('font-size', '16px')
+      .text('⚡')
+
     // Add labels
     node.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', d => d.type === 'server' ? 55 : d.type === 'network' ? 32 : 45)
+      .attr('dy', d => {
+        if (isPowerNode(d)) return 42
+        return d.type === 'server' ? 55 : d.type === 'network' ? 32 : 45
+      })
       .attr('font-size', d => d.type === 'network' ? '10px' : '12px')
-      .attr('fill', d => d.type === 'network' ? '#67e8f9' : '#e2e8f0')
+      .attr('fill', d => {
+        if (isPowerNode(d)) return d.status === 'offline' ? '#6b7280' : (isUPSNode(d) ? '#d9f99d' : '#fde68a')
+        return d.type === 'network' ? '#67e8f9' : '#e2e8f0'
+      })
       .attr('font-weight', 'bold')
       .text(d => d.name)
 
@@ -1288,7 +1481,7 @@ export default function Topology() {
         clickTimerRef.current = null
       }
     }
-  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, customTopology])
+  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, customTopology, orchDevicesByServerId, orchTopology])
 
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomRef.current) return
@@ -1618,22 +1811,64 @@ export default function Topology() {
                 </div>
               )}
 
-              {selectedNode.type === 'server' && (
-                <>
-                  <div>
-                    <p className="text-sm text-slate-400">Connected Agents</p>
-                    <p className="text-2xl font-bold text-purple-400">
-                      {agents?.filter(a => `server-${a.server_id}` === selectedNode.id).length || 0}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => toggleServerExpansion(selectedNode.id)}
-                    className="block w-full text-center px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
-                  >
-                    {expandedServers.has(selectedNode.id) ? 'Collapse Agents' : 'Expand Agents'}
-                  </button>
-                </>
-              )}
+              {selectedNode.type === 'server' && (() => {
+                const rawSid = selectedNode.id.replace(/^server-/, '')
+                const orchDevs = orchDevicesByServerId.get(rawSid) ?? []
+                const fallbackAgents = agents?.filter(a => a.server_id === rawSid) ?? []
+                const useOrch = orchDevs.length > 0
+                const deviceCount = useOrch ? orchDevs.length : fallbackAgents.length
+
+                const typeLabel = (t: string) => t.replace('DeviceType.', '').toLowerCase()
+                const vendorLabel = (v: string) => v.replace('Vendor.', '').replace(/_/g, ' ').toLowerCase()
+                  .replace(/\b\w/g, c => c.toUpperCase())
+
+                return (
+                  <>
+                    <div>
+                      <p className="text-sm text-slate-400">Devices</p>
+                      <p className="text-2xl font-bold text-purple-400">{deviceCount}</p>
+                    </div>
+                    <button
+                      onClick={() => toggleServerExpansion(selectedNode.id)}
+                      className="block w-full text-center px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
+                    >
+                      {expandedServers.has(selectedNode.id) ? 'Collapse on Canvas' : 'Expand on Canvas'}
+                    </button>
+                    {deviceCount > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1.5">
+                          Devices {useOrch ? `(${selectedNode.name?.replace('dcim-server-', 'sim-network-')})` : ''}
+                        </p>
+                        <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+                          {useOrch ? orchDevs.slice(0, 60).map(dev => {
+                            const agentMatch = agents?.find(a => a.server_id === rawSid && a.hostname.endsWith(dev.name))
+                            const online = agentMatch?.status === 'online' || agentMatch === undefined
+                            return (
+                              <div key={dev.name} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10">
+                                <div className="min-w-0">
+                                  <p className="text-slate-200 truncate font-medium" title={dev.name}>{dev.name}</p>
+                                  <p className="text-slate-500 truncate">{typeLabel(dev.type)} · {vendorLabel(dev.vendor)}</p>
+                                </div>
+                                <span className={`ml-2 shrink-0 font-medium text-[10px] ${online ? 'text-green-400' : 'text-slate-500'}`}>
+                                  {online ? '●' : '○'}
+                                </span>
+                              </div>
+                            )
+                          }) : fallbackAgents.slice(0, 60).map(a => (
+                            <div key={a.agent_id} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10">
+                              <span className="text-slate-200 truncate max-w-[130px]" title={a.hostname}>{a.hostname}</span>
+                              <span className={`ml-1 shrink-0 font-medium ${a.status === 'online' ? 'text-green-400' : 'text-slate-500'}`}>{a.status}</span>
+                            </div>
+                          ))}
+                          {deviceCount > 60 && (
+                            <p className="text-center text-xs text-slate-500 py-1">+{deviceCount - 60} more</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
 
               {selectedNode.type === 'agent' && selectedNode.serverName && (
                 <div>

@@ -1,0 +1,312 @@
+version: "3.9"
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  dcim-backend:
+    driver: bridge
+  sim-net:
+    driver: bridge
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  timescaledb-data:
+  redis-data:
+  dcim-server-a-data:
+  dcim-server-b-data:
+  dcim-server-c-data:
+
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+
+  # ── TimescaleDB (PostgreSQL + time-series) ──────────────────────────────────
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb
+    environment:
+      POSTGRES_USER: dcim
+      POSTGRES_PASSWORD: dcim_pas
+      POSTGRES_DB: dcim_aggregator
+    volumes:
+      - timescaledb-data:/var/lib/postgresql/data
+      - ./init-multiple-dbs.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql:ro
+    ports:
+      - "5435:5432"
+    networks: [dcim-backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dcim -d dcim_aggregator"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks: [dcim-backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── DCIM Server — Network A ──────────────────────────────────────────────────
+  dcim-server-a:
+    build:
+      context: ../DCIM_Server
+      dockerfile: Dockerfile
+    container_name: dcim-server-a
+    command: ["/app/dcim-server", "-config", "/app/config.docker.yaml"]
+    volumes:
+      - dcim-server-a-data:/app/data
+      - ../DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
+    environment:
+      SERVER_NAME: "DCIM-Server-A"
+    ports:
+      - "8081:8080"
+    networks: [dcim-backend, sim-net]
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── DCIM Server — Network B ──────────────────────────────────────────────────
+  dcim-server-b:
+    build:
+      context: ../DCIM_Server
+      dockerfile: Dockerfile
+    container_name: dcim-server-b
+    command: ["/app/dcim-server", "-config", "/app/config.docker.yaml"]
+    volumes:
+      - dcim-server-b-data:/app/data
+      - ../DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
+    environment:
+      SERVER_NAME: "DCIM-Server-B"
+    ports:
+      - "8082:8080"
+    networks: [dcim-backend, sim-net]
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── DCIM Server — Network C ──────────────────────────────────────────────────
+  dcim-server-c:
+    build:
+      context: ../DCIM_Server
+      dockerfile: Dockerfile
+    container_name: dcim-server-c
+    command: ["/app/dcim-server", "-config", "/app/config.docker.yaml"]
+    volumes:
+      - dcim-server-c-data:/app/data
+      - ../DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
+    environment:
+      SERVER_NAME: "DCIM-Server-C"
+    ports:
+      - "8083:8080"
+    networks: [dcim-backend, sim-net]
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── DCIM Aggregator ──────────────────────────────────────────────────────────
+  aggregator:
+    build:
+      context: ../DCIM_Aggregator
+      dockerfile: Dockerfile
+    container_name: aggregator
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: dcim_aggregator
+      POSTGRES_USER: dcim
+      POSTGRES_PASSWORD: dcim_pas
+      REDIS_URL: redis://redis:6379
+      # DCIM Server endpoints (comma-separated for multi-server awareness)
+      DCIM_SERVER_URLS: "http://dcim-server-a:8080,http://dcim-server-b:8080,http://dcim-server-c:8080"
+    ports:
+      - "3002:3002"
+    networks: [dcim-backend]
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      dcim-server-a:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── DCIM UI ──────────────────────────────────────────────────────────────────
+  dcim-ui:
+    build:
+      context: ../DCIM_UI
+      dockerfile: Dockerfile
+    container_name: dcim-ui
+    environment:
+      DCIM_SERVER_URL: http://dcim-server-a:8080
+      AGGREGATOR_URL: http://aggregator:3002
+      VITE_API_BASE: http://localhost:3001
+      ORCHESTRATOR_URL: http://orchestrator:8099
+    ports:
+      - "5173:5173"   # Vite preview
+      - "3001:3001"   # Proxy server
+    networks: [dcim-backend]
+    depends_on:
+      - aggregator
+    restart: unless-stopped
+
+  # ── Network Simulator — Network A (3-Tier DC, 106 devices) ──────────────────
+  sim-network-a:
+    build:
+      context: ..
+      dockerfile: simulator/network-sim/Dockerfile
+    container_name: sim-network-a
+    cap_add:
+      - NET_ADMIN
+    environment:
+      CONFIG_FILE: /app/config/network-a.yaml
+      DCIM_SERVER_URL: http://dcim-server-a:8080/api/v1
+      SFLOW_COLLECTOR_IP: aggregator
+      TRAP_RECEIVER_IP: aggregator
+      API_PORT: "8090"
+      BIND_INTERFACE: lo
+    ports:
+      - "8090:8090"    # Fault injection API
+      - "16100:161/udp" # SNMP (host-mapped to avoid privilege conflict)
+      - "50051:50051"  # gNMI
+    networks: [sim-net, dcim-backend]
+    depends_on:
+      dcim-server-a:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      role: "network-sim"
+      network_id: "network-a"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3).read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  # ── Network Simulator — Network B (Spine-Leaf, 112 devices) ─────────────────
+  sim-network-b:
+    build:
+      context: ..
+      dockerfile: simulator/network-sim/Dockerfile
+    container_name: sim-network-b
+    cap_add:
+      - NET_ADMIN
+    environment:
+      CONFIG_FILE: /app/config/network-b.yaml
+      DCIM_SERVER_URL: http://dcim-server-b:8080/api/v1
+      SFLOW_COLLECTOR_IP: aggregator
+      TRAP_RECEIVER_IP: aggregator
+      API_PORT: "8090"
+      BIND_INTERFACE: lo
+    ports:
+      - "8091:8090"
+      - "16101:161/udp"
+      - "50052:50051"
+    networks: [sim-net, dcim-backend]
+    depends_on:
+      dcim-server-b:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      role: "network-sim"
+      network_id: "network-b"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3).read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  # ── Network Simulator — Network C (Enterprise WAN, 104 devices) ─────────────
+  sim-network-c:
+    build:
+      context: ..
+      dockerfile: simulator/network-sim/Dockerfile
+    container_name: sim-network-c
+    cap_add:
+      - NET_ADMIN
+    environment:
+      CONFIG_FILE: /app/config/network-c.yaml
+      DCIM_SERVER_URL: http://dcim-server-c:8080/api/v1
+      SFLOW_COLLECTOR_IP: aggregator
+      TRAP_RECEIVER_IP: aggregator
+      API_PORT: "8090"
+      BIND_INTERFACE: lo
+    ports:
+      - "8092:8090"
+      - "16102:161/udp"
+      - "50053:50051"
+    networks: [sim-net, dcim-backend]
+    depends_on:
+      dcim-server-c:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      role: "network-sim"
+      network_id: "network-c"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3).read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  # ── Orchestrator ─────────────────────────────────────────────────────────────
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: simulator/orchestrator/Dockerfile
+    container_name: orchestrator
+    environment:
+      ORCHESTRATOR_PORT: "8099"
+      SIM_A_URL: http://sim-network-a:8090
+      SIM_B_URL: http://sim-network-b:8090
+      SIM_C_URL: http://sim-network-c:8090
+    volumes:
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8099:8099"
+    networks: [dcim-backend, sim-net]
+    depends_on:
+      - sim-network-a
+      - sim-network-b
+      - sim-network-c
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8099/health', timeout=3).read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

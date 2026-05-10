@@ -1,0 +1,1191 @@
+================================================================================
+  DCIM NETWORK SIMULATOR — FULL ARCHITECTURE PLAN (WITH EXISTING CODE REUSE)
+================================================================================
+Date: 2026-05-09
+Strategy: Reuse Datacenter_Network_Simulator/ core modules inside Docker containers.
+          Minimal new code needed — mainly Docker wrappers + HTTP bridge to DCIM stack.
+Cert checks: DISABLED (plain HTTP between all components)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. WHAT ALREADY EXISTS (Datacenter_Network_Simulator/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  core/
+  ├── device_manager.py     ✅ 10 device types (Router/Switch/Server/Firewall/LB/UPS/PDU/Sensor…)
+  │                            18+ vendors (Cisco, Juniper, Arista, Dell, HPE, APC, Eaton…)
+  │                            Interface types 100M → 100GE, power chain, rack location
+  ├── device_models.py      ✅ 500+ real hardware models with accurate port configs
+  │                            (Nexus 93180, ASR 9K, PowerEdge R750, PA-5220, BIG-IP i10800…)
+  ├── device_state_store.py ✅ Live metrics ticker (30s default), random-walk simulation:
+  │                            - CPU: spikes to 91-99%, gradual recovery
+  │                            - Memory: leak pattern + spike/recovery
+  │                            - Temperature: formula-based on CPU load
+  │                            - Interface counters: in/out octets, errors, discards
+  │                            - UPS state machine: normal→on_battery→low_battery
+  │                            - BGP state machine: established↔idle flapping
+  │                            - Link flap simulation (0.2%/tick per interface)
+  ├── topology_engine.py    ✅ NetworkX multi-graph: production + management + power layers
+  ├── ip_manager.py         ✅ DHCP-style IP pool (per subnet/layer)
+  ├── snmprec_generator.py  ✅ Full SNMPRec dataset generation for snmpsim:
+  │                            - 23 standard MIBs (IF-MIB, LLDP, HOST-RESOURCES, BRIDGE, IP…)
+  │                            - Vendor enterprise OIDs (Raritan, Vertiv, APC, Cisco CDP…)
+  │                            - Hot-reload via mtime comparison (no restart needed)
+  ├── gnmi_data_generator.py✅ OpenConfig JSON-IETF datasets:
+  │                            - 10 YANG models (interfaces, lldp, system, bgp, ospf, vlan…)
+  │                            - Per-device files in datasets/gnmi/<ip>.gnmi.json
+  ├── lldp_generator.py     ✅ LLDP + CDP neighbor table OID entries
+  ├── mac_table_generator.py✅ BRIDGE-MIB MAC tables + STP entries for switches
+  ├── fact_model.py         ✅ Structured DeviceFact: cpu, memory, disk, interfaces,
+  │                            temperature, humidity, dewpoint, airflow, UPS, BGP, rack_id
+  ├── rule_engine.py        ✅ Declarative rule evaluation engine:
+  │                            - threshold conditions with duration hysteresis
+  │                            - state_change (oper_status, BGP state, UPS status)
+  │                            - temporal (e.g., LinkDown 3× in 60s → LinkFlap)
+  │                            - rack_failure (≥N devices same rack_id impaired)
+  │                            - recovery rules (auto-clear alerts)
+  ├── trap_engine.py        ✅ SNMPv2c trap dispatch (async UDP):
+  │                            - 23 trap types (LinkDown, BGPDown, CPUHigh, UPSOnBattery…)
+  │                            - Full varbind generation per trap type
+  ├── trap_definitions.py   ✅ 23 trap OIDs with severity levels + color codes
+  ├── trap_rules.py         ✅ Default rule set (12 rules ready to use)
+  └── discovery_engine.py   ✅ SNMP LLDP walk → topology validation
+                               (compares configured vs discovered links)
+
+  simulator/
+  ├── snmpsim_controller.py ✅ SNMPSim process manager (start/stop, per-device IP binding)
+  ├── gnmi_server.py        ✅ gRPC gNMI server (Get, Set, Subscribe ONCE/POLL/STREAM)
+  └── sflow_controller.py   ✅ sFlow v5 UDP sender (counter + flow samples per RFC 3176)
+
+  generate_topology.py      ✅ 5 pre-built topologies:
+                               1. 3-Tier Datacenter (106 devices, 135 links)
+                               2. Spine-Leaf (112 devices)
+                               3. Enterprise WAN (104 devices, 3 sites)
+                               4. Hyperscale Cloud Pod (138 devices)
+                               5. Dual Datacenter Enterprise (351 devices, 2 DCs)
+
+  topologies/               ✅ JSON files for all 5 topologies (ready to load)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  2. WHAT NEEDS TO BE BUILT (the missing bridge to DCIM stack)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  NEW FILE NEEDED                     PURPOSE
+  ─────────────────────────────────────────────────────────────────────────────
+  simulator/dcim_bridge.py            POST metrics/alerts/register to DCIM Server
+                                      via HTTP (replaces old PySide6 UI data path)
+
+  simulator/http_api.py               FastAPI REST control plane inside each
+                                      simulator container (fault injection, profile
+                                      change, speed control)
+
+  simulator/entrypoint.py             Container startup: loads topology JSON,
+                                      starts DeviceStateStore, starts dcim_bridge,
+                                      starts SNMP/gNMI/sFlow, starts http_api
+
+  orchestrator/main.py                Central FastAPI: create/destroy/configure
+                                      network simulator containers via Docker SDK
+
+  orchestrator/docker_manager.py      Docker SDK wrapper (start container with env vars,
+                                      stop, scale, exec fault commands)
+
+  Dockerfiles                         network-sim/Dockerfile, orchestrator/Dockerfile,
+                                      DCIM_Server/Dockerfile, DCIM_Aggregator/Dockerfile,
+                                      DCIM_UI/Dockerfile
+
+  docker-compose.simulator.yml        Full stack compose file
+
+  config/network-a.yaml               Per-network simulator profile configs
+  config/network-b.yaml
+  config/network-c.yaml
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. FULL SYSTEM ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [Browser]
+      │
+      ▼
+  [DCIM_UI :5173]                     ← Real frontend (React + Vite)
+      │
+      ▼
+  [DCIM_Aggregator :3002]             ← Real aggregator (Node.js + TimescaleDB + Redis)
+      │  (polls these servers)
+      ├──► [dcim-server-a :8001]  ◄──── [sim-network-a :9001]
+      │         sqlite DB                 Topology: 3-Tier DC (106 devices)
+      │                                   SNMP :161 + gNMI :57400 + sFlow :6343
+      │                                   Protocols: SNMP/gNMI/sFlow/Traps
+      │
+      ├──► [dcim-server-b :8002]  ◄──── [sim-network-b :9002]
+      │         sqlite DB                 Topology: Spine-Leaf (112 devices)
+      │                                   5% packet loss, 200ms latency
+      │
+      └──► [dcim-server-c :8003]  ◄──── [sim-network-c :9003]
+                sqlite DB                 Topology: Enterprise WAN (104 devices)
+                                          Intermittent (5min on / 1min off)
+
+  [Simulator Orchestrator :4000]       ← Control plane REST API
+      │   (Docker SDK → manage sim containers)
+      ├── create/destroy networks
+      ├── inject faults (cpu_spike, bgp_down, link_flap, ups_on_battery…)
+      ├── change topology/profile
+      └── register servers with aggregator
+
+  ─────────────────────────────────────────────────────────────────────────────
+  DATA FLOW INSIDE EACH NETWORK SIMULATOR CONTAINER:
+  ─────────────────────────────────────────────────────────────────────────────
+
+  entrypoint.py starts:
+  │
+  ├─ DeviceStateStore                 (existing core - ticks metrics every 30s)
+  │       ↓
+  │  ┌────┴─────────────────────────────────────────────────┐
+  │  │                                                       │
+  │  ▼                                                       ▼
+  │  RuleEngine.evaluate_fact()                 snmprec_generator.patch_metrics()
+  │  (existing core)                             → datasets/snmp/<ip>.snmprec
+  │       ↓                                               ↓
+  │  TrapEngine.send_trap()                      SNMPSim process (hot-reload)
+  │  → UDP :162 to DCIM_Server                  → responds to SNMP polls on :161
+  │  (existing core)
+  │       ↓
+  ├─ gnmi_server.py (existing)         ← gRPC :57400 (DCIM_Server SNMP walker uses this)
+  │
+  ├─ sflow_controller.py (existing)    ← UDP :6343 (flow telemetry)
+  │
+  └─ dcim_bridge.py (NEW)             ← Reads DeviceStateStore metrics every 30s
+          ↓                              → POST /api/v1/metrics   (HTTP to DCIM Server)
+          ↓                              → POST /api/v1/alerts     (when rule fires)
+          ↓                              → POST /api/v1/register   (agent registration)
+          ↓                              → POST /api/v1/snmp-metrics (SNMP device data)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  4. FEATURES FROM EXISTING SIMULATOR → DOCKER MAPPING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  EXISTING FEATURE                    HOW IT RUNS IN DOCKER
+  ─────────────────────────────────────────────────────────────────────────────
+  DeviceStateStore (metric ticker)    Runs as main thread in container
+                                      tick_interval configurable via env var TICK_INTERVAL
+
+  SNMPSim subprocess                  Runs as child process (not supervisord)
+                                      Device IPs bound on loopback (127.x.x.x range)
+                                      via alias on Linux (no netsh needed)
+                                      snmprec files in /app/datasets/snmp/
+
+  gNMI gRPC server                    Runs on port 57400 inside container
+                                      Exposed to DCIM Server via docker network
+
+  sFlow controller                    Sends UDP to configurable collector IP:port
+                                      (DCIM_Server or external sFlow collector)
+
+  Rule engine + Trap engine           Traps sent to DCIM_Server trap receiver IP
+                                      (DCIM_Server already has snmptrap module)
+
+  Topology JSON files                 Mounted as volume or COPY into container
+                                      TOPOLOGY_FILE env var selects which to load
+
+  SNMP MIBs (all 23)                  Generated into /app/datasets/snmp/ at startup
+                                      SNMPSim picks them up automatically
+
+  gNMI OpenConfig datasets            Generated into /app/datasets/gnmi/ at startup
+
+  500+ hardware models                Available in device_models.py (already imported)
+
+  Multi-layer topology                All layers simulated (production + mgmt + power)
+
+  Environmental sensors               Temperature, humidity, dewpoint, airflow OIDs
+                                      sent as SNMP + via dcim_bridge metrics
+
+  Power chain (PDU/UPS)               UPS state machine → UPSOnBattery trap → DCIM alert
+
+  Rack-aware fault correlation        RackFailure trap when ≥3 devices in same rack
+
+  LLDP/CDP neighbor discovery         SNMPSim serves LLDP MIB
+                                      DCIM Server SNMP walker can discover topology
+
+  Link flap simulation                0.2%/tick chance → LinkDown + LinkUp traps
+
+  BGP state machine                   established↔idle → BGPDown trap
+
+  Device types (all 10)               All device types contribute to DCIM metrics:
+                                      Servers → agent metrics
+                                      Switches/Routers → SNMP metrics
+                                      UPS → power metrics
+                                      Sensors → environmental metrics
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  5. CONTAINER LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Container               Image                  Ports           Role
+  ─────────────────────────────────────────────────────────────────────────────
+  dcim-server-a           dcim-server:latest     8001:8080       Virtual DCIM Server (network A)
+  dcim-server-b           dcim-server:latest     8002:8080       Virtual DCIM Server (network B)
+  dcim-server-c           dcim-server:latest     8003:8080       Virtual DCIM Server (network C)
+  sim-network-a           dcim-sim:latest        9001,161,57400  Simulator: 3-Tier DC topology
+  sim-network-b           dcim-sim:latest        9002,161,57400  Simulator: Spine-Leaf topology
+  sim-network-c           dcim-sim:latest        9003,161,57400  Simulator: Enterprise WAN topology
+  sim-orchestrator        dcim-orch:latest       4000            Orchestrator control plane
+  dcim-aggregator         dcim-agg:latest        3002            Real aggregator (Node.js)
+  dcim-ui                 dcim-ui:latest         5173:80         Real frontend (React)
+  timescaledb             timescale/timescaledb  5432            Aggregator database
+  redis                   redis:7-alpine         6379            Aggregator cache
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  6. NEW FILES TO CREATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  DCIM/
+  ├── simulator/
+  │   ├── docker-compose.simulator.yml
+  │   ├── .env.simulator
+  │   │
+  │   ├── network-sim/                       (the sim-network-X image)
+  │   │   ├── Dockerfile
+  │   │   ├── entrypoint.py                  NEW: container startup orchestrator
+  │   │   ├── dcim_bridge.py                 NEW: HTTP POST bridge to DCIM Server
+  │   │   ├── http_api.py                    NEW: FastAPI fault injection endpoint
+  │   │   ├── ip_alias_manager.py            NEW: Linux ip alias (replaces netsh)
+  │   │   ├── config/
+  │   │   │   ├── network-a.yaml             Topology file + profile settings
+  │   │   │   ├── network-b.yaml
+  │   │   │   └── network-c.yaml
+  │   │   └── requirements.txt
+  │   │
+  │   └── orchestrator/                      (sim-orchestrator image)
+  │       ├── Dockerfile
+  │       ├── main.py                        NEW: FastAPI orchestrator
+  │       ├── docker_manager.py              NEW: Docker SDK container management
+  │       ├── fault_scenarios.py             NEW: Pre-built fault recipes
+  │       └── requirements.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  7. CORE NEW FILES — PSEUDOCODE & LOGIC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ── entrypoint.py ────────────────────────────────────────────────────────────
+
+  Reads env vars:
+    TOPOLOGY_FILE          path to topology JSON (e.g., /app/topologies/3tier.json)
+    DCIM_SERVER_URL        http://dcim-server-a:8080/api/v1
+    TICK_INTERVAL          30 (seconds)
+    SNMP_TRAP_TARGET       dcim-server-a:162
+    SFLOW_TARGET           dcim-server-a:6343
+    GNMI_PORT              57400
+    HTTP_API_PORT          9001
+    NETWORK_ID             network-a
+    PACKET_LOSS_PCT        0
+    LINK_LATENCY_MS        5
+
+  Startup sequence:
+    1. Load topology JSON → TopologyEngine + DeviceManager
+    2. Generate SNMP datasets → datasets/snmp/*.snmprec
+    3. Generate gNMI datasets → datasets/gnmi/*.gnmi.json
+    4. Bind virtual IPs on loopback (Linux ip alias)
+    5. Start SNMPSim subprocess (pointing at datasets/snmp/)
+    6. Start gNMI gRPC server (gnmi_server.py)
+    7. Start sFlow controller (sflow_controller.py)
+    8. Start DeviceStateStore ticker
+    9. Register DeviceStateStore rule engine callback → dcim_bridge.send_alert()
+    10. Start dcim_bridge background thread (polls metrics every TICK_INTERVAL)
+    11. Start http_api FastAPI server (fault injection endpoint)
+    12. Register all agents with DCIM Server
+    13. Block forever (asyncio event loop)
+
+  ── dcim_bridge.py ───────────────────────────────────────────────────────────
+
+  class DCIMBridge:
+    def __init__(self, dcim_url, device_manager, state_store, network_id):
+      self.dcim_url = dcim_url        # http://dcim-server-a:8080/api/v1
+      self.session = httpx.AsyncClient()
+
+    async def register_all_agents(self):
+      # Send POST /register for each server device in topology
+      # DeviceType.SERVER → registered as DCIM agent
+      # agent_id = f"{network_id}-{device.name}"
+      # hostname = device.name, ip_address = device.ip_address
+
+    async def sync_metrics_loop(self, interval=30):
+      # Every interval seconds:
+      while True:
+        await asyncio.sleep(interval)
+        await self._send_all_metrics()
+
+    async def _send_all_metrics(self):
+      for device in device_manager.get_all_devices():
+        metrics = state_store.get_metrics(device.ip_address)
+        payload = {
+          "agent_id": f"{network_id}-{device.name}",
+          "timestamp": datetime.utcnow().isoformat(),
+          "metrics": [
+            {"type": "cpu_usage",         "value": metrics["cpu_usage"],      "unit": "%"},
+            {"type": "memory_usage",      "value": metrics["memory_pct"],     "unit": "%"},
+            {"type": "disk_usage",        "value": metrics["disk_pct"],       "unit": "%"},
+            {"type": "temperature",       "value": metrics["cpu_temp"],       "unit": "C"},
+            {"type": "power_consumption", "value": metrics["power_draw_w"],   "unit": "W"},
+            {"type": "network_rx",        "value": metrics["net_rx_mbps"],    "unit": "Mbps"},
+            {"type": "network_tx",        "value": metrics["net_tx_mbps"],    "unit": "Mbps"},
+            # environmental (for sensors only):
+            {"type": "humidity",          "value": metrics.get("humidity"),   "unit": "%"},
+            {"type": "dewpoint",          "value": metrics.get("dewpoint"),   "unit": "C"},
+            {"type": "airflow",           "value": metrics.get("airflow"),    "unit": "m/s"},
+          ]
+        }
+        await self.session.post(f"{self.dcim_url}/metrics", json=payload,
+                                headers={"X-Agent-ID": payload["agent_id"]})
+
+      # SNMP device metrics (switches, routers) → DCIM snmp-metrics endpoint
+      for device in device_manager.get_devices_by_type(DeviceType.SWITCH):
+        snmp_payload = { "agent_id": ..., "snmp_metrics": [...] }
+        await self.session.post(f"{self.dcim_url}/snmp-metrics", json=snmp_payload, ...)
+
+    def on_rule_fired(self, trap_action):
+      # Called by rule engine when a condition triggers
+      # Maps TrapAction → DCIM alert payload
+      severity_map = {
+        "critical": "critical", "major": "warning",
+        "minor": "info", "informational": "info"
+      }
+      alert = {
+        "agent_id": f"{network_id}-{trap_action.device_id}",
+        "type": trap_action.trap_type,
+        "severity": severity_map[trap_action.severity],
+        "message": trap_action.message,
+        "metric": trap_action.metric_name,
+        "value": trap_action.metric_value,
+        "threshold": trap_action.threshold
+      }
+      asyncio.run_coroutine_threadsafe(
+        self.session.post(f"{self.dcim_url}/alerts", json={"alerts": [alert], ...}),
+        self.loop
+      )
+
+  ── http_api.py ──────────────────────────────────────────────────────────────
+
+  FastAPI app exposing per-container control:
+
+  GET  /status          → network_id, device_count, tick_count, active_faults
+
+  POST /fault           → inject fault
+    body: {
+      "type": "cpu_spike" | "memory_leak" | "disk_full" | "temp_critical"
+           | "link_down" | "link_flap" | "bgp_down" | "ups_on_battery"
+           | "agent_offline" | "rack_failure" | "humidity_alert" | "airflow_alert",
+      "target": "device_name OR rack_id OR 'all'",
+      "duration_seconds": 120,
+      "intensity": 0.9       (0.0-1.0 scale)
+    }
+    → Calls DeviceStateStore to override metric values temporarily
+    → Or stops dcim_bridge sync (agent_offline)
+    → Or calls tc netem for packet_loss/link_latency
+
+  DELETE /fault         → clear all active faults → restore normal metrics
+
+  POST /profile         → change telemetry profile
+    body: { "profile": "normal" | "high_load" | "maintenance" | "idle" | "overnight" }
+    → Adjusts DeviceStateStore base values
+
+  POST /speed           → change simulation speed
+    body: { "multiplier": 10 }
+    → Adjusts tick_interval (e.g., 10x = tick every 3s instead of 30s,
+       metric changes appear 10x faster)
+
+  POST /topology/reload → reload topology JSON from disk
+
+  GET  /devices         → list all devices with current metrics
+
+  GET  /devices/{name}  → single device metrics
+
+  POST /trap            → manually send trap
+    body: { "device": "device_name", "trap_type": "LINK_DOWN", "interface": 2 }
+
+  ── ip_alias_manager.py ──────────────────────────────────────────────────────
+
+  class LinuxIPAliasManager:
+    # Replaces Windows netsh with Linux ip command
+    def bind_ip(self, ip: str, interface="lo"):
+      subprocess.run(["ip", "addr", "add", f"{ip}/32", "dev", interface])
+
+    def unbind_ip(self, ip: str, interface="lo"):
+      subprocess.run(["ip", "addr", "del", f"{ip}/32", "dev", interface])
+
+    def bind_all(self, devices: list[Device]):
+      for device in devices:
+        self.bind_ip(device.ip_address)
+        if device.mgmt_ip:
+          self.bind_ip(device.mgmt_ip)
+
+    def cleanup(self):
+      # Called on SIGTERM — removes all bound IPs
+      for ip in self._bound:
+        self.unbind_ip(ip)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  8. NETWORK SIMULATOR DOCKERFILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  FROM python:3.11-slim
+
+  # Network tools for ip aliasing + tc netem
+  RUN apt-get update && apt-get install -y \
+      iproute2 \
+      iputils-ping \
+      net-tools \
+      curl \
+      && rm -rf /var/lib/apt/lists/*
+
+  WORKDIR /app
+
+  # Copy existing simulator core (no changes needed)
+  COPY Datacenter_Network_Simulator/core/              ./core/
+  COPY Datacenter_Network_Simulator/simulator/         ./simulator/
+  COPY Datacenter_Network_Simulator/topologies/        ./topologies/
+  COPY Datacenter_Network_Simulator/proto/             ./proto/
+  COPY Datacenter_Network_Simulator/__init__.py        ./__init__.py
+  COPY Datacenter_Network_Simulator/requirements.txt   ./requirements_sim.txt
+
+  # Copy new bridge files
+  COPY simulator/network-sim/entrypoint.py    ./entrypoint.py
+  COPY simulator/network-sim/dcim_bridge.py   ./dcim_bridge.py
+  COPY simulator/network-sim/http_api.py      ./http_api.py
+  COPY simulator/network-sim/ip_alias_manager.py ./ip_alias_manager.py
+  COPY simulator/network-sim/config/          ./config/
+  COPY simulator/network-sim/requirements.txt ./requirements_new.txt
+
+  # Install all deps
+  RUN pip install --no-cache-dir \
+      -r requirements_sim.txt \
+      -r requirements_new.txt
+
+  EXPOSE 9001 57400
+
+  # Needs NET_ADMIN for ip alias + tc netem
+  # (set in docker-compose: cap_add: [NET_ADMIN])
+
+  CMD ["python", "entrypoint.py"]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  9. NETWORK PROFILE CONFIGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ── config/network-a.yaml (3-Tier Production DC) ─────────────────────────────
+
+  network_id: network-a
+  topology_file: /app/topologies/3tier_datacenter.json
+  topology_name: "Network A - 3-Tier Production Datacenter"
+  dcim_server_url: http://dcim-server-a:8080/api/v1
+
+  simulation:
+    tick_interval: 30           # seconds
+    snmp_sync_every: 1          # every N ticks
+    speed_multiplier: 1.0
+
+  protocols:
+    snmp:
+      enabled: true
+      port: 161
+    gnmi:
+      enabled: true
+      port: 57400
+    sflow:
+      enabled: true
+      target_ip: dcim-server-a
+      target_port: 6343
+    traps:
+      enabled: true
+      target_ip: dcim-server-a
+      target_port: 162
+
+  network:
+    packet_loss_pct: 0
+    link_latency_ms: 5
+    intermittent: false
+
+  telemetry_profile:
+    cpu_base: 40                # % base load
+    memory_base: 55
+    cpu_spike_chance: 0.01      # 1% per tick
+    link_flap_chance: 0.002     # 0.2% per tick per interface
+
+  ── config/network-b.yaml (Spine-Leaf Legacy/Degraded) ───────────────────────
+
+  network_id: network-b
+  topology_file: /app/topologies/spine_leaf.json
+  topology_name: "Network B - Spine-Leaf (Legacy/Degraded)"
+  dcim_server_url: http://dcim-server-b:8080/api/v1
+
+  simulation:
+    tick_interval: 120          # slower polling (legacy)
+    snmp_sync_every: 1
+    speed_multiplier: 1.0
+
+  network:
+    packet_loss_pct: 5
+    link_latency_ms: 200
+    intermittent: false
+
+  telemetry_profile:
+    cpu_base: 65                # higher baseline
+    memory_base: 75             # memory pressure
+    cpu_spike_chance: 0.03      # more frequent spikes
+    link_flap_chance: 0.01      # frequent link issues
+
+  ── config/network-c.yaml (Enterprise WAN Edge) ──────────────────────────────
+
+  network_id: network-c
+  topology_file: /app/topologies/enterprise_wan.json
+  topology_name: "Network C - Enterprise WAN (Edge/Intermittent)"
+  dcim_server_url: http://dcim-server-c:8080/api/v1
+
+  simulation:
+    tick_interval: 60
+    snmp_sync_every: 2
+    speed_multiplier: 1.0
+
+  network:
+    packet_loss_pct: 10
+    link_latency_ms: 500
+    intermittent: true
+    online_duration_sec: 300    # 5 min online
+    offline_duration_sec: 60    # 1 min offline
+
+  telemetry_profile:
+    cpu_base: 30                # low utilization (edge site)
+    memory_base: 45
+    cpu_spike_chance: 0.02
+    link_flap_chance: 0.05      # very frequent (edge instability)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  10. DOCKER COMPOSE — docker-compose.simulator.yml
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  version: "3.9"
+
+  networks:
+    dcim-backbone:
+      driver: bridge
+
+  volumes:
+    timescale-data:
+    redis-data:
+
+  services:
+
+    # ─── Infrastructure ──────────────────────────────────────────────────────
+
+    timescaledb:
+      image: timescale/timescaledb:latest-pg15
+      environment:
+        POSTGRES_USER: dcim
+        POSTGRES_PASSWORD: dcim_secret
+        POSTGRES_DB: dcim_aggregator
+      volumes:
+        - timescale-data:/var/lib/postgresql/data
+      ports: ["5432:5432"]
+      networks: [dcim-backbone]
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U dcim"]
+        interval: 10s
+        retries: 5
+
+    redis:
+      image: redis:7-alpine
+      volumes: [redis-data:/data]
+      ports: ["6379:6379"]
+      networks: [dcim-backbone]
+
+    # ─── Real DCIM Stack ─────────────────────────────────────────────────────
+
+    dcim-aggregator:
+      build:
+        context: ..
+        dockerfile: DCIM_Aggregator/Dockerfile
+      ports: ["3002:3002"]
+      environment:
+        DATABASE_URL: postgresql://dcim:dcim_secret@timescaledb:5432/dcim_aggregator
+        REDIS_URL: redis://redis:6379
+        PORT: 3002
+        NODE_ENV: production
+      depends_on:
+        timescaledb: {condition: service_healthy}
+        redis: {condition: service_started}
+      networks: [dcim-backbone]
+
+    dcim-ui:
+      build:
+        context: ..
+        dockerfile: DCIM_UI/Dockerfile
+      ports: ["5173:80"]
+      environment:
+        VITE_AGGREGATOR_URL: http://dcim-aggregator:3002/api/v1
+      depends_on: [dcim-aggregator]
+      networks: [dcim-backbone]
+
+    # ─── Virtual DCIM Servers ─────────────────────────────────────────────────
+
+    dcim-server-a:
+      build: {context: .., dockerfile: DCIM_Server/Dockerfile}
+      ports: ["8001:8080"]
+      environment:
+        SERVER_ID: server-network-a
+        SERVER_PORT: 8080
+        TLS_ENABLED: "false"
+        DB_TYPE: sqlite
+        DB_PATH: /data/server-a.db
+        AUTO_REGISTER: "true"
+        REQUIRE_APPROVAL: "false"
+      volumes: [./data/server-a:/data]
+      networks: [dcim-backbone]
+
+    dcim-server-b:
+      build: {context: .., dockerfile: DCIM_Server/Dockerfile}
+      ports: ["8002:8080"]
+      environment:
+        SERVER_ID: server-network-b
+        SERVER_PORT: 8080
+        TLS_ENABLED: "false"
+        DB_TYPE: sqlite
+        DB_PATH: /data/server-b.db
+        AUTO_REGISTER: "true"
+        REQUIRE_APPROVAL: "false"
+      volumes: [./data/server-b:/data]
+      networks: [dcim-backbone]
+
+    dcim-server-c:
+      build: {context: .., dockerfile: DCIM_Server/Dockerfile}
+      ports: ["8003:8080"]
+      environment:
+        SERVER_ID: server-network-c
+        SERVER_PORT: 8080
+        TLS_ENABLED: "false"
+        DB_TYPE: sqlite
+        DB_PATH: /data/server-c.db
+        AUTO_REGISTER: "true"
+        REQUIRE_APPROVAL: "false"
+      volumes: [./data/server-c:/data]
+      networks: [dcim-backbone]
+
+    # ─── Network Simulators ──────────────────────────────────────────────────
+
+    sim-network-a:
+      build:
+        context: ..
+        dockerfile: simulator/network-sim/Dockerfile
+      ports:
+        - "9001:9001"     # fault injection API
+        - "57400:57400"   # gNMI gRPC
+      environment:
+        CONFIG_FILE: /app/config/network-a.yaml
+        DCIM_SERVER_URL: http://dcim-server-a:8080/api/v1
+        SNMP_TRAP_TARGET: dcim-server-a
+        SNMP_TRAP_PORT: 162
+      cap_add: [NET_ADMIN]
+      networks: [dcim-backbone]
+      depends_on: [dcim-server-a]
+
+    sim-network-b:
+      build:
+        context: ..
+        dockerfile: simulator/network-sim/Dockerfile
+      ports:
+        - "9002:9001"
+        - "57401:57400"
+      environment:
+        CONFIG_FILE: /app/config/network-b.yaml
+        DCIM_SERVER_URL: http://dcim-server-b:8080/api/v1
+        SNMP_TRAP_TARGET: dcim-server-b
+        SNMP_TRAP_PORT: 162
+      cap_add: [NET_ADMIN]
+      networks: [dcim-backbone]
+      depends_on: [dcim-server-b]
+
+    sim-network-c:
+      build:
+        context: ..
+        dockerfile: simulator/network-sim/Dockerfile
+      ports:
+        - "9003:9001"
+        - "57402:57400"
+      environment:
+        CONFIG_FILE: /app/config/network-c.yaml
+        DCIM_SERVER_URL: http://dcim-server-c:8080/api/v1
+        SNMP_TRAP_TARGET: dcim-server-c
+        SNMP_TRAP_PORT: 162
+      cap_add: [NET_ADMIN]
+      networks: [dcim-backbone]
+      depends_on: [dcim-server-c]
+
+    # ─── Simulator Orchestrator ──────────────────────────────────────────────
+
+    sim-orchestrator:
+      build:
+        context: ..
+        dockerfile: simulator/orchestrator/Dockerfile
+      ports: ["4000:4000"]
+      environment:
+        DOCKER_HOST: unix:///var/run/docker.sock
+        AGGREGATOR_URL: http://dcim-aggregator:3002
+        SIM_A_URL: http://sim-network-a:9001
+        SIM_B_URL: http://sim-network-b:9001
+        SIM_C_URL: http://sim-network-c:9001
+        SERVER_A_URL: http://dcim-server-a:8080
+        SERVER_B_URL: http://dcim-server-b:8080
+        SERVER_C_URL: http://dcim-server-c:8080
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+      networks: [dcim-backbone]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  11. TELEMETRY OUTPUT TO DCIM (what dcim_bridge.py sends)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Every tick for each device → POST /api/v1/metrics
+
+  FROM DEVICE STATE STORE              → DCIM METRIC TYPE
+  ─────────────────────────────────────────────────────────
+  device.cpu_usage (%)                 → "cpu_usage"
+  device.memory_used/total (%)         → "memory_usage"
+  device.disk_used/total (%)           → "disk_usage"
+  device.cpu_temp (°C)                 → "temperature"
+  device.inlet_temp (°C)               → "inlet_temperature"
+  device.power_draw_w (W)              → "power_consumption"
+  iface.in_octets / tick_interval      → "network_rx" (converted to Mbps)
+  iface.out_octets / tick_interval     → "network_tx" (converted to Mbps)
+  device.sys_uptime (centiseconds)     → "uptime" (converted to seconds)
+
+  Sensor devices only:
+  device.humidity (%)                  → "humidity"
+  device.dewpoint (°C)                 → "dewpoint"
+  device.airflow (m/s)                 → "airflow"
+
+  → POST /api/v1/snmp-metrics (switches, routers)
+
+  iface.in_octets, out_octets          → ifInOctets, ifOutOctets
+  iface.in_errors, out_errors          → ifInErrors, ifOutErrors
+  iface.oper_status                    → ifOperStatus
+  device.sys_uptime                    → sysUpTime
+
+  → POST /api/v1/alerts (when rule fires via trap_engine callback)
+
+  Rule → Trap Type → DCIM Alert Severity:
+  cpu_usage > 90%  → CPU_HIGH trap      → critical alert
+  memory > 85%     → MEMORY_HIGH trap   → warning alert
+  oper_status 1→2  → LINK_DOWN trap     → warning alert
+  LinkDown 3×/60s  → LINK_FLAP trap     → critical alert
+  cpu_temp > 60°C  → TEMP_ALERT trap    → critical alert
+  BGP established→idle → BGP_DOWN      → critical alert
+  ups_status=on_battery → UPS_ON_BATT  → critical alert
+  ups_status=low_battery → UPS_LOW_BAT → critical alert
+  ≥3 devices same rack  → RACK_FAILURE → critical alert
+  humidity > 80%   → HUMIDITY_ALERT    → warning alert
+  airflow < 0.5m/s → AIRFLOW_ALERT    → warning alert
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  12. ORCHESTRATOR API (sim-orchestrator: port 4000)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  GET  /health
+  GET  /networks                        → list all running simulators + status
+
+  POST /networks/register-all           → registers all 3 servers with aggregator
+                                          (curl POST /api/v1/servers per server)
+
+  GET  /networks/:id/status             → device count, active faults, tick rate
+
+  POST /networks/:id/fault
+    { "type": "cpu_spike",              → sets cpu override in state store
+      "target": "Core-R1" | "all",
+      "duration_seconds": 300,
+      "intensity": 0.95 }
+
+  Available fault types (all from existing rule engine):
+    cpu_spike, memory_leak, disk_full, temp_critical,
+    link_down, link_flap, bgp_down, ups_on_battery, ups_low_battery,
+    agent_offline, rack_failure, humidity_alert, airflow_alert,
+    auth_failure, packet_loss, link_latency
+
+  DELETE /networks/:id/fault            → clear all active faults
+
+  POST /networks/:id/profile
+    { "profile": "normal" | "high_load" | "maintenance" | "idle" | "overnight" }
+
+  POST /networks/:id/speed
+    { "multiplier": 5 }                 → 5× faster simulation
+
+  GET  /networks/:id/devices            → all devices + current metrics
+
+  POST /networks/:id/trap               → manual trap injection
+    { "device": "Core-R1", "trap_type": "LINK_DOWN", "interface": 2 }
+
+  POST /networks/:id/topology/reload    → reload topology JSON from disk
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  13. REQUIREMENTS FILE — simulator/network-sim/requirements.txt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # From existing Datacenter_Network_Simulator/requirements.txt:
+  snmpsim-lextudio>=1.0.4
+  pysnmp>=4.4.12
+  grpcio>=1.60.0
+  grpcio-tools>=1.60.0
+  protobuf>=4.25.0
+  networkx>=3.2
+
+  # New additions for Docker bridge:
+  fastapi>=0.111.0
+  uvicorn>=0.30.0
+  httpx>=0.27.0           # async HTTP client for DCIM API calls
+  pyyaml>=6.0.1           # config file loading
+  structlog>=24.1.0       # structured logging
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  14. DEPLOYMENT COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ── STEP 1: Add Dockerfiles to existing DCIM services ────────────────────────
+
+  # DCIM_Server/Dockerfile
+  FROM golang:1.21-alpine AS builder
+  WORKDIR /app
+  COPY . .
+  RUN go build -o dcim-server ./main.go
+
+  FROM alpine:3.19
+  COPY --from=builder /app/dcim-server /usr/local/bin/
+  EXPOSE 8080
+  CMD ["dcim-server"]
+
+  # DCIM_Aggregator/Dockerfile
+  FROM node:20-alpine
+  WORKDIR /app
+  COPY package*.json .
+  RUN npm ci --only=production
+  COPY . .
+  EXPOSE 3002
+  CMD ["node", "dist/index.js"]
+
+  # DCIM_UI/Dockerfile
+  FROM node:20-alpine AS builder
+  WORKDIR /app
+  COPY package*.json .
+  RUN npm ci
+  COPY . .
+  RUN npm run build
+
+  FROM nginx:alpine
+  COPY --from=builder /app/dist /usr/share/nginx/html
+  EXPOSE 80
+
+  ── STEP 2: Create simulator directory structure ──────────────────────────────
+
+  mkdir -p DCIM/simulator/network-sim/config
+  mkdir -p DCIM/simulator/orchestrator
+  mkdir -p DCIM/simulator/data/server-{a,b,c}
+
+  ── STEP 3: Pre-generate topologies (run once, files go into topologies/) ─────
+
+  cd DCIM/Datacenter_Network_Simulator
+  pip install -r requirements.txt
+  python generate_topology.py
+  python generate_snmprec.py    # (optional — also runs at container startup)
+
+  ── STEP 4: Build all images ──────────────────────────────────────────────────
+
+  cd DCIM/simulator
+  docker compose -f docker-compose.simulator.yml build
+
+  ── STEP 5: Launch full stack ─────────────────────────────────────────────────
+
+  docker compose -f docker-compose.simulator.yml up -d
+
+  ── STEP 6: Watch startup (datasets generate on first run ~30s) ───────────────
+
+  docker compose -f docker-compose.simulator.yml logs -f sim-network-a
+
+  ── STEP 7: Verify health ─────────────────────────────────────────────────────
+
+  curl http://localhost:8001/health           # DCIM Server A
+  curl http://localhost:8002/health           # DCIM Server B
+  curl http://localhost:8003/health           # DCIM Server C
+  curl http://localhost:3002/health           # Aggregator
+  curl http://localhost:9001/status           # Sim Network A
+  curl http://localhost:9002/status           # Sim Network B
+  curl http://localhost:9003/status           # Sim Network C
+  curl http://localhost:4000/health           # Orchestrator
+
+  ── STEP 8: Register virtual servers with aggregator ─────────────────────────
+
+  curl -X POST http://localhost:4000/networks/register-all
+
+  # Or manually:
+  curl -X POST http://localhost:3002/api/v1/servers \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Network A - 3-Tier DC","url":"http://dcim-server-a:8080"}'
+
+  curl -X POST http://localhost:3002/api/v1/servers \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Network B - Spine-Leaf","url":"http://dcim-server-b:8080"}'
+
+  curl -X POST http://localhost:3002/api/v1/servers \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Network C - Enterprise WAN","url":"http://dcim-server-c:8080"}'
+
+  ── STEP 9: Open the UI ───────────────────────────────────────────────────────
+
+  open http://localhost:5173
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  15. FAULT INJECTION COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # CPU spike on Network A (all devices, 5 minutes, 95% intensity)
+  curl -X POST http://localhost:4000/networks/network-a/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"cpu_spike","target":"all","duration_seconds":300,"intensity":0.95}'
+
+  # Memory leak on specific device
+  curl -X POST http://localhost:4000/networks/network-a/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"memory_leak","target":"Core-R1","duration_seconds":600}'
+
+  # BGP session down (router → alerts in DCIM)
+  curl -X POST http://localhost:4000/networks/network-a/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"bgp_down","target":"Spine-SW1","duration_seconds":120}'
+
+  # UPS on battery (triggers UPS-MIB OID change + trap to DCIM)
+  curl -X POST http://localhost:4000/networks/network-a/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"ups_on_battery","target":"UPS-Rack5","duration_seconds":600}'
+
+  # Rack failure (≥3 devices in same rack go offline → RACK_FAILURE trap)
+  curl -X POST http://localhost:4000/networks/network-a/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"rack_failure","target":"DC1:R1:RACK3","duration_seconds":300}'
+
+  # Link flap (repeated link_down/up → LINK_FLAP critical alert)
+  curl -X POST http://localhost:4000/networks/network-b/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"link_flap","target":"Leaf-SW4","duration_seconds":180}'
+
+  # Agent offline (stops sending metrics, DCIM marks device offline)
+  curl -X POST http://localhost:4000/networks/network-c/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"agent_offline","target":"Edge-Server-01","duration_seconds":120}'
+
+  # Temperature critical (sensor + server → TEMPERATURE_ALERT trap)
+  curl -X POST http://localhost:4000/networks/network-a/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"temp_critical","target":"Sensor-Row3","duration_seconds":300,"intensity":0.9}'
+
+  # Humidity alert (environmental sensor)
+  curl -X POST http://localhost:4000/networks/network-a/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"humidity_alert","target":"NetBotz-Rack7","duration_seconds":600}'
+
+  # Manual SNMP trap injection
+  curl -X POST http://localhost:4000/networks/network-a/trap \
+    -H "Content-Type: application/json" \
+    -d '{"device":"Core-R1","trap_type":"BGP_DOWN","peer_ip":"10.0.0.2"}'
+
+  # Add tc netem packet loss (Linux kernel — requires NET_ADMIN cap)
+  curl -X POST http://localhost:4000/networks/network-b/fault \
+    -H "Content-Type: application/json" \
+    -d '{"type":"packet_loss","intensity":0.20,"duration_seconds":180}'
+
+  # Speed up simulation 10× (30s ticks become 3s)
+  curl -X POST http://localhost:4000/networks/network-a/speed \
+    -H "Content-Type: application/json" \
+    -d '{"multiplier":10}'
+
+  # Clear all faults
+  curl -X DELETE http://localhost:4000/networks/network-a/fault
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  16. DOCKER MANAGEMENT COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  # Stop everything
+  docker compose -f docker-compose.simulator.yml down
+
+  # Stop and wipe all data
+  docker compose -f docker-compose.simulator.yml down -v
+
+  # Rebuild only simulator images (fast iteration)
+  docker compose -f docker-compose.simulator.yml build \
+    sim-network-a sim-network-b sim-network-c sim-orchestrator
+
+  # Restart one simulator
+  docker compose -f docker-compose.simulator.yml restart sim-network-a
+
+  # Tail simulator logs
+  docker compose -f docker-compose.simulator.yml logs -f sim-network-a
+
+  # Shell into simulator container
+  docker exec -it simulator-sim-network-a-1 bash
+
+  # Check SNMP datasets generated
+  docker exec simulator-sim-network-a-1 ls /app/datasets/snmp/ | head -20
+
+  # Test SNMP from inside container
+  docker exec simulator-sim-network-a-1 \
+    snmpwalk -v2c -c 10.1.0.1 127.0.0.1:161 1.3.6.1.2.1.1
+
+  # Check gNMI from outside
+  # (use grpcurl or gnmic tool)
+  gnmic -a localhost:57400 --insecure get --path /interfaces
+
+  # Manual tc netem inside container
+  docker exec simulator-sim-network-b-1 \
+    tc qdisc add dev eth0 root netem loss 15% delay 100ms
+
+  docker exec simulator-sim-network-b-1 \
+    tc qdisc del dev eth0 root
+
+  # View resource usage
+  docker stats
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  17. IMPLEMENTATION ORDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Phase 1 — Dockerize existing services (1 day)
+  ─────────────────────────────────────────────
+  [ ] DCIM_Server/Dockerfile (Go multi-stage build)
+  [ ] DCIM_Aggregator/Dockerfile (Node.js)
+  [ ] DCIM_UI/Dockerfile (Vite build → nginx)
+  [ ] Test: docker compose up dcim-aggregator dcim-ui timescaledb redis
+  [ ] Verify UI loads at localhost:5173
+
+  Phase 2 — Network simulator container (2 days)
+  ────────────────────────────────────────────────
+  [ ] Create simulator/network-sim/entrypoint.py
+        - Load topology JSON (3tier first)
+        - Start DeviceStateStore
+        - Start SNMPSim subprocess (existing snmpsim_controller adapted for Linux)
+        - Start gNMI server (existing gnmi_server.py)
+  [ ] Create simulator/network-sim/ip_alias_manager.py (Linux ip addr add)
+  [ ] Create simulator/network-sim/Dockerfile
+  [ ] Test: sim-network-a starts and SNMP polls work on container network
+
+  Phase 3 — DCIM bridge (1 day)
+  ──────────────────────────────
+  [ ] Create simulator/network-sim/dcim_bridge.py
+        - Register all server devices with dcim-server-a
+        - POST metrics every 30s for all devices
+        - Hook rule engine callbacks → POST alerts
+  [ ] Test: metrics appear in DCIM_Server, flow through aggregator, visible in UI
+  [ ] Verify alerts appear in UI when rule engine fires
+
+  Phase 4 — Fault injection API (1 day)
+  ──────────────────────────────────────
+  [ ] Create simulator/network-sim/http_api.py (FastAPI)
+        - POST /fault endpoint
+        - Override DeviceStateStore metrics temporarily
+        - DELETE /fault to clear
+  [ ] Test: curl /fault → metrics spike → alert fires → visible in UI
+
+  Phase 5 — Orchestrator + multi-network (1 day)
+  ─────────────────────────────────────────────────
+  [ ] Create simulator/orchestrator/main.py
+  [ ] Create simulator/orchestrator/docker_manager.py
+  [ ] docker-compose.simulator.yml (all 3 networks + 3 servers)
+  [ ] POST /networks/register-all → registers all servers with aggregator
+  [ ] Test: 3 networks visible in UI with independent telemetry streams
+
+  Phase 6 — Network conditions + polish (1 day)
+  ───────────────────────────────────────────────
+  [ ] Add tc netem via fault API (packet_loss, link_latency)
+  [ ] Add intermittent mode for network-c
+  [ ] Config YAML profiles (network-a/b/c.yaml)
+  [ ] Add config/network-*.yaml files for each topology profile
+  [ ] Full end-to-end test: all fault types visible in DCIM UI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  18. VM DEPLOYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Recommended VM spec:
+    CPU:  4 vCPUs (more for 3 simultaneous simulators + 3 servers + aggregator)
+    RAM:  8 GB minimum, 16 GB recommended
+    Disk: 50 GB (topology datasets + TimescaleDB)
+    OS:   Ubuntu 22.04 LTS
+
+  # Install Docker on Ubuntu VM
+  curl -fsSL https://get.docker.com | sh
+  sudo usermod -aG docker $USER
+  newgrp docker
+  sudo apt-get install -y docker-compose-plugin
+
+  # Copy project to VM
+  scp -r ./DCIM user@<vm-ip>:/opt/dcim
+
+  # Launch on VM
+  cd /opt/dcim/simulator
+  docker compose -f docker-compose.simulator.yml up -d
+
+  # Open ports (UFW)
+  sudo ufw allow 5173/tcp   # DCIM UI
+  sudo ufw allow 3002/tcp   # Aggregator API
+  sudo ufw allow 4000/tcp   # Orchestrator API
+  sudo ufw allow 8001:8003/tcp  # Virtual DCIM Servers
+  sudo ufw allow 9001:9003/tcp  # Simulator control APIs
+  sudo ufw allow 57400:57402/tcp # gNMI ports
+
+  # Access from your machine
+  open http://<vm-ip>:5173
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  19. COMPLETE FEATURE CHECKLIST FROM EXISTING SIMULATOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  FEATURE                                      STATUS IN DOCKER PLAN
+  ─────────────────────────────────────────────────────────────────────────────
+  10 device types (Router/Switch/Server…)      ✅ Carried in via device_manager.py
+  18+ vendor models (Cisco, Juniper, Dell…)    ✅ Carried in via device_manager.py
+  500+ hardware models                         ✅ Carried in via device_models.py
+  Multi-layer topology (prod/mgmt/power)       ✅ topology_engine.py (unchanged)
+  5 pre-built topologies                       ✅ topologies/*.json (mounted in container)
+  SNMP v2c simulation                          ✅ snmpsim subprocess (Linux-compatible)
+  23 SNMP MIBs                                 ✅ snmprec_generator.py (unchanged)
+  LLDP/CDP neighbor discovery via SNMP         ✅ lldp_generator.py (unchanged)
+  MAC address tables (BRIDGE-MIB)              ✅ mac_table_generator.py (unchanged)
+  HOST-RESOURCES-MIB (servers)                 ✅ snmprec_generator.py (unchanged)
+  Vendor enterprise OIDs (sensors)             ✅ snmprec_generator.py (unchanged)
+  UPS-MIB simulation                           ✅ snmprec_generator.py (unchanged)
+  gNMI gRPC server (OpenConfig)                ✅ gnmi_server.py (unchanged)
+  10 OpenConfig YANG models                    ✅ gnmi_data_generator.py (unchanged)
+  gNMI Subscribe ONCE/POLL/STREAM              ✅ gnmi_server.py (unchanged)
+  sFlow v5 (counter + flow samples)            ✅ sflow_controller.py (unchanged)
+  Topology-aware flow sampling                 ✅ sflow_controller.py (unchanged)
+  Live metrics random-walk ticker              ✅ device_state_store.py (unchanged)
+  CPU/memory/disk/temp spike simulation        ✅ device_state_store.py (unchanged)
+  Interface counter simulation                 ✅ device_state_store.py (unchanged)
+  UPS state machine (normal/battery/low)       ✅ device_state_store.py (unchanged)
+  BGP state machine (established/idle)         ✅ device_state_store.py (unchanged)
+  Link flap simulation                         ✅ device_state_store.py (unchanged)
+  Environmental sensors (temp/humidity/dew)    ✅ device_state_store.py (unchanged)
+  Rule engine (threshold/state/temporal)       ✅ rule_engine.py (unchanged)
+  23 default rules                             ✅ trap_rules.py (unchanged)
+  SNMP v2c trap dispatch                       ✅ trap_engine.py (unchanged)
+  23 trap types with OIDs                      ✅ trap_definitions.py (unchanged)
+  Rack-aware fault correlation                 ✅ rule_engine.py (unchanged)
+  SNMP topology discovery (LLDP walk)          ✅ discovery_engine.py (unchanged)
+  Hot-reload SNMP datasets                     ✅ snmprec_generator.py (unchanged)
+  IP pool management                           ✅ ip_manager.py (unchanged)
+  Physical location (DC/room/rack)             ✅ device_manager.py (unchanged)
+  Power chain modeling (PDU→UPS→devices)       ✅ device_manager.py (unchanged)
+  HTTP metrics POST to DCIM Server             🆕 dcim_bridge.py (NEW)
+  HTTP alerts POST to DCIM Server              🆕 dcim_bridge.py (NEW)
+  Agent registration with DCIM Server          🆕 dcim_bridge.py (NEW)
+  Fault injection REST API (per container)     🆕 http_api.py (NEW)
+  Central orchestrator (create/destroy nets)   🆕 orchestrator/main.py (NEW)
+  Docker-based multi-network isolation         🆕 docker-compose.simulator.yml (NEW)
+  Linux IP aliasing (replaces netsh)           🆕 ip_alias_manager.py (NEW)
+  Network degradation (tc netem)               🆕 http_api.py + cap_add NET_ADMIN (NEW)
+  YAML profile configuration                   🆕 config/network-*.yaml (NEW)
+  Intermittent connectivity mode               🆕 entrypoint.py + http_api.py (NEW)
+
+================================================================================
+  END OF PLAN
+================================================================================

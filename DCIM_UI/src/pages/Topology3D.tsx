@@ -4,14 +4,14 @@ import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float, Html } from '
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { computeHierarchicalLayout, type LayoutNode, type LayoutLink } from '@/lib/topology3d-layout'
+import { computeHierarchicalLayout, type LayoutNode, type LayoutLink, FLOORS } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
 import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X } from 'lucide-react'
 import * as THREE from 'three'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
 
@@ -232,7 +232,7 @@ function ServerNode({
         ))}
       </group>
 
-      {/* ── Glow effect (hover/offline pulse) ── */}
+      {/* ── Glow ── */}
       <mesh ref={glowRef}>
         <boxGeometry args={[7, 13, 5]} />
         <meshBasicMaterial
@@ -706,6 +706,235 @@ function DeviceNode({
   )
 }
 
+// ── PDU Node (Power Distribution Unit — vertical power strip with lightning) ─
+
+function PDUNode({
+  node,
+  isSelected,
+  onSelect,
+  onHover,
+}: {
+  node: LayoutNode
+  isSelected: boolean
+  onSelect: (node: LayoutNode) => void
+  onHover: (hovering: boolean) => void
+}) {
+  const glowRef = useRef<THREE.Mesh>(null)
+  const boltRef = useRef<THREE.Mesh>(null)
+  const [hovered, setHovered] = useState(false)
+
+  // Build lightning bolt shape once — extruded polygon
+  const lightningGeo = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.moveTo(0.22, 0.75)
+    shape.lineTo(-0.06, 0.06)
+    shape.lineTo(0.1, 0.06)
+    shape.lineTo(-0.22, -0.75)
+    shape.lineTo(0.06, -0.06)
+    shape.lineTo(-0.1, -0.06)
+    shape.closePath()
+    return new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: false })
+  }, [])
+
+  useFrame(({ clock }) => {
+    if (glowRef.current) {
+      const mat = glowRef.current.material as THREE.MeshBasicMaterial
+      if (node.status === 'offline') {
+        mat.opacity = 0.1 + Math.sin(clock.getElapsedTime() * 3) * 0.1
+      } else {
+        mat.opacity = hovered || isSelected ? 0.18 : 0.06
+      }
+    }
+    // Bolt pulses brighter when online
+    if (boltRef.current && node.status === 'online') {
+      const mat = boltRef.current.material as THREE.MeshStandardMaterial
+      mat.emissiveIntensity = 1.4 + Math.sin(clock.getElapsedTime() * 4) * 0.6
+    }
+  })
+
+  const handleClick = useCallback(
+    (e: THREE.Event & { stopPropagation: () => void }) => {
+      e.stopPropagation()
+      onSelect(node)
+    },
+    [node, onSelect]
+  )
+  const handlePointerOver = useCallback(
+    (e: THREE.Event & { stopPropagation: () => void }) => {
+      e.stopPropagation()
+      setHovered(true)
+      onHover(true)
+    },
+    [onHover]
+  )
+  const handlePointerOut = useCallback(() => {
+    setHovered(false)
+    onHover(false)
+  }, [onHover])
+
+  const online = node.status === 'online'
+  const isUPS = (node.deviceType ?? node.name ?? '').toUpperCase().includes('UPS')
+  const boltColor   = online ? (isUPS ? '#bef264' : '#fde047') : '#6b7280'
+  const bodyColor   = online ? (isUPS ? '#0f1a07' : '#1c1917') : '#0c0a09'
+  const panelColor  = online ? (isUPS ? '#1a2e0a' : '#292524') : '#1c1917'
+  const accentStrip = online ? (isUPS ? '#84cc16' : '#f59e0b') : (isUPS ? '#365314' : '#78350f')
+  const outletGlow  = online ? (isUPS ? '#a3e635' : '#fbbf24') : '#1a1a1a'
+  const labelColor  = online ? (isUPS ? '#d9f99d' : '#fde68a') : '#6b7280'
+
+  return (
+    <group
+      position={node.position}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    >
+      {/* ── Main vertical body ── */}
+      <mesh>
+        <boxGeometry args={[1.1, 8.0, 0.85]} />
+        <meshStandardMaterial color={bodyColor} metalness={0.7} roughness={0.25} />
+      </mesh>
+
+      {/* ── Front panel (slightly proud) ── */}
+      <mesh position={[0, 0, 0.44]}>
+        <boxGeometry args={[0.95, 7.8, 0.04]} />
+        <meshStandardMaterial color={panelColor} metalness={0.5} roughness={0.3} />
+      </mesh>
+
+      {/* ── Vertical amber accent stripe (left edge) ── */}
+      <mesh position={[-0.52, 0, 0.2]}>
+        <boxGeometry args={[0.06, 7.6, 0.5]} />
+        <meshStandardMaterial
+          color={accentStrip}
+          emissive={accentStrip}
+          emissiveIntensity={online ? 0.6 : 0.2}
+          metalness={0.3}
+          roughness={0.4}
+        />
+      </mesh>
+
+      {/* ── Outlet ports (6 down the front panel) ── */}
+      {Array.from({ length: 6 }).map((_, i) => {
+        const yOff = 2.8 - i
+        return (
+          <group key={i} position={[0, yOff, 0.47]}>
+            {/* Outlet housing */}
+            <mesh>
+              <boxGeometry args={[0.55, 0.55, 0.06]} />
+              <meshStandardMaterial color="#0a0a0a" metalness={0.2} roughness={0.8} />
+            </mesh>
+            {/* Two prong holes */}
+            <mesh position={[-0.1, 0, 0.04]}>
+              <boxGeometry args={[0.09, 0.22, 0.04]} />
+              <meshStandardMaterial color={outletGlow} emissive={outletGlow} emissiveIntensity={online ? 0.9 : 0.1} />
+            </mesh>
+            <mesh position={[0.1, 0, 0.04]}>
+              <boxGeometry args={[0.09, 0.22, 0.04]} />
+              <meshStandardMaterial color={outletGlow} emissive={outletGlow} emissiveIntensity={online ? 0.9 : 0.1} />
+            </mesh>
+            {/* Ground hole */}
+            <mesh position={[0, -0.16, 0.04]}>
+              <cylinderGeometry args={[0.04, 0.04, 0.04, 8]} />
+              <meshStandardMaterial color={outletGlow} emissive={outletGlow} emissiveIntensity={online ? 0.5 : 0.05} />
+            </mesh>
+          </group>
+        )
+      })}
+
+      {/* ── Status indicator bar (top of panel) ── */}
+      <mesh position={[0, 3.7, 0.46]}>
+        <boxGeometry args={[0.7, 0.22, 0.03]} />
+        <meshStandardMaterial
+          color={online ? '#22c55e' : '#ef4444'}
+          emissive={online ? '#22c55e' : '#ef4444'}
+          emissiveIntensity={online ? 1.2 : 0.6}
+        />
+      </mesh>
+
+      {/* ── Top cap face ── */}
+      <mesh position={[0, 4.05, 0]}>
+        <boxGeometry args={[1.1, 0.1, 0.85]} />
+        <meshStandardMaterial color={accentStrip} emissive={accentStrip} emissiveIntensity={online ? 0.4 : 0.1} metalness={0.6} roughness={0.3} />
+      </mesh>
+
+      {/* ── Lightning bolt (extruded, floats above unit) ── */}
+      <group position={[0, 5.6, 0]}>
+        {/* Glow halo behind bolt */}
+        <mesh>
+          <sphereGeometry args={[0.9, 16, 16]} />
+          <meshBasicMaterial
+            color={boltColor}
+            transparent
+            opacity={online ? 0.12 : 0.04}
+            depthWrite={false}
+          />
+        </mesh>
+        {/* Outer ring */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.65, 0.04, 8, 32]} />
+          <meshStandardMaterial
+            color={boltColor}
+            emissive={boltColor}
+            emissiveIntensity={online ? 0.8 : 0.2}
+            metalness={0.3}
+            roughness={0.4}
+          />
+        </mesh>
+        {/* 3D extruded bolt, centered */}
+        <mesh
+          ref={boltRef}
+          geometry={lightningGeo}
+          position={[-0.16, -0.75, -0.06]}
+          scale={[1.1, 1.1, 1.1]}
+        >
+          <meshStandardMaterial
+            color={boltColor}
+            emissive={boltColor}
+            emissiveIntensity={online ? 2.0 : 0.4}
+            metalness={0.1}
+            roughness={0.3}
+          />
+        </mesh>
+      </group>
+
+      {/* ── Ambient glow volume ── */}
+      <mesh ref={glowRef}>
+        <boxGeometry args={[2.2, 9.5, 2.0]} />
+        <meshBasicMaterial color={online ? '#f59e0b' : '#ef4444'} transparent opacity={0.06} depthWrite={false} />
+      </mesh>
+
+      {/* ── Selection wireframe ── */}
+      {isSelected && (
+        <mesh>
+          <boxGeometry args={[2.4, 9.8, 2.2]} />
+          <meshBasicMaterial color={boltColor} wireframe transparent opacity={0.5} />
+        </mesh>
+      )}
+
+      {/* ── Label ── */}
+      <Billboard position={[0, 7.0, 0]}>
+        <Text
+          fontSize={0.7}
+          color={labelColor}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.05}
+          outlineColor="#000000"
+        >
+          {node.name}
+        </Text>
+      </Billboard>
+
+      {!online && (
+        <Billboard position={[0, -5.4, 0]}>
+          <Text fontSize={0.5} color="#ef4444" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#000000">
+            OFFLINE
+          </Text>
+        </Billboard>
+      )}
+    </group>
+  )
+}
+
 // ── Connection Line ──────────────────────────────────────────────────────────
 
 function ConnectionLine({ link }: { link: LayoutLink }) {
@@ -998,11 +1227,6 @@ function JoystickNav({ onVelocity }: { onVelocity: (vx: number, vy: number) => v
 
 // ── Floor Navigator ──────────────────────────────────────────────────────────
 
-export const FLOORS = [
-  { name: 'SNMP Devices',  label: 'L1', y: -22, color: '#06b6d4' },
-  { name: 'Agent Servers', label: 'L2', y: -8,  color: '#3b82f6' },
-  { name: 'Server Racks',  label: 'L3', y: 20,  color: '#a855f7' },
-]
 
 function CameraFloorRunner({ targetFloorY, targetPanX }: { targetFloorY: number; targetPanX: number }) {
   const { camera, controls } = useThree()
@@ -1109,30 +1333,54 @@ function SceneContent({
       {(() => {
         const agentNodes = nodes.filter((n) => n.type === 'agent')
         const enableFloat = agentNodes.length < 50
-        return agentNodes.map((node) => (
-          <AgentNode
-            key={node.id}
-            node={node}
-            isSelected={selectedNode?.id === node.id}
-            onSelect={onSelectNode}
-            onHover={onHover}
-            useFloat={enableFloat}
-          />
-        ))
+        return agentNodes.map((node) => {
+          const dt = ((node.deviceType ?? '') + ' ' + (node.agentId ?? '') + ' ' + (node.name ?? '')).toUpperCase()
+          const isPDU = dt.includes('PDU') || dt.includes('FPDU') || dt.includes('UPS')
+          return isPDU ? (
+            <PDUNode
+              key={node.id}
+              node={node}
+              isSelected={selectedNode?.id === node.id}
+              onSelect={onSelectNode}
+              onHover={onHover}
+            />
+          ) : (
+            <AgentNode
+              key={node.id}
+              node={node}
+              isSelected={selectedNode?.id === node.id}
+              onSelect={onSelectNode}
+              onHover={onHover}
+              useFloat={enableFloat}
+            />
+          )
+        })
       })()}
 
-      {/* Device nodes (SNMP) */}
+      {/* Device nodes (SNMP) — PDUs get their own vertical power-strip model */}
       {nodes
         .filter((n) => n.type === 'network')
-        .map((node) => (
-          <DeviceNode
-            key={node.id}
-            node={node}
-            isSelected={selectedNode?.id === node.id}
-            onSelect={onSelectNode}
-            onHover={onHover}
-          />
-        ))}
+        .map((node) => {
+          const dt = ((node.deviceType ?? '') + ' ' + (node.agentId ?? '') + ' ' + (node.name ?? '')).toUpperCase()
+          const isPDU = dt.includes('PDU') || dt.includes('FPDU') || dt.includes('UPS')
+          return isPDU ? (
+            <PDUNode
+              key={node.id}
+              node={node}
+              isSelected={selectedNode?.id === node.id}
+              onSelect={onSelectNode}
+              onHover={onHover}
+            />
+          ) : (
+            <DeviceNode
+              key={node.id}
+              node={node}
+              isSelected={selectedNode?.id === node.id}
+              onSelect={onSelectNode}
+              onHover={onHover}
+            />
+          )
+        })}
 
       {/* Click on empty space to deselect */}
       <mesh position={[0, -14.9, 0]} rotation={[-Math.PI / 2, 0, 0]} onClick={onDeselect}>
@@ -1180,6 +1428,15 @@ export default function Topology3D() {
     enabled: !USE_MOCK_DATA,
   })
 
+  // Fetch live devices from every sim-network container via the orchestrator
+  const { data: orchDevices } = useQuery<{ container: string; data: { name: string; ip_address: string; type: string; vendor: string }[] }[]>({
+    queryKey: ['orc-devices-3d'],
+    queryFn: () => fetch('/orchestrator/devices').then(r => r.json()),
+    staleTime: 30000,
+    refetchInterval: 30000,
+    enabled: !USE_MOCK_DATA,
+  })
+
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
@@ -1188,7 +1445,7 @@ export default function Topology3D() {
   const navigate = useNavigate()
   const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
   const [cursorPointer, setCursorPointer] = useState(false)
-  const [currentFloor, setCurrentFloor] = useState(2) // start at Server Racks (top)
+  const [currentFloor, setCurrentFloor] = useState(FLOORS.length - 1) // start at DCIM Servers (top)
   const [showLegend, setShowLegend] = useState(true)
   const [showStats, setShowStats] = useState(true)
 
@@ -1216,29 +1473,63 @@ export default function Topology3D() {
     setExpandedServers(new Set())
   }, [])
 
-  // Compute agent counts per server (always full list)
+  // Map server_id → orchestrator device list (same logic as 2D Topology.tsx)
+  const orchDevicesByServerId = useMemo(() => {
+    if (!orchDevices || !servers) return undefined
+    const map = new Map<string, { name: string; ip_address: string; type: string; vendor: string }[]>()
+    for (const srv of servers) {
+      if (!srv.enabled) continue
+      const network = srv.metadata?.network as string | undefined  // e.g. "network-a"
+      if (!network) continue
+      const simName = 'sim-' + network                             // "sim-network-a"
+      const entry = orchDevices.find(o => o.container === simName)
+      if (entry && srv.id) map.set(srv.id, entry.data)
+    }
+    return map.size > 0 ? map : undefined
+  }, [orchDevices, servers])
+
+  // Compute agent counts per server — prefer orchestrator device count when available
   const agentCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    agents?.forEach(a => {
-      const sid = `server-${a.server_id}`
-      counts[sid] = (counts[sid] || 0) + 1
-    })
+    if (orchDevicesByServerId) {
+      for (const [rawId, devs] of orchDevicesByServerId) {
+        counts[`server-${rawId}`] = devs.length
+      }
+      // Fallback for servers without orchestrator data
+      agents?.forEach(a => {
+        const sid = `server-${a.server_id}`
+        if (!counts[sid]) counts[sid] = (counts[sid] || 0) + 1
+      })
+    } else {
+      agents?.forEach(a => {
+        const sid = `server-${a.server_id}`
+        counts[sid] = (counts[sid] || 0) + 1
+      })
+    }
     return counts
-  }, [agents])
+  }, [agents, orchDevicesByServerId])
 
-  // Filter agents to only expanded servers, then compute layout with devices
+  // Filter to expanded servers and compute 3D layout
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
     const visibleAgents = agents.filter(a => expandedServers.has(`server-${a.server_id}`))
-    // Show every device whose parent server is expanded — this includes
-    // SNMP-walker-discovered devices (agent_id="snmp-walker") that have no
-    // matching agent record and would otherwise be filtered out.
     const visibleDevices = (snmpDevices || []).filter(
       d => expandedServers.has(`server-${d.server_id}`)
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks)
-  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData])
+
+    // Build a filtered orchDevicesByServerId with only expanded servers
+    let visibleOrchDevices: typeof orchDevicesByServerId
+    if (orchDevicesByServerId) {
+      const filtered = new Map<string, { name: string; ip_address: string; type: string; vendor: string }[]>()
+      for (const [sid, devs] of orchDevicesByServerId) {
+        if (expandedServers.has(`server-${sid}`)) filtered.set(sid, devs)
+      }
+      if (filtered.size > 0) visibleOrchDevices = filtered
+    }
+
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, visibleOrchDevices)
+  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, orchDevicesByServerId])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
@@ -1426,8 +1717,22 @@ export default function Topology3D() {
                 <div className="w-6 h-0.5 border-t-2 border-dashed border-cyan-400 opacity-60" />
                 <span className="text-slate-300">Device Link</span>
               </div>
-              <div className="mt-2 pt-2 border-t border-white/10">
-                <p className="text-slate-400">Double-click a server to expand/collapse its agents</p>
+              <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
+                <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-wide">Hierarchy</p>
+                {[
+                  { label: 'L1', name: 'DCIM Servers',    color: '#a855f7' },
+                  { label: 'L2', name: 'Core Routers',    color: '#ef4444' },
+                  { label: 'L3', name: 'Agg Switches',    color: '#f59e0b' },
+                  { label: 'L4', name: 'ToR Switches',    color: '#06b6d4' },
+                  { label: 'L5', name: 'Compute/Srvs',    color: '#10b981' },
+                  { label: 'L6', name: 'Infrastructure',  color: '#64748b' },
+                ].map(tier => (
+                  <div key={tier.label} className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono w-5" style={{ color: tier.color }}>{tier.label}</span>
+                    <span className="text-slate-400 text-[10px]">{tier.name}</span>
+                  </div>
+                ))}
+                <p className="text-slate-400 text-[10px] pt-1">Double-click a server to expand</p>
               </div>
             </div>
           </div>
@@ -1651,6 +1956,15 @@ export default function Topology3D() {
                     {expandedServers.has(selectedNode.id) ? 'Collapse Agents' : 'Expand Agents'}
                   </button>
                 </>
+              )}
+
+              {selectedNode.type === 'agent' && selectedNode.deviceType && (
+                <div>
+                  <p className="text-sm text-slate-400">Device Type</p>
+                  <p className="text-sm font-mono text-amber-300">
+                    {selectedNode.deviceType.replace('DeviceType.', '')}
+                  </p>
+                </div>
               )}
 
               {selectedNode.type === 'agent' && selectedNode.serverName && (

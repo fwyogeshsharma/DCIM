@@ -1,0 +1,40 @@
+network_id: network-b
+topology_file: /app/topologies/large_datacenter_spine_leaf.json
+topology_name: "Network B - Spine-Leaf (Legacy/Degraded)"
+dcim_server_url: http://dcim-server-b:8080/api/v1
+
+simulation:
+  tick_interval: 120
+  snmp_sync_every: 1
+  speed_multiplier: 1.0
+
+protocols:
+  snmp:
+    enabled: true
+    port: 161
+  gnmi:
+    enabled: true
+    port: 57400
+  sflow:
+    enabled: false
+    target_ip: "dcim-server-b"
+    target_port: 6343
+    interval: 120
+    sample_rate: 500
+  traps:
+    enabled: true
+    target_ip: "dcim-server-b"
+    target_port: 162
+
+network:
+  packet_loss_pct: 5
+  link_latency_ms: 200
+  intermittent: false
+  online_duration_sec: 0
+  offline_duration_sec: 0
+
+telemetry_profile:
+  cpu_base: 65
+  memory_base: 75
+  cpu_spike_chance: 0.03
+  link_flap_chance: 0.01

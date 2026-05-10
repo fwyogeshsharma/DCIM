@@ -3,10 +3,28 @@ import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Link } from 'react-router-dom'
-import { Badge } from '@/components/ui/badge'
 import { formatDistanceToNow } from 'date-fns'
-import { BarChart3, Filter, AlertTriangle } from 'lucide-react'
+import { BarChart3, Filter, AlertTriangle, Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getDeviceTypeMeta } from '@/lib/deviceType'
+import type { DeviceCategory } from '@/lib/deviceType'
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle,
+}
+
+function DeviceTypeBadge({ agentId }: { agentId: string }) {
+  const meta = getDeviceTypeMeta(agentId)
+  const Icon = ICON_MAP[meta.icon] ?? HelpCircle
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${meta.badgeClass}`}>
+      <Icon className="w-3 h-3" />
+      {meta.label}
+    </span>
+  )
+}
+
+type TypeFilter = 'all' | 'power' | DeviceCategory
 
 export default function Agents() {
   const { data: agents, isLoading } = useAgents()
@@ -18,11 +36,17 @@ export default function Agents() {
 
   const [serverFilter, setServerFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
   const filteredAgents = agents?.filter((agent) => {
     if (serverFilter !== 'all' && agent.server_name !== serverFilter) return false
     if (statusFilter !== 'all' && agent.status !== statusFilter) return false
+    if (typeFilter !== 'all') {
+      const meta = getDeviceTypeMeta(agent.agent_id)
+      if (typeFilter === 'power' && !meta.isPowerDevice) return false
+      else if (typeFilter !== 'power' && meta.category !== typeFilter) return false
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       return (
@@ -34,7 +58,6 @@ export default function Agents() {
     return true
   })
 
-  // Unique server names from agents
   const serverNames = [...new Set(agents?.map((a) => a.server_name).filter(Boolean) as string[])]
 
   if (isLoading) {
@@ -57,7 +80,6 @@ export default function Agents() {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-slate-400" />
@@ -82,6 +104,22 @@ export default function Agents() {
           <option value="online">Online</option>
           <option value="offline">Offline</option>
         </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+          className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 border border-white/10 text-white"
+        >
+          <option value="all">All Types</option>
+          <option value="power">⚡ Power Devices</option>
+          <option value="PDU">PDU</option>
+          <option value="UPS">UPS</option>
+          <option value="SENSOR">Sensor</option>
+          <option value="SERVER">Server</option>
+          <option value="TOR_SWITCH">ToR Switch</option>
+          <option value="AGG_SWITCH">Agg Switch</option>
+          <option value="ROUTER">Router</option>
+          <option value="OOB_SWITCH">OOB Switch</option>
+        </select>
         <input
           type="text"
           placeholder="Search hostname, ID, IP..."
@@ -89,9 +127,9 @@ export default function Agents() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 border border-white/10 text-white placeholder:text-slate-500 w-64"
         />
-        {(serverFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+        {(serverFilter !== 'all' || statusFilter !== 'all' || typeFilter !== 'all' || searchQuery) && (
           <button
-            onClick={() => { setServerFilter('all'); setStatusFilter('all'); setSearchQuery('') }}
+            onClick={() => { setServerFilter('all'); setStatusFilter('all'); setTypeFilter('all'); setSearchQuery('') }}
             className="text-xs text-slate-400 hover:text-white"
           >
             Clear filters
@@ -109,6 +147,7 @@ export default function Agents() {
               <th className="text-left p-4 font-medium text-slate-300">Server</th>
               <th className="text-left p-4 font-medium text-slate-300">Agent ID</th>
               <th className="text-left p-4 font-medium text-slate-300">Hostname</th>
+              <th className="text-left p-4 font-medium text-slate-300">Type</th>
               <th className="text-left p-4 font-medium text-slate-300">IP Address</th>
               <th className="text-left p-4 font-medium text-slate-300">Status</th>
               <th className="text-left p-4 font-medium text-slate-300">Last Seen</th>
@@ -122,16 +161,21 @@ export default function Agents() {
               const server = servers?.find((s) => s.name === agent.server_name)
               const serverColor = server?.metadata?.color || '#3b82f6'
               const serverDown = server ? server.health?.status !== 'healthy' : false
+              const meta = getDeviceTypeMeta(agent.agent_id)
+
+              const rowBg = serverDown
+                ? 'bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500'
+                : agent.status === 'offline'
+                ? `bg-yellow-500/5 hover:bg-yellow-500/10 ${meta.isPowerDevice ? `border-l-2` : ''}`
+                : meta.isPowerDevice
+                ? `${meta.bgClass} border-l-2`
+                : meta.bgClass
+
               return (
                 <tr
                   key={agent.id}
-                  className={`transition-colors ${
-                    serverDown
-                      ? 'bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500'
-                      : agent.status === 'offline'
-                      ? 'bg-yellow-500/5 hover:bg-yellow-500/10'
-                      : 'hover:bg-white/5'
-                  }`}
+                  className={`transition-colors ${rowBg}`}
+                  style={meta.isPowerDevice && !serverDown ? { borderLeftColor: meta.color } : undefined}
                 >
                   <td className="p-4">
                     <div className="flex items-center gap-2">
@@ -161,6 +205,9 @@ export default function Agents() {
                     </Link>
                   </td>
                   <td className="p-4 font-medium text-white">{agent.hostname}</td>
+                  <td className="p-4">
+                    <DeviceTypeBadge agentId={agent.agent_id} />
+                  </td>
                   <td className="p-4 font-mono text-sm text-slate-300">{agent.ip_address}</td>
                   <td className="p-4">
                     {serverDown ? (

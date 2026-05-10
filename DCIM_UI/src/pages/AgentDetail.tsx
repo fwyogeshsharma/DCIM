@@ -1,12 +1,163 @@
 import { useParams, Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAgent, useLatestMetrics } from '@/hooks/useAgents'
-import { BarChart3, ArrowLeft } from 'lucide-react'
+import { BarChart3, ArrowLeft, Radio, Waves, RefreshCw, Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getDeviceTypeMeta, POWER_DEVICE_DESCRIPTIONS } from '@/lib/deviceType'
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle,
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface GnmiEvent {
+  timestamp: string
+  device: string
+  agent_id: string
+  protocol: string
+  event: string
+  path: string
+  metrics_count: number
+  values: Record<string, { value: number; unit: string }>
+}
+
+interface SflowEvent {
+  timestamp: string
+  device: string
+  agent_id: string
+  protocol: string
+  event: string
+  interface: string
+  if_index: number
+  in_octets: number
+  out_octets: number
+  oper_status: number
+  in_mbps: number
+  out_mbps: number
+}
+
+interface TelemetryResult {
+  container: string
+  data?: { gnmi: GnmiEvent[]; sflow: SflowEvent[] }
+  error?: string
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+function fmtTs(ts: string) {
+  try { return new Date(ts).toLocaleTimeString() } catch { return ts }
+}
+
+function statusBadge(ok: number) {
+  return ok === 1
+    ? <span className="text-green-400 text-xs">up</span>
+    : <span className="text-red-400 text-xs">down</span>
+}
+
+// ── Telemetry hook ─────────────────────────────────────────────────────────────
+
+function useTelemetry(hostname: string | undefined) {
+  return useQuery<TelemetryResult[]>({
+    queryKey: ['telemetry', hostname],
+    queryFn: () =>
+      fetch(`/orchestrator/telemetry?device=${encodeURIComponent(hostname ?? '')}&limit=50`)
+        .then(r => r.json()),
+    enabled: !!hostname,
+    refetchInterval: 15000,
+    staleTime: 10000,
+  })
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function GnmiTable({ events }: { events: GnmiEvent[] }) {
+  if (!events.length)
+    return <p className="text-slate-500 text-sm py-3">No gNMI events yet — metrics post every 30 s.</p>
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs text-slate-300">
+        <thead>
+          <tr className="text-slate-500 border-b border-white/10">
+            <th className="text-left py-2 pr-4 font-medium">Time</th>
+            <th className="text-left py-2 pr-4 font-medium">Path</th>
+            <th className="text-left py-2 pr-4 font-medium">Metrics</th>
+            <th className="text-left py-2 font-medium">Sample values</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((e, i) => (
+            <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+              <td className="py-1.5 pr-4 font-mono text-slate-400">{fmtTs(e.timestamp)}</td>
+              <td className="py-1.5 pr-4 font-mono text-blue-300">{e.path}</td>
+              <td className="py-1.5 pr-4">{e.metrics_count}</td>
+              <td className="py-1.5 text-slate-400">
+                {Object.entries(e.values ?? {}).slice(0, 3).map(([k, v]) =>
+                  <span key={k} className="mr-2">{k}: {v.value}{v.unit}</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function SflowTable({ events }: { events: SflowEvent[] }) {
+  if (!events.length)
+    return <p className="text-slate-500 text-sm py-3">No sFlow events yet — flow samples appear when interfaces have traffic.</p>
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs text-slate-300">
+        <thead>
+          <tr className="text-slate-500 border-b border-white/10">
+            <th className="text-left py-2 pr-4 font-medium">Time</th>
+            <th className="text-left py-2 pr-4 font-medium">Interface</th>
+            <th className="text-left py-2 pr-4 font-medium">Status</th>
+            <th className="text-right py-2 pr-4 font-medium">In (Mbps)</th>
+            <th className="text-right py-2 font-medium">Out (Mbps)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((e, i) => (
+            <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+              <td className="py-1.5 pr-4 font-mono text-slate-400">{fmtTs(e.timestamp)}</td>
+              <td className="py-1.5 pr-4 font-mono text-cyan-300">{e.interface}</td>
+              <td className="py-1.5 pr-4">{statusBadge(e.oper_status)}</td>
+              <td className="py-1.5 pr-4 text-right text-green-300">{e.in_mbps.toFixed(3)}</td>
+              <td className="py-1.5 text-right text-blue-300">{e.out_mbps.toFixed(3)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 
 export default function AgentDetail() {
   const { agentId } = useParams<{ agentId: string }>()
   const { data: agent, isLoading } = useAgent(agentId!)
   const { data: latestMetrics } = useLatestMetrics(agentId!)
+  const { data: telemetryRaw, refetch: refetchTel, isFetching: telFetching } =
+    useTelemetry(agent?.hostname)
+
+  // Merge events from all containers for this device
+  const gnmiEvents: GnmiEvent[] = []
+  const sflowEvents: SflowEvent[] = []
+  for (const row of telemetryRaw ?? []) {
+    if (row.data) {
+      gnmiEvents.push(...(row.data.gnmi ?? []))
+      sflowEvents.push(...(row.data.sflow ?? []))
+    }
+  }
+  // Sort newest first
+  gnmiEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+  sflowEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
 
   if (isLoading) {
     return <div className="text-slate-400">Loading agent details...</div>
@@ -16,9 +167,32 @@ export default function AgentDetail() {
     return <div className="text-slate-400">Agent not found</div>
   }
 
+  const deviceMeta = getDeviceTypeMeta(agent.agent_id)
+  const DeviceIcon = ICON_MAP[deviceMeta.icon] ?? HelpCircle
+  const powerDesc = POWER_DEVICE_DESCRIPTIONS[deviceMeta.category]
+
   return (
     <div className="space-y-6">
-      {/* Header with Actions */}
+      {/* Power device callout */}
+      {deviceMeta.isPowerDevice && (
+        <div
+          className="flex items-start gap-3 px-4 py-3 rounded-xl border"
+          style={{
+            background: `color-mix(in srgb, ${deviceMeta.color} 8%, transparent)`,
+            borderColor: `color-mix(in srgb, ${deviceMeta.color} 30%, transparent)`,
+          }}
+        >
+          <DeviceIcon className="w-5 h-5 mt-0.5 shrink-0" style={{ color: deviceMeta.color }} />
+          <div>
+            <p className="text-sm font-semibold" style={{ color: deviceMeta.color }}>
+              Power Infrastructure Device — {deviceMeta.label}
+            </p>
+            {powerDesc && <p className="text-xs text-slate-400 mt-0.5">{powerDesc}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -29,7 +203,15 @@ export default function AgentDetail() {
               </Button>
             </Link>
           </div>
-          <h1 className="text-3xl font-bold text-white">{agent.hostname}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-white">{agent.hostname}</h1>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${deviceMeta.badgeClass}`}
+            >
+              <DeviceIcon className="w-3.5 h-3.5" />
+              {deviceMeta.label}
+            </span>
+          </div>
           <p className="text-slate-400 mt-2">Agent ID: {agent.agent_id}</p>
         </div>
         <Link to={`/app/agents/${agentId}/analytics`}>
@@ -40,6 +222,7 @@ export default function AgentDetail() {
         </Link>
       </div>
 
+      {/* Info cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {agent.server_name && (
           <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-4">
@@ -61,6 +244,7 @@ export default function AgentDetail() {
         </div>
       </div>
 
+      {/* Latest metrics */}
       <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Latest Metrics</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -76,6 +260,39 @@ export default function AgentDetail() {
         </div>
       </div>
 
+      {/* gNMI telemetry */}
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Radio className="w-5 h-5 text-blue-400" />
+            gNMI Telemetry
+            <span className="text-xs font-normal text-slate-500 ml-1">({gnmiEvents.length} events)</span>
+          </h3>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => refetchTel()}
+            disabled={telFetching}
+            className="text-slate-400 hover:text-white"
+          >
+            <RefreshCw className={`w-4 h-4 ${telFetching ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+        <GnmiTable events={gnmiEvents.slice(0, 20)} />
+      </div>
+
+      {/* sFlow telemetry */}
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Waves className="w-5 h-5 text-cyan-400" />
+            sFlow Interface Events
+            <span className="text-xs font-normal text-slate-500 ml-1">({sflowEvents.length} events)</span>
+          </h3>
+        </div>
+        <SflowTable events={sflowEvents.slice(0, 30)} />
+      </div>
+
+      {/* Metrics charts placeholder */}
       <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-white mb-4">Metrics Charts</h3>
         <div className="text-slate-400 text-sm">

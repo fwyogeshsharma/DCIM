@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { useEffect } from 'react'
 import { useUIStore } from './stores/useUIStore'
+import { useAlertNotifications } from './hooks/useAlertNotifications'
 import AppLayout from './components/layout/AppLayout'
 import LandingOptimized from './pages/LandingOptimized'
 import Dashboard from './pages/Dashboard'
@@ -17,6 +18,8 @@ import AIAnalytics from './pages/AIAnalytics'
 import NaturalLanguageQuery from './pages/NaturalLanguageQuery'
 import Settings from './pages/Settings'
 import ServerManagement from './pages/ServerManagement'
+import SimulatorControl from './pages/SimulatorControl'
+import SimulatorTopology from './pages/SimulatorTopology'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +30,11 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+function AlertWatcher() {
+  useAlertNotifications()
+  return null
+}
 
 function App() {
   const theme = useUIStore((state) => state.theme)
@@ -41,10 +49,12 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <AlertWatcher />
       <BrowserRouter>
         <div className="min-h-screen bg-background text-foreground">
           <Routes>
             <Route path="/" element={<LandingOptimized />} />
+            <Route path="/simulator" element={<SimulatorTopology />} />
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<Navigate to="/app/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
@@ -59,6 +69,7 @@ function App() {
               <Route path="nl-query" element={<NaturalLanguageQuery />} />
               <Route path="servers" element={<ServerManagement />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="simulator" element={<SimulatorControl />} />
             </Route>
           </Routes>
         </div>

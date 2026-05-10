@@ -1,0 +1,40 @@
+network_id: network-c
+topology_file: /app/topologies/large_enterprise_wan.json
+topology_name: "Network C - Enterprise WAN (Edge/Intermittent)"
+dcim_server_url: http://dcim-server-c:8080/api/v1
+
+simulation:
+  tick_interval: 60
+  snmp_sync_every: 2
+  speed_multiplier: 1.0
+
+protocols:
+  snmp:
+    enabled: true
+    port: 161
+  gnmi:
+    enabled: true
+    port: 57400
+  sflow:
+    enabled: false
+    target_ip: "dcim-server-c"
+    target_port: 6343
+    interval: 60
+    sample_rate: 200
+  traps:
+    enabled: true
+    target_ip: "dcim-server-c"
+    target_port: 162
+
+network:
+  packet_loss_pct: 10
+  link_latency_ms: 500
+  intermittent: true
+  online_duration_sec: 300
+  offline_duration_sec: 60
+
+telemetry_profile:
+  cpu_base: 30
+  memory_base: 45
+  cpu_spike_chance: 0.02
+  link_flap_chance: 0.05

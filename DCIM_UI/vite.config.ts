@@ -12,6 +12,16 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // Proxy is handled by the standalone proxy-server.js for mTLS
+    proxy: {
+      '/api': 'http://localhost:3001',
+      '/orchestrator': { target: process.env.ORCHESTRATOR_URL || 'http://localhost:8099', rewrite: (p) => p.replace(/^\/orchestrator/, '') },
+    },
+  },
+  preview: {
+    port: 5173,
+    proxy: {
+      '/api': 'http://localhost:3001',
+      '/orchestrator': { target: process.env.ORCHESTRATOR_URL || 'http://localhost:8099', rewrite: (p) => p.replace(/^\/orchestrator/, '') },
+    },
   },
 })

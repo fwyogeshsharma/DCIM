@@ -2,14 +2,14 @@ package sender
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
+	// "crypto/tls"  // CERTIFICATE CHECKS DISABLED
+	// "crypto/x509" // CERTIFICATE CHECKS DISABLED
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"os"
+	// "net/url" // CERTIFICATE CHECKS DISABLED
+	// "os"     // CERTIFICATE CHECKS DISABLED
 	"time"
 
 	"github.com/faberlabs/dicm-agent/internal/config"
@@ -53,14 +53,13 @@ func New(cfg config.ServerConfig, agentID string, store *storage.Storage, log *l
 	// Create HTTP client with optional TLS configuration
 	client, err := createHTTPClient(cfg, log)
 	if err != nil {
-		// If TLS is enabled but fails to configure, this is a FATAL error
-		// Don't fall back to insecure connection
-		if cfg.TLS.Enabled {
-			log.Errorf("FATAL: Failed to create mTLS HTTP client: %v", err)
-			log.Errorf("Cannot start agent with invalid TLS configuration")
-			log.Errorf("Please check certificate paths in config.yaml")
-			os.Exit(1)
-		}
+		// CERTIFICATE CHECKS DISABLED - TLS fatal exit commented out
+		// if cfg.TLS.Enabled {
+		// 	log.Errorf("FATAL: Failed to create mTLS HTTP client: %v", err)
+		// 	log.Errorf("Cannot start agent with invalid TLS configuration")
+		// 	log.Errorf("Please check certificate paths in config.yaml")
+		// 	os.Exit(1)
+		// }
 		log.Warnf("TLS not configured, using default HTTP client")
 		client = &http.Client{
 			Timeout: cfg.Timeout,
@@ -77,103 +76,108 @@ func New(cfg config.ServerConfig, agentID string, store *storage.Storage, log *l
 }
 
 // createHTTPClient creates an HTTP client with optional mTLS configuration
+// CERTIFICATE CHECKS DISABLED - always returns a plain HTTP client
 func createHTTPClient(cfg config.ServerConfig, log *logger.Logger) (*http.Client, error) {
-	// If TLS is not enabled, return basic client
-	if !cfg.TLS.Enabled {
-		log.Infof("TLS is disabled - using standard HTTP client")
-		return &http.Client{
-			Timeout: cfg.Timeout,
-		}, nil
-	}
+	log.Infof("Certificate checks disabled - using standard HTTP client")
+	return &http.Client{Timeout: cfg.Timeout}, nil
 
-	log.Infof("Configuring mTLS (Mutual TLS) authentication...")
-
-	// Create TLS configuration
-	tlsConfig := &tls.Config{}
-
-	// Set minimum TLS version
-	switch cfg.TLS.MinTLSVersion {
-	case "1.3":
-		tlsConfig.MinVersion = tls.VersionTLS13
-		log.Infof("Minimum TLS version: 1.3")
-	case "1.2":
-		tlsConfig.MinVersion = tls.VersionTLS12
-		log.Infof("Minimum TLS version: 1.2")
-	default:
-		tlsConfig.MinVersion = tls.VersionTLS12 // Default to TLS 1.2
-		log.Infof("Minimum TLS version: 1.2 (default)")
-	}
-
-	// Load client certificate and key (for client authentication)
-	if cfg.TLS.ClientCertPath != "" && cfg.TLS.ClientKeyPath != "" {
-		cert, err := tls.LoadX509KeyPair(cfg.TLS.ClientCertPath, cfg.TLS.ClientKeyPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load client certificate: %w", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
-		log.Infof("✓ Loaded client certificate from: %s", cfg.TLS.ClientCertPath)
-		log.Infof("✓ Loaded client key from: %s", cfg.TLS.ClientKeyPath)
-
-		// Parse and log certificate details for debugging
-		if len(cert.Certificate) > 0 {
-			clientCert, err := x509.ParseCertificate(cert.Certificate[0])
-			if err == nil {
-				log.Infof("  Client cert Subject: %s", clientCert.Subject.CommonName)
-				log.Infof("  Client cert Issuer: %s", clientCert.Issuer.CommonName)
-				log.Infof("  Client cert Valid: %s to %s",
-					clientCert.NotBefore.Format("2006-01-02"),
-					clientCert.NotAfter.Format("2006-01-02"))
-			}
-		}
-	} else {
-		log.Warnf("No client certificate configured - server must not require client authentication")
-	}
-
-	// Load CA certificate (for server verification)
-	if cfg.TLS.CACertPath != "" {
-		caCert, err := os.ReadFile(cfg.TLS.CACertPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
-		}
-
-		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("failed to parse CA certificate")
-		}
-
-		tlsConfig.RootCAs = caCertPool
-		log.Infof("✓ Loaded CA certificate from: %s", cfg.TLS.CACertPath)
-	} else {
-		log.Infof("Using system CA certificates for server verification")
-	}
-
-	// Handle insecure skip verify (NOT recommended for production)
-	if cfg.TLS.InsecureSkipVerify {
-		tlsConfig.InsecureSkipVerify = true
-		log.Warnf("⚠️  WARNING: SSL certificate verification is DISABLED")
-		log.Warnf("⚠️  This is INSECURE and should only be used for testing")
-	}
-
-	// Extract hostname from server URL for ServerName (important for certificate verification)
-	if parsedURL, err := url.Parse(cfg.URL); err == nil && parsedURL.Host != "" {
-		hostname := parsedURL.Hostname()
-		if hostname != "" {
-			tlsConfig.ServerName = hostname
-			log.Infof("  TLS ServerName: %s", hostname)
-		}
-	}
-
-	// Create HTTP transport with TLS configuration
-	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	log.Infof("✓ mTLS client configured successfully")
-
-	return &http.Client{
-		Timeout:   cfg.Timeout,
-		Transport: transport,
-	}, nil
+	// CERTIFICATE CHECKS DISABLED - original mTLS code below
+	// // If TLS is not enabled, return basic client
+	// if !cfg.TLS.Enabled {
+	// 	log.Infof("TLS is disabled - using standard HTTP client")
+	// 	return &http.Client{
+	// 		Timeout: cfg.Timeout,
+	// 	}, nil
+	// }
+	//
+	// log.Infof("Configuring mTLS (Mutual TLS) authentication...")
+	//
+	// // Create TLS configuration
+	// tlsConfig := &tls.Config{}
+	//
+	// // Set minimum TLS version
+	// switch cfg.TLS.MinTLSVersion {
+	// case "1.3":
+	// 	tlsConfig.MinVersion = tls.VersionTLS13
+	// 	log.Infof("Minimum TLS version: 1.3")
+	// case "1.2":
+	// 	tlsConfig.MinVersion = tls.VersionTLS12
+	// 	log.Infof("Minimum TLS version: 1.2")
+	// default:
+	// 	tlsConfig.MinVersion = tls.VersionTLS12 // Default to TLS 1.2
+	// 	log.Infof("Minimum TLS version: 1.2 (default)")
+	// }
+	//
+	// // Load client certificate and key (for client authentication)
+	// if cfg.TLS.ClientCertPath != "" && cfg.TLS.ClientKeyPath != "" {
+	// 	cert, err := tls.LoadX509KeyPair(cfg.TLS.ClientCertPath, cfg.TLS.ClientKeyPath)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to load client certificate: %w", err)
+	// 	}
+	// 	tlsConfig.Certificates = []tls.Certificate{cert}
+	// 	log.Infof("✓ Loaded client certificate from: %s", cfg.TLS.ClientCertPath)
+	// 	log.Infof("✓ Loaded client key from: %s", cfg.TLS.ClientKeyPath)
+	//
+	// 	// Parse and log certificate details for debugging
+	// 	if len(cert.Certificate) > 0 {
+	// 		clientCert, err := x509.ParseCertificate(cert.Certificate[0])
+	// 		if err == nil {
+	// 			log.Infof("  Client cert Subject: %s", clientCert.Subject.CommonName)
+	// 			log.Infof("  Client cert Issuer: %s", clientCert.Issuer.CommonName)
+	// 			log.Infof("  Client cert Valid: %s to %s",
+	// 				clientCert.NotBefore.Format("2006-01-02"),
+	// 				clientCert.NotAfter.Format("2006-01-02"))
+	// 		}
+	// 	}
+	// } else {
+	// 	log.Warnf("No client certificate configured - server must not require client authentication")
+	// }
+	//
+	// // Load CA certificate (for server verification)
+	// if cfg.TLS.CACertPath != "" {
+	// 	caCert, err := os.ReadFile(cfg.TLS.CACertPath)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to read CA certificate: %w", err)
+	// 	}
+	//
+	// 	caCertPool := x509.NewCertPool()
+	// 	if !caCertPool.AppendCertsFromPEM(caCert) {
+	// 		return nil, fmt.Errorf("failed to parse CA certificate")
+	// 	}
+	//
+	// 	tlsConfig.RootCAs = caCertPool
+	// 	log.Infof("✓ Loaded CA certificate from: %s", cfg.TLS.CACertPath)
+	// } else {
+	// 	log.Infof("Using system CA certificates for server verification")
+	// }
+	//
+	// // Handle insecure skip verify (NOT recommended for production)
+	// if cfg.TLS.InsecureSkipVerify {
+	// 	tlsConfig.InsecureSkipVerify = true
+	// 	log.Warnf("⚠️  WARNING: SSL certificate verification is DISABLED")
+	// 	log.Warnf("⚠️  This is INSECURE and should only be used for testing")
+	// }
+	//
+	// // Extract hostname from server URL for ServerName (important for certificate verification)
+	// if parsedURL, err := url.Parse(cfg.URL); err == nil && parsedURL.Host != "" {
+	// 	hostname := parsedURL.Hostname()
+	// 	if hostname != "" {
+	// 		tlsConfig.ServerName = hostname
+	// 		log.Infof("  TLS ServerName: %s", hostname)
+	// 	}
+	// }
+	//
+	// // Create HTTP transport with TLS configuration
+	// transport := &http.Transport{
+	// 	TLSClientConfig: tlsConfig,
+	// }
+	//
+	// log.Infof("✓ mTLS client configured successfully")
+	//
+	// return &http.Client{
+	// 	Timeout:   cfg.Timeout,
+	// 	Transport: transport,
+	// }, nil
 }
 
 // SendAlerts sends alerts to the server immediately

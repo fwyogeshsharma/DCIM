@@ -1,12 +1,12 @@
 package server
 
 import (
-	"crypto/tls"
-	"crypto/x509"
+	// "crypto/tls"  // CERTIFICATE CHECKS DISABLED
+	// "crypto/x509" // CERTIFICATE CHECKS DISABLED
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	// "io/ioutil" // CERTIFICATE CHECKS DISABLED
 	"log"
 	"net/http"
 	"strings"
@@ -108,14 +108,14 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
-	// Configure TLS if enabled
-	if cfg.TLS.Enabled {
-		tlsConfig, err := server.setupTLS()
-		if err != nil {
-			return nil, fmt.Errorf("failed to setup TLS: %w", err)
-		}
-		server.httpServer.TLSConfig = tlsConfig
-	}
+	// Configure TLS if enabled - CERTIFICATE CHECKS DISABLED
+	// if cfg.TLS.Enabled {
+	// 	tlsConfig, err := server.setupTLS()
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to setup TLS: %w", err)
+	// 	}
+	// 	server.httpServer.TLSConfig = tlsConfig
+	// }
 
 	// Preload cooling configuration (will log on startup)
 	if _, err := server.loadCoolingConfig(); err != nil {
@@ -155,59 +155,60 @@ func New(cfg *config.Config, db *database.Database, licMgr *license.Manager) (*S
 	return server, nil
 }
 
+// CERTIFICATE CHECKS DISABLED - setupTLS commented out
 // setupTLS configures TLS with mTLS support
-func (s *Server) setupTLS() (*tls.Config, error) {
-	cfg := s.config.TLS
-
-	// Load CA certificate for client verification
-	caCert, err := ioutil.ReadFile(cfg.CACertPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read CA certificate: %w", err)
-	}
-
-	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM(caCert) {
-		return nil, fmt.Errorf("failed to parse CA certificate")
-	}
-
-	// Determine client auth mode
-	var clientAuth tls.ClientAuthType
-	switch cfg.ClientAuth {
-	case "none":
-		clientAuth = tls.NoClientCert
-	case "request":
-		clientAuth = tls.RequestClientCert
-	case "require":
-		clientAuth = tls.RequireAnyClientCert
-	case "verify_if_given":
-		clientAuth = tls.VerifyClientCertIfGiven
-	case "require_and_verify":
-		clientAuth = tls.RequireAndVerifyClientCert
-	default:
-		clientAuth = tls.RequireAndVerifyClientCert
-	}
-
-	// Determine minimum TLS version
-	var minVersion uint16
-	switch cfg.MinTLSVersion {
-	case "1.3":
-		minVersion = tls.VersionTLS13
-	case "1.2":
-		minVersion = tls.VersionTLS12
-	default:
-		minVersion = tls.VersionTLS12
-	}
-
-	tlsConfig := &tls.Config{
-		ClientCAs:  caCertPool,
-		ClientAuth: clientAuth,
-		MinVersion: minVersion,
-	}
-
-	s.logger.Printf("TLS configured: ClientAuth=%s, MinVersion=%s", cfg.ClientAuth, cfg.MinTLSVersion)
-
-	return tlsConfig, nil
-}
+// func (s *Server) setupTLS() (*tls.Config, error) {
+// 	cfg := s.config.TLS
+//
+// 	// Load CA certificate for client verification
+// 	caCert, err := ioutil.ReadFile(cfg.CACertPath)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to read CA certificate: %w", err)
+// 	}
+//
+// 	caCertPool := x509.NewCertPool()
+// 	if !caCertPool.AppendCertsFromPEM(caCert) {
+// 		return nil, fmt.Errorf("failed to parse CA certificate")
+// 	}
+//
+// 	// Determine client auth mode
+// 	var clientAuth tls.ClientAuthType
+// 	switch cfg.ClientAuth {
+// 	case "none":
+// 		clientAuth = tls.NoClientCert
+// 	case "request":
+// 		clientAuth = tls.RequestClientCert
+// 	case "require":
+// 		clientAuth = tls.RequireAnyClientCert
+// 	case "verify_if_given":
+// 		clientAuth = tls.VerifyClientCertIfGiven
+// 	case "require_and_verify":
+// 		clientAuth = tls.RequireAndVerifyClientCert
+// 	default:
+// 		clientAuth = tls.RequireAndVerifyClientCert
+// 	}
+//
+// 	// Determine minimum TLS version
+// 	var minVersion uint16
+// 	switch cfg.MinTLSVersion {
+// 	case "1.3":
+// 		minVersion = tls.VersionTLS13
+// 	case "1.2":
+// 		minVersion = tls.VersionTLS12
+// 	default:
+// 		minVersion = tls.VersionTLS12
+// 	}
+//
+// 	tlsConfig := &tls.Config{
+// 		ClientCAs:  caCertPool,
+// 		ClientAuth: clientAuth,
+// 		MinVersion: minVersion,
+// 	}
+//
+// 	s.logger.Printf("TLS configured: ClientAuth=%s, MinVersion=%s", cfg.ClientAuth, cfg.MinTLSVersion)
+//
+// 	return tlsConfig, nil
+// }
 
 // Start starts the server
 func (s *Server) Start() error {
@@ -262,14 +263,14 @@ func (s *Server) Start() error {
 	s.logger.Println("================================================================================")
 	s.logger.Println()
 
-	// Start server
-	if s.config.TLS.Enabled {
-		s.logger.Printf("Server starting with mTLS on https://%s", s.config.GetServerAddress())
-		return s.httpServer.ListenAndServeTLS(s.config.TLS.ServerCertPath, s.config.TLS.ServerKeyPath)
-	} else {
-		s.logger.Printf("Server starting on http://%s", s.config.GetServerAddress())
-		return s.httpServer.ListenAndServe()
-	}
+	// Start server - CERTIFICATE CHECKS DISABLED, always plain HTTP
+	// if s.config.TLS.Enabled {
+	// 	s.logger.Printf("Server starting with mTLS on https://%s", s.config.GetServerAddress())
+	// 	return s.httpServer.ListenAndServeTLS(s.config.TLS.ServerCertPath, s.config.TLS.ServerKeyPath)
+	// } else {
+	s.logger.Printf("Server starting on http://%s", s.config.GetServerAddress())
+	return s.httpServer.ListenAndServe()
+	// }
 }
 
 // Stop gracefully stops the server
@@ -337,16 +338,15 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 // authMiddleware handles agent authentication
 func (s *Server) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip auth for health check
-		if r.URL.Path == s.config.Health.Path {
+		// Skip auth for health check and agent registration
+		if r.URL.Path == s.config.Health.Path ||
+			r.URL.Path == s.config.API.BasePath+"/register" {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// Skip auth for GET requests to UI endpoints (read-only API for dashboard)
-		if r.Method == "GET" && (r.URL.Path == s.config.API.BasePath+"/agents" ||
-			strings.HasPrefix(r.URL.Path, s.config.API.BasePath+"/agents/") ||
-			r.URL.Path == s.config.API.BasePath+"/events") {
+		// Skip auth for all GET requests — read-only dashboard access
+		if r.Method == "GET" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -392,11 +392,11 @@ func (s *Server) authMiddleware(next http.Handler) http.Handler {
 func (s *Server) getAgentID(r *http.Request) string {
 	method := s.config.Agents.Connection.IdentificationMethod
 
-	// Try to get from client certificate
+	// Try to get from client certificate - CERTIFICATE CHECKS DISABLED
 	certCN := ""
-	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
-		certCN = r.TLS.PeerCertificates[0].Subject.CommonName
-	}
+	// if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+	// 	certCN = r.TLS.PeerCertificates[0].Subject.CommonName
+	// }
 
 	// Try to get from request header
 	headerAgentID := r.Header.Get("X-Agent-ID")
@@ -431,11 +431,11 @@ func (s *Server) autoRegisterAgent(r *http.Request, agentID string) error {
 		return err
 	}
 
-	// Get certificate CN
+	// Get certificate CN - CERTIFICATE CHECKS DISABLED
 	certCN := ""
-	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
-		certCN = r.TLS.PeerCertificates[0].Subject.CommonName
-	}
+	// if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+	// 	certCN = r.TLS.PeerCertificates[0].Subject.CommonName
+	// }
 
 	// Extract IP address
 	ip := r.RemoteAddr
@@ -643,11 +643,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get certificate CN
+	// Get certificate CN - CERTIFICATE CHECKS DISABLED
 	certCN := ""
-	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
-		certCN = r.TLS.PeerCertificates[0].Subject.CommonName
-	}
+	// if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+	// 	certCN = r.TLS.PeerCertificates[0].Subject.CommonName
+	// }
 
 	agent := &models.Agent{
 		AgentID:       req.AgentID,
