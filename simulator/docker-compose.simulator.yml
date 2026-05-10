@@ -212,10 +212,11 @@ services:
       role: "network-sim"
       network_id: "network-a"
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3).read()"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=5).read()"]
       interval: 20s
-      timeout: 5s
-      retries: 5
+      timeout: 8s
+      retries: 10
+      start_period: 180s
 
   # ── Network Simulator — Network B (Spine-Leaf, 112 devices) ─────────────────
   sim-network-b:
@@ -245,10 +246,11 @@ services:
       role: "network-sim"
       network_id: "network-b"
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3).read()"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=5).read()"]
       interval: 20s
-      timeout: 5s
-      retries: 5
+      timeout: 8s
+      retries: 10
+      start_period: 180s
 
   # ── Network Simulator — Network C (Enterprise WAN, 104 devices) ─────────────
   sim-network-c:
@@ -278,10 +280,11 @@ services:
       role: "network-sim"
       network_id: "network-c"
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3).read()"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=5).read()"]
       interval: 20s
-      timeout: 5s
-      retries: 5
+      timeout: 8s
+      retries: 10
+      start_period: 180s
 
   # ── Orchestrator ─────────────────────────────────────────────────────────────
   orchestrator:
@@ -306,7 +309,8 @@ services:
       - sim-network-c
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8099/health', timeout=3).read()"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8099/health', timeout=5).read()"]
       interval: 15s
-      timeout: 5s
-      retries: 3
+      timeout: 8s
+      retries: 5
+      start_period: 30s
