@@ -13,15 +13,15 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:3001',
-      '/orchestrator': { target: process.env.ORCHESTRATOR_URL || 'http://localhost:8099', rewrite: (p) => p.replace(/^\/orchestrator/, '') },
+      '/api': { target: process.env.PROXY_URL || 'http://localhost:3001', changeOrigin: true },
+      '/orchestrator': { target: process.env.ORCHESTRATOR_URL || 'http://localhost:8099', changeOrigin: true, rewrite: (p) => p.replace(/^\/orchestrator/, '') },
     },
   },
   preview: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:3001',
-      '/orchestrator': { target: process.env.ORCHESTRATOR_URL || 'http://localhost:8099', rewrite: (p) => p.replace(/^\/orchestrator/, '') },
+      '/api': { target: process.env.PROXY_URL || 'http://localhost:3001', changeOrigin: true },
+      '/orchestrator': { target: process.env.ORCHESTRATOR_URL || 'http://localhost:8099', changeOrigin: true, rewrite: (p) => p.replace(/^\/orchestrator/, '') },
     },
   },
 })
