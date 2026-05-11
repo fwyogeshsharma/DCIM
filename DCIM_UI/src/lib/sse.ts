@@ -44,6 +44,10 @@ export class SSEClient {
       this.handleEvent('status_change', event)
     })
 
+    this.eventSource.addEventListener('trap', (event) => {
+      this.handleEvent('trap', event)
+    })
+
     // Generic message handler
     this.eventSource.onmessage = (event) => {
       this.handleEvent('message', event)

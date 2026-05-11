@@ -2,6 +2,7 @@ import { Pool } from 'pg'
 import { HttpClient } from '../utils/httpClient'
 import { getAgentForServer } from '../utils/certManager'
 import { logger } from '../utils/logger'
+import { emitSSEEvent } from '../events/sseEmitter'
 
 export class DataSyncService {
   constructor(private dbPool: Pool) {}
@@ -314,6 +315,7 @@ export class DataSyncService {
       if (!Array.isArray(traps) || traps.length === 0) return
 
       let inserted = 0
+      const newTraps: any[] = []
       for (const trap of traps) {
         try {
           const result = await this.dbPool.query(
@@ -336,7 +338,10 @@ export class DataSyncService {
               trap.resolved_at || null,
             ]
           )
-          if (result.rowCount && result.rowCount > 0) inserted++
+          if (result.rowCount && result.rowCount > 0) {
+            inserted++
+            newTraps.push(trap)
+          }
         } catch {
           // skip individual insert errors (constraint violations etc.)
         }
@@ -344,6 +349,40 @@ export class DataSyncService {
 
       if (inserted > 0) {
         logger.info(`Synced ${inserted} new traps from server ${serverId}`)
+
+        for (const trap of newTraps) {
+          // Push to connected UI clients via SSE
+          emitSSEEvent('trap', {
+            source_ip: trap.source_ip,
+            device_name: trap.device_name || '',
+            trap_type: trap.trap_type,
+            severity: trap.severity || 'critical',
+            description: trap.description || '',
+            timestamp: trap.timestamp || new Date().toISOString(),
+            server_id: serverId,
+          })
+
+          // Mirror into alerts table so Alerts page shows trap-based alerts
+          try {
+            await this.dbPool.query(
+              `INSERT INTO alerts
+                 (server_id, agent_id, severity, message, metric_type, resolved, resolved_at, timestamp)
+               VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)`,
+              [
+                serverId,
+                (trap.device_name || trap.source_ip || 'unknown').substring(0, 255),
+                (trap.severity || 'critical').toLowerCase(),
+                trap.description || `SNMP Trap: ${trap.trap_type}`,
+                (trap.trap_type || 'snmp_trap').substring(0, 100),
+                trap.resolved || false,
+                trap.resolved_at || null,
+                trap.timestamp || new Date(),
+              ]
+            )
+          } catch {
+            // non-fatal — trap is already stored in snmp_traps
+          }
+        }
       }
     } catch (error: any) {
       logger.error(`Failed to sync traps from ${serverId}:`, error.message)

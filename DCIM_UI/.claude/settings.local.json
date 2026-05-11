@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"http://localhost:8090/api/v1/traps?limit=5\")",
+      "Bash(curl -s \"http://localhost:8090/traps\")",
+      "Bash(curl -s \"http://localhost:8090/openapi.json\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(m,p\\) for p,v in d['paths'].items\\(\\) for m in v.keys\\(\\)]\")"
+    ]
+  }
+}

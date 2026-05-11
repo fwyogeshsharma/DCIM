@@ -3,13 +3,36 @@ import { useAgent } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts'
-import { Activity, Cpu, HardDrive, Wifi, TrendingUp, Clock, AlertTriangle, CheckCircle, XCircle, Gauge } from 'lucide-react'
+import { Activity, Cpu, HardDrive, Wifi, TrendingUp, Clock, AlertTriangle, CheckCircle, XCircle, Gauge, Radio } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Link } from 'react-router-dom'
 
 export default function AgentAnalytics() {
   const { agentId } = useParams<{ agentId: string }>()
   const { data: agent, isLoading: agentLoading } = useAgent(agentId!)
+
+  // Fetch trap timeline for this device's IP (last 24h, hourly buckets)
+  const { data: trapTimeline } = useQuery({
+    queryKey: ['trap-timeline', agentId],
+    queryFn: async () => {
+      const agentData = agent
+      if (!agentData?.ip_address) return []
+      return api.getTrapTimeline({ source_ip: agentData.ip_address, hours: 24 })
+    },
+    enabled: !!agent,
+    refetchInterval: 30000,
+  })
+
+  // Fetch most recent traps for this device
+  const { data: recentTraps } = useQuery({
+    queryKey: ['traps', agentId],
+    queryFn: async () => {
+      if (!agent?.ip_address) return []
+      return api.getTraps({ source_ip: agent.ip_address, limit: 20 })
+    },
+    enabled: !!agent,
+    refetchInterval: 30000,
+  })
 
   // Fetch metrics for different time ranges
   const { data: metricsRecent } = useQuery({
@@ -447,6 +470,70 @@ export default function AgentAnalytics() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* SNMP Trap History */}
+      {agent?.ip_address && (
+        <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+          <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+            <Radio className="w-6 h-6 text-red-400" />
+            SNMP Trap Activity — Last 24h
+          </h2>
+          <p className="text-slate-400 text-sm mb-6">Traps received from {agent.ip_address}</p>
+
+          {trapTimeline && trapTimeline.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={trapTimeline.map(b => ({
+                  hour: new Date(b.bucket).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                  critical: b.critical,
+                  warning: b.warning,
+                  info: b.info,
+                }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis dataKey="hour" stroke="#64748b" style={{ fontSize: '11px' }} />
+                  <YAxis stroke="#64748b" style={{ fontSize: '11px' }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+                    labelStyle={{ color: '#94a3b8' }}
+                  />
+                  <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
+                  <Bar dataKey="critical" name="Critical" fill="#ef4444" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="warning"  name="Warning"  fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="info"     name="Info"     fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+
+              {recentTraps && recentTraps.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-slate-300 mb-3">Recent Traps</h3>
+                  <div className="space-y-2 max-h-56 overflow-y-auto">
+                    {recentTraps.map((t: any, i: number) => (
+                      <div key={i} className="flex items-start gap-3 p-3 bg-slate-900/50 rounded-lg border border-white/5">
+                        <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold ${
+                          t.severity?.toLowerCase() === 'critical' ? 'bg-red-500/20 text-red-400' :
+                          t.severity?.toLowerCase() === 'warning'  ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                     'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {(t.severity || 'INFO').toUpperCase()}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white truncate">{t.description || t.trap_type}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{t.trap_type} · {new Date(t.timestamp).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-10 text-slate-500">
+              <Radio className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p>No SNMP traps from this device in the last 24 hours</p>
+            </div>
+          )}
         </div>
       )}
 

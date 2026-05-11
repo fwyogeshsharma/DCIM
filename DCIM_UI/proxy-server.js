@@ -253,6 +253,85 @@ app.get('/api/v1/dashboard/stats', async (req, res) => {
   }
 });
 
+// ── Aggregator proxy helpers ───────────────────────────────────────────────
+// Some endpoints live in the aggregator (port 3002), not the DCIM server.
+// Route these BEFORE the catch-all that forwards to dcim-server-a.
+const _aggUrl = process.env.AGGREGATOR_URL || 'http://aggregator:3002'
+const _aggParsed = new URL(_aggUrl)
+const AGG_HOST = _aggParsed.hostname
+const AGG_PORT = parseInt(_aggParsed.port || '3002')
+
+function proxyToAggregator(req, res) {
+  const queryString = req.url.includes('?') ? req.url.split('?').slice(1).join('?') : ''
+  const targetUrl = `http://${AGG_HOST}:${AGG_PORT}${req.path}${queryString ? '?' + queryString : ''}`
+  console.log(`  → Aggregator: ${targetUrl}`)
+
+  const headers = { ...req.headers, host: `${AGG_HOST}:${AGG_PORT}` }
+  delete headers['host']
+  delete headers['connection']
+
+  const proxyReq = http.request(targetUrl, { method: req.method, headers }, (proxyRes) => {
+    console.log(`  ← Aggregator response: ${proxyRes.statusCode}`)
+    res.status(proxyRes.statusCode)
+    Object.keys(proxyRes.headers).forEach(k => res.setHeader(k, proxyRes.headers[k]))
+    proxyRes.pipe(res)
+  })
+
+  proxyReq.on('error', (err) => {
+    console.error('  ✗ Aggregator proxy error:', err.message)
+    if (!res.headersSent) res.status(503).json({ error: 'Aggregator unavailable', message: err.message })
+  })
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    proxyReq.write(JSON.stringify(req.body))
+  }
+  proxyReq.end()
+}
+
+// SSE event stream — must stream without buffering
+app.get('/api/v1/events', (req, res) => {
+  const targetUrl = `http://${AGG_HOST}:${AGG_PORT}/api/v1/events`
+  console.log(`  → SSE stream: ${targetUrl}`)
+
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+
+  const aggReq = http.get(targetUrl, (aggRes) => {
+    aggRes.pipe(res)
+  })
+
+  aggReq.on('error', (err) => {
+    console.error('  ✗ SSE proxy error:', err.message)
+    res.end()
+  })
+
+  req.on('close', () => aggReq.destroy())
+})
+
+// Alerts — aggregator has deduplication, counts, latest endpoints
+app.all('/api/v1/alerts*', (req, res) => proxyToAggregator(req, res))
+
+// Topology nodes + links — served from aggregator DB
+app.all('/api/v1/topology*', (req, res) => proxyToAggregator(req, res))
+
+// SNMP traps
+app.all('/api/v1/traps*', (req, res) => proxyToAggregator(req, res))
+
+// Dashboard full data — aggregator has the aggregated view
+app.get('/api/v1/dashboard', (req, res) => proxyToAggregator(req, res))
+
+// Server management — aggregator owns the servers DB, CRUD, and health checks.
+// These must be before the DCIM catch-all below, but after the synthesized
+// GET /api/v1/servers and GET /api/v1/servers/health/summary routes above.
+app.get('/api/v1/servers/:id/health', (req, res) => proxyToAggregator(req, res))
+app.get('/api/v1/servers/:id', (req, res) => proxyToAggregator(req, res))
+app.post('/api/v1/servers/:id/toggle', (req, res) => proxyToAggregator(req, res))
+app.delete('/api/v1/servers/:id', (req, res) => proxyToAggregator(req, res))
+app.post('/api/v1/servers', (req, res) => proxyToAggregator(req, res))
+app.put('/api/v1/servers/:id', (req, res) => proxyToAggregator(req, res))
+
 // Proxy all /api/v1/* requests to DCIM server
 // CERTIFICATE CHECKS DISABLED - using plain HTTP instead of HTTPS
 app.all('/api/v1/*', async (req, res) => {

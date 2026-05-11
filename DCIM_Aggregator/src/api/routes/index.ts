@@ -6,9 +6,16 @@ import { createServersRouter } from './servers'
 import { createAgentsRouter } from './agents'
 import { createMetricsRouter } from './metrics'
 import { createAlertsRouter } from './alerts'
+import { addSSEClient, removeSSEClient } from '../../events/sseEmitter'
 
 export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClientType) {
   const cacheService = new CacheService(redisClient)
+
+  // SSE event stream — UI subscribes here for real-time trap/alert push
+  app.get('/api/v1/events', (req, res) => {
+    const clientId = addSSEClient(res)
+    req.on('close', () => removeSSEClient(clientId))
+  })
 
   // Mount API routes
   app.use('/api/v1/servers', createServersRouter(dbPool, cacheService))
@@ -144,6 +151,64 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       const { rows } = await dbPool.query(query, params)
 
       res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // SNMP traps listing
+  app.get('/api/v1/traps', async (req, res) => {
+    try {
+      const { server_id, source_ip, device_name, severity, resolved, limit = 200 } = req.query
+      const conditions: string[] = []
+      const params: any[] = []
+      let i = 1
+
+      if (server_id) { params.push(server_id); conditions.push(`server_id = $${i++}::uuid`) }
+      if (source_ip) { params.push(source_ip); conditions.push(`source_ip = $${i++}`) }
+      if (device_name) { params.push(`%${device_name}%`); conditions.push(`device_name ILIKE $${i++}`) }
+      if (severity) { params.push(String(severity).toLowerCase()); conditions.push(`LOWER(severity) = $${i++}`) }
+      if (resolved !== undefined) { params.push(resolved === 'true'); conditions.push(`resolved = $${i++}`) }
+
+      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+      params.push(Math.min(parseInt(String(limit)) || 200, 2000))
+
+      const { rows } = await dbPool.query(
+        `SELECT * FROM snmp_traps ${where} ORDER BY timestamp DESC LIMIT $${i}`,
+        params
+      )
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // Trap frequency timeline — hourly buckets over the last N hours
+  app.get('/api/v1/traps/timeline', async (req, res) => {
+    try {
+      const { source_ip, server_id, hours = 24 } = req.query
+      const safeHours = Math.min(parseInt(String(hours)) || 24, 720)
+      const conditions: string[] = [`timestamp >= NOW() - INTERVAL '${safeHours} hours'`]
+      const params: any[] = []
+      let i = 1
+
+      if (source_ip) { params.push(source_ip); conditions.push(`source_ip = $${i++}`) }
+      if (server_id) { params.push(server_id); conditions.push(`server_id = $${i++}::uuid`) }
+
+      const { rows } = await dbPool.query(`
+        SELECT
+          date_trunc('hour', timestamp) AS bucket,
+          COUNT(*)::int AS total,
+          COUNT(CASE WHEN LOWER(severity) = 'critical' THEN 1 END)::int AS critical,
+          COUNT(CASE WHEN LOWER(severity) = 'warning'  THEN 1 END)::int AS warning,
+          COUNT(CASE WHEN LOWER(severity) = 'info'     THEN 1 END)::int AS info
+        FROM snmp_traps
+        WHERE ${conditions.join(' AND ')}
+        GROUP BY bucket
+        ORDER BY bucket ASC
+      `, params)
+
+      res.json({ success: true, data: rows })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

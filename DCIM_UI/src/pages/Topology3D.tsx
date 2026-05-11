@@ -1437,6 +1437,18 @@ export default function Topology3D() {
     enabled: !USE_MOCK_DATA,
   })
 
+  // Fetch physical device-device wiring from the orchestrator topology
+  const { data: orchTopology } = useQuery<{
+    nodes: any[]
+    edges: { src_ip: string; dst_ip: string; container: string }[]
+  }>({
+    queryKey: ['orc-topology-3d'],
+    queryFn: () => fetch('/orchestrator/topology').then(r => r.json()),
+    staleTime: 60000,
+    refetchInterval: 60000,
+    enabled: !USE_MOCK_DATA,
+  })
+
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
@@ -1528,8 +1540,23 @@ export default function Topology3D() {
       if (filtered.size > 0) visibleOrchDevices = filtered
     }
 
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, visibleOrchDevices)
-  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, orchDevicesByServerId])
+    // Filter orchestrator topology edges to only those whose containers are expanded
+    const expandedNetworks = new Set<string>()
+    if (orchDevicesByServerId) {
+      for (const sid of expandedServers) {
+        const rawId = sid.replace(/^server-/, '')
+        if (orchDevicesByServerId.has(rawId)) {
+          const srv = servers.find(s => `server-${s.id}` === sid)
+          if (srv?.metadata?.network) expandedNetworks.add('sim-' + srv.metadata.network)
+        }
+      }
+    }
+    const visibleOrchEdges = orchTopology?.edges.filter(
+      e => !e.container || expandedNetworks.size === 0 || expandedNetworks.has(e.container)
+    )
+
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, visibleOrchDevices, visibleOrchEdges)
+  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, orchDevicesByServerId, orchTopology])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })

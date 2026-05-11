@@ -8,6 +8,7 @@ import { Activity, Server, ZoomIn, ZoomOut, Maximize2, RefreshCw, Edit3, Calenda
 import { Link, useNavigate } from 'react-router-dom'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { computeLayeredLayout } from '@/lib/topology-layered'
+import { useSSE } from '@/hooks/useSSE'
 
 // ── Toggle this to use 500+ node mock data for testing ──
 const USE_MOCK_DATA = false
@@ -52,6 +53,14 @@ interface TopoLink extends d3.SimulationLinkDatum<TopoNode> {
 
 type TimeFilter = 'today' | '30days' | 'all'
 
+interface TrapAlert {
+  trapType: string
+  severity: string
+  description: string
+  deviceName: string
+  timestamp: string
+}
+
 export default function Topology() {
   const mockData = USE_MOCK_DATA ? getMockTopologyData() : null
   const { data: realAgents, isLoading: realLoading } = useAgents()
@@ -85,11 +94,52 @@ export default function Topology() {
   const simulationRef = useRef<d3.Simulation<TopoNode, TopoLink> | null>(null)
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 
+  // Active SNMP trap alerts keyed by source IP — cleared after 5 min
+  const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
+  const trapTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  // Track node count to decide whether to auto-fit or preserve zoom on re-render
+  const prevNodeCountRef = useRef(0)
+
   // Expand/collapse state — tracks which servers have their agents visible
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
   const [showLegend, setShowLegend] = useState(true)
   const [showStats, setShowStats] = useState(true)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // ── SNMP trap SSE handler ─────────────────────────────────────────────────
+  const handleTrapEvent = useCallback((data: any) => {
+    const ip: string | undefined = data.source_ip
+    if (!ip) return
+
+    // Cancel any pending auto-clear for this IP
+    const existing = trapTimeoutsRef.current.get(ip)
+    if (existing) clearTimeout(existing)
+
+    setTrapAlerts(prev => {
+      const next = new Map(prev)
+      next.set(ip, {
+        trapType: data.trap_type ?? '',
+        severity: data.severity ?? 'critical',
+        description: data.description ?? '',
+        deviceName: data.device_name ?? '',
+        timestamp: data.timestamp ?? new Date().toISOString(),
+      })
+      return next
+    })
+
+    // Auto-expire the alert after 5 minutes
+    const timeout = setTimeout(() => {
+      setTrapAlerts(prev => {
+        const next = new Map(prev)
+        next.delete(ip)
+        return next
+      })
+      trapTimeoutsRef.current.delete(ip)
+    }, 5 * 60 * 1000)
+    trapTimeoutsRef.current.set(ip, timeout)
+  }, [])
+
+  useSSE('trap', handleTrapEvent, !USE_MOCK_DATA)
 
   const toggleServerExpansion = useCallback((serverId: string) => {
     setExpandedServers(prev => {
@@ -221,6 +271,9 @@ export default function Topology() {
 
   useEffect(() => {
     if (!agents || !svgRef.current) return
+
+    // Save zoom transform before wiping — restored after if node count unchanged
+    const prevZoom = svgRef.current ? d3.zoomTransform(svgRef.current) : null
 
     // Clear previous visualization
     d3.select(svgRef.current).selectAll('*').remove()
@@ -590,23 +643,10 @@ export default function Topology() {
         distance: 160,
       }))
 
-    // Always include server→agent management links AND physical device-device wiring.
+    // Physical device-device wiring.
     // Prefer orchestrator topology edges for physical links; fall back to LLDP discovery.
     const physicalLinks = orchTopoLinks.length > 0 ? orchTopoLinks : deviceToDeviceLinks
     const links: TopoLink[] = [
-      // Management hierarchy: every agent connects up to its DCIM server
-      ...agentNodes.map(an => {
-        const sid = `server-${an.serverId}`
-        const serverNodeId = serverNodeMap.get(sid)?.id || serverNodes[0]?.id
-        return {
-          source: an.id,
-          target: serverNodeId || 'server-unknown',
-          strength: an.status === 'online' ? 1 : 0.3,
-          distance: 200,
-          linkType: 'agent-server' as const,
-        }
-      }).filter(l => l.target !== 'server-unknown'),
-      // Physical wiring between devices (populated as servers are expanded)
       ...deviceLinks,
       ...physicalLinks,
       ...customTopoLinks,
@@ -631,10 +671,8 @@ export default function Topology() {
     //           layer 2.
     //
     // Edges fed to the layout:
-    //   - agent → server (via the visibleAgents list)
     //   - device → agent (for devices whose agent is in scope)
-    //   - device ↔ device (from topology_links; direction is whichever way
-    //     source_depth < target_depth points)
+    //   - device ↔ device (orchestrator topology or LLDP discovery)
     // Same-layer edges (not currently produced by the walker, but reserved
     // for peer links like cluster-R1 ↔ cluster-R2) are ignored by the layout
     // but still rendered.
@@ -1047,8 +1085,9 @@ export default function Topology() {
         `
       } else {
         // network / SNMP device
+        const activeTrap = d.ip ? trapAlerts.get(d.ip) : undefined
         html = `
-          <div class="font-bold text-base mb-1.5 text-cyan-300">${d.name}</div>
+          <div class="font-bold text-base mb-1.5 ${activeTrap ? 'text-red-300' : 'text-cyan-300'}">${d.name}</div>
           <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
             <span class="text-slate-400">Status</span>
             <span class="${d.status === 'online' ? 'text-green-400' : 'text-slate-400'} font-semibold">${d.status === 'online' ? 'Active' : 'Inactive'}</span>
@@ -1057,6 +1096,15 @@ export default function Topology() {
             ${d.ip ? `<span class="text-slate-400">IP</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
             ${d.agentName ? `<span class="text-slate-400">Monitored By</span><span class="text-blue-300">${d.agentName}</span>` : ''}
           </div>
+          ${activeTrap ? `
+          <div class="mt-2 pt-2 border-t border-red-500/40">
+            <div class="text-red-400 font-bold text-xs mb-1">⚠ SNMP TRAP RECEIVED</div>
+            <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+              <span class="text-slate-400">Trap</span><span class="text-red-300">${activeTrap.trapType}</span>
+              <span class="text-slate-400">Severity</span><span class="text-red-300 font-bold">${activeTrap.severity?.toUpperCase()}</span>
+              ${activeTrap.description ? `<span class="text-slate-400">Detail</span><span class="text-slate-300">${activeTrap.description}</span>` : ''}
+            </div>
+          </div>` : ''}
         `
       }
 
@@ -1104,7 +1152,10 @@ export default function Topology() {
       .attr('r', d => d.type === 'server' ? 40 : d.type === 'network' ? 20 : 30)
       .attr('fill', d => {
         if (d.type === 'server') return d.status === 'offline' ? '#991b1b' : (d.color || '#8b5cf6')
-        if (d.type === 'network') return d.status === 'online' ? '#0e7490' : '#334155'
+        if (d.type === 'network') {
+          if (d.ip && trapAlerts.has(d.ip)) return '#7f1d1d'
+          return d.status === 'online' ? '#0e7490' : '#334155'
+        }
         return d.status === 'online' ? '#10b981' : '#ef4444'
       })
       .attr('stroke', d => {
@@ -1113,12 +1164,22 @@ export default function Topology() {
           const c = d3.color(d.color || '#8b5cf6')
           return c ? c.brighter(0.5).toString() : '#a78bfa'
         }
-        if (d.type === 'network') return d.status === 'online' ? '#06b6d4' : '#475569'
+        if (d.type === 'network') {
+          if (d.ip && trapAlerts.has(d.ip)) return '#ef4444'
+          return d.status === 'online' ? '#06b6d4' : '#475569'
+        }
         return d.status === 'online' ? '#34d399' : '#f87171'
       })
-      .attr('stroke-width', d => d.type === 'network' ? 2 : d.status === 'offline' ? 4 : 3)
+      .attr('stroke-width', d => {
+        if (d.type === 'network' && d.ip && trapAlerts.has(d.ip)) return 3
+        return d.type === 'network' ? 2 : d.status === 'offline' ? 4 : 3
+      })
       .style('cursor', 'pointer')
-      .attr('filter', d => d.status === 'offline' && d.type !== 'network' ? 'url(#glow-red)' : null)
+      .attr('filter', d => {
+        if (d.status === 'offline' && d.type !== 'network') return 'url(#glow-red)'
+        if (d.type === 'network' && d.ip && trapAlerts.has(d.ip)) return 'url(#glow-red)'
+        return null
+      })
 
     // Power supply nodes (PDU / UPS) — vertical rack unit shape with outlets
     {
@@ -1382,6 +1443,59 @@ export default function Topology() {
       .attr('font-weight', 'bold')
       .text(d => d.alerts?.toString() || '')
 
+    // ── SNMP trap alert badge on network nodes ──────────────────────────────
+    // Red ⚠ badge at top of node + pulsing danger ring
+    node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+      .append('circle')
+      .attr('cx', 0)
+      .attr('cy', -28)
+      .attr('r', 10)
+      .attr('fill', '#ef4444')
+      .attr('stroke', '#1e293b')
+      .attr('stroke-width', 2)
+
+    node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+      .append('text')
+      .attr('x', 0)
+      .attr('y', -28)
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.35em')
+      .attr('font-size', '10px')
+      .attr('fill', 'white')
+      .attr('font-weight', 'bold')
+      .text('!')
+
+    node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 48)
+      .attr('font-size', '8px')
+      .attr('fill', '#fca5a5')
+      .attr('font-weight', 'bold')
+      .text(d => {
+        const alert = d.ip ? trapAlerts.get(d.ip) : undefined
+        return alert ? (alert.severity?.toUpperCase() || 'CRITICAL') : ''
+      })
+
+    if (nodeCount <= 100) {
+      node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+        .append('circle')
+        .attr('r', 20)
+        .attr('fill', 'none')
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 2.5)
+        .attr('opacity', 0.9)
+        .each(function () {
+          const el = d3.select(this)
+          el.append('animate')
+            .attr('attributeName', 'r').attr('values', '20;34;20')
+            .attr('dur', '1s').attr('repeatCount', 'indefinite')
+          el.append('animate')
+            .attr('attributeName', 'opacity').attr('values', '0.9;0;0.9')
+            .attr('dur', '1s').attr('repeatCount', 'indefinite')
+        })
+    }
+
     // ── Agent count badge on server nodes ──
     node.filter(d => d.type === 'server' && (agentCountByServer[d.id] || 0) > 0)
       .append('circle')
@@ -1446,8 +1560,19 @@ export default function Topology() {
         .on('end', function () {})
     )
 
-    // Auto-fit to view immediately
+    // Auto-fit on first render or when topology changes (node count changed).
+    // When only trap alerts changed, restore the previous zoom so the view
+    // doesn't jump while the user is navigating.
+    const nodeCountChanged = nodes.length !== prevNodeCountRef.current
+    prevNodeCountRef.current = nodes.length
+    const isNonDefaultZoom = prevZoom && !(prevZoom.k === 1 && prevZoom.x === 0 && prevZoom.y === 0)
+    const shouldRestoreZoom = !nodeCountChanged && isNonDefaultZoom
+
     const fitTimer = setTimeout(() => {
+      if (shouldRestoreZoom && prevZoom) {
+        svg.call(zoom.transform as any, prevZoom)
+        return
+      }
       const xValues = nodes.map(n => n.x || 0)
       const yValues = nodes.map(n => n.y || 0)
       if (xValues.length === 0) return
@@ -1481,7 +1606,7 @@ export default function Topology() {
         clickTimerRef.current = null
       }
     }
-  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, customTopology, orchDevicesByServerId, orchTopology])
+  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, customTopology, orchDevicesByServerId, orchTopology, trapAlerts])
 
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomRef.current) return

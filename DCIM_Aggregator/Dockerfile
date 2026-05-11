@@ -12,6 +12,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+# Copy SQL migration files (TypeScript compiler only outputs .js)
+RUN mkdir -p dist/database/migrations && cp src/database/migrations/*.sql dist/database/migrations/
+
 # Remove dev dependencies after build
 RUN npm prune --production
 

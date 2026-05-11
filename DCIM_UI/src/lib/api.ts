@@ -241,6 +241,26 @@ class APIClient {
     return this.request<SNMPDevice[]>(`/snmp/devices${queryString}`)
   }
 
+  // SNMP trap endpoints
+  async getTraps(filter?: { source_ip?: string; server_id?: string; severity?: string; limit?: number }): Promise<any[]> {
+    const params = new URLSearchParams()
+    if (filter?.source_ip) params.append('source_ip', filter.source_ip)
+    if (filter?.server_id) params.append('server_id', filter.server_id)
+    if (filter?.severity) params.append('severity', filter.severity)
+    if (filter?.limit) params.append('limit', String(filter.limit))
+    return this.request<any[]>(`/traps?${params.toString()}`)
+  }
+
+  async getTrapTimeline(filter?: { source_ip?: string; server_id?: string; hours?: number }): Promise<{
+    bucket: string; total: number; critical: number; warning: number; info: number
+  }[]> {
+    const params = new URLSearchParams()
+    if (filter?.source_ip) params.append('source_ip', filter.source_ip)
+    if (filter?.server_id) params.append('server_id', filter.server_id)
+    if (filter?.hours) params.append('hours', String(filter.hours))
+    return this.request(`/traps/timeline?${params.toString()}`)
+  }
+
   // Topology links — device↔device edges discovered via LLDP/CDP/ARP by the
   // SNMP walker and CIDR-sweep deep-scan. Used by the Topology page to render
   // the actual network wiring between discovered devices.

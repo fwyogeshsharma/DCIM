@@ -96,13 +96,15 @@ const WIDE_LAYER_THRESHOLD = 40
 const WIDE_LAYER_ROW_DEPTH = 14 // Z step between wrap rows
 
 export type OrcDevice = { name: string; ip_address: string; type: string; vendor: string }
+export type OrcTopologyEdge = { src_ip: string; dst_ip: string; container?: string }
 
 export function computeHierarchicalLayout(
   servers: ServerConfig[],
   agents: Agent[],
   snmpDevices: SNMPDevice[] = [],
   topologyLinks: TopologyLink[] = [],
-  orchDevicesByServerId?: Map<string, OrcDevice[]>
+  orchDevicesByServerId?: Map<string, OrcDevice[]>,
+  orchTopologyEdges?: OrcTopologyEdge[]
 ): LayoutResult {
   const enabledServers = servers.filter((s) => s.enabled)
   const nodes: LayoutNode[] = []
@@ -243,16 +245,6 @@ export function computeHierarchicalLayout(
           metrics: agentMatch?.total_metrics,
           alerts: agentMatch?.total_alerts,
         })
-
-        const serverOnline = serverStatusMap.get(serverId) === 'online'
-        links.push({
-          sourceId: orchId,
-          targetId: serverId,
-          sourcePos: [0, 0, 0],
-          targetPos: [0, 0, 0],
-          connected: status === 'online' && serverOnline,
-          linkType: 'agent-server',
-        })
       })
     } else {
       // Fallback: use DCIM agents
@@ -275,17 +267,6 @@ export function computeHierarchicalLayout(
           serverName: server.name,
           metrics: agent.total_metrics,
           alerts: agent.total_alerts,
-        })
-
-        const serverOnline = serverStatusMap.get(serverId) === 'online'
-        const agentOnline = agent.status === 'online'
-        links.push({
-          sourceId: compoundId,
-          targetId: serverId,
-          sourcePos: [0, 0, 0],
-          targetPos: [0, 0, 0],
-          connected: agentOnline && serverOnline,
-          linkType: 'agent-server',
         })
       })
     }
@@ -336,20 +317,41 @@ export function computeHierarchicalLayout(
     }
   })
 
-  // ── Device ↔ device links ────────────────────────────────────────────
-  if (topologyLinks.length > 0) {
-    const deviceByIp = new Map<string, LayoutNode>()
-    nodes.forEach((n) => {
-      if (n.type === 'network' && n.ip) deviceByIp.set(n.ip, n)
-    })
-    const seenPairs = new Set<string>()
-    topologyLinks.forEach((tl) => {
-      const srcN = deviceByIp.get(tl.source_ip)
-      const tgtN = deviceByIp.get(tl.target_ip)
+  // ── Device ↔ device links: orchestrator topology (primary) ──────────
+  // Covers all nodes (agent type = orchDevs, network type = SNMP) by IP.
+  const allNodeByIp = new Map<string, LayoutNode>()
+  nodes.forEach((n) => { if (n.ip && n.type !== 'server') allNodeByIp.set(n.ip, n) })
+  const seenPairsGlobal = new Set<string>()
+
+  if (orchTopologyEdges && orchTopologyEdges.length > 0) {
+    orchTopologyEdges.forEach((e) => {
+      const srcN = allNodeByIp.get(e.src_ip)
+      const tgtN = allNodeByIp.get(e.dst_ip)
       if (!srcN || !tgtN || srcN.id === tgtN.id) return
       const pairKey = [srcN.id, tgtN.id].sort().join('|')
-      if (seenPairs.has(pairKey)) return
-      seenPairs.add(pairKey)
+      if (seenPairsGlobal.has(pairKey)) return
+      seenPairsGlobal.add(pairKey)
+      const connected = srcN.status === 'online' && tgtN.status === 'online'
+      links.push({
+        sourceId: srcN.id,
+        targetId: tgtN.id,
+        sourcePos: [0, 0, 0],
+        targetPos: [0, 0, 0],
+        connected,
+        linkType: 'device-device',
+      })
+    })
+  }
+
+  // ── Device ↔ device links: DB topology_links fallback ────────────────
+  if (topologyLinks.length > 0 && (!orchTopologyEdges || orchTopologyEdges.length === 0)) {
+    topologyLinks.forEach((tl) => {
+      const srcN = allNodeByIp.get(tl.source_ip)
+      const tgtN = allNodeByIp.get(tl.target_ip)
+      if (!srcN || !tgtN || srcN.id === tgtN.id) return
+      const pairKey = [srcN.id, tgtN.id].sort().join('|')
+      if (seenPairsGlobal.has(pairKey)) return
+      seenPairsGlobal.add(pairKey)
       const connected = srcN.status === 'online' && tgtN.status === 'online'
       links.push({
         sourceId: srcN.id,
