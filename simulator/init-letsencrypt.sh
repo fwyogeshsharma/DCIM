@@ -29,7 +29,7 @@ if [ ! -f "./certbot/conf/options-ssl-nginx.conf" ]; then
 fi
 
 echo "==> Starting Nginx with dummy cert..."
-docker compose -f docker-compose.simulator.yml up -d nginx
+docker-compose -f docker-compose.simulator.yml up -d nginx
 
 echo "==> Waiting for Nginx to be ready..."
 sleep 5
@@ -40,7 +40,7 @@ rm -rf "./certbot/conf/archive"
 rm -rf "./certbot/conf/renewal"
 
 echo "==> Requesting real Let's Encrypt certificate..."
-docker compose -f docker-compose.simulator.yml run --rm certbot \
+docker-compose -f docker-compose.simulator.yml run --rm certbot \
   certonly --webroot \
   --webroot-path=/var/www/certbot \
   --email "$EMAIL" \
@@ -49,7 +49,7 @@ docker compose -f docker-compose.simulator.yml run --rm certbot \
   -d "$DOMAIN"
 
 echo "==> Reloading Nginx with real certificate..."
-docker compose -f docker-compose.simulator.yml exec nginx nginx -s reload
+docker-compose -f docker-compose.simulator.yml exec nginx nginx -s reload
 
 echo ""
 echo "Done! https://$DOMAIN is live."
