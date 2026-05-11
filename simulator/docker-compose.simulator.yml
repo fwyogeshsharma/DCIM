@@ -14,6 +14,8 @@ volumes:
   dcim-server-a-data:
   dcim-server-b-data:
   dcim-server-c-data:
+  certbot_webroot:
+  certbot_certs:
 
 # ─────────────────────────────────────────────────────────────────────────────
 services:
@@ -80,6 +82,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   # ── DCIM Server — Network B ──────────────────────────────────────────────────
   dcim-server-b:
@@ -105,6 +108,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   # ── DCIM Server — Network C ──────────────────────────────────────────────────
   dcim-server-c:
@@ -130,6 +134,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   # ── DCIM Aggregator ──────────────────────────────────────────────────────────
   aggregator:
@@ -158,6 +163,10 @@ services:
         condition: service_healthy
       dcim-server-a:
         condition: service_healthy
+      dcim-server-b:
+        condition: service_healthy
+      dcim-server-c:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
@@ -181,8 +190,15 @@ services:
       - "3001:3001"   # Proxy server
     networks: [dcim-backend]
     depends_on:
-      - aggregator
+      aggregator:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5173 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ── Network Simulator — Network A (3-Tier DC, 106 devices) ──────────────────
   sim-network-a:
@@ -200,7 +216,7 @@ services:
       API_PORT: "8090"
       BIND_INTERFACE: lo
     ports:
-      - "8090:8090"    # Fault injection API
+      - "8093:8090"    # Fault injection API (8090 used by host Java process)
       - "16100:161/udp" # SNMP (host-mapped to avoid privilege conflict)
       - "50051:50051"  # gNMI
     networks: [sim-net, dcim-backend]
@@ -286,6 +302,40 @@ services:
       retries: 10
       start_period: 180s
 
+  # ── Nginx reverse proxy (SSL termination for fwdcim.faberwork.com) ───────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_webroot:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    networks: [dcim-backend]
+    depends_on:
+      dcim-ui:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health 2>/dev/null || wget -qO- http://localhost 2>/dev/null | head -1 | grep -q '' && exit 0 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Certbot (auto-renews Let's Encrypt cert every 12h) ────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - certbot_webroot:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    # Attempt renewal every 12h; Let's Encrypt only actually renews within 30 days of expiry
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
+    restart: unless-stopped
+
   # ── Orchestrator ─────────────────────────────────────────────────────────────
   orchestrator:
     build:
@@ -304,9 +354,12 @@ services:
       - "8099:8099"
     networks: [dcim-backend, sim-net]
     depends_on:
-      - sim-network-a
-      - sim-network-b
-      - sim-network-c
+      sim-network-a:
+        condition: service_healthy
+      sim-network-b:
+        condition: service_healthy
+      sim-network-c:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8099/health', timeout=5).read()"]
