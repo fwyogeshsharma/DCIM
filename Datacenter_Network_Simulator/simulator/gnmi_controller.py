@@ -76,7 +76,7 @@ class GNMIController:
         self._server    = None           # proxy GNMIServer (port 50051)
         self._servicer  = None           # shared GNMIServicer (all devices)
         self._proxy_svc = None           # GNMIProxyServicer wrapping _servicer
-        # Per-device servers: ip → (GNMIServicer, GNMIServer)
+        # Per-device servers: bind_ip → (GNMIServicer, GNMIServer)
         self._per_device: dict = {}
         self._thread:   Optional[threading.Thread] = None
         self._running   = False
@@ -85,6 +85,10 @@ class GNMIController:
         self._device_port = 57400        # port for per-device gRPC servers
         self._device_ips: List[str] = []
         self._store     = None   # shared DeviceStateStore
+        # Maps bind_ip (mgmt_ip) → dataset_ip (ip_address) for per-device servers.
+        # gNMI is a management protocol so it binds to the OOB management IP when
+        # one exists, but datasets are still keyed by the production ip_address.
+        self._dataset_ip_map: dict = {}
 
     # ------------------------------------------------------------------ #
     #  Callbacks                                                           #
@@ -157,7 +161,8 @@ class GNMIController:
     # ------------------------------------------------------------------ #
 
     def start(self, device_ips: List[str], port: int = 50051,
-              bound_ip_ports: dict = None) -> bool:
+              bound_ip_ports: dict = None,
+              dataset_ip_map: dict = None) -> bool:
         """
         Start device simulation (per-device gRPC servers).
 
@@ -211,6 +216,7 @@ class GNMIController:
         self._proxy_svc = GNMIProxyServicer(self._servicer)
 
         # ── Per-device servers (one gRPC server per bound IP:port) ────────
+        self._dataset_ip_map = dataset_ip_map or {}
         if bound_ip_ports:
             self._start_per_device_servers(bound_ip_ports, GNMIServicer, GNMIServer)
 
@@ -367,12 +373,15 @@ class GNMIController:
                     time.sleep(2)   # let WinNAT fully restart
 
         for ip, device_port in ip_ports.items():
+            # ip is the bind address (mgmt_ip when available); dataset_ip is the
+            # production ip_address used as the .gnmi.json filename key.
+            dataset_ip = self._dataset_ip_map.get(ip, ip)
             try:
                 svc = GNMIServicer(self.datasets_dir)
                 if self._store is not None:
                     svc.set_state_store(self._store)
-                if not svc.load_device(ip):
-                    self._log(f"[gNMI] No dataset for {ip} — skipping")
+                if not svc.load_device(dataset_ip):
+                    self._log(f"[gNMI] No dataset for {dataset_ip} — skipping")
                     continue
                 srv = GNMIServer(svc, port=device_port)
                 if srv.start(bind_address=f"{ip}:{device_port}"):

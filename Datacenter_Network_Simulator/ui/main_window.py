@@ -2545,14 +2545,24 @@ class MainWindow(QMainWindow):
         switch_ips  = [d.ip_address for d in all_devices
                        if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)]
 
-        # Build {ip: gnmi_port} from device topology data for bound IPs only
+        # Build {bind_ip: gnmi_port} preferring mgmt_ip as the gRPC bind address.
+        # gNMI is a management-plane protocol; when a device has a separate OOB
+        # management IP it should be reachable on that address, mirroring how real
+        # devices expose gNMI on the management interface rather than the data plane.
+        # dataset_ip_map records the matching production ip_address used as the
+        # .gnmi.json filename key so the servicer can load the right dataset.
         bound_set = set(bound_ips)
-        bound_ip_ports = {
-            d.ip_address: d.gnmi_port
-            for d in all_devices
-            if d.ip_address in bound_set
-               and d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
-        }
+        bound_ip_ports: dict = {}
+        dataset_ip_map: dict = {}
+        for d in all_devices:
+            if d.device_type not in (DeviceType.SWITCH, DeviceType.ROUTER):
+                continue
+            bind_ip = (d.mgmt_ip
+                       if d.mgmt_ip and d.mgmt_ip in bound_set
+                       else d.ip_address)
+            if bind_ip in bound_set:
+                bound_ip_ports[bind_ip] = d.gnmi_port
+                dataset_ip_map[bind_ip] = d.ip_address
 
         # Register auto-proxy callback — called from background thread when
         # per-device binding completely fails; dispatched to main thread via QTimer.
@@ -2567,6 +2577,7 @@ class MainWindow(QMainWindow):
             device_ips=switch_ips,
             port=port,
             bound_ip_ports=bound_ip_ports if bound_ip_ports else None,
+            dataset_ip_map=dataset_ip_map if dataset_ip_map else None,
         )
         if ok:
             self.state_store.set_log_callback(self._console_panel.log)
