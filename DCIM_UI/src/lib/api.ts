@@ -33,6 +33,7 @@ class APIClient {
     try {
       const response = await fetch(url, {
         ...options,
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           ...options?.headers,
@@ -178,7 +179,7 @@ class APIClient {
     if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
 
     const queryString = params.toString()
-    const res = await fetch(`${this.baseURL}/alerts${queryString ? `?${queryString}` : ''}`)
+    const res = await fetch(`${this.baseURL}/alerts${queryString ? `?${queryString}` : ''}`, { cache: 'no-store' })
     const json = await res.json()
     return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
   }
@@ -208,7 +209,7 @@ class APIClient {
     if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
 
     const queryString = params.toString()
-    const res = await fetch(`${this.baseURL}/alerts/latest${queryString ? `?${queryString}` : ''}`)
+    const res = await fetch(`${this.baseURL}/alerts/latest${queryString ? `?${queryString}` : ''}`, { cache: 'no-store' })
     const json = await res.json()
     return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
   }

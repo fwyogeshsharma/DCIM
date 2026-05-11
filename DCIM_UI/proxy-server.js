@@ -269,6 +269,13 @@ function proxyToAggregator(req, res) {
   const headers = { ...req.headers, host: `${AGG_HOST}:${AGG_PORT}` }
   delete headers['host']
   delete headers['connection']
+  // Strip conditional cache headers so the aggregator always returns fresh data (200),
+  // never a 304 that the browser would serve from a potentially stale cache.
+  delete headers['if-none-match']
+  delete headers['if-modified-since']
+  delete headers['if-match']
+  delete headers['if-unmodified-since']
+  delete headers['if-range']
 
   const proxyReq = http.request(targetUrl, { method: req.method, headers }, (proxyRes) => {
     console.log(`  ← Aggregator response: ${proxyRes.statusCode}`)
@@ -310,6 +317,9 @@ app.get('/api/v1/events', (req, res) => {
   req.on('close', () => aggReq.destroy())
 })
 
+// Agents — aggregator JOINs with servers table so server_name is populated
+app.all('/api/v1/agents*', (req, res) => proxyToAggregator(req, res))
+
 // Alerts — aggregator has deduplication, counts, latest endpoints
 app.all('/api/v1/alerts*', (req, res) => proxyToAggregator(req, res))
 
@@ -346,7 +356,6 @@ app.all('/api/v1/*', async (req, res) => {
     headers: {
       ...req.headers,
       host: `${CONFIG.dcim.host}:${CONFIG.dcim.port}`,
-      // Add agent ID for UI dashboard authentication
       'X-Agent-ID': 'ui-dashboard'
     },
     // agent: httpsAgent // CERTIFICATE CHECKS DISABLED
@@ -355,6 +364,12 @@ app.all('/api/v1/*', async (req, res) => {
   // Remove headers that shouldn't be forwarded
   delete options.headers['host'];
   delete options.headers['connection'];
+  // Strip conditional cache headers so backend always returns fresh data (200 not 304)
+  delete options.headers['if-none-match'];
+  delete options.headers['if-modified-since'];
+  delete options.headers['if-match'];
+  delete options.headers['if-unmodified-since'];
+  delete options.headers['if-range'];
 
   const proxyReq = http.request(targetUrl, options, (proxyRes) => {
     console.log(`  ← Response: ${proxyRes.statusCode}`);
