@@ -9,16 +9,25 @@ echo  Building Datacenter Network Simulator
 echo ============================================
 echo.
 
-REM Check Python
+REM Activate the project virtual environment so the correct Python,
+REM pip, and pyinstaller are used instead of any system-wide install.
+if not exist ".venv\Scripts\activate.bat" (
+    echo ERROR: Virtual environment not found at .venv\
+    echo Please create it first:  python -m venv .venv
+    pause
+    exit /b 1
+)
+call .venv\Scripts\activate.bat
+
+REM Verify Python is from the venv
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Python not found in PATH.
-    echo Please install Python 3.11+ from https://python.org
+    echo ERROR: Python not found after venv activation.
     pause
     exit /b 1
 )
 
-REM Install dependencies
+REM Install / upgrade dependencies into the venv
 echo [1/3] Installing dependencies...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
@@ -27,41 +36,22 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM Run PyInstaller
+REM Clear PyInstaller build cache so stale .pyc bytecode from old
+REM package versions cannot sneak into the bundle.
 echo.
-echo [2/3] Building Windows executable...
-pyinstaller ^
-    --onefile ^
-    --windowed ^
-    --name "Datacenter-Network-Simulator" ^
-    --add-data "datasets;datasets" ^
-    --add-data "topologies;topologies" ^
-    --add-data "core;core" ^
-    --add-data "ui;ui" ^
-    --add-data "simulator;simulator" ^
-    --add-data "proto;proto" ^
-    --hidden-import PySide6.QtCore ^
-    --hidden-import PySide6.QtGui ^
-    --hidden-import PySide6.QtWidgets ^
-    --hidden-import networkx ^
-    --hidden-import pysnmp ^
-    --hidden-import snmpsim ^
-    --hidden-import snmpsim.commands ^
-    --hidden-import snmpsim.commands.responder ^
-    --collect-all snmpsim ^
-    --hidden-import dbm ^
-    --hidden-import dbm.dumb ^
-    --hidden-import google.protobuf ^
-    --hidden-import google.protobuf.descriptor ^
-    --hidden-import google.protobuf.descriptor_pb2 ^
-    --hidden-import google.protobuf.descriptor_pool ^
-    --hidden-import google.protobuf.message ^
-    --hidden-import google.protobuf.reflection ^
-    --hidden-import google.protobuf.symbol_database ^
-    --collect-all protobuf ^
-    --collect-all google ^
-    app/main.py
+echo [2/3] Cleaning previous build artifacts...
+if exist "build\Datacenter-Network-Simulator" (
+    rmdir /s /q "build\Datacenter-Network-Simulator"
+)
+if exist "dist\Datacenter-Network-Simulator.exe" (
+    del /q "dist\Datacenter-Network-Simulator.exe"
+)
 
+REM Build using the spec file (keeps all settings in one place and
+REM ensures rth_pyasn1_compat.py runtime hook is always included).
+echo.
+echo [3/3] Building Windows executable...
+pyinstaller Datacenter-Network-Simulator.spec
 if %errorlevel% neq 0 (
     echo ERROR: PyInstaller build failed.
     pause
@@ -69,8 +59,9 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [3/3] Build complete!
-echo.
-echo Output: dist\Datacenter-Network-Simulator.exe
+echo ============================================
+echo  Build complete!
+echo  Output: dist\Datacenter-Network-Simulator.exe
+echo ============================================
 echo.
 pause
