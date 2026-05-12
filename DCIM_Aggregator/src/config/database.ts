@@ -17,4 +17,8 @@ export const config = {
     port: parseInt(process.env.PORT || '3002'),
     env: process.env.NODE_ENV || 'development',
   },
+  dcimServers: (process.env.DCIM_SERVER_URLS || '')
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean),
 }
