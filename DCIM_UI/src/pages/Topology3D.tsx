@@ -9,6 +9,26 @@ import { useNavigate } from 'react-router-dom'
 import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X } from 'lucide-react'
 import * as THREE from 'three'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
+import { useSSE } from '@/hooks/useSSE'
+
+interface TrapAlert {
+  trapType: string
+  severity: string
+  description: string
+  deviceName: string
+  timestamp: string
+  ifaceIndex?: number
+}
+
+interface TrapFeedItem {
+  id: number
+  sourceIp: string
+  deviceName: string
+  trapType: string
+  severity: string
+  description: string
+  timestamp: string
+}
 
 // ── Toggle this to use 500+ node mock data for testing ──
 const USE_MOCK_DATA = false
@@ -518,11 +538,13 @@ function DeviceNode({
   isSelected,
   onSelect,
   onHover,
+  hasTrap = false,
 }: {
   node: LayoutNode
   isSelected: boolean
   onSelect: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
+  hasTrap?: boolean
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -530,8 +552,7 @@ function DeviceNode({
   useFrame(() => {
     if (!glowRef.current) return
     const mat = glowRef.current.material as THREE.MeshBasicMaterial
-    if (node.status === 'offline') {
-      // Red pulse when not responding — matches server behavior.
+    if (node.status === 'offline' || hasTrap) {
       mat.opacity = 0.15 + Math.sin(Date.now() * 0.004) * 0.15
     } else {
       mat.opacity = hovered || isSelected ? 0.12 : 0
@@ -561,12 +582,12 @@ function DeviceNode({
   }, [onHover])
 
   const online = node.status === 'online'
-  // Blue chassis when responding, red when not — matches the server's online/offline palette.
-  const chassisColor = online ? '#7dd3fc' : '#b91c1c'
-  const accentColor = online ? '#3b82f6' : '#ef4444'
-  const ledOn = online ? '#22d3ee' : '#fca5a5'
-  const ledOff = online ? '#0ea5e9' : '#7f1d1d'
-  const labelColor = online ? '#93c5fd' : '#fca5a5'
+  // Trap alert overrides normal colors — device turns deep red with warning indicators
+  const chassisColor = hasTrap ? '#7f1d1d' : online ? '#7dd3fc' : '#b91c1c'
+  const accentColor  = hasTrap ? '#ef4444' : online ? '#3b82f6' : '#ef4444'
+  const ledOn        = hasTrap ? '#ef4444' : online ? '#22d3ee' : '#fca5a5'
+  const ledOff       = hasTrap ? '#dc2626' : online ? '#0ea5e9' : '#7f1d1d'
+  const labelColor   = hasTrap ? '#fca5a5' : online ? '#93c5fd' : '#fca5a5'
   const portCount = 8
 
   return (
@@ -937,7 +958,7 @@ function PDUNode({
 
 // ── Connection Line ──────────────────────────────────────────────────────────
 
-function ConnectionLine({ link }: { link: LayoutLink }) {
+function ConnectionLine({ link, isLinkDown = false }: { link: LayoutLink; isLinkDown?: boolean }) {
   const ref = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
 
@@ -949,8 +970,10 @@ function ConnectionLine({ link }: { link: LayoutLink }) {
 
   const isAgentLink = link.linkType === 'device-agent'
   const isD2D = link.linkType === 'device-device'
-  const color = isD2D
-    ? (link.connected ? '#f59e0b' : '#ef4444')     // amber for physical wiring, red if broken
+  const color = isLinkDown
+    ? '#ef4444'
+    : isD2D
+    ? (link.connected ? '#f59e0b' : '#ef4444')
     : isAgentLink
     ? '#06b6d4'
     : link.connected ? '#10b981' : '#ef4444'
@@ -1272,6 +1295,8 @@ function SceneContent({
   onDoubleClickServer,
   currentFloorY,
   targetPanX,
+  trapAlerts,
+  linkDownAlerts,
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
@@ -1284,6 +1309,8 @@ function SceneContent({
   onDoubleClickServer: (node: LayoutNode) => void
   currentFloorY: number
   targetPanX: number
+  trapAlerts: Map<string, TrapAlert>
+  linkDownAlerts: Map<string, TrapAlert>
 }) {
   return (
     <>
@@ -1309,9 +1336,16 @@ function SceneContent({
       />
 
       {/* Connection lines */}
-      {links.map((link, i) => (
-        <ConnectionLine key={`${link.sourceId}-${link.targetId}-${i}`} link={link} />
-      ))}
+      {links.map((link, i) => {
+        const info = link.d2dInfo
+        const isLinkDown = info
+          ? linkDownAlerts.has(info.sourceIp) || linkDownAlerts.has(info.sourceName ?? '') ||
+            linkDownAlerts.has(info.targetIp) || linkDownAlerts.has(info.targetName ?? '')
+          : false
+        return (
+          <ConnectionLine key={`${link.sourceId}-${link.targetId}-${i}`} link={link} isLinkDown={isLinkDown} />
+        )
+      })}
 
       {/* Server nodes */}
       {nodes
@@ -1378,6 +1412,7 @@ function SceneContent({
               isSelected={selectedNode?.id === node.id}
               onSelect={onSelectNode}
               onHover={onHover}
+              hasTrap={(!!node.ip && trapAlerts.has(node.ip)) || (!!node.name && trapAlerts.has(node.name))}
             />
           )
         })}
@@ -1463,6 +1498,95 @@ export default function Topology3D() {
 
   // Expand/collapse state
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
+
+  // ── SNMP trap state (mirrors 2D Topology) ────────────────────────────────
+  const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
+  const [linkDownAlerts, setLinkDownAlerts] = useState<Map<string, TrapAlert>>(new Map())
+  const [trapFeed, setTrapFeed] = useState<TrapFeedItem[]>([])
+  const [showTrapFeed, setShowTrapFeed] = useState(true)
+  const trapTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  const handleTrapEvent = useCallback((data: any) => {
+    const ip: string | undefined = data.source_ip
+    const name: string | undefined = data.device_name
+    if (!ip && !name) return
+    const alert: TrapAlert = {
+      trapType: data.trap_type ?? '',
+      severity: data.severity ?? 'critical',
+      description: data.description ?? '',
+      deviceName: name ?? '',
+      timestamp: data.timestamp ?? new Date().toISOString(),
+      ifaceIndex: data.iface_index != null ? Number(data.iface_index) : undefined,
+    }
+    const keys = [ip, name].filter(Boolean) as string[]
+    keys.forEach(k => { const t = trapTimeoutsRef.current.get(k); if (t) clearTimeout(t) })
+    setTrapAlerts(prev => {
+      const next = new Map(prev)
+      if (ip) next.set(ip, alert)
+      if (name) next.set(name, alert)
+      return next
+    })
+    const isLinkDown = (data.trap_type ?? '').toUpperCase().includes('LINK_DOWN')
+    if (isLinkDown) {
+      setLinkDownAlerts(prev => {
+        const next = new Map(prev)
+        if (ip) next.set(ip, alert)
+        if (name) next.set(name, alert)
+        return next
+      })
+    }
+    setTrapFeed(prev => [{
+      id: Date.now(), sourceIp: ip ?? '', deviceName: name ?? '',
+      trapType: data.trap_type ?? '', severity: data.severity ?? 'critical',
+      description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
+    }, ...prev].slice(0, 30))
+    const TRAP_TTL = Math.max(60_000, 5 * 60 * 1000)
+    const timeout = setTimeout(() => {
+      setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      if (isLinkDown) setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      keys.forEach(k => trapTimeoutsRef.current.delete(k))
+    }, TRAP_TTL)
+    keys.forEach(k => trapTimeoutsRef.current.set(k, timeout))
+  }, [])
+
+  useSSE('trap', handleTrapEvent, !USE_MOCK_DATA)
+
+  // Seed from existing traps in DB on mount + every 30s
+  const { data: activeTraps } = useQuery({
+    queryKey: ['active-traps-seed-3d'],
+    queryFn: () => api.getTraps({ limit: 200 }),
+    staleTime: Infinity,
+    refetchInterval: 30000,
+    enabled: !USE_MOCK_DATA,
+  })
+
+  useEffect(() => {
+    const traps: any[] = (activeTraps as any[]) ?? []
+    if (!traps.length) return
+    setTrapAlerts(prev => {
+      const next = new Map(prev)
+      traps.forEach(t => {
+        const a: TrapAlert = { trapType: t.trap_type ?? '', severity: t.severity ?? 'critical', description: t.description ?? '', deviceName: t.device_name ?? '', timestamp: t.timestamp ?? new Date().toISOString() }
+        if (t.source_ip) next.set(t.source_ip, a)
+        if (t.device_name) next.set(t.device_name, a)
+      })
+      return next
+    })
+    setLinkDownAlerts(prev => {
+      const next = new Map(prev)
+      traps.filter(t => (t.trap_type ?? '').toUpperCase().includes('LINK_DOWN')).forEach(t => {
+        const a: TrapAlert = { trapType: t.trap_type ?? '', severity: t.severity ?? 'critical', description: t.description ?? '', deviceName: t.device_name ?? '', timestamp: t.timestamp ?? new Date().toISOString() }
+        if (t.source_ip) next.set(t.source_ip, a)
+        if (t.device_name) next.set(t.device_name, a)
+      })
+      return next
+    })
+    setTrapFeed(traps.slice(0, 30).map((t, i) => ({
+      id: i, sourceIp: t.source_ip ?? '', deviceName: t.device_name ?? '',
+      trapType: t.trap_type ?? '', severity: t.severity ?? 'critical',
+      description: t.description ?? '', timestamp: t.timestamp ?? new Date().toISOString(),
+    })))
+  }, [activeTraps])
 
   const toggleServerExpansion = useCallback((node: LayoutNode) => {
     setExpandedServers(prev => {
@@ -1645,6 +1769,20 @@ export default function Topology3D() {
             {hasExpanded ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
             {hasExpanded ? 'Collapse All' : 'Expand All'}
           </button>
+          {!showTrapFeed && (
+              <button
+                onClick={() => setShowTrapFeed(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-red-900/40 hover:bg-red-900/60 border border-red-500/40 text-red-300 rounded-lg transition-colors font-medium relative text-sm"
+              >
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                Traps
+                {trapFeed.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                    {trapFeed.length > 9 ? '9+' : trapFeed.length}
+                  </span>
+                )}
+              </button>
+            )}
           <button
             onClick={() => navigate('/app/topology')}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
@@ -1677,6 +1815,8 @@ export default function Topology3D() {
               onDoubleClickServer={toggleServerExpansion}
               currentFloorY={FLOORS[currentFloor].y + panYOffset}
               targetPanX={panX}
+              trapAlerts={trapAlerts}
+              linkDownAlerts={linkDownAlerts}
             />
           </Canvas>
 
@@ -1849,6 +1989,47 @@ export default function Topology3D() {
               </div>
             </div>
           </div>
+
+          {/* Live Trap Feed */}
+          {showTrapFeed && (
+          <div className="absolute top-16 right-4 w-72 max-h-80 bg-slate-900/95 border border-red-500/30 rounded-lg backdrop-blur-sm flex flex-col overflow-hidden z-10">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-semibold text-white">Live SNMP Traps</span>
+                {trapFeed.length > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                    {trapFeed.length}
+                  </span>
+                )}
+              </div>
+              <button onClick={() => setShowTrapFeed(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {trapFeed.length === 0 ? (
+                <p className="text-slate-500 text-xs text-center py-4">Waiting for traps…</p>
+              ) : (
+                trapFeed.map(t => (
+                  <div key={t.id} className="px-3 py-2 border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        t.severity.toLowerCase() === 'critical' ? 'bg-red-500/20 text-red-400' :
+                        t.severity.toLowerCase() === 'warning' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>{t.severity.toUpperCase()}</span>
+                      <span className="text-[10px] text-slate-500 shrink-0">{new Date(t.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <p className="text-xs font-medium text-white mt-0.5 truncate">{t.deviceName || t.sourceIp}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{t.trapType}</p>
+                    {t.description && <p className="text-[10px] text-slate-500 truncate">{t.description}</p>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          )}
 
           {/* Stats overlay */}
           {showStats && (
