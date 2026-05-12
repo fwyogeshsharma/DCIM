@@ -1,5 +1,5 @@
 network_id: network-b
-topology_file: /app/topologies/large_hyperscale_pod.json
+topology: large_hyperscale_pod.json
 topology_name: "Network B - Hyperscale Pod (Legacy/Degraded)"
 dcim_server_url: http://dcim-server-b:8080/api/v1
 

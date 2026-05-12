@@ -20,6 +20,7 @@ import Settings from './pages/Settings'
 import ServerManagement from './pages/ServerManagement'
 import SimulatorControl from './pages/SimulatorControl'
 import SimulatorTopology from './pages/SimulatorTopology'
+import Reports from './pages/Reports'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +69,7 @@ function App() {
               <Route path="ai-analytics" element={<AIAnalytics />} />
               <Route path="nl-query" element={<NaturalLanguageQuery />} />
               <Route path="servers" element={<ServerManagement />} />
+              <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />
               <Route path="simulator" element={<SimulatorControl />} />
             </Route>
