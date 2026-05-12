@@ -200,33 +200,31 @@ export class DataSyncService {
         return
       }
 
+      // Batch insert alerts in chunks to avoid pool exhaustion
+      const CHUNK = 200
       const newAlerts: any[] = []
-      for (const alert of allAlerts) {
+      for (let i = 0; i < allAlerts.length; i += CHUNK) {
+        const chunk = allAlerts.slice(i, i + CHUNK)
+        const placeholders: string[] = []
+        const params: any[] = []
+        let idx = 1
+        for (const alert of chunk) {
+          placeholders.push(`($${idx},$${idx+1},$${idx+2},$${idx+3},$${idx+4},$${idx+5},$${idx+6},$${idx+7},$${idx+8},$${idx+9})`)
+          params.push(serverId, alert.agent_id, alert.severity, alert.message, alert.metric_type, alert.threshold, alert.value, alert.resolved || false, alert.resolved_at, alert.timestamp || new Date())
+          idx += 10
+        }
         try {
           const result = await this.dbPool.query(
-            `
-            INSERT INTO alerts (server_id, agent_id, severity, message, metric_type, threshold_value, actual_value, resolved, resolved_at, timestamp)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            ON CONFLICT DO NOTHING
-          `,
-            [
-              serverId,
-              alert.agent_id,
-              alert.severity,
-              alert.message,
-              alert.metric_type,
-              alert.threshold,
-              alert.value,
-              alert.resolved || false,
-              alert.resolved_at,
-              alert.timestamp || new Date(),
-            ]
+            `INSERT INTO alerts (server_id, agent_id, severity, message, metric_type, threshold_value, actual_value, resolved, resolved_at, timestamp)
+             VALUES ${placeholders.join(',')}
+             ON CONFLICT DO NOTHING`,
+            params
           )
           if (result.rowCount && result.rowCount > 0) {
-            newAlerts.push(alert)
+            newAlerts.push(...chunk)
           }
         } catch (error) {
-          logger.error(`Failed to insert alert:`, error)
+          logger.error(`Failed to insert alert batch:`, error)
         }
       }
 
@@ -372,34 +370,31 @@ export class DataSyncService {
 
       let inserted = 0
       const newTraps: any[] = []
-      for (const trap of traps) {
+      const TRAP_CHUNK = 200
+      for (let i = 0; i < traps.length; i += TRAP_CHUNK) {
+        const chunk = traps.slice(i, i + TRAP_CHUNK)
+        const placeholders: string[] = []
+        const params: any[] = []
+        let idx = 1
+        for (const trap of chunk) {
+          placeholders.push(`($${idx},$${idx+1},$${idx+2},$${idx+3},$${idx+4},$${idx+5},$${idx+6},$${idx+7},$${idx+8},$${idx+9},$${idx+10})`)
+          params.push(serverId, trap.timestamp || new Date(), trap.source_ip, trap.device_name || '', trap.trap_type, trap.trap_oid, trap.severity, trap.varbinds ? JSON.stringify(trap.varbinds) : null, trap.description || '', trap.resolved || false, trap.resolved_at || null)
+          idx += 11
+        }
         try {
           const result = await this.dbPool.query(
-            `INSERT INTO snmp_traps
-               (server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
-                severity, varbinds, description, resolved, resolved_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+            `INSERT INTO snmp_traps (server_id, timestamp, source_ip, device_name, trap_type, trap_oid, severity, varbinds, description, resolved, resolved_at)
+             VALUES ${placeholders.join(',')}
              ON CONFLICT DO NOTHING`,
-            [
-              serverId,
-              trap.timestamp || new Date(),
-              trap.source_ip,
-              trap.device_name || '',
-              trap.trap_type,
-              trap.trap_oid,
-              trap.severity,
-              trap.varbinds ? JSON.stringify(trap.varbinds) : null,
-              trap.description || '',
-              trap.resolved || false,
-              trap.resolved_at || null,
-            ]
+            params
           )
-          if (result.rowCount && result.rowCount > 0) {
-            inserted++
-            newTraps.push(trap)
+          const count = result.rowCount || 0
+          if (count > 0) {
+            inserted += count
+            newTraps.push(...chunk)
           }
         } catch {
-          // skip individual insert errors (constraint violations etc.)
+          // skip batch errors (constraint violations etc.)
         }
       }
 

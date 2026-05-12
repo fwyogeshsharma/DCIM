@@ -37,8 +37,8 @@ export interface Agent {
   status: 'online' | 'offline' | 'pending'
   group: string
   last_seen: string
-  first_seen: string
-  registered_at: string
+  first_seen?: string
+  registered_at?: string
   approved_at?: string
   approved: boolean
   total_metrics: number
@@ -62,7 +62,7 @@ export interface Metric {
 }
 
 export interface Alert {
-  id: number
+  id: number | string
   agent_id: string
   server_id?: string
   server_name?: string
@@ -79,7 +79,7 @@ export interface Alert {
 }
 
 export interface DeduplicatedAlert {
-  id: number
+  id: number | string
   agent_id: string
   server_id?: string
   server_name?: string

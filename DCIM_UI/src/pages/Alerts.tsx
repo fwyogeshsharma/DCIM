@@ -25,7 +25,7 @@ export default function Alerts() {
 
   const [agentFilter, setAgentFilter] = useState<string>('all')
   const [severityFilter, setSeverityFilter] = useState<string>('all')
-  const [expandedAlertId, setExpandedAlertId] = useState<number | null>(null)
+  const [expandedAlertId, setExpandedAlertId] = useState<number | string | null>(null)
 
   // Paginated deduplicated alerts state
   const [alerts, setAlerts] = useState<DeduplicatedAlert[]>([])

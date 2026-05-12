@@ -21,7 +21,7 @@ export const dbPool = new Pool({
   password: config.postgres.password,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 15000,
 })
 
 // Disable TimescaleDB vectorized aggregation (incompatible with character varying columns)
