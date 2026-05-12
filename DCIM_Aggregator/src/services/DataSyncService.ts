@@ -200,9 +200,10 @@ export class DataSyncService {
         return
       }
 
+      const newAlerts: any[] = []
       for (const alert of allAlerts) {
         try {
-          await this.dbPool.query(
+          const result = await this.dbPool.query(
             `
             INSERT INTO alerts (server_id, agent_id, severity, message, metric_type, threshold_value, actual_value, resolved, resolved_at, timestamp)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -221,12 +222,67 @@ export class DataSyncService {
               alert.timestamp || new Date(),
             ]
           )
+          if (result.rowCount && result.rowCount > 0) {
+            newAlerts.push(alert)
+          }
         } catch (error) {
           logger.error(`Failed to insert alert:`, error)
         }
       }
 
-      logger.info(`Synced ${allAlerts.length} alerts from server ${serverId}`)
+      // For each newly inserted alert, emit SSE trap event and mirror into
+      // snmp_traps so the topology trap feed sees it immediately.
+      for (const alert of newAlerts) {
+        try {
+          // Look up the device hostname + IP from the agents table
+          const { rows: agentRows } = await this.dbPool.query(
+            `SELECT hostname, ip_address FROM agents
+             WHERE agent_id = $1 AND server_id = $2::uuid LIMIT 1`,
+            [alert.agent_id, serverId]
+          )
+          const hostname = agentRows[0]?.hostname || alert.agent_id
+          const ip       = agentRows[0]?.ip_address || '0.0.0.0'
+
+          // Emit SSE so open topology pages update in real-time
+          emitSSEEvent('trap', {
+            source_ip:   ip,
+            device_name: hostname,
+            trap_type:   alert.metric_type || 'alert',
+            trap_oid:    '',
+            severity:    alert.severity || 'WARNING',
+            description: alert.message  || '',
+            timestamp:   alert.timestamp || new Date().toISOString(),
+            server_id:   serverId,
+            iface_index: null,
+            varbinds:    null,
+          })
+
+          // Mirror into snmp_traps so the REST poll also picks it up
+          await this.dbPool.query(
+            `INSERT INTO snmp_traps
+               (server_id, timestamp, source_ip, device_name, trap_type, trap_oid,
+                severity, description, resolved, resolved_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+             ON CONFLICT DO NOTHING`,
+            [
+              serverId,
+              alert.timestamp || new Date(),
+              ip,
+              hostname,
+              alert.metric_type || 'alert',
+              alert.metric_type || '',   // use metric_type as oid to keep dedup index happy
+              alert.severity || 'WARNING',
+              alert.message  || '',
+              alert.resolved || false,
+              alert.resolved_at || null,
+            ]
+          )
+        } catch (err: any) {
+          logger.debug(`Failed to mirror alert to snmp_traps: ${err.message}`)
+        }
+      }
+
+      logger.info(`Synced ${allAlerts.length} alerts from server ${serverId} (${newAlerts.length} new)`)
     } catch (error: any) {
       logger.error(`Failed to sync alerts from ${serverId}:`, error.message)
     }
@@ -356,10 +412,15 @@ export class DataSyncService {
             source_ip: trap.source_ip,
             device_name: trap.device_name || '',
             trap_type: trap.trap_type,
+            trap_oid: trap.trap_oid || '',
             severity: trap.severity || 'critical',
             description: trap.description || '',
             timestamp: trap.timestamp || new Date().toISOString(),
             server_id: serverId,
+            varbinds: trap.varbinds || null,
+            iface_index: typeof (trap.varbinds as any)?.iface_index === 'number'
+              ? (trap.varbinds as any).iface_index
+              : null,
           })
 
           // Mirror into alerts table so Alerts page shows trap-based alerts

@@ -124,7 +124,7 @@ class DCIMBridge:
                 "metric_type": metric_type,
                 "severity":    _SEVERITY_MAP.get(severity.lower(), "INFO"),
                 "message":     details or f"{trap_type} on {device.name}",
-                "value":       0.0,
+                "value":       float(iface_index) if iface_index is not None else 0.0,
                 "threshold":   0.0,
                 "timestamp":   ts,
                 # Kept for internal routing only (stripped before POST)

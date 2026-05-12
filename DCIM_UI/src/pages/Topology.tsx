@@ -59,6 +59,17 @@ interface TrapAlert {
   description: string
   deviceName: string
   timestamp: string
+  ifaceIndex?: number
+}
+
+interface TrapFeedItem {
+  id: number
+  sourceIp: string
+  deviceName: string
+  trapType: string
+  severity: string
+  description: string
+  timestamp: string
 }
 
 export default function Topology() {
@@ -96,6 +107,9 @@ export default function Topology() {
 
   // Active SNMP trap alerts keyed by source IP — cleared after 5 min
   const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
+  const [linkDownAlerts, setLinkDownAlerts] = useState<Map<string, TrapAlert>>(new Map())
+  const [trapFeed, setTrapFeed] = useState<TrapFeedItem[]>([])
+  const [showTrapFeed, setShowTrapFeed] = useState(true)
   const trapTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   // Track node count to decide whether to auto-fit or preserve zoom on re-render
   const prevNodeCountRef = useRef(0)
@@ -109,34 +123,73 @@ export default function Topology() {
   // ── SNMP trap SSE handler ─────────────────────────────────────────────────
   const handleTrapEvent = useCallback((data: any) => {
     const ip: string | undefined = data.source_ip
-    if (!ip) return
+    const name: string | undefined = data.device_name
+    if (!ip && !name) return
 
-    // Cancel any pending auto-clear for this IP
-    const existing = trapTimeoutsRef.current.get(ip)
-    if (existing) clearTimeout(existing)
+    const alert: TrapAlert = {
+      trapType: data.trap_type ?? '',
+      severity: data.severity ?? 'critical',
+      description: data.description ?? '',
+      deviceName: name ?? '',
+      timestamp: data.timestamp ?? new Date().toISOString(),
+      ifaceIndex: data.iface_index != null ? Number(data.iface_index) : undefined,
+    }
 
+    // Cancel any pending auto-clear for both keys
+    const keys = [ip, name].filter(Boolean) as string[]
+    keys.forEach(k => {
+      const existing = trapTimeoutsRef.current.get(k)
+      if (existing) clearTimeout(existing)
+    })
+
+    // Key by BOTH source_ip AND device_name so topology nodes match on either
     setTrapAlerts(prev => {
       const next = new Map(prev)
-      next.set(ip, {
-        trapType: data.trap_type ?? '',
-        severity: data.severity ?? 'critical',
-        description: data.description ?? '',
-        deviceName: data.device_name ?? '',
-        timestamp: data.timestamp ?? new Date().toISOString(),
-      })
+      if (ip) next.set(ip, alert)
+      if (name) next.set(name, alert)
       return next
     })
 
-    // Auto-expire the alert after 5 minutes
+    // Track link-down traps separately for edge coloring
+    const isLinkDown = (data.trap_type ?? '').toUpperCase().includes('LINK_DOWN')
+    if (isLinkDown) {
+      setLinkDownAlerts(prev => {
+        const next = new Map(prev)
+        if (ip) next.set(ip, alert)
+        if (name) next.set(name, alert)
+        return next
+      })
+    }
+
+    // Push to live trap feed (keep last 30)
+    setTrapFeed(prev => [{
+      id: Date.now(),
+      sourceIp: ip ?? '',
+      deviceName: name ?? '',
+      trapType: data.trap_type ?? '',
+      severity: data.severity ?? 'critical',
+      description: data.description ?? '',
+      timestamp: data.timestamp ?? new Date().toISOString(),
+    }, ...prev].slice(0, 30))
+
+    // Auto-expire after at least 1 min (5 min default) — clears both keys
+    const TRAP_TTL = Math.max(60_000, 5 * 60 * 1000)
     const timeout = setTimeout(() => {
       setTrapAlerts(prev => {
         const next = new Map(prev)
-        next.delete(ip)
+        keys.forEach(k => next.delete(k))
         return next
       })
-      trapTimeoutsRef.current.delete(ip)
-    }, 5 * 60 * 1000)
-    trapTimeoutsRef.current.set(ip, timeout)
+      if (isLinkDown) {
+        setLinkDownAlerts(prev => {
+          const next = new Map(prev)
+          keys.forEach(k => next.delete(k))
+          return next
+        })
+      }
+      keys.forEach(k => trapTimeoutsRef.current.delete(k))
+    }, TRAP_TTL)
+    keys.forEach(k => trapTimeoutsRef.current.set(k, timeout))
   }, [])
 
   useSSE('trap', handleTrapEvent, !USE_MOCK_DATA)
@@ -268,6 +321,66 @@ export default function Topology() {
   })
 
   const topologyLinks = USE_MOCK_DATA ? mockData!.topologyLinks : realTopologyLinks
+
+  // ── Seed trap state from existing unresolved traps on mount ───────────────
+  // SSE only fires for newly-inserted traps; existing active traps in the DB
+  // must be loaded once so the topology reflects current reality immediately.
+  const { data: activeTraps } = useQuery({
+    queryKey: ['active-traps-seed'],
+    queryFn: () => api.getTraps({ limit: 200 }),
+    staleTime: Infinity,
+    refetchInterval: 30000,
+    enabled: !USE_MOCK_DATA,
+  })
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const traps: any[] = activeTraps as any[] ?? []
+    if (!traps.length) return
+    setTrapAlerts(prev => {
+      const next = new Map(prev)
+      traps.forEach(t => {
+        const alert: TrapAlert = {
+          trapType: t.trap_type ?? '',
+          severity: t.severity ?? 'critical',
+          description: t.description ?? '',
+          deviceName: t.device_name ?? '',
+          timestamp: t.timestamp ?? new Date().toISOString(),
+        }
+        if (t.source_ip) next.set(t.source_ip, alert)
+        if (t.device_name) next.set(t.device_name, alert)
+      })
+      return next
+    })
+    setLinkDownAlerts(prev => {
+      const next = new Map(prev)
+      traps
+        .filter(t => (t.trap_type ?? '').toUpperCase().includes('LINK_DOWN'))
+        .forEach(t => {
+          const alert: TrapAlert = {
+            trapType: t.trap_type ?? '',
+            severity: t.severity ?? 'critical',
+            description: t.description ?? '',
+            deviceName: t.device_name ?? '',
+            timestamp: t.timestamp ?? new Date().toISOString(),
+          }
+          if (t.source_ip) next.set(t.source_ip, alert)
+          if (t.device_name) next.set(t.device_name, alert)
+        })
+      return next
+    })
+    setTrapFeed(
+      traps.slice(0, 30).map((t, i) => ({
+        id: i,
+        sourceIp: t.source_ip ?? '',
+        deviceName: t.device_name ?? '',
+        trapType: t.trap_type ?? '',
+        severity: t.severity ?? 'critical',
+        description: t.description ?? '',
+        timestamp: t.timestamp ?? new Date().toISOString(),
+      }))
+    )
+  }, [activeTraps])
 
   useEffect(() => {
     if (!agents || !svgRef.current) return
@@ -841,6 +954,20 @@ export default function Topology() {
       return dt.includes('UPS') || aid.includes('UPS')
     }
 
+    // Helper: does a network node have an active trap alert?
+    const hasTrap = (d: TopoNode) =>
+      (!!d.ip && trapAlerts.has(d.ip)) || (!!d.name && trapAlerts.has(d.name))
+
+    // Helper: is this edge affected by a link-down trap on either endpoint?
+    const isLinkDownTrap = (d: TopoLink) => {
+      const info = d.d2dInfo
+      if (!info) return false
+      return linkDownAlerts.has(info.sourceIp) ||
+             linkDownAlerts.has(info.sourceName) ||
+             linkDownAlerts.has(info.targetIp) ||
+             linkDownAlerts.has(info.targetName)
+    }
+
     // Helper: is link disconnected?
     const isLinkDisconnected = (d: TopoLink) => {
       const sourceId = typeof d.source === 'string' ? d.source : d.source.id
@@ -895,21 +1022,25 @@ export default function Topology() {
       .data(links)
       .enter().append('line')
       .attr('stroke', d => {
+        if (isLinkDownTrap(d)) return '#ef4444'           // red — trap link-down
         if (d.linkType === 'device-device') {
-          return isLinkDisconnected(d) ? '#ef4444' : '#f59e0b' // amber for physical wiring
+          return isLinkDisconnected(d) ? '#ef4444' : '#f59e0b'
         }
         if (d.linkType === 'device-agent') return '#06b6d4'
         return isLinkDisconnected(d) ? '#ef4444' : '#10b981'
       })
       .attr('stroke-width', d => {
+        if (isLinkDownTrap(d)) return 2.5
         if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 2 : 2
         return d.linkType === 'device-agent' ? 1.5 : isLinkDisconnected(d) ? 2.5 : 2
       })
       .attr('stroke-opacity', d => {
+        if (isLinkDownTrap(d)) return 0.9
         if (d.linkType === 'device-device') return isLinkDisconnected(d) ? 0.6 : 0.8
         return d.linkType === 'device-agent' ? 0.4 : isLinkDisconnected(d) ? 0.7 : 0.5
       })
       .attr('stroke-dasharray', d => {
+        if (isLinkDownTrap(d)) return '6,4'              // dashed — link-down trap
         if (d.linkType === 'device-device') return isLinkDisconnected(d) ? '8,6' : 'none'
         if (d.linkType === 'device-agent') return '6,4'
         return isLinkDisconnected(d) ? '8,6' : 'none'
@@ -1085,7 +1216,7 @@ export default function Topology() {
         `
       } else {
         // network / SNMP device
-        const activeTrap = d.ip ? trapAlerts.get(d.ip) : undefined
+        const activeTrap = (d.ip ? trapAlerts.get(d.ip) : undefined) ?? (d.name ? trapAlerts.get(d.name) : undefined)
         html = `
           <div class="font-bold text-base mb-1.5 ${activeTrap ? 'text-red-300' : 'text-cyan-300'}">${d.name}</div>
           <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
@@ -1153,7 +1284,7 @@ export default function Topology() {
       .attr('fill', d => {
         if (d.type === 'server') return d.status === 'offline' ? '#991b1b' : (d.color || '#8b5cf6')
         if (d.type === 'network') {
-          if (d.ip && trapAlerts.has(d.ip)) return '#7f1d1d'
+          if (hasTrap(d)) return '#7f1d1d'
           return d.status === 'online' ? '#0e7490' : '#334155'
         }
         return d.status === 'online' ? '#10b981' : '#ef4444'
@@ -1165,19 +1296,19 @@ export default function Topology() {
           return c ? c.brighter(0.5).toString() : '#a78bfa'
         }
         if (d.type === 'network') {
-          if (d.ip && trapAlerts.has(d.ip)) return '#ef4444'
+          if (hasTrap(d)) return '#ef4444'
           return d.status === 'online' ? '#06b6d4' : '#475569'
         }
         return d.status === 'online' ? '#34d399' : '#f87171'
       })
       .attr('stroke-width', d => {
-        if (d.type === 'network' && d.ip && trapAlerts.has(d.ip)) return 3
+        if (d.type === 'network' && hasTrap(d)) return 3
         return d.type === 'network' ? 2 : d.status === 'offline' ? 4 : 3
       })
       .style('cursor', 'pointer')
       .attr('filter', d => {
         if (d.status === 'offline' && d.type !== 'network') return 'url(#glow-red)'
-        if (d.type === 'network' && d.ip && trapAlerts.has(d.ip)) return 'url(#glow-red)'
+        if (d.type === 'network' && hasTrap(d)) return 'url(#glow-red)'
         return null
       })
 
@@ -1445,7 +1576,7 @@ export default function Topology() {
 
     // ── SNMP trap alert badge on network nodes ──────────────────────────────
     // Red ⚠ badge at top of node + pulsing danger ring
-    node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+    node.filter(d => d.type === 'network' && hasTrap(d))
       .append('circle')
       .attr('cx', 0)
       .attr('cy', -28)
@@ -1454,7 +1585,7 @@ export default function Topology() {
       .attr('stroke', '#1e293b')
       .attr('stroke-width', 2)
 
-    node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+    node.filter(d => d.type === 'network' && hasTrap(d))
       .append('text')
       .attr('x', 0)
       .attr('y', -28)
@@ -1465,7 +1596,7 @@ export default function Topology() {
       .attr('font-weight', 'bold')
       .text('!')
 
-    node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+    node.filter(d => d.type === 'network' && hasTrap(d))
       .append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', 48)
@@ -1473,12 +1604,12 @@ export default function Topology() {
       .attr('fill', '#fca5a5')
       .attr('font-weight', 'bold')
       .text(d => {
-        const alert = d.ip ? trapAlerts.get(d.ip) : undefined
+        const alert = (d.ip ? trapAlerts.get(d.ip) : undefined) ?? (d.name ? trapAlerts.get(d.name) : undefined)
         return alert ? (alert.severity?.toUpperCase() || 'CRITICAL') : ''
       })
 
     if (nodeCount <= 100) {
-      node.filter(d => d.type === 'network' && !!d.ip && trapAlerts.has(d.ip))
+      node.filter(d => d.type === 'network' && hasTrap(d))
         .append('circle')
         .attr('r', 20)
         .attr('fill', 'none')
@@ -1606,7 +1737,7 @@ export default function Topology() {
         clickTimerRef.current = null
       }
     }
-  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, customTopology, orchDevicesByServerId, orchTopology, trapAlerts])
+  }, [agents, servers, filteredData, expandedServers, snmpDevices, topologyLinks, customTopology, orchDevicesByServerId, orchTopology, trapAlerts, linkDownAlerts])
 
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomRef.current) return
@@ -1699,6 +1830,21 @@ export default function Topology() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!showTrapFeed && (
+            <button
+              onClick={() => setShowTrapFeed(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-900/40 hover:bg-red-900/60 border border-red-500/40 text-red-300 rounded-lg transition-colors font-medium relative"
+              title="Show live trap feed"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Traps
+              {trapFeed.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  {trapFeed.length > 9 ? '9+' : trapFeed.length}
+                </span>
+              )}
+            </button>
+          )}
           <button
             onClick={hasExpanded ? collapseAll : expandAll}
             className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-white/10 text-white rounded-lg transition-colors font-medium"
@@ -1785,6 +1931,10 @@ export default function Topology() {
                 <span className="text-slate-300">Server (Disconnected)</span>
               </div>
               <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-[#7f1d1d] border-2 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                <span className="text-slate-300">Device (SNMP Trap)</span>
+              </div>
+              <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-green-500 border-2 border-green-400" />
                 <span className="text-slate-300">Agent (Online)</span>
               </div>
@@ -1798,7 +1948,7 @@ export default function Topology() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-0.5 border-t-2 border-dashed border-red-500" />
-                <span className="text-slate-300">Disconnected Link</span>
+                <span className="text-slate-300">Disconnected / Link Down</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
@@ -1823,6 +1973,53 @@ export default function Topology() {
               <div className="mt-2 pt-2 border-t border-white/10">
                 <p className="text-slate-400">Double-click a server to expand/collapse its agents</p>
               </div>
+            </div>
+          </div>
+          )}
+
+          {/* Live Trap Feed */}
+          {showTrapFeed && (
+          <div className="absolute top-4 right-4 w-72 max-h-80 bg-slate-900/95 border border-red-500/30 rounded-lg backdrop-blur-sm flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-semibold text-white">Live SNMP Traps</span>
+                {trapFeed.length > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                    {trapFeed.length}
+                  </span>
+                )}
+              </div>
+              <button onClick={() => setShowTrapFeed(false)} className="text-slate-400 hover:text-white transition-colors" aria-label="Close traps">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {trapFeed.length === 0 ? (
+                <p className="text-slate-500 text-xs text-center py-4">Waiting for traps…</p>
+              ) : (
+                trapFeed.map(t => (
+                  <div key={t.id} className="px-3 py-2 border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        t.severity.toLowerCase() === 'critical' ? 'bg-red-500/20 text-red-400' :
+                        t.severity.toLowerCase() === 'warning' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>{t.severity.toUpperCase()}</span>
+                      <span className="text-[10px] text-slate-500 shrink-0">
+                        {new Date(t.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <p className="text-xs font-medium text-white mt-0.5 truncate">
+                      {t.deviceName || t.sourceIp}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">{t.trapType}</p>
+                    {t.description && (
+                      <p className="text-[10px] text-slate-500 truncate">{t.description}</p>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
           )}
