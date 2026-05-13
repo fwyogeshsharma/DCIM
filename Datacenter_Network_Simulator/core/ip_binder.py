@@ -1,9 +1,9 @@
 """
-IP Binder - Adds/removes virtual IP addresses on Windows network adapters
-using 'netsh interface ip add/delete address' so SNMPSim can listen on each
-device's real IP at port 161.
+IP Binder - Adds/removes virtual IP addresses on network adapters so SNMPSim
+can listen on each device's real IP at port 161.
 
-Requires the application to run as Administrator.
+On Windows: uses netsh / Win32 AddIPAddress API (requires Administrator).
+On Linux:   uses `ip addr add/del` (requires root / CAP_NET_ADMIN).
 """
 from __future__ import annotations
 import ctypes
@@ -20,15 +20,30 @@ from typing import Dict, List, Tuple, Callable, Optional
 
 
 # ------------------------------------------------------------------ #
+#  Shared helpers                                                      #
+# ------------------------------------------------------------------ #
+
+def _mask_to_prefix(mask: str) -> int:
+    """Convert a dotted-decimal subnet mask to a CIDR prefix length."""
+    return sum(bin(int(x)).count('1') for x in mask.split('.'))
+
+
+# ------------------------------------------------------------------ #
 #  Admin check                                                         #
 # ------------------------------------------------------------------ #
 
 def is_admin() -> bool:
-    """Return True when the process has Windows Administrator privileges."""
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        return False
+    """Return True when the process has the privileges needed to bind IPs."""
+    if sys.platform == "win32":
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin() != 0
+        except Exception:
+            return False
+    else:
+        try:
+            return os.geteuid() == 0
+        except AttributeError:
+            return False
 
 
 # ------------------------------------------------------------------ #
@@ -37,11 +52,14 @@ def is_admin() -> bool:
 
 def get_interfaces() -> List[Tuple[str, str]]:
     """
-    Return a list of (adapter_name, display_label) for every network
-    adapter Windows knows about.
-
-    Tries PowerShell first (Win10/11), then falls back to netsh.
+    Return a list of (adapter_name, display_label) for every network adapter.
     """
+    if sys.platform == "win32":
+        return _get_interfaces_windows()
+    return _get_interfaces_linux()
+
+
+def _get_interfaces_windows() -> List[Tuple[str, str]]:
     ifaces: List[Tuple[str, str]] = []
 
     # --- PowerShell (preferred) ---
@@ -58,9 +76,7 @@ def get_interfaces() -> List[Tuple[str, str]]:
         )
         if result.returncode == 0:
             lines = [l.strip() for l in result.stdout.strip().splitlines() if l.strip()]
-            # Skip CSV header
             for line in lines[1:]:
-                # Strip surrounding quotes and split on ","
                 parts = re.split(r'","', line.strip('"'))
                 if len(parts) >= 3:
                     name   = parts[0].strip('"')
@@ -84,7 +100,6 @@ def get_interfaces() -> List[Tuple[str, str]]:
         )
         for line in result.stdout.splitlines():
             parts = line.split()
-            # Lines look like: "Enabled    Connected    Dedicated    Ethernet"
             if len(parts) >= 4 and parts[0].lower() in ("enabled", "disabled"):
                 name = " ".join(parts[3:])
                 ifaces.append((name, name))
@@ -94,8 +109,43 @@ def get_interfaces() -> List[Tuple[str, str]]:
     return ifaces
 
 
+def _get_interfaces_linux() -> List[Tuple[str, str]]:
+    ifaces: List[Tuple[str, str]] = []
+
+    try:
+        result = subprocess.run(
+            ["ip", "-o", "link", "show"],
+            capture_output=True, text=True, timeout=10,
+        )
+        for line in result.stdout.splitlines():
+            m = re.match(r'\d+:\s+(\S+?)[@:]', line)
+            if m:
+                name = m.group(1)
+                if name != "lo":
+                    ifaces.append((name, name))
+    except Exception:
+        pass
+
+    if not ifaces:
+        # Fallback: read kernel sysfs directly
+        try:
+            for name in sorted(os.listdir("/sys/class/net")):
+                if name != "lo":
+                    ifaces.append((name, name))
+        except Exception:
+            pass
+
+    return ifaces
+
+
 def get_interface_ips(interface_name: str) -> List[str]:
-    """Return the list of IP addresses currently assigned to an interface."""
+    """Return the list of IPv4 addresses currently assigned to an interface."""
+    if sys.platform == "win32":
+        return _get_interface_ips_windows(interface_name)
+    return _get_interface_ips_linux(interface_name)
+
+
+def _get_interface_ips_windows(interface_name: str) -> List[str]:
     ips: List[str] = []
     try:
         ps_cmd = (
@@ -117,15 +167,34 @@ def get_interface_ips(interface_name: str) -> List[str]:
     return ips
 
 
+def _get_interface_ips_linux(interface_name: str) -> List[str]:
+    ips: List[str] = []
+    try:
+        result = subprocess.run(
+            ["ip", "-4", "addr", "show", interface_name],
+            capture_output=True, text=True, timeout=10,
+        )
+        for line in result.stdout.splitlines():
+            m = re.search(r'inet\s+(\d+\.\d+\.\d+\.\d+)', line)
+            if m:
+                ips.append(m.group(1))
+    except Exception:
+        pass
+    return ips
+
+
 # ------------------------------------------------------------------ #
 #  Add / Remove single IP                                              #
 # ------------------------------------------------------------------ #
 
 def add_ip(interface: str, ip: str, mask: str = "255.255.255.0") -> Tuple[bool, str]:
-    """
-    Add *ip/mask* as a secondary address on *interface* using netsh.
-    Returns (success, message).
-    """
+    """Add ip/mask as a secondary address on interface. Returns (success, message)."""
+    if sys.platform == "win32":
+        return _add_ip_windows(interface, ip, mask)
+    return _add_ip_linux(interface, ip, mask)
+
+
+def _add_ip_windows(interface: str, ip: str, mask: str) -> Tuple[bool, str]:
     try:
         result = subprocess.run(
             [
@@ -138,7 +207,6 @@ def add_ip(interface: str, ip: str, mask: str = "255.255.255.0") -> Tuple[bool, 
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
         out = (result.stdout + result.stderr).strip()
-        # netsh returns 0 on success; "already exists" is also acceptable
         if result.returncode == 0 or "already" in out.lower():
             return True, f"Bound {ip}"
         return False, out or f"netsh exit {result.returncode}"
@@ -146,11 +214,29 @@ def add_ip(interface: str, ip: str, mask: str = "255.255.255.0") -> Tuple[bool, 
         return False, str(e)
 
 
+def _add_ip_linux(interface: str, ip: str, mask: str) -> Tuple[bool, str]:
+    prefix = _mask_to_prefix(mask)
+    try:
+        result = subprocess.run(
+            ["ip", "addr", "add", f"{ip}/{prefix}", "dev", interface],
+            capture_output=True, text=True, timeout=15,
+        )
+        out = (result.stdout + result.stderr).strip()
+        if result.returncode == 0 or "File exists" in out or "already assigned" in out.lower():
+            return True, f"Bound {ip}"
+        return False, out or f"ip addr add exit {result.returncode}"
+    except Exception as e:
+        return False, str(e)
+
+
 def remove_ip(interface: str, ip: str) -> Tuple[bool, str]:
-    """
-    Remove *ip* from *interface* using netsh.
-    Returns (success, message).
-    """
+    """Remove ip from interface. Returns (success, message)."""
+    if sys.platform == "win32":
+        return _remove_ip_windows(interface, ip)
+    return _remove_ip_linux(interface, ip)
+
+
+def _remove_ip_windows(interface: str, ip: str) -> Tuple[bool, str]:
     try:
         result = subprocess.run(
             [
@@ -165,6 +251,37 @@ def remove_ip(interface: str, ip: str) -> Tuple[bool, str]:
         if result.returncode == 0 or "not found" in out.lower() or "element not found" in out.lower():
             return True, f"Removed {ip}"
         return False, out or f"netsh exit {result.returncode}"
+    except Exception as e:
+        return False, str(e)
+
+
+def _remove_ip_linux(interface: str, ip: str) -> Tuple[bool, str]:
+    # Look up the prefix currently assigned to this IP so `ip addr del` matches.
+    prefix = "24"
+    try:
+        show = subprocess.run(
+            ["ip", "-4", "addr", "show", interface],
+            capture_output=True, text=True, timeout=10,
+        )
+        for line in show.stdout.splitlines():
+            m = re.search(r'inet\s+' + re.escape(ip) + r'/(\d+)', line)
+            if m:
+                prefix = m.group(1)
+                break
+    except Exception:
+        pass
+
+    try:
+        result = subprocess.run(
+            ["ip", "addr", "del", f"{ip}/{prefix}", "dev", interface],
+            capture_output=True, text=True, timeout=15,
+        )
+        out = (result.stdout + result.stderr).strip()
+        if result.returncode == 0:
+            return True, f"Removed {ip}"
+        if "Cannot assign requested address" in out or "not found" in out.lower():
+            return True, f"Already removed {ip}"
+        return False, out or f"ip addr del exit {result.returncode}"
     except Exception as e:
         return False, str(e)
 
@@ -199,7 +316,7 @@ def _ip_dword(ip: str) -> int:
 
 def _add_ip_api(if_index: int, ip: str, mask: str) -> Tuple[bool, int, str]:
     """
-    Add *ip/mask* to interface *if_index* via Windows AddIPAddress.
+    Add ip/mask to interface if_index via Windows AddIPAddress.
     Returns (success, nte_context, message).
     nte_context is needed for fast removal via DeleteIPAddress.
     """
@@ -212,7 +329,7 @@ def _add_ip_api(if_index: int, ip: str, mask: str) -> Tuple[bool, int, str]:
         )
         if err == 0:
             return True, nte_ctx.value, f"Bound {ip}"
-        if err in (183, 5003, 5010):    # ERROR_ALREADY_EXISTS / OBJECT_ALREADY_EXISTS / ERROR_ADDRESS_ALREADY_EXISTS
+        if err in (183, 5003, 5010):    # ERROR_ALREADY_EXISTS variants
             return True, 0, f"Already bound {ip}"
         return False, 0, f"AddIPAddress error {err}"
     except Exception as exc:
@@ -228,6 +345,10 @@ def _remove_ip_api(nte_context: int) -> Tuple[bool, str]:
         return False, str(exc)
 
 
+# ------------------------------------------------------------------ #
+#  Parallel add / remove (public API)                                  #
+# ------------------------------------------------------------------ #
+
 def add_ips_fast(
     interface: str,
     ips: List[str],
@@ -238,17 +359,47 @@ def add_ips_fast(
     cancelled_fn: Optional[Callable[[], bool]] = None,
 ) -> Tuple[List[str], Dict[str, int]]:
     """
-    Bind IPs in parallel using the Windows AddIPAddress API.
+    Bind IPs in parallel.
 
-    Returns (bound_ips, {ip: nte_context}).
-    nte_context values are needed for fast removal; store them and pass to
-    remove_ips_fast().  Falls back to the single-PS batch approach when the
-    interface index cannot be resolved (e.g. non-Windows or permission error).
+    On Windows: uses AddIPAddress Win32 API; returns (bound_ips, {ip: nte_context}).
+    On Linux:   uses `ip addr add`; returns (bound_ips, {ip: ip}).
+
+    Pass the returned context dict to remove_ips_fast() for fast unbind.
     """
     if sys.platform != "win32":
-        ok, _ = add_ips_batch(interface, ips, mask, log_cb, progress_cb)
-        return ips[:ok], {}
+        total     = len(ips)
+        done      = [0]
+        lock      = threading.Lock()
+        bound: List[str] = []
 
+        def _bind_one(ip: str) -> Tuple[str, bool]:
+            ok, msg = _add_ip_linux(interface, ip, mask)
+            with lock:
+                done[0] += 1
+                n = done[0]
+            if log_cb:
+                log_cb(f"  {'OK' if ok else 'FAIL'} {ip}: {msg}",
+                       "success" if ok else "error")
+            if progress_cb:
+                progress_cb(n, total)
+            return ip, ok
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {}
+            for ip in ips:
+                if cancelled_fn and cancelled_fn():
+                    break
+                futures[pool.submit(_bind_one, ip)] = ip
+            for fut in _as_completed(futures):
+                ip, ok = fut.result()
+                if ok:
+                    bound.append(ip)
+
+        # Return ip as its own "context" — remove_ips_fast on Linux only needs
+        # the IP + interface name, so nte_context values are never read.
+        return bound, {ip: ip for ip in bound}
+
+    # ── Windows fast path via Win32 API ──────────────────────────────────
     if_index = _get_if_index(interface)
     if if_index is None:
         # Fallback — batch netsh in a single PowerShell process
@@ -258,10 +409,10 @@ def add_ips_fast(
     total     = len(ips)
     done      = [0]
     lock      = threading.Lock()
-    bound: List[str]       = []
+    bound: List[str]         = []
     contexts: Dict[str, int] = {}
 
-    def _bind_one(ip: str) -> Tuple[str, bool, int]:
+    def _bind_one_win(ip: str) -> Tuple[str, bool, int]:
         ok, ctx, msg = _add_ip_api(if_index, ip, mask)
         with lock:
             done[0] += 1
@@ -278,7 +429,7 @@ def add_ips_fast(
         for ip in ips:
             if cancelled_fn and cancelled_fn():
                 break
-            futures[pool.submit(_bind_one, ip)] = ip
+            futures[pool.submit(_bind_one_win, ip)] = ip
         for fut in _as_completed(futures):
             ip, ok, ctx = fut.result()
             if ok:
@@ -299,24 +450,50 @@ def remove_ips_fast(
 ) -> Tuple[int, int]:
     """
     Remove IPs in parallel.
-    Uses DeleteIPAddress (instant) for IPs that have an NTEContext stored from
-    add_ips_fast(); falls back to netsh for IPs without one.
+
+    On Windows: uses DeleteIPAddress for IPs with a stored NTEContext; netsh fallback otherwise.
+    On Linux:   uses `ip addr del`; nte_contexts is ignored.
     """
     if not ips:
         return 0, 0
-    if sys.platform != "win32" or not nte_contexts:
+
+    if sys.platform != "win32":
+        total     = len(ips)
+        done      = [0]
+        lock      = threading.Lock()
+
+        def _remove_one(ip: str) -> bool:
+            ok, msg = _remove_ip_linux(interface, ip)
+            with lock:
+                done[0] += 1
+                n = done[0]
+            if log_cb:
+                log_cb(f"  {'OK' if ok else 'FAIL'} {ip}: {msg}",
+                       "info" if ok else "warning")
+            if progress_cb:
+                progress_cb(n, total)
+            return ok
+
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            results = list(pool.map(_remove_one, ips))
+
+        ok_count = sum(results)
+        return ok_count, len(results) - ok_count
+
+    # ── Windows path ──────────────────────────────────────────────────────
+    if not nte_contexts:
         return remove_ips_batch(interface, ips, log_cb, progress_cb)
 
     total     = len(ips)
     done      = [0]
     lock      = threading.Lock()
 
-    def _remove_one(ip: str) -> bool:
+    def _remove_one_win(ip: str) -> bool:
         ctx = nte_contexts.get(ip, 0)
         if ctx:
             ok, msg = _remove_ip_api(ctx)
         else:
-            ok, msg = remove_ip(interface, ip)   # netsh fallback
+            ok, msg = _remove_ip_windows(interface, ip)
         with lock:
             done[0] += 1
             n = done[0]
@@ -328,7 +505,7 @@ def remove_ips_fast(
         return ok
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        results = list(pool.map(_remove_one, ips))
+        results = list(pool.map(_remove_one_win, ips))
 
     ok_count = sum(results)
     return ok_count, len(results) - ok_count
@@ -346,14 +523,17 @@ def add_ips_batch(
     progress_cb: Optional[Callable[[int, int], None]] = None,
 ) -> Tuple[int, int]:
     """
-    Add every IP in *ips* to *interface* using a single PowerShell process.
-    Avoids spawning one subprocess per IP which causes access violations on
-    Windows when called from a QThread with many IPs.
+    Add every IP in ips to interface.
+    On Windows: uses a single PowerShell process (avoids per-subprocess overhead).
+    On Linux:   delegates to parallel add_ips_fast().
     Returns (success_count, failure_count).
     """
     if not ips:
         return 0, 0
-    return _run_netsh_batch("add", interface, ips, mask, log_cb, progress_cb)
+    if sys.platform == "win32":
+        return _run_netsh_batch("add", interface, ips, mask, log_cb, progress_cb)
+    bound, _ = add_ips_fast(interface, ips, mask, log_cb, progress_cb)
+    return len(bound), len(ips) - len(bound)
 
 
 def remove_ips_batch(
@@ -363,12 +543,16 @@ def remove_ips_batch(
     progress_cb: Optional[Callable[[int, int], None]] = None,
 ) -> Tuple[int, int]:
     """
-    Remove every IP in *ips* from *interface* using a single PowerShell process.
+    Remove every IP in ips from interface.
+    On Windows: uses a single PowerShell process.
+    On Linux:   delegates to parallel remove_ips_fast().
     Returns (success_count, failure_count).
     """
     if not ips:
         return 0, 0
-    return _run_netsh_batch("remove", interface, ips, None, log_cb, progress_cb)
+    if sys.platform == "win32":
+        return _run_netsh_batch("remove", interface, ips, None, log_cb, progress_cb)
+    return remove_ips_fast(interface, ips, None, log_cb, progress_cb)
 
 
 def _run_netsh_batch(
