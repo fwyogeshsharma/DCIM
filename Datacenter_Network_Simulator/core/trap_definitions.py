@@ -2,14 +2,11 @@
 SNMP Trap Definitions — OIDs, severity levels, and applicable device types.
 
 Enterprise OID tree: 1.3.6.1.4.1.99999
-  .1.1  highCpuUsage
-  .1.2  highMemoryUsage
-  .1.3  highTemperature
-  .1.4  linkFlap
-  .1.5  rackFailure
-  .1.6  humidityAlert
-  .1.7  dewPointAlert
-  .1.8  airflowAlert
+  .1.1-.1.8   general device traps (CPU, memory, temperature, ...)
+  .2.1-.2.13  UPS enterprise traps
+  .4.1-.4.5   UPS pollable status OIDs
+  .5.1-.5.10  PDU pollable status OIDs
+  .6.1-.6.13  PDU enterprise traps
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -38,6 +35,34 @@ class TrapType(str, Enum):
     HUMIDITY_ALERT    = "humidityAlert"
     DEWPOINT_ALERT    = "dewPointAlert"
     AIRFLOW_ALERT     = "airflowAlert"
+    # UPS enterprise traps (1.3.6.1.4.1.99999.2.x)
+    UPS_BATTERY_NORMAL        = "batteryNormal"
+    UPS_UTILITY_RESTORED      = "utilityPowerRestored"
+    UPS_OUTPUT_OVERLOAD       = "outputOverload"
+    UPS_OUTPUT_NORMAL         = "outputNormal"
+    UPS_FAN_FAILURE           = "fanFailure"
+    UPS_BATTERY_FAILURE       = "batteryFailure"
+    UPS_BATTERY_DISCONNECTED  = "batteryDisconnected"
+    UPS_CHARGER_FAILURE       = "chargerFailure"
+    UPS_INPUT_VOLTAGE_HIGH    = "inputVoltageHigh"
+    UPS_INPUT_VOLTAGE_LOW     = "inputVoltageLow"
+    UPS_FREQUENCY_OUT_RANGE   = "frequencyOutOfRange"
+    UPS_RECTIFIER_FAILURE     = "rectifierFailure"
+    UPS_PHASE_FAILURE         = "upsPhaseFailure"
+    # PDU enterprise traps (1.3.6.1.4.1.99999.6.x)
+    PDU_OUTLET_ON             = "outletOn"
+    PDU_OUTLET_OFF            = "outletOff"
+    PDU_BREAKER_TRIPPED       = "breakerTripped"
+    PDU_LOAD_HIGH             = "loadHigh"
+    PDU_LOAD_CRITICAL         = "loadCritical"
+    PDU_VOLTAGE_HIGH          = "voltageHigh"
+    PDU_VOLTAGE_LOW           = "voltageLow"
+    PDU_PHASE_IMBALANCE       = "phaseImbalance"
+    PDU_POWER_FACTOR_LOW      = "powerFactorLow"
+    PDU_OUTLET_FAILURE        = "outletFailure"
+    PDU_SMOKE_DETECTED        = "smokeDetected"
+    PDU_OUTLET_CURRENT_HIGH   = "outletCurrentHigh"
+    PDU_GROUND_FAULT          = "groundFault"
 
 
 SEVERITY_COLOR = {
@@ -170,6 +195,86 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
         "Airflow is outside safe operating range (0.3–3.5 m/s)",
         "major",
     ),
+    # ── UPS enterprise traps ──────────────────────────────────────────────────
+    TrapType.UPS_BATTERY_NORMAL: TrapDefinition(
+        TrapType.UPS_BATTERY_NORMAL, "1.3.6.1.4.1.99999.2.1",
+        "Battery Normal", "UPS battery has returned to normal state", "informational"),
+    TrapType.UPS_UTILITY_RESTORED: TrapDefinition(
+        TrapType.UPS_UTILITY_RESTORED, "1.3.6.1.4.1.99999.2.2",
+        "Utility Power Restored", "Utility power has been restored; UPS on mains", "informational"),
+    TrapType.UPS_OUTPUT_OVERLOAD: TrapDefinition(
+        TrapType.UPS_OUTPUT_OVERLOAD, "1.3.6.1.4.1.99999.2.3",
+        "Output Overload", "UPS output load has exceeded 90%", "critical"),
+    TrapType.UPS_OUTPUT_NORMAL: TrapDefinition(
+        TrapType.UPS_OUTPUT_NORMAL, "1.3.6.1.4.1.99999.2.4",
+        "Output Normal", "UPS output load has returned to normal", "informational"),
+    TrapType.UPS_FAN_FAILURE: TrapDefinition(
+        TrapType.UPS_FAN_FAILURE, "1.3.6.1.4.1.99999.2.5",
+        "Fan Failure", "UPS cooling fan has failed", "critical"),
+    TrapType.UPS_BATTERY_FAILURE: TrapDefinition(
+        TrapType.UPS_BATTERY_FAILURE, "1.3.6.1.4.1.99999.2.6",
+        "Battery Failure", "UPS battery fault detected", "critical"),
+    TrapType.UPS_BATTERY_DISCONNECTED: TrapDefinition(
+        TrapType.UPS_BATTERY_DISCONNECTED, "1.3.6.1.4.1.99999.2.7",
+        "Battery Disconnected", "UPS battery has been disconnected", "critical"),
+    TrapType.UPS_CHARGER_FAILURE: TrapDefinition(
+        TrapType.UPS_CHARGER_FAILURE, "1.3.6.1.4.1.99999.2.8",
+        "Charger Failure", "UPS battery charger fault", "critical"),
+    TrapType.UPS_INPUT_VOLTAGE_HIGH: TrapDefinition(
+        TrapType.UPS_INPUT_VOLTAGE_HIGH, "1.3.6.1.4.1.99999.2.9",
+        "Input Voltage High", "UPS input voltage exceeds upper threshold (250 V)", "major"),
+    TrapType.UPS_INPUT_VOLTAGE_LOW: TrapDefinition(
+        TrapType.UPS_INPUT_VOLTAGE_LOW, "1.3.6.1.4.1.99999.2.10",
+        "Input Voltage Low", "UPS input voltage below lower threshold (190 V)", "major"),
+    TrapType.UPS_FREQUENCY_OUT_RANGE: TrapDefinition(
+        TrapType.UPS_FREQUENCY_OUT_RANGE, "1.3.6.1.4.1.99999.2.11",
+        "Frequency Out of Range", "UPS input frequency outside 49–51 Hz band", "major"),
+    TrapType.UPS_RECTIFIER_FAILURE: TrapDefinition(
+        TrapType.UPS_RECTIFIER_FAILURE, "1.3.6.1.4.1.99999.2.12",
+        "Rectifier Failure", "UPS rectifier module fault", "critical"),
+    TrapType.UPS_PHASE_FAILURE: TrapDefinition(
+        TrapType.UPS_PHASE_FAILURE, "1.3.6.1.4.1.99999.2.13",
+        "Phase Failure", "One or more input phases has failed", "critical"),
+    # ── PDU enterprise traps ──────────────────────────────────────────────────
+    TrapType.PDU_OUTLET_ON: TrapDefinition(
+        TrapType.PDU_OUTLET_ON, "1.3.6.1.4.1.99999.6.1",
+        "Outlet On", "PDU outlet has been switched on", "informational"),
+    TrapType.PDU_OUTLET_OFF: TrapDefinition(
+        TrapType.PDU_OUTLET_OFF, "1.3.6.1.4.1.99999.6.2",
+        "Outlet Off", "PDU outlet has been switched off", "major"),
+    TrapType.PDU_BREAKER_TRIPPED: TrapDefinition(
+        TrapType.PDU_BREAKER_TRIPPED, "1.3.6.1.4.1.99999.6.3",
+        "Breaker Tripped", "PDU circuit breaker has tripped", "critical"),
+    TrapType.PDU_LOAD_HIGH: TrapDefinition(
+        TrapType.PDU_LOAD_HIGH, "1.3.6.1.4.1.99999.6.4",
+        "Load High", "PDU load has exceeded 80%", "major"),
+    TrapType.PDU_LOAD_CRITICAL: TrapDefinition(
+        TrapType.PDU_LOAD_CRITICAL, "1.3.6.1.4.1.99999.6.5",
+        "Load Critical", "PDU load has exceeded 90%", "critical"),
+    TrapType.PDU_VOLTAGE_HIGH: TrapDefinition(
+        TrapType.PDU_VOLTAGE_HIGH, "1.3.6.1.4.1.99999.6.6",
+        "Voltage High", "PDU input voltage exceeds 240 V", "major"),
+    TrapType.PDU_VOLTAGE_LOW: TrapDefinition(
+        TrapType.PDU_VOLTAGE_LOW, "1.3.6.1.4.1.99999.6.7",
+        "Voltage Low", "PDU input voltage below 200 V", "major"),
+    TrapType.PDU_PHASE_IMBALANCE: TrapDefinition(
+        TrapType.PDU_PHASE_IMBALANCE, "1.3.6.1.4.1.99999.6.8",
+        "Phase Imbalance", "PDU phase load imbalance exceeds 20%", "major"),
+    TrapType.PDU_POWER_FACTOR_LOW: TrapDefinition(
+        TrapType.PDU_POWER_FACTOR_LOW, "1.3.6.1.4.1.99999.6.9",
+        "Power Factor Low", "PDU power factor has dropped below 0.70", "major"),
+    TrapType.PDU_OUTLET_FAILURE: TrapDefinition(
+        TrapType.PDU_OUTLET_FAILURE, "1.3.6.1.4.1.99999.6.10",
+        "Outlet Failure", "PDU outlet hardware fault detected", "critical"),
+    TrapType.PDU_SMOKE_DETECTED: TrapDefinition(
+        TrapType.PDU_SMOKE_DETECTED, "1.3.6.1.4.1.99999.6.11",
+        "Smoke Detected", "Smoke sensor has triggered in the PDU", "critical"),
+    TrapType.PDU_OUTLET_CURRENT_HIGH: TrapDefinition(
+        TrapType.PDU_OUTLET_CURRENT_HIGH, "1.3.6.1.4.1.99999.6.12",
+        "Outlet Current High", "PDU outlet current exceeds 20 A", "major"),
+    TrapType.PDU_GROUND_FAULT: TrapDefinition(
+        TrapType.PDU_GROUND_FAULT, "1.3.6.1.4.1.99999.6.13",
+        "Ground Fault", "PDU ground fault detected", "critical"),
 }
 
 # Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)
@@ -232,12 +337,37 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.COLD_START,
         TrapType.AUTH_FAILURE,
         TrapType.UPS_ON_BATTERY, TrapType.UPS_LOW_BATTERY,
+        TrapType.UPS_BATTERY_NORMAL, TrapType.UPS_UTILITY_RESTORED,
+        TrapType.UPS_OUTPUT_OVERLOAD, TrapType.UPS_OUTPUT_NORMAL,
+        TrapType.UPS_FAN_FAILURE,
+        TrapType.UPS_BATTERY_FAILURE, TrapType.UPS_BATTERY_DISCONNECTED,
+        TrapType.UPS_CHARGER_FAILURE,
+        TrapType.UPS_INPUT_VOLTAGE_HIGH, TrapType.UPS_INPUT_VOLTAGE_LOW,
+        TrapType.UPS_FREQUENCY_OUT_RANGE,
+        TrapType.UPS_RECTIFIER_FAILURE, TrapType.UPS_PHASE_FAILURE,
         TrapType.TEMPERATURE_ALERT,
     ],
     "pdu": [
         TrapType.COLD_START,
         TrapType.AUTH_FAILURE,
         TrapType.LINK_DOWN, TrapType.LINK_UP,
+        TrapType.PDU_OUTLET_ON, TrapType.PDU_OUTLET_OFF,
+        TrapType.PDU_BREAKER_TRIPPED,
+        TrapType.PDU_LOAD_HIGH, TrapType.PDU_LOAD_CRITICAL,
+        TrapType.PDU_VOLTAGE_HIGH, TrapType.PDU_VOLTAGE_LOW,
+        TrapType.PDU_PHASE_IMBALANCE, TrapType.PDU_POWER_FACTOR_LOW,
+        TrapType.PDU_OUTLET_FAILURE, TrapType.PDU_SMOKE_DETECTED,
+        TrapType.PDU_OUTLET_CURRENT_HIGH, TrapType.PDU_GROUND_FAULT,
+    ],
+    "floor_pdu": [
+        TrapType.COLD_START,
+        TrapType.AUTH_FAILURE,
+        TrapType.LINK_DOWN, TrapType.LINK_UP,
+        TrapType.PDU_BREAKER_TRIPPED,
+        TrapType.PDU_LOAD_HIGH, TrapType.PDU_LOAD_CRITICAL,
+        TrapType.PDU_VOLTAGE_HIGH, TrapType.PDU_VOLTAGE_LOW,
+        TrapType.PDU_PHASE_IMBALANCE, TrapType.PDU_POWER_FACTOR_LOW,
+        TrapType.PDU_SMOKE_DETECTED, TrapType.PDU_GROUND_FAULT,
     ],
 }
 

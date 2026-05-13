@@ -185,6 +185,8 @@ class RuleEngine:
     def __init__(self):
         self._rules_lock = threading.Lock()
         self._rules: Dict[str, Rule] = {}
+        self._device_thresh_lock = threading.Lock()
+        self._device_thresholds: Dict[str, Dict[str, Dict[str, float]]] = {}
         self._action_cb: Optional[Callable[[TrapAction], None]] = None
 
         # Per-device, per-rule state
@@ -239,6 +241,34 @@ class RuleEngine:
     def get_rules(self) -> List[Rule]:
         with self._rules_lock:
             return sorted(self._rules.values(), key=lambda r: -r.priority)
+
+    def get_rule(self, name: str) -> Optional[Rule]:
+        with self._rules_lock:
+            return self._rules.get(name)
+
+    # ── Per-device threshold overrides ────────────────────────────────────────
+
+    def set_device_threshold(self, device_id: str, rule_name: str,
+                             field_path: str, value: float):
+        with self._device_thresh_lock:
+            self._device_thresholds.setdefault(device_id, {}).setdefault(rule_name, {})[field_path] = value
+
+    def get_device_threshold(self, device_id: str, rule_name: str,
+                             field_path: str) -> Optional[float]:
+        with self._device_thresh_lock:
+            return self._device_thresholds.get(device_id, {}).get(rule_name, {}).get(field_path)
+
+    def get_all_device_overrides(self) -> Dict[str, Any]:
+        with self._device_thresh_lock:
+            return {did: {rn: dict(fp) for rn, fp in rules.items()}
+                    for did, rules in self._device_thresholds.items()}
+
+    def load_device_overrides(self, overrides: Dict[str, Any]):
+        with self._device_thresh_lock:
+            self._device_thresholds = {
+                did: {rn: dict(fp) for rn, fp in rules.items()}
+                for did, rules in overrides.items()
+            }
 
     def get_rule_state(self, device_id: str, rule_name: str) -> Optional[RuleState]:
         return self._rule_states.get(device_id, {}).get(rule_name)
@@ -380,6 +410,26 @@ class RuleEngine:
             "dewpoint":     fact.dewpoint,
             "airflow":      fact.airflow,
             "ups_status":   fact.ups_status,
+            # UPS extended
+            "ups_output_load":       fact.ups_output_load,
+            "ups_battery_status":    fact.ups_battery_status,
+            "ups_input_voltage":     fact.ups_input_voltage,
+            "ups_input_frequency":   fact.ups_input_frequency,
+            "ups_fan_status":        fact.ups_fan_status,
+            "ups_charger_status":    fact.ups_charger_status,
+            "ups_rectifier_status":  fact.ups_rectifier_status,
+            "ups_phase_status":      fact.ups_phase_status,
+            # PDU extended
+            "pdu_load":              fact.pdu_load,
+            "pdu_voltage":           fact.pdu_voltage,
+            "pdu_power_factor":      fact.pdu_power_factor,
+            "pdu_phase_imbalance":   fact.pdu_phase_imbalance,
+            "pdu_outlet_status":     fact.pdu_outlet_status,
+            "pdu_breaker_status":    fact.pdu_breaker_status,
+            "pdu_outlet_failure":    fact.pdu_outlet_failure,
+            "pdu_smoke":             fact.pdu_smoke,
+            "pdu_outlet_current":    fact.pdu_outlet_current,
+            "pdu_ground_fault":      fact.pdu_ground_fault,
         }
 
     # ── State helpers ─────────────────────────────────────────────────────────
@@ -410,7 +460,8 @@ class RuleEngine:
         if rule.is_recovery:
             return self._eval_recovery_rule(rule, fact, metrics, state, now)
 
-        cond_met = self._eval_condition(rule.condition, metrics, fact.device_id, now)
+        cond_met = self._eval_condition(rule.condition, metrics, fact.device_id, now,
+                                        rule.rule_name, "threshold")
 
         # Duration tracking for threshold rules
         if rule.condition.condition_type == "threshold" and rule.condition.duration_sec > 0:
@@ -449,7 +500,8 @@ class RuleEngine:
             return None
 
         # Recovery condition: the recovery rule's condition is the "all clear" predicate
-        cond_met = self._eval_condition(rule.condition, metrics, fact.device_id, now)
+        cond_met = self._eval_condition(rule.condition, metrics, fact.device_id, now,
+                                        rule.rule_name, "threshold")
         if cond_met and self._can_fire(state, rule, now):
             alert_state.in_alert = False
             return self._do_fire(rule, fact, state, now, {
@@ -458,14 +510,17 @@ class RuleEngine:
         return None
 
     def _eval_condition(self, cond: Condition, metrics: Dict[str, Any],
-                        device_id: str, now: float) -> bool:
+                        device_id: str, now: float,
+                        rule_name: str = "", field_path: str = "threshold") -> bool:
         t = cond.condition_type
 
         if t == "threshold":
             val = metrics.get(cond.metric)
             if val is None:
                 return False
-            return _compare(val, cond.operator, cond.threshold)
+            override = self.get_device_threshold(device_id, rule_name, field_path) if rule_name else None
+            threshold = override if override is not None else cond.threshold
+            return _compare(val, cond.operator, threshold)
 
         if t == "state_change":
             curr = metrics.get(cond.metric)
@@ -483,8 +538,9 @@ class RuleEngine:
 
         if t == "composite":
             results = [
-                self._eval_condition(c, metrics, device_id, now)
-                for c in cond.conditions
+                self._eval_condition(c, metrics, device_id, now,
+                                     rule_name, f"conditions.{i}.threshold")
+                for i, c in enumerate(cond.conditions)
             ]
             if not results:
                 return False

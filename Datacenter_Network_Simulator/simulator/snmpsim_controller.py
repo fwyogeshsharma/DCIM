@@ -20,6 +20,30 @@ from pathlib import Path
 from typing import Optional, Callable, List
 
 
+def _setup_child_linux():
+    """preexec_fn for the snmpsim subprocess on Linux.
+
+    prctl(PR_SET_PDEATHSIG, SIGKILL) ensures the child receives SIGKILL when
+    the parent exits for any reason — equivalent to Windows Job Objects with
+    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.  os.setsid() moves the child into its
+    own session so a Ctrl-C in the terminal doesn't also kill it prematurely.
+    """
+    import signal as _sig
+    try:
+        import ctypes as _ct
+        _ct.CDLL("libc.so.6").prctl(1, _sig.SIGKILL, 0, 0, 0)  # PR_SET_PDEATHSIG=1
+    except Exception:
+        pass
+    try:
+        os.setsid()
+    except Exception:
+        pass
+    try:
+        os.nice(10)   # below-normal priority (mirrors BELOW_NORMAL_PRIORITY_CLASS)
+    except Exception:
+        pass
+
+
 def _assign_job_object(pid: int):
     """
     Windows only: assign *pid* to an anonymous Job Object with KillOnJobClose.
@@ -156,15 +180,22 @@ class SNMPSimController:
         return self._snmpsim_path
 
     def _discover_snmpsim(self) -> Optional[str]:
-        candidates = [
-            "snmpsim-command-responder",
-            "snmpsim-command-responder.exe",
-            "snmpsimd",
-            "snmpsimd.py",
-            "snmpsimd.exe",
-        ]
+        if sys.platform == "win32":
+            candidates = [
+                "snmpsim-command-responder",
+                "snmpsim-command-responder.exe",
+                "snmpsimd",
+                "snmpsimd.py",
+                "snmpsimd.exe",
+            ]
+        else:
+            candidates = [
+                "snmpsim-command-responder",
+                "snmpsimd",
+                "snmpsimd.py",
+            ]
 
-        # 1. Same directory as the running Python interpreter — the venv's Scripts
+        # 1. Same directory as the running Python interpreter — the venv's Scripts/bin
         #    folder.  Always preferred over PATH because PATH may list a system-wide
         #    Python installation (with an incompatible/old snmpsim) before the venv.
         exe_dir = Path(sys.executable).parent
@@ -174,51 +205,55 @@ class SNMPSimController:
                 return str(p)
 
         # 2. PATH lookup — fallback for setups where snmpsim is on PATH but the
-        #    venv's Scripts dir wasn't already checked above (e.g. standalone exe).
+        #    venv's Scripts/bin dir wasn't already checked above (e.g. standalone exe).
         for name in candidates:
             path = shutil.which(name)
             if path:
                 return path
 
-        # 3. Scripts folder next to the Python interpreter (dev + venv installs).
-        #    In dev mode: sys.executable = C:\Python311\python.exe
-        #                 → Scripts = C:\Python311\Scripts  ✓
-        #    In frozen exe: sys.executable = the .exe itself, exe_dir/Scripts won't
-        #    exist, so this is a no-op — falls through to the glob search below.
-        python_scripts = exe_dir / "Scripts"
-        for name in candidates:
-            p = python_scripts / name
-            if p.exists():
-                return str(p)
-
-        # 4. Broad glob search across common Windows Python install locations.
-        #    Runs unconditionally (not gated on sys.frozen) so it works whether
-        #    the app is a PyInstaller exe, a cx_Freeze exe, or any other wrapper
-        #    that may not set sys.frozen.  The result is cached by _find_snmpsim
-        #    so this glob only ever executes once per session.
-        import glob as _glob
-        scripts_dirs: list = []
-        for env_var in ("LOCALAPPDATA", "APPDATA"):
-            base = os.environ.get(env_var, "")
-            if base:
-                for match in _glob.glob(
-                    os.path.join(base, "Programs", "Python", "Python3*", "Scripts")
-                ):
-                    scripts_dirs.append(match)
-                for match in _glob.glob(
-                    os.path.join(base, "Python", "Python3*", "Scripts")
-                ):
-                    scripts_dirs.append(match)
-        for drive in ("C:", "D:"):
-            for match in _glob.glob(os.path.join(drive, os.sep, "Python3*", "Scripts")):
-                scripts_dirs.append(match)
-            for match in _glob.glob(os.path.join(drive, os.sep, "Python", "Scripts")):
-                scripts_dirs.append(match)
-        for scripts in scripts_dirs:
+        # 3. Scripts (Windows) / bin (Linux) folder next to the Python interpreter.
+        for scripts_name in ("Scripts", "bin"):
+            scripts = exe_dir / scripts_name
             for name in candidates:
-                p = Path(scripts) / name
+                p = scripts / name
                 if p.exists():
                     return str(p)
+
+        # 4. Platform-specific broad search (runs once per session; result is cached).
+        import glob as _glob
+        if sys.platform == "win32":
+            scripts_dirs: list = []
+            for env_var in ("LOCALAPPDATA", "APPDATA"):
+                base = os.environ.get(env_var, "")
+                if base:
+                    for match in _glob.glob(
+                        os.path.join(base, "Programs", "Python", "Python3*", "Scripts")
+                    ):
+                        scripts_dirs.append(match)
+                    for match in _glob.glob(
+                        os.path.join(base, "Python", "Python3*", "Scripts")
+                    ):
+                        scripts_dirs.append(match)
+            for drive in ("C:", "D:"):
+                for match in _glob.glob(os.path.join(drive, os.sep, "Python3*", "Scripts")):
+                    scripts_dirs.append(match)
+                for match in _glob.glob(os.path.join(drive, os.sep, "Python", "Scripts")):
+                    scripts_dirs.append(match)
+            for scripts in scripts_dirs:
+                for name in candidates:
+                    p = Path(scripts) / name
+                    if p.exists():
+                        return str(p)
+        else:
+            for d in (
+                os.path.expanduser("~/.local/bin"),
+                "/usr/local/bin",
+                "/usr/bin",
+            ):
+                for name in candidates:
+                    p = Path(d) / name
+                    if p.exists():
+                        return str(p)
 
         return None
 
@@ -287,8 +322,9 @@ class SNMPSimController:
                 env=env,
                 creationflags=(
                     subprocess.CREATE_NO_WINDOW |
-                    subprocess.BELOW_NORMAL_PRIORITY_CLASS   # prevents snmpsim startup from saturating CPU/disk
+                    subprocess.BELOW_NORMAL_PRIORITY_CLASS
                 ) if sys.platform == "win32" else 0,
+                preexec_fn=None if sys.platform == "win32" else _setup_child_linux,
             )
             self._running = True
             self._ready = False
@@ -323,11 +359,21 @@ class SNMPSimController:
         else:
             base_cmd = [snmpsim_path]
 
-        return base_cmd + [
+        cmd = base_cmd + [
             f"--data-dir={self.datasets_dir}",
             "--log-level=info",
             f"--agent-udpv4-endpoint=0.0.0.0:{port}",
         ]
+
+        # When running as root on Linux, pass --process-user=root so snmpsim
+        # satisfies its "must have a privilege-drop target" check without actually
+        # dropping to a non-root user.  Dropping to a non-root user (e.g. the
+        # SUDO_USER) causes snmpsim to call setuid() before bind(), making it
+        # unable to bind the privileged port 161.
+        if sys.platform != "win32" and os.getuid() == 0:
+            cmd += ["--process-user=root", "--process-group=root"]
+
+        return cmd
 
     # ------------------------------------------------------------------ #
     #  Stop                                                                #
@@ -351,8 +397,9 @@ class SNMPSimController:
         self._active_endpoints = []
         if self._job_handle:
             try:
-                import ctypes
-                ctypes.windll.kernel32.CloseHandle(self._job_handle)
+                if sys.platform == "win32":
+                    import ctypes
+                    ctypes.windll.kernel32.CloseHandle(self._job_handle)
             except Exception:
                 pass
             self._job_handle = None
@@ -491,10 +538,14 @@ class SNMPSimController:
             if sys.platform == "win32":
                 try:
                     import ctypes
-                    # SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL=-1)
                     ctypes.windll.kernel32.SetThreadPriority(
                         ctypes.windll.kernel32.GetCurrentThread(), -1
                     )
+                except Exception:
+                    pass
+            else:
+                try:
+                    os.nice(10)
                 except Exception:
                     pass
 

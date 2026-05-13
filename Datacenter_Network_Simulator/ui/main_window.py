@@ -39,7 +39,8 @@ from simulator.sflow_controller import SFlowController
 from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
 from core.trap_engine import TrapEngine
 from core.rule_engine import RuleEngine
-from core.trap_rules import DEFAULT_RULES
+from core.trap_rules import DEFAULT_RULES, save_rules
+from core.snmp_set_agent import SnmpSetAgent
 from ui.device_dialog import DeviceDialog
 from ui.rules_panel import RulesPanel
 from ui.topology_view import TopologyView
@@ -461,6 +462,22 @@ class MainWindow(QMainWindow):
         self._trap_engine.set_rule_engine(self._rule_engine, self.device_manager)
         self.state_store.set_rule_engine_callback(self._rule_engine.evaluate_fact)
 
+        # SNMP SET agent — listens on port 1161 for threshold configuration SETs
+        self._snmp_set_agent = SnmpSetAgent(
+            self._rule_engine,
+            port=1161,
+            on_change_cb=self._on_snmp_threshold_changed,
+        )
+        self._trap_rules_path = Path("trap_rules.json")
+        self._device_thresholds_path = Path("device_thresholds.json")
+        if self._device_thresholds_path.exists():
+            try:
+                import json as _json
+                with open(self._device_thresholds_path) as _f:
+                    self._rule_engine.load_device_overrides(_json.load(_f))
+            except Exception:
+                pass
+
         self._generated_files: list = []
         self._gnmi_files: list = []
         self._default_positions: dict = {}         # {device_id: (x, y)} — snapshot at load/template time
@@ -711,6 +728,7 @@ class MainWindow(QMainWindow):
                 border: 1px solid transparent;
                 border-radius: 4px;
                 color: #8b949e;
+                font-family: 'Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji', 'Twemoji Mozilla', sans-serif;
                 font-size: 17px;
                 padding: 8px 3px;
                 min-width: 28px;
@@ -1589,6 +1607,19 @@ class MainWindow(QMainWindow):
     def _send_trap(self, device: Device, trap_type: TrapType):
         self._trap_engine.send_trap(device, trap_type)
 
+    def _on_snmp_threshold_changed(self, device_ip: str, rule_name: str):
+        """Called from the SnmpSetAgent thread when a threshold is SET via SNMP."""
+        try:
+            import json as _json
+            overrides = self._rule_engine.get_all_device_overrides()
+            with open(self._device_thresholds_path, "w", encoding="utf-8") as _f:
+                _json.dump(overrides, _f, indent=2)
+        except Exception:
+            pass
+        from PySide6.QtCore import QMetaObject, Qt
+        QMetaObject.invokeMethod(self._rules_panel, "refresh",
+                                 Qt.ConnectionType.QueuedConnection)
+
     def _on_rule_engine_toggled(self, enabled: bool):
         self._trap_engine.set_rule_engine_enabled(enabled)
         self._trap_panel.set_rule_engine_active(enabled)
@@ -2069,6 +2100,21 @@ class MainWindow(QMainWindow):
             self.state_store.set_log_callback(self._console_panel.log)
             self.state_store.start()
             self.state_store.enable_snmp_sync(self.snmpsim)
+            if not self._snmp_set_agent.is_running():
+                if self._snmp_set_agent.start():
+                    self._console_panel.log(
+                        f"SNMP management agent on port {self._snmp_set_agent.port}"
+                        f"  (community: <device-ip>)", "info"
+                    )
+                    self._rules_panel.set_management_endpoint(
+                        "0.0.0.0", self._snmp_set_agent.port,
+                    )
+                else:
+                    self._console_panel.log(
+                        "Warning: SNMP management agent failed to start on port "
+                        f"{self._snmp_set_agent.port} — threshold SET will not work.",
+                        "warning",
+                    )
             # Process launched — show stop button but keep traps disabled until
             # snmpsim logs "Listening at UDP/IPv4 endpoint" (ready callback).
             self._sim_panel.set_simulator_running(True)
@@ -2380,6 +2426,8 @@ class MainWindow(QMainWindow):
         self._on_rule_engine_toggled(False)
         self._trap_panel.set_rule_engine_available(False)
         self._rules_panel.set_rule_engine_available(False)
+        self._snmp_set_agent.stop()
+        self._rules_panel.set_management_endpoint(None, None)
         self.snmpsim.stop()
         self.state_store.disable_snmp_sync()
         self._sim_panel.set_device_counts(0, 0, 0)

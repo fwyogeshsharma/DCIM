@@ -44,6 +44,13 @@ _UPS_STATES = ("normal", "on_battery", "low_battery")
 # BGP session states
 _BGP_STATES = ("established", "idle", "active", "connect")
 
+# Module-level cache for snmprec_generator to read UPS/PDU states without a reference to DeviceStateStore.
+_ext_state_cache: Dict[str, dict] = {}
+
+
+def _get_ext_state(device_name: str) -> dict:
+    return _ext_state_cache.get(device_name, {})
+
 
 class DeviceStateStore:
     """
@@ -306,6 +313,24 @@ class DeviceStateStore:
         # Access per-device extended state (initialised here on first call)
         ext = self._ext_states.setdefault(device.name, {
             "ups_status": "normal",
+            "ups_output_load": random.uniform(20.0, 60.0),
+            "ups_battery_status": "normal",
+            "ups_input_voltage": random.uniform(216.0, 224.0),
+            "ups_input_frequency": random.uniform(49.8, 50.2),
+            "ups_fan_status": "ok",
+            "ups_charger_status": "ok",
+            "ups_rectifier_status": "ok",
+            "ups_phase_status": "ok",
+            "pdu_load": random.uniform(30.0, 60.0),
+            "pdu_voltage": random.uniform(216.0, 224.0),
+            "pdu_power_factor": random.uniform(0.92, 0.98),
+            "pdu_phase_imbalance": random.uniform(0.0, 5.0),
+            "pdu_outlet_status": "on",
+            "pdu_breaker_status": "ok",
+            "pdu_outlet_failure": "ok",
+            "pdu_smoke": "no",
+            "pdu_outlet_current": random.uniform(5.0, 15.0),
+            "pdu_ground_fault": "no",
             "bgp_sessions": [],
             "cpu_sustained": False,
             "mem_sustained": False,
@@ -437,6 +462,24 @@ class DeviceStateStore:
         # only fires if _step_ext_state is somehow called first.
         st = self._ext_states.setdefault(name, {
             "ups_status": "normal",
+            "ups_output_load": random.uniform(20.0, 60.0),
+            "ups_battery_status": "normal",
+            "ups_input_voltage": random.uniform(216.0, 224.0),
+            "ups_input_frequency": random.uniform(49.8, 50.2),
+            "ups_fan_status": "ok",
+            "ups_charger_status": "ok",
+            "ups_rectifier_status": "ok",
+            "ups_phase_status": "ok",
+            "pdu_load": random.uniform(30.0, 60.0),
+            "pdu_voltage": random.uniform(216.0, 224.0),
+            "pdu_power_factor": random.uniform(0.92, 0.98),
+            "pdu_phase_imbalance": random.uniform(0.0, 5.0),
+            "pdu_outlet_status": "on",
+            "pdu_breaker_status": "ok",
+            "pdu_outlet_failure": "ok",
+            "pdu_smoke": "no",
+            "pdu_outlet_current": random.uniform(5.0, 15.0),
+            "pdu_ground_fault": "no",
             "bgp_sessions": [],
             "cpu_sustained": False,
             "mem_sustained": False,
@@ -453,6 +496,138 @@ class DeviceStateStore:
                 st["ups_status"] = "normal"
             elif ups == "low_battery" and random.random() < 0.10:
                 st["ups_status"] = "normal"
+
+        # UPS extended metrics simulation
+        if device.device_type == DeviceType.UPS:
+            # Output load: normal 20-65%, occasional spike to overload (>90%)
+            load = st.get("ups_output_load", 40.0)
+            if load > 90.0:
+                load = max(20.0, load + random.uniform(-8.0, -3.0))
+            elif load >= 70.0:
+                load = max(20.0, load + random.uniform(-6.0, -2.0))
+            else:
+                load = max(5.0, min(70.0, load + random.uniform(-3.0, 3.0)))
+                if random.random() < 0.005:
+                    load = random.uniform(91.0, 99.0)
+            st["ups_output_load"] = round(load, 1)
+
+            # Battery hardware status
+            bst = st.get("ups_battery_status", "normal")
+            if bst == "normal":
+                r = random.random()
+                if r < 0.0005:
+                    st["ups_battery_status"] = "failure"
+                elif r < 0.0008:
+                    st["ups_battery_status"] = "disconnected"
+            elif random.random() < 0.15:
+                st["ups_battery_status"] = "normal"
+
+            # Input voltage: nominal 220V, ±2V walk, rare spike outside 190-250V
+            v = st.get("ups_input_voltage", 220.0)
+            v = max(200.0, min(240.0, v + random.uniform(-2.0, 2.0)))
+            if random.random() < 0.003:
+                v = random.choice([random.uniform(251.0, 260.0),
+                                   random.uniform(180.0, 189.0)])
+            st["ups_input_voltage"] = round(v, 1)
+
+            # Input frequency: nominal 50Hz, ±0.05Hz walk, rare out-of-range
+            f = st.get("ups_input_frequency", 50.0)
+            f = max(49.5, min(50.5, f + random.uniform(-0.05, 0.05)))
+            if random.random() < 0.002:
+                f = random.choice([random.uniform(47.0, 48.9),
+                                   random.uniform(51.1, 53.0)])
+            st["ups_input_frequency"] = round(f, 2)
+
+            # Component status: fan, charger, rectifier, phase
+            for key in ("ups_fan_status", "ups_charger_status",
+                        "ups_rectifier_status", "ups_phase_status"):
+                if st.get(key, "ok") == "ok":
+                    if random.random() < 0.001:
+                        st[key] = "failure"
+                elif random.random() < 0.15:
+                    st[key] = "ok"
+
+        # PDU extended metrics simulation
+        if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            # Load: normal 30-70%, occasional high/critical
+            ld = st.get("pdu_load", 45.0)
+            if ld > 90.0:
+                ld = max(30.0, ld + random.uniform(-8.0, -3.0))
+            elif ld >= 80.0:
+                ld = max(30.0, ld + random.uniform(-5.0, -1.0))
+            else:
+                ld = max(10.0, min(75.0, ld + random.uniform(-3.0, 3.0)))
+                if random.random() < 0.004:
+                    ld = random.uniform(81.0, 98.0)
+            st["pdu_load"] = round(ld, 1)
+
+            # Voltage: nominal 220V, ±2V walk, rare spike
+            pv = st.get("pdu_voltage", 220.0)
+            pv = max(205.0, min(235.0, pv + random.uniform(-2.0, 2.0)))
+            if random.random() < 0.003:
+                pv = random.choice([random.uniform(241.0, 250.0),
+                                    random.uniform(190.0, 199.0)])
+            st["pdu_voltage"] = round(pv, 1)
+
+            # Power factor: normally 0.90-0.99, occasional dip
+            pf = st.get("pdu_power_factor", 0.95)
+            pf = max(0.60, min(0.99, pf + random.uniform(-0.02, 0.02)))
+            if random.random() < 0.003:
+                pf = random.uniform(0.50, 0.69)
+            st["pdu_power_factor"] = round(pf, 3)
+
+            # Phase imbalance: normally 0-10%, occasional spike
+            pi = st.get("pdu_phase_imbalance", 2.0)
+            pi = max(0.0, min(15.0, pi + random.uniform(-1.0, 1.0)))
+            if random.random() < 0.003:
+                pi = random.uniform(21.0, 35.0)
+            st["pdu_phase_imbalance"] = round(pi, 1)
+
+            # Outlet status: mostly on, occasional off/on cycle
+            os_ = st.get("pdu_outlet_status", "on")
+            if os_ == "on":
+                if random.random() < 0.001:
+                    st["pdu_outlet_status"] = "off"
+            elif random.random() < 0.30:
+                st["pdu_outlet_status"] = "on"
+
+            # Breaker status
+            if st.get("pdu_breaker_status", "ok") == "ok":
+                if random.random() < 0.001:
+                    st["pdu_breaker_status"] = "tripped"
+            elif random.random() < 0.25:
+                st["pdu_breaker_status"] = "ok"
+
+            # Outlet failure
+            if st.get("pdu_outlet_failure", "ok") == "ok":
+                if random.random() < 0.001:
+                    st["pdu_outlet_failure"] = "failed"
+            elif random.random() < 0.25:
+                st["pdu_outlet_failure"] = "ok"
+
+            # Smoke (very rare)
+            if st.get("pdu_smoke", "no") == "no":
+                if random.random() < 0.0001:
+                    st["pdu_smoke"] = "yes"
+            elif random.random() < 0.05:
+                st["pdu_smoke"] = "no"
+
+            # Outlet current: normally 5-15A, occasional high
+            oc = st.get("pdu_outlet_current", 10.0)
+            oc = max(1.0, min(18.0, oc + random.uniform(-1.0, 1.0)))
+            if random.random() < 0.003:
+                oc = random.uniform(21.0, 28.0)
+            st["pdu_outlet_current"] = round(oc, 1)
+
+            # Ground fault (very rare)
+            if st.get("pdu_ground_fault", "no") == "no":
+                if random.random() < 0.0005:
+                    st["pdu_ground_fault"] = "yes"
+            elif random.random() < 0.20:
+                st["pdu_ground_fault"] = "no"
+
+        # Update module-level cache so snmprec_generator can read UPS/PDU states
+        _ext_state_cache[name] = dict(st)
 
         # BGP sessions: only for routers and firewalls
         if device.device_type.value in ("router", "firewall"):
@@ -510,6 +685,24 @@ class DeviceStateStore:
                     dewpoint=float(device.dewpoint),
                     airflow=float(device.airflow),
                     ups_status=ext.get("ups_status", "normal"),
+                    ups_output_load=float(ext.get("ups_output_load", 0.0)),
+                    ups_battery_status=ext.get("ups_battery_status", "normal"),
+                    ups_input_voltage=float(ext.get("ups_input_voltage", 220.0)),
+                    ups_input_frequency=float(ext.get("ups_input_frequency", 50.0)),
+                    ups_fan_status=ext.get("ups_fan_status", "ok"),
+                    ups_charger_status=ext.get("ups_charger_status", "ok"),
+                    ups_rectifier_status=ext.get("ups_rectifier_status", "ok"),
+                    ups_phase_status=ext.get("ups_phase_status", "ok"),
+                    pdu_load=float(ext.get("pdu_load", 0.0)),
+                    pdu_voltage=float(ext.get("pdu_voltage", 220.0)),
+                    pdu_power_factor=float(ext.get("pdu_power_factor", 0.95)),
+                    pdu_phase_imbalance=float(ext.get("pdu_phase_imbalance", 0.0)),
+                    pdu_outlet_status=ext.get("pdu_outlet_status", "on"),
+                    pdu_breaker_status=ext.get("pdu_breaker_status", "ok"),
+                    pdu_outlet_failure=ext.get("pdu_outlet_failure", "ok"),
+                    pdu_smoke=ext.get("pdu_smoke", "no"),
+                    pdu_outlet_current=float(ext.get("pdu_outlet_current", 0.0)),
+                    pdu_ground_fault=ext.get("pdu_ground_fault", "no"),
                     bgp_sessions=[
                         BGPSessionFact(peer_addr=s["peer"], state=s["state"])
                         for s in ext.get("bgp_sessions", [])
@@ -572,6 +765,12 @@ class DeviceStateStore:
                         _ctypes.windll.kernel32.SetThreadPriority(
                             _ctypes.windll.kernel32.GetCurrentThread(), -1
                         )
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        import os as _os
+                        _os.nice(10)
                     except Exception:
                         pass
                 snmp_gen.patch_metrics(device)

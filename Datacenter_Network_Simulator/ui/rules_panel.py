@@ -41,6 +41,25 @@ _CATEGORIES: List[tuple] = [
     ]),
     ("Power / UPS", [
         "UPSOnBattery", "UPSLowBattery",
+        "UPSBatteryNormal", "UPSUtilityRestored",
+        "UPSOutputOverload", "UPSOutputNormal",
+        "UPSFanFailure",
+        "UPSBatteryFailure", "UPSBatteryDisconnected",
+        "UPSChargerFailure",
+        "UPSInputVoltageHigh", "UPSInputVoltageLow",
+        "UPSFrequencyOutOfRange",
+        "UPSRectifierFailure", "UPSPhaseFailure",
+    ]),
+    ("Power / PDU", [
+        "PDUOutletOn", "PDUOutletOff",
+        "PDUBreakerTripped",
+        "PDULoadHigh", "PDULoadCritical",
+        "PDUVoltageHigh", "PDUVoltageLow",
+        "PDUPhaseImbalance", "PDUPowerFactorLow",
+        "PDUOutletFailure",
+        "PDUSmokeDetected",
+        "PDUOutletCurrentHigh",
+        "PDUGroundFault",
     ]),
     ("Routing", [
         "BGPSessionDown",
@@ -74,6 +93,63 @@ def _sev_style(severity: str) -> str:
     )
 
 
+_METRIC_LABEL: dict = {
+    "cpu_usage":             ("cpu",         "%"),
+    "memory_usage":          ("mem",         "%"),
+    "temperature":           ("temp",        "°C"),
+    "humidity":              ("humidity",    "%"),
+    "dewpoint":              ("dewpoint",    "°C×10"),
+    "airflow":               ("airflow",     "m/s×10"),
+    "ambient_temp":          ("amb.temp",    "°C"),
+    # UPS metrics
+    "ups_output_load":       ("out.load",    "%"),
+    "ups_input_voltage":     ("in.volt",     "V"),
+    "ups_input_frequency":   ("in.freq",     "Hz"),
+    # PDU metrics
+    "pdu_load":              ("load",        "%"),
+    "pdu_voltage":           ("voltage",     "V"),
+    "pdu_power_factor":      ("pwr.factor",  ""),
+    "pdu_phase_imbalance":   ("phase.imbal", "%"),
+    "pdu_outlet_current":    ("outlet.cur",  "A"),
+}
+
+
+def _format_threshold(rule) -> str:
+    """Return a short human-readable threshold string for a Rule."""
+    c = rule.condition
+    ct = c.condition_type
+
+    if ct == "threshold":
+        label, unit = _METRIC_LABEL.get(c.metric, (c.metric, ""))
+        val = int(c.threshold) if c.threshold == int(c.threshold) else c.threshold
+        s = f"{label} {c.operator} {val}{unit}"
+        if c.duration_sec:
+            s += f" for {int(c.duration_sec)}s"
+        return s
+
+    if ct == "state_change":
+        frm = c.from_state or "*"
+        to  = c.to_state   or "*"
+        return f"{frm} → {to}"
+
+    if ct == "temporal":
+        return f"{c.event_count}× / {int(c.window_sec)}s"
+
+    if ct == "composite":
+        parts = []
+        for sub in c.conditions:
+            lbl, unit = _METRIC_LABEL.get(sub.metric, (sub.metric, ""))
+            val = int(sub.threshold) if sub.threshold == int(sub.threshold) else sub.threshold
+            parts.append(f"{lbl}{sub.operator}{val}{unit}")
+        return f" {c.logic} ".join(parts)
+
+    if ct == "rack_failure":
+        n = int(c.threshold) if c.threshold == int(c.threshold) else c.threshold
+        return f"≥{n} devices"
+
+    return "—"
+
+
 # ── Rules Panel ────────────────────────────────────────────────────────────────
 
 class RulesPanel(QWidget):
@@ -81,12 +157,13 @@ class RulesPanel(QWidget):
     sig_rule_toggled        = Signal(str, bool)  # (rule_name, enabled)
     sig_rules_imported      = Signal(list)   # list[Rule]
 
-    _COL_ENABLED  = 0
-    _COL_NAME     = 1
-    _COL_OID      = 2
-    _COL_SEV      = 3
-    _COL_FIRED    = 4
-    _COL_LAST     = 5
+    _COL_ENABLED   = 0
+    _COL_NAME      = 1
+    _COL_OID       = 2
+    _COL_SEV       = 3
+    _COL_THRESHOLD = 4
+    _COL_FIRED     = 5
+    _COL_LAST      = 6
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -145,21 +222,37 @@ class RulesPanel(QWidget):
         stats.addWidget(self._lbl_fired)
         cl.addLayout(stats)
 
+        # SNMP management endpoint info bar
+        self._lbl_mgmt = QLabel("SNMP SET: — (simulator not running)")
+        self._lbl_mgmt.setFont(QFont("Consolas", 8))
+        self._lbl_mgmt.setStyleSheet(
+            "color:#8b949e; background:#0d1117; border:1px solid #30363d;"
+            " border-radius:3px; padding:2px 6px;"
+        )
+        self._lbl_mgmt.setToolTip(
+            "Connect your DCIM system to this endpoint to configure per-device thresholds via SNMP SET.\n"
+            "Use the device IP as the community string.\n"
+            "OID tree: 1.3.6.1.4.1.99999.3.x\n"
+            "Example: snmpset -v2c -c 10.50.0.4 <host>:1161 1.3.6.1.4.1.99999.3.1.0 i 85"
+        )
+        cl.addWidget(self._lbl_mgmt)
+
         # Rule table
-        self._table = QTableWidget(0, 6)
+        self._table = QTableWidget(0, 7)
         self._table.setHorizontalHeaderLabels([
-            "On", "Rule Name", "Trap OID", "Sev", "Fired", "Last Fired",
+            "On", "Rule Name", "Trap OID", "Sev", "Threshold", "Fired", "Last Fired",
         ])
         hdr = self._table.horizontalHeader()
         hdr.setSectionResizeMode(QHeaderView.Interactive)
         hdr.setStretchLastSection(False)
         hdr.setDefaultSectionSize(80)
-        self._table.setColumnWidth(self._COL_ENABLED, 30)
-        self._table.setColumnWidth(self._COL_NAME,   150)
-        self._table.setColumnWidth(self._COL_OID,    175)
-        self._table.setColumnWidth(self._COL_SEV,     46)
-        self._table.setColumnWidth(self._COL_FIRED,   46)
-        self._table.setColumnWidth(self._COL_LAST,    90)
+        self._table.setColumnWidth(self._COL_ENABLED,   30)
+        self._table.setColumnWidth(self._COL_NAME,     150)
+        self._table.setColumnWidth(self._COL_OID,      175)
+        self._table.setColumnWidth(self._COL_SEV,       46)
+        self._table.setColumnWidth(self._COL_THRESHOLD, 110)
+        self._table.setColumnWidth(self._COL_FIRED,     46)
+        self._table.setColumnWidth(self._COL_LAST,      90)
         hdr.setStretchLastSection(True)
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -290,7 +383,7 @@ class RulesPanel(QWidget):
             self._table.insertRow(hdr_row)
             self._cat_rows.add(hdr_row)
             self._cat_row_to_label[hdr_row] = cat_label
-            self._table.setSpan(hdr_row, 0, 1, 6)
+            self._table.setSpan(hdr_row, 0, 1, 7)
             arrow = "▾" if expanded else "▸"
             hdr_item = QTableWidgetItem(f"  {arrow}  {cat_label}{detail}")
             hdr_item.setFont(QFont("Arial", 8, QFont.Bold))
@@ -330,6 +423,12 @@ class RulesPanel(QWidget):
                 sev_item.setForeground(QColor(color))
                 sev_item.setFont(QFont("Consolas", 8, QFont.Bold))
                 self._table.setItem(row, self._COL_SEV, sev_item)
+
+                thr_text = _format_threshold(rule)
+                thr_item = QTableWidgetItem(thr_text)
+                thr_item.setForeground(QColor("#8b949e"))
+                thr_item.setToolTip(thr_text)
+                self._table.setItem(row, self._COL_THRESHOLD, thr_item)
 
                 cached_fired, cached_ts = self._fired_cache.get(rule.rule_name, (0, "—"))
                 self._table.setItem(row, self._COL_FIRED, QTableWidgetItem(str(cached_fired)))
@@ -374,6 +473,24 @@ class RulesPanel(QWidget):
         self._engine_toggle.setEnabled(available)
         if not available:
             self.set_engine_active(False)
+
+    def set_management_endpoint(self, host, port):
+        """Update the SNMP management endpoint info bar."""
+        if host is None:
+            self._lbl_mgmt.setText("SNMP SET: — (simulator not running)")
+            self._lbl_mgmt.setStyleSheet(
+                "color:#8b949e; background:#0d1117; border:1px solid #30363d;"
+                " border-radius:3px; padding:2px 6px;"
+            )
+        else:
+            self._lbl_mgmt.setText(
+                f"SNMP SET:  {host}:{port}   community: <device-ip>"
+                f"   OID base: 1.3.6.1.4.1.99999.3.x"
+            )
+            self._lbl_mgmt.setStyleSheet(
+                "color:#3fb950; background:#0d1117; border:1px solid #238636;"
+                " border-radius:3px; padding:2px 6px;"
+            )
 
     def _on_engine_toggled(self, checked: bool):
         self._engine_toggle.setText("● Active" if checked else "● Disabled")

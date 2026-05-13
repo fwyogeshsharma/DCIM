@@ -247,6 +247,12 @@ class SNMPRecGenerator:
         if device.device_type == DeviceType.SENSOR:
             entries += self._sensor_entries(device)
 
+        if device.device_type == DeviceType.UPS:
+            entries += self._ups_entries(device)
+
+        if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            entries += self._pdu_entries(device)
+
         # Sort and write
         # Output layout:  datasets/snmp/<snmp_addr>.snmprec
         # SNMPSim routes community "<snmp_addr>" → this file.
@@ -354,6 +360,81 @@ class SNMPRecGenerator:
                     updates[f"{_APC_NETBOTZ}.10.1"] = ("2", str(inlet_t10))
                     updates[f"{_APC_NETBOTZ}.10.2"] = ("2", str(humid_t10 // 10))
                     updates[f"{_APC_NETBOTZ}.10.3"] = ("2", str(airflow_t10))
+
+            # UPS pollable status OIDs
+            if device.device_type == DeviceType.UPS:
+                ext = {}
+                try:
+                    from core.device_state_store import _get_ext_state
+                    ext = _get_ext_state(device.name)
+                except Exception:
+                    pass
+                _UPS_MIB = "1.3.6.1.2.1.33.1"
+                _UPS_ENT = "1.3.6.1.4.1.99999.4"
+                ups_status  = ext.get("ups_status", "normal")
+                batt_status = ext.get("ups_battery_status", "normal")
+                out_load    = int(ext.get("ups_output_load", 40.0))
+                in_volt     = int(ext.get("ups_input_voltage", 220.0))
+                in_freq     = int(round(ext.get("ups_input_frequency", 50.0) * 10))
+                # upsBatteryStatus: 2=normal, 3=low, 4=depleted
+                batt_snmp = 2
+                if ups_status == "low_battery":
+                    batt_snmp = 4
+                elif ups_status == "on_battery":
+                    batt_snmp = 3
+                # upsEstimatedChargeRemaining: 100% when normal, 50% on_battery, 15% low
+                charge = 100 if ups_status == "normal" else (50 if ups_status == "on_battery" else 15)
+                minutes = 60 if ups_status == "normal" else (20 if ups_status == "on_battery" else 5)
+                # upsOutputSource: 3=normal, 5=battery
+                out_src = 5 if ups_status in ("on_battery", "low_battery") else 3
+                updates[f"{_UPS_MIB}.2.3.0"]     = ("2",  str(batt_snmp))
+                updates[f"{_UPS_MIB}.2.4.0"]     = ("2",  str(minutes))
+                updates[f"{_UPS_MIB}.2.5.0"]     = ("2",  str(charge))
+                updates[f"{_UPS_MIB}.3.3.1.2.1"] = ("2",  str(in_freq))
+                updates[f"{_UPS_MIB}.3.3.1.3.1"] = ("2",  str(in_volt))
+                updates[f"{_UPS_MIB}.4.1.0"]     = ("2",  str(out_src))
+                updates[f"{_UPS_MIB}.4.4.1.6.1"] = ("2",  str(out_load))
+                # Enterprise UPS status OIDs
+                fan_s  = 1 if ext.get("ups_fan_status", "ok") == "failure" else 2
+                chg_s  = 1 if ext.get("ups_charger_status", "ok") == "failure" else 2
+                rec_s  = 1 if ext.get("ups_rectifier_status", "ok") == "failure" else 2
+                pha_s  = 1 if ext.get("ups_phase_status", "ok") == "failure" else 2
+                b_ex   = {"normal": 2, "failure": 3, "disconnected": 4}.get(batt_status, 2)
+                updates[f"{_UPS_ENT}.1.0"] = ("2", str(fan_s))
+                updates[f"{_UPS_ENT}.2.0"] = ("2", str(chg_s))
+                updates[f"{_UPS_ENT}.3.0"] = ("2", str(rec_s))
+                updates[f"{_UPS_ENT}.4.0"] = ("2", str(pha_s))
+                updates[f"{_UPS_ENT}.5.0"] = ("2", str(b_ex))
+
+            # PDU pollable status OIDs
+            if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+                ext = {}
+                try:
+                    from core.device_state_store import _get_ext_state
+                    ext = _get_ext_state(device.name)
+                except Exception:
+                    pass
+                _PDU_ENT = "1.3.6.1.4.1.99999.5"
+                pdu_load = int(ext.get("pdu_load", 45.0))
+                pdu_volt = int(ext.get("pdu_voltage", 220.0))
+                pdu_pf   = int(round(ext.get("pdu_power_factor", 0.95) * 100))
+                pdu_pi   = int(ext.get("pdu_phase_imbalance", 2.0))
+                pdu_out  = 1 if ext.get("pdu_outlet_status", "on") == "on" else 2
+                pdu_brk  = 1 if ext.get("pdu_breaker_status", "ok") == "ok" else 2
+                pdu_of   = 1 if ext.get("pdu_outlet_failure", "ok") == "ok" else 2
+                pdu_smk  = 1 if ext.get("pdu_smoke", "no") == "no" else 2
+                pdu_cur  = int(round(ext.get("pdu_outlet_current", 10.0) * 10))
+                pdu_gf   = 1 if ext.get("pdu_ground_fault", "no") == "no" else 2
+                updates[f"{_PDU_ENT}.1.0"]  = ("2", str(pdu_load))
+                updates[f"{_PDU_ENT}.2.0"]  = ("2", str(pdu_volt))
+                updates[f"{_PDU_ENT}.3.0"]  = ("2", str(pdu_pf))
+                updates[f"{_PDU_ENT}.4.0"]  = ("2", str(pdu_pi))
+                updates[f"{_PDU_ENT}.5.0"]  = ("2", str(pdu_out))
+                updates[f"{_PDU_ENT}.6.0"]  = ("2", str(pdu_brk))
+                updates[f"{_PDU_ENT}.7.0"]  = ("2", str(pdu_of))
+                updates[f"{_PDU_ENT}.8.0"]  = ("2", str(pdu_smk))
+                updates[f"{_PDU_ENT}.9.0"]  = ("2", str(pdu_cur))
+                updates[f"{_PDU_ENT}.10.0"] = ("2", str(pdu_gf))
 
             # Read existing file, replace matching OID lines.
             try:
@@ -698,6 +779,80 @@ class SNMPRecGenerator:
             _oid_entry(f"{UCD_DISK}.10.1", "4",  ""),     # dskErrorMsg
         ]
 
+        return entries
+
+    # ------------------------------------------------------------------ #
+    #  UPS OIDs (UPS-MIB standard + enterprise)                           #
+    # ------------------------------------------------------------------ #
+
+    def _ups_entries(self, device: Device) -> List[OidEntry]:
+        """UPS-MIB standard + enterprise status OIDs for UPS devices."""
+        entries: List[OidEntry] = []
+        _UPS_MIB = "1.3.6.1.2.1.33.1"
+        _UPS_ENT = "1.3.6.1.4.1.99999.4"
+
+        # UPS-MIB: battery group
+        entries += [
+            _oid_entry(f"{_UPS_MIB}.2.1.0",     "2",  "2"),      # upsBatteryStatus: 2=normal
+            _oid_entry(f"{_UPS_MIB}.2.2.0",      "2",  "0"),      # upsSecondsOnBattery
+            _oid_entry(f"{_UPS_MIB}.2.3.0",      "2",  "2"),      # upsBatteryStatus (alias)
+            _oid_entry(f"{_UPS_MIB}.2.4.0",      "2",  "60"),     # upsEstimatedMinutesRemaining
+            _oid_entry(f"{_UPS_MIB}.2.5.0",      "2",  "100"),    # upsEstimatedChargeRemaining %
+            _oid_entry(f"{_UPS_MIB}.2.6.0",      "2",  "2200"),   # upsBatteryVoltage (220.0V x10)
+            _oid_entry(f"{_UPS_MIB}.2.7.0",      "2",  "0"),      # upsBatteryCurrent (0A)
+            _oid_entry(f"{_UPS_MIB}.2.8.0",      "2",  "25"),     # upsBatteryTemperature C
+        ]
+        # UPS-MIB: input group (1 line table)
+        entries += [
+            _oid_entry(f"{_UPS_MIB}.3.1.0",      "2",  "1"),      # upsInputNumLines
+            _oid_entry(f"{_UPS_MIB}.3.3.1.1.1",  "2",  "1"),      # upsInputLineIndex
+            _oid_entry(f"{_UPS_MIB}.3.3.1.2.1",  "2",  "500"),    # upsInputFrequency x10 Hz (50.0)
+            _oid_entry(f"{_UPS_MIB}.3.3.1.3.1",  "2",  "220"),    # upsInputVoltage V
+            _oid_entry(f"{_UPS_MIB}.3.3.1.4.1",  "2",  "100"),    # upsInputCurrent x10 A
+            _oid_entry(f"{_UPS_MIB}.3.3.1.5.1",  "2",  "2200"),   # upsInputTruePower W
+        ]
+        # UPS-MIB: output group
+        entries += [
+            _oid_entry(f"{_UPS_MIB}.4.1.0",      "2",  "3"),      # upsOutputSource: 3=normal
+            _oid_entry(f"{_UPS_MIB}.4.2.0",      "2",  "500"),    # upsOutputFrequency x10 Hz
+            _oid_entry(f"{_UPS_MIB}.4.3.0",      "2",  "1"),      # upsOutputNumLines
+            _oid_entry(f"{_UPS_MIB}.4.4.1.1.1",  "2",  "1"),      # upsOutputLineIndex
+            _oid_entry(f"{_UPS_MIB}.4.4.1.2.1",  "2",  "220"),    # upsOutputVoltage V
+            _oid_entry(f"{_UPS_MIB}.4.4.1.3.1",  "2",  "0"),      # upsOutputCurrent x10 A
+            _oid_entry(f"{_UPS_MIB}.4.4.1.4.1",  "2",  "0"),      # upsOutputPower W
+            _oid_entry(f"{_UPS_MIB}.4.4.1.5.1",  "2",  "0"),      # upsOutputPercentLoad (alias)
+            _oid_entry(f"{_UPS_MIB}.4.4.1.6.1",  "2",  "40"),     # upsOutputPercentLoad %
+        ]
+        # Enterprise UPS status OIDs (1.3.6.1.4.1.99999.4.x)
+        entries += [
+            _oid_entry(f"{_UPS_ENT}.1.0", "2", "2"),  # upsFanStatus (2=ok)
+            _oid_entry(f"{_UPS_ENT}.2.0", "2", "2"),  # upsChargerStatus (2=ok)
+            _oid_entry(f"{_UPS_ENT}.3.0", "2", "2"),  # upsRectifierStatus (2=ok)
+            _oid_entry(f"{_UPS_ENT}.4.0", "2", "2"),  # upsPhaseStatus (2=ok)
+            _oid_entry(f"{_UPS_ENT}.5.0", "2", "2"),  # upsBatteryStatusEx (2=normal)
+        ]
+        return entries
+
+    # ------------------------------------------------------------------ #
+    #  PDU OIDs (enterprise)                                               #
+    # ------------------------------------------------------------------ #
+
+    def _pdu_entries(self, device: Device) -> List[OidEntry]:
+        """Enterprise PDU status OIDs for PDU/floor_pdu devices."""
+        entries: List[OidEntry] = []
+        _PDU_ENT = "1.3.6.1.4.1.99999.5"
+        entries += [
+            _oid_entry(f"{_PDU_ENT}.1.0",  "2",  "45"),   # pduLoadPercent %
+            _oid_entry(f"{_PDU_ENT}.2.0",  "2",  "220"),  # pduVoltage V
+            _oid_entry(f"{_PDU_ENT}.3.0",  "2",  "95"),   # pduPowerFactor x100 (0.95)
+            _oid_entry(f"{_PDU_ENT}.4.0",  "2",  "2"),    # pduPhaseImbalancePercent
+            _oid_entry(f"{_PDU_ENT}.5.0",  "2",  "1"),    # pduOutletStatus (1=on)
+            _oid_entry(f"{_PDU_ENT}.6.0",  "2",  "1"),    # pduBreakerStatus (1=ok)
+            _oid_entry(f"{_PDU_ENT}.7.0",  "2",  "1"),    # pduOutletFailure (1=ok)
+            _oid_entry(f"{_PDU_ENT}.8.0",  "2",  "1"),    # pduSmokeDetected (1=no)
+            _oid_entry(f"{_PDU_ENT}.9.0",  "2",  "100"),  # pduOutletCurrent x10 A (10.0A)
+            _oid_entry(f"{_PDU_ENT}.10.0", "2",  "1"),    # pduGroundFault (1=no)
+        ]
         return entries
 
     # ------------------------------------------------------------------ #

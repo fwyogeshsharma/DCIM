@@ -54,6 +54,28 @@ class DeviceFact:
     # Power / UPS
     ups_status: str = "normal"  # normal | on_battery | low_battery
 
+    # UPS extended metrics (populated only for DeviceType.UPS)
+    ups_output_load: float = 0.0          # % output load
+    ups_battery_status: str = "normal"    # normal | failure | disconnected
+    ups_input_voltage: float = 220.0      # V (nominal 220V)
+    ups_input_frequency: float = 50.0     # Hz (nominal 50Hz)
+    ups_fan_status: str = "ok"            # ok | failure
+    ups_charger_status: str = "ok"        # ok | failure
+    ups_rectifier_status: str = "ok"      # ok | failure
+    ups_phase_status: str = "ok"          # ok | failure
+
+    # PDU extended metrics (populated only for DeviceType.PDU / FLOOR_PDU)
+    pdu_load: float = 0.0                 # % load
+    pdu_voltage: float = 220.0            # V
+    pdu_power_factor: float = 0.95        # 0-1
+    pdu_phase_imbalance: float = 0.0      # %
+    pdu_outlet_status: str = "on"         # on | off
+    pdu_breaker_status: str = "ok"        # ok | tripped
+    pdu_outlet_failure: str = "ok"        # ok | failed
+    pdu_smoke: str = "no"                 # no | yes
+    pdu_outlet_current: float = 0.0       # A
+    pdu_ground_fault: str = "no"          # no | yes
+
     # Routing protocol sessions
     bgp_sessions: List[BGPSessionFact] = field(default_factory=list)
 
