@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { computeHierarchicalLayout, type LayoutNode, type LayoutLink, FLOORS } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X } from 'lucide-react'
+import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X, Thermometer } from 'lucide-react'
 import * as THREE from 'three'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { useSSE } from '@/hooks/useSSE'
@@ -32,6 +32,176 @@ interface TrapFeedItem {
 
 // ── Toggle this to use 500+ node mock data for testing ──
 const USE_MOCK_DATA = false
+
+// ── Temperature → colour mapping for heatmap mode ───────────────────────────
+function tempToColor(t: number): string {
+  if (t < 30) return '#3b82f6'   // blue  — cool
+  if (t < 45) return '#10b981'   // green — normal
+  if (t < 55) return '#f59e0b'   // amber — warm
+  if (t < 65) return '#f97316'   // orange — hot
+  return '#ef4444'               // red   — critical
+}
+
+// ── Heatmap: top-down camera controller ──────────────────────────────────────
+
+function CameraTopDownController({ active }: { active: boolean }) {
+  const { camera, controls } = useThree()
+  useFrame(() => {
+    if (!active || !controls) return
+    const ctrl = controls as any
+    const serverLayerY = FLOORS[FLOORS.length - 1].y
+    camera.position.x += (0 - camera.position.x) * 0.06
+    camera.position.y += (serverLayerY + 420 - camera.position.y) * 0.06
+    camera.position.z += (10 - camera.position.z) * 0.06
+    ctrl.target.x += (0 - ctrl.target.x) * 0.06
+    ctrl.target.y += (serverLayerY - ctrl.target.y) * 0.06
+    ctrl.target.z += (0 - ctrl.target.z) * 0.06
+    ctrl.update()
+  })
+  return null
+}
+
+// ── Heatmap: Google-Maps-style continuous gradient overlay ───────────────────
+// Algorithm:
+//   1. Draw radial intensity blobs (lighter/additive blend) per device
+//   2. Colorize each pixel through a blue→cyan→green→yellow→red colormap
+//   3. Alpha scales with intensity so empty areas stay transparent
+
+function HeatmapGradientOverlay({ nodes, tempMap }: {
+  nodes: LayoutNode[]
+  tempMap: Map<string, number>
+}) {
+  const overlayY = FLOORS[FLOORS.length - 1].y + 26
+
+  // One heat point per device that has a temperature reading
+  const heatPoints = useMemo(() => {
+    const pts: { x: number; z: number; temp: number }[] = []
+    nodes.forEach(n => {
+      if (n.type === 'server') return
+      const temp = (n.agentId ? tempMap.get(n.agentId) : undefined)
+        ?? (n.ip ? tempMap.get(n.ip) : undefined)
+      if (temp !== undefined) pts.push({ x: n.position[0], z: n.position[2], temp })
+    })
+    return pts
+  }, [nodes, tempMap])
+
+  // World-space bounding box of the whole scene
+  const bounds = useMemo(() => {
+    if (nodes.length === 0) return { minX: -60, maxX: 60, minZ: -60, maxZ: 60 }
+    const xs = nodes.map(n => n.position[0])
+    const zs = nodes.map(n => n.position[2])
+    const p = 20
+    return {
+      minX: Math.min(...xs) - p,
+      maxX: Math.max(...xs) + p,
+      minZ: Math.min(...zs) - p,
+      maxZ: Math.max(...zs) + p,
+    }
+  }, [nodes])
+
+  // Canvas texture — recomputed whenever heat data or bounds change
+  const texture = useMemo(() => {
+    const W = 512, H = 512
+    const canvas = document.createElement('canvas')
+    canvas.width = W; canvas.height = H
+    const ctx = canvas.getContext('2d')!
+
+    const rX = (bounds.maxX - bounds.minX) || 1
+    const rZ = (bounds.maxZ - bounds.minZ) || 1
+    const toX = (x: number) => ((x - bounds.minX) / rX) * W
+    const toY = (z: number) => ((z - bounds.minZ) / rZ) * H
+
+    // Blob radius: large enough that adjacent nodes (~14 world-units apart) overlap
+    const RADIUS = Math.max(44, (18 / rX) * W)
+
+    // ── Pass 1: build greyscale intensity layer ──────────────────────────────
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, W, H)
+
+    if (heatPoints.length > 0) {
+      const temps = heatPoints.map(p => p.temp)
+      const minT = Math.min(...temps)
+      const maxT = Math.max(...temps)
+      const rangeT = (maxT - minT) || 1
+
+      ctx.globalCompositeOperation = 'lighter'
+
+      heatPoints.forEach(pt => {
+        const px = toX(pt.x)
+        const py = toY(pt.z)
+        // Normalise temperature: coldest → 0.15 (still shows), hottest → 1.0
+        const norm = 0.15 + 0.85 * Math.max(0, Math.min(1, (pt.temp - minT) / rangeT))
+        // Per-blob alpha tuned so 3-4 overlapping blobs saturate to white
+        const a = (norm * 0.38).toFixed(3)
+
+        const grad = ctx.createRadialGradient(px, py, 0, px, py, RADIUS)
+        grad.addColorStop(0,   `rgba(255,255,255,${a})`)
+        grad.addColorStop(0.4, `rgba(255,255,255,${(norm * 0.12).toFixed(3)})`)
+        grad.addColorStop(1,   'rgba(0,0,0,0)')
+        ctx.fillStyle = grad
+        ctx.beginPath()
+        ctx.arc(px, py, RADIUS, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
+      // ── Pass 2: colorize each pixel through a heatmap gradient ───────────
+      ctx.globalCompositeOperation = 'source-over'
+      const img = ctx.getImageData(0, 0, W, H)
+      const d = img.data
+
+      for (let i = 0; i < d.length; i += 4) {
+        const v = d[i] / 255       // intensity 0..1 from red channel
+        if (v < 0.015) { d[i + 3] = 0; continue }
+
+        // Classic heatmap gradient: blue → cyan → green → yellow → red
+        let r = 0, g = 0, b = 0
+        if (v < 0.25) {
+          const f = v / 0.25
+          r = 0; g = 0; b = Math.round(130 + f * 125)
+        } else if (v < 0.5) {
+          const f = (v - 0.25) / 0.25
+          r = 0; g = Math.round(f * 255); b = Math.round((1 - f) * 255)
+        } else if (v < 0.75) {
+          const f = (v - 0.5) / 0.25
+          r = Math.round(f * 255); g = 255; b = 0
+        } else {
+          const f = (v - 0.75) / 0.25
+          r = 255; g = Math.round((1 - f) * 255); b = 0
+        }
+
+        d[i] = r; d[i + 1] = g; d[i + 2] = b
+        // Alpha: grows quickly then plateaus — transparent where empty
+        d[i + 3] = Math.round(Math.min(v * 3.2, 0.88) * 255)
+      }
+
+      ctx.putImageData(img, 0, 0)
+    }
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    return tex
+  }, [heatPoints, bounds])
+
+  // Properly dispose GPU texture when it's replaced or component unmounts
+  useEffect(() => () => { texture?.dispose() }, [texture])
+
+  const planeW = bounds.maxX - bounds.minX
+  const planeD = bounds.maxZ - bounds.minZ
+  const cx = (bounds.minX + bounds.maxX) / 2
+  const cz = (bounds.minZ + bounds.maxZ) / 2
+
+  return (
+    <mesh position={[cx, overlayY, cz]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[planeW, planeD]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  )
+}
 
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
 
@@ -105,6 +275,8 @@ function ServerNode({
   expanded,
   agentCount,
   onDoubleClick,
+  heatmapMode = false,
+  temperature,
 }: {
   node: LayoutNode
   isSelected: boolean
@@ -113,6 +285,8 @@ function ServerNode({
   expanded: boolean
   agentCount: number
   onDoubleClick: (node: LayoutNode) => void
+  heatmapMode?: boolean
+  temperature?: number
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const glowRef = useRef<THREE.Mesh>(null)
@@ -173,6 +347,7 @@ function ServerNode({
 
   const ledColor = node.status === 'offline' ? '#ef4444' : '#10b981'
   const accentColor = node.status === 'offline' ? '#991b1b' : (node.color || '#8b5cf6')
+  const heatColor = heatmapMode && temperature !== undefined ? tempToColor(temperature) : null
   const slotCount = 8
 
   return (
@@ -188,27 +363,27 @@ function ServerNode({
       {/* Back panel */}
       <mesh position={[0, 0, -1.8]}>
         <boxGeometry args={[6, 12, 0.1]} />
-        <meshStandardMaterial color="#7dd3fc" metalness={0.5} roughness={0.3} />
+        <meshStandardMaterial color={heatColor ?? '#7dd3fc'} metalness={0.5} roughness={0.3} />
       </mesh>
       {/* Left side panel */}
       <mesh position={[-3, 0, 0]}>
         <boxGeometry args={[0.1, 12, 3.7]} />
-        <meshStandardMaterial color="#7dd3fc" metalness={0.45} roughness={0.35} />
+        <meshStandardMaterial color={heatColor ?? '#7dd3fc'} metalness={0.45} roughness={0.35} />
       </mesh>
       {/* Right side panel */}
       <mesh position={[3, 0, 0]}>
         <boxGeometry args={[0.1, 12, 3.7]} />
-        <meshStandardMaterial color="#7dd3fc" metalness={0.45} roughness={0.35} />
+        <meshStandardMaterial color={heatColor ?? '#7dd3fc'} metalness={0.45} roughness={0.35} />
       </mesh>
       {/* Top panel */}
       <mesh position={[0, 6.05, 0]}>
         <boxGeometry args={[6, 0.1, 3.7]} />
-        <meshStandardMaterial color="#7dd3fc" metalness={0.45} roughness={0.35} />
+        <meshStandardMaterial color={heatColor ?? '#7dd3fc'} metalness={0.45} roughness={0.35} />
       </mesh>
       {/* Bottom panel */}
       <mesh position={[0, -6.05, 0]}>
         <boxGeometry args={[6, 0.1, 3.7]} />
-        <meshStandardMaterial color="#7dd3fc" metalness={0.45} roughness={0.35} />
+        <meshStandardMaterial color={heatColor ?? '#7dd3fc'} metalness={0.45} roughness={0.35} />
       </mesh>
 
       {/* ── 4 vertical rack posts ── */}
@@ -302,6 +477,22 @@ function ServerNode({
         </Billboard>
       )}
 
+      {/* ── Temperature billboard (heatmap mode) ── */}
+      {heatmapMode && temperature !== undefined && (
+        <Billboard position={[0, 9.5, 0]}>
+          <Text
+            fontSize={1.0}
+            color={tempToColor(temperature)}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.06}
+            outlineColor="#000000"
+          >
+            {temperature.toFixed(1)}°C
+          </Text>
+        </Billboard>
+      )}
+
       {/* ── Status label for offline ── */}
       {node.status === 'offline' && (
         <Billboard position={[0, -8, 0]}>
@@ -329,12 +520,16 @@ function AgentNode({
   onSelect,
   onHover,
   useFloat = true,
+  heatmapMode = false,
+  temperature,
 }: {
   node: LayoutNode
   isSelected: boolean
   onSelect: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
   useFloat?: boolean
+  heatmapMode?: boolean
+  temperature?: number
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -374,6 +569,7 @@ function AgentNode({
   const ledColor = node.status === 'online' ? '#10b981' : '#ef4444'
   const bodyColor = node.status === 'online' ? '#60a5fa' : '#f87171'
   const faceColor = node.status === 'online' ? '#93c5fd' : '#fca5a5'
+  const bodyHeatColor = heatmapMode && temperature !== undefined ? tempToColor(temperature) : undefined
 
   const serverUnit = (
     <group
@@ -386,7 +582,7 @@ function AgentNode({
       <mesh>
         <boxGeometry args={[5, 1.2, 2.8]} />
         <meshStandardMaterial
-          color={bodyColor}
+          color={bodyHeatColor ?? bodyColor}
           metalness={0.45}
           roughness={0.3}
         />
@@ -501,6 +697,22 @@ function AgentNode({
         </Billboard>
       )}
 
+      {/* ── Temperature billboard (heatmap mode) ── */}
+      {heatmapMode && temperature !== undefined && (
+        <Billboard position={[0, 3.5, 0]}>
+          <Text
+            fontSize={0.75}
+            color={tempToColor(temperature)}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.05}
+            outlineColor="#000000"
+          >
+            {temperature.toFixed(1)}°C
+          </Text>
+        </Billboard>
+      )}
+
       {/* ── Status label for offline ── */}
       {node.status === 'offline' && (
         <Billboard position={[0, -2.2, 0]}>
@@ -539,12 +751,16 @@ function DeviceNode({
   onSelect,
   onHover,
   hasTrap = false,
+  heatmapMode = false,
+  temperature,
 }: {
   node: LayoutNode
   isSelected: boolean
   onSelect: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
   hasTrap?: boolean
+  heatmapMode?: boolean
+  temperature?: number
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -583,7 +799,10 @@ function DeviceNode({
 
   const online = node.status === 'online'
   // Trap alert overrides normal colors — device turns deep red with warning indicators
-  const chassisColor = hasTrap ? '#7f1d1d' : online ? '#7dd3fc' : '#b91c1c'
+  // Heatmap mode overrides chassis color with temperature-mapped colour
+  const chassisColor = heatmapMode && temperature !== undefined
+    ? tempToColor(temperature)
+    : (hasTrap ? '#7f1d1d' : online ? '#7dd3fc' : '#b91c1c')
   const accentColor  = hasTrap ? '#ef4444' : online ? '#3b82f6' : '#ef4444'
   const ledOn        = hasTrap ? '#ef4444' : online ? '#22d3ee' : '#fca5a5'
   const ledOff       = hasTrap ? '#dc2626' : online ? '#0ea5e9' : '#7f1d1d'
@@ -709,6 +928,22 @@ function DeviceNode({
         </Billboard>
       )}
 
+      {/* ── Temperature billboard (heatmap mode) ── */}
+      {heatmapMode && temperature !== undefined && (
+        <Billboard position={[0, 2.2, 0]}>
+          <Text
+            fontSize={0.55}
+            color={tempToColor(temperature)}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.04}
+            outlineColor="#000000"
+          >
+            {temperature.toFixed(1)}°C
+          </Text>
+        </Billboard>
+      )}
+
       {!online && (
         <Billboard position={[0, -1.1, 0]}>
           <Text
@@ -734,11 +969,15 @@ function PDUNode({
   isSelected,
   onSelect,
   onHover,
+  heatmapMode = false,
+  temperature,
 }: {
   node: LayoutNode
   isSelected: boolean
   onSelect: (node: LayoutNode) => void
   onHover: (hovering: boolean) => void
+  heatmapMode?: boolean
+  temperature?: number
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const boltRef = useRef<THREE.Mesh>(null)
@@ -801,6 +1040,7 @@ function PDUNode({
   const accentStrip = online ? (isUPS ? '#84cc16' : '#f59e0b') : (isUPS ? '#365314' : '#78350f')
   const outletGlow  = online ? (isUPS ? '#a3e635' : '#fbbf24') : '#1a1a1a'
   const labelColor  = online ? (isUPS ? '#d9f99d' : '#fde68a') : '#6b7280'
+  const pduHeatBodyColor = heatmapMode && temperature !== undefined ? tempToColor(temperature) : undefined
 
   return (
     <group
@@ -812,7 +1052,7 @@ function PDUNode({
       {/* ── Main vertical body ── */}
       <mesh>
         <boxGeometry args={[1.1, 8.0, 0.85]} />
-        <meshStandardMaterial color={bodyColor} metalness={0.7} roughness={0.25} />
+        <meshStandardMaterial color={pduHeatBodyColor ?? bodyColor} metalness={0.7} roughness={0.25} />
       </mesh>
 
       {/* ── Front panel (slightly proud) ── */}
@@ -944,6 +1184,22 @@ function PDUNode({
           {node.name}
         </Text>
       </Billboard>
+
+      {/* ── Temperature billboard (heatmap mode) ── */}
+      {heatmapMode && temperature !== undefined && (
+        <Billboard position={[0, 8.0, 0]}>
+          <Text
+            fontSize={0.65}
+            color={tempToColor(temperature)}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.05}
+            outlineColor="#000000"
+          >
+            {temperature.toFixed(1)}°C
+          </Text>
+        </Billboard>
+      )}
 
       {!online && (
         <Billboard position={[0, -5.4, 0]}>
@@ -1297,6 +1553,8 @@ function SceneContent({
   targetPanX,
   trapAlerts,
   linkDownAlerts,
+  heatmapMode,
+  tempMap,
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
@@ -1311,6 +1569,8 @@ function SceneContent({
   targetPanX: number
   trapAlerts: Map<string, TrapAlert>
   linkDownAlerts: Map<string, TrapAlert>
+  heatmapMode: boolean
+  tempMap: Map<string, number>
 }) {
   return (
     <>
@@ -1360,6 +1620,8 @@ function SceneContent({
             expanded={expandedServers.has(node.id)}
             agentCount={agentCounts[node.id] || 0}
             onDoubleClick={onDoubleClickServer}
+            heatmapMode={heatmapMode}
+            temperature={tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? undefined}
           />
         ))}
 
@@ -1370,6 +1632,7 @@ function SceneContent({
         return agentNodes.map((node) => {
           const dt = ((node.deviceType ?? '') + ' ' + (node.agentId ?? '') + ' ' + (node.name ?? '')).toUpperCase()
           const isPDU = dt.includes('PDU') || dt.includes('FPDU') || dt.includes('UPS')
+          const nodeTemp = tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? undefined
           return isPDU ? (
             <PDUNode
               key={node.id}
@@ -1377,6 +1640,8 @@ function SceneContent({
               isSelected={selectedNode?.id === node.id}
               onSelect={onSelectNode}
               onHover={onHover}
+              heatmapMode={heatmapMode}
+              temperature={nodeTemp}
             />
           ) : (
             <AgentNode
@@ -1386,6 +1651,8 @@ function SceneContent({
               onSelect={onSelectNode}
               onHover={onHover}
               useFloat={enableFloat}
+              heatmapMode={heatmapMode}
+              temperature={nodeTemp}
             />
           )
         })
@@ -1397,6 +1664,7 @@ function SceneContent({
         .map((node) => {
           const dt = ((node.deviceType ?? '') + ' ' + (node.agentId ?? '') + ' ' + (node.name ?? '')).toUpperCase()
           const isPDU = dt.includes('PDU') || dt.includes('FPDU') || dt.includes('UPS')
+          const nodeTemp = tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? undefined
           return isPDU ? (
             <PDUNode
               key={node.id}
@@ -1404,6 +1672,8 @@ function SceneContent({
               isSelected={selectedNode?.id === node.id}
               onSelect={onSelectNode}
               onHover={onHover}
+              heatmapMode={heatmapMode}
+              temperature={nodeTemp}
             />
           ) : (
             <DeviceNode
@@ -1413,6 +1683,8 @@ function SceneContent({
               onSelect={onSelectNode}
               onHover={onHover}
               hasTrap={(!!node.ip && trapAlerts.has(node.ip)) || (!!node.name && trapAlerts.has(node.name))}
+              heatmapMode={heatmapMode}
+              temperature={nodeTemp}
             />
           )
         })}
@@ -1423,7 +1695,12 @@ function SceneContent({
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
-      <CameraFloorRunner targetFloorY={currentFloorY} targetPanX={targetPanX} />
+      {heatmapMode
+        ? <CameraTopDownController active={heatmapMode} />
+        : <CameraFloorRunner targetFloorY={currentFloorY} targetPanX={targetPanX} />
+      }
+
+      {heatmapMode && <HeatmapGradientOverlay nodes={nodes} tempMap={tempMap} />}
 
       <OrbitControls
         makeDefault
@@ -1495,9 +1772,22 @@ export default function Topology3D() {
   const [currentFloor, setCurrentFloor] = useState(FLOORS.length - 1) // start at DCIM Servers (top)
   const [showLegend, setShowLegend] = useState(true)
   const [showStats, setShowStats] = useState(true)
+  const [heatmapMode, setHeatmapMode] = useState(false)
 
   // Expand/collapse state
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
+
+  // Auto-expand all servers when heatmap activates so agent positions are in the layout
+  const preHeatmapExpandRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (heatmapMode && servers) {
+      preHeatmapExpandRef.current = new Set(expandedServers)
+      setExpandedServers(new Set(servers.filter(s => s.enabled).map(s => `server-${s.id}`)))
+    } else if (!heatmapMode) {
+      setExpandedServers(new Set(preHeatmapExpandRef.current))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heatmapMode, servers])
 
   // ── SNMP trap state (mirrors 2D Topology) ────────────────────────────────
   const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
@@ -1558,6 +1848,15 @@ export default function Topology3D() {
     staleTime: Infinity,
     refetchInterval: 30000,
     enabled: !USE_MOCK_DATA,
+  })
+
+  // Heatmap temperature data
+  const { data: heatTempMetrics } = useQuery({
+    queryKey: ['heatmap-temps', heatmapMode],
+    queryFn: () => api.getMetrics({ metric_type: 'temperature', time_range: '1h', limit: 5000 }),
+    enabled: heatmapMode,
+    refetchInterval: heatmapMode ? 30000 : false,
+    staleTime: 20000,
   })
 
   useEffect(() => {
@@ -1644,6 +1943,17 @@ export default function Topology3D() {
     }
     return counts
   }, [agents, orchDevicesByServerId])
+
+  // Temperature map for heatmap mode — latest reading per agent_id
+  const tempMap = useMemo(() => {
+    const map = new Map<string, number>()
+    if (!heatTempMetrics) return map
+    const sorted = [...heatTempMetrics].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+    sorted.forEach(m => { if (!map.has(m.agent_id)) map.set(m.agent_id, m.value) })
+    return map
+  }, [heatTempMetrics])
 
   // Filter to expanded servers and compute 3D layout
   const layout = useMemo(() => {
@@ -1784,6 +2094,18 @@ export default function Topology3D() {
               </button>
             )}
           <button
+            onClick={() => setHeatmapMode(h => !h)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border text-sm ${
+              heatmapMode
+                ? 'bg-orange-500/20 border-orange-500/50 text-orange-300 hover:bg-orange-500/30'
+                : 'bg-slate-700 hover:bg-slate-600 text-white border-white/10'
+            }`}
+            title="Toggle temperature heatmap"
+          >
+            <Thermometer className="w-4 h-4" />
+            Heatmap
+          </button>
+          <button
             onClick={() => navigate('/app/topology')}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
           >
@@ -1817,6 +2139,8 @@ export default function Topology3D() {
               targetPanX={panX}
               trapAlerts={trapAlerts}
               linkDownAlerts={linkDownAlerts}
+              heatmapMode={heatmapMode}
+              tempMap={tempMap}
             />
           </Canvas>
 
@@ -1903,6 +2227,39 @@ export default function Topology3D() {
               </div>
             </div>
           </div>
+          )}
+
+          {/* Temperature heatmap legend */}
+          {heatmapMode && (
+            <div
+              className="absolute bottom-4 bg-slate-900/90 border border-orange-500/30 rounded-lg p-3 backdrop-blur-sm"
+              style={{ left: showLegend ? 'calc(16px + 200px + 12px)' : '16px' }}
+            >
+              <h3 className="text-xs font-semibold text-orange-300 mb-2 flex items-center gap-1">
+                <Thermometer className="w-3 h-3" /> Temperature
+              </h3>
+              <div className="space-y-1">
+                {[
+                  { color: '#3b82f6', label: '< 30°C',   desc: 'Cool'     },
+                  { color: '#10b981', label: '30–45°C',  desc: 'Normal'   },
+                  { color: '#f59e0b', label: '45–55°C',  desc: 'Warm'     },
+                  { color: '#f97316', label: '55–65°C',  desc: 'Hot'      },
+                  { color: '#ef4444', label: '> 65°C',   desc: 'Critical' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="text-slate-300 text-[10px]">{item.label}</span>
+                    <span className="text-slate-500 text-[10px]">{item.desc}</span>
+                  </div>
+                ))}
+              </div>
+              {tempMap.size === 0 && heatmapMode && (
+                <p className="text-slate-500 text-[10px] mt-2 border-t border-white/10 pt-1">
+                  No temperature data in last 1h
+                </p>
+              )}
+              <p className="text-slate-500 text-[10px] mt-1">{tempMap.size} readings</p>
+            </div>
           )}
 
           {/* Joystick + Reset — bottom right */}

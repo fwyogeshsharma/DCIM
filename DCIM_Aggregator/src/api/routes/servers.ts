@@ -2,6 +2,11 @@ import { Router } from 'express'
 import { Pool } from 'pg'
 import multer from 'multer'
 import { ServerManager } from '../../services/ServerManager'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+function isValidUUID(id: string): boolean {
+  return UUID_RE.test(id)
+}
 import { CacheService } from '../../services/CacheService'
 import axios from 'axios'
 import { httpsAgent } from '../../utils/httpClient'
@@ -132,6 +137,9 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
 
   // Get server by ID
   router.get('/:id', async (req, res) => {
+    if (!isValidUUID(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid server ID format' })
+    }
     try {
       const server = await serverManager.getServerById(req.params.id)
       if (!server) {
@@ -200,6 +208,9 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
 
   // Update server (supports multipart for cert upload)
   router.put('/:id', certFields, async (req, res) => {
+    if (!isValidUUID(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid server ID format' })
+    }
     try {
       let body = req.body
       if (typeof body.data === 'string') {
@@ -232,6 +243,9 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
 
   // Delete server
   router.delete('/:id', async (req, res) => {
+    if (!isValidUUID(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid server ID format' })
+    }
     try {
       deleteServerCerts(req.params.id)
       await serverManager.deleteServer(req.params.id)
@@ -246,6 +260,9 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
 
   // Test server connection (uses per-server certs)
   router.get('/:id/health', async (req, res) => {
+    if (!isValidUUID(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid server ID format' })
+    }
     try {
       const server = await serverManager.getServerById(req.params.id)
       if (!server) {
@@ -293,6 +310,9 @@ export function createServersRouter(dbPool: Pool, cacheService: CacheService): R
 
   // Toggle server status
   router.post('/:id/toggle', async (req, res) => {
+    if (!isValidUUID(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid server ID format' })
+    }
     try {
       const { enabled } = req.body
       await serverManager.toggleServerStatus(req.params.id, enabled)

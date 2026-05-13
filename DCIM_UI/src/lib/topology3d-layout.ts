@@ -18,6 +18,8 @@ export interface LayoutNode {
   lastSeen?: string
   /** Raw device type from orchestrator, e.g. "DeviceType.ROUTER" */
   deviceType?: string
+  /** Latest temperature reading (°C) for heatmap mode */
+  temperature?: number
 }
 
 export interface D2DInfo {

@@ -12,6 +12,15 @@ import (
 	"github.com/faberlabs/dcim-server/internal/database"
 )
 
+func generateUUID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant bits
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
+
 // initializeServerID initializes and registers the server instance
 func initializeServerID(cfg *config.Config, db *database.Database) (string, error) {
 	var serverID string
@@ -26,10 +35,8 @@ func initializeServerID(cfg *config.Config, db *database.Database) (string, erro
 		if err == nil {
 			serverID = strings.TrimSpace(string(data))
 		} else {
-			// Generate new server ID
-			hostname, _ := os.Hostname()
-			randomID := generateRandomID(8)
-			serverID = fmt.Sprintf("%s-%s", hostname, randomID)
+			// Generate new server ID as a proper UUID
+			serverID = generateUUID()
 
 			// Ensure data directory exists
 			os.MkdirAll("./data", 0755)

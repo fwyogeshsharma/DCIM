@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ServerCog,
-  Terminal
+  Terminal,
+  FileBarChart
 } from 'lucide-react'
 import { useUIStore } from '@/stores/useUIStore'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Agents', href: '/agents', icon: Server },
   { name: 'Alerts', href: '/alerts', icon: AlertTriangle },
+  { name: 'Reports', href: '/reports', icon: FileBarChart },
   { name: 'Topology', href: '/topology', icon: Network },
   { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit },
   { name: 'NL Query', href: '/nl-query', icon: MessageSquareText },

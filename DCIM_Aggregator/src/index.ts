@@ -88,13 +88,20 @@ async function start() {
           'SELECT 1 FROM servers WHERE url = $1',
           [url]
         )
+        const name = url.replace(/https?:\/\//, '').split(':')[0]
+        const networkMatch = name.match(/dcim-server-([a-z])$/)
+        const metadata = networkMatch ? JSON.stringify({ network: `network-${networkMatch[1]}` }) : null
         if (rowCount === 0) {
-          const name = url.replace(/https?:\/\//, '').split(':')[0]
           await dbPool.query(
-            `INSERT INTO servers (name, url, enabled) VALUES ($1, $2, true)`,
-            [name, url]
+            `INSERT INTO servers (name, url, enabled, metadata) VALUES ($1, $2, true, $3)`,
+            [name, url, metadata]
           )
           logger.info(`Auto-registered server: ${name} (${url})`)
+        } else if (metadata) {
+          await dbPool.query(
+            `UPDATE servers SET metadata = $1 WHERE url = $2 AND metadata IS NULL`,
+            [metadata, url]
+          )
         }
       }
     }
