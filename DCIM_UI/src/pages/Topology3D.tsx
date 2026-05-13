@@ -34,13 +34,15 @@ interface TrapFeedItem {
 const USE_MOCK_DATA = false
 
 // ── Temperature → colour mapping for heatmap mode ───────────────────────────
+// Range: 10°C (min) → 55°C (max). Critical zone: 35–45°C
 function tempToColor(t: number): string {
-  if (t < 30) return '#3b82f6'   // blue  — cool
-  if (t < 45) return '#10b981'   // green — normal
-  if (t < 55) return '#f59e0b'   // amber — warm
-  if (t < 65) return '#f97316'   // orange — hot
-  return '#ef4444'               // red   — critical
+  if (t < 35) return '#3b82f6'   // blue  — cool/normal
+  if (t < 45) return '#f59e0b'   // amber — WARNING (35–45°C)
+  return '#ef4444'               // red   — CRITICAL (>45°C)
 }
+
+const HEATMAP_MIN_T = 10
+const HEATMAP_MAX_T = 55
 
 // ── Heatmap: top-down camera controller ──────────────────────────────────────
 
@@ -119,19 +121,22 @@ function HeatmapGradientOverlay({ nodes, tempMap }: {
     ctx.fillRect(0, 0, W, H)
 
     if (heatPoints.length > 0) {
-      const temps = heatPoints.map(p => p.temp)
-      const minT = Math.min(...temps)
-      const maxT = Math.max(...temps)
-      const rangeT = (maxT - minT) || 1
+      // Fixed temperature scale: 10°C → 55°C. Critical zone: 35–45°C.
+      // norm=0 → 10°C (cool), norm=1 → 55°C (max critical)
+      // Normalised breakpoints for the critical band:
+      //   35°C → base 0.15 + 0.85*(25/45) = 0.622
+      //   45°C → base 0.15 + 0.85*(35/45) = 0.811
+      const RANGE = HEATMAP_MAX_T - HEATMAP_MIN_T   // 45
+      const WARN_V  = 0.15 + 0.85 * (35 - HEATMAP_MIN_T) / RANGE   // ~0.622
+      const CRIT_V  = 0.15 + 0.85 * (45 - HEATMAP_MIN_T) / RANGE   // ~0.811
 
       ctx.globalCompositeOperation = 'lighter'
 
       heatPoints.forEach(pt => {
         const px = toX(pt.x)
         const py = toY(pt.z)
-        // Normalise temperature: coldest → 0.15 (still shows), hottest → 1.0
-        const norm = 0.15 + 0.85 * Math.max(0, Math.min(1, (pt.temp - minT) / rangeT))
-        // Per-blob alpha tuned so 3-4 overlapping blobs saturate to white
+        // Clamp to fixed [MIN_T, MAX_T] range, base 0.15 so cold devices still show
+        const norm = 0.15 + 0.85 * Math.max(0, Math.min(1, (pt.temp - HEATMAP_MIN_T) / RANGE))
         const a = (norm * 0.38).toFixed(3)
 
         const grad = ctx.createRadialGradient(px, py, 0, px, py, RADIUS)
@@ -144,33 +149,36 @@ function HeatmapGradientOverlay({ nodes, tempMap }: {
         ctx.fill()
       })
 
-      // ── Pass 2: colorize each pixel through a heatmap gradient ───────────
+      // ── Pass 2: colorize pixels — blue→green (cool) | yellow→red (critical) ─
       ctx.globalCompositeOperation = 'source-over'
       const img = ctx.getImageData(0, 0, W, H)
       const d = img.data
 
       for (let i = 0; i < d.length; i += 4) {
-        const v = d[i] / 255       // intensity 0..1 from red channel
+        const v = d[i] / 255
         if (v < 0.015) { d[i + 3] = 0; continue }
 
-        // Classic heatmap gradient: blue → cyan → green → yellow → red
         let r = 0, g = 0, b = 0
         if (v < 0.25) {
+          // deep blue → blue  (10–21°C approx)
           const f = v / 0.25
           r = 0; g = 0; b = Math.round(130 + f * 125)
-        } else if (v < 0.5) {
-          const f = (v - 0.25) / 0.25
-          r = 0; g = Math.round(f * 255); b = Math.round((1 - f) * 255)
-        } else if (v < 0.75) {
-          const f = (v - 0.5) / 0.25
-          r = Math.round(f * 255); g = 255; b = 0
+        } else if (v < WARN_V) {
+          // blue → cyan → green  (21–35°C: normal)
+          const span = WARN_V - 0.25
+          const f = (v - 0.25) / span
+          r = 0; g = Math.round(f * 200); b = Math.round((1 - f) * 255)
+        } else if (v < CRIT_V) {
+          // yellow → orange  (35–45°C: WARNING)
+          const f = (v - WARN_V) / (CRIT_V - WARN_V)
+          r = 255; g = Math.round(200 - f * 140); b = 0
         } else {
-          const f = (v - 0.75) / 0.25
-          r = 255; g = Math.round((1 - f) * 255); b = 0
+          // orange → deep red  (45–55°C: CRITICAL)
+          const f = (v - CRIT_V) / (1 - CRIT_V)
+          r = 255; g = Math.round(60 - f * 60); b = 0
         }
 
         d[i] = r; d[i + 1] = g; d[i + 2] = b
-        // Alpha: grows quickly then plateaus — transparent where empty
         d[i + 3] = Math.round(Math.min(v * 3.2, 0.88) * 255)
       }
 
