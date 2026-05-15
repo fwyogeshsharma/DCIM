@@ -14,7 +14,7 @@ from api.routers import topology, binding, snmp, gnmi, rules, traps, devices
 app = FastAPI(
     title="Datacenter Network Simulator API",
     description="REST API for all simulator actions — SNMP, gNMI, topology, IP binding, rules, traps.",
-    version="2.1.0",
+    version="2.2.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -39,11 +39,11 @@ app.include_router(devices.router, prefix="/api")
 def root():
     return {
         "name": "Datacenter Network Simulator API",
-        "version": "2.1.0",
+        "version": "2.2.0",
         "docs": "/docs",
         "endpoints": [
             "GET  /api/topology",
-            "POST /api/topology/open",
+            "POST /api/topology/upload",
             "GET  /api/topology/links",
             "POST /api/topology/links/break",
             "POST /api/topology/links/restore",

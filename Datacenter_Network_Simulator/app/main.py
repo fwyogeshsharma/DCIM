@@ -149,6 +149,89 @@ def _force_dark_palette(app: QApplication) -> None:
     app.setPalette(p)
 
 
+def _run_headless():
+    """Start the simulator in headless mode (no GUI) — API only on port 8000.
+    Uses QCoreApplication so Qt signals/slots work without a display."""
+    import logging
+    log = logging.getLogger("headless")
+    log.setLevel(logging.INFO)
+
+    from PySide6.QtCore import QCoreApplication
+    _app = QCoreApplication(sys.argv)
+
+    log.info("Headless mode: initialising core objects…")
+
+    from core.device_manager import DeviceManager
+    from core.topology_engine import TopologyEngine
+    from core.ip_manager import IPManager
+    from simulator.snmpsim_controller import SNMPSimController
+    from simulator.gnmi_controller import GNMIController
+    from simulator.sflow_controller import SFlowController
+    from core.device_state_store import DeviceStateStore
+    from core.trap_engine import TrapEngine
+    from core.rule_engine import RuleEngine
+    from core.trap_rules import DEFAULT_RULES
+
+    snmp_dir = "datasets/snmp"
+    gnmi_dir = "datasets/gnmi"
+    os.makedirs(snmp_dir, exist_ok=True)
+    os.makedirs(gnmi_dir, exist_ok=True)
+    os.makedirs("topologies", exist_ok=True)
+
+    device_manager = DeviceManager()
+    topology       = TopologyEngine()
+    ip_manager     = IPManager()
+    snmpsim        = SNMPSimController(snmp_dir)
+    gnmi           = GNMIController(gnmi_dir)
+    sflow          = SFlowController()
+    state_store    = DeviceStateStore(
+        device_manager, topology, snmp_dir, tick_interval=30.0, snmp_sync_every=1,
+    )
+    gnmi.set_state_store(state_store)
+    sflow.set_state_store(state_store)
+    sflow.set_topology(topology)
+    sflow.set_device_manager(device_manager)
+
+    trap_engine  = TrapEngine(None)
+    rule_engine  = RuleEngine()
+    for rule in DEFAULT_RULES:
+        rule_engine.add_rule(rule)
+    trap_engine.set_rule_engine(rule_engine, device_manager)
+    state_store.set_rule_engine_callback(rule_engine.evaluate_fact)
+
+    from api.state import AppState
+    api_state = AppState.get()
+    api_state.register(
+        device_manager=device_manager,
+        topology=topology,
+        ip_manager=ip_manager,
+        snmpsim=snmpsim,
+        gnmi=gnmi,
+        state_store=state_store,
+        rule_engine=rule_engine,
+        trap_engine=trap_engine,
+        snmp_datasets_dir=snmp_dir,
+        gnmi_datasets_dir=gnmi_dir,
+    )
+    trap_engine.trap_sent.connect(api_state.record_trap)
+
+    port = 8000
+    for i, arg in enumerate(sys.argv):
+        if arg == "--port" and i + 1 < len(sys.argv):
+            port = int(sys.argv[i + 1])
+        elif arg.startswith("--port="):
+            port = int(arg.split("=", 1)[1])
+
+    log.info("Core ready. Starting REST API on http://0.0.0.0:%d …", port)
+    import threading
+    from api.main import start_api_server
+    _api_thread = threading.Thread(target=lambda: start_api_server(port=port), daemon=False, name="api-server")
+    _api_thread.start()
+    log.info("REST API up — http://0.0.0.0:%d/docs", port)
+
+    sys.exit(_app.exec())
+
+
 def main():
     print("[1] setting HighDPI policy", flush=True)
     QApplication.setHighDpiScaleFactorRoundingPolicy(
@@ -166,7 +249,7 @@ def main():
 
     app.setApplicationName("Datacenter Network Simulator")
     app.setOrganizationName("Datacenter Network Simulator")
-    app.setApplicationVersion("2.1.0")
+    app.setApplicationVersion("2.2.0")
 
     # Import MainWindow AFTER QApplication so all Qt objects in imported
     # modules (e.g. QColor in DEVICE_COLORS) are created with a live app.
@@ -189,4 +272,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--headless" in sys.argv:
+        _run_headless()
+    else:
+        main()

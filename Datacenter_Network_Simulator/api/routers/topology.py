@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import json
-import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from api.state import AppState
 from api.models.schemas import (
-    OpenTopologyRequest,
     TopologyInfoResponse,
     LinkActionRequest,
     OkResponse,
@@ -36,40 +34,37 @@ def get_topology():
     )
 
 
-@router.post("/open", response_model=TopologyInfoResponse)
-def open_topology(req: OpenTopologyRequest):
-    """Load a topology JSON file into the simulator."""
+
+
+@router.post("/upload", response_model=TopologyInfoResponse)
+async def upload_topology(file: UploadFile = File(...)):
+    """Upload a topology JSON file directly from the client — no server path needed."""
     s = _state()
-    path = req.path
-    if not os.path.isfile(path):
-        raise HTTPException(status_code=404, detail=f"File not found: {path}")
+    if s.topology is None or s.device_manager is None:
+        raise HTTPException(status_code=503, detail="Core not initialized")
+    if not file.filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="File must be a .json file")
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        content = await file.read()
+        data = json.loads(content)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse JSON: {e}")
-
-    if s.topology is None or s.device_manager is None:
-        raise HTTPException(status_code=503, detail="Core not initialized — start the Qt app first or register state")
-
     try:
-        # Clear existing state
         s.device_manager.clear()
         if s.ip_manager:
             s.ip_manager.reset()
         s.topology.from_dict(data)
-        # Sync device manager and IP manager
         for device in s.topology.get_all_devices():
             s.device_manager.add_device(device)
             if s.ip_manager:
                 s.ip_manager.reserve(device.ip_address)
-        s.current_topology_path = path
+        s.current_topology_path = file.filename
         s.notify_ui("rebuild_topology_scene")
         devices = s.topology.get_all_devices()
         return TopologyInfoResponse(
             device_count=s.topology.node_count(),
             link_count=s.topology.edge_count(),
-            current_path=path,
+            current_path=file.filename,
             devices=[d.id for d in devices],
         )
     except Exception as e:
