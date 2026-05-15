@@ -37,19 +37,21 @@ warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*pysnmp-lex
 
 # Ensure project root is on the path (handles both dev and PyInstaller modes)
 if getattr(sys, "frozen", False):
-    # Running as PyInstaller bundle
+    # Running as PyInstaller bundle — imports live in _MEIPASS, logs go next to the exe
     _base_dir = sys._MEIPASS
+    _log_dir  = os.path.dirname(sys.executable)
 else:
     _base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _log_dir  = _base_dir
 
 if _base_dir not in sys.path:
     sys.path.insert(0, _base_dir)
 
-# Change working directory to project root so relative paths work
+# Change working directory to project root so relative paths (datasets/, topologies/) work
 os.chdir(_base_dir)
 
-# Write a stack trace to crash.log if the process receives a fatal signal
-_crash_log = open(os.path.join(_base_dir, "crash.log"), "w")
+# Write a stack trace to crash.log next to the exe / project root
+_crash_log = open(os.path.join(_log_dir, "crash.log"), "w")
 faulthandler.enable(_crash_log)
 
 import logging as _logging
@@ -58,7 +60,7 @@ _logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     handlers=[
         _logging.StreamHandler(),
-        _logging.FileHandler(os.path.join(_base_dir, "app.log"), encoding="utf-8"),
+        _logging.FileHandler(os.path.join(_log_dir, "app.log"), encoding="utf-8"),
     ],
 )
 

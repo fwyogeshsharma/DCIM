@@ -105,5 +105,29 @@ def health():
 
 def start_api_server(host: str = "0.0.0.0", port: int = 8000):
     """Start uvicorn in the current thread (blocking). Call from a daemon thread."""
+    import asyncio
+    import logging
     import uvicorn
-    uvicorn.run(app, host=host, port=port, log_level="warning", access_log=False)
+
+    log = logging.getLogger("api.server")
+    try:
+        # On Windows (frozen or not), create a fresh SelectorEventLoop for this
+        # thread — ProactorEventLoop is the default but doesn't work reliably in
+        # non-main threads inside a PyInstaller bundle.
+        if hasattr(asyncio, "SelectorEventLoop"):
+            loop = asyncio.SelectorEventLoop()
+            asyncio.set_event_loop(loop)
+
+        config = uvicorn.Config(
+            app,
+            host=host,
+            port=port,
+            log_level="warning",
+            access_log=False,
+            loop="none",      # we set the loop ourselves above
+            log_config=None,  # disable uvicorn's log setup — sys.stdout is None in windowed exe
+        )
+        server = uvicorn.Server(config)
+        asyncio.get_event_loop().run_until_complete(server.serve())
+    except Exception as exc:
+        log.exception("REST API server failed to start: %s", exc)
