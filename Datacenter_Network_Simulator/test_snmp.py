@@ -80,6 +80,25 @@ IFACE_TABLE_OID   = "1.3.6.1.2.1.2.2"      # IF-MIB ifTable
 LLDP_REM_OID      = "1.0.8802.1.1.2.1.4.1" # LLDP-MIB remote table
 
 
+PERF_OIDS: List[Tuple[str, str]] = [
+    # CPU
+    ("1.3.6.1.4.1.2021.11.9.0",   "cpuIdle"),
+    ("1.3.6.1.4.1.2021.11.10.0",  "cpuSystem"),
+    ("1.3.6.1.4.1.2021.11.11.0",  "cpuUser"),
+
+    # Memory
+    ("1.3.6.1.4.1.2021.4.5.0",   "memTotalKB"),
+    ("1.3.6.1.4.1.2021.4.6.0",   "memAvailKB"),
+    ("1.3.6.1.4.1.2021.4.14.0",  "memBufferKB"),
+]
+
+# ENTITY-SENSOR-MIB
+# Temperature sensors often appear under:
+# 1.3.6.1.2.1.99.1.1.1.4
+
+TEMP_SENSOR_OID = "1.3.6.1.2.1.99.1.1.1.4"
+
+
 # ── Result model ──────────────────────────────────────────────────────────────
 
 @dataclass
@@ -99,11 +118,14 @@ class DeviceResult:
     community:        str
     port:             int
     elapsed_ms:       float           = 0.0
-    system:           List[OIDResult] = field(default_factory=list)
+    # system:           List[OIDResult] = field(default_factory=list)
+    system: List[OIDResult] = field(default_factory=list)
+    performance: List[OIDResult] = field(default_factory=list)
     interfaces:       List[dict]      = field(default_factory=list)
     lldp_neighbours:  List[dict]      = field(default_factory=list)
     unreachable:      bool            = False
     error:            Optional[str]   = None
+    temperatures: List[dict] = field(default_factory=list)
 
     @property
     def passed(self) -> int:
@@ -255,7 +277,10 @@ async def _snmp_walk(ip: str, community: str, port: int,
 # ── Per-device test ───────────────────────────────────────────────────────────
 
 async def _test_device(ip: str, agent_ip: str, community: str, port: int,
-                       timeout: int, do_interfaces: bool, do_lldp: bool) -> DeviceResult:
+                       timeout: int,
+                       do_interfaces: bool,
+                       do_lldp: bool,
+                       do_metrics: bool) -> DeviceResult:
     result = DeviceResult(ip=ip, community=community, port=port)
     t0 = time.perf_counter()
 
@@ -287,6 +312,77 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
         result.error = next(iter(errors), "no response")
         result.elapsed_ms = (time.perf_counter() - t0) * 1000
         return result
+
+    # ── Performance metrics ────────────────────────────────────────────────
+
+    if do_metrics:
+        perf_oids = [oid for oid, _ in PERF_OIDS]
+
+        try:
+            perf_raw = await _snmp_get(
+                agent_ip,
+                community,
+                port,
+                perf_oids,
+                timeout,
+            )
+
+            for oid, name in PERF_OIDS:
+                val = perf_raw.get(oid, "")
+
+                if val.startswith("ERROR:"):
+                    result.performance.append(
+                        OIDResult(oid=oid, name=name, error=val[7:].strip())
+                    )
+                elif (
+                    not val
+                    or val in ("noSuchInstance", "noSuchObject", "endOfMibView")
+                    or val.lower().startswith("no such")
+                ):
+                    result.performance.append(
+                        OIDResult(oid=oid, name=name, error=val or "no value")
+                    )
+                else:
+                    result.performance.append(
+                        OIDResult(oid=oid, name=name, value=val)
+                    )
+
+        except Exception as exc:
+            result.performance.append(
+                OIDResult(
+                    oid="metrics",
+                    name="metrics",
+                    error=str(exc),
+                )
+            )
+
+    # ── Temperature sensors ────────────────────────────────────────────────
+
+    if do_metrics:
+        try:
+            rows = await _snmp_walk(
+                agent_ip,
+                community,
+                port,
+                TEMP_SENSOR_OID,
+                timeout,
+                200,
+            )
+
+            for oid_str, val in rows:
+                try:
+                    temp_c = int(val) / 10
+                except Exception:
+                    temp_c = val
+
+                result.temperatures.append({
+                    "oid": oid_str,
+                    "value": temp_c,
+                })
+
+        except Exception:
+            pass
+
 
     # ── Interface table walk ───────────────────────────────────────────────────
     # IF-MIB stores each column for all interfaces before moving to the next
@@ -366,6 +462,63 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
                 val = val[:77] + "…"
             if not quiet:
                 print(f"  {green('✓')}  {r.name:<{col_w}} {val}")
+
+    # Performance metrics
+    if result.performance:
+        print(f"\n  {bold('Performance Metrics')}:")
+
+        perf_map = {
+            r.name: r.value
+            for r in result.performance
+            if r.ok
+        }
+
+        try:
+            idle_val = perf_map.get("cpuIdle")
+
+            if idle_val is not None:
+                try:
+                    idle = float(idle_val)
+                    cpu_usage = 100 - idle
+                    print(f"    CPU Usage      : {cpu_usage:.1f}%")
+                except Exception:
+                    print("    CPU Usage      : unavailable")
+            else:
+                print("    CPU Usage      : unavailable")
+        except Exception:
+            pass
+
+        try:
+            total_val = perf_map.get("memTotalKB")
+            avail_val = perf_map.get("memAvailKB")
+
+            if total_val and avail_val:
+                try:
+                    total = int(total_val)
+                    avail = int(avail_val)
+
+                    if total > 0:
+                        used = total - avail
+                        pct = (used / total) * 100
+
+                        print(f"    Memory Usage   : {pct:.1f}%")
+                        print(f"    Memory Used    : {used // 1024} MB")
+                        print(f"    Memory Total   : {total // 1024} MB")
+                except Exception:
+                    print("    Memory Usage   : unavailable")
+            else:
+                print("    Memory Usage   : unavailable")
+        except Exception:
+            pass
+
+    # Temperature sensors
+    if result.temperatures:
+        print(f"\n  {bold('Temperature Sensors')}:")
+
+        for sensor in result.temperatures:
+            print(
+                f"    {sensor['oid']}  =  {sensor['value']} °C"
+            )
 
     # Summary line
     total = len(result.system)
@@ -475,12 +628,15 @@ def _parse_args() -> argparse.Namespace:
                    help="Equivalent to --interfaces --lldp")
     p.add_argument("--quiet", "-q", action="store_true",
                    help="Only print failures and summary")
+    p.add_argument("--metrics", "-m", action="store_true",
+                   help="Collect CPU, memory and temperature metrics")
     return p.parse_args()
 
 
 async def _main(args: argparse.Namespace) -> int:
     do_ifaces = args.interfaces or args.full
     do_lldp   = args.lldp or args.full
+    do_metrics = args.metrics or args.full
 
     print(bold(f"\ndataCenter SNMP Tester  —  {len(args.ips)} device(s)"))
     print(grey(f"agent={args.agent}  port={args.port}  timeout={args.timeout}s  "
@@ -496,6 +652,7 @@ async def _main(args: argparse.Namespace) -> int:
             timeout   = args.timeout,
             do_interfaces = do_ifaces,
             do_lldp       = do_lldp,
+            do_metrics=do_metrics,
         )
         for ip in args.ips
     ]

@@ -37,9 +37,10 @@ class BindingPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._snmp_locked  = False
-        self._gnmi_locked  = False
-        self._total_bound  = 0
+        self._snmp_locked        = False
+        self._gnmi_locked        = False
+        self._total_bound        = 0
+        self._binding_in_progress = False
         self._build_ui()
         self._load_interfaces()
 
@@ -214,6 +215,22 @@ class BindingPanel(QWidget):
     def subnet_mask(self) -> str:
         return self.mask_edit.text().strip() or "255.255.255.0"
 
+    def set_binding_in_progress(self, active: bool):
+        self._binding_in_progress = active
+        self._update_lock_state()
+
+    def set_selected_adapter(self, name_or_label: str):
+        """Select adapter by name (data) or display label — no-op if not found."""
+        idx = self.iface_combo.findData(name_or_label)   # match by adapter name first
+        if idx < 0:
+            idx = self.iface_combo.findText(name_or_label)  # fall back to label text
+        if idx >= 0 and self.iface_combo.currentIndex() != idx:
+            self.iface_combo.setCurrentIndex(idx)
+
+    def set_subnet_mask(self, mask: str):
+        if mask and self.mask_edit.text() != mask:
+            self.mask_edit.setText(mask)
+
     def set_bound_count(self, count: int):
         self._total_bound = count
         if count > 0:
@@ -235,6 +252,10 @@ class BindingPanel(QWidget):
         self._update_lock_state()
 
     def _update_lock_state(self):
+        if self._binding_in_progress:
+            self.btn_bind.setEnabled(False)
+            self.btn_unbind.setEnabled(False)
+            return
         unlocked = not (self._snmp_locked or self._gnmi_locked)
         self.iface_combo.setEnabled(unlocked)
         self.mask_edit.setEnabled(unlocked)

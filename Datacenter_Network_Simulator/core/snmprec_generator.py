@@ -158,7 +158,7 @@ def _oid_entry(oid: str, typ: str, val: str) -> OidEntry:
 
 class SNMPRecGenerator:
     def __init__(self, output_dir: str = "datasets/snmp"):
-        self.output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir).resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._cache_dir: Optional[str] = None   # lazily resolved from snmpsim.confdir
 

@@ -402,9 +402,10 @@ def add_ips_fast(
     # ── Windows fast path via Win32 API ──────────────────────────────────
     if_index = _get_if_index(interface)
     if if_index is None:
-        # Fallback — batch netsh in a single PowerShell process
-        add_ips_batch(interface, ips, mask, log_cb, progress_cb)
-        return ips, {}
+        if log_cb:
+            log_cb(f"Adapter '{interface}' not found via Win32 — falling back to netsh", "warning")
+        bound_ips = _run_netsh_batch_tracked("add", interface, ips, mask, log_cb, progress_cb)
+        return bound_ips, {}
 
     total     = len(ips)
     done      = [0]
@@ -553,6 +554,74 @@ def remove_ips_batch(
     if sys.platform == "win32":
         return _run_netsh_batch("remove", interface, ips, None, log_cb, progress_cb)
     return remove_ips_fast(interface, ips, None, log_cb, progress_cb)
+
+
+def _run_netsh_batch_tracked(
+    action: str,
+    interface: str,
+    ips: List[str],
+    mask: Optional[str],
+    log_cb: Optional[Callable[[str, str], None]],
+    progress_cb: Optional[Callable[[int, int], None]],
+) -> List[str]:
+    """Like _run_netsh_batch but returns the list of IPs that actually succeeded."""
+    iface = interface.replace("'", "''")
+    ps_lines = ["$ErrorActionPreference = 'SilentlyContinue'"]
+    for ip in ips:
+        if action == "add":
+            cmd = f"netsh interface ip add address 'name={iface}' addr={ip} mask={mask}"
+        else:
+            cmd = f"netsh interface ip delete address 'name={iface}' addr={ip}"
+        ps_lines += [
+            f"$out = ({cmd}) 2>&1 | Out-String",
+            f"if ($LASTEXITCODE -eq 0 -or $out -match 'already' -or $out -match 'not found' -or $out -match 'element not found') {{",
+            f"    Write-Host 'OK:{ip}'",
+            f"}} else {{",
+            f"    Write-Host ('FAIL:{ip}:' + $out.Trim())",
+            f"}}",
+        ]
+    ps_script = "\n".join(ps_lines)
+    ps_file = None
+    bound_ips: List[str] = []
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ps1", delete=False, encoding="utf-8") as f:
+            f.write(ps_script)
+            ps_file = f.name
+        proc = subprocess.Popen(
+            ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ps_file],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        processed = 0
+        total = len(ips)
+        for line in proc.stdout:
+            line = line.strip()
+            if line.startswith("OK:"):
+                ip = line[3:]
+                bound_ips.append(ip)
+                processed += 1
+                if log_cb:
+                    verb = "Bound" if action == "add" else "Removed"
+                    log_cb(f"  + {ip} — {verb}", "success" if action == "add" else "info")
+            elif line.startswith("FAIL:"):
+                rest = line[5:]
+                ip, _, msg = rest.partition(":")
+                processed += 1
+                if log_cb:
+                    log_cb(f"  ! {ip} — {msg or 'Failed'}", "error" if action == "add" else "warning")
+            if progress_cb and processed <= total:
+                progress_cb(processed, total)
+        proc.wait()
+    except Exception as exc:
+        if log_cb:
+            log_cb(f"Batch {action} failed: {exc}", "error")
+    finally:
+        if ps_file and os.path.exists(ps_file):
+            try:
+                os.unlink(ps_file)
+            except OSError:
+                pass
+    return bound_ips
 
 
 def _run_netsh_batch(

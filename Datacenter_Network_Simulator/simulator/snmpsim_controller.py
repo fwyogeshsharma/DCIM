@@ -504,7 +504,7 @@ class SNMPSimController:
         self.clear_index_cache()
 
         snmprec_files = [
-            str(p) for p in Path(data_dir).glob("*.snmprec")
+            str(p) for p in Path(data_dir).resolve().glob("*.snmprec")
         ]
         if not snmprec_files:
             return 0

@@ -501,6 +501,7 @@ class MainWindow(QMainWindow):
         # gNMI IP binding state (independent from SNMP)
         self._gnmi_bound_ips: List[str] = []
         self._gnmi_bound_interface: str = ""
+        self._gnmi_nte_contexts: dict = {}
         self._gnmi_bind_thread: QThread = None
         self._gnmi_bind_worker = None
         self._gnmi_unbind_thread: QThread = None
@@ -539,6 +540,27 @@ class MainWindow(QMainWindow):
         self._status_timer = QTimer(self)
         self._status_timer.timeout.connect(self._refresh_status)
         self._status_timer.start(2000)
+
+        # Register all core objects with the REST API shared state
+        try:
+            from api.state import AppState
+            api_state = AppState.get()
+            api_state.register(
+                device_manager=self.device_manager,
+                topology=self.topology,
+                ip_manager=self.ip_manager,
+                snmpsim=self.snmpsim,
+                gnmi=self.gnmi,
+                state_store=self.state_store,
+                rule_engine=self._rule_engine,
+                trap_engine=self._trap_engine,
+                snmp_datasets_dir=self._snmp_datasets_dir,
+                gnmi_datasets_dir=self._gnmi_datasets_dir,
+            )
+            api_state._ui_queue = self._log_queue
+            self._trap_engine.trap_sent.connect(api_state.record_trap)
+        except Exception:
+            pass  # API integration is non-critical — UI must not fail if it errors
 
     # ------------------------------------------------------------------ #
     #  UI Construction                                                     #
@@ -2214,14 +2236,17 @@ class MainWindow(QMainWindow):
 
     def _on_panel_unbind_ips(self):
         """Remove all bound IPs (SNMP and gNMI) from the adapter."""
-        all_ips = list(set(self._bound_ips) | set(self._gnmi_bound_ips))
-        iface   = self._bound_interface or self._gnmi_bound_interface
+        from api.state import AppState
+        _s = AppState.get()
+        all_ips = list(set(self._bound_ips) | set(self._gnmi_bound_ips) |
+                       set(_s.bound_ips) | set(_s.gnmi_bound_ips))
+        iface   = self._bound_interface or self._gnmi_bound_interface or _s.selected_adapter
         if not all_ips or not iface:
             return
         self._console_panel.log(f"Removing {len(all_ips)} bound IPs…", "info")
         self._binding_panel.set_snmp_locked(True)
         self._binding_panel.set_gnmi_locked(True)
-        all_contexts = dict(self._nte_contexts)
+        all_contexts = {**_s.nte_contexts, **_s.gnmi_nte_contexts, **self._nte_contexts}
 
         self._binding_panel.show_progress(0, len(all_ips))
         self._panel_unbind_worker = IPUnbindWorker(iface, all_ips, all_contexts)
@@ -2247,6 +2272,15 @@ class MainWindow(QMainWindow):
         self._binding_panel.set_snmp_locked(False)
         self._binding_panel.set_gnmi_locked(False)
         self._console_panel.log("All IPs removed from adapter.", "warning")
+        try:
+            from api.state import AppState
+            _s = AppState.get()
+            _s.bound_ips = []
+            _s.nte_contexts = {}
+            _s.gnmi_bound_ips = []
+            _s.gnmi_nte_contexts = {}
+        except Exception:
+            pass
 
     def _on_snmpsim_ready(self):
         """Called (via queue) when SNMPSim logs its 'Listening at UDP/IPv4 endpoint' line."""
@@ -3022,6 +3056,134 @@ class MainWindow(QMainWindow):
         # Fade the graph until SNMP confirms devices are live
         self._topology_view.topology_scene.set_all_faded(True)
 
+
+    # ------------------------------------------------------------------ #
+    #  API → UI sync helpers (called on main thread via _drain_log_queue) #
+    # ------------------------------------------------------------------ #
+
+    def _sync_binding_ui(self):
+        try:
+            self._binding_panel.set_binding_in_progress(False)
+            self._binding_panel.progress.hide()
+            from api.state import AppState
+            s = AppState.get()
+            if s.selected_adapter:
+                self._binding_panel.set_selected_adapter(s.selected_adapter)
+                if not self._bound_interface and not self._gnmi_bound_interface:
+                    self._bound_interface = s.selected_adapter
+                    self._gnmi_bound_interface = s.selected_adapter
+            if s.subnet_mask:
+                self._binding_panel.set_subnet_mask(s.subnet_mask)
+            # Keep MainWindow local state in sync so unbind/clear paths see real values.
+            if s.bound_ips:
+                self._bound_ips = list(s.bound_ips)
+                self._nte_contexts = dict(s.nte_contexts)
+            if s.gnmi_bound_ips:
+                self._gnmi_bound_ips = list(s.gnmi_bound_ips)
+                self._gnmi_nte_contexts = dict(s.gnmi_nte_contexts)
+            # If AppState cleared IPs (after unbind), mirror that too.
+            if not s.bound_ips and not s.gnmi_bound_ips:
+                self._bound_ips = []
+                self._nte_contexts = {}
+                self._gnmi_bound_ips = []
+                self._gnmi_nte_contexts = {}
+            total = len(set(s.bound_ips + s.gnmi_bound_ips))
+            self._binding_panel.set_bound_count(total)
+            snmp_running = s.snmpsim.is_running() if s.snmpsim else False
+            gnmi_running = s.gnmi.is_running() if s.gnmi else False
+            self._binding_panel.set_snmp_locked(snmp_running)
+            self._binding_panel.set_gnmi_locked(gnmi_running)
+        except Exception as e:
+            self._console_panel.log(f"Binding UI sync error: {e}", "error")
+
+    def _sync_snmp_ui(self):
+        try:
+            self._sim_panel.progress.hide()
+            from api.state import AppState
+            s = AppState.get()
+            running = self.snmpsim.is_running()
+            ready = self.snmpsim.is_ready() if running else False
+            datasets_ready = bool(s.generated_snmp_files)
+            self._sim_panel.set_simulator_running(running)
+            self._sim_panel.set_datasets_ready(datasets_ready)
+            self._sim_panel.set_status("Ready" if ready else ("Starting…" if running else "Idle"))
+            self._binding_panel.set_snmp_locked(running)
+            self._update_topology_edit_actions()
+            self._update_sim_panel_counts()
+            n = len(s.bound_ips) or len(self._bound_ips)
+            if running:
+                self._status_label.setText(
+                    f"SNMPSim {'running' if ready else 'starting'} — {n} devices"
+                )
+        except Exception as e:
+            self._console_panel.log(f"SNMP UI sync error: {e}", "error")
+
+    def _sync_gnmi_ui(self):
+        try:
+            from api.state import AppState
+            s = AppState.get()
+            running = self.gnmi.is_running()
+            datasets_ready = bool(s.generated_gnmi_files)
+            if s.generated_gnmi_files and not self._gnmi_files:
+                self._gnmi_files = list(s.generated_gnmi_files)
+            self._gnmi_panel.set_generating(False)
+            self._gnmi_panel.set_gnmi_running(running)
+            self._gnmi_panel.set_datasets_ready(datasets_ready)
+            if running:
+                self._gnmi_panel.set_gnmi_status("Running")
+                self._gnmi_panel.set_gnmi_targets(self.gnmi.get_active_targets())
+                self._gnmi_panel.set_clients(self.gnmi.get_clients())
+            else:
+                self._gnmi_panel.set_gnmi_status("Idle")
+            self._gnmi_panel.set_proxy_running(self.gnmi.is_proxy_running())
+            self._binding_panel.set_gnmi_locked(running)
+        except Exception as e:
+            self._console_panel.log(f"gNMI UI sync error: {e}", "error")
+
+    def _sync_rules_ui(self):
+        try:
+            from api.state import AppState
+            s = AppState.get()
+            self._rules_panel.set_engine_active(s.rule_engine_enabled)
+            self._rules_panel.refresh()
+        except Exception as e:
+            self._console_panel.log(f"Rules UI sync error: {e}", "error")
+
+    def _sync_devices_ui(self):
+        try:
+            self._refresh_device_table()
+            self._update_sim_panel_counts()
+        except Exception as e:
+            self._console_panel.log(f"Devices UI sync error: {e}", "error")
+
+    def _rebuild_scene_from_topology(self):
+        """Rebuild the Qt scene from the current topology state (already loaded into
+        self.topology / self.device_manager by the API). No data-model changes here."""
+        try:
+            self._topology_view.topology_scene.clear_all()
+            self._default_positions.clear()
+            for device in self.topology.get_all_devices():
+                x, y = self.topology.get_position(device.id)
+                self._topology_view.topology_scene.add_device_node(device, x, y)
+            for src_id, dst_id, edge_data in self.topology.get_links():
+                self._topology_view.topology_scene.add_link_edge(
+                    src_id, dst_id, layer=edge_data.get("layer", "production")
+                )
+                if self.topology.is_link_broken(src_id, dst_id):
+                    self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
+            self._refresh_device_table()
+            self._refresh_stats()
+            self._topology_view.fit_view()
+            self._snapshot_default_positions()
+            self._topology_view.topology_scene.set_all_faded(True)
+            self._console_panel.log(
+                f"Topology loaded via API: {self.topology.node_count()} devices, "
+                f"{self.topology.edge_count()} links",
+                "success",
+            )
+        except Exception as e:
+            self._console_panel.log(f"API topology render error: {e}", "error")
+
     # ------------------------------------------------------------------ #
     #  UI Refresh                                                          #
     # ------------------------------------------------------------------ #
@@ -3127,6 +3289,43 @@ class MainWindow(QMainWindow):
                     self._sflow_panel.set_status(item[1])
                 elif item[0] == "sflow_ready":
                     self._on_sflow_ready()
+                elif item[0] == "rebuild_topology_scene":
+                    self._rebuild_scene_from_topology()
+                elif item[0] == "binding_started":
+                    self._binding_panel.set_binding_in_progress(True)
+                    self._binding_panel.progress.setRange(0, 0)
+                    self._binding_panel.progress.show()
+                elif item[0] == "binding_progress":
+                    self._binding_panel.show_progress(item[1], item[2])
+                elif item[0] == "sync_binding":
+                    self._sync_binding_ui()
+                elif item[0] == "snmp_gen_started":
+                    self._sim_panel.show_progress(0, item[1])
+                elif item[0] == "snmp_progress":
+                    self._sim_panel.show_progress(item[1], item[2])
+                elif item[0] == "gnmi_gen_started":
+                    self._gnmi_panel.set_generating(True)
+                    self._gnmi_panel.show_progress(0, item[1])
+                elif item[0] == "gnmi_gen_progress":
+                    self._gnmi_panel.show_progress(item[1], item[2])
+                elif item[0] == "sync_snmp":
+                    self._sync_snmp_ui()
+                elif item[0] == "sync_gnmi":
+                    self._sync_gnmi_ui()
+                elif item[0] == "sync_rules":
+                    self._sync_rules_ui()
+                elif item[0] == "sync_devices":
+                    self._sync_devices_ui()
+                elif item[0] == "link_changed":
+                    try:
+                        self._topology_view.topology_scene.set_edge_broken(item[1], item[2], item[3])
+                    except Exception:
+                        pass
+                elif item[0] == "console_log":
+                    try:
+                        self._console_panel.log(item[1], item[2] if len(item) > 2 else "info")
+                    except Exception:
+                        pass
         except queue.Empty:
             pass
         if snmp_lines or gnmi_lines or sflow_lines:
@@ -3150,6 +3349,7 @@ class MainWindow(QMainWindow):
         if self.gnmi.is_running():
             self._gnmi_panel.set_clients(self.gnmi.get_clients())
             self._gnmi_panel.set_direct_servers(self.gnmi.get_per_device_count())
+
 
     # ------------------------------------------------------------------ #
     #  Dialogs                                                             #

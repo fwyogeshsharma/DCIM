@@ -175,7 +175,14 @@ def main():
     window = MainWindow()
     window.showMaximized()
 
-    print("[5] entering exec()", flush=True)
+    # Start REST API server in background daemon thread (port 8000)
+    import threading
+    from api.main import start_api_server
+    _api_thread = threading.Thread(target=start_api_server, daemon=True, name="api-server")
+    _api_thread.start()
+    print("[5] REST API listening on http://0.0.0.0:8000  (docs: http://localhost:8000/docs)", flush=True)
+
+    print("[6] entering exec()", flush=True)
     sys.exit(app.exec())
 
 
