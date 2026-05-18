@@ -290,8 +290,60 @@ def _remove_ip_linux(interface: str, ip: str) -> Tuple[bool, str]:
 #  Fast Win32 API helpers (Windows only)                              #
 # ------------------------------------------------------------------ #
 
+def _get_if_index_ctypes(interface_name: str) -> Optional[int]:
+    """Get IfIndex via GetAdaptersAddresses (64-bit Windows, no subprocess).
+
+    IP_ADAPTER_ADDRESSES 64-bit offsets:
+      0  ULONG  Length
+      4  DWORD  IfIndex
+      8  ptr    *Next
+     16  ptr    AdapterName
+     24-48      address list pointers (skipped)
+     56  PWCHAR DnsSuffix
+     64  PWCHAR Description
+     72  PWCHAR FriendlyName   ← what we match on
+    """
+    if ctypes.sizeof(ctypes.c_void_p) != 8:
+        return None  # only validated for 64-bit layout
+    try:
+        AF_UNSPEC = 0
+        GAA_FLAGS = 0x000F  # skip unicast|anycast|multicast|dns-server
+        iphlpapi  = ctypes.windll.iphlpapi
+
+        size = ctypes.c_ulong(0)
+        iphlpapi.GetAdaptersAddresses(AF_UNSPEC, GAA_FLAGS, None, None, ctypes.byref(size))
+        if not size.value:
+            return None
+
+        buf = ctypes.create_string_buffer(size.value)
+        if iphlpapi.GetAdaptersAddresses(AF_UNSPEC, GAA_FLAGS, None, buf, ctypes.byref(size)) != 0:
+            return None
+
+        base   = ctypes.addressof(buf)
+        offset = 0
+        while 0 <= offset < size.value:
+            if_idx  = ctypes.c_ulong.from_buffer_copy(buf, offset + 4).value
+            next_p  = ctypes.c_uint64.from_buffer_copy(buf, offset + 8).value
+            fname_p = ctypes.c_uint64.from_buffer_copy(buf, offset + 72).value
+            if fname_p and ctypes.wstring_at(fname_p) == interface_name:
+                return if_idx
+            if not next_p:
+                break
+            offset = next_p - base
+    except Exception:
+        pass
+    return None
+
+
 def _get_if_index(interface_name: str) -> Optional[int]:
-    """Return the Windows IfIndex for a named adapter (one PowerShell call)."""
+    """Return the Windows IfIndex for a named adapter.
+
+    Tries ctypes GetAdaptersAddresses first (fast, no subprocess), then falls
+    back to a PowerShell call for edge cases (e.g. 32-bit Python or API errors).
+    """
+    idx = _get_if_index_ctypes(interface_name)
+    if idx is not None:
+        return idx
     try:
         safe = interface_name.replace("'", "''")
         result = subprocess.run(

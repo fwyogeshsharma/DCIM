@@ -1803,10 +1803,13 @@ class MainWindow(QMainWindow):
                 else:
                     local_idx  = edge.get("dst_iface", 0)
                     remote_idx = edge.get("src_iface", 0)
-                local_port  = device.interfaces[local_idx].name  if local_idx  < len(device.interfaces)   else f"port{local_idx}"
-                remote_port = neighbor.interfaces[remote_idx].name if remote_idx < len(neighbor.interfaces) else f"port{remote_idx}"
                 layer = edge.get("layer", "production")
-                neighbor_lines.append(f"  {neighbor.name}  [{local_port} <-> {remote_port}] ({layer})")
+                if layer == "power":
+                    neighbor_lines.append(f"  {neighbor.name}  (power)")
+                else:
+                    local_port  = device.interfaces[local_idx].name  if local_idx  < len(device.interfaces)   else f"port{local_idx}"
+                    remote_port = neighbor.interfaces[remote_idx].name if remote_idx < len(neighbor.interfaces) else f"port{remote_idx}"
+                    neighbor_lines.append(f"  {neighbor.name}  [{local_port} <-> {remote_port}] ({layer})")
 
         neighbor_text = ("\n" + "\n".join(neighbor_lines)) if neighbor_lines else "  None"
 
@@ -2073,7 +2076,7 @@ class MainWindow(QMainWindow):
                 self._bound_ips    = partial_ips
                 self._nte_contexts = getattr(self._bind_worker, "nte_contexts", {})
                 self._binding_panel.set_bound_count(
-                    len(self._bound_ips) + len(self._gnmi_bound_ips)
+                    len(set(self._bound_ips) | set(self._gnmi_bound_ips))
                 )
                 self._console_panel.log(
                     f"Binding cancelled — {len(partial_ips)} IP(s) remain bound.",
@@ -2089,7 +2092,7 @@ class MainWindow(QMainWindow):
         bound_ips = self._bind_worker.result
         self._bound_ips    = bound_ips
         self._nte_contexts = getattr(self._bind_worker, "nte_contexts", {})
-        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
+        self._binding_panel.set_bound_count(len(set(self._bound_ips) | set(self._gnmi_bound_ips)))
 
         if not bound_ips:
             self._console_panel.log("No IPs were bound — aborting simulator start.", "error")
@@ -2219,7 +2222,7 @@ class MainWindow(QMainWindow):
         self._bound_ips    = bound_ips
         self._nte_contexts = getattr(self._panel_bind_worker, "nte_contexts", {})
         self._panel_bind_worker = None
-        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
+        self._binding_panel.set_bound_count(len(set(self._bound_ips) | set(self._gnmi_bound_ips)))
         self._binding_panel.set_snmp_locked(False)
         if bound_ips:
             self._console_panel.log(f"{len(bound_ips)} IPs bound to adapter.", "success")
@@ -2577,7 +2580,8 @@ class MainWindow(QMainWindow):
         # gRPC needs the bind to go through gNMI's selected adapter to work
         # reliably on Windows; relying on SNMP's netsh pass is not sufficient.
         all_device_ips = [
-            d.ip_address for d in self.device_manager.get_all_devices()
+            d.mgmt_ip if d.mgmt_ip else d.ip_address
+            for d in self.device_manager.get_all_devices()
             if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
         ]
         # Only skip IPs that gNMI itself has already bound (not SNMP-bound ones).
@@ -2610,7 +2614,7 @@ class MainWindow(QMainWindow):
         self._gnmi_bind_thread.quit()
         self._gnmi_bind_thread.wait()
         self._gnmi_bound_ips = self._gnmi_bind_worker.result
-        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
+        self._binding_panel.set_bound_count(len(set(self._bound_ips) | set(self._gnmi_bound_ips)))
         if self._gnmi_bound_ips:
             self._console_panel.log_gnmi(
                 f"[gNMI] {len(self._gnmi_bound_ips)} IPs bound.", "success")
@@ -2871,7 +2875,7 @@ class MainWindow(QMainWindow):
         self._update_topology_edit_actions()
         self._binding_panel.set_snmp_locked(False)
         self._sim_panel.set_datasets_ready(False)
-        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
+        self._binding_panel.set_bound_count(len(set(self._bound_ips) | set(self._gnmi_bound_ips)))
         self._act_clear.setEnabled(True)
         self._sim_panel.set_status("Idle")
         self._console_panel.log("SNMP datasets cleared — IPs kept on adapter.", "warning")
@@ -2942,7 +2946,7 @@ class MainWindow(QMainWindow):
             removed += 1
         self._gnmi_files = []
         self._gnmi_panel.set_datasets_ready(False)
-        self._binding_panel.set_bound_count(len(self._bound_ips) + len(self._gnmi_bound_ips))
+        self._binding_panel.set_bound_count(len(set(self._bound_ips) | set(self._gnmi_bound_ips)))
         self._console_panel.log_gnmi(
             f"[gNMI] Cleared {removed} dataset file(s) — IPs kept on adapter.", "warning"
         )
