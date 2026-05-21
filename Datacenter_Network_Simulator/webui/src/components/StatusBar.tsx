@@ -1,0 +1,123 @@
+import { useStore } from '../store/useStore'
+
+const DEVICE_TYPE_COLOR: Record<string, string> = {
+  router:        'var(--node-router)',
+  switch:        'var(--node-switch)',
+  server:        'var(--node-server)',
+  firewall:      'var(--node-firewall)',
+  load_balancer: 'var(--node-lb)',
+  oob_switch:    'var(--node-oob)',
+  pdu:           'var(--node-pdu)',
+  floor_pdu:     'var(--node-pdu)',
+  ups:           'var(--node-ups)',
+  sensor:        'var(--node-sensor)',
+}
+
+const DEVICE_TYPE_SHORT: Record<string, string> = {
+  router:        'RTR',
+  switch:        'SW',
+  server:        'SRV',
+  firewall:      'FW',
+  load_balancer: 'LB',
+  oob_switch:    'OOB',
+  pdu:           'PDU',
+  floor_pdu:     'fPDU',
+  ups:           'UPS',
+  sensor:        'SNS',
+}
+
+function Divider() {
+  return <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
+}
+
+function Cell({ dot, dotGlow, label, value, valueColor }: {
+  dot?: string; dotGlow?: boolean
+  label: string; value?: string | number
+  valueColor?: string
+}) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+      {dot && (
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: dot,
+          boxShadow: dotGlow ? `0 0 5px ${dot}` : undefined,
+          flexShrink: 0,
+        }} />
+      )}
+      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+      {value !== undefined && (
+        <span style={{
+          color: valueColor ?? 'var(--text)', fontWeight: 600,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{value}</span>
+      )}
+    </span>
+  )
+}
+
+export default function StatusBar() {
+  const { devices, health, binding, snmp } = useStore()
+
+  const typeCounts: Record<string, number> = {}
+  for (const d of devices) typeCounts[d.device_type] = (typeCounts[d.device_type] || 0) + 1
+
+  const apiOk    = health?.status === 'ok'
+  const boundCt  = binding?.bound_count ?? 0
+
+  return (
+    <div style={{
+      height: 26,
+      background: 'linear-gradient(180deg, #08101a 0%, #060b13 100%)',
+      borderTop: '1px solid var(--border)',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '0 10px',
+      gap: 12,
+      flexShrink: 0,
+      fontSize: 10,
+      color: 'var(--text-muted)',
+    }}>
+      {/* ── Connection health ─────────────────────────────── */}
+      <Cell
+        dot={apiOk ? 'var(--green)' : 'var(--red)'}
+        dotGlow
+        label="API"
+        value={apiOk ? 'connected' : 'offline'}
+        valueColor={apiOk ? 'var(--green)' : 'var(--red)'}
+      />
+
+      {boundCt > 0 && (
+        <>
+          <Divider />
+          <Cell label="Bound IPs" value={boundCt} valueColor="var(--green)" />
+        </>
+      )}
+
+      {snmp?.running && snmp.pid && (
+        <>
+          <Divider />
+          <Cell label="SNMP PID" value={snmp.pid} />
+        </>
+      )}
+
+      {/* ── Right: type counts ────────────────────────────── */}
+      <span style={{ flex: 1 }} />
+      {Object.entries(typeCounts).map(([t, n]) => (
+        <span key={t} style={{
+          display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
+        }} title={t}>
+          <span style={{
+            width: 7, height: 7, borderRadius: 2,
+            background: DEVICE_TYPE_COLOR[t] || '#555',
+          }} />
+          <span style={{ color: 'var(--text-muted)' }}>{DEVICE_TYPE_SHORT[t] || t}</span>
+          <span style={{
+            color: 'var(--text)', fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+          }}>{n}</span>
+        </span>
+      ))}
+    </div>
+  )
+}

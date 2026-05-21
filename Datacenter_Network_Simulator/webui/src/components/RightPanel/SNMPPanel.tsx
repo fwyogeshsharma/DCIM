@@ -1,0 +1,284 @@
+import { useState, useEffect, useRef } from 'react'
+import { api } from '../../api/client'
+import { useStore } from '../../store/useStore'
+
+async function pollJob(
+  id: string,
+  onMsg: (m: string) => void,
+  onProg?: (d: number, t: number) => void,
+) {
+  for (let i = 0; i < 600; i++) {
+    const j = await api.job(id) as {
+      status: string; message: string; error: string
+      progress_done: number; progress_total: number
+    }
+    onMsg(j.message || j.status)
+    if (onProg && j.progress_total > 0) onProg(j.progress_done, j.progress_total)
+    if (j.status === 'completed') return
+    if (j.status === 'failed') throw new Error(j.error || 'Job failed')
+    await new Promise(r => setTimeout(r, 400))
+  }
+}
+
+const IconGenerate = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+    <path d="M16 16h5v5" />
+  </svg>
+)
+const IconPlay = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+    <polygon points="6 4 20 12 6 20 6 4" />
+  </svg>
+)
+const IconStop = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="6" y="6" width="12" height="12" rx="1" />
+  </svg>
+)
+const IconTrash = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+  </svg>
+)
+
+function GroupBox({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      position: 'relative', border: '1px solid var(--border)',
+      borderRadius: 4, padding: '14px 10px 10px', minWidth: 0,
+    }}>
+      <span style={{
+        position: 'absolute', top: -8, left: 8,
+        background: 'var(--bg-panel)', padding: '0 4px',
+        fontSize: 10, color: 'var(--text-muted)',
+      }}>{title}</span>
+      {children}
+    </div>
+  )
+}
+
+function StatRow({ label, value, labelColor, valueColor }: {
+  label: string; value: number | string
+  labelColor?: string; valueColor?: string
+}) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, lineHeight: 1.85 }}>
+      <span style={{ color: labelColor ?? 'var(--text-muted)' }}>{label}</span>
+      <span style={{ color: valueColor ?? 'var(--text)' }}>{value}</span>
+    </div>
+  )
+}
+
+export default function SNMPPanel() {
+  const { snmp, fetchSnmp, devices } = useStore()
+  const [busy,      setBusy]      = useState(false)
+  const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | null>(null)
+  const [prog,      setProg]      = useState<[number, number] | null>(null)
+  const [linkCounts, setLinkCounts] = useState({ production: 0, management: 0, power: 0 })
+  const resumedJob = useRef<string | null>(null)
+
+  const running = snmp?.running        ?? false
+  const hasData = snmp?.datasets_generated ?? false
+
+  // Resume in-progress job if panel was closed mid-operation
+  useEffect(() => {
+    const activeJob = snmp?.active_job_id
+    if (!activeJob || resumedJob.current === activeJob || busy) return
+    resumedJob.current = activeJob
+    api.job(activeJob).then((j: unknown) => {
+      const job = j as { operation: string; status: string }
+      if (job.status !== 'running') { fetchSnmp(); return }
+      const op: 'generate' | 'start' = job.operation === 'generate_snmp_datasets' ? 'generate' : 'start'
+      setBusy(true); setOperation(op)
+      if (op === 'generate') setProg([0, devices.length])
+      pollJob(activeJob, () => {}, (d, t) => setProg([d, t]))
+        .catch(() => {})
+        .finally(() => { setBusy(false); setOperation(null); setProg(null); fetchSnmp() })
+    }).catch(() => {})
+  }, [snmp?.active_job_id])
+
+  useEffect(() => {
+    api.graph().then((data: unknown) => {
+      const d = data as { links: { layer: string }[] }
+      const counts = { production: 0, management: 0, power: 0 }
+      for (const l of d.links ?? []) {
+        if (l.layer in counts) counts[l.layer as keyof typeof counts]++
+      }
+      setLinkCounts(counts)
+    }).catch(() => {})
+  }, [running])
+
+  const tc: Record<string, number> = {}
+  for (const d of devices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
+  const total = devices.length
+
+  // Badge state for header
+  type BadgeCfg = { cls: string; dot: string; text: string }
+  let badge: BadgeCfg
+  if (operation === 'generate')      badge = { cls: 'ready',   dot: 'yellow', text: 'Generating' }
+  else if (operation === 'start')    badge = { cls: 'ready',   dot: 'yellow', text: 'Starting' }
+  else if (operation === 'stop')     badge = { cls: 'ready',   dot: 'yellow', text: 'Stopping' }
+  else if (operation === 'clear')    badge = { cls: 'ready',   dot: 'yellow', text: 'Clearing' }
+  else if (running)                  badge = { cls: 'running', dot: 'green',  text: 'Running' }
+  else if (hasData)                  badge = { cls: 'ready',   dot: 'green',  text: 'Ready' }
+  else                               badge = { cls: 'stopped', dot: 'grey',   text: 'Idle' }
+
+  async function generate() {
+    setBusy(true); setOperation('generate'); setProg([0, devices.length])
+    try {
+      const j = await api.genSnmp() as { job_id: string }
+      await pollJob(j.job_id, () => {}, (d, t) => setProg([d, t]))
+      fetchSnmp()
+    } catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null); setProg(null) }
+  }
+
+  async function start() {
+    setBusy(true); setOperation('start')
+    try {
+      const j = await api.startSnmp() as { job_id: string }
+      await pollJob(j.job_id, () => {})
+      fetchSnmp()
+    } catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null) }
+  }
+
+  async function stop() {
+    setBusy(true); setOperation('stop')
+    try { await api.stopSnmp(); fetchSnmp() }
+    catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null) }
+  }
+
+  async function clear() {
+    setBusy(true); setOperation('clear')
+    try {
+      const j = await api.clearSnmp() as { job_id: string }
+      await pollJob(j.job_id, () => {})
+      fetchSnmp()
+    } catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null) }
+  }
+
+  const showStats = running || operation === 'start'
+  const pct = prog ? (prog[1] ? Math.round(prog[0] / prog[1] * 100) : 0) : 0
+
+  // Action button reasons (tooltips)
+  const generateTip = running
+    ? 'Stop simulator before regenerating'
+    : hasData
+      ? 'Rebuild SNMP datasets from current topology'
+      : 'Build per-device SNMP datasets from current topology'
+  const startTip = !hasData
+    ? 'Generate datasets first'
+    : 'Start SNMP agents on all devices'
+  const clearTip = running
+    ? 'Stop simulator before clearing'
+    : !hasData
+      ? 'No datasets to clear'
+      : 'Delete all generated datasets'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="panel-header">
+        <span className="title">SNMP Simulator</span>
+        <span className={`badge ${badge.cls}`}>
+          <span className={`status-dot ${badge.dot}`} />
+          {badge.text}
+        </span>
+      </div>
+
+      <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* Progress bar — generation only */}
+        {prog && (
+          <div className="snmp-progress">
+            <div className="snmp-progress-fill" style={{ width: `${pct}%` }} />
+            <span className="snmp-progress-label">
+              {prog[0]} / {prog[1]} · {pct}%
+            </span>
+          </div>
+        )}
+
+        {/* Active Devices */}
+        {showStats && (
+          <GroupBox title="Active Devices">
+            <StatRow label="Switches:"       value={tc['switch']        ?? 0} />
+            <StatRow label="Routers:"        value={tc['router']        ?? 0} />
+            <StatRow label="Servers:"        value={tc['server']        ?? 0} />
+            <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />
+            <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />
+            <div style={{ height: 4 }} />
+            <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />
+            <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />
+            <StatRow label="UPS:"            value={tc['ups']           ?? 0} />
+            <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />
+            <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />
+            <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
+          </GroupBox>
+        )}
+
+        {/* Network Links */}
+        {showStats && (
+          <GroupBox title="Network Links">
+            <StatRow label="Prod Links:"  value={linkCounts.production} labelColor="#06b6d4" />
+            <StatRow label="Mgmt Links:"  value={linkCounts.management} labelColor="#06b6d4" />
+            <StatRow label="Power Links:" value={linkCounts.power}      labelColor="#06b6d4" />
+          </GroupBox>
+        )}
+
+        {/* Action buttons — primary flow: Generate → Start/Stop → Clear */}
+        <div className="snmp-actions">
+          <button
+            className="btn-action btn-generate"
+            onClick={generate}
+            disabled={busy || running}
+            title={generateTip}
+          >
+            <IconGenerate />
+            <span>{hasData ? 'Regenerate Datasets' : 'Generate Datasets'}</span>
+          </button>
+
+          {running ? (
+            <button
+              className="btn-action btn-stop"
+              onClick={stop}
+              disabled={busy}
+              title="Stop SNMP agents"
+            >
+              <IconStop />
+              <span>Stop Simulator</span>
+            </button>
+          ) : (
+            <button
+              className="btn-action btn-start"
+              onClick={start}
+              disabled={busy || !hasData}
+              title={startTip}
+            >
+              <IconPlay />
+              <span>Start Simulator</span>
+            </button>
+          )}
+
+          <button
+            className="btn-action btn-clear"
+            onClick={clear}
+            disabled={busy || running || !hasData}
+            title={clearTip}
+          >
+            <IconTrash />
+            <span>Clear Datasets</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  )
+}

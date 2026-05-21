@@ -1,0 +1,374 @@
+import { useState, useEffect, useRef } from 'react'
+import { api } from '../../api/client'
+import { useStore } from '../../store/useStore'
+
+function formatUptime(connectedAt: number): string {
+  if (!connectedAt) return '—'
+  const sec = Math.max(0, Math.floor(Date.now() / 1000 - connectedAt))
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return m > 0 ? `${m}m${String(s).padStart(2, '0')}s` : `${s}s`
+}
+
+async function pollJob(
+  id: string,
+  onMsg: (m: string) => void,
+  onProg?: (d: number, t: number) => void,
+) {
+  for (let i = 0; i < 600; i++) {
+    const j = await api.job(id) as {
+      status: string; message: string; error: string
+      progress_done: number; progress_total: number
+    }
+    onMsg(j.message || j.status)
+    if (onProg && j.progress_total > 0) onProg(j.progress_done, j.progress_total)
+    if (j.status === 'completed') return
+    if (j.status === 'failed') throw new Error(j.error || 'Job failed')
+    await new Promise(r => setTimeout(r, 400))
+  }
+}
+
+const IconGenerate = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+    <path d="M16 16h5v5" />
+  </svg>
+)
+const IconPlay = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+    <polygon points="6 4 20 12 6 20 6 4" />
+  </svg>
+)
+const IconStop = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="6" y="6" width="12" height="12" rx="1" />
+  </svg>
+)
+const IconTrash = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+  </svg>
+)
+const IconProxy = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2" />
+    <line x1="8" y1="21" x2="16" y2="21" />
+    <line x1="12" y1="17" x2="12" y2="21" />
+  </svg>
+)
+
+function StatRow({ label, value, labelColor, valueColor }: {
+  label: string; value: number | string
+  labelColor?: string; valueColor?: string
+}) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, lineHeight: 1.85 }}>
+      <span style={{ color: labelColor ?? 'var(--text-muted)' }}>{label}</span>
+      <span style={{ color: valueColor ?? 'var(--text)' }}>{value}</span>
+    </div>
+  )
+}
+
+export default function GNMIPanel() {
+  const { gnmi, fetchGnmi, devices } = useStore()
+  const [busy,      setBusy]      = useState(false)
+  const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | 'proxy' | null>(null)
+  const [prog,      setProg]      = useState<[number, number] | null>(null)
+  const resumedJob = useRef<string | null>(null)
+
+  const running       = gnmi?.running            ?? false
+  const proxyOn       = gnmi?.proxy_running      ?? false
+  const hasData       = gnmi?.datasets_generated ?? false
+  const port          = gnmi?.port               ?? 50051
+  const datasetCount  = gnmi?.dataset_count      ?? 0
+  const clients       = gnmi?.clients            ?? []
+
+  // Switch/router count for generate (gNMI only serves these)
+  const gnmiCapable = devices.filter(d => d.device_type === 'switch' || d.device_type === 'router').length
+
+  // Resume in-progress job if panel was closed mid-operation
+  useEffect(() => {
+    const activeJob = gnmi?.active_job_id
+    if (!activeJob || resumedJob.current === activeJob || busy) return
+    resumedJob.current = activeJob
+    api.job(activeJob).then((j: unknown) => {
+      const job = j as { operation: string; status: string }
+      if (job.status !== 'running') { fetchGnmi(); return }
+      const op: 'generate' | 'start' = job.operation === 'generate_gnmi_datasets' ? 'generate' : 'start'
+      setBusy(true); setOperation(op)
+      if (op === 'generate') setProg([0, gnmiCapable || 1])
+      pollJob(activeJob, () => {}, (d, t) => setProg([d, t]))
+        .catch(() => {})
+        .finally(() => { setBusy(false); setOperation(null); setProg(null); fetchGnmi() })
+    }).catch(() => {})
+  }, [gnmi?.active_job_id])
+
+  // Per-type counts (full picture in Active Devices section)
+  const tc: Record<string, number> = {}
+  for (const d of devices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
+
+  // Header badge
+  type BadgeCfg = { cls: string; dot: string; text: string }
+  let badge: BadgeCfg
+  if (operation === 'generate')   badge = { cls: 'ready',   dot: 'yellow', text: 'Generating' }
+  else if (operation === 'start') badge = { cls: 'ready',   dot: 'yellow', text: 'Starting' }
+  else if (operation === 'stop')  badge = { cls: 'ready',   dot: 'yellow', text: 'Stopping' }
+  else if (operation === 'clear') badge = { cls: 'ready',   dot: 'yellow', text: 'Clearing' }
+  else if (operation === 'proxy') badge = { cls: 'ready',   dot: 'yellow', text: 'Proxy…' }
+  else if (running && proxyOn)    badge = { cls: 'running', dot: 'green',  text: 'Running + Proxy' }
+  else if (running)               badge = { cls: 'running', dot: 'green',  text: 'Running' }
+  else if (hasData)               badge = { cls: 'ready',   dot: 'green',  text: 'Ready' }
+  else                            badge = { cls: 'stopped', dot: 'grey',   text: 'Idle' }
+
+  async function generate() {
+    setBusy(true); setOperation('generate'); setProg([0, gnmiCapable || 1])
+    try {
+      const j = await api.genGnmi() as { job_id: string }
+      await pollJob(j.job_id, () => {}, (d, t) => setProg([d, t]))
+      fetchGnmi()
+    } catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null); setProg(null) }
+  }
+
+  async function start() {
+    setBusy(true); setOperation('start')
+    try {
+      const j = await api.startGnmi() as { job_id: string }
+      await pollJob(j.job_id, () => {}, (d, t) => setProg([d, t]))
+      fetchGnmi()
+    } catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null); setProg(null) }
+  }
+
+  async function stop() {
+    setBusy(true); setOperation('stop')
+    try { await api.stopGnmi(); fetchGnmi() }
+    catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null) }
+  }
+
+  async function clear() {
+    setBusy(true); setOperation('clear')
+    try {
+      const j = await api.clearGnmi() as { job_id: string }
+      await pollJob(j.job_id, () => {})
+      fetchGnmi()
+    } catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null) }
+  }
+
+  async function toggleProxy() {
+    setBusy(true); setOperation('proxy')
+    try {
+      if (proxyOn) await api.stopProxy()
+      else         await api.startProxy()
+      fetchGnmi()
+    } catch { /* ignore */ }
+    finally { setBusy(false); setOperation(null) }
+  }
+
+  const showStats = running || operation === 'start'
+  const pct = prog ? (prog[1] ? Math.round(prog[0] / prog[1] * 100) : 0) : 0
+  const determinate = !!(prog && prog[1] > 0)
+
+  const generateTip = running
+    ? 'Stop simulator before regenerating'
+    : gnmiCapable === 0
+      ? 'No switches or routers in topology'
+      : hasData
+        ? 'Rebuild OpenConfig datasets for switches and routers'
+        : 'Build OpenConfig datasets for switches and routers'
+  const startTip = !hasData ? 'Generate datasets first' : 'Start gNMI server on all devices'
+  const clearTip = running
+    ? 'Stop simulator before clearing'
+    : !hasData
+      ? 'No datasets to clear'
+      : 'Delete all gNMI datasets'
+  const proxyTip = !running
+    ? 'Start the gNMI simulator first'
+    : proxyOn
+      ? 'Stop the aggregating proxy server'
+      : 'Aggregate all device gRPC endpoints behind a single port'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+      <div className="panel-header">
+        <span className="title">gNMI Simulator</span>
+        <span className={`badge ${badge.cls}`}>
+          <span className={`status-dot ${badge.dot}`} />
+          {badge.text}
+        </span>
+      </div>
+
+      <div style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* ── Progress ───────────────────────────────────────── */}
+        {prog && (
+          <div className="snmp-progress">
+            <div
+              className="snmp-progress-fill"
+              style={{
+                width: determinate ? `${pct}%` : '40%',
+                animation: determinate ? undefined : 'indeterminate 1.4s ease infinite',
+                transition: determinate ? 'width 0.3s ease' : undefined,
+              }}
+            />
+            <span className="snmp-progress-label">
+              {determinate ? `${prog![0]} / ${prog![1]} · ${pct}%` : 'Working…'}
+            </span>
+          </div>
+        )}
+
+        {/* ── Active Devices (gNMI serves switches + routers only) ──── */}
+        {showStats && (
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Active Devices</span>
+            <StatRow label="Switches:" value={tc['switch'] ?? 0} />
+            <StatRow label="Routers:"  value={tc['router'] ?? 0} />
+            <div style={{ height: 4 }} />
+            <StatRow
+              label="Total:"
+              value={gnmiCapable}
+              labelColor="#06b6d4"
+              valueColor="#06b6d4"
+            />
+          </div>
+        )}
+
+        {/* ── Dataset summary (idle/ready) ────────────────────── */}
+        {!showStats && (
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Targets</span>
+            <StatRow label="Switches + Routers:" value={gnmiCapable} />
+            <StatRow
+              label="Datasets:"
+              value={datasetCount > 0 ? `${datasetCount} ready` : '—'}
+              valueColor={datasetCount > 0 ? 'var(--green)' : 'var(--text-muted)'}
+            />
+          </div>
+        )}
+
+        {/* ── Simulator actions ──────────────────────────────── */}
+        <div className="snmp-actions">
+          <button
+            className="btn-action btn-generate"
+            onClick={generate}
+            disabled={busy || running || gnmiCapable === 0}
+            title={generateTip}
+          >
+            <IconGenerate />
+            <span>{hasData ? 'Regenerate Dataset' : 'Generate Dataset'}</span>
+          </button>
+
+          {running ? (
+            <button
+              className="btn-action btn-stop"
+              onClick={stop}
+              disabled={busy}
+              title="Stop gNMI server"
+            >
+              <IconStop />
+              <span>Stop Simulator</span>
+            </button>
+          ) : (
+            <button
+              className="btn-action btn-start"
+              onClick={start}
+              disabled={busy || !hasData}
+              title={startTip}
+            >
+              <IconPlay />
+              <span>Start Simulator</span>
+            </button>
+          )}
+
+          <button
+            className="btn-action btn-clear"
+            onClick={clear}
+            disabled={busy || running || !hasData}
+            title={clearTip}
+          >
+            <IconTrash />
+            <span>Clear Simulation</span>
+          </button>
+        </div>
+
+        {/* ── Proxy Server Configuration ─────────────────────── */}
+        <div className="group-box">
+          <span className="group-box-label">Proxy Server Configuration</span>
+
+          <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '0 0 8px 0', lineHeight: 1.5 }}>
+            Aggregates all device gRPC endpoints behind a single port.
+            Start the simulator first, then enable the proxy.
+          </p>
+
+          <div className="field-row-split" style={{ marginBottom: 8 }}>
+            <span className="label">Proxy Port</span>
+            <span style={{
+              fontSize: 11, fontFamily: 'Consolas, monospace',
+              color: proxyOn ? 'var(--green)' : 'var(--text-muted)',
+              fontVariantNumeric: 'tabular-nums',
+            }}>{port}</span>
+          </div>
+
+          <button
+            className={`btn-action ${proxyOn ? 'btn-warn' : ''}`}
+            onClick={toggleProxy}
+            disabled={busy || !running}
+            title={proxyTip}
+          >
+            <IconProxy />
+            <span>{proxyOn ? 'Disable Proxy' : 'Enable Proxy'}</span>
+          </button>
+        </div>
+
+        {/* ── Connected Clients ──────────────────────────────── */}
+        {running && (
+          <div className="group-box">
+            <span className="group-box-label">Connected Clients · {clients.length}</span>
+            {clients.length > 0 ? (
+              <div style={{ maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
+                <table className="client-table">
+                  <thead>
+                    <tr>
+                      <th>Peer</th>
+                      <th>Mode</th>
+                      <th>Target</th>
+                      <th title="Subscribed paths">Paths</th>
+                      <th title="Update messages pushed">Pushes</th>
+                      <th>Uptime</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clients.map((c, i) => (
+                      <tr key={`${c.peer}-${i}`}>
+                        <td title={c.peer}>{c.peer}</td>
+                        <td>{c.mode}</td>
+                        <td title={c.target}>{c.target || '—'}</td>
+                        <td title={(c.paths || []).join(', ') || '/'}>
+                          {(c.paths || []).length > 0
+                            ? (c.paths.length === 1 ? c.paths[0] : `${c.paths.length} paths`)
+                            : '/'}
+                        </td>
+                        <td style={{ fontVariantNumeric: 'tabular-nums' }}>{c.push_count ?? 0}</td>
+                        <td style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUptime(c.connected_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="mono-list-empty">No connected clients</div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
