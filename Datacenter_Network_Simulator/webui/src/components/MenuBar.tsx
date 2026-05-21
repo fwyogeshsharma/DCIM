@@ -152,26 +152,28 @@ function MenuButton({
 function StatusChip({ label, dot, value, color }: {
   label: string; dot?: string; value: string; color?: string
 }) {
+  const active = color != null
   return (
     <div
       title={label}
       style={{
-        display: 'flex', alignItems: 'center', gap: 4,
-        padding: '2px 8px', height: 20,
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        fontSize: 10, color: color ?? 'var(--text)',
+        display: 'flex', alignItems: 'center', gap: 5,
+        padding: '0 9px', height: 22,
+        background: active ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${active ? 'rgba(34,197,94,0.25)' : 'var(--border)'}`,
+        borderRadius: 11,
+        fontSize: 10, color: color ?? 'var(--text-muted)',
         fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        transition: 'background 0.2s, border-color 0.2s',
       }}
     >
       {dot && <span style={{
-        width: 6, height: 6, borderRadius: '50%',
+        width: 5, height: 5, borderRadius: '50%',
         background: dot, flexShrink: 0,
-        boxShadow: dot !== 'var(--text-dim)' ? `0 0 4px ${dot}` : undefined,
+        boxShadow: dot !== 'var(--text-dim)' ? `0 0 5px ${dot}` : undefined,
       }} />}
-      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span style={{ fontWeight: 600 }}>{value}</span>
+      <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{label}</span>
+      <span style={{ fontWeight: 700, fontSize: 10, color: active ? color : 'var(--text)' }}>{value}</span>
     </div>
   )
 }
@@ -334,9 +336,10 @@ export default function MenuBar() {
 
   return (
     <div ref={menuBarRef} style={{
-      height: 32,
-      background: 'linear-gradient(180deg, #0c1220 0%, #0a0f1a 100%)',
+      height: 36,
+      background: 'linear-gradient(180deg, #0b1628 0%, #080f1e 100%)',
       borderBottom: '1px solid var(--border)',
+      boxShadow: '0 1px 0 rgba(255,255,255,0.03)',
       display: 'flex',
       alignItems: 'center',
       flexShrink: 0,
@@ -344,29 +347,29 @@ export default function MenuBar() {
     }}>
       {/* ── Title block ──────────────────────────────────────── */}
       <div style={{
-        padding: '0 12px', height: '100%',
-        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '0 14px', height: '100%',
+        display: 'flex', alignItems: 'center', gap: 9,
         borderRight: '1px solid var(--border)', flexShrink: 0,
       }}>
         <Logo />
         <span style={{
           fontWeight: 700, fontSize: 11, color: 'var(--text)',
-          letterSpacing: '0.3px',
+          letterSpacing: '0.2px',
         }}>
           Datacenter Network Simulator
         </span>
         <span style={{
-          padding: '1px 6px', borderRadius: 3,
-          background: 'rgba(30,110,200,0.18)',
-          border: '1px solid rgba(30,110,200,0.4)',
+          padding: '2px 7px', borderRadius: 4,
+          background: 'rgba(37,99,235,0.15)',
+          border: '1px solid rgba(37,99,235,0.35)',
           color: '#93c5fd',
           fontSize: 9, fontWeight: 700,
           fontFamily: 'Consolas, monospace',
-          letterSpacing: '0.3px',
-        }}>v2.2</span>
+          letterSpacing: '0.4px',
+        }}>v3.0</span>
       </div>
 
-      {/* ── Menu strip ───────────────────────────────────────── */}
+      {/* ── Menu strip ────────────────────────────────────────â”€ */}
       {menus.map(m => (
         <MenuButton
           key={m.name}
@@ -470,7 +473,7 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
               border: '1px solid rgba(30,110,200,0.4)',
               color: '#93c5fd', fontSize: 9, fontWeight: 700,
               fontFamily: 'Consolas, monospace',
-            }}>v2.2</span>
+            }}>v3.0</span>
           </div>
 
           <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.7 }}>

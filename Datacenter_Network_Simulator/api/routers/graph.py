@@ -45,6 +45,10 @@ def get_graph(layer: str = None):
             "interface_count": device.interface_count,
             "cpu_usage": getattr(device, "cpu_usage", 0.0),
             "memory_used": getattr(device, "memory_used", 0.0),
+            "os_name": getattr(device, "os_name", ""),
+            "os_version": getattr(device, "os_version", ""),
+            "snmp_port": getattr(device, "snmp_port", 161),
+            "gnmi_port": getattr(device, "gnmi_port", 57400),
         })
 
     links_out = []

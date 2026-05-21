@@ -14,6 +14,9 @@ export interface DeviceInfo {
   sys_location: string
   sys_contact: string
   uptime: number
+  model_name?: string
+  os_name?: string
+  os_version?: string
 }
 
 export interface GraphDevice {
@@ -28,6 +31,10 @@ export interface GraphDevice {
   interface_count: number
   cpu_usage: number
   memory_used: number
+  os_name?: string
+  os_version?: string
+  snmp_port?: number
+  gnmi_port?: number
 }
 
 export interface GraphLink {

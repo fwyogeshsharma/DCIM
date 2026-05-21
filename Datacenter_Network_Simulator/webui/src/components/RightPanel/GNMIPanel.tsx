@@ -294,12 +294,12 @@ export default function GNMIPanel() {
             title={clearTip}
           >
             <IconTrash />
-            <span>Clear Simulation</span>
+            <span>Clear Datasets</span>
           </button>
         </div>
 
         {/* ── Proxy Server Configuration ─────────────────────── */}
-        <div className="group-box">
+        <div className="group-box" style={{ marginTop: 6 }}>
           <span className="group-box-label">Proxy Server Configuration</span>
 
           <p style={{ fontSize: 10, color: 'var(--text-muted)', margin: '0 0 8px 0', lineHeight: 1.5 }}>

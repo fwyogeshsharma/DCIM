@@ -110,6 +110,8 @@ export const api = {
   // traps
   traps:          ()                  => get('/traps'),
   clearTraps:     ()                  => del('/traps'),
+  sendTrap: (device_id: string, trap_type: string, kwargs: Record<string, unknown> = {}) =>
+    post('/traps/send', { device_id, trap_type, kwargs }),
 
   // jobs
   job: (id: string)                   => get(`/jobs/${id}`),

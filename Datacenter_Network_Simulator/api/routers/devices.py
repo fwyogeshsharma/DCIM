@@ -36,6 +36,9 @@ def _device_to_info(device) -> DeviceInfo:
         sys_location=getattr(device, "sys_location", ""),
         sys_contact=getattr(device, "sys_contact", ""),
         uptime=getattr(device, "uptime", 0),
+        model_name=getattr(device, "model_name", None),
+        os_name=getattr(device, "os_name", None),
+        os_version=getattr(device, "os_version", None),
     )
 
 

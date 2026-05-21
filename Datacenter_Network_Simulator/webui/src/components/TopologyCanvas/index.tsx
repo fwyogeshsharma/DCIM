@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './NodeContextMenu'
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  MiniMap,
   useNodesState,
   useEdgesState,
   type Node,
@@ -49,8 +49,6 @@ const I = {
   zoomOut: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>,
   fit: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M21 16v3a2 2 0 0 1-2 2h-3" /></svg>,
   reset: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 16h5v5" /></svg>,
-  minimap: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></svg>,
-  legend: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><circle cx="4" cy="6" r="1" fill="currentColor" /><circle cx="4" cy="12" r="1" fill="currentColor" /><circle cx="4" cy="18" r="1" fill="currentColor" /></svg>,
   close: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
   link: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>,
   info: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>,
@@ -101,6 +99,10 @@ function devicesToNodes(
         vendor: d.vendor,
         ip_address: d.ip_address,
         mgmt_ip: d.mgmt_ip || '',
+        os_name: d.os_name || '',
+        os_version: d.os_version || '',
+        snmp_port: d.snmp_port ?? 161,
+        gnmi_port: d.gnmi_port ?? 57400,
         activeLayer,
         cpu_usage: d.cpu_usage,
         memory_used: d.memory_used,
@@ -177,8 +179,10 @@ function Canvas() {
   const [linkMsg,    setLinkMsg]    = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [showMap,    setShowMap]    = useState(false)
-  const [showLegend, setShowLegend] = useState(false)
+  const [ctxMenu,      setCtxMenu]      = useState<{ nodeId: string; deviceType: string; deviceName: string; x: number; y: number } | null>(null)
+  const [editDeviceId, setEditDeviceId] = useState<string | null>(null)
+  const [infoDeviceId, setInfoDeviceId] = useState<string | null>(null)
+
   const searchRef = useRef<HTMLInputElement>(null)
 
   const positions = useMemo(() => tierLayout(graphDevices), [graphDevices])
@@ -189,13 +193,6 @@ function Canvas() {
     for (const l of graphLinks) if (l.layer in c) c[l.layer]++
     return c
   }, [graphLinks])
-
-  // Node-type counts for legend
-  const typeCounts = useMemo(() => {
-    const c: Record<string, number> = {}
-    for (const d of graphDevices) c[d.device_type] = (c[d.device_type] || 0) + 1
-    return c
-  }, [graphDevices])
 
   // Sync graph data → React Flow nodes/edges
   useEffect(() => {
@@ -278,6 +275,18 @@ function Canvas() {
     }
   }, [linkMode, linkSrc, linkLayer, fetchGraph])
 
+  const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
+    e.preventDefault()
+    if (linkMode) return
+    setCtxMenu({
+      nodeId: node.id,
+      deviceType: String(node.data.device_type || ''),
+      deviceName: String(node.data.name || ''),
+      x: e.clientX,
+      y: e.clientY,
+    })
+  }, [linkMode])
+
   const onEdgeDoubleClick = useCallback(async (_: React.MouseEvent, edge: Edge) => {
     if (linkMode) return
     const data = edge.data as { layer: string; broken: boolean }
@@ -301,8 +310,7 @@ function Canvas() {
         <ToolBtn title="Fit to View  (Ctrl+Shift+F)" onClick={() => fitView({ padding: 0.1, duration: 400 })}><I.fit /></ToolBtn>
         <div className="canvas-tool-divider" />
         <ToolBtn title="Reset Layout" onClick={() => { initialFit.current = false; fetchGraph() }}><I.reset /></ToolBtn>
-        <ToolBtn title="Toggle Mini-map" onClick={() => setShowMap(m => !m)} active={showMap}><I.minimap /></ToolBtn>
-        <ToolBtn title="Toggle Legend"   onClick={() => setShowLegend(l => !l)} active={showLegend}><I.legend /></ToolBtn>
+
       </div>
 
       {/* Search input panel */}
@@ -415,46 +423,6 @@ function Canvas() {
         </div>
       )}
 
-      {/* ── Legend (toggleable) ──────────────────────────────── */}
-      {showLegend && (
-        <div style={{
-          position: 'absolute', top: 8, right: 8, zIndex: 10,
-          background: 'var(--bg-panel)', border: '1px solid var(--border)',
-          borderRadius: 6, padding: '8px 10px',
-          minWidth: 160,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-          fontSize: 10,
-        }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginBottom: 6, paddingBottom: 4,
-            borderBottom: '1px solid var(--border)',
-          }}>
-            <span style={{ color: 'var(--text)', fontWeight: 600, fontSize: 10, letterSpacing: '0.3px' }}>
-              Legend
-            </span>
-            <button onClick={() => setShowLegend(false)}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, display: 'flex' }}>
-              <I.close />
-            </button>
-          </div>
-          {Object.entries(typeCounts).map(([t, n]) => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: 2,
-                background: NODE_TYPE_COLOR[t] || '#555',
-                flexShrink: 0,
-              }} />
-              <span style={{ color: 'var(--text-muted)', flex: 1, textTransform: 'capitalize' }}>
-                {t.replace('_', ' ')}
-              </span>
-              <span style={{
-                color: 'var(--text)', fontVariantNumeric: 'tabular-nums', fontWeight: 600,
-              }}>{n}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* ── Empty state ──────────────────────────────────────── */}
       {graphDevices.length === 0 && (
@@ -501,6 +469,7 @@ function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeContextMenu={onNodeContextMenu}
         onEdgeDoubleClick={onEdgeDoubleClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -516,24 +485,27 @@ function Canvas() {
         nodesDraggable={!linkMode}
       >
         <Background variant={BackgroundVariant.Dots} color="#2d3f5540" gap={20} size={1} />
-        {showMap && (
-          <MiniMap
-            position="bottom-right"
-            pannable zoomable
-            style={{
-              background: 'var(--bg-panel)',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
-            }}
-            maskColor="rgba(8, 13, 23, 0.7)"
-            nodeColor={n => NODE_TYPE_COLOR[(n.data?.device_type as string) || ''] || '#555'}
-            nodeStrokeColor="#0a0f1a"
-            nodeStrokeWidth={2}
-            nodeBorderRadius={4}
-          />
-        )}
       </ReactFlow>
+
+      {ctxMenu && (
+        <NodeContextMenu
+          nodeId={ctxMenu.nodeId}
+          deviceType={ctxMenu.deviceType}
+          deviceName={ctxMenu.deviceName}
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          onLocate={() => fitView({ nodes: [{ id: ctxMenu.nodeId }], padding: 0.4, duration: 400 })}
+          onEditDevice={() => setEditDeviceId(ctxMenu.nodeId)}
+          onShowInfo={() => setInfoDeviceId(ctxMenu.nodeId)}
+        />
+      )}
+      {editDeviceId && (
+        <EditDeviceDialog deviceId={editDeviceId} onClose={() => setEditDeviceId(null)} />
+      )}
+      {infoDeviceId && (
+        <DeviceInfoModal deviceId={infoDeviceId} onClose={() => setInfoDeviceId(null)} />
+      )}
     </div>
   )
 }

@@ -173,6 +173,9 @@ class DeviceInfo(BaseModel):
     sys_location: str
     sys_contact: str
     uptime: int
+    model_name: Optional[str] = None
+    os_name: Optional[str] = None
+    os_version: Optional[str] = None
 
 
 class DevicesResponse(BaseModel):
