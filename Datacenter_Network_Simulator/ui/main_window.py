@@ -551,6 +551,7 @@ class MainWindow(QMainWindow):
                 ip_manager=self.ip_manager,
                 snmpsim=self.snmpsim,
                 gnmi=self.gnmi,
+                sflow=self.sflow,
                 state_store=self.state_store,
                 rule_engine=self._rule_engine,
                 trap_engine=self._trap_engine,
@@ -1106,9 +1107,7 @@ class MainWindow(QMainWindow):
         self._act_sflow_stop.triggered.connect(self._stop_sflow)
 
         # sFlow controller callbacks
-        self.sflow.set_log_callback(
-            lambda msg: self._log_queue.put(("log_sflow", msg, "info"))
-        )
+        self.sflow.set_log_callback(self._on_sflow_log)
         self.sflow.set_status_callback(
             lambda s: self._log_queue.put(("sflow_status", s))
         )
@@ -1820,8 +1819,9 @@ class MainWindow(QMainWindow):
             f"Model:       {device.model_name or _default_model_name(device)}\n"
             f"OS:          {device.os_name}\n"
             f"OS Version:  {device.os_version}\n"
-            f"IP:          {device.ip_address}\n"
-            f"SNMP Port:   {device.snmp_port}\n"
+            + (f"Prod IP:     {device.ip_address}\n" if device.ip_address else "")
+            + (f"Mgmt IP:     {device.mgmt_ip}\n"     if device.mgmt_ip     else "")
+            + f"SNMP Port:   {device.snmp_port}\n"
             f"gNMI Port:   {device.gnmi_port}\n"
             f"Community:   {device.snmp_community}\n"
             f"Interfaces:  {device.interface_count}\n"
@@ -2635,11 +2635,10 @@ class MainWindow(QMainWindow):
         # gNMI is a management-plane protocol; when a device has a separate OOB
         # management IP it should be reachable on that address, mirroring how real
         # devices expose gNMI on the management interface rather than the data plane.
-        # dataset_ip_map records the matching production ip_address used as the
-        # .gnmi.json filename key so the servicer can load the right dataset.
+        # Dataset files are now named by mgmt_ip (or ip_address when no mgmt_ip),
+        # so bind_ip == dataset key — no cross-mapping needed.
         bound_set = set(bound_ips)
         bound_ip_ports: dict = {}
-        dataset_ip_map: dict = {}
         for d in all_devices:
             if d.device_type not in (DeviceType.SWITCH, DeviceType.ROUTER):
                 continue
@@ -2648,7 +2647,6 @@ class MainWindow(QMainWindow):
                        else d.ip_address)
             if bind_ip in bound_set:
                 bound_ip_ports[bind_ip] = d.gnmi_port
-                dataset_ip_map[bind_ip] = d.ip_address
 
         # Register auto-proxy callback — called from background thread when
         # per-device binding completely fails; dispatched to main thread via QTimer.
@@ -2663,7 +2661,6 @@ class MainWindow(QMainWindow):
             device_ips=switch_ips,
             port=port,
             bound_ip_ports=bound_ip_ports if bound_ip_ports else None,
-            dataset_ip_map=dataset_ip_map if dataset_ip_map else None,
         )
         if ok:
             self.state_store.set_log_callback(self._console_panel.log)
@@ -3112,6 +3109,8 @@ class MainWindow(QMainWindow):
             self._sim_panel.set_datasets_ready(datasets_ready)
             self._sim_panel.set_status("Ready" if ready else ("Starting…" if running else "Idle"))
             self._binding_panel.set_snmp_locked(running)
+            self._trap_panel.set_rule_engine_available(running)
+            self._rules_panel.set_rule_engine_available(running)
             self._update_topology_edit_actions()
             self._update_sim_panel_counts()
             n = len(s.bound_ips) or len(self._bound_ips)
@@ -3144,11 +3143,30 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self._console_panel.log(f"gNMI UI sync error: {e}", "error")
 
+    def _on_sflow_log(self, msg: str):
+        try:
+            from api.state import AppState
+            AppState.get().notify_ui("log_sflow", msg, "info")
+        except Exception:
+            self._log_queue.put(("log_sflow", msg, "info"))
+
+    def _sync_sflow_ui(self):
+        try:
+            running = self.sflow.is_running()
+            self._sflow_panel.set_running(running)
+            self._sflow_panel.set_status("Running" if running else "Stopped")
+            if running:
+                self._on_sflow_ready()
+        except Exception as e:
+            self._console_panel.log(f"sFlow UI sync error: {e}", "error")
+
     def _sync_rules_ui(self):
         try:
             from api.state import AppState
             s = AppState.get()
-            self._rules_panel.set_engine_active(s.rule_engine_enabled)
+            enabled = s.rule_engine_enabled
+            self._rules_panel.set_engine_active(enabled)
+            self._trap_panel.set_rule_engine_active(enabled)
             self._rules_panel.refresh()
         except Exception as e:
             self._console_panel.log(f"Rules UI sync error: {e}", "error")
@@ -3293,6 +3311,8 @@ class MainWindow(QMainWindow):
                     self._sflow_panel.set_status(item[1])
                 elif item[0] == "sflow_ready":
                     self._on_sflow_ready()
+                elif item[0] == "sync_sflow":
+                    self._sync_sflow_ui()
                 elif item[0] == "rebuild_topology_scene":
                     self._rebuild_scene_from_topology()
                 elif item[0] == "binding_started":

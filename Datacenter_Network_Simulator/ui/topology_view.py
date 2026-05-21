@@ -198,18 +198,41 @@ class DeviceNode(QGraphicsItem):
         type_rect = QRectF(-NODE_W / 2 + 2, -NODE_H / 2 + ICON_SIZE - 2, NODE_W - 4, 14)
         painter.drawText(type_rect, Qt.AlignCenter, self._type_str)
 
-        # Device name
+        # Determine IP display mode before drawing name (affects vertical layout)
+        scene   = self.scene()
+        layer   = getattr(scene, '_layer_filter', 'all')
+        prod_ip = self.device.ip_address
+        mgmt_ip = self.device.mgmt_ip
+
+        if layer == 'production':
+            display_ip = prod_ip
+            show_two   = False
+        elif layer in ('management', 'power'):
+            display_ip = mgmt_ip or prod_ip
+            show_two   = False
+        else:  # 'all'
+            show_two   = bool(prod_ip and mgmt_ip)
+            display_ip = '' if show_two else (prod_ip or mgmt_ip)
+
+        # Device name — shift up when two IP lines needed so both fit inside the box
         painter.setFont(self._FONT_NAME)
         painter.setPen(QPen(colors["text"]))
-        name_rect = QRectF(-NODE_W / 2, NODE_H / 2 - 26, NODE_W, 14)
+        name_y    = NODE_H / 2 - 30 if show_two else NODE_H / 2 - 26
+        name_rect = QRectF(-NODE_W / 2, name_y, NODE_W, 14)
         painter.drawText(name_rect, Qt.AlignCenter, self.device.name)
 
-        # IP address — prefer mgmt_ip (OOB / SNMP address) when available
+        # IP address lines
         painter.setFont(self._FONT_IP)
         painter.setPen(QPen(self._color_ip_lbl))
-        ip_rect = QRectF(-NODE_W / 2, NODE_H / 2 - 14, NODE_W, 12)
-        display_ip = self.device.mgmt_ip if self.device.mgmt_ip else self.device.ip_address
-        painter.drawText(ip_rect, Qt.AlignCenter, display_ip)
+        if show_two:
+            # Both lines stay inside the box: IP1 y=15→25, IP2 y=25→35
+            painter.drawText(QRectF(-NODE_W / 2, NODE_H / 2 - 20, NODE_W, 10),
+                             Qt.AlignCenter, prod_ip)
+            painter.drawText(QRectF(-NODE_W / 2, NODE_H / 2 - 10, NODE_W, 10),
+                             Qt.AlignCenter, mgmt_ip)
+        else:
+            painter.drawText(QRectF(-NODE_W / 2, NODE_H / 2 - 14, NODE_W, 12),
+                             Qt.AlignCenter, display_ip or '')
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
@@ -450,8 +473,9 @@ class _LinkTooltip(QWidget):
             ("Model",     _resolve_model_name(device)),
             ("OS",        device.os_name),
             ("Version",   device.os_version),
-            ("Prod IP",   f'<span style="{mono}">{device.ip_address}</span>'),
         ]
+        if device.ip_address:
+            rows.append(("Prod IP",  f'<span style="{mono}">{device.ip_address}</span>'))
         if device.mgmt_ip:
             rows.append(("Mgmt IP", f'<span style="{mono}">{device.mgmt_ip}</span>'))
         rows += [
@@ -573,6 +597,9 @@ class TopologyScene(QGraphicsScene):
                 )
                 edge.setVisible(visible)
 
+        # Invalidate DeviceCoordinateCache so IP text re-renders for new layer
+        for node in self._nodes.values():
+            node.update()
         self.update()
 
     def remove_link_edge(self, src_id: str, dst_id: str):

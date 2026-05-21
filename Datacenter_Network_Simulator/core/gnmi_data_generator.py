@@ -67,7 +67,8 @@ class GNMIDataGenerator:
             return None
 
         data = self._build_document(device, topology)
-        path = os.path.join(self.output_dir, f"{device.ip_address}.gnmi.json")
+        key  = device.mgmt_ip if device.mgmt_ip else device.ip_address
+        path = os.path.join(self.output_dir, f"{key}.gnmi.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         return path
@@ -80,7 +81,8 @@ class GNMIDataGenerator:
         if device.device_type not in (DeviceType.ROUTER, DeviceType.SWITCH):
             return None
         data = self._build_document(device, topology)
-        path = os.path.join(self.output_dir, f"{device.ip_address}.gnmi.json")
+        key  = device.mgmt_ip if device.mgmt_ip else device.ip_address
+        path = os.path.join(self.output_dir, f"{key}.gnmi.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         return data

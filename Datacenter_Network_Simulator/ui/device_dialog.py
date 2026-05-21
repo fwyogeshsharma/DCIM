@@ -322,18 +322,22 @@ class DeviceDialog(QDialog):
         lines.append(f"  Total: {model.total_ports} ports")
         self.port_info_label.setText("\n".join(lines))
 
+    _PROD_IP_TYPES = frozenset({
+        DeviceType.SERVER, DeviceType.SWITCH, DeviceType.ROUTER,
+        DeviceType.FIREWALL, DeviceType.LOAD_BALANCER,
+    })
+
     def _update_rack_visibility(self, _=None):
         """Adjust field visibility based on device type."""
         if not hasattr(self, 'loc_form'):
             return
         dtype = self.type_combo.currentData()
-        is_ups = dtype == DeviceType.UPS
         # UPS:       no rack placement, no gNMI, no interfaces
         # Rack PDU:  rack-mounted,      no gNMI, has management interface
         # Floor PDU: no rack placement, no gNMI, has management interface
-        show_rack   = dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU)
-        show_gnmi   = dtype not in (DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU)
-        show_ifaces = True
+        show_rack    = dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU)
+        show_gnmi    = dtype not in (DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU)
+        show_prod_ip = dtype in self._PROD_IP_TYPES
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):
             w.setVisible(show_rack)
             lbl = self.loc_form.labelForField(w)
@@ -343,7 +347,11 @@ class DeviceDialog(QDialog):
         lbl = self.net_form.labelForField(self.gnmi_port_spin)
         if lbl:
             lbl.setVisible(show_gnmi)
-        self.iface_group.setVisible(show_ifaces)
+        self.ip_edit.setVisible(show_prod_ip)
+        lbl = self.net_form.labelForField(self.ip_edit)
+        if lbl:
+            lbl.setVisible(show_prod_ip)
+        self.iface_group.setVisible(True)
         self._update_loc_preview()
 
     # ------------------------------------------------------------------ #
