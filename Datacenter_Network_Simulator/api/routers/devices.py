@@ -40,7 +40,7 @@ def _device_to_info(device) -> DeviceInfo:
 
 
 @router.get("", response_model=DevicesResponse)
-def get_all_devices(device_type: str = None, layer: str = None):
+async def get_all_devices(device_type: str = None, layer: str = None):
     """Get simulated devices.
 
     Optional filters (combinable):
@@ -80,7 +80,7 @@ def get_all_devices(device_type: str = None, layer: str = None):
 
 
 @router.get("/{device_id}", response_model=DeviceInfo)
-def get_device(device_id: str):
+async def get_device(device_id: str):
     """Get a specific device by ID."""
     s = _state()
     if s.device_manager is None:
@@ -104,7 +104,7 @@ def add_device(req: AddDeviceRequest):
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid device_type '{req.device_type}'")
     try:
-        vendor = Vendor(req.vendor.lower())
+        vendor = Vendor(req.vendor)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid vendor '{req.vendor}'")
 
@@ -113,17 +113,39 @@ def add_device(req: AddDeviceRequest):
     if any(d.ip_address == req.ip_address for d in existing):
         raise HTTPException(status_code=409, detail=f"IP address {req.ip_address} already in use")
 
+    # Build sys_location from physical location fields if not explicitly set
+    loc_parts = []
+    if req.datacenter:
+        if req.country:      loc_parts.append(req.country)
+        if req.datacenter_city: loc_parts.append(req.datacenter_city)
+        loc_parts.append(req.datacenter)
+        if req.room:         loc_parts.append(f"Room {req.room}")
+        if req.rack_row:     loc_parts.append(f"Row {req.rack_row}")
+        if req.rack_num:     loc_parts.append(f"Rack {req.rack_num}")
+        if req.rack_unit:    loc_parts.append(f"U{req.rack_unit}")
+    sys_location = ", ".join(loc_parts) if loc_parts else ""
+
     try:
         device = Device(
             name=req.name,
             device_type=device_type,
             vendor=vendor,
             ip_address=req.ip_address,
+            model_name=req.model_name,
+            mgmt_ip=req.mgmt_ip,
             snmp_port=req.snmp_port,
             gnmi_port=req.gnmi_port,
             interface_count=req.interface_count,
-            sys_location=req.sys_location,
             sys_contact=req.sys_contact,
+            sys_location=sys_location,
+            metrics_enabled=req.metrics_enabled,
+            country=req.country,
+            datacenter_city=req.datacenter_city,
+            datacenter=req.datacenter,
+            room=req.room,
+            rack_row=req.rack_row,
+            rack_num=req.rack_num,
+            rack_unit=req.rack_unit,
         )
         s.device_manager.add_device(device)
         s.topology.add_device(device, x=0.0, y=0.0)

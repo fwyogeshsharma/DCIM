@@ -28,8 +28,26 @@ def get_all_traps(limit: int = 500, offset: int = 0):
     with s._state_lock:
         history = list(s.trap_history)
 
-    total = len(history)
-    page = history[offset: offset + limit]
+    # Backfill severity / display_name from TrapType lookup for records
+    # written before those fields were stored on the dict.
+    from core.trap_definitions import TrapType, TRAP_DEFINITIONS
+    enriched = []
+    for t in history:
+        rec = dict(t)
+        if not rec.get("severity") or not rec.get("display_name"):
+            type_name = rec.get("trap_type")
+            if type_name:
+                try:
+                    defn = TRAP_DEFINITIONS.get(TrapType[type_name])
+                    if defn is not None:
+                        rec.setdefault("severity", defn.severity)
+                        rec.setdefault("display_name", defn.display_name)
+                except KeyError:
+                    pass
+        enriched.append(rec)
+
+    total = len(enriched)
+    page = enriched[offset: offset + limit]
     return TrapsResponse(
         total=total,
         traps=[TrapRecord(**t) for t in page],

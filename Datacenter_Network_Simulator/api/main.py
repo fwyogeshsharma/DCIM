@@ -9,7 +9,9 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import topology, binding, snmp, gnmi, rules, traps, devices
+from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow
+from api.routers import events, jobs
+from api.routers import graph as graph_router
 
 app = FastAPI(
     title="Datacenter Network Simulator API",
@@ -26,17 +28,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def _force_connection_close(request, call_next):
+    """
+    Windows AddIPAddress churn breaks idle loopback keep-alive sockets.
+    Reusing a broken socket triggers a ~2 min TCP retransmission timeout
+    on the browser side. Forcing a fresh TCP connection per request avoids
+    this — every response closes the socket immediately.
+    """
+    response = await call_next(request)
+    response.headers["Connection"] = "close"
+    return response
+
 app.include_router(topology.router, prefix="/api")
+app.include_router(graph_router.router, prefix="/api")
 app.include_router(binding.router, prefix="/api")
 app.include_router(snmp.router, prefix="/api")
 app.include_router(gnmi.router, prefix="/api")
 app.include_router(rules.router, prefix="/api")
 app.include_router(traps.router, prefix="/api")
 app.include_router(devices.router, prefix="/api")
+app.include_router(sflow.router, prefix="/api")
+app.include_router(events.router, prefix="/api")
+app.include_router(jobs.router, prefix="/api")
+
+
+import os as _os
+_webui_dist = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "webui", "dist")
+if _os.path.isdir(_webui_dist):
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/web", StaticFiles(directory=_webui_dist, html=True), name="webui")
 
 
 @app.get("/")
-def root():
+async def root():
     return {
         "name": "Datacenter Network Simulator API",
         "version": "2.2.0",
@@ -86,8 +112,8 @@ def root():
     }
 
 
-@app.get("/health")
-def health():
+@app.get("/api/health")
+async def health():
     """Health check — returns initialized state of core objects."""
     from api.state import AppState
     s = AppState.get()
@@ -111,12 +137,19 @@ def start_api_server(host: str = "0.0.0.0", port: int = 8000):
 
     log = logging.getLogger("api.server")
     try:
-        # On Windows (frozen or not), create a fresh SelectorEventLoop for this
-        # thread — ProactorEventLoop is the default but doesn't work reliably in
-        # non-main threads inside a PyInstaller bundle.
-        if hasattr(asyncio, "SelectorEventLoop"):
+        # On Windows, ProactorEventLoop (IOCP) is immune to network-stack
+        # disruption caused by mass AddIPAddress calls — SelectorEventLoop's
+        # WSASelect stalls when 750+ IPs are added in parallel.
+        # PyInstaller frozen bundles have issues with ProactorEventLoop in
+        # non-main threads, so fall back to SelectorEventLoop only there.
+        import sys as _sys
+        if hasattr(asyncio, "ProactorEventLoop") and not getattr(_sys, "frozen", False):
+            loop = asyncio.ProactorEventLoop()
+        elif hasattr(asyncio, "SelectorEventLoop"):
             loop = asyncio.SelectorEventLoop()
-            asyncio.set_event_loop(loop)
+        else:
+            loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
         config = uvicorn.Config(
             app,
@@ -126,6 +159,7 @@ def start_api_server(host: str = "0.0.0.0", port: int = 8000):
             access_log=False,
             loop="none",      # we set the loop ourselves above
             log_config=None,  # disable uvicorn's log setup — sys.stdout is None in windowed exe
+            timeout_keep_alive=0,  # disable HTTP keep-alive — close socket after each response
         )
         server = uvicorn.Server(config)
         asyncio.get_event_loop().run_until_complete(server.serve())

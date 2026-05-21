@@ -134,13 +134,17 @@ def start_gnmi_simulator():
                 if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
             ]
             device_ips = [d.ip_address for d in devices]
-            bound_ip_ports = {ip: 50051 for ip in s.gnmi_bound_ips}
-            dataset_ip_map = {d.ip_address: d.ip_address for d in devices}
+            # Dataset files keyed by mgmt_ip (or ip_address when no mgmt_ip);
+            # build bound_ip_ports with the same key so load_device() finds them.
+            bound_ip_ports = {
+                (d.mgmt_ip or d.ip_address): d.gnmi_port
+                for d in devices
+                if (d.mgmt_ip or d.ip_address) in s.gnmi_bound_ips
+            }
 
             s.update_job(job_id, message="Starting gNMI server...")
             ok = s.gnmi.start(device_ips, port=50051,
-                              bound_ip_ports=bound_ip_ports,
-                              dataset_ip_map=dataset_ip_map)
+                              bound_ip_ports=bound_ip_ports if bound_ip_ports else None)
             if not ok:
                 s.update_job(job_id, status="failed", error="gnmi.start() returned False",
                              finished_at=datetime.utcnow().isoformat())
@@ -211,7 +215,7 @@ def clear_gnmi_simulation():
 
 
 @router.get("/status", response_model=GnmiStatusResponse)
-def get_gnmi_status():
+async def get_gnmi_status():
     """Get gNMI simulator status."""
     s = _state()
     gnmi = s.gnmi
@@ -224,6 +228,13 @@ def get_gnmi_status():
                 active_job = jid
                 break
 
+    clients: list = []
+    if gnmi and gnmi.is_running():
+        try:
+            clients = gnmi.get_clients() or []
+        except Exception:
+            clients = []
+
     return GnmiStatusResponse(
         running=gnmi.is_running() if gnmi else False,
         ready=gnmi.is_ready() if gnmi else False,
@@ -233,6 +244,7 @@ def get_gnmi_status():
         datasets_generated=bool(s.generated_gnmi_files),
         dataset_count=len(s.generated_gnmi_files),
         active_job_id=active_job,
+        clients=clients,
     )
 
 

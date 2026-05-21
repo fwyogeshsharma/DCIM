@@ -4,6 +4,7 @@ MainWindow registers core objects here after initialization.
 """
 from __future__ import annotations
 
+import queue as _queue
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -47,6 +48,7 @@ class AppState:
         self.ip_manager: Optional["IPManager"] = None
         self.snmpsim: Optional["SNMPSimController"] = None
         self.gnmi: Optional["GNMIController"] = None
+        self.sflow: Optional[Any] = None  # SFlowController (set by MainWindow)
         self.state_store: Optional["DeviceStateStore"] = None
         self.rule_engine: Optional["RuleEngine"] = None
         self.trap_engine: Optional["TrapEngine"] = None
@@ -80,6 +82,9 @@ class AppState:
         # Registered by MainWindow — the same queue drained every 150 ms on the main thread.
         self._ui_queue: Optional[Any] = None  # queue.Queue
 
+        # SSE clients: list of queue.Queue, one per connected web browser tab
+        self._sse_clients: List[_queue.Queue] = []
+
         # Background jobs
         self.jobs: Dict[str, JobStatus] = {}
         self._state_lock = threading.Lock()
@@ -99,6 +104,7 @@ class AppState:
         ip_manager=None,
         snmpsim=None,
         gnmi=None,
+        sflow=None,
         state_store=None,
         rule_engine=None,
         trap_engine=None,
@@ -110,6 +116,7 @@ class AppState:
         self.ip_manager = ip_manager
         self.snmpsim = snmpsim
         self.gnmi = gnmi
+        self.sflow = sflow
         self.state_store = state_store
         self.rule_engine = rule_engine
         self.trap_engine = trap_engine
@@ -140,12 +147,15 @@ class AppState:
 
     def record_trap(self, event):
         """Called when trap_engine emits trap_sent signal."""
+        defn = getattr(event, "defn", None)
         record = {
             "timestamp": event.timestamp.isoformat() if hasattr(event.timestamp, "isoformat") else str(event.timestamp),
             "device_id": event.device.id if event.device else None,
             "device_name": event.device.name if event.device else None,
             "device_ip": event.device.ip_address if event.device else None,
             "trap_type": event.trap_type.name if event.trap_type else None,
+            "display_name": defn.display_name if defn else None,
+            "severity": defn.severity if defn else None,
             "details": event.details,
             "rule_name": event.rule_name or "",
             "iface_index": event.iface_index,
@@ -154,6 +164,7 @@ class AppState:
             self.trap_history.append(record)
             if len(self.trap_history) > self._trap_history_limit:
                 self.trap_history = self.trap_history[-self._trap_history_limit:]
+        self.notify_ui("sync_traps")
 
     def require_core(self):
         """Raise RuntimeError if core objects not yet registered."""
@@ -178,6 +189,27 @@ class AppState:
                     seen.add(ip)
         return ips
 
+    def add_sse_client(self, q: _queue.Queue):
+        with self._state_lock:
+            self._sse_clients.append(q)
+
+    def remove_sse_client(self, q: _queue.Queue):
+        with self._state_lock:
+            try:
+                self._sse_clients.remove(q)
+            except ValueError:
+                pass
+
+    def _broadcast_sse(self, payload: dict):
+        """Broadcast an event dict to all connected SSE clients. Thread-safe."""
+        with self._state_lock:
+            clients = list(self._sse_clients)
+        for q in clients:
+            try:
+                q.put_nowait(payload)
+            except _queue.Full:
+                pass
+
     def notify_ui(self, event: str, *args):
         """Post a UI-sync event to the main-thread drain queue. Thread-safe."""
         if self._ui_queue is not None:
@@ -185,3 +217,37 @@ class AppState:
                 self._ui_queue.put_nowait((event, *args))
             except Exception:
                 pass
+        # Also broadcast to SSE clients so the web UI reacts in real time
+        self._broadcast_sse(self._sse_event(event, *args))
+
+    @staticmethod
+    def _sse_event(event: str, *args) -> dict:
+        if event in ("log", "log_sflow", "log_gnmi", "console_log") and len(args) >= 1:
+            msg = args[0]
+            level = args[1] if len(args) > 1 else "info"
+            if event == "log_sflow":
+                tab = "sflow"
+            elif event == "log_gnmi":
+                tab = "gnmi"
+            else:
+                tab = "snmp"
+                if isinstance(msg, str) and "[gNMI]" in msg:
+                    tab = "gnmi"
+                elif isinstance(msg, str) and "[sFlow]" in msg:
+                    tab = "sflow"
+            return {"type": "log", "tab": tab, "msg": str(msg), "level": str(level)}
+        if event in ("snmp_progress", "gnmi_progress", "binding_progress"):
+            done = args[0] if len(args) > 0 else 0
+            total = args[1] if len(args) > 1 else 0
+            op = "snmp" if "snmp" in event else ("gnmi" if "gnmi" in event else "binding")
+            return {"type": "progress", "operation": op, "done": done, "total": total}
+        if event == "status" and args:
+            return {"type": "status", "msg": str(args[0])}
+        if event.startswith("sync_"):
+            target = event[5:]
+            return {"type": "sync", "target": target}
+        if event == "rebuild_topology_scene":
+            return {"type": "sync", "target": "topology"}
+        if event == "link_changed" and len(args) >= 3:
+            return {"type": "link_changed", "src": args[0], "dst": args[1], "broken": args[2]}
+        return {"type": event, "args": [str(a) for a in args]}

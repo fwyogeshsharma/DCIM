@@ -55,18 +55,20 @@ def generate_datasets():
             from core.snmprec_generator import SNMPRecGenerator
             gen = SNMPRecGenerator(s.snmp_datasets_dir)
             files = []
+            # Emit one log per 10 devices (not every device) to avoid flooding SSE
+            log_step = max(10, total // 50)
             step = max(1, total // 100)
             s.notify_ui("status", "Generating…")
             s.notify_ui("log", f"Generating {total} SNMP datasets…", "info")
             for i, device in enumerate(devices):
                 fp = gen.generate_device(device, s.topology)
                 files.append(fp)
-                s.notify_ui(
-                    "log",
-                    f"[SNMP] {device.ip_address}  {device.device_type.value}"
-                    f"  ({device.interface_count} ifaces)",
-                    "info",
-                )
+                if (i + 1) % log_step == 0 or i == total - 1:
+                    s.notify_ui(
+                        "log",
+                        f"[SNMP] Generated {i+1}/{total}  ({device.device_type.value})",
+                        "info",
+                    )
                 if (i + 1) % step == 0 or i == total - 1:
                     s.update_job(job_id, progress_done=i + 1, progress_total=total,
                                  message=f"Generated {i+1}/{total} datasets")
@@ -237,7 +239,7 @@ def clear_snmp_simulation():
 
 
 @router.get("/status", response_model=SnmpStatusResponse)
-def get_snmp_status():
+async def get_snmp_status():
     """Get SNMP simulator status including running state, endpoints, and active job."""
     s = _state()
     snmpsim = s.snmpsim

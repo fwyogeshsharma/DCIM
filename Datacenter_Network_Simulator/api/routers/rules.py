@@ -1,6 +1,7 @@
 """Rule Engine REST endpoints."""
 from __future__ import annotations
 
+import dataclasses
 from fastapi import APIRouter, HTTPException
 
 from api.state import AppState
@@ -26,19 +27,10 @@ def get_all_rules():
 
     rules_out = []
     for rule in s.rule_engine.get_rules():
-        conditions = []
-        for cond in getattr(rule, "conditions", []):
-            try:
-                conditions.append(cond.__dict__ if hasattr(cond, "__dict__") else vars(cond))
-            except Exception:
-                conditions.append({"raw": str(cond)})
-
-        actions = []
-        for action in getattr(rule, "actions", []):
-            try:
-                actions.append(str(action))
-            except Exception:
-                pass
+        try:
+            condition_dict = dataclasses.asdict(rule.condition)
+        except Exception:
+            condition_dict = {}
 
         rules_out.append(RuleResponse(
             name=rule.rule_name,
@@ -46,8 +38,9 @@ def get_all_rules():
             description=getattr(rule, "description", ""),
             total_fired=s.rule_engine.get_total_fired_count(rule.rule_name),
             last_fired=s.rule_engine.get_last_fire_ts(rule.rule_name) or "",
-            conditions=conditions,
-            actions=actions,
+            conditions=[condition_dict] if condition_dict else [],
+            actions=[rule.trap_oid] if getattr(rule, "trap_oid", None) else [],
+            severity=getattr(rule, "severity", None),
         ))
 
     return RulesTableResponse(
@@ -104,12 +97,10 @@ def get_rule(rule_name: str):
     if rule is None:
         raise HTTPException(status_code=404, detail=f"Rule '{rule_name}' not found")
 
-    conditions = []
-    for cond in getattr(rule, "conditions", []):
-        try:
-            conditions.append(cond.__dict__ if hasattr(cond, "__dict__") else vars(cond))
-        except Exception:
-            conditions.append({"raw": str(cond)})
+    try:
+        condition_dict = dataclasses.asdict(rule.condition)
+    except Exception:
+        condition_dict = {}
 
     return RuleResponse(
         name=rule.rule_name,
@@ -117,8 +108,9 @@ def get_rule(rule_name: str):
         description=getattr(rule, "description", ""),
         total_fired=s.rule_engine.get_total_fired_count(rule.rule_name),
         last_fired=s.rule_engine.get_last_fire_ts(rule.rule_name) or "",
-        conditions=conditions,
-        actions=[str(a) for a in getattr(rule, "actions", [])],
+        conditions=[condition_dict] if condition_dict else [],
+        actions=[rule.trap_oid] if getattr(rule, "trap_oid", None) else [],
+        severity=getattr(rule, "severity", None),
     )
 
 

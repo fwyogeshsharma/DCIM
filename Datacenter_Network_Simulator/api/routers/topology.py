@@ -11,6 +11,16 @@ from api.models.schemas import (
     LinkActionRequest,
     OkResponse,
 )
+from pydantic import BaseModel
+from typing import Optional, Dict
+
+class CreateLinkRequest(BaseModel):
+    src_id: str
+    dst_id: str
+    layer: str = "production"
+
+class LayoutRequest(BaseModel):
+    algorithm: str  # "default" | "spring" | "shell" | "kamada_kawai"
 
 router = APIRouter(prefix="/topology", tags=["Topology"])
 
@@ -114,6 +124,31 @@ def _send_link_traps(s, src_id: str, dst_id: str, layer: str, is_down: bool):
         s.trap_engine.send_trap(dst_dev, trap_type, iface_index=dst_iface)
 
 
+@router.get("/export")
+def export_topology():
+    """Download full topology as JSON (nodes + edges + positions)."""
+    s = _state()
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    return s.topology.to_dict()
+
+
+@router.post("/clear", response_model=OkResponse)
+def clear_topology():
+    """Clear all devices and links from the topology."""
+    s = _state()
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    s.topology.clear()
+    if s.device_manager:
+        s.device_manager.clear()
+    if s.ip_manager:
+        s.ip_manager.reset()
+    s.current_topology_path = ""
+    s.notify_ui("rebuild_topology_scene")
+    return OkResponse(message="Topology cleared")
+
+
 @router.post("/links/break", response_model=OkResponse)
 def break_link(req: LinkActionRequest):
     """Break a link between two devices — sets oper_status=2 on interfaces and sends LINK_DOWN traps."""
@@ -142,3 +177,66 @@ def restore_link(req: LinkActionRequest):
         return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] restored — LINK_UP traps sent")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/links/create", response_model=OkResponse)
+def create_link(req: CreateLinkRequest):
+    """Create a new link between two devices."""
+    s = _state()
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    ok = s.topology.add_link(req.src_id, req.dst_id, layer=req.layer)
+    if not ok:
+        raise HTTPException(status_code=409, detail="Link already exists or invalid devices")
+    s.notify_ui("link_changed", req.src_id, req.dst_id, False)
+    return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] created")
+
+
+@router.post("/layout")
+def apply_layout(req: LayoutRequest):
+    """Run a NetworkX graph layout and return new node positions."""
+    s = _state()
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    try:
+        import networkx as nx
+        G = s.topology.graph
+        node_ids = list(G.nodes())
+        if len(node_ids) == 0:
+            return {"positions": {}}
+
+        if req.algorithm == "spring":
+            pos = nx.spring_layout(G, seed=42, iterations=50, scale=2000)
+        elif req.algorithm == "shell":
+            devices = {d.id: d for d in s.topology.get_all_devices()}
+            TIERS = {
+                "router": 0, "firewall": 0,
+                "switch": 1, "load_balancer": 1,
+                "oob_switch": 2, "server": 2,
+                "ups": 3, "pdu": 3, "floor_pdu": 3, "sensor": 3,
+            }
+            shells: dict = {}
+            for nid in node_ids:
+                d = devices.get(nid)
+                tier = TIERS.get(d.device_type.value if d else "", 2)
+                shells.setdefault(tier, []).append(nid)
+            nlist = [shells[k] for k in sorted(shells) if shells[k]]
+            pos = nx.shell_layout(G, nlist=nlist if len(nlist) > 1 else None, scale=2000)
+        elif req.algorithm == "kamada_kawai":
+            if len(node_ids) > 500:
+                raise HTTPException(status_code=400, detail="Too many nodes for Kamada-Kawai (limit: 500)")
+            init_pos = nx.spring_layout(G, seed=42, scale=2000)
+            pos = nx.kamada_kawai_layout(G, pos=init_pos, scale=2000)
+        else:
+            # default — return stored positions
+            positions = {}
+            for nid in node_ids:
+                nd = G.nodes[nid]
+                positions[nid] = {"x": float(nd.get("x", 0)), "y": float(nd.get("y", 0))}
+            return {"positions": positions}
+
+        return {"positions": {nid: {"x": float(xy[0]), "y": float(xy[1])} for nid, xy in pos.items()}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

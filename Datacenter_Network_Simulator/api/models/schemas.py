@@ -106,6 +106,7 @@ class GnmiStatusResponse(BaseModel):
     datasets_generated: bool
     dataset_count: int
     active_job_id: Optional[str] = None
+    clients: List[Dict[str, Any]] = []
 
 
 # ── Rules ─────────────────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ class RuleResponse(BaseModel):
     last_fired: str
     conditions: List[Dict[str, Any]]
     actions: List[str]
+    severity: Optional[str] = None
 
 
 class RulesTableResponse(BaseModel):
@@ -134,6 +136,8 @@ class TrapRecord(BaseModel):
     device_name: Optional[str]
     device_ip: Optional[str]
     trap_type: Optional[str]
+    display_name: Optional[str] = None
+    severity: Optional[str] = None
     details: str
     rule_name: str
     iface_index: Optional[int]
@@ -178,14 +182,24 @@ class DevicesResponse(BaseModel):
 
 class AddDeviceRequest(BaseModel):
     name: str
-    device_type: str = Field(..., description="router | switch | server | firewall | load_balancer | ups | pdu | floor_pdu | sensor")
-    vendor: str = Field("cisco", description="cisco | juniper | arista | generic | apc | eaton | emerson | pdu_mfr | raritan | schneider | vertiv")
+    device_type: str = Field(..., description="router | switch | server | firewall | load_balancer | ups | pdu | floor_pdu | oob_switch | sensor")
+    vendor: str = Field("Cisco Systems", description="Full vendor name e.g. 'Cisco Systems', 'Juniper Networks'")
     ip_address: str
+    model_name: str = ""
+    mgmt_ip: str = ""
     snmp_port: int = 161
-    gnmi_port: int = 50051
+    gnmi_port: int = 57400
     interface_count: int = 4
-    sys_location: str = ""
     sys_contact: str = ""
+    metrics_enabled: bool = True
+    # Physical location
+    country: str = ""
+    datacenter_city: str = ""
+    datacenter: str = ""
+    room: str = ""
+    rack_row: int = 0
+    rack_num: int = 0
+    rack_unit: int = 0
 
 
 class EditDeviceRequest(BaseModel):

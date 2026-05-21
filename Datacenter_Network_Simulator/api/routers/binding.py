@@ -89,21 +89,23 @@ def bind_ips():
     def _run():
         try:
             from core.ip_binder import add_ips_fast
-            s.update_job(job_id, progress_total=len(ips), message="Binding IPs...")
+            total_ips = len(ips)
+            s.update_job(job_id, progress_total=total_ips, message="Binding IPs...")
 
             def _progress(done, total):
                 s.update_job(job_id, progress_done=done, progress_total=total)
                 s.notify_ui("binding_progress", done, total)
 
-            def _log(msg, level):
-                s.update_job(job_id, message=msg)
-                s.notify_ui("log", msg, level)
+            def _log(msg, lvl):
+                s.notify_ui("log", msg, lvl)
 
+            s.notify_ui("log", f"Binding {total_ips} IPs to {s.selected_adapter}...", "info")
             bound, contexts = add_ips_fast(
                 s.selected_adapter, ips, s.subnet_mask,
                 log_cb=_log,
                 progress_cb=_progress,
             )
+            s.notify_ui("log", f"Bound {len(bound)}/{total_ips} IPs", "success")
             s.bound_ips = bound
             s.nte_contexts = contexts
             s.notify_ui("sync_binding")
@@ -144,17 +146,23 @@ def unbind_ips():
     def _run():
         try:
             from core.ip_binder import remove_ips_fast
-            s.update_job(job_id, progress_total=len(all_ips), message="Removing bindings...")
+            total_ips = len(all_ips)
+            s.update_job(job_id, progress_total=total_ips, message="Removing bindings...")
 
             def _progress(done, total):
                 s.update_job(job_id, progress_done=done, progress_total=total)
                 s.notify_ui("binding_progress", done, total)
 
+            def _log(msg, lvl):
+                s.notify_ui("log", msg, lvl)
+
+            s.notify_ui("log", f"Removing {total_ips} bindings...", "info")
             remove_ips_fast(
                 s.selected_adapter, all_ips, all_contexts,
-                log_cb=lambda msg, lvl: s.update_job(job_id, message=msg),
+                log_cb=_log,
                 progress_cb=_progress,
             )
+            s.notify_ui("log", f"Removed {total_ips} bindings", "info")
             s.bound_ips = []
             s.nte_contexts = {}
             s.gnmi_bound_ips = []
@@ -175,7 +183,7 @@ def unbind_ips():
 
 
 @router.get("/count")
-def get_bound_count():
+async def get_bound_count():
     """Get total number of currently bound IPs."""
     s = _state()
     return {
@@ -186,14 +194,16 @@ def get_bound_count():
 
 
 @router.get("/status", response_model=BindingStatusResponse)
-def get_binding_status():
+async def get_binding_status():
     """Full binding status — adapter, mask, bound IPs, active job."""
     s = _state()
     active = None
-    if _active_bind_job:
-        j = s.get_job(_active_bind_job)
-        if j and j.status == "running":
-            active = _active_bind_job
+    for jid in (_active_bind_job, _active_unbind_job):
+        if jid:
+            j = s.get_job(jid)
+            if j and j.status == "running":
+                active = jid
+                break
     return BindingStatusResponse(
         selected_adapter=s.selected_adapter,
         subnet_mask=s.subnet_mask,
