@@ -15,20 +15,16 @@ export function initAlertsSyncWorker(pool: Pool) {
 export function startAlertsSyncWorker() {
   cron.schedule('*/15 * * * * *', async () => {
     try {
-      // Get enabled servers
-      const { rows: servers } = await dbPool.query(
-        'SELECT id, url FROM servers WHERE enabled = true'
-      )
+      let servers: any[] = []
+      try {
+        const result = await dbPool.query('SELECT id, url FROM servers WHERE enabled = true')
+        servers = result.rows
+      } catch { return }
 
-      if (servers.length === 0) {
-        return
-      }
+      if (servers.length === 0) return
 
-      // Sync alerts from all servers in parallel
       await Promise.all(
-        servers.map((server) =>
-          syncService.syncAlertsFromServer(server.id, server.url)
-        )
+        servers.map((server) => syncService.syncAlertsFromServer(server.id, server.url))
       )
     } catch (error: any) {
       logger.error('Alerts sync worker error:', error.message)

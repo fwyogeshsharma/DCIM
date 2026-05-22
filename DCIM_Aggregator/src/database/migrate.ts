@@ -14,23 +14,30 @@ async function runMigrations() {
   })
 
   try {
-    logger.info('Starting database migrations...')
+    logger.info('Starting database migration...')
 
-    const migrationsDir = path.join(__dirname, 'migrations')
-    const migrationFiles = fs.readdirSync(migrationsDir).sort()
+    // Drop legacy tables that conflict with the new unified schema
+    await pool.query(`
+      DROP TABLE IF EXISTS snmp_traps        CASCADE;
+      DROP TABLE IF EXISTS snmp_metrics      CASCADE;
+      DROP TABLE IF EXISTS alerts            CASCADE;
+      DROP TABLE IF EXISTS metrics           CASCADE;
+      DROP TABLE IF EXISTS topology_links    CASCADE;
+      DROP TABLE IF EXISTS agents            CASCADE;
+      DROP TABLE IF EXISTS servers           CASCADE;
+      DROP VIEW  IF EXISTS topology_view     CASCADE;
+      DROP VIEW  IF EXISTS device_inventory  CASCADE;
+      DROP MATERIALIZED VIEW IF EXISTS metrics_5m CASCADE;
+    `)
+    logger.info('Dropped legacy tables (if any)')
 
-    for (const file of migrationFiles) {
-      if (!file.endsWith('.sql')) continue
+    // Run the single unified init SQL
+    const sqlPath = path.join(__dirname, 'migrations', '001_init.sql')
+    const sql = fs.readFileSync(sqlPath, 'utf-8')
+    await pool.query(sql)
+    logger.info('✓ Schema initialised from 001_init.sql')
 
-      logger.info(`Running migration: ${file}`)
-      const sqlPath = path.join(migrationsDir, file)
-      const sql = fs.readFileSync(sqlPath, 'utf-8')
-
-      await pool.query(sql)
-      logger.info(`✓ Migration completed: ${file}`)
-    }
-
-    logger.info('All migrations completed successfully')
+    logger.info('Migration completed successfully')
   } catch (error) {
     logger.error('Migration failed:', error)
     process.exit(1)
@@ -39,7 +46,6 @@ async function runMigrations() {
   }
 }
 
-// Run if called directly
 if (require.main === module) {
   runMigrations()
 }

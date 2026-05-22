@@ -15,17 +15,15 @@ export function initTrapsSyncWorker(pool: Pool) {
 export function startTrapsSyncWorker() {
   cron.schedule('*/15 * * * * *', async () => {
     try {
-      const { rows: servers } = await dbPool.query(
-        'SELECT id, url FROM servers WHERE enabled = true'
-      )
+      let servers: any[] = []
+      try {
+        const result = await dbPool.query('SELECT id, url FROM servers WHERE enabled = true')
+        servers = result.rows
+      } catch { return }
 
       if (servers.length === 0) return
 
-      await Promise.all(
-        servers.map((server: any) =>
-          syncService.syncTrapsFromServer(server.id, server.url)
-        )
-      )
+      await Promise.all(servers.map((server: any) => syncService.syncTrapsFromServer(server.id, server.url)))
     } catch (error: any) {
       logger.error('Traps sync worker error:', error.message)
     }

@@ -15,28 +15,16 @@ export function initMetricsSyncWorker(pool: Pool) {
 export function startMetricsSyncWorker() {
   cron.schedule('*/10 * * * * *', async () => {
     try {
-      // Get enabled servers
-      const { rows: servers } = await dbPool.query(
-        'SELECT id, url FROM servers WHERE enabled = true'
-      )
+      let servers: any[] = []
+      try {
+        const result = await dbPool.query('SELECT id, url FROM servers WHERE enabled = true')
+        servers = result.rows
+      } catch { return }
 
-      if (servers.length === 0) {
-        return
-      }
+      if (servers.length === 0) return
 
-      // Sync metrics from all servers in parallel
-      await Promise.all(
-        servers.map((server) =>
-          syncService.syncMetricsFromServer(server.id, server.url)
-        )
-      )
-
-      // Also sync SNMP metrics
-      await Promise.all(
-        servers.map((server) =>
-          syncService.syncSNMPMetricsFromServer(server.id, server.url)
-        )
-      )
+      await Promise.all(servers.map((server) => syncService.syncMetricsFromServer(server.id, server.url)))
+      await Promise.all(servers.map((server) => syncService.syncSNMPMetricsFromServer(server.id, server.url)))
     } catch (error: any) {
       logger.error('Metrics sync worker error:', error.message)
     }

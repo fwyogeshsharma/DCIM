@@ -1,57 +1,61 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
 
-// Agent heartbeat timeout — agent is online if last_seen within this window
 const HEARTBEAT_TIMEOUT_SECONDS = 300
 
-// Common SELECT with computed total_metrics, total_alerts, and group alias.
-// Status is computed dynamically from last_seen so it never stays stale.
-const AGENT_SELECT = `
-  SELECT a.*,
+// Maps devices row to the Agent shape the UI expects
+const DEVICE_SELECT = `
+  SELECT
+    d.id::text                  AS agent_id,
+    d.hostname,
+    d.mgmt_ip::text             AS ip_address,
+    d.group_id                  AS agent_group,
+    d.group_id                  AS "group",
+    d.network_id                AS server_name,
+    d.network_id                AS server_id,
+    d.last_seen_at              AS last_seen,
+    d.device_type,
+    d.vendor,
+    d.collector_agent,
+    d.is_reachable,
     CASE
-      WHEN a.last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online'
+      WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online'
       ELSE 'offline'
     END AS status,
-    a.agent_group AS "group",
-    s.name AS server_name,
-    s.url AS server_url,
     COALESCE(mc.total_metrics, 0)::int AS total_metrics,
-    COALESCE(ac.total_alerts, 0)::int AS total_alerts
-  FROM agents a
-  JOIN servers s ON a.server_id = s.id
+    COALESCE(ac.total_alerts,  0)::int AS total_alerts
+  FROM devices d
   LEFT JOIN (
-    SELECT agent_id, server_id, COUNT(*)::int AS total_metrics
+    SELECT device_id, COUNT(*)::int AS total_metrics
     FROM metrics
-    GROUP BY agent_id, server_id
-  ) mc ON mc.agent_id = a.agent_id AND mc.server_id = a.server_id
+    WHERE ts >= NOW() - INTERVAL '24 hours'
+    GROUP BY device_id
+  ) mc ON mc.device_id = d.id
   LEFT JOIN (
-    SELECT agent_id, server_id, COUNT(*)::int AS total_alerts
-    FROM alerts
-    WHERE resolved = false
-    GROUP BY agent_id, server_id
-  ) ac ON ac.agent_id = a.agent_id AND ac.server_id = a.server_id
+    SELECT device_id, COUNT(*)::int AS total_alerts
+    FROM events
+    WHERE COALESCE((event_payload->>'resolved')::boolean, false) = false
+    GROUP BY device_id
+  ) ac ON ac.device_id = d.id
 `
 
 export function createAgentsRouter(dbPool: Pool): Router {
   const router = Router()
 
-  // Create a manual device from the Topology Editor
+  // Create a manual device
   router.post('/', async (req, res) => {
     try {
-      const { server_id, hostname, ip_address, agent_group, certificate_cn, protocol, metadata } = req.body
-      if (!server_id || !hostname) {
-        return res.status(400).json({ success: false, error: 'server_id and hostname are required' })
+      const { hostname, ip_address, agent_group, protocol, metadata } = req.body
+      if (!hostname) {
+        return res.status(400).json({ success: false, error: 'hostname is required' })
       }
-      const { rows: srv } = await dbPool.query('SELECT id FROM servers WHERE id = $1', [server_id])
-      if (srv.length === 0) {
-        return res.status(404).json({ success: false, error: 'Server not found' })
-      }
-      const agentId = `manual-${Date.now()}`
-      const meta = { ...(metadata || {}), manual: true }
       const { rows } = await dbPool.query(
-        `INSERT INTO agents (server_id, agent_id, hostname, ip_address, agent_group, certificate_cn, protocol, approved, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8) RETURNING *`,
-        [server_id, agentId, hostname, ip_address || null, agent_group || 'manual', certificate_cn || null, protocol || null, JSON.stringify(meta)]
+        `INSERT INTO devices
+           (org_id, datacenter_id, floor_id, network_id, group_id, hostname, device_type,
+            mgmt_ip, collector_agent, snmp_enabled)
+         VALUES ('default','default','default','manual',$1,$2,'server',$3,'IDR',false)
+         RETURNING *`,
+        [agent_group || 'manual', hostname, ip_address || null]
       )
       res.status(201).json({ success: true, data: rows[0] })
     } catch (error: any) {
@@ -59,263 +63,197 @@ export function createAgentsRouter(dbPool: Pool): Router {
     }
   })
 
-  // Update agent (Topology Editor manual devices)
+  // Update device
   router.put('/:agentId', async (req, res) => {
     try {
       const { agentId } = req.params
-      const { hostname, ip_address, agent_group, certificate_cn, protocol, metadata } = req.body
+      const { hostname, ip_address, agent_group, metadata } = req.body
       const sets: string[] = []
       const params: any[] = []
       let i = 1
-      if (hostname !== undefined)       { sets.push(`hostname = $${i++}`);       params.push(hostname) }
-      if (ip_address !== undefined)     { sets.push(`ip_address = $${i++}`);     params.push(ip_address) }
-      if (agent_group !== undefined)    { sets.push(`agent_group = $${i++}`);    params.push(agent_group) }
-      if (certificate_cn !== undefined) { sets.push(`certificate_cn = $${i++}`); params.push(certificate_cn) }
-      if (protocol !== undefined)       { sets.push(`protocol = $${i++}`);       params.push(protocol) }
-      if (metadata !== undefined)       { sets.push(`metadata = $${i++}`);       params.push(JSON.stringify(metadata)) }
+      if (hostname    !== undefined) { sets.push(`hostname  = $${i++}`); params.push(hostname) }
+      if (ip_address  !== undefined) { sets.push(`mgmt_ip   = $${i++}`); params.push(ip_address) }
+      if (agent_group !== undefined) { sets.push(`group_id  = $${i++}`); params.push(agent_group) }
       if (sets.length === 0) return res.status(400).json({ success: false, error: 'No fields to update' })
       sets.push('updated_at = NOW()')
       params.push(agentId)
       const { rows } = await dbPool.query(
-        `UPDATE agents SET ${sets.join(', ')} WHERE agent_id = $${i} RETURNING *`,
+        `UPDATE devices SET ${sets.join(', ')} WHERE id = $${i}::uuid RETURNING *`,
         params
       )
-      if (rows.length === 0) return res.status(404).json({ success: false, error: 'Agent not found' })
+      if (rows.length === 0) return res.status(404).json({ success: false, error: 'Device not found' })
       res.json({ success: true, data: rows[0] })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Delete agent
+  // Delete device
   router.delete('/:agentId', async (req, res) => {
     try {
-      await dbPool.query('DELETE FROM agents WHERE agent_id = $1', [req.params.agentId])
+      await dbPool.query('DELETE FROM devices WHERE id = $1::uuid', [req.params.agentId])
       res.json({ success: true })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Get all agents (aggregated from all servers)
+  // List all devices
   router.get('/', async (req, res) => {
     try {
       const { server_id, status, agent_group, group, hostname, search } = req.query
-
-      let query = `${AGENT_SELECT} WHERE 1=1`
+      let query = `${DEVICE_SELECT} WHERE 1=1`
       const params: any[] = []
-      let paramIndex = 1
+      let i = 1
 
       if (server_id) {
-        params.push(server_id)
-        query += ` AND a.server_id = $${paramIndex++}`
+        params.push(server_id); query += ` AND d.network_id = $${i++}`
       }
-
-      if (status) {
-        params.push(status)
-        query += ` AND a.status = $${paramIndex++}`
-      }
-
-      // Support both "agent_group" and "group" filter params
-      const groupFilter = agent_group || group
+      const groupFilter = (agent_group || group) as string | undefined
       if (groupFilter) {
-        params.push(groupFilter)
-        query += ` AND a.agent_group = $${paramIndex++}`
+        params.push(groupFilter); query += ` AND d.group_id = $${i++}`
       }
-
-      // Support both "hostname" and "search" filter params
-      const searchFilter = search || hostname
+      const searchFilter = (search || hostname) as string | undefined
       if (searchFilter) {
         params.push(`%${searchFilter}%`)
-        query += ` AND (a.hostname ILIKE $${paramIndex} OR a.agent_id ILIKE $${paramIndex} OR a.ip_address ILIKE $${paramIndex})`
-        paramIndex++
+        query += ` AND (d.hostname ILIKE $${i} OR d.mgmt_ip::text ILIKE $${i})`
+        i++
+      }
+      if (status === 'online') {
+        query += ` AND d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'`
+      } else if (status === 'offline') {
+        query += ` AND (d.last_seen_at < NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' OR d.last_seen_at IS NULL)`
       }
 
-      query += ' ORDER BY s.name, a.agent_id'
-
+      query += ' ORDER BY d.network_id, d.hostname'
       const { rows } = await dbPool.query(query, params)
-
-      res.json({
-        success: true,
-        data: rows,
-        count: rows.length,
-      })
+      res.json({ success: true, data: rows, count: rows.length })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Get agent stats — MUST be before /:agentId
+  // Summary stats — MUST be before /:agentId
   router.get('/stats/summary', async (req, res) => {
     try {
       const { rows } = await dbPool.query(`
         SELECT
-          COUNT(*) as total_agents,
-          COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END) as online_agents,
-          COUNT(CASE WHEN last_seen < NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' OR last_seen IS NULL THEN 1 END) as offline_agents,
-          COUNT(DISTINCT server_id) as total_servers,
-          COUNT(DISTINCT agent_group) as total_groups
-        FROM agents
+          COUNT(*)::int                                                                                   AS total_agents,
+          COUNT(CASE WHEN last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int  AS online_agents,
+          COUNT(CASE WHEN last_seen_at <  NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+                      OR last_seen_at IS NULL THEN 1 END)::int                                           AS offline_agents,
+          COUNT(DISTINCT network_id)::int                                                                AS total_servers,
+          COUNT(DISTINCT group_id)::int                                                                  AS total_groups
+        FROM devices
       `)
-
-      res.json({
-        success: true,
-        data: rows[0],
-      })
+      res.json({ success: true, data: rows[0] })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Aggregated agent stats grouped by server — MUST be before /by-server/:serverId
+  // Per-network breakdown — MUST be before /by-server/:serverId
   router.get('/stats/by-server', async (req, res) => {
     try {
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 5, 1), 50)
 
-      // Overall totals
       const { rows: totalRows } = await dbPool.query(`
         SELECT
           COUNT(*)::int AS total,
-          COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online,
-          COUNT(CASE WHEN last_seen < NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' OR last_seen IS NULL THEN 1 END)::int AS offline,
-          COUNT(DISTINCT server_id)::int AS servers
-        FROM agents
+          COUNT(CASE WHEN last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online,
+          COUNT(CASE WHEN last_seen_at <  NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+                      OR last_seen_at IS NULL THEN 1 END)::int AS offline,
+          COUNT(DISTINCT network_id)::int AS servers
+        FROM devices
       `)
 
-      // Per-server breakdown, sorted by most offline
       const { rows: serverRows } = await dbPool.query(`
-        SELECT s.id AS server_id, s.name AS server_name, s.metadata->>'color' AS color,
-          COUNT(*)::int AS total,
-          COUNT(CASE WHEN a.last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online,
-          COUNT(CASE WHEN a.last_seen < NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' OR a.last_seen IS NULL THEN 1 END)::int AS offline
-        FROM agents a
-        JOIN servers s ON a.server_id = s.id
-        GROUP BY s.id, s.name, s.metadata->>'color'
+        SELECT
+          network_id          AS server_id,
+          network_id          AS server_name,
+          NULL::text          AS color,
+          COUNT(*)::int       AS total,
+          COUNT(CASE WHEN last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online,
+          COUNT(CASE WHEN last_seen_at <  NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+                      OR last_seen_at IS NULL THEN 1 END)::int AS offline
+        FROM devices
+        GROUP BY network_id
         ORDER BY offline DESC, total DESC
         LIMIT $1
       `, [limit])
 
-      res.json({
-        success: true,
-        data: {
-          totals: totalRows[0],
-          servers: serverRows,
-        },
-      })
+      res.json({ success: true, data: { totals: totalRows[0], servers: serverRows } })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Recently seen agents (lightweight, no heavy joins)
+  // Recently seen devices
   router.get('/recent', async (req, res) => {
     try {
       const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 6, 1), 50)
-
       const { rows } = await dbPool.query(`
-        SELECT a.agent_id, a.hostname, a.ip_address,
-               CASE WHEN a.last_seen >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online' ELSE 'offline' END AS status,
-               a.last_seen, a.agent_group AS "group", s.name AS server_name
-        FROM agents a
-        JOIN servers s ON a.server_id = s.id
-        ORDER BY a.last_seen DESC NULLS LAST
+        SELECT
+          id::text  AS agent_id,
+          hostname,
+          mgmt_ip::text AS ip_address,
+          CASE WHEN last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online' ELSE 'offline' END AS status,
+          last_seen_at AS last_seen,
+          group_id     AS "group",
+          network_id   AS server_name
+        FROM devices
+        ORDER BY last_seen_at DESC NULLS LAST
         LIMIT $1
       `, [limit])
-
-      res.json({
-        success: true,
-        data: rows,
-      })
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
-    }
-  })
-
-  // Get agents by server — MUST be before /:agentId
-  router.get('/by-server/:serverId', async (req, res) => {
-    try {
-      const { serverId } = req.params
-
-      const { rows } = await dbPool.query(
-        `${AGENT_SELECT} WHERE a.server_id = $1 ORDER BY a.agent_id`,
-        [serverId]
-      )
-
-      res.json({
-        success: true,
-        data: rows,
-        count: rows.length,
-      })
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
-    }
-  })
-
-  // Get single agent by agent_id (searches across all servers)
-  router.get('/:agentId', async (req, res) => {
-    try {
-      const { agentId } = req.params
-
-      const { rows } = await dbPool.query(
-        `${AGENT_SELECT} WHERE a.agent_id = $1`,
-        [agentId]
-      )
-
-      if (rows.length === 0) {
-        return res.status(404).json({ success: false, error: 'Agent not found' })
-      }
-
-      res.json({
-        success: true,
-        data: rows[0],
-      })
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
-    }
-  })
-
-  // Get latest metrics for an agent
-  router.get('/:agentId/metrics/latest', async (req, res) => {
-    try {
-      const { agentId } = req.params
-
-      const { rows } = await dbPool.query(
-        `
-        SELECT DISTINCT ON (metric_type)
-          m.*,
-          s.name as server_name
-        FROM metrics m
-        JOIN servers s ON m.server_id = s.id
-        WHERE m.agent_id = $1
-        ORDER BY metric_type, timestamp DESC
-      `,
-        [agentId]
-      )
-
       res.json({ success: true, data: rows })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Get agent by server ID and agent ID
-  router.get('/:serverId/:agentId', async (req, res) => {
+  // Devices by network — MUST be before /:agentId
+  router.get('/by-server/:serverId', async (req, res) => {
     try {
-      const { serverId, agentId } = req.params
-
       const { rows } = await dbPool.query(
-        `${AGENT_SELECT} WHERE a.server_id = $1 AND a.agent_id = $2`,
-        [serverId, agentId]
+        `${DEVICE_SELECT} WHERE d.network_id = $1 ORDER BY d.hostname`,
+        [req.params.serverId]
       )
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
 
-      if (rows.length === 0) {
-        return res.status(404).json({ success: false, error: 'Agent not found' })
-      }
+  // Latest metrics for a device
+  router.get('/:agentId/metrics/latest', async (req, res) => {
+    try {
+      const { rows } = await dbPool.query(`
+        SELECT DISTINCT ON (metric_name)
+          device_id::text AS agent_id,
+          metric_name     AS metric_type,
+          value,
+          ts              AS timestamp,
+          tag,
+          collector_protocol AS protocol
+        FROM metrics
+        WHERE device_id = $1::uuid
+        ORDER BY metric_name, ts DESC
+      `, [req.params.agentId])
+      res.json({ success: true, data: rows })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
 
-      res.json({
-        success: true,
-        data: rows[0],
-      })
+  // Single device by id
+  router.get('/:agentId', async (req, res) => {
+    try {
+      const { rows } = await dbPool.query(
+        `${DEVICE_SELECT} WHERE d.id = $1::uuid`,
+        [req.params.agentId]
+      )
+      if (rows.length === 0) return res.status(404).json({ success: false, error: 'Device not found' })
+      res.json({ success: true, data: rows[0] })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

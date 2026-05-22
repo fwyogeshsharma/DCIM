@@ -21,42 +21,41 @@ volumes:
 services:
 
   # ── TimescaleDB (PostgreSQL + time-series) ──────────────────────────────────
-  # timescaledb:
-  #   image: timescale/timescaledb:latest-pg15
-  #   container_name: timescaledb
-  #   environment:
-  #     POSTGRES_USER: dcim
-  #     POSTGRES_PASSWORD: dcim_pas
-  #     POSTGRES_DB: dcim_aggregator
-  #   volumes:
-  #     - timescaledb-data:/var/lib/postgresql/data
-  #     - ./simulator/init-multiple-dbs.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql:ro
-  #   ports:
-  #     - "5435:5432"
-  #   networks: [dcim-backend]
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U dcim -d dcim_aggregator"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: timescaledb
+    environment:
+      POSTGRES_USER: dcim
+      POSTGRES_PASSWORD: dcim_pas
+      POSTGRES_DB: dcim_aggregator
+    volumes:
+      - timescaledb-data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    networks: [dcim-backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dcim -d dcim_aggregator"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ── Redis ────────────────────────────────────────────────────────────────────
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: redis
-  #   command: redis-server --appendonly yes
-  #   volumes:
-  #     - redis-data:/data
-  #   ports:
-  #     - "6379:6379"
-  #   networks: [dcim-backend]
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 3
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks: [dcim-backend]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   # ── DCIM Server — Network A ──────────────────────────────────────────────────
   # dcim-server-a:
@@ -157,16 +156,10 @@ services:
       - "3002:3002"
     networks: [dcim-backend]
     depends_on:
-      # timescaledb:
-      #   condition: service_healthy
-      # redis:
-      #   condition: service_healthy
-      # dcim-server-a:
-      #   condition: service_healthy
-      # dcim-server-b:
-      #   condition: service_healthy
-      # dcim-server-c:
-      #   condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
@@ -186,7 +179,7 @@ services:
       VITE_API_BASE: http://localhost:3001
       ORCHESTRATOR_URL: http://orchestrator:8099
     ports:
-      - "5173:5173"   # Vite preview
+      - "8000:8000"   # Vite preview
       - "3001:3001"   # Proxy server
     networks: [dcim-backend]
     depends_on:
@@ -194,7 +187,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5173 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000 || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

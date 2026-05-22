@@ -15,20 +15,16 @@ export function initAgentsSyncWorker(pool: Pool) {
 export function startAgentsSyncWorker() {
   cron.schedule('*/30 * * * * *', async () => {
     try {
-      // Get enabled servers
-      const { rows: servers } = await dbPool.query(
-        'SELECT id, url FROM servers WHERE enabled = true'
-      )
+      let servers: any[] = []
+      try {
+        const result = await dbPool.query('SELECT id, url FROM servers WHERE enabled = true')
+        servers = result.rows
+      } catch { return } // servers table removed in new schema
 
-      if (servers.length === 0) {
-        return
-      }
+      if (servers.length === 0) return
 
-      // Sync agents from all servers in parallel
       await Promise.all(
-        servers.map((server) =>
-          syncService.syncAgentsFromServer(server.id, server.url)
-        )
+        servers.map((server) => syncService.syncAgentsFromServer(server.id, server.url))
       )
     } catch (error: any) {
       logger.error('Agents sync worker error:', error.message)

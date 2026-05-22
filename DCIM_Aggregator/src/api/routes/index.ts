@@ -8,50 +8,52 @@ import { createMetricsRouter } from './metrics'
 import { createAlertsRouter } from './alerts'
 import { addSSEClient, removeSSEClient } from '../../events/sseEmitter'
 
+const HEARTBEAT_TIMEOUT_SECONDS = 300
+
 export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClientType) {
   const cacheService = new CacheService(redisClient)
 
-  // SSE event stream — UI subscribes here for real-time trap/alert push
+  // SSE event stream
   app.get('/api/v1/events', (req, res) => {
     const clientId = addSSEClient(res)
     req.on('close', () => removeSSEClient(clientId))
   })
 
-  // Mount API routes
-  app.use('/api/v1/servers', createServersRouter(dbPool, cacheService))
-  app.use('/api/v1/agents', createAgentsRouter(dbPool))
-  app.use('/api/v1/metrics', createMetricsRouter(dbPool, cacheService))
-  app.use('/api/v1/alerts', createAlertsRouter(dbPool))
+  app.use('/api/v1/servers',  createServersRouter(dbPool, cacheService))
+  app.use('/api/v1/agents',   createAgentsRouter(dbPool))
+  app.use('/api/v1/metrics',  createMetricsRouter(dbPool, cacheService))
+  app.use('/api/v1/alerts',   createAlertsRouter(dbPool))
 
-  // Dashboard stats endpoint
+  // ── Dashboard stats ────────────────────────────────────────────────────────
   app.get('/api/v1/dashboard/stats', async (req, res) => {
     try {
-      const [serversResult, agentsResult, alertsResult] = await Promise.all([
-        dbPool.query('SELECT COUNT(*) as count FROM servers WHERE enabled = true'),
+      const [devicesResult, alertsResult] = await Promise.all([
         dbPool.query(`
           SELECT
-            COUNT(*) as total,
-            COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '300 seconds' THEN 1 END) as online,
-            COUNT(CASE WHEN last_seen < NOW() - INTERVAL '300 seconds' OR last_seen IS NULL THEN 1 END) as offline
-          FROM agents
+            COUNT(*)::int AS total,
+            COUNT(CASE WHEN last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int  AS online,
+            COUNT(CASE WHEN last_seen_at <  NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+                        OR last_seen_at IS NULL THEN 1 END)::int AS offline,
+            COUNT(DISTINCT network_id)::int AS networks
+          FROM devices
         `),
         dbPool.query(`
-          SELECT COUNT(*) as count
-          FROM alerts
-          WHERE resolved = false
+          SELECT COUNT(*)::int AS count
+          FROM events
+          WHERE COALESCE((event_payload->>'resolved')::boolean, false) = false
         `),
       ])
 
       res.json({
         success: true,
         data: {
-          servers: parseInt(serversResult.rows[0].count),
+          servers: devicesResult.rows[0].networks,
           agents: {
-            total: parseInt(agentsResult.rows[0].total),
-            online: parseInt(agentsResult.rows[0].online),
-            offline: parseInt(agentsResult.rows[0].offline),
+            total:   devicesResult.rows[0].total,
+            online:  devicesResult.rows[0].online,
+            offline: devicesResult.rows[0].offline,
           },
-          activeAlerts: parseInt(alertsResult.rows[0].count),
+          activeAlerts: alertsResult.rows[0].count,
         },
       })
     } catch (error: any) {
@@ -59,41 +61,51 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     }
   })
 
-  // Full dashboard data endpoint
+  // ── Full dashboard ─────────────────────────────────────────────────────────
   app.get('/api/v1/dashboard', async (req, res) => {
     try {
-      const [agentsResult, alertsResult, metricsResult, recentAlertsResult] = await Promise.all([
+      const [devicesResult, alertsResult, recentMetricsResult, recentAlertsResult] = await Promise.all([
         dbPool.query(`
           SELECT
-            COUNT(*) as total_agents,
-            COUNT(CASE WHEN last_seen >= NOW() - INTERVAL '300 seconds' THEN 1 END) as online_agents,
-            COUNT(CASE WHEN last_seen < NOW() - INTERVAL '300 seconds' OR last_seen IS NULL THEN 1 END) as offline_agents
-          FROM agents
+            COUNT(*)::int AS total_agents,
+            COUNT(CASE WHEN last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online_agents,
+            COUNT(CASE WHEN last_seen_at <  NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+                        OR last_seen_at IS NULL THEN 1 END)::int AS offline_agents
+          FROM devices
         `),
         dbPool.query(`
           SELECT
-            COUNT(*) as total_alerts,
-            COUNT(CASE WHEN LOWER(severity) = 'critical' AND resolved = false THEN 1 END) as critical_alerts
-          FROM alerts
-          WHERE timestamp >= NOW() - INTERVAL '24 hours'
+            COUNT(*)::int AS total_alerts,
+            COUNT(CASE WHEN LOWER(severity) = 'critical'
+                        AND COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int AS critical_alerts
+          FROM events
+          WHERE ts >= NOW() - INTERVAL '24 hours'
         `),
         dbPool.query(`
-          SELECT m.*, s.name as server_name
-          FROM metrics m
-          JOIN servers s ON m.server_id = s.id
-          ORDER BY m.timestamp DESC
+          SELECT
+            device_id::text AS agent_id,
+            metric_name     AS metric_type,
+            value,
+            ts              AS timestamp,
+            tag
+          FROM metrics
+          ORDER BY ts DESC
           LIMIT 50
         `),
         dbPool.query(`
-          SELECT a.*,
-            COALESCE(a.threshold_value, 0) AS threshold,
-            COALESCE(a.actual_value, 0) AS value,
-            UPPER(a.severity) AS severity,
-            s.name as server_name
-          FROM alerts a
-          JOIN servers s ON a.server_id = s.id
-          WHERE a.resolved = false
-          ORDER BY a.timestamp DESC
+          SELECT
+            e.id::text                                          AS id,
+            e.device_id::text                                   AS agent_id,
+            e.ts                                                AS timestamp,
+            e.event_name                                        AS metric_type,
+            COALESCE(e.event_payload->>'message', e.event_name) AS message,
+            UPPER(e.severity)                                   AS severity,
+            COALESCE((e.event_payload->>'resolved')::boolean, false) AS resolved,
+            d.hostname                                          AS server_name
+          FROM events e
+          LEFT JOIN devices d ON d.id = e.device_id
+          WHERE COALESCE((e.event_payload->>'resolved')::boolean, false) = false
+          ORDER BY e.ts DESC
           LIMIT 20
         `),
       ])
@@ -101,12 +113,12 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       res.json({
         success: true,
         data: {
-          total_agents: parseInt(agentsResult.rows[0].total_agents),
-          online_agents: parseInt(agentsResult.rows[0].online_agents),
-          total_alerts: parseInt(alertsResult.rows[0].total_alerts),
-          critical_alerts: parseInt(alertsResult.rows[0].critical_alerts),
-          recent_metrics: metricsResult.rows,
-          recent_alerts: recentAlertsResult.rows,
+          total_agents:    devicesResult.rows[0].total_agents,
+          online_agents:   devicesResult.rows[0].online_agents,
+          total_alerts:    alertsResult.rows[0].total_alerts,
+          critical_alerts: alertsResult.rows[0].critical_alerts,
+          recent_metrics:  recentMetricsResult.rows,
+          recent_alerts:   recentAlertsResult.rows,
         },
       })
     } catch (error: any) {
@@ -114,163 +126,155 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     }
   })
 
-  // SNMP metrics query endpoint
+  // ── SNMP metrics ───────────────────────────────────────────────────────────
   app.get('/api/v1/snmp/metrics', async (req, res) => {
     try {
-      const { server_id, agent_id, device_name, limit = 1000 } = req.query
-
+      const { agent_id, device_name, limit = 1000 } = req.query
       const safeLimit = Math.max(1, Math.min(parseInt(String(limit), 10) || 1000, 10000))
-
       let query = `
-        SELECT sm.*, s.name as server_name
-        FROM snmp_metrics sm
-        JOIN servers s ON sm.server_id = s.id
-        WHERE sm.timestamp >= NOW() - INTERVAL '24 hours'
+        SELECT
+          m.device_id::text  AS agent_id,
+          m.ts               AS timestamp,
+          m.metric_name,
+          m.tag,
+          m.value,
+          d.hostname         AS device_name,
+          d.mgmt_ip::text    AS device_ip
+        FROM metrics m
+        LEFT JOIN devices d ON d.id = m.device_id
+        WHERE m.collector_protocol = 'SNMP'
+          AND m.ts >= NOW() - INTERVAL '24 hours'
       `
       const params: any[] = []
-      let paramIndex = 1
-
-      if (server_id) {
-        params.push(server_id)
-        query += ` AND sm.server_id = $${paramIndex++}`
-      }
-
-      if (agent_id) {
-        params.push(agent_id)
-        query += ` AND sm.agent_id = $${paramIndex++}`
-      }
-
-      if (device_name) {
-        params.push(device_name)
-        query += ` AND sm.device_name = $${paramIndex++}`
-      }
-
+      let i = 1
+      if (agent_id)    { params.push(agent_id);    query += ` AND m.device_id = $${i++}::uuid` }
+      if (device_name) { params.push(device_name); query += ` AND d.hostname = $${i++}` }
       params.push(safeLimit)
-      query += ` ORDER BY sm.timestamp DESC LIMIT $${paramIndex++}`
-
+      query += ` ORDER BY m.ts DESC LIMIT $${i++}`
       const { rows } = await dbPool.query(query, params)
-
       res.json({ success: true, data: rows, count: rows.length })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // SNMP traps listing
+  // ── SNMP devices ───────────────────────────────────────────────────────────
+  app.get('/api/v1/snmp/devices', async (req, res) => {
+    try {
+      const { agent_id } = req.query
+      let query = `
+        SELECT DISTINCT ON (d.mgmt_ip)
+          d.id::text       AS id,
+          d.hostname       AS device_name,
+          d.mgmt_ip::text  AS device_ip,
+          d.network_id     AS agent_id,
+          d.network_id     AS server_name,
+          d.last_seen_at   AS last_seen
+        FROM devices d
+        WHERE d.snmp_enabled = true
+      `
+      const params: any[] = []
+      if (agent_id) { params.push(agent_id); query += ` AND d.network_id = $1` }
+      query += ` ORDER BY d.mgmt_ip, d.last_seen_at DESC NULLS LAST`
+      const { rows } = await dbPool.query(query, params)
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // ── SNMP traps ─────────────────────────────────────────────────────────────
   app.get('/api/v1/traps', async (req, res) => {
     try {
-      const { server_id, source_ip, device_name, severity, resolved, limit = 200 } = req.query
-      const conditions: string[] = []
+      const { source_ip, device_name, severity, resolved, limit = 200 } = req.query
+      const conditions: string[] = [`e.kind = 'trap'`]
       const params: any[] = []
       let i = 1
 
-      if (server_id) { params.push(server_id); conditions.push(`server_id = $${i++}::uuid`) }
-      if (source_ip) { params.push(source_ip); conditions.push(`source_ip = $${i++}`) }
-      if (device_name) { params.push(`%${device_name}%`); conditions.push(`device_name ILIKE $${i++}`) }
-      if (severity) { params.push(String(severity).toLowerCase()); conditions.push(`LOWER(severity) = $${i++}`) }
-      if (resolved !== undefined) { params.push(resolved === 'true'); conditions.push(`resolved = $${i++}`) }
+      if (source_ip)  { params.push(source_ip);                  conditions.push(`e.source_ip = $${i++}::inet`) }
+      if (device_name){ params.push(`%${device_name}%`);         conditions.push(`e.source_hostname ILIKE $${i++}`) }
+      if (severity)   { params.push(String(severity).toLowerCase()); conditions.push(`LOWER(e.severity) = $${i++}`) }
+      if (resolved !== undefined) {
+        params.push(resolved === 'true'); conditions.push(`COALESCE((e.event_payload->>'resolved')::boolean, false) = $${i++}`)
+      }
 
-      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
       params.push(Math.min(parseInt(String(limit)) || 200, 2000))
-
-      const { rows } = await dbPool.query(
-        `SELECT * FROM snmp_traps ${where} ORDER BY timestamp DESC LIMIT $${i}`,
-        params
-      )
+      const { rows } = await dbPool.query(`
+        SELECT
+          e.id::text           AS id,
+          e.device_id::text    AS device_id,
+          e.ts                 AS timestamp,
+          e.event_name,
+          e.severity,
+          e.trap_oid,
+          e.source_ip::text    AS source_ip,
+          e.source_hostname    AS device_name,
+          e.event_payload,
+          COALESCE((e.event_payload->>'resolved')::boolean, false) AS resolved
+        FROM events e
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY e.ts DESC LIMIT $${i}
+      `, params)
       res.json({ success: true, data: rows, count: rows.length })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Trap frequency timeline — hourly buckets over the last N hours
+  // ── Trap timeline ──────────────────────────────────────────────────────────
   app.get('/api/v1/traps/timeline', async (req, res) => {
     try {
-      const { source_ip, server_id, hours = 24 } = req.query
+      const { source_ip, hours = 24 } = req.query
       const safeHours = Math.min(parseInt(String(hours)) || 24, 720)
-      const conditions: string[] = [`timestamp >= NOW() - INTERVAL '${safeHours} hours'`]
+      const conditions: string[] = [
+        `kind = 'trap'`,
+        `ts >= NOW() - INTERVAL '${safeHours} hours'`,
+      ]
       const params: any[] = []
       let i = 1
-
-      if (source_ip) { params.push(source_ip); conditions.push(`source_ip = $${i++}`) }
-      if (server_id) { params.push(server_id); conditions.push(`server_id = $${i++}::uuid`) }
+      if (source_ip) { params.push(source_ip); conditions.push(`source_ip = $${i++}::inet`) }
 
       const { rows } = await dbPool.query(`
         SELECT
-          date_trunc('hour', timestamp) AS bucket,
-          COUNT(*)::int AS total,
-          COUNT(CASE WHEN LOWER(severity) = 'critical' THEN 1 END)::int AS critical,
-          COUNT(CASE WHEN LOWER(severity) = 'warning'  THEN 1 END)::int AS warning,
-          COUNT(CASE WHEN LOWER(severity) = 'info'     THEN 1 END)::int AS info
-        FROM snmp_traps
+          date_trunc('hour', ts)                                                            AS bucket,
+          COUNT(*)::int                                                                     AS total,
+          COUNT(CASE WHEN LOWER(severity) = 'critical'                       THEN 1 END)::int AS critical,
+          COUNT(CASE WHEN LOWER(severity) IN ('major','warning')             THEN 1 END)::int AS warning,
+          COUNT(CASE WHEN LOWER(severity) IN ('minor','info','informational') THEN 1 END)::int AS info
+        FROM events
         WHERE ${conditions.join(' AND ')}
         GROUP BY bucket
         ORDER BY bucket ASC
       `, params)
-
       res.json({ success: true, data: rows })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Topology nodes — online/offline computed from latest reachable metric in snmp_metrics
+  // ── Topology nodes ─────────────────────────────────────────────────────────
   app.get('/api/v1/topology/nodes', async (req, res) => {
     try {
       const { server_id } = req.query
-      const HEARTBEAT_TIMEOUT_SECONDS = 1800 // 30 min = 2x default walker interval
-
       let query = `
-        SELECT DISTINCT ON (sm.server_id, sm.device_host)
-          sm.server_id,
-          sm.device_name,
-          sm.device_host,
-          sm.timestamp AS last_seen,
-          s.name AS server_name,
+        SELECT
+          id::text           AS id,
+          hostname           AS device_name,
+          mgmt_ip::text      AS device_host,
+          last_seen_at       AS last_seen,
+          network_id         AS server_name,
+          device_type,
+          vendor,
           CASE
-            WHEN sm.value = 1 AND sm.timestamp >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online'
+            WHEN is_reachable AND last_seen_at >= NOW() - INTERVAL '1800 seconds' THEN 'online'
             ELSE 'offline'
           END AS status
-        FROM snmp_metrics sm
-        JOIN servers s ON sm.server_id = s.id
-        WHERE sm.agent_id = 'snmp-walker' AND sm.metric_name = 'reachable'
-      `
-      const params: any[] = []
-
-      if (server_id) {
-        params.push(server_id)
-        query += ` AND sm.server_id = $1`
-      }
-
-      query += ` ORDER BY sm.server_id, sm.device_host, sm.timestamp DESC`
-
-      const { rows } = await dbPool.query(query, params)
-      res.json({ success: true, data: rows, count: rows.length })
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message })
-    }
-  })
-
-  // Topology links endpoint
-  app.get('/api/v1/topology/links', async (req, res) => {
-    try {
-      const { server_id } = req.query
-
-      let query = `
-        SELECT tl.*, s.name AS server_name
-        FROM topology_links tl
-        JOIN servers s ON tl.server_id = s.id::text
+        FROM device_inventory
         WHERE 1=1
       `
       const params: any[] = []
-
-      if (server_id) {
-        params.push(server_id)
-        query += ` AND tl.server_id = $1`
-      }
-
-      query += ` ORDER BY tl.server_id, tl.source_depth, tl.source_ip`
-
+      if (server_id) { params.push(server_id); query += ` AND network_id = $1` }
+      query += ` ORDER BY device_type, hostname`
       const { rows } = await dbPool.query(query, params)
       res.json({ success: true, data: rows, count: rows.length })
     } catch (error: any) {
@@ -278,45 +282,29 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     }
   })
 
-  // SNMP devices listing endpoint
-  app.get('/api/v1/snmp/devices', async (req, res) => {
+  // ── Topology links ─────────────────────────────────────────────────────────
+  app.get('/api/v1/topology/links', async (req, res) => {
     try {
-      const { server_id, agent_id } = req.query
-
-      let query = `
+      const { rows } = await dbPool.query(`
         SELECT
-          sm.device_name,
-          sm.device_ip,
-          sm.agent_id,
-          sm.server_id,
-          s.name as server_name,
-          MAX(sm.timestamp) as last_seen
-        FROM snmp_metrics sm
-        JOIN servers s ON sm.server_id = s.id
-      `
-      const conditions: string[] = []
-      const params: any[] = []
-      let paramIndex = 1
-
-      if (server_id) {
-        params.push(server_id)
-        conditions.push(`sm.server_id = $${paramIndex++}`)
-      }
-
-      if (agent_id) {
-        params.push(agent_id)
-        conditions.push(`sm.agent_id = $${paramIndex++}`)
-      }
-
-      if (conditions.length > 0) {
-        query += ` WHERE ${conditions.join(' AND ')}`
-      }
-
-      query += ` GROUP BY sm.device_name, sm.device_ip, sm.agent_id, sm.server_id, s.name`
-      query += ` ORDER BY sm.device_name, sm.device_ip`
-
-      const { rows } = await dbPool.query(query, params)
-
+          id,
+          layer,
+          protocol,
+          is_active,
+          link_speed_mbps,
+          link_type,
+          updated_at       AS last_seen,
+          src_mgmt_ip::text AS source_ip,
+          src_hostname      AS source_name,
+          dst_mgmt_ip::text AS target_ip,
+          dst_hostname      AS target_name,
+          src_port_name     AS source_port,
+          dst_port_name     AS target_port,
+          src_device_type   AS src_type,
+          dst_device_type   AS dst_type
+        FROM topology_view
+        ORDER BY src_hostname, dst_hostname
+      `)
       res.json({ success: true, data: rows, count: rows.length })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })

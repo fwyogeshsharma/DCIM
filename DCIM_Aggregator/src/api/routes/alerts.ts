@@ -1,266 +1,228 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
 
-// Common SELECT with UI-friendly aliases
+// Maps events row to the Alert shape the UI expects.
+// Resolution state is stored in event_payload->>'resolved'.
 const ALERT_SELECT = `
-  SELECT a.*,
-    COALESCE(a.threshold_value, 0) AS threshold,
-    COALESCE(a.actual_value, 0) AS value,
-    UPPER(a.severity) AS severity,
-    s.name AS server_name
-  FROM alerts a
-  JOIN servers s ON a.server_id = s.id
+  SELECT
+    e.id::text                                                            AS id,
+    e.device_id::text                                                     AS agent_id,
+    e.ts                                                                  AS timestamp,
+    e.event_name                                                          AS metric_type,
+    COALESCE(e.event_payload->>'message', e.event_name)                   AS message,
+    UPPER(e.severity)                                                     AS severity,
+    e.kind,
+    e.source_ip::text                                                     AS source_ip,
+    e.source_hostname,
+    e.trap_oid,
+    COALESCE((e.event_payload->>'resolved')::boolean, false)              AS resolved,
+    e.event_payload->>'resolved_at'                                       AS resolved_at,
+    COALESCE((e.event_payload->>'threshold_value')::float, 0)             AS threshold_value,
+    COALESCE((e.event_payload->>'actual_value')::float, 0)                AS actual_value,
+    COALESCE((e.event_payload->>'threshold_value')::float, 0)             AS threshold,
+    COALESCE((e.event_payload->>'actual_value')::float, 0)                AS value,
+    d.hostname                                                            AS server_name,
+    e.ts                                                                  AS created_at
+  FROM events e
+  LEFT JOIN devices d ON d.id = e.device_id
 `
 
 export function createAlertsRouter(dbPool: Pool): Router {
   const router = Router()
 
-  // Get alerts (with pagination via offset + limit)
+  // List alerts / events
   router.get('/', async (req, res) => {
     try {
-      const { server_id, agent_id, severity, resolved, limit = 20, offset = 0 } = req.query
-
+      const { agent_id, severity, resolved, limit = 20, offset = 0 } = req.query
       let query = `${ALERT_SELECT} WHERE 1=1`
-      let countQuery = `SELECT COUNT(*) as total FROM alerts a JOIN servers s ON a.server_id = s.id WHERE 1=1`
+      let countQuery = `SELECT COUNT(*) AS total FROM events e WHERE 1=1`
       const params: any[] = []
       const countParams: any[] = []
-      let paramIndex = 1
-      let countParamIndex = 1
-
-      if (server_id) {
-        params.push(server_id)
-        countParams.push(server_id)
-        query += ` AND a.server_id = $${paramIndex++}`
-        countQuery += ` AND a.server_id = $${countParamIndex++}`
-      }
+      let i = 1
 
       if (agent_id) {
-        params.push(agent_id)
-        countParams.push(agent_id)
-        query += ` AND a.agent_id = $${paramIndex++}`
-        countQuery += ` AND a.agent_id = $${countParamIndex++}`
+        params.push(agent_id);      query      += ` AND e.device_id = $${i}::uuid`
+        countParams.push(agent_id); countQuery += ` AND e.device_id = $${i}::uuid`
+        i++
       }
-
       if (severity) {
-        params.push(String(severity).toLowerCase())
-        countParams.push(String(severity).toLowerCase())
-        query += ` AND LOWER(a.severity) = $${paramIndex++}`
-        countQuery += ` AND LOWER(a.severity) = $${countParamIndex++}`
+        params.push(String(severity).toLowerCase());      query      += ` AND LOWER(e.severity) = $${i}`
+        countParams.push(String(severity).toLowerCase()); countQuery += ` AND LOWER(e.severity) = $${i}`
+        i++
       }
-
       if (resolved !== undefined) {
-        params.push(resolved === 'true')
-        countParams.push(resolved === 'true')
-        query += ` AND a.resolved = $${paramIndex++}`
-        countQuery += ` AND a.resolved = $${countParamIndex++}`
+        const isResolved = resolved === 'true'
+        params.push(isResolved);      query      += ` AND COALESCE((e.event_payload->>'resolved')::boolean, false) = $${i}`
+        countParams.push(isResolved); countQuery += ` AND COALESCE((e.event_payload->>'resolved')::boolean, false) = $${i}`
+        i++
       }
 
-      const safeLimit = Math.max(1, Math.min(parseInt(String(limit), 10) || 20, 10000))
-      const safeOffset = Math.max(0, parseInt(String(offset), 10) || 0)
+      const safeLimit  = Math.max(1, Math.min(parseInt(String(limit),  10) || 20, 10000))
+      const safeOffset = Math.max(0,            parseInt(String(offset), 10) || 0)
 
-      params.push(safeLimit)
-      query += ` ORDER BY a.timestamp DESC LIMIT $${paramIndex++}`
-      params.push(safeOffset)
-      query += ` OFFSET $${paramIndex++}`
+      params.push(safeLimit);  query += ` ORDER BY e.ts DESC LIMIT $${i++}`
+      params.push(safeOffset); query += ` OFFSET $${i++}`
 
       const [{ rows }, countResult] = await Promise.all([
         dbPool.query(query, params),
         dbPool.query(countQuery, countParams),
       ])
-
       const total = parseInt(countResult.rows[0].total, 10)
-
-      res.json({
-        success: true,
-        data: rows,
-        count: rows.length,
-        total,
-        hasMore: safeOffset + rows.length < total,
-      })
+      res.json({ success: true, data: rows, count: rows.length, total, hasMore: safeOffset + rows.length < total })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Get alert counts per agent
+  // Alert counts per device
   router.get('/counts', async (req, res) => {
     try {
       const { rows } = await dbPool.query(`
         SELECT
-          a.agent_id,
-          ag.hostname,
-          s.name AS server_name,
-          COUNT(*) AS total,
-          COUNT(CASE WHEN a.resolved = false THEN 1 END) AS active,
-          COUNT(CASE WHEN LOWER(a.severity) = 'critical' AND a.resolved = false THEN 1 END) AS critical,
-          COUNT(CASE WHEN LOWER(a.severity) = 'warning' AND a.resolved = false THEN 1 END) AS warning,
-          COUNT(CASE WHEN LOWER(a.severity) = 'info' AND a.resolved = false THEN 1 END) AS info
-        FROM alerts a
-        JOIN servers s ON a.server_id = s.id
-        LEFT JOIN agents ag ON a.agent_id = ag.agent_id AND a.server_id = ag.server_id
-        GROUP BY a.agent_id, ag.hostname, s.name
-        ORDER BY active DESC, a.agent_id
+          e.device_id::text AS agent_id,
+          d.hostname,
+          d.network_id      AS server_name,
+          COUNT(*)                                                                                        AS total,
+          COUNT(CASE WHEN COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END)   AS active,
+          COUNT(CASE WHEN LOWER(e.severity) = 'critical' AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS critical,
+          COUNT(CASE WHEN LOWER(e.severity) IN ('major','warning') AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS warning,
+          COUNT(CASE WHEN LOWER(e.severity) IN ('minor','info','informational') AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS info
+        FROM events e
+        LEFT JOIN devices d ON d.id = e.device_id
+        GROUP BY e.device_id, d.hostname, d.network_id
+        ORDER BY active DESC, e.device_id
       `)
-
-      res.json({
-        success: true,
-        data: rows,
-      })
+      res.json({ success: true, data: rows })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Get alert stats
+  // Alert stats
   router.get('/stats', async (req, res) => {
     try {
       const { rows } = await dbPool.query(`
         SELECT
-          COUNT(*) as total_alerts,
-          COUNT(CASE WHEN resolved = false THEN 1 END) as active_alerts,
-          COUNT(CASE WHEN LOWER(severity) = 'critical' AND resolved = false THEN 1 END) as critical_alerts,
-          COUNT(CASE WHEN LOWER(severity) = 'warning' AND resolved = false THEN 1 END) as warning_alerts,
-          COUNT(CASE WHEN LOWER(severity) = 'info' AND resolved = false THEN 1 END) as info_alerts
-        FROM alerts
-        WHERE timestamp >= NOW() - INTERVAL '24 hours'
+          COUNT(*) AS total_alerts,
+          COUNT(CASE WHEN COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)   AS active_alerts,
+          COUNT(CASE WHEN LOWER(severity) = 'critical'                    AND COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS critical_alerts,
+          COUNT(CASE WHEN LOWER(severity) IN ('major','warning')          AND COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS warning_alerts,
+          COUNT(CASE WHEN LOWER(severity) IN ('minor','info','informational') AND COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS info_alerts
+        FROM events
+        WHERE ts >= NOW() - INTERVAL '24 hours'
       `)
-
-      res.json({
-        success: true,
-        data: rows[0],
-      })
+      res.json({ success: true, data: rows[0] })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Get alerts by server
+  // Alerts by network (server)
   router.get('/by-server/:serverId', async (req, res) => {
     try {
-      const { serverId } = req.params
-
       const { rows } = await dbPool.query(
-        `${ALERT_SELECT} WHERE a.server_id = $1 ORDER BY a.timestamp DESC LIMIT 1000`,
-        [serverId]
+        `${ALERT_SELECT} JOIN devices dj ON dj.id = e.device_id AND dj.network_id = $1
+         ORDER BY e.ts DESC LIMIT 1000`,
+        [req.params.serverId]
       )
-
-      res.json({
-        success: true,
-        data: rows,
-        count: rows.length,
-      })
+      res.json({ success: true, data: rows, count: rows.length })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Get deduplicated latest alerts (one per agent+metric_type+severity)
+  // Deduplicated latest active alerts
   router.get('/latest', async (req, res) => {
     try {
       const { agent_id, severity, limit = 100, offset = 0 } = req.query
-
-      let whereClause = 'WHERE a.resolved = false'
+      let whereClause = `WHERE COALESCE((e.event_payload->>'resolved')::boolean, false) = false`
       const params: any[] = []
-      let paramIndex = 1
+      let i = 1
 
-      if (agent_id) {
-        params.push(agent_id)
-        whereClause += ` AND a.agent_id = $${paramIndex++}`
-      }
+      if (agent_id) { params.push(agent_id); whereClause += ` AND e.device_id = $${i++}::uuid` }
+      if (severity) { params.push(String(severity).toLowerCase()); whereClause += ` AND LOWER(e.severity) = $${i++}` }
 
-      if (severity) {
-        params.push(String(severity).toLowerCase())
-        whereClause += ` AND LOWER(a.severity) = $${paramIndex++}`
-      }
-
-      const safeLimit = Math.max(1, Math.min(parseInt(String(limit), 10) || 100, 10000))
-      const safeOffset = Math.max(0, parseInt(String(offset), 10) || 0)
+      const safeLimit  = Math.max(1, Math.min(parseInt(String(limit),  10) || 100, 10000))
+      const safeOffset = Math.max(0,            parseInt(String(offset), 10) || 0)
 
       const query = `
-        WITH latest AS (
-          SELECT a.*,
+        WITH deduped AS (
+          SELECT e.*,
             ROW_NUMBER() OVER (
-              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
-              ORDER BY a.timestamp DESC
-            ) as rn,
+              PARTITION BY e.device_id, e.event_name, LOWER(e.severity)
+              ORDER BY e.ts DESC
+            ) AS rn,
             COUNT(*) OVER (
-              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
-            )::int as occurrence_count,
-            MIN(a.timestamp) OVER (
-              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
-            ) as first_seen
-          FROM alerts a
+              PARTITION BY e.device_id, e.event_name, LOWER(e.severity)
+            )::int AS occurrence_count,
+            MIN(e.ts) OVER (
+              PARTITION BY e.device_id, e.event_name, LOWER(e.severity)
+            ) AS first_seen
+          FROM events e
           ${whereClause}
         )
-        SELECT l.id, l.server_id, l.agent_id, l.message, l.metric_type,
-          COALESCE(l.threshold_value, 0) AS threshold,
-          COALESCE(l.actual_value, 0) AS value,
-          UPPER(l.severity) AS severity,
-          l.timestamp, l.created_at,
-          s.name AS server_name,
-          l.occurrence_count,
-          l.first_seen
-        FROM latest l
-        JOIN servers s ON l.server_id = s.id
-        WHERE l.rn = 1
-        ORDER BY l.timestamp DESC
-        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+        SELECT
+          dd.id::text                                                        AS id,
+          dd.device_id::text                                                 AS agent_id,
+          dd.ts                                                              AS timestamp,
+          dd.event_name                                                      AS metric_type,
+          COALESCE(dd.event_payload->>'message', dd.event_name)             AS message,
+          UPPER(dd.severity)                                                 AS severity,
+          COALESCE((dd.event_payload->>'threshold_value')::float, 0)        AS threshold,
+          COALESCE((dd.event_payload->>'actual_value')::float, 0)           AS value,
+          dd.ts                                                              AS created_at,
+          d.hostname                                                         AS server_name,
+          dd.occurrence_count,
+          dd.first_seen
+        FROM deduped dd
+        LEFT JOIN devices d ON d.id = dd.device_id
+        WHERE dd.rn = 1
+        ORDER BY dd.ts DESC
+        LIMIT $${i++} OFFSET $${i++}
       `
-
       params.push(safeLimit, safeOffset)
 
-      // Count query for pagination
       const countQuery = `
-        WITH latest AS (
-          SELECT a.*,
+        WITH deduped AS (
+          SELECT e.*,
             ROW_NUMBER() OVER (
-              PARTITION BY a.agent_id, a.server_id, a.metric_type, LOWER(a.severity)
-              ORDER BY a.timestamp DESC
-            ) as rn
-          FROM alerts a
+              PARTITION BY e.device_id, e.event_name, LOWER(e.severity)
+              ORDER BY e.ts DESC
+            ) AS rn
+          FROM events e
           ${whereClause}
         )
-        SELECT COUNT(*)::int as total FROM latest WHERE rn = 1
+        SELECT COUNT(*)::int AS total FROM deduped WHERE rn = 1
       `
 
       const [{ rows }, countResult] = await Promise.all([
         dbPool.query(query, params),
-        dbPool.query(countQuery, params.slice(0, paramIndex - 3)), // exclude limit/offset
+        dbPool.query(countQuery, params.slice(0, i - 3)),
       ])
-
       const total = countResult.rows[0].total
-
-      res.json({
-        success: true,
-        data: rows,
-        count: rows.length,
-        total,
-        hasMore: safeOffset + rows.length < total,
-      })
+      res.json({ success: true, data: rows, count: rows.length, total, hasMore: safeOffset + rows.length < total })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
   })
 
-  // Bulk resolve alerts — MUST be before /:alertId/resolve
+  // Bulk resolve — MUST be before /:alertId/resolve
   router.post('/bulk/resolve', async (req, res) => {
     try {
       const { alert_ids } = req.body
-
       if (!Array.isArray(alert_ids) || alert_ids.length === 0) {
         return res.status(400).json({ success: false, error: 'alert_ids array is required' })
       }
-
-      const placeholders = alert_ids.map((_, i) => `$${i + 1}`).join(', ')
+      const placeholders = alert_ids.map((_, idx) => `$${idx + 1}::uuid`).join(', ')
       const { rowCount } = await dbPool.query(
-        `UPDATE alerts SET resolved = true, resolved_at = NOW() WHERE id IN (${placeholders}) AND resolved = false`,
+        `UPDATE events
+         SET event_payload = COALESCE(event_payload, '{}') ||
+           jsonb_build_object('resolved', true, 'resolved_at', now()::text)
+         WHERE id IN (${placeholders})
+           AND COALESCE((event_payload->>'resolved')::boolean, false) = false`,
         alert_ids
       )
-
-      res.json({
-        success: true,
-        data: { resolved_count: rowCount },
-      })
+      res.json({ success: true, data: { resolved_count: rowCount } })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
@@ -269,21 +231,18 @@ export function createAlertsRouter(dbPool: Pool): Router {
   // Resolve single alert
   router.post('/:alertId/resolve', async (req, res) => {
     try {
-      const { alertId } = req.params
-
       const { rowCount } = await dbPool.query(
-        'UPDATE alerts SET resolved = true, resolved_at = NOW() WHERE id = $1 AND resolved = false',
-        [alertId]
+        `UPDATE events
+         SET event_payload = COALESCE(event_payload, '{}') ||
+           jsonb_build_object('resolved', true, 'resolved_at', now()::text)
+         WHERE id = $1::uuid
+           AND COALESCE((event_payload->>'resolved')::boolean, false) = false`,
+        [req.params.alertId]
       )
-
       if (rowCount === 0) {
         return res.status(404).json({ success: false, error: 'Alert not found or already resolved' })
       }
-
-      res.json({
-        success: true,
-        message: 'Alert resolved',
-      })
+      res.json({ success: true, message: 'Alert resolved' })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
