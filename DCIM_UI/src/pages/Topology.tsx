@@ -11,7 +11,7 @@ import { computeLayeredLayout } from '@/lib/topology-layered'
 import { useSSE } from '@/hooks/useSSE'
 
 // ── Toggle this to use 500+ node mock data for testing ──
-const USE_MOCK_DATA = falseand
+const USE_MOCK_DATA = false
 
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
