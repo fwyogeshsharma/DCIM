@@ -25,8 +25,8 @@ COPY vite.config.ts /app/vite.config.ts
 ENV DCIM_SERVER_URL=http://dcim-server-a:8080
 ENV PROXY_PORT=3001
 
-EXPOSE 5173
+EXPOSE 8000
 EXPOSE 3001
 
 # Start proxy (background) + Vite preview (foreground)
-CMD ["sh", "-c", "node proxy-server.js & npx vite preview --host 0.0.0.0 --port 5173 --outDir dist"]
+CMD ["sh", "-c", "node proxy-server.js & npx vite preview --host 0.0.0.0 --port 8000 --outDir dist"]
