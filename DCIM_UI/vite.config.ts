@@ -19,6 +19,7 @@ export default defineConfig({
   },
   preview: {
     port: 5173,
+    allowedHosts: 'all',
     proxy: {
       '/api': { target: process.env.PROXY_URL || 'http://localhost:3001', changeOrigin: true },
       '/orchestrator': { target: process.env.ORCHESTRATOR_URL || 'http://localhost:8099', changeOrigin: true, rewrite: (p) => p.replace(/^\/orchestrator/, '') },
