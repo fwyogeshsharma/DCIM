@@ -21,6 +21,8 @@ import ServerManagement from './pages/ServerManagement'
 import SimulatorControl from './pages/SimulatorControl'
 import SimulatorTopology from './pages/SimulatorTopology'
 import Reports from './pages/Reports'
+import NetworkOps from './pages/NetworkOps'
+import FireSafety from './pages/FireSafety'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +74,8 @@ function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="simulator" element={<SimulatorControl />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="network-ops" element={<NetworkOps />} />
+              <Route path="fire-safety" element={<FireSafety />} />
             </Route>
           </Routes>
         </div>
