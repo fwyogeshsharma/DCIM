@@ -30,7 +30,7 @@ services:
   #     POSTGRES_DB: dcim_aggregator
   #   volumes:
   #     - timescaledb-data:/var/lib/postgresql/data
-  #     - ./init-multiple-dbs.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql:ro
+  #     - ./simulator/init-multiple-dbs.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql:ro
   #   ports:
   #     - "5435:5432"
   #   networks: [dcim-backend]
@@ -61,13 +61,13 @@ services:
   # ── DCIM Server — Network A ──────────────────────────────────────────────────
   # dcim-server-a:
   #   build:
-  #     context: ../DCIM_Server
+  #     context: ./DCIM_Server
   #     dockerfile: Dockerfile
   #   container_name: dcim-server-a
   #   command: ["/app/dcim-server", "-config", "/app/config.docker.yaml"]
   #   volumes:
   #     - dcim-server-a-data:/app/data
-  #     - ../DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
+  #     - ./DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
   #   environment:
   #     SERVER_NAME: "DCIM-Server-A"
   #   ports:
@@ -87,13 +87,13 @@ services:
   # ── DCIM Server — Network B ──────────────────────────────────────────────────
   # dcim-server-b:
   #   build:
-  #     context: ../DCIM_Server
+  #     context: ./DCIM_Server
   #     dockerfile: Dockerfile
   #   container_name: dcim-server-b
   #   command: ["/app/dcim-server", "-config", "/app/config.docker.yaml"]
   #   volumes:
   #     - dcim-server-b-data:/app/data
-  #     - ../DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
+  #     - ./DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
   #   environment:
   #     SERVER_NAME: "DCIM-Server-B"
   #   ports:
@@ -113,13 +113,13 @@ services:
   # ── DCIM Server — Network C ──────────────────────────────────────────────────
   # dcim-server-c:
   #   build:
-  #     context: ../DCIM_Server
+  #     context: ./DCIM_Server
   #     dockerfile: Dockerfile
   #   container_name: dcim-server-c
   #   command: ["/app/dcim-server", "-config", "/app/config.docker.yaml"]
   #   volumes:
   #     - dcim-server-c-data:/app/data
-  #     - ../DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
+  #     - ./DCIM_Server/config.docker.yaml:/app/config.docker.yaml:ro
   #   environment:
   #     SERVER_NAME: "DCIM-Server-C"
   #   ports:
@@ -139,7 +139,7 @@ services:
   # ── DCIM Aggregator ──────────────────────────────────────────────────────────
   aggregator:
     build:
-      context: ../DCIM_Aggregator
+      context: ./DCIM_Aggregator
       dockerfile: Dockerfile
     container_name: aggregator
     environment:
@@ -177,7 +177,7 @@ services:
   # ── DCIM UI ──────────────────────────────────────────────────────────────────
   dcim-ui:
     build:
-      context: ../DCIM_UI
+      context: ./DCIM_UI
       dockerfile: Dockerfile
     container_name: dcim-ui
     environment:
@@ -203,7 +203,7 @@ services:
   # ── Network Simulator — Network A (3-Tier DC, 106 devices) ──────────────────
   # sim-network-a:
   #   build:
-  #     context: ..
+  #     context: .
   #     dockerfile: simulator/network-sim/Dockerfile
   #   container_name: sim-network-a
   #   cap_add:
@@ -237,7 +237,7 @@ services:
   # ── Network Simulator — Network B (Spine-Leaf, 112 devices) ─────────────────
   # sim-network-b:
   #   build:
-  #     context: ..
+  #     context: .
   #     dockerfile: simulator/network-sim/Dockerfile
   #   container_name: sim-network-b
   #   cap_add:
@@ -271,7 +271,7 @@ services:
   # ── Network Simulator — Network C (Enterprise WAN, 104 devices) ─────────────
   # sim-network-c:
   #   build:
-  #     context: ..
+  #     context: .
   #     dockerfile: simulator/network-sim/Dockerfile
   #   container_name: sim-network-c
   #   cap_add:
@@ -310,7 +310,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./simulator/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot_webroot:/var/www/certbot:ro
       - certbot_certs:/etc/letsencrypt:ro
     networks: [dcim-backend]
@@ -339,7 +339,7 @@ services:
   # ── Orchestrator ─────────────────────────────────────────────────────────────
   # orchestrator:
   #   build:
-  #     context: ..
+  #     context: .
   #     dockerfile: simulator/orchestrator/Dockerfile
   #   container_name: orchestrator
   #   environment:
