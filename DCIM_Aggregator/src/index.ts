@@ -81,31 +81,6 @@ async function start() {
     await redisClient.connect()
     logger.info('Redis connected')
 
-    // Auto-seed servers from DCIM_SERVER_URLS env var
-    if (config.dcimServers.length > 0) {
-      for (const url of config.dcimServers) {
-        const { rowCount } = await dbPool.query(
-          'SELECT 1 FROM servers WHERE url = $1',
-          [url]
-        )
-        const name = url.replace(/https?:\/\//, '').split(':')[0]
-        const networkMatch = name.match(/dcim-server-([a-z])$/)
-        const metadata = networkMatch ? JSON.stringify({ network: `network-${networkMatch[1]}` }) : null
-        if (rowCount === 0) {
-          await dbPool.query(
-            `INSERT INTO servers (name, url, enabled, metadata) VALUES ($1, $2, true, $3)`,
-            [name, url, metadata]
-          )
-          logger.info(`Auto-registered server: ${name} (${url})`)
-        } else if (metadata) {
-          await dbPool.query(
-            `UPDATE servers SET metadata = $1 WHERE url = $2 AND metadata IS NULL`,
-            [metadata, url]
-          )
-        }
-      }
-    }
-
     // Start background workers
     startWorkers(dbPool, redisClient as any)
 
