@@ -950,6 +950,31 @@ export default function FireSafety3DScene({ sensors, onSensorClick }: Props) {
     ['Cooling Map', showCoolingMap, setShowCoolingMap],
   ]
 
+  const coolingLegend: [string, string][] = [
+    ['#00ffff', 'CRAC outlet (very cold)'],
+    ['#00aaff', 'Cooled zone'],
+    ['#2299ff', 'Moderate cooling'],
+    ['#ffaa00', 'Warm (low coverage)'],
+    ['#ff3300', 'Hot aisle'],
+    ['#ffcc00', 'Insufficient cooling'],
+  ]
+
+  const floorOptions: [number | null, string, string][] = [
+    [null, 'All', FLOOR_COLORS[0]],
+    [0,    'G',   FLOOR_COLORS[0]],
+    [1,    'L1',  FLOOR_COLORS[1]],
+    [2,    'L2',  FLOOR_COLORS[2]],
+    [3,    'L3',  FLOOR_COLORS[3]],
+  ]
+
+  const cameraPresets: [string, string][] = [
+    ['overview', 'Overview'],
+    ['topdown',  'Top-Down'],
+    ['sra',      'Zone A'],
+    ['srb',      'Zone B'],
+    ['noc',      'NOC'],
+  ]
+
   return (
     <WebGLErrorBoundary>
     <div className="relative w-full rounded-xl overflow-hidden border border-slate-600" style={{ height: 680 }}>
@@ -1032,14 +1057,7 @@ export default function FireSafety3DScene({ sensors, onSensorClick }: Props) {
       {showCoolingMap && (
         <div className="absolute top-48 left-3 bg-black/60 backdrop-blur-sm rounded-lg p-2.5 flex flex-col gap-1.5 pointer-events-none">
           <span className="text-xs text-slate-300 font-semibold">Cooling Coverage</span>
-          {([
-            ['#00ffff', 'CRAC outlet (very cold)'],
-            ['#00aaff', 'Cooled zone'],
-            ['#2299ff', 'Moderate cooling'],
-            ['#ffaa00', 'Warm (low coverage)'],
-            ['#ff3300', 'Hot aisle'],
-            ['#ffcc00', 'Insufficient cooling'],
-          ] as [string, string][]).map(([col, lbl]) => (
+          {coolingLegend.map(([col, lbl]) => (
             <div key={lbl} className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-sm border border-white/10" style={{ backgroundColor: col }} />
               <span className="text-xs text-slate-200">{lbl}</span>
@@ -1076,13 +1094,7 @@ export default function FireSafety3DScene({ sensors, onSensorClick }: Props) {
       {/* Floor selector */}
       <div className="absolute bottom-14 right-3 flex flex-col gap-1.5 items-end">
         <span className="text-xs text-slate-500 pr-1">Floor</span>
-        {([
-          [null,  'All',  FLOOR_COLORS[0]],
-          [0,     'G',    FLOOR_COLORS[0]],
-          [1,     'L1',   FLOOR_COLORS[1]],
-          [2,     'L2',   FLOOR_COLORS[2]],
-          [3,     'L3',   FLOOR_COLORS[3]],
-        ] as [number | null, string, string][]).map(([fi, label, col]) => (
+        {floorOptions.map(([fi, label, col]) => (
           <button
             key={String(fi)}
             onClick={() => {
@@ -1104,13 +1116,7 @@ export default function FireSafety3DScene({ sensors, onSensorClick }: Props) {
 
       {/* Camera presets */}
       <div className="absolute bottom-3 right-3 flex gap-1.5 flex-wrap justify-end">
-        {([
-          ['overview', 'Overview'],
-          ['topdown',  'Top-Down'],
-          ['sra',      'Zone A'],
-          ['srb',      'Zone B'],
-          ['noc',      'NOC'],
-        ] as [string, string][]).map(([key, label]) => (
+        {cameraPresets.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setPreset(key)}
