@@ -29,4 +29,4 @@ EXPOSE 8000
 EXPOSE 3001
 
 # Start proxy (background) + Vite preview (foreground)
-CMD ["sh", "-c", "node proxy-server.js & npx vite preview --host 0.0.0.0 --port 8000 --outDir dist --allowed-hosts all"]
+CMD ["sh", "-c", "node proxy-server.js & npx vite preview --host 0.0.0.0 --port 8000 --outDir dist"]
