@@ -938,6 +938,18 @@ export default function FireSafety3DScene({ sensors, onSensorClick }: Props) {
     ? [0, activeFloor * FLOOR_H + FLOOR_H / 2, 0]
     : [0, TOTAL_H / 2, 0]
 
+  type LayerToggle = [string, boolean, React.Dispatch<React.SetStateAction<boolean>>]
+  const layerToggles: LayerToggle[] = [
+    ['Sensors',     showSensors,    setShowSensors],
+    ['Evac paths',  showEvac,       setShowEvac],
+    ['Zones',       showZones,      setShowZones],
+    ['VESDA pipes', showVESDA,      setShowVESDA],
+    ['People',      showPeople,     setShowPeople],
+    ['Exit Gates',  showExitGates,  setShowExitGates],
+    ['AC & Flow',   showACFlow,     setShowACFlow],
+    ['Cooling Map', showCoolingMap, setShowCoolingMap],
+  ]
+
   return (
     <WebGLErrorBoundary>
     <div className="relative w-full rounded-xl overflow-hidden border border-slate-600" style={{ height: 680 }}>
@@ -1048,16 +1060,7 @@ export default function FireSafety3DScene({ sensors, onSensorClick }: Props) {
 
       {/* Layer toggles */}
       <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm rounded-lg p-2 flex flex-col gap-1.5">
-        {([
-          ['Sensors',     showSensors,    setShowSensors],
-          ['Evac paths',  showEvac,       setShowEvac],
-          ['Zones',       showZones,      setShowZones],
-          ['VESDA pipes', showVESDA,      setShowVESDA],
-          ['People',      showPeople,     setShowPeople],
-          ['Exit Gates',  showExitGates,  setShowExitGates],
-          ['AC & Flow',   showACFlow,     setShowACFlow],
-          ['Cooling Map', showCoolingMap, setShowCoolingMap],
-        ] as [string, boolean, React.Dispatch<React.SetStateAction<boolean>>][]).map(([label, val, set]) => (
+        {layerToggles.map(([label, val, set]) => (
           <button
             key={label}
             onClick={() => set((v) => !v)}
