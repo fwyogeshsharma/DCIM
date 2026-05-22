@@ -171,6 +171,21 @@ class AppState:
         if self.device_manager is None:
             raise RuntimeError("App state not initialized — start the simulator first")
 
+    def start_ticker_if_needed(self):
+        """Start the metrics ticker when any simulator becomes active."""
+        if self.state_store and not self.state_store.is_running():
+            self.state_store.start()
+
+    def stop_ticker_if_idle(self):
+        """Stop the metrics ticker only when ALL simulators are stopped."""
+        if self.state_store is None or not self.state_store.is_running():
+            return
+        snmp_on  = bool(self.snmpsim  and self.snmpsim.is_running())
+        gnmi_on  = bool(self.gnmi     and self.gnmi.is_running())
+        sflow_on = bool(self.sflow    and self.sflow.is_running())
+        if not snmp_on and not gnmi_on and not sflow_on:
+            self.state_store.stop()
+
     def get_all_bind_ips(self) -> List[str]:
         """Return all IPs that should be bound (production + mgmt, deduplicated)."""
         if not self.device_manager:

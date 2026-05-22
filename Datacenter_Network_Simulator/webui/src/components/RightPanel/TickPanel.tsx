@@ -1,0 +1,404 @@
+import { useState, useEffect, useCallback } from 'react'
+import { api } from '../../api/client'
+
+// ── Static metadata ──────────────────────────────────────────────────────────
+
+type MetricRow   = { key: string; label: string; tip: string }
+type MetricGroup = { gid: string; title: string; rows: MetricRow[] }
+
+const METRIC_GROUPS: MetricGroup[] = [
+  { gid: 'all', title: 'All Devices', rows: [
+    { key: 'cpu_usage',      label: 'CPU Usage',               tip: 'Random walk ±4 pp; 1% spike chance to >90%' },
+    { key: 'memory_used',    label: 'Memory Used',             tip: 'Random walk; 0.5% spike chance to >85%' },
+    { key: 'disk_used',      label: 'Disk Used',               tip: 'Growth-biased walk; capped 5–90%' },
+    { key: 'sys_uptime',     label: 'System Uptime',           tip: '+tick_interval centiseconds per tick' },
+    { key: 'cpu_temp',       label: 'CPU / ASIC Temp',         tip: '20 + 0.42×cpu ± 1 °C, clamped 20–95 °C' },
+    { key: 'inlet_temp',     label: 'Chassis Inlet Temp',      tip: '18 + 0.12×cpu ± 0.5 °C, clamped 15–55 °C' },
+    { key: 'iface_octets',   label: 'Iface Byte Counters',     tip: '+5K–150K per tick on every UP interface' },
+    { key: 'iface_errors',   label: 'Iface Error Counters',    tip: 'in_errors 10% / out_errors 5% per UP iface' },
+    { key: 'iface_discards', label: 'Iface Discard Counters',  tip: 'Scale with CPU congestion (>70: heavy, >50: light)' },
+    { key: 'interface_flap', label: 'Interface Flapping',      tip: '0.2% per connected iface → DOWN; auto-recovers in 5s' },
+  ]},
+  { gid: 'sensor', title: 'Sensor Devices', rows: [
+    { key: 'humidity', label: 'Humidity',           tip: '±1.5 %RH walk, clamped 10–90 %' },
+    { key: 'dewpoint', label: 'Dew Point',           tip: 'Derived from inlet_temp + humidity each tick' },
+    { key: 'airflow',  label: 'Airflow (NetBotz)',   tip: '±0.15 m/s walk, clamped 0.2–4.0 m/s' },
+  ]},
+  { gid: 'ups', title: 'UPS Devices', rows: [
+    { key: 'ups_status',           label: 'UPS Status',         tip: 'normal → on_battery (0.1%) → low_battery state machine' },
+    { key: 'ups_output_load',      label: 'Output Load',        tip: '±3% walk; 0.5% spike >90%' },
+    { key: 'ups_battery_status',   label: 'Battery Status',     tip: 'normal / failure (0.05%) / disconnected' },
+    { key: 'ups_input_voltage',    label: 'Input Voltage',      tip: '±2V walk; 0.3% spike outside 200–240V' },
+    { key: 'ups_input_frequency',  label: 'Input Frequency',    tip: '±0.05Hz walk; 0.2% spike outside 49.5–50.5Hz' },
+    { key: 'ups_fan_status',       label: 'Fan Status',         tip: 'ok / failure — 0.1% chance; recovers 15%' },
+    { key: 'ups_charger_status',   label: 'Charger Status',     tip: 'ok / failure — 0.1% chance; recovers 15%' },
+    { key: 'ups_rectifier_status', label: 'Rectifier Status',   tip: 'ok / failure — 0.1% chance; recovers 15%' },
+    { key: 'ups_phase_status',     label: 'Phase Status',       tip: 'ok / failure — 0.1% chance; recovers 15%' },
+  ]},
+  { gid: 'pdu', title: 'PDU / Floor PDU', rows: [
+    { key: 'pdu_load',            label: 'Load',             tip: '±3% walk; 0.4% spike >80%' },
+    { key: 'pdu_voltage',         label: 'Voltage',          tip: '±2V walk; 0.3% spike outside 205–235V' },
+    { key: 'pdu_power_factor',    label: 'Power Factor',     tip: '±0.02 walk; 0.3% dip <0.70' },
+    { key: 'pdu_phase_imbalance', label: 'Phase Imbalance',  tip: '±1% walk; 0.3% spike >20%' },
+    { key: 'pdu_outlet_status',   label: 'Outlet Status',    tip: 'on/off — 0.1% flip; recovers 30%' },
+    { key: 'pdu_breaker_status',  label: 'Breaker Status',   tip: 'ok/tripped — 0.1% trip; recovers 25%' },
+    { key: 'pdu_outlet_failure',  label: 'Outlet Failure',   tip: 'ok/failed — 0.1%; recovers 25%' },
+    { key: 'pdu_smoke',           label: 'Smoke Detection',  tip: 'no/yes — 0.01% chance; clears 5%' },
+    { key: 'pdu_outlet_current',  label: 'Outlet Current',   tip: '±1A walk; 0.3% spike >20A' },
+    { key: 'pdu_ground_fault',    label: 'Ground Fault',     tip: 'no/yes — 0.05% chance; clears 20%' },
+  ]},
+  { gid: 'net', title: 'Router / Firewall', rows: [
+    { key: 'bgp_sessions', label: 'BGP Sessions', tip: 'established → idle (0.5%) → established (15%)' },
+  ]},
+]
+
+type NumMeta   = { kind: 'num'; absMin: number; absMax: number; step: number; decimals: number; suffix: string; defMin: number; defMax: number }
+type StateMeta = { kind: 'state'; options: string[] }
+type LimitRow  = { key: string; label: string } & (NumMeta | StateMeta)
+type LimitGroup = { gid: string; title: string; rows: LimitRow[] }
+
+const LIMIT_GROUPS: LimitGroup[] = [
+  { gid: 'all', title: 'All Devices', rows: [
+    { key: 'cpu_usage',  label: 'CPU Usage',  kind: 'num', absMin: 0,   absMax: 100, step: 1,   decimals: 0, suffix: '%',   defMin: 0,   defMax: 100 },
+    { key: 'memory_pct', label: 'Memory',     kind: 'num', absMin: 0,   absMax: 100, step: 1,   decimals: 0, suffix: '%',   defMin: 0,   defMax: 100 },
+    { key: 'disk_pct',   label: 'Disk',       kind: 'num', absMin: 0,   absMax: 100, step: 1,   decimals: 0, suffix: '%',   defMin: 0,   defMax: 100 },
+    { key: 'cpu_temp',   label: 'CPU Temp',   kind: 'num', absMin: 20,  absMax: 95,  step: 0.5, decimals: 1, suffix: '°C',  defMin: 20,  defMax: 95  },
+    { key: 'inlet_temp', label: 'Inlet Temp', kind: 'num', absMin: 15,  absMax: 55,  step: 0.5, decimals: 1, suffix: '°C',  defMin: 15,  defMax: 55  },
+  ]},
+  { gid: 'sensor', title: 'Sensor Devices', rows: [
+    { key: 'humidity', label: 'Humidity', kind: 'num', absMin: 10, absMax: 90, step: 1,   decimals: 1, suffix: '%',   defMin: 10,  defMax: 90  },
+    { key: 'airflow',  label: 'Airflow',  kind: 'num', absMin: 0,  absMax: 5,  step: 0.1, decimals: 2, suffix: 'm/s', defMin: 0.2, defMax: 4.0 },
+  ]},
+  { gid: 'ups', title: 'UPS Devices', rows: [
+    { key: 'ups_output_load',     label: 'Output Load',  kind: 'num',   absMin: 0,   absMax: 100, step: 1,   decimals: 1, suffix: '%',  defMin: 0,    defMax: 100  },
+    { key: 'ups_input_voltage',   label: 'Input Voltage',kind: 'num',   absMin: 200, absMax: 260, step: 1,   decimals: 1, suffix: 'V',  defMin: 200,  defMax: 240  },
+    { key: 'ups_input_frequency', label: 'Input Freq',   kind: 'num',   absMin: 47,  absMax: 53,  step: 0.1, decimals: 2, suffix: 'Hz', defMin: 49.5, defMax: 50.5 },
+    { key: 'ups_status',          label: 'UPS Status',   kind: 'state', options: ['normal', 'on_battery', 'low_battery'] },
+    { key: 'ups_battery_status',  label: 'Battery',      kind: 'state', options: ['normal', 'failure', 'disconnected'] },
+    { key: 'ups_fan_status',      label: 'Fan',          kind: 'state', options: ['ok', 'failure'] },
+    { key: 'ups_charger_status',  label: 'Charger',      kind: 'state', options: ['ok', 'failure'] },
+    { key: 'ups_rectifier_status',label: 'Rectifier',    kind: 'state', options: ['ok', 'failure'] },
+    { key: 'ups_phase_status',    label: 'Phase',        kind: 'state', options: ['ok', 'failure'] },
+  ]},
+  { gid: 'pdu', title: 'PDU Devices', rows: [
+    { key: 'pdu_load',           label: 'Load',    kind: 'num',   absMin: 0,   absMax: 100, step: 1, decimals: 1, suffix: '%', defMin: 0,   defMax: 100 },
+    { key: 'pdu_voltage',        label: 'Voltage', kind: 'num',   absMin: 190, absMax: 250, step: 1, decimals: 1, suffix: 'V', defMin: 205, defMax: 235 },
+    { key: 'pdu_outlet_current', label: 'Current', kind: 'num',   absMin: 0,   absMax: 30,  step: 1, decimals: 1, suffix: 'A', defMin: 0,   defMax: 20  },
+    { key: 'pdu_outlet_status',  label: 'Outlet',  kind: 'state', options: ['on', 'off'] },
+    { key: 'pdu_breaker_status', label: 'Breaker', kind: 'state', options: ['ok', 'tripped'] },
+    { key: 'pdu_outlet_failure', label: 'Failure', kind: 'state', options: ['ok', 'failed'] },
+    { key: 'pdu_smoke',          label: 'Smoke',   kind: 'state', options: ['no', 'yes'] },
+    { key: 'pdu_ground_fault',   label: 'GndFault',kind: 'state', options: ['no', 'yes'] },
+  ]},
+  { gid: 'net', title: 'Router / Firewall', rows: [
+    { key: 'bgp_sessions', label: 'BGP Sessions', kind: 'state', options: ['established', 'idle'] },
+  ]},
+]
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface LimitState { enabled: boolean; min: number; max: number; lock: string; options: string[] }
+interface TickSettings {
+  running: boolean; paused: boolean; interval: number
+  metric_flags: Record<string, boolean>
+  metric_limits: Record<string, { enabled: boolean; min?: number; max?: number; lock?: string; options?: string[] }>
+}
+
+
+const IconCheck = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+)
+const IconSpin = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+    style={{ animation: 'spin 0.8s linear infinite' }}>
+    <path d="M21 12a9 9 0 1 1-9-9" />
+  </svg>
+)
+
+const INPUT_BASE: React.CSSProperties = {
+  background: 'var(--bg-card)', border: '1px solid var(--border)',
+  borderRadius: 3, color: 'var(--text)', fontSize: 10,
+  fontFamily: 'Consolas, monospace', padding: '2px 5px', outline: 'none', textAlign: 'right',
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export default function TickPanel() {
+  const [running,   setRunning]  = useState(false)
+  const [paused,    setPaused]   = useState(false)
+  const [enabled,   setEnabled]  = useState(false)
+  const [interval,  setIv]       = useState(30)
+  const [flags,     setFlags]    = useState<Record<string, boolean>>({})
+  const [limits,    setLimits]   = useState<Record<string, LimitState>>({})
+  const [tab,       setTab]      = useState<'metrics' | 'limits'>('metrics')
+  const [busy,      setBusy]     = useState(false)
+  const [flash,     setFlash]    = useState(false)
+  const [ivFocused, setIvFocused] = useState(false)
+
+  const load = useCallback((s: TickSettings) => {
+    setRunning(s.running); setPaused(s.paused); setEnabled(s.running && !s.paused); setIv(s.interval)
+    setFlags({ ...s.metric_flags })
+    const ls: Record<string, LimitState> = {}
+    for (const grp of LIMIT_GROUPS) {
+      for (const row of grp.rows) {
+        const a = s.metric_limits[row.key]
+        if (row.kind === 'num') {
+          ls[row.key] = { enabled: a?.enabled ?? false, min: a?.min ?? row.defMin, max: a?.max ?? row.defMax, lock: '', options: [] }
+        } else {
+          ls[row.key] = { enabled: a?.enabled ?? false, min: 0, max: 100, lock: a?.lock ?? row.options[0], options: a?.options ?? row.options }
+        }
+      }
+    }
+    setLimits(ls)
+  }, [])
+
+  const fetchSettings = useCallback(() => {
+    api.tickSettings().then(d => load(d as TickSettings)).catch(() => {})
+  }, [load])
+
+  useEffect(() => { fetchSettings() }, [fetchSettings])
+
+  async function handleApply() {
+    setBusy(true)
+    try {
+      await api.applyTickSettings({
+        paused:        !enabled,
+        interval,
+        metric_flags:  flags,
+        metric_limits: Object.fromEntries(
+          Object.entries(limits).map(([k, v]) => [k, { enabled: v.enabled, min: v.min, max: v.max, lock: v.lock }])
+        ),
+      })
+      fetchSettings()
+      setFlash(true); setTimeout(() => setFlash(false), 1800)
+    } catch { /* ignore */ }
+    finally { setBusy(false) }
+  }
+
+  const tickerOn = running && !paused
+
+  // badge
+  let badgeCls: string, badgeDot: string, badgeTxt: string
+  if (running && !paused) { badgeCls = 'running'; badgeDot = 'green';  badgeTxt = 'Running' }
+  else if (paused)         { badgeCls = 'ready';   badgeDot = 'yellow'; badgeTxt = 'Paused'  }
+  else                     { badgeCls = 'stopped'; badgeDot = 'grey';   badgeTxt = 'Idle'    }
+
+  function setFlag(key: string) {
+    setFlags(f => ({ ...f, [key]: !(f[key] ?? true) }))
+  }
+  function setAll(v: boolean) {
+    const all: Record<string, boolean> = {}
+    METRIC_GROUPS.forEach(g => g.rows.forEach(r => { all[r.key] = v }))
+    setFlags(all)
+  }
+  function toggleLimit(key: string) {
+    setLimits(prev => ({ ...prev, [key]: { ...prev[key], enabled: !prev[key].enabled } }))
+  }
+  function setLimitField(key: string, field: keyof LimitState, val: number | string | boolean) {
+    setLimits(prev => ({ ...prev, [key]: { ...prev[key], [field]: val } }))
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+
+      {/* Header */}
+      <div className="panel-header">
+        <span className="title">Metrics Tick</span>
+        <span className={`badge ${badgeCls}`}>
+          <span className={`status-dot ${badgeDot}`} />
+          {badgeTxt}
+        </span>
+      </div>
+
+      {/* Tab switcher */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+        {([['metrics', 'Metrics'], ['limits', 'Limits']] as const).map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            style={{
+              flex: 1,
+              borderRadius: 0,
+              border: 'none',
+              borderRight: '1px solid var(--border)',
+              borderBottom: tab === id ? '2px solid var(--accent)' : '2px solid transparent',
+              background: tab === id ? 'var(--bg-selected)' : 'transparent',
+              color: tab === id ? 'var(--text)' : 'var(--text-muted)',
+              padding: '5px 4px',
+              fontSize: 10,
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {tab === 'metrics' && <>
+
+          {/* Ticker control */}
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Ticker Control</span>
+
+            <div className="field-row-split" style={{ marginBottom: 8 }}>
+              <span className="label">Enabled</span>
+              <label className="toggle">
+                <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} disabled={!running} />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+
+            <div className="field-row-split">
+              <span className="label">Interval</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="number" min={1} max={3600} value={interval}
+                  onChange={e => setIv(Math.max(1, parseInt(e.target.value) || 1))}
+                  onFocus={() => setIvFocused(true)}
+                  onBlur={() => setIvFocused(false)}
+                  style={{
+                    width: 70,
+                    background: '#0d1117',
+                    border: `1px solid ${ivFocused ? '#58a6ff' : 'var(--border)'}`,
+                    borderRadius: 4,
+                    color: ivFocused ? '#58a6ff' : 'var(--text)',
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    padding: '4px 8px',
+                    outline: 'none',
+                    transition: 'border-color 0.15s, color 0.15s',
+                  }}
+                />
+                <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text-muted)', opacity: 0.5 }}>s · 1–3600</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Metric groups */}
+          {METRIC_GROUPS.map(grp => (
+            <div key={grp.gid} className="group-box">
+              <span className="group-box-label">{grp.title}</span>
+              {grp.rows.map(row => (
+                <label
+                  key={row.key}
+                  title={row.tip}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '2.5px 0', cursor: 'pointer' }}
+                >
+                  <input type="checkbox" checked={flags[row.key] ?? true} onChange={() => setFlag(row.key)} style={{ cursor: 'pointer' }} />
+                  <span style={{ fontSize: 10, color: (flags[row.key] ?? true) ? 'var(--text)' : 'var(--text-muted)' }}>
+                    {row.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          ))}
+
+          {/* All / None */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, paddingBottom: 4 }}>
+            {[['All', true], ['None', false]].map(([lbl, v]) => (
+              <button key={String(lbl)} onClick={() => setAll(v as boolean)} style={{
+                fontSize: 9, padding: '3px 11px', borderRadius: 4,
+                background: 'transparent', border: '1px solid var(--border)',
+                color: 'var(--text-muted)', cursor: 'pointer',
+              }}>{lbl}</button>
+            ))}
+          </div>
+
+        </>}
+
+        {tab === 'limits' && <>
+
+          {/* Hint */}
+          <div style={{
+            fontSize: 9, color: 'var(--text-muted)', padding: '5px 8px', marginTop: 4,
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 4, lineHeight: 1.6,
+          }}>
+            <span style={{ color: 'var(--accent)' }}>ⓘ</span>
+            {' '}Check a row to constrain it. Numeric: clamps the walk output. State: forces a fixed value.
+          </div>
+
+          {LIMIT_GROUPS.map(grp => (
+            <div key={grp.gid} className="group-box">
+              <span className="group-box-label">{grp.title}</span>
+              {grp.rows.map(row => {
+                const lim = limits[row.key]
+                if (!lim) return null
+                return (
+                  <div key={row.key} style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0',
+                    opacity: lim.enabled ? 1 : 0.52, transition: 'opacity 0.15s',
+                  }}>
+                    <input type="checkbox" checked={lim.enabled} onChange={() => toggleLimit(row.key)} style={{ cursor: 'pointer' }} />
+
+                    <span style={{ fontSize: 10, color: 'var(--text)', width: 78, flexShrink: 0, fontFamily: 'Consolas, monospace' }}>
+                      {row.label}
+                    </span>
+
+                    {row.kind === 'num' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1, minWidth: 0 }}>
+                        <input
+                          type="number" min={row.absMin} max={row.absMax} step={row.step}
+                          value={lim.min} disabled={!lim.enabled}
+                          onChange={e => setLimitField(row.key, 'min', parseFloat(e.target.value) || 0)}
+                          style={{ ...INPUT_BASE, width: 46, opacity: lim.enabled ? 1 : 0.5 }}
+                        />
+                        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>→</span>
+                        <input
+                          type="number" min={row.absMin} max={row.absMax} step={row.step}
+                          value={lim.max} disabled={!lim.enabled}
+                          onChange={e => setLimitField(row.key, 'max', parseFloat(e.target.value) || 0)}
+                          style={{ ...INPUT_BASE, width: 46, opacity: lim.enabled ? 1 : 0.5 }}
+                        />
+                        <span style={{ fontSize: 9, color: 'var(--text-muted)', flexShrink: 0 }}>{row.suffix}</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 9, color: 'var(--text-muted)', flexShrink: 0 }}>force</span>
+                        <select
+                          value={lim.lock} disabled={!lim.enabled}
+                          onChange={e => setLimitField(row.key, 'lock', e.target.value)}
+                          style={{
+                            flex: 1, minWidth: 0,
+                            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 3,
+                            color: 'var(--text)', fontSize: 10, fontFamily: 'Consolas, monospace',
+                            padding: '2px 5px', outline: 'none', cursor: lim.enabled ? 'pointer' : 'default',
+                            opacity: lim.enabled ? 1 : 0.5,
+                          }}
+                        >
+                          {(lim.options.length > 0 ? lim.options : (row as StateMeta).options).map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </>}
+
+        <div className="snmp-actions">
+          <button
+            className={`btn-action ${flash ? 'btn-stop' : 'btn-start'}`}
+            onClick={handleApply}
+            disabled={busy}
+            style={{ flex: 1 }}
+          >
+            {busy ? <IconSpin /> : <IconCheck />}
+            <span>{busy ? 'Applying…' : flash ? 'Applied' : 'Apply'}</span>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  )
+}

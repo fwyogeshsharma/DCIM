@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 
 from api.state import AppState
 from api.models.schemas import (
+    GnmiStartRequest,
     GnmiStatusResponse,
     JobResponse,
     JobStatusResponse,
@@ -90,7 +91,7 @@ def generate_gnmi_datasets():
 
 
 @router.post("/start", response_model=JobResponse)
-def start_gnmi_simulator():
+def start_gnmi_simulator(req: GnmiStartRequest = None):
     """
     Bind gNMI device IPs and start the gNMI gRPC server.
     Returns job_id for progress tracking.
@@ -143,13 +144,15 @@ def start_gnmi_simulator():
             }
 
             s.update_job(job_id, message="Starting gNMI server...")
-            ok = s.gnmi.start(device_ips, port=50051,
+            gnmi_port = (req.port if req else None) or 50051
+            ok = s.gnmi.start(device_ips, port=gnmi_port,
                               bound_ip_ports=bound_ip_ports if bound_ip_ports else None)
             if not ok:
                 s.update_job(job_id, status="failed", error="gnmi.start() returned False",
                              finished_at=datetime.utcnow().isoformat())
                 return
 
+            s.start_ticker_if_needed()
             s.notify_ui("sync_gnmi")
             s.notify_ui("sync_binding")
             s.update_job(
@@ -176,6 +179,7 @@ def stop_gnmi_simulator():
     if not s.gnmi.is_running():
         return OkResponse(message="gNMI simulator was not running")
     s.gnmi.stop()
+    s.stop_ticker_if_idle()
     s.notify_ui("sync_gnmi")
     s.notify_ui("sync_binding")
     return OkResponse(message="gNMI simulator stopped")
@@ -249,18 +253,19 @@ async def get_gnmi_status():
 
 
 @router.post("/proxy/start", response_model=OkResponse)
-def start_gnmi_proxy():
+def start_gnmi_proxy(req: GnmiStartRequest = None):
     """Start the gNMI aggregating proxy server."""
     s = _state()
     if s.gnmi is None:
         raise HTTPException(status_code=503, detail="gNMI not initialized")
     if s.gnmi.is_proxy_running():
         return OkResponse(message="Proxy already running")
-    ok = s.gnmi.start_proxy(port=50051)
+    proxy_port = (req.port if req else None) or 50051
+    ok = s.gnmi.start_proxy(port=proxy_port)
     if not ok:
         raise HTTPException(status_code=500, detail="Failed to start gNMI proxy")
     s.notify_ui("sync_gnmi")
-    return OkResponse(message="gNMI proxy started on port 50051")
+    return OkResponse(message=f"gNMI proxy started on port {proxy_port}")
 
 
 @router.post("/proxy/stop", response_model=OkResponse)

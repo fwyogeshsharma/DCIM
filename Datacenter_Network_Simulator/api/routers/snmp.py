@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from api.state import AppState
 from api.models.schemas import (
     TrapReceiverRequest,
+    SnmpStartRequest,
     SnmpStatusResponse,
     JobResponse,
     JobStatusResponse,
@@ -114,7 +115,7 @@ def generate_datasets():
 
 
 @router.post("/start", response_model=JobResponse)
-def start_snmp_simulator():
+def start_snmp_simulator(req: SnmpStartRequest = None):
     """
     Start the SNMP simulator.
     If IPs are not yet bound, binds them first using the selected adapter.
@@ -157,7 +158,8 @@ def start_snmp_simulator():
                           if d.mgmt_ip or d.ip_address]
 
             s.update_job(job_id, message="Starting SNMP simulator...")
-            ok = s.snmpsim.start(device_ips, port=161)
+            snmp_port = (req.port if req else None) or 161
+            ok = s.snmpsim.start(device_ips, port=snmp_port)
             if not ok:
                 s.update_job(job_id, status="failed", error="snmpsim.start() returned False",
                              finished_at=datetime.utcnow().isoformat())
@@ -195,6 +197,7 @@ def stop_snmp_simulator():
     if s.state_store:
         s.state_store.disable_snmp_sync()
     s.snmpsim.stop()
+    s.stop_ticker_if_idle()
     s.notify_ui("sync_snmp")
     s.notify_ui("sync_binding")
     return OkResponse(message="SNMP simulator stopped")
@@ -208,6 +211,7 @@ def clear_snmp_simulation():
         if s.state_store:
             s.state_store.disable_snmp_sync()
         s.snmpsim.stop()
+        s.stop_ticker_if_idle()
 
     job_id = s.create_job("clear_snmp_datasets")
 

@@ -82,6 +82,10 @@ class TrapReceiverRequest(BaseModel):
     port: int = Field(162, ge=1, le=65535)
 
 
+class SnmpStartRequest(BaseModel):
+    port: int = Field(161, ge=1, le=65535, description="UDP port for snmpsim to listen on")
+
+
 class SnmpStatusResponse(BaseModel):
     running: bool
     ready: bool
@@ -96,6 +100,10 @@ class SnmpStatusResponse(BaseModel):
 
 
 # ── gNMI Simulator ────────────────────────────────────────────────────────────
+
+class GnmiStartRequest(BaseModel):
+    port: int = Field(50051, ge=1, le=65535, description="gRPC port for the gNMI server/proxy")
+
 
 class GnmiStatusResponse(BaseModel):
     running: bool
@@ -157,6 +165,21 @@ class SendTrapRequest(BaseModel):
 
 # ── Devices ───────────────────────────────────────────────────────────────────
 
+class IfaceStats(BaseModel):
+    index: int
+    name: str
+    oper_status: int
+    speed: int
+    in_octets: int
+    out_octets: int
+    in_errors: int
+    out_errors: int
+    in_discards: int
+    out_discards: int
+    in_unicast_pkts: int
+    out_unicast_pkts: int
+
+
 class DeviceInfo(BaseModel):
     id: str
     name: str
@@ -169,13 +192,55 @@ class DeviceInfo(BaseModel):
     interface_count: int
     cpu_usage: float
     memory_used: float
+    memory_total: float = 0.0
     disk_used: float
+    disk_total: float = 0.0
     sys_location: str
     sys_contact: str
     uptime: int
     model_name: Optional[str] = None
     os_name: Optional[str] = None
     os_version: Optional[str] = None
+    # All-device environmental
+    cpu_temp: Optional[float] = None
+    inlet_temp: Optional[float] = None
+    # Sensor-specific
+    humidity: Optional[float] = None
+    dewpoint: Optional[float] = None
+    airflow: Optional[float] = None
+    # UPS-specific
+    ups_status: Optional[str] = None
+    ups_output_load: Optional[float] = None
+    ups_battery_status: Optional[str] = None
+    ups_input_voltage: Optional[float] = None
+    ups_input_frequency: Optional[float] = None
+    ups_fan_status: Optional[str] = None
+    ups_charger_status: Optional[str] = None
+    ups_rectifier_status: Optional[str] = None
+    ups_phase_status: Optional[str] = None
+    # PDU-specific
+    pdu_load: Optional[float] = None
+    pdu_voltage: Optional[float] = None
+    pdu_power_factor: Optional[float] = None
+    pdu_phase_imbalance: Optional[float] = None
+    pdu_outlet_status: Optional[str] = None
+    pdu_breaker_status: Optional[str] = None
+    pdu_outlet_failure: Optional[str] = None
+    pdu_smoke: Optional[str] = None
+    pdu_outlet_current: Optional[float] = None
+    pdu_ground_fault: Optional[str] = None
+    # Router/Firewall
+    bgp_sessions_up: Optional[int] = None
+    bgp_sessions_total: Optional[int] = None
+    # Aggregated interface stats (network devices)
+    total_rx_bytes: Optional[int] = None
+    total_tx_bytes: Optional[int] = None
+    total_errors: Optional[int] = None
+    total_discards: Optional[int] = None
+    flapping_count: Optional[int] = None
+    interfaces_up: Optional[int] = None
+    interfaces_total: Optional[int] = None
+    iface_stats: List[IfaceStats] = []
 
 
 class DevicesResponse(BaseModel):

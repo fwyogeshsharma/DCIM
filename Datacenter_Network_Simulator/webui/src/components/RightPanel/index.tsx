@@ -7,6 +7,7 @@ import SFlowPanel   from './SFlowPanel'
 import TrapsPanel   from './TrapsPanel'
 import RulesPanel   from './RulesPanel'
 import ConsolePanel from './ConsolePanel'
+import TickPanel    from './TickPanel'
 
 const MIN_WIDTH     = 200
 const MAX_WIDTH     = 900
@@ -21,13 +22,14 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: 'binding', icon: '🔗',  label: 'Binding', component: <BindingPanel /> },
-  { id: 'snmp',    icon: '🖥️',  label: 'SNMP',    component: <SNMPPanel />    },
-  { id: 'gnmi',    icon: '📡',  label: 'gNMI',    component: <GNMIPanel />    },
-  { id: 'sflow',   icon: '📶',  label: 'sFlow',   component: <SFlowPanel />   },
-  { id: 'traps',   icon: '⚡',  label: 'Traps',   component: <TrapsPanel />   },
-  { id: 'rules',   icon: '⚙️',  label: 'Rules',   component: <RulesPanel />   },
-  { id: 'console', icon: '>_',  label: 'Console', component: <ConsolePanel /> },
+  { id: 'binding', icon: '🔗',  label: 'Binding',      component: <BindingPanel /> },
+  { id: 'snmp',    icon: '🖥️',  label: 'SNMP',         component: <SNMPPanel />    },
+  { id: 'gnmi',    icon: '📡',  label: 'gNMI',         component: <GNMIPanel />    },
+  { id: 'sflow',   icon: '📶',  label: 'sFlow',        component: <SFlowPanel />   },
+  { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
+  { id: 'rules',   icon: '⚙️',  label: 'Rules',        component: <RulesPanel />   },
+  { id: 'tick',    icon: '🔃',   label: 'Metrics Tick', component: <TickPanel />    },
+  { id: 'console', icon: '>_',  label: 'Console',      component: <ConsolePanel /> },
 ]
 
 function TabButton({

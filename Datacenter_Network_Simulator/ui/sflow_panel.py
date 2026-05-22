@@ -18,11 +18,8 @@ from ui.snmp_panel import StatusBadge
 
 
 _DEVICE_TYPE_LABELS = [
-    ("switch",        "Switches"),
-    ("router",        "Routers"),
-    ("server",        "Servers"),
-    ("firewall",      "Firewalls"),
-    ("load_balancer", "Load Balancers"),
+    ("switch", "Switches"),
+    ("router", "Routers"),
 ]
 
 _BTN_BASE = (

@@ -106,7 +106,7 @@ export default function BindingPanel() {
   const canUnbind = !bindingBusy && boundCount > 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="panel-header">
         <span className="title">Network Interface Bindings</span>
         <span className={`badge ${badge.cls}`}>
@@ -115,7 +115,7 @@ export default function BindingPanel() {
         </span>
       </div>
 
-      <div style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
         <div className="group-box" style={{ marginTop: 6 }}>
           <span className="group-box-label">Adapter</span>

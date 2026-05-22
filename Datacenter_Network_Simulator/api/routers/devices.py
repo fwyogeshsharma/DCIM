@@ -4,8 +4,10 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from api.state import AppState
+from core.device_state_store import _get_ext_state
 from api.models.schemas import (
     DeviceInfo,
+    IfaceStats,
     DevicesResponse,
     AddDeviceRequest,
     EditDeviceRequest,
@@ -19,11 +21,55 @@ def _state() -> AppState:
     return AppState.get()
 
 
+_NO_IFACE_TYPES = {"ups", "pdu", "floor_pdu", "sensor"}
+
+
+def _iface_aggregates(device, dt: str) -> dict:
+    if dt in _NO_IFACE_TYPES or not hasattr(device, "interfaces"):
+        return {
+            "total_rx_bytes": None, "total_tx_bytes": None,
+            "total_errors": None,   "total_discards": None,
+            "flapping_count": None, "interfaces_up": None,
+            "interfaces_total": None, "iface_stats": [],
+        }
+    ifaces = device.interfaces
+    stats = [
+        IfaceStats(
+            index=i.index,
+            name=i.name,
+            oper_status=i.oper_status,
+            speed=i.speed,
+            in_octets=i.in_octets,
+            out_octets=i.out_octets,
+            in_errors=i.in_errors,
+            out_errors=i.out_errors,
+            in_discards=i.in_discards,
+            out_discards=i.out_discards,
+            in_unicast_pkts=i.in_octets // 1500,
+            out_unicast_pkts=i.out_octets // 1500,
+        )
+        for i in ifaces
+    ]
+    return {
+        "total_rx_bytes":   sum(i.in_octets  for i in ifaces),
+        "total_tx_bytes":   sum(i.out_octets for i in ifaces),
+        "total_errors":     sum(i.in_errors  + i.out_errors   for i in ifaces),
+        "total_discards":   sum(i.in_discards + i.out_discards for i in ifaces),
+        "flapping_count":   sum(1 for i in ifaces if i.oper_status != 1),
+        "interfaces_up":    sum(1 for i in ifaces if i.oper_status == 1),
+        "interfaces_total": len(ifaces),
+        "iface_stats":      stats,
+    }
+
+
 def _device_to_info(device) -> DeviceInfo:
+    ext = _get_ext_state(device.name)
+    dt  = device.device_type.value
+    sessions = ext.get("bgp_sessions", [])
     return DeviceInfo(
         id=device.id,
         name=device.name,
-        device_type=device.device_type.value,
+        device_type=dt,
         vendor=device.vendor.value,
         ip_address=device.ip_address,
         mgmt_ip=getattr(device, "mgmt_ip", None),
@@ -32,13 +78,42 @@ def _device_to_info(device) -> DeviceInfo:
         interface_count=device.interface_count,
         cpu_usage=getattr(device, "cpu_usage", 0.0),
         memory_used=getattr(device, "memory_used", 0.0),
+        memory_total=getattr(device, "memory_total", 0.0),
         disk_used=getattr(device, "disk_used", 0.0),
+        disk_total=getattr(device, "disk_total", 0.0),
         sys_location=getattr(device, "sys_location", ""),
         sys_contact=getattr(device, "sys_contact", ""),
-        uptime=getattr(device, "uptime", 0),
+        uptime=getattr(device, "sys_uptime", 0),
         model_name=getattr(device, "model_name", None),
         os_name=getattr(device, "os_name", None),
         os_version=getattr(device, "os_version", None),
+        cpu_temp=getattr(device, "cpu_temp", None),
+        inlet_temp=getattr(device, "inlet_temp", None),
+        humidity=getattr(device, "humidity", None) if dt == "sensor" else None,
+        dewpoint=getattr(device, "dewpoint", None) if dt == "sensor" else None,
+        airflow=getattr(device, "airflow", None)  if dt == "sensor" else None,
+        ups_status=ext.get("ups_status")           if dt == "ups" else None,
+        ups_output_load=ext.get("ups_output_load") if dt == "ups" else None,
+        ups_battery_status=ext.get("ups_battery_status") if dt == "ups" else None,
+        ups_input_voltage=ext.get("ups_input_voltage")   if dt == "ups" else None,
+        ups_input_frequency=ext.get("ups_input_frequency") if dt == "ups" else None,
+        ups_fan_status=ext.get("ups_fan_status")         if dt == "ups" else None,
+        ups_charger_status=ext.get("ups_charger_status") if dt == "ups" else None,
+        ups_rectifier_status=ext.get("ups_rectifier_status") if dt == "ups" else None,
+        ups_phase_status=ext.get("ups_phase_status")     if dt == "ups" else None,
+        pdu_load=ext.get("pdu_load")                     if dt in ("pdu", "floor_pdu") else None,
+        pdu_voltage=ext.get("pdu_voltage")               if dt in ("pdu", "floor_pdu") else None,
+        pdu_power_factor=ext.get("pdu_power_factor")     if dt in ("pdu", "floor_pdu") else None,
+        pdu_phase_imbalance=ext.get("pdu_phase_imbalance") if dt in ("pdu", "floor_pdu") else None,
+        pdu_outlet_status=ext.get("pdu_outlet_status")   if dt in ("pdu", "floor_pdu") else None,
+        pdu_breaker_status=ext.get("pdu_breaker_status") if dt in ("pdu", "floor_pdu") else None,
+        pdu_outlet_failure=ext.get("pdu_outlet_failure") if dt in ("pdu", "floor_pdu") else None,
+        pdu_smoke=ext.get("pdu_smoke")                   if dt in ("pdu", "floor_pdu") else None,
+        pdu_outlet_current=ext.get("pdu_outlet_current") if dt in ("pdu", "floor_pdu") else None,
+        pdu_ground_fault=ext.get("pdu_ground_fault")     if dt in ("pdu", "floor_pdu") else None,
+        bgp_sessions_up=sum(1 for s in sessions if s.get("state") == "established") if dt in ("router", "firewall") else None,
+        bgp_sessions_total=len(sessions) if dt in ("router", "firewall") else None,
+        **_iface_aggregates(device, dt),
     )
 
 

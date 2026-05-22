@@ -62,6 +62,10 @@ interface Store {
   // right panel
   rightTab: string
 
+  // active view
+  activeView: 'main' | 'metrics'
+  setActiveView: (v: 'main' | 'metrics') => void
+
   // binding operation state (survives tab switches)
   bindingBusy:     boolean
   bindingProgress: { done: number; total: number } | null
@@ -113,6 +117,7 @@ export const useStore = create<Store>((set, get) => ({
   fitViewTrigger:   0,
   layoutAlgo:       null,
   rightTab:         'binding',
+  activeView:       'main',
 
   bindingBusy:     false,
   bindingProgress: null,
@@ -121,6 +126,7 @@ export const useStore = create<Store>((set, get) => ({
 
   setLayer:          (l) => { set({ activeLayer: l }); get().fetchGraph() },
   setRightTab:       (t) => set({ rightTab: t }),
+  setActiveView:     (v) => set({ activeView: v }),
   setSelectedDevice: (id) => set({ selectedDeviceId: id }),
   setLinkMode:       (v) => set({ linkMode: v }),
   triggerFitView:    () => set(s => ({ fitViewTrigger: s.fitViewTrigger + 1 })),
@@ -200,7 +206,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchHealth()
     s.fetchAdapters()
     s.fetchTraps()
-    // Status-only refresh every 4 seconds — graph excluded (updates via SSE sync events)
+    // Status-only refresh every 4 seconds — graph + devices excluded (driven by SSE sync events)
     setInterval(() => {
       const st = get()
       st.fetchSnmp()

@@ -1,3 +1,18 @@
+export interface IfaceStats {
+  index: number
+  name: string
+  oper_status: number
+  speed: number
+  in_octets: number
+  out_octets: number
+  in_errors: number
+  out_errors: number
+  in_discards: number
+  out_discards: number
+  in_unicast_pkts: number
+  out_unicast_pkts: number
+}
+
 export interface DeviceInfo {
   id: string
   name: string
@@ -10,13 +25,49 @@ export interface DeviceInfo {
   interface_count: number
   cpu_usage: number
   memory_used: number
+  memory_total: number
   disk_used: number
+  disk_total: number
   sys_location: string
   sys_contact: string
   uptime: number
   model_name?: string
   os_name?: string
   os_version?: string
+  cpu_temp?: number
+  inlet_temp?: number
+  humidity?: number
+  dewpoint?: number
+  airflow?: number
+  ups_status?: string
+  ups_output_load?: number
+  ups_battery_status?: string
+  ups_input_voltage?: number
+  ups_input_frequency?: number
+  ups_fan_status?: string
+  ups_charger_status?: string
+  ups_rectifier_status?: string
+  ups_phase_status?: string
+  pdu_load?: number
+  pdu_voltage?: number
+  pdu_power_factor?: number
+  pdu_phase_imbalance?: number
+  pdu_outlet_status?: string
+  pdu_breaker_status?: string
+  pdu_outlet_failure?: string
+  pdu_smoke?: string
+  pdu_outlet_current?: number
+  pdu_ground_fault?: string
+  bgp_sessions_up?: number
+  bgp_sessions_total?: number
+  total_rx_bytes?: number
+  total_tx_bytes?: number
+  total_errors?: number
+  total_discards?: number
+  flapping_count?: number
+  interfaces_up?: number
+  interfaces_total?: number
+  iface_stats?: IfaceStats[]
 }
 
 export interface GraphDevice {

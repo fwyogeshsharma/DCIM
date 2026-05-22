@@ -189,7 +189,7 @@ export default function MenuBar() {
   const {
     snmp, gnmi, sflow, devices, health,
     fetchGraph, fetchDevices, fetchSnmp, selectedDeviceId,
-    linkMode, setLinkMode, triggerFitView, setLayoutAlgo, setRightTab,
+    linkMode, setLinkMode, triggerFitView, setLayoutAlgo, setRightTab, setActiveView,
   } = useStore()
 
   const closeAll = useCallback(() => setOpenMenu(null), [])
@@ -296,6 +296,8 @@ export default function MenuBar() {
     { label: 'Bulk Add Devices',  action: () => setShowBulk(true) },
     { label: '', divider: true, action: () => {} },
     { label: 'Remove Selected', action: removeSelected, disabled: !selectedDeviceId },
+    { label: '', divider: true, action: () => {} },
+    { label: 'Live Metrics',    action: () => setActiveView('metrics') },
   ]
   const topoMenuItems: MenuItem[] = [
     { label: 'Link Mode', shortcut: 'Ctrl+L', checked: linkMode,

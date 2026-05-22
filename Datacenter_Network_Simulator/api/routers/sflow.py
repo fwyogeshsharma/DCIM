@@ -54,12 +54,15 @@ def sflow_start(cfg: SFlowConfig):
     if s.sflow.is_running():
         raise HTTPException(status_code=409, detail="sFlow already running")
 
-    device_ips = [d.ip_address for d in s.device_manager.get_all_devices() if d.ip_address]
+    _SFLOW_TYPES = {'switch', 'router'}
+    device_ips = [
+        d.ip_address for d in s.device_manager.get_all_devices()
+        if d.ip_address and d.device_type.value in _SFLOW_TYPES
+    ]
     if not device_ips:
-        raise HTTPException(status_code=400, detail="No devices in topology")
+        raise HTTPException(status_code=400, detail="No switches or routers in topology")
 
-    if s.state_store and not s.state_store.is_running():
-        s.state_store.start()
+    s.start_ticker_if_needed()
 
     if not s.sflow._log_cb:
         s.sflow.set_log_callback(lambda msg: s.notify_ui("log_sflow", msg, "info"))
@@ -84,6 +87,7 @@ def sflow_stop():
     if not s.sflow.is_running():
         return OkResponse(message="sFlow was not running")
     s.sflow.stop()
+    s.stop_ticker_if_idle()
     s.notify_ui("console_log", "[sFlow] Stopped.", "info")
     s.notify_ui("sync_sflow")
     return OkResponse(message="sFlow agent stopped")

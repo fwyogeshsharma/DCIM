@@ -8,7 +8,7 @@ The SNMP Trap receiver and Rule Engine controls have been moved to TrapPanel.
 from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QGroupBox, QProgressBar, QFrame,
+    QLabel, QGroupBox, QProgressBar, QFrame, QSpinBox,
 )
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont
@@ -161,8 +161,7 @@ class SNMPPanel(QWidget):
         links_layout.setSpacing(2)
         self.lbl_prod_links = QLabel("Prod Links: 0")
         self.lbl_mgmt_links = QLabel("Mgmt Links: 0")
-        self.lbl_pwr_links  = QLabel("Power Links: 0")
-        for lbl in (self.lbl_prod_links, self.lbl_mgmt_links, self.lbl_pwr_links):
+        for lbl in (self.lbl_prod_links, self.lbl_mgmt_links):
             lbl.setFont(QFont("Consolas", 9))
             lbl.setStyleSheet("color: #e6edf3;")
             links_layout.addWidget(lbl)
@@ -183,6 +182,29 @@ class SNMPPanel(QWidget):
         """)
         self.progress.hide()
         layout.addWidget(self.progress)
+
+        # ── SNMP Port ──────────────────────────────────────────────────────
+        port_row = QHBoxLayout()
+        port_lbl = QLabel("SNMP Port:")
+        port_lbl.setStyleSheet("color: #8b949e; font-size: 8pt;")
+        self.spin_port = QSpinBox()
+        self.spin_port.setRange(1, 65535)
+        self.spin_port.setValue(161)
+        self.spin_port.setFixedWidth(70)
+        self.spin_port.setToolTip(
+            "UDP port snmpsim will listen on.\n"
+            "Use 1162 or higher if Windows SNMP Service already occupies port 161."
+        )
+        self.spin_port.setStyleSheet(
+            "QSpinBox { background: #21262d; color: #e6edf3; "
+            "border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; } "
+            "QSpinBox:focus { border-color: #58a6ff; } "
+            "QSpinBox:disabled { color: #6e7681; }"
+        )
+        port_row.addWidget(port_lbl)
+        port_row.addStretch()
+        port_row.addWidget(self.spin_port)
+        layout.addLayout(port_row)
 
         # ── Action buttons ─────────────────────────────────────────────────
         self.btn_generate = QPushButton("Generate Datasets")
@@ -283,8 +305,10 @@ class SNMPPanel(QWidget):
     def set_link_counts(self, prod: int = 0, mgmt: int = 0, power: int = 0):
         self.lbl_prod_links.setText(f"Prod Links: {prod}")
         self.lbl_mgmt_links.setText(f"Mgmt Links: {mgmt}")
-        self.lbl_pwr_links.setText(f"Power Links: {power}")
-        self.links_group.setVisible(prod > 0 or mgmt > 0 or power > 0)
+        self.links_group.setVisible(prod > 0 or mgmt > 0)
+
+    def get_snmp_port(self) -> int:
+        return self.spin_port.value()
 
     def set_simulator_running(self, running: bool):
         self._running = running
@@ -294,6 +318,7 @@ class SNMPPanel(QWidget):
         self.btn_start.setEnabled(not running)
         self.btn_stop.setEnabled(running)
         self.btn_generate.setEnabled(not running)
+        self.spin_port.setEnabled(not running)
 
     def set_datasets_ready(self, ready: bool):
         self.btn_start.setEnabled(ready and not self._running)

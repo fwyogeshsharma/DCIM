@@ -79,6 +79,8 @@ export default function GNMIPanel() {
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | 'proxy' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
+  const [gnmiPort,  setGnmiPort]  = useState(50051)
+  const [portFocused, setPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 
   const running       = gnmi?.running            ?? false
@@ -138,7 +140,7 @@ export default function GNMIPanel() {
   async function start() {
     setBusy(true); setOperation('start')
     try {
-      const j = await api.startGnmi() as { job_id: string }
+      const j = await api.startGnmi(gnmiPort) as { job_id: string }
       await pollJob(j.job_id, () => {}, (d, t) => setProg([d, t]))
       fetchGnmi()
     } catch { /* ignore */ }
@@ -166,7 +168,7 @@ export default function GNMIPanel() {
     setBusy(true); setOperation('proxy')
     try {
       if (proxyOn) await api.stopProxy()
-      else         await api.startProxy()
+      else         await api.startProxy(gnmiPort)
       fetchGnmi()
     } catch { /* ignore */ }
     finally { setBusy(false); setOperation(null) }
@@ -196,7 +198,7 @@ export default function GNMIPanel() {
       : 'Aggregate all device gRPC endpoints behind a single port'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="panel-header">
         <span className="title">gNMI Simulator</span>
         <span className={`badge ${badge.cls}`}>
@@ -205,7 +207,7 @@ export default function GNMIPanel() {
         </span>
       </div>
 
-      <div style={{ padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
         {/* ── Progress ───────────────────────────────────────── */}
         {prog && (
@@ -244,7 +246,10 @@ export default function GNMIPanel() {
         {!showStats && (
           <div className="group-box" style={{ marginTop: 6 }}>
             <span className="group-box-label">Targets</span>
-            <StatRow label="Switches + Routers:" value={gnmiCapable} />
+            <StatRow label="Switches:" value={tc['switch'] ?? 0} />
+            <StatRow label="Routers:"  value={tc['router'] ?? 0} />
+            <StatRow label="Total:" value={gnmiCapable} labelColor="#06b6d4" valueColor="#06b6d4" />
+            <div style={{ height: 4 }} />
             <StatRow
               label="Datasets:"
               value={datasetCount > 0 ? `${datasetCount} ready` : '—'}
@@ -252,6 +257,40 @@ export default function GNMIPanel() {
             />
           </div>
         )}
+
+        {/* ── gNMI port ──────────────────────────────────────── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            gNMI Port
+          </label>
+          <input
+            type="number"
+            min={1} max={65535}
+            value={gnmiPort}
+            onChange={e => setGnmiPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 50051)))}
+            onFocus={() => setPortFocused(true)}
+            onBlur={() => setPortFocused(false)}
+            disabled={busy || running}
+            style={{
+              width: 90,
+              background: '#0d1117',
+              border: `1px solid ${portFocused ? '#58a6ff' : 'var(--border)'}`,
+              borderRadius: 4,
+              color: portFocused ? '#58a6ff' : 'var(--text)',
+              fontSize: 13,
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              padding: '4px 8px',
+              outline: 'none',
+              opacity: (busy || running) ? 0.4 : 1,
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            title="gRPC port for gNMI server and proxy (default 50051)"
+          />
+          <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text-muted)', opacity: 0.5 }}>
+            1–65535
+          </span>
+        </div>
 
         {/* ── Simulator actions ──────────────────────────────── */}
         <div className="snmp-actions">
@@ -262,7 +301,7 @@ export default function GNMIPanel() {
             title={generateTip}
           >
             <IconGenerate />
-            <span>{hasData ? 'Regenerate Dataset' : 'Generate Dataset'}</span>
+            <span>{hasData ? 'Regenerate Datasets' : 'Generate Datasets'}</span>
           </button>
 
           {running ? (
@@ -313,7 +352,7 @@ export default function GNMIPanel() {
               fontSize: 11, fontFamily: 'Consolas, monospace',
               color: proxyOn ? 'var(--green)' : 'var(--text-muted)',
               fontVariantNumeric: 'tabular-nums',
-            }}>{port}</span>
+            }}>{proxyOn ? port : gnmiPort}</span>
           </div>
 
           <button

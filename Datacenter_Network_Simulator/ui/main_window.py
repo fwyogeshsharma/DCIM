@@ -51,6 +51,7 @@ from ui.sflow_panel import SFlowPanel
 from ui.console_panel import ConsolePanel
 from ui.binding_panel import BindingPanel
 from ui.discovery_dialog import DiscoveryDialog
+from ui.tick_settings_dialog import TickSettingsDialog
 
 
 DATASETS_DIR      = "datasets"
@@ -560,6 +561,7 @@ class MainWindow(QMainWindow):
             )
             api_state._ui_queue = self._log_queue
             self._trap_engine.trap_sent.connect(api_state.record_trap)
+            self.state_store.set_tick_callback(lambda: api_state.notify_ui("sync_devices"))
         except Exception:
             pass  # API integration is non-critical — UI must not fail if it errors
 
@@ -986,10 +988,13 @@ class MainWindow(QMainWindow):
         self._act_add_device = QAction("&Add Device...", self, shortcut="Ctrl+D")
         self._act_bulk_add      = QAction("Bulk Add Devices...", self)
         self._act_remove_selected = QAction("&Remove Selected", self, shortcut="Del")
+        self._act_tick_settings = QAction("&Metrics Tick Settings...", self)
         dev_menu.addAction(self._act_add_device)
         dev_menu.addAction(self._act_bulk_add)
         dev_menu.addSeparator()
         dev_menu.addAction(self._act_remove_selected)
+        dev_menu.addSeparator()
+        dev_menu.addAction(self._act_tick_settings)
 
         # Topology
         topo_menu = menubar.addMenu("&Topology")
@@ -1065,6 +1070,7 @@ class MainWindow(QMainWindow):
         self._act_add_device.triggered.connect(self._add_device)
         self._act_bulk_add.triggered.connect(self._bulk_add)
         self._act_remove_selected.triggered.connect(self._remove_selected)
+        self._act_tick_settings.triggered.connect(self._open_tick_settings)
         self._act_link_mode.toggled.connect(self._toggle_link_mode)
         self._act_fit_view.triggered.connect(self._topology_view.fit_view)
         self._act_layout_default.triggered.connect(self._apply_default_layout)
@@ -1315,6 +1321,10 @@ class MainWindow(QMainWindow):
                     device_ids.append(dev_id)
         for dev_id in device_ids:
             self._remove_device(dev_id)
+
+    def _open_tick_settings(self):
+        dlg = TickSettingsDialog(self.state_store, self)
+        dlg.exec()
 
     def _bulk_add(self):
         dlg = BulkAddDialog(self)
@@ -2117,10 +2127,11 @@ class MainWindow(QMainWindow):
                 f"Warning: {failed} IP(s) could not be bound.", "warning"
             )
 
+        snmp_port = self._sim_panel.get_snmp_port()
         self._console_panel.log(
-            f"Launching SNMPSim on port 161 with {len(bound_ips)} device(s)...", "success"
+            f"Launching SNMPSim on port {snmp_port} with {len(bound_ips)} device(s)...", "success"
         )
-        ok = self.snmpsim.start(device_ips=bound_ips, port=161)
+        ok = self.snmpsim.start(device_ips=bound_ips, port=snmp_port)
         if ok:
             self.state_store.set_log_callback(self._console_panel.log)
             self.state_store.start()
@@ -2558,7 +2569,7 @@ class MainWindow(QMainWindow):
             self._console_panel.log_gnmi("[gNMI] Server is already running.", "info")
             return
 
-        port      = self._gnmi_panel.gnmi_port
+        port      = self._gnmi_panel.server_port
         interface = self._binding_panel.selected_interface
 
         if not interface:
@@ -2618,7 +2629,7 @@ class MainWindow(QMainWindow):
         if self._gnmi_bound_ips:
             self._console_panel.log_gnmi(
                 f"[gNMI] {len(self._gnmi_bound_ips)} IPs bound.", "success")
-        port      = self._gnmi_panel.gnmi_port
+        port      = self._gnmi_panel.server_port
         all_bound = list(set(self._bound_ips) | set(self._gnmi_bound_ips))
         # Allow the OS 2 s to fully activate the newly bound IPs before gRPC
         # tries to open TCP sockets on them (critical for loopback adapter IPs).
@@ -3112,7 +3123,8 @@ class MainWindow(QMainWindow):
             self._trap_panel.set_rule_engine_available(running)
             self._rules_panel.set_rule_engine_available(running)
             self._update_topology_edit_actions()
-            self._update_sim_panel_counts()
+            if running:
+                self._update_sim_panel_counts()
             n = len(s.bound_ips) or len(self._bound_ips)
             if running:
                 self._status_label.setText(
@@ -3405,10 +3417,11 @@ class MainWindow(QMainWindow):
         else:
             example_ip = "192.168.1.10"
             community = "public"
-        cmd = self.snmpsim.get_snmp_walk_command(example_ip, port=161, community=community)
+        snmp_port = self._sim_panel.get_snmp_port()
+        cmd = self.snmpsim.get_snmp_walk_command(example_ip, port=snmp_port, community=community)
         QMessageBox.information(
             self, "SNMP Walk Command",
-            f"Each device responds on its own IP at port 161.\n\n"
+            f"Each device responds on its own IP at port {snmp_port}.\n\n"
             f"Example (first device):\n\n  {cmd}\n\n"
             f"Device IPs are bound to the selected network adapter via netsh.\n"
             f"Point your monitoring tool to any device IP on port 161."
@@ -3423,7 +3436,7 @@ class MainWindow(QMainWindow):
             topology=self.topology,
             snmpsim_running=self.snmpsim.is_ready(),
             host="127.0.0.1",
-            port=161,
+            port=self._sim_panel.get_snmp_port(),
             parent=self,
         )
         dlg.exec()

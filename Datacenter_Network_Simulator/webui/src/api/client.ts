@@ -79,7 +79,7 @@ export const api = {
   // snmp
   snmpStatus:     ()                  => get('/snmp/status'),
   genSnmp:        ()                  => post('/snmp/datasets/generate'),
-  startSnmp:      ()                  => post('/snmp/start'),
+  startSnmp:      (port = 161)        => post('/snmp/start', { port }),
   stopSnmp:       ()                  => post('/snmp/stop'),
   clearSnmp:      ()                  => post('/snmp/clear'),
   setTrapReceiver:(ip: string, port: number) => post('/snmp/trap-receiver', { ip, port }),
@@ -87,10 +87,10 @@ export const api = {
   // gnmi
   gnmiStatus:     ()                  => get('/gnmi/status'),
   genGnmi:        ()                  => post('/gnmi/datasets/generate'),
-  startGnmi:      ()                  => post('/gnmi/start'),
+  startGnmi:      (port = 50051)      => post('/gnmi/start', { port }),
   stopGnmi:       ()                  => post('/gnmi/stop'),
   clearGnmi:      ()                  => post('/gnmi/clear'),
-  startProxy:     ()                  => post('/gnmi/proxy/start'),
+  startProxy:     (port = 50051)      => post('/gnmi/proxy/start', { port }),
   stopProxy:      ()                  => post('/gnmi/proxy/stop'),
 
   // sflow
@@ -115,4 +115,8 @@ export const api = {
 
   // jobs
   job: (id: string)                   => get(`/jobs/${id}`),
+
+  // tick settings
+  tickSettings:      ()              => get('/tick/settings'),
+  applyTickSettings: (body: unknown) => post('/tick/settings', body),
 }

@@ -315,6 +315,10 @@ select option { background: #131f30; color: var(--text); }
   50%  { transform: translateX(60%)   scaleX(0.6); }
   100% { transform: translateX(200%)  scaleX(0.4); }
 }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 /* ─── SNMP panel action buttons ─── */
 .snmp-actions {

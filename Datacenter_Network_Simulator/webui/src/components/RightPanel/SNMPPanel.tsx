@@ -47,22 +47,6 @@ const IconTrash = () => (
   </svg>
 )
 
-function GroupBox({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{
-      position: 'relative', border: '1px solid var(--border)',
-      borderRadius: 4, padding: '14px 10px 10px', minWidth: 0,
-    }}>
-      <span style={{
-        position: 'absolute', top: -8, left: 8,
-        background: 'var(--bg-panel)', padding: '0 4px',
-        fontSize: 10, color: 'var(--text-muted)',
-      }}>{title}</span>
-      {children}
-    </div>
-  )
-}
-
 function StatRow({ label, value, labelColor, valueColor }: {
   label: string; value: number | string
   labelColor?: string; valueColor?: string
@@ -81,6 +65,8 @@ export default function SNMPPanel() {
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
   const [linkCounts, setLinkCounts] = useState({ production: 0, management: 0, power: 0 })
+  const [snmpPort,  setSnmpPort]  = useState(161)
+  const [portFocused, setPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 
   const running = snmp?.running        ?? false
@@ -142,7 +128,7 @@ export default function SNMPPanel() {
   async function start() {
     setBusy(true); setOperation('start')
     try {
-      const j = await api.startSnmp() as { job_id: string }
+      const j = await api.startSnmp(snmpPort) as { job_id: string }
       await pollJob(j.job_id, () => {})
       fetchSnmp()
     } catch { /* ignore */ }
@@ -168,6 +154,7 @@ export default function SNMPPanel() {
 
   const showStats = running || operation === 'start'
   const pct = prog ? (prog[1] ? Math.round(prog[0] / prog[1] * 100) : 0) : 0
+  const determinate = !!(prog && prog[1] > 0)
 
   // Action button reasons (tooltips)
   const generateTip = running
@@ -185,7 +172,7 @@ export default function SNMPPanel() {
       : 'Delete all generated datasets'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="panel-header">
         <span className="title">SNMP Simulator</span>
         <span className={`badge ${badge.cls}`}>
@@ -194,44 +181,110 @@ export default function SNMPPanel() {
         </span>
       </div>
 
-      <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
         {/* Progress bar — generation only */}
         {prog && (
           <div className="snmp-progress">
-            <div className="snmp-progress-fill" style={{ width: `${pct}%` }} />
+            <div
+              className="snmp-progress-fill"
+              style={{
+                width: determinate ? `${pct}%` : '40%',
+                animation: determinate ? undefined : 'indeterminate 1.4s ease infinite',
+                transition: determinate ? 'width 0.3s ease' : undefined,
+              }}
+            />
             <span className="snmp-progress-label">
-              {prog[0]} / {prog[1]} · {pct}%
+              {determinate ? `${prog[0]} / ${prog[1]} · ${pct}%` : 'Working…'}
             </span>
+          </div>
+        )}
+
+        {/* Targets — idle/ready state */}
+        {!showStats && total > 0 && (
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Targets</span>
+            {(tc['switch']        ?? 0) > 0 && <StatRow label="Switches:"       value={tc['switch']        ?? 0} />}
+            {(tc['router']        ?? 0) > 0 && <StatRow label="Routers:"        value={tc['router']        ?? 0} />}
+            {(tc['server']        ?? 0) > 0 && <StatRow label="Servers:"        value={tc['server']        ?? 0} />}
+            {(tc['firewall']      ?? 0) > 0 && <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />}
+            {(tc['load_balancer'] ?? 0) > 0 && <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />}
+            {(tc['oob_switch']    ?? 0) > 0 && <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />}
+            {(tc['sensor']        ?? 0) > 0 && <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />}
+            {(tc['ups']           ?? 0) > 0 && <StatRow label="UPS:"            value={tc['ups']           ?? 0} />}
+            {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
+            {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
+            <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
+            <div style={{ height: 4 }} />
+            <StatRow
+              label="Datasets:"
+              value={hasData ? `${snmp?.dataset_count ?? '?'} ready` : '—'}
+              valueColor={hasData ? 'var(--green)' : 'var(--text-muted)'}
+            />
           </div>
         )}
 
         {/* Active Devices */}
         {showStats && (
-          <GroupBox title="Active Devices">
-            <StatRow label="Switches:"       value={tc['switch']        ?? 0} />
-            <StatRow label="Routers:"        value={tc['router']        ?? 0} />
-            <StatRow label="Servers:"        value={tc['server']        ?? 0} />
-            <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />
-            <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />
-            <div style={{ height: 4 }} />
-            <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />
-            <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />
-            <StatRow label="UPS:"            value={tc['ups']           ?? 0} />
-            <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />
-            <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Active Devices</span>
+            {(tc['switch']        ?? 0) > 0 && <StatRow label="Switches:"       value={tc['switch']        ?? 0} />}
+            {(tc['router']        ?? 0) > 0 && <StatRow label="Routers:"        value={tc['router']        ?? 0} />}
+            {(tc['server']        ?? 0) > 0 && <StatRow label="Servers:"        value={tc['server']        ?? 0} />}
+            {(tc['firewall']      ?? 0) > 0 && <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />}
+            {(tc['load_balancer'] ?? 0) > 0 && <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />}
+            {(['oob_switch','sensor','ups','pdu','floor_pdu'].some(t => (tc[t] ?? 0) > 0)) && <div style={{ height: 4 }} />}
+            {(tc['oob_switch']    ?? 0) > 0 && <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />}
+            {(tc['sensor']        ?? 0) > 0 && <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />}
+            {(tc['ups']           ?? 0) > 0 && <StatRow label="UPS:"            value={tc['ups']           ?? 0} />}
+            {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
+            {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
             <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
-          </GroupBox>
+          </div>
         )}
 
         {/* Network Links */}
         {showStats && (
-          <GroupBox title="Network Links">
-            <StatRow label="Prod Links:"  value={linkCounts.production} labelColor="#06b6d4" />
-            <StatRow label="Mgmt Links:"  value={linkCounts.management} labelColor="#06b6d4" />
-            <StatRow label="Power Links:" value={linkCounts.power}      labelColor="#06b6d4" />
-          </GroupBox>
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Network Links</span>
+            <StatRow label="Prod Links:"  value={linkCounts.production} />
+            <StatRow label="Mgmt Links:"  value={linkCounts.management} />
+          </div>
         )}
+
+        {/* SNMP port */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            SNMP Port
+          </label>
+          <input
+            type="number"
+            min={1} max={65535}
+            value={snmpPort}
+            onChange={e => setSnmpPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 161)))}
+            onFocus={() => setPortFocused(true)}
+            onBlur={() => setPortFocused(false)}
+            disabled={busy || running}
+            style={{
+              width: 90,
+              background: '#0d1117',
+              border: `1px solid ${portFocused ? '#58a6ff' : 'var(--border)'}`,
+              borderRadius: 4,
+              color: portFocused ? '#58a6ff' : 'var(--text)',
+              fontSize: 13,
+              fontFamily: 'monospace',
+              fontWeight: 700,
+              padding: '4px 8px',
+              outline: 'none',
+              opacity: (busy || running) ? 0.4 : 1,
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            title="UDP port snmpsim will listen on (default 161, use 1161+ if Windows SNMP service is running)"
+          />
+          <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text-muted)', opacity: 0.5 }}>
+            1–65535
+          </span>
+        </div>
 
         {/* Action buttons — primary flow: Generate → Start/Stop → Clear */}
         <div className="snmp-actions">

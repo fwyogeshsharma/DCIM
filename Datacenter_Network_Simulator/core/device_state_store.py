@@ -99,14 +99,91 @@ class DeviceStateStore:
         # Background ticker
         self._thread: Optional[threading.Thread] = None
         self._recovery_thread: Optional[threading.Thread] = None
-        self._stop_ev = threading.Event()
+        self._stop_ev  = threading.Event()
+        self._pause_ev = threading.Event()   # set → paused
         self._tick_count: int = 0
+
+        # Per-metric enable flags — toggled by TickSettingsDialog
+        self.metric_flags: Dict[str, bool] = {
+            # All devices
+            "cpu_usage":            True,
+            "memory_used":          True,
+            "disk_used":            True,
+            "sys_uptime":           True,
+            "cpu_temp":             True,
+            "inlet_temp":           True,
+            "iface_octets":         True,
+            "iface_errors":         True,
+            "iface_discards":       True,
+            "interface_flap":       True,
+            # Sensor devices
+            "humidity":             True,
+            "dewpoint":             True,
+            "airflow":              True,
+            # UPS devices
+            "ups_status":           True,
+            "ups_output_load":      True,
+            "ups_battery_status":   True,
+            "ups_input_voltage":    True,
+            "ups_input_frequency":  True,
+            "ups_fan_status":       True,
+            "ups_charger_status":   True,
+            "ups_rectifier_status": True,
+            "ups_phase_status":     True,
+            # PDU / Floor PDU devices
+            "pdu_load":             True,
+            "pdu_voltage":          True,
+            "pdu_power_factor":     True,
+            "pdu_phase_imbalance":  True,
+            "pdu_outlet_status":    True,
+            "pdu_breaker_status":   True,
+            "pdu_outlet_failure":   True,
+            "pdu_smoke":            True,
+            "pdu_outlet_current":   True,
+            "pdu_ground_fault":     True,
+            # Router / Firewall
+            "bgp_sessions":         True,
+        }
+
+        # Per-metric limits — toggled and configured by TickSettingsDialog (Limits tab)
+        # Numeric: {"enabled": bool, "min": float, "max": float}
+        # State lock: {"enabled": bool, "lock": str, "options": list[str]}
+        self.metric_limits: Dict[str, dict] = {
+            # Numeric limits
+            "cpu_usage":           {"enabled": False, "min": 0.0,   "max": 100.0},
+            "memory_pct":          {"enabled": False, "min": 0.0,   "max": 100.0},
+            "disk_pct":            {"enabled": False, "min": 0.0,   "max": 100.0},
+            "cpu_temp":            {"enabled": False, "min": 20.0,  "max": 95.0},
+            "inlet_temp":          {"enabled": False, "min": 15.0,  "max": 55.0},
+            "humidity":            {"enabled": False, "min": 10.0,  "max": 90.0},
+            "airflow":             {"enabled": False, "min": 0.2,   "max": 4.0},
+            "ups_output_load":     {"enabled": False, "min": 0.0,   "max": 100.0},
+            "ups_input_voltage":   {"enabled": False, "min": 200.0, "max": 240.0},
+            "ups_input_frequency": {"enabled": False, "min": 49.5,  "max": 50.5},
+            "pdu_load":            {"enabled": False, "min": 0.0,   "max": 100.0},
+            "pdu_voltage":         {"enabled": False, "min": 205.0, "max": 235.0},
+            "pdu_outlet_current":  {"enabled": False, "min": 0.0,   "max": 20.0},
+            # State locks
+            "ups_status":           {"enabled": False, "lock": "normal",      "options": ["normal", "on_battery", "low_battery"]},
+            "ups_battery_status":   {"enabled": False, "lock": "normal",      "options": ["normal", "failure", "disconnected"]},
+            "ups_fan_status":       {"enabled": False, "lock": "ok",          "options": ["ok", "failure"]},
+            "ups_charger_status":   {"enabled": False, "lock": "ok",          "options": ["ok", "failure"]},
+            "ups_rectifier_status": {"enabled": False, "lock": "ok",          "options": ["ok", "failure"]},
+            "ups_phase_status":     {"enabled": False, "lock": "ok",          "options": ["ok", "failure"]},
+            "pdu_outlet_status":    {"enabled": False, "lock": "on",          "options": ["on", "off"]},
+            "pdu_breaker_status":   {"enabled": False, "lock": "ok",          "options": ["ok", "tripped"]},
+            "pdu_outlet_failure":   {"enabled": False, "lock": "ok",          "options": ["ok", "failed"]},
+            "pdu_smoke":            {"enabled": False, "lock": "no",          "options": ["no", "yes"]},
+            "pdu_ground_fault":     {"enabled": False, "lock": "no",          "options": ["no", "yes"]},
+            "bgp_sessions":         {"enabled": False, "lock": "established", "options": ["established", "idle"]},
+        }
 
         # Wall-clock link recovery: device_name → {iface_index: scheduled_time}
         self._pending_recovery: Dict[str, Dict[int, float]] = {}
         self._recovery_lock = threading.Lock()
 
         self._log_cb: Optional[Callable[[str, str], None]] = None
+        self._tick_cb: Optional[Callable[[], None]] = None
 
         # Rule engine integration
         self._rule_engine_cb: Optional[Callable] = None
@@ -123,12 +200,31 @@ class DeviceStateStore:
         """cb(message, level) — level ∈ {"info", "success", "warning", "error"}"""
         self._log_cb = cb
 
+    def set_tick_callback(self, cb: Callable[[], None]):
+        """cb() is called after every successful tick — use to push SSE/UI sync."""
+        self._tick_cb = cb
+
     def set_rule_engine_callback(self, cb: Callable):
         """
         cb(fact: DeviceFact, device: Device) is called once per device per tick.
         The rule engine evaluates the fact and fires appropriate traps.
         """
         self._rule_engine_cb = cb
+
+    # ── Tick runtime controls ──────────────────────────────────────────────
+
+    def set_tick_interval(self, interval: float):
+        """Change interval live; takes effect on the next wake-up."""
+        self._tick_interval = max(1.0, float(interval))
+
+    def set_paused(self, paused: bool):
+        if paused:
+            self._pause_ev.set()
+        else:
+            self._pause_ev.clear()
+
+    def is_paused(self) -> bool:
+        return self._pause_ev.is_set()
 
     def enable_snmp_sync(self, snmp_ctrl: "SNMPSimController"):
         """Start regenerating .snmprec + .dbm files every tick so SNMPSim serves live values."""
@@ -242,6 +338,8 @@ class DeviceStateStore:
 
     def _ticker_loop(self):
         while not self._stop_ev.wait(self._tick_interval):
+            if self._pause_ev.is_set():
+                continue
             try:
                 self._tick()
             except Exception:
@@ -298,6 +396,24 @@ class DeviceStateStore:
         if self._rule_engine_cb:
             self._publish_facts(devices)
 
+        if self._tick_cb:
+            try:
+                self._tick_cb()
+            except Exception:
+                pass
+
+    def _num_limit(self, key: str, value: float) -> float:
+        lim = self.metric_limits.get(key)
+        if lim and lim["enabled"]:
+            return max(lim["min"], min(lim["max"], value))
+        return value
+
+    def _state_lock(self, key: str, value: str) -> str:
+        lim = self.metric_limits.get(key)
+        if lim and lim["enabled"]:
+            return lim["lock"]
+        return value
+
     def _step_device(self, device: "Device"):
         """Apply one random-walk step to a single device's metrics.
 
@@ -336,120 +452,142 @@ class DeviceStateStore:
             "mem_sustained": False,
         })
 
+        mf = self.metric_flags
+
         # CPU — brief vs sustained spike recovery
-        if device.cpu_usage > 90:
-            if ext.get("cpu_sustained", False):
-                # Sustained: gradual recovery — stays in alert for several ticks
+        if mf["cpu_usage"]:
+            if device.cpu_usage > 90:
+                if ext.get("cpu_sustained", False):
+                    device.cpu_usage = max(1, device.cpu_usage + random.randint(-8, -3))
+                else:
+                    device.cpu_usage = random.randint(35, 60)
+            elif device.cpu_usage >= 70:
                 device.cpu_usage = max(1, device.cpu_usage + random.randint(-8, -3))
             else:
-                # Brief: drop directly into normal zone this tick
-                device.cpu_usage = random.randint(35, 60)
-        elif device.cpu_usage >= 70:
-            device.cpu_usage = max(1, device.cpu_usage + random.randint(-8, -3))
-        else:
-            device.cpu_usage = max(1, min(65, device.cpu_usage + random.randint(-4, 4)))
-            if random.random() < 0.01:
-                device.cpu_usage = random.randint(91, 99)
-                # 1 in 7 spikes are sustained; the other 6 recover in one tick
-                ext["cpu_sustained"] = random.random() < (1.0 / 7.0)
+                device.cpu_usage = max(1, min(65, device.cpu_usage + random.randint(-4, 4)))
+                if random.random() < 0.01:
+                    device.cpu_usage = random.randint(91, 99)
+                    ext["cpu_sustained"] = random.random() < (1.0 / 7.0)
+        if mf["cpu_usage"]:
+            device.cpu_usage = int(self._num_limit("cpu_usage", device.cpu_usage))
 
-        # Memory — brief (9 in 10) vs sustained (1 in 10) spike recovery.
-        #  Brief spike  : drops directly to 35–60 % of total in ONE tick (~30 s)
-        #                 so MemoryNormal fires within 5–30 s of HighMemory.
-        #  Sustained    : gradual 3–6 %/tick drop — stays alert ~5–10 ticks.
-        #  Hysteresis   : 3–6 %/tick drop regardless of spike type.
-        #  Normal zone  : ±swing capped 65 %; 0.5 % spike chance.
-        lo        = device.memory_total // 10
-        alert_hi  = int(device.memory_total * 0.85)
-        recov_thr = int(device.memory_total * 0.70)
-        swing     = max(1, device.memory_total // 50)
-        if device.memory_used > alert_hi:
-            if ext.get("mem_sustained", False):
-                # Sustained: gradual recovery
+        # Memory — brief (9 in 10) vs sustained (1 in 10) spike recovery
+        if mf["memory_used"]:
+            lo        = device.memory_total // 10
+            alert_hi  = int(device.memory_total * 0.85)
+            recov_thr = int(device.memory_total * 0.70)
+            swing     = max(1, device.memory_total // 50)
+            if device.memory_used > alert_hi:
+                if ext.get("mem_sustained", False):
+                    drop = random.randint(int(device.memory_total * 0.03),
+                                          int(device.memory_total * 0.06))
+                    device.memory_used = max(lo, device.memory_used - drop)
+                else:
+                    device.memory_used = random.randint(
+                        int(device.memory_total * 0.35),
+                        int(device.memory_total * 0.60),
+                    )
+            elif device.memory_used >= recov_thr:
                 drop = random.randint(int(device.memory_total * 0.03),
                                       int(device.memory_total * 0.06))
                 device.memory_used = max(lo, device.memory_used - drop)
             else:
-                # Brief: drop directly into normal zone this tick
-                device.memory_used = random.randint(
-                    int(device.memory_total * 0.35),
-                    int(device.memory_total * 0.60),
-                )
-        elif device.memory_used >= recov_thr:
-            drop = random.randint(int(device.memory_total * 0.03),
-                                  int(device.memory_total * 0.06))
-            device.memory_used = max(lo, device.memory_used - drop)
-        else:
-            cap = int(device.memory_total * 0.65)
-            device.memory_used = max(lo, min(cap,
-                device.memory_used + random.randint(-swing, swing)))
-            if random.random() < 0.005:
-                device.memory_used = random.randint(int(device.memory_total * 0.86),
-                                                    int(device.memory_total * 0.92))
-                # 1 in 10 spikes are sustained; the other 9 recover in one tick
-                ext["mem_sustained"] = random.random() < (1.0 / 10.0)
+                cap = int(device.memory_total * 0.65)
+                device.memory_used = max(lo, min(cap,
+                    device.memory_used + random.randint(-swing, swing)))
+                if random.random() < 0.005:
+                    device.memory_used = random.randint(int(device.memory_total * 0.86),
+                                                        int(device.memory_total * 0.92))
+                    ext["mem_sustained"] = random.random() < (1.0 / 10.0)
+        if mf["memory_used"]:
+            _lim_mem = self.metric_limits.get("memory_pct")
+            if _lim_mem and _lim_mem["enabled"]:
+                _lo_mem = int(device.memory_total * _lim_mem["min"] / 100)
+                _hi_mem = int(device.memory_total * _lim_mem["max"] / 100)
+                device.memory_used = max(_lo_mem, min(_hi_mem, device.memory_used))
 
-        # Uptime: advance by tick_interval (stored in centiseconds)
-        device.sys_uptime += int(self._tick_interval * 100)
+        # Disk: slow random walk — mostly grows (log/tmp accumulation), occasional drop
+        if mf["disk_used"]:
+            _disk_swing = max(1, device.disk_total // 200)
+            _disk_delta = random.randint(-_disk_swing // 4, _disk_swing)
+            device.disk_used = max(
+                int(device.disk_total * 0.05),
+                min(int(device.disk_total * 0.90), device.disk_used + _disk_delta),
+            )
+        if mf["disk_used"]:
+            _lim_disk = self.metric_limits.get("disk_pct")
+            if _lim_disk and _lim_disk["enabled"]:
+                _lo_disk = int(device.disk_total * _lim_disk["min"] / 100)
+                _hi_disk = int(device.disk_total * _lim_disk["max"] / 100)
+                device.disk_used = max(_lo_disk, min(_hi_disk, device.disk_used))
 
-        # Temperature: formula tuned so HighTemperature (>60°C) only fires for
-        # severe spikes (CPU ≥ ~95%), NOT for every >90% spike.  This prevents
-        # HighTemperature from firing in lockstep with every HighCPU event.
-        # TemperatureNormal (<55°C) fires reliably once cpu drops to normal zone.
-        #   cpu=65 (max normal): 20 + 27.3 ± 1 → 46.3–48.3°C  (below 55°C) ✓
-        #   cpu=90 (min alert) : 20 + 37.8 ± 1 → 56.8–58.8°C  (below 60°C) ✓
-        #   cpu=95 (mid alert) : 20 + 39.9 ± 1 → 58.9–60.9°C  (near 60°C)
-        #   cpu=99 (max spike) : 20 + 41.6 ± 1 → 60.6–62.6°C  (above 60°C) ✓
-        #   CPU/ASIC:  base 20 °C + 0.42 °C per CPU%, clamped 20–95
-        #   Inlet:     base 18 °C + 0.12 °C per CPU%, clamped 15–55
-        device.cpu_temp   = round(max(20.0, min(95.0,
-            20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0))), 1)
-        device.inlet_temp = round(max(15.0, min(55.0,
-            18.0 + device.cpu_usage * 0.12 + random.uniform(-0.5, 0.5))), 1)
+        # Uptime
+        if mf["sys_uptime"]:
+            device.sys_uptime += int(self._tick_interval * 100)
 
-        # Environmental readings — only sensor devices
+        # CPU/ASIC temperature
+        if mf["cpu_temp"]:
+            device.cpu_temp = round(max(20.0, min(95.0,
+                20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0))), 1)
+            device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
+
+        # Chassis inlet temperature
+        if mf["inlet_temp"]:
+            device.inlet_temp = round(max(15.0, min(55.0,
+                18.0 + device.cpu_usage * 0.12 + random.uniform(-0.5, 0.5))), 1)
+            device.inlet_temp = self._num_limit("inlet_temp", device.inlet_temp)
+
+        # Environmental readings — sensor devices only
         if device.device_type == DeviceType.SENSOR:
-            device.humidity = round(max(10.0, min(90.0,
-                device.humidity + random.uniform(-1.5, 1.5))), 1)
-            device.dewpoint = round(
-                device.inlet_temp - ((100.0 - device.humidity) / 5.0), 1)
-            if "NetBotz" in device.model_name:
+            if mf["humidity"]:
+                device.humidity = round(max(10.0, min(90.0,
+                    device.humidity + random.uniform(-1.5, 1.5))), 1)
+                device.humidity = self._num_limit("humidity", device.humidity)
+            if mf["dewpoint"]:
+                device.dewpoint = round(
+                    device.inlet_temp - ((100.0 - device.humidity) / 5.0), 1)
+            if mf["airflow"] and "NetBotz" in device.model_name:
                 device.airflow = round(max(0.2, min(4.0,
                     device.airflow + random.uniform(-0.15, 0.15))), 2)
+                device.airflow = self._num_limit("airflow", device.airflow)
 
-        # Interface counters + queue drops — only UP interfaces
-        congested  = device.cpu_usage > 70
-        moderate   = device.cpu_usage > 50
-        for iface in device.interfaces:
-            if iface.oper_status != 1:
-                continue
-            iface.in_octets  += random.randint(5_000, 150_000)
-            iface.out_octets += random.randint(5_000, 150_000)
-            if random.random() < 0.10:
-                iface.in_errors  += 1
-            if random.random() < 0.05:
-                iface.out_errors += 1
-            # Queue drops scale with congestion
-            if congested:
-                iface.in_discards  += random.randint(0, 5)
-                iface.out_discards += random.randint(0, 10)
-            elif moderate and random.random() < 0.30:
-                iface.in_discards  += random.randint(0, 2)
-                iface.out_discards += random.randint(0, 3)
+        # Interface counters — only UP interfaces
+        _do_oct  = mf["iface_octets"]
+        _do_err  = mf["iface_errors"]
+        _do_disc = mf["iface_discards"]
+        if _do_oct or _do_err or _do_disc:
+            congested = device.cpu_usage > 70
+            moderate  = device.cpu_usage > 50
+            for iface in device.interfaces:
+                if iface.oper_status != 1:
+                    continue
+                if _do_oct:
+                    iface.in_octets  += random.randint(5_000, 150_000)
+                    iface.out_octets += random.randint(5_000, 150_000)
+                if _do_err:
+                    if random.random() < 0.10:
+                        iface.in_errors  += 1
+                    if random.random() < 0.05:
+                        iface.out_errors += 1
+                if _do_disc:
+                    if congested:
+                        iface.in_discards  += random.randint(0, 5)
+                        iface.out_discards += random.randint(0, 10)
+                    elif moderate and random.random() < 0.30:
+                        iface.in_discards  += random.randint(0, 2)
+                        iface.out_discards += random.randint(0, 3)
 
-        # Random interface flapping — connected interfaces only.
-        # 0.2% chance per tick; _recovery_loop restores the interface after 5 s
-        # and immediately publishes facts so LinkUp fires without waiting for the
-        # next tick.
-        for iface in device.interfaces:
-            if not iface.connected_to_device:
-                continue
-            if iface.oper_status == 1 and random.random() < 0.002:
-                iface.oper_status = 2
-                with self._recovery_lock:
-                    self._pending_recovery.setdefault(device.name, {})[iface.index] = (
-                        time.time() + 5.0
-                    )
+        # Interface flapping — connected interfaces, 0.2% chance, recovers after 5 s
+        if mf["interface_flap"]:
+            for iface in device.interfaces:
+                if not iface.connected_to_device:
+                    continue
+                if iface.oper_status == 1 and random.random() < 0.002:
+                    iface.oper_status = 2
+                    with self._recovery_lock:
+                        self._pending_recovery.setdefault(device.name, {})[iface.index] = (
+                            time.time() + 5.0
+                        )
 
     # ------------------------------------------------------------------ #
     #  Extended state simulation (UPS, BGP)                              #
@@ -485,152 +623,166 @@ class DeviceStateStore:
             "mem_sustained": False,
         })
 
-        # UPS: only UPS devices transition; recovers slowly so UPSLowBattery has time to fire
-        if device.device_type == DeviceType.UPS:
-            ups = st["ups_status"]
-            if ups == "normal" and random.random() < 0.001:
-                st["ups_status"] = "on_battery"
-            elif ups == "on_battery" and random.random() < 0.08:
-                st["ups_status"] = "low_battery"
-            elif ups == "on_battery" and random.random() < 0.10:
-                st["ups_status"] = "normal"
-            elif ups == "low_battery" and random.random() < 0.10:
-                st["ups_status"] = "normal"
+        mf = self.metric_flags
+        is_ups = device.device_type == DeviceType.UPS
+        is_pdu = device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU)
 
-        # UPS extended metrics simulation
-        if device.device_type == DeviceType.UPS:
-            # Output load: normal 20-65%, occasional spike to overload (>90%)
-            load = st.get("ups_output_load", 40.0)
-            if load > 90.0:
-                load = max(20.0, load + random.uniform(-8.0, -3.0))
-            elif load >= 70.0:
-                load = max(20.0, load + random.uniform(-6.0, -2.0))
-            else:
-                load = max(5.0, min(70.0, load + random.uniform(-3.0, 3.0)))
-                if random.random() < 0.005:
-                    load = random.uniform(91.0, 99.0)
-            st["ups_output_load"] = round(load, 1)
+        # ── UPS ───────────────────────────────────────────────────────────
+        if is_ups:
+            if mf["ups_status"]:
+                ups = st["ups_status"]
+                if ups == "normal" and random.random() < 0.001:
+                    st["ups_status"] = "on_battery"
+                elif ups == "on_battery" and random.random() < 0.08:
+                    st["ups_status"] = "low_battery"
+                elif ups == "on_battery" and random.random() < 0.10:
+                    st["ups_status"] = "normal"
+                elif ups == "low_battery" and random.random() < 0.10:
+                    st["ups_status"] = "normal"
+            if mf["ups_status"]:
+                st["ups_status"] = self._state_lock("ups_status", st["ups_status"])
 
-            # Battery hardware status
-            bst = st.get("ups_battery_status", "normal")
-            if bst == "normal":
-                r = random.random()
-                if r < 0.0005:
-                    st["ups_battery_status"] = "failure"
-                elif r < 0.0008:
-                    st["ups_battery_status"] = "disconnected"
-            elif random.random() < 0.15:
-                st["ups_battery_status"] = "normal"
+            if mf["ups_output_load"]:
+                load = st.get("ups_output_load", 40.0)
+                if load > 90.0:
+                    load = max(20.0, load + random.uniform(-8.0, -3.0))
+                elif load >= 70.0:
+                    load = max(20.0, load + random.uniform(-6.0, -2.0))
+                else:
+                    load = max(5.0, min(70.0, load + random.uniform(-3.0, 3.0)))
+                    if random.random() < 0.005:
+                        load = random.uniform(91.0, 99.0)
+                st["ups_output_load"] = round(self._num_limit("ups_output_load", load), 1)
 
-            # Input voltage: nominal 220V, ±2V walk, rare spike outside 190-250V
-            v = st.get("ups_input_voltage", 220.0)
-            v = max(200.0, min(240.0, v + random.uniform(-2.0, 2.0)))
-            if random.random() < 0.003:
-                v = random.choice([random.uniform(251.0, 260.0),
-                                   random.uniform(180.0, 189.0)])
-            st["ups_input_voltage"] = round(v, 1)
-
-            # Input frequency: nominal 50Hz, ±0.05Hz walk, rare out-of-range
-            f = st.get("ups_input_frequency", 50.0)
-            f = max(49.5, min(50.5, f + random.uniform(-0.05, 0.05)))
-            if random.random() < 0.002:
-                f = random.choice([random.uniform(47.0, 48.9),
-                                   random.uniform(51.1, 53.0)])
-            st["ups_input_frequency"] = round(f, 2)
-
-            # Component status: fan, charger, rectifier, phase
-            for key in ("ups_fan_status", "ups_charger_status",
-                        "ups_rectifier_status", "ups_phase_status"):
-                if st.get(key, "ok") == "ok":
-                    if random.random() < 0.001:
-                        st[key] = "failure"
+            if mf["ups_battery_status"]:
+                bst = st.get("ups_battery_status", "normal")
+                if bst == "normal":
+                    r = random.random()
+                    if r < 0.0005:
+                        st["ups_battery_status"] = "failure"
+                    elif r < 0.0008:
+                        st["ups_battery_status"] = "disconnected"
                 elif random.random() < 0.15:
-                    st[key] = "ok"
+                    st["ups_battery_status"] = "normal"
+            if mf["ups_battery_status"]:
+                st["ups_battery_status"] = self._state_lock("ups_battery_status", st["ups_battery_status"])
 
-        # PDU extended metrics simulation
-        if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
-            # Load: normal 30-70%, occasional high/critical
-            ld = st.get("pdu_load", 45.0)
-            if ld > 90.0:
-                ld = max(30.0, ld + random.uniform(-8.0, -3.0))
-            elif ld >= 80.0:
-                ld = max(30.0, ld + random.uniform(-5.0, -1.0))
-            else:
-                ld = max(10.0, min(75.0, ld + random.uniform(-3.0, 3.0)))
-                if random.random() < 0.004:
-                    ld = random.uniform(81.0, 98.0)
-            st["pdu_load"] = round(ld, 1)
+            if mf["ups_input_voltage"]:
+                v = st.get("ups_input_voltage", 220.0)
+                v = max(200.0, min(240.0, v + random.uniform(-2.0, 2.0)))
+                if random.random() < 0.003:
+                    v = random.choice([random.uniform(251.0, 260.0),
+                                       random.uniform(180.0, 189.0)])
+                st["ups_input_voltage"] = round(self._num_limit("ups_input_voltage", v), 1)
 
-            # Voltage: nominal 220V, ±2V walk, rare spike
-            pv = st.get("pdu_voltage", 220.0)
-            pv = max(205.0, min(235.0, pv + random.uniform(-2.0, 2.0)))
-            if random.random() < 0.003:
-                pv = random.choice([random.uniform(241.0, 250.0),
-                                    random.uniform(190.0, 199.0)])
-            st["pdu_voltage"] = round(pv, 1)
+            if mf["ups_input_frequency"]:
+                f = st.get("ups_input_frequency", 50.0)
+                f = max(49.5, min(50.5, f + random.uniform(-0.05, 0.05)))
+                if random.random() < 0.002:
+                    f = random.choice([random.uniform(47.0, 48.9),
+                                       random.uniform(51.1, 53.0)])
+                st["ups_input_frequency"] = round(self._num_limit("ups_input_frequency", f), 2)
 
-            # Power factor: normally 0.90-0.99, occasional dip
-            pf = st.get("pdu_power_factor", 0.95)
-            pf = max(0.60, min(0.99, pf + random.uniform(-0.02, 0.02)))
-            if random.random() < 0.003:
-                pf = random.uniform(0.50, 0.69)
-            st["pdu_power_factor"] = round(pf, 3)
+            for comp_key in ("ups_fan_status", "ups_charger_status",
+                             "ups_rectifier_status", "ups_phase_status"):
+                if not mf[comp_key]:
+                    continue
+                if st.get(comp_key, "ok") == "ok":
+                    if random.random() < 0.001:
+                        st[comp_key] = "failure"
+                elif random.random() < 0.15:
+                    st[comp_key] = "ok"
+                st[comp_key] = self._state_lock(comp_key, st[comp_key])
 
-            # Phase imbalance: normally 0-10%, occasional spike
-            pi = st.get("pdu_phase_imbalance", 2.0)
-            pi = max(0.0, min(15.0, pi + random.uniform(-1.0, 1.0)))
-            if random.random() < 0.003:
-                pi = random.uniform(21.0, 35.0)
-            st["pdu_phase_imbalance"] = round(pi, 1)
+        # ── PDU / Floor PDU ───────────────────────────────────────────────
+        if is_pdu:
+            if mf["pdu_load"]:
+                ld = st.get("pdu_load", 45.0)
+                if ld > 90.0:
+                    ld = max(30.0, ld + random.uniform(-8.0, -3.0))
+                elif ld >= 80.0:
+                    ld = max(30.0, ld + random.uniform(-5.0, -1.0))
+                else:
+                    ld = max(10.0, min(75.0, ld + random.uniform(-3.0, 3.0)))
+                    if random.random() < 0.004:
+                        ld = random.uniform(81.0, 98.0)
+                st["pdu_load"] = round(self._num_limit("pdu_load", ld), 1)
 
-            # Outlet status: mostly on, occasional off/on cycle
-            os_ = st.get("pdu_outlet_status", "on")
-            if os_ == "on":
-                if random.random() < 0.001:
-                    st["pdu_outlet_status"] = "off"
-            elif random.random() < 0.30:
-                st["pdu_outlet_status"] = "on"
+            if mf["pdu_voltage"]:
+                pv = st.get("pdu_voltage", 220.0)
+                pv = max(205.0, min(235.0, pv + random.uniform(-2.0, 2.0)))
+                if random.random() < 0.003:
+                    pv = random.choice([random.uniform(241.0, 250.0),
+                                        random.uniform(190.0, 199.0)])
+                st["pdu_voltage"] = round(self._num_limit("pdu_voltage", pv), 1)
 
-            # Breaker status
-            if st.get("pdu_breaker_status", "ok") == "ok":
-                if random.random() < 0.001:
-                    st["pdu_breaker_status"] = "tripped"
-            elif random.random() < 0.25:
-                st["pdu_breaker_status"] = "ok"
+            if mf["pdu_power_factor"]:
+                pf = st.get("pdu_power_factor", 0.95)
+                pf = max(0.60, min(0.99, pf + random.uniform(-0.02, 0.02)))
+                if random.random() < 0.003:
+                    pf = random.uniform(0.50, 0.69)
+                st["pdu_power_factor"] = round(pf, 3)
 
-            # Outlet failure
-            if st.get("pdu_outlet_failure", "ok") == "ok":
-                if random.random() < 0.001:
-                    st["pdu_outlet_failure"] = "failed"
-            elif random.random() < 0.25:
-                st["pdu_outlet_failure"] = "ok"
+            if mf["pdu_phase_imbalance"]:
+                pi = st.get("pdu_phase_imbalance", 2.0)
+                pi = max(0.0, min(15.0, pi + random.uniform(-1.0, 1.0)))
+                if random.random() < 0.003:
+                    pi = random.uniform(21.0, 35.0)
+                st["pdu_phase_imbalance"] = round(pi, 1)
 
-            # Smoke (very rare)
-            if st.get("pdu_smoke", "no") == "no":
-                if random.random() < 0.0001:
-                    st["pdu_smoke"] = "yes"
-            elif random.random() < 0.05:
-                st["pdu_smoke"] = "no"
+            if mf["pdu_outlet_status"]:
+                os_ = st.get("pdu_outlet_status", "on")
+                if os_ == "on":
+                    if random.random() < 0.001:
+                        st["pdu_outlet_status"] = "off"
+                elif random.random() < 0.30:
+                    st["pdu_outlet_status"] = "on"
+                st["pdu_outlet_status"] = self._state_lock("pdu_outlet_status", st["pdu_outlet_status"])
 
-            # Outlet current: normally 5-15A, occasional high
-            oc = st.get("pdu_outlet_current", 10.0)
-            oc = max(1.0, min(18.0, oc + random.uniform(-1.0, 1.0)))
-            if random.random() < 0.003:
-                oc = random.uniform(21.0, 28.0)
-            st["pdu_outlet_current"] = round(oc, 1)
+            if mf["pdu_breaker_status"]:
+                if st.get("pdu_breaker_status", "ok") == "ok":
+                    if random.random() < 0.001:
+                        st["pdu_breaker_status"] = "tripped"
+                elif random.random() < 0.25:
+                    st["pdu_breaker_status"] = "ok"
+                st["pdu_breaker_status"] = self._state_lock("pdu_breaker_status", st["pdu_breaker_status"])
 
-            # Ground fault (very rare)
-            if st.get("pdu_ground_fault", "no") == "no":
-                if random.random() < 0.0005:
-                    st["pdu_ground_fault"] = "yes"
-            elif random.random() < 0.20:
-                st["pdu_ground_fault"] = "no"
+            if mf["pdu_outlet_failure"]:
+                if st.get("pdu_outlet_failure", "ok") == "ok":
+                    if random.random() < 0.001:
+                        st["pdu_outlet_failure"] = "failed"
+                elif random.random() < 0.25:
+                    st["pdu_outlet_failure"] = "ok"
+                st["pdu_outlet_failure"] = self._state_lock("pdu_outlet_failure", st["pdu_outlet_failure"])
+
+            if mf["pdu_smoke"]:
+                if st.get("pdu_smoke", "no") == "no":
+                    if random.random() < 0.0001:
+                        st["pdu_smoke"] = "yes"
+                elif random.random() < 0.05:
+                    st["pdu_smoke"] = "no"
+                st["pdu_smoke"] = self._state_lock("pdu_smoke", st["pdu_smoke"])
+
+            if mf["pdu_outlet_current"]:
+                oc = st.get("pdu_outlet_current", 10.0)
+                oc = max(1.0, min(18.0, oc + random.uniform(-1.0, 1.0)))
+                if random.random() < 0.003:
+                    oc = random.uniform(21.0, 28.0)
+                st["pdu_outlet_current"] = round(self._num_limit("pdu_outlet_current", oc), 1)
+
+            if mf["pdu_ground_fault"]:
+                if st.get("pdu_ground_fault", "no") == "no":
+                    if random.random() < 0.0005:
+                        st["pdu_ground_fault"] = "yes"
+                elif random.random() < 0.20:
+                    st["pdu_ground_fault"] = "no"
+                st["pdu_ground_fault"] = self._state_lock("pdu_ground_fault", st["pdu_ground_fault"])
 
         # Update module-level cache so snmprec_generator can read UPS/PDU states
         _ext_state_cache[name] = dict(st)
 
         # BGP sessions: only for routers and firewalls
-        if device.device_type.value in ("router", "firewall"):
+        if mf["bgp_sessions"] and device.device_type.value in ("router", "firewall"):
             sessions = st["bgp_sessions"]
             if not sessions:
                 # Initialise 1-3 BGP peers on first tick
@@ -646,6 +798,10 @@ class DeviceStateStore:
                         sess["state"] = "idle"
                     elif sess["state"] != "established" and random.random() < 0.15:
                         sess["state"] = "established"
+            _lim_bgp = self.metric_limits.get("bgp_sessions")
+            if _lim_bgp and _lim_bgp["enabled"]:
+                for sess in st.get("bgp_sessions", []):
+                    sess["state"] = _lim_bgp["lock"]
 
 
     # ------------------------------------------------------------------ #

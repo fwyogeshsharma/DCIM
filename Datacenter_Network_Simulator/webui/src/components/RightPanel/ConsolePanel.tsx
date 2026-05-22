@@ -55,7 +55,7 @@ export default function ConsolePanel() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="panel-header">
-        <span className="title">🖥 Console</span>
+        <span className="title">Console</span>
         <div style={{ display: 'flex', gap: 6 }}>
           <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
             <input type="checkbox" checked={autoScroll} onChange={e => setAutoScroll(e.target.checked)} />

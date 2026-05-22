@@ -9,7 +9,7 @@ import time
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QGroupBox, QLineEdit, QTableWidget, QTableWidgetItem,
+    QLabel, QGroupBox, QLineEdit, QSpinBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QSizePolicy, QProgressBar,
 )
 from PySide6.QtCore import Qt, Signal, QTimer
@@ -118,6 +118,34 @@ class GNMIPanel(QWidget):
         self.progress.hide()
         layout.addWidget(self.progress)
 
+        # ── gNMI Server Port ──────────────────────────────────────────────
+        srv_port_row = QHBoxLayout()
+        srv_port_row.setSpacing(4)
+        srv_port_lbl = QLabel("gNMI Port:")
+        srv_port_lbl.setFont(QFont("Arial", 9))
+        srv_port_lbl.setStyleSheet("color: #8b949e;")
+        srv_port_row.addWidget(srv_port_lbl)
+        srv_port_row.addStretch()
+        self.spin_server_port = QSpinBox()
+        self.spin_server_port.setRange(1, 65535)
+        self.spin_server_port.setValue(50051)
+        self.spin_server_port.setMaximumWidth(80)
+        self.spin_server_port.setFont(QFont("Consolas", 9))
+        self.spin_server_port.setStyleSheet(
+            "QSpinBox { background: #21262d; color: #e6edf3; "
+            "border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; }"
+            "QSpinBox:focus { border-color: #58a6ff; }"
+            "QSpinBox::up-button { subcontrol-origin: border; subcontrol-position: top right; "
+            "width: 16px; border-left: 1px solid #30363d; background: #6e7681; border-radius: 0 4px 0 0; }"
+            "QSpinBox::up-button:hover { background: #8b949e; }"
+            "QSpinBox::down-button { subcontrol-origin: border; subcontrol-position: bottom right; "
+            "width: 16px; border-left: 1px solid #30363d; background: #6e7681; border-radius: 0 0 4px 0; }"
+            "QSpinBox::down-button:hover { background: #8b949e; }"
+        )
+        self.spin_server_port.setToolTip("gRPC port the gNMI server listens on (default 50051)")
+        srv_port_row.addWidget(self.spin_server_port)
+        layout.addLayout(srv_port_row)
+
         # ── Generate button ───────────────────────────────────────────────
         self.btn_generate = QPushButton("Generate Dataset")
         self.btn_generate.setStyleSheet(self._btn_generate_style())
@@ -169,6 +197,7 @@ class GNMIPanel(QWidget):
         port_lbl.setFont(QFont("Arial", 9))
         port_lbl.setStyleSheet("color: #8b949e;")
         port_row.addWidget(port_lbl)
+        port_row.addStretch()
         self.port_edit = QLineEdit("50051")
         self.port_edit.setMaximumWidth(75)
         self.port_edit.setFont(QFont("Consolas", 9))
@@ -176,7 +205,6 @@ class GNMIPanel(QWidget):
         self.port_edit.setToolTip(
             "Proxy gRPC port — clients connect here and use target= to address a device (default 50051)")
         port_row.addWidget(self.port_edit)
-        port_row.addStretch()
         cfg_layout.addLayout(port_row)
 
         self.btn_proxy_toggle = QPushButton("Enable Proxy")
@@ -259,6 +287,7 @@ class GNMIPanel(QWidget):
         self.btn_generate.setEnabled(not running)
         self.btn_start.setEnabled(not running)
         self.btn_stop.setEnabled(running)
+        self.spin_server_port.setEnabled(not running)
         if running:
             self.btn_clear.setEnabled(True)
         self.btn_proxy_toggle.setEnabled(running)
@@ -337,6 +366,10 @@ class GNMIPanel(QWidget):
                 item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
                 self.clients_table.setItem(row, col, item)
         self.clients_table.resizeRowsToContents()
+
+    @property
+    def server_port(self) -> int:
+        return self.spin_server_port.value()
 
     @property
     def gnmi_port(self) -> int:

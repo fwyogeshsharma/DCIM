@@ -140,19 +140,25 @@ export default function TrapsPanel() {
         </div>
 
         {/* ── Rule Engine toggle ─────────────────────────────── */}
-        <button
-          className={`btn-action ${engineOn ? 'btn-generate' : ''}`}
-          onClick={toggleEngine}
-          disabled={!engineAvail}
-          title={
-            !engineAvail ? 'Start SNMP simulator first'
-            : engineOn   ? 'Disable rule-driven trap generation'
-            : 'Enable rule-driven trap generation'
-          }
-        >
-          <IconEngine />
-          <span>Rule Engine · {engineOn ? 'ON' : 'OFF'}</span>
-        </button>
+        <div className="field-row-split" title={
+          !engineAvail ? 'Start SNMP simulator first'
+          : engineOn   ? 'Disable rule-driven trap generation'
+          : 'Enable rule-driven trap generation'
+        }>
+          <span className="label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <IconEngine />
+            Rule Engine
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: engineOn ? 'var(--green)' : 'var(--text-dim)' }}>
+              {engineOn ? 'ON' : 'OFF'}
+            </span>
+            <label className="toggle" style={{ opacity: engineAvail ? 1 : 0.4, pointerEvents: engineAvail ? 'auto' : 'none' }}>
+              <input type="checkbox" checked={engineOn} onChange={toggleEngine} disabled={!engineAvail} />
+              <span className="toggle-slider" />
+            </label>
+          </div>
+        </div>
 
         {/* ── Severity counter badges ────────────────────────── */}
         <div style={{ display: 'flex', gap: 4 }}>

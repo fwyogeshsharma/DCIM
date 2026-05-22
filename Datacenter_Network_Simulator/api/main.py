@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow
-from api.routers import events, jobs
+from api.routers import events, jobs, tick
 from api.routers import graph as graph_router
 
 app = FastAPI(
@@ -52,6 +52,7 @@ app.include_router(devices.router, prefix="/api")
 app.include_router(sflow.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
+app.include_router(tick.router, prefix="/api")
 
 
 import os as _os

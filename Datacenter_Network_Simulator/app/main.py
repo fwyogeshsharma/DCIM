@@ -214,6 +214,7 @@ def _run_headless():
         gnmi_datasets_dir=gnmi_dir,
     )
     trap_engine.trap_sent.connect(api_state.record_trap)
+    state_store.set_tick_callback(lambda: api_state.notify_ui("sync_devices"))
 
     port = 8000
     for i, arg in enumerate(sys.argv):

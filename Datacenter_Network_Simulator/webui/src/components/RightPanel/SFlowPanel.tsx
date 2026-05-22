@@ -80,10 +80,10 @@ export default function SFlowPanel() {
   const running = status?.running ?? false
   const configLoaded = useRef(false)
 
-  // Per-type counts (mirrors desktop _DEVICE_TYPE_LABELS)
+  // sFlow runs only on network devices (switches + routers)
   const tc: Record<string, number> = {}
   for (const d of devices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
-  const total = devices.length
+  const total = (tc['switch'] ?? 0) + (tc['router'] ?? 0)
 
   function fetchStatus(syncForm = false) {
     api.sflowStatus()
@@ -192,16 +192,22 @@ export default function SFlowPanel() {
           />
         </div>
 
+        {/* ── Targets (idle/ready) ───────────────────────────── */}
+        {!running && total > 0 && (
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Targets</span>
+            {(tc['switch'] ?? 0) > 0 && <StatRow label="Switches:" value={tc['switch'] ?? 0} />}
+            {(tc['router'] ?? 0) > 0 && <StatRow label="Routers:"  value={tc['router'] ?? 0} />}
+            <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
+          </div>
+        )}
+
         {/* ── Active Devices (when running) ──────────────────── */}
         {running && (
           <div className="group-box">
             <span className="group-box-label">Active Devices</span>
-            <StatRow label="Switches:"       value={tc['switch']        ?? 0} />
-            <StatRow label="Routers:"        value={tc['router']        ?? 0} />
-            <StatRow label="Servers:"        value={tc['server']        ?? 0} />
-            <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />
-            <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />
-            <div style={{ height: 4 }} />
+            {(tc['switch'] ?? 0) > 0 && <StatRow label="Switches:" value={tc['switch'] ?? 0} />}
+            {(tc['router'] ?? 0) > 0 && <StatRow label="Routers:"  value={tc['router'] ?? 0} />}
             <StatRow
               label="Total Exporters:"
               value={status?.active_devices ?? total}
