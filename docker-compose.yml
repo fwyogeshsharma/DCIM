@@ -4,8 +4,6 @@ version: "3.9"
 networks:
   dcim-backend:
     driver: bridge
-  sim-net:
-    driver: bridge
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
