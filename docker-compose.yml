@@ -152,6 +152,8 @@ services:
       REDIS_URL: redis://redis:6379
       # DCIM Server endpoints (comma-separated for multi-server awareness)
       DCIM_SERVER_URLS: "http://dcim-server-a:8080,http://dcim-server-b:8080,http://dcim-server-c:8080"
+      # API key for the external ingest endpoint — change before going to production
+      INGEST_API_KEY: "74613fe24e4da087f46d584c6558870a3bed6b993a6416ced4df17f9a0f1e824"
     ports:
       - "3002:3002"
     networks: [dcim-backend]
