@@ -1748,6 +1748,21 @@ export default function Topology3D() {
     enabled: !USE_MOCK_DATA,
   })
 
+  const { data: deviceAlertSummary } = useQuery({
+    queryKey: ['device-alert-summary-3d'],
+    queryFn: () => api.getDeviceAlertSummary(),
+    staleTime: 30000,
+    refetchInterval: USE_MOCK_DATA ? false : 30000,
+    enabled: !USE_MOCK_DATA,
+  })
+  const deviceAlertsByIp = useMemo(() => {
+    const map = new Map<string, { active: number; critical: number; warning: number }>()
+    deviceAlertSummary?.forEach(d => {
+      if (d.device_ip) map.set(d.device_ip, { active: d.active, critical: d.critical, warning: d.warning })
+    })
+    return map
+  }, [deviceAlertSummary])
+
   // Fetch live devices from every sim-network container via the orchestrator
   const { data: orchDevices } = useQuery<{ container: string; data: { name: string; ip_address: string; type: string; vendor: string }[] }[]>({
     queryKey: ['orc-devices-3d'],
@@ -1997,8 +2012,8 @@ export default function Topology3D() {
       e => !e.container || expandedNetworks.size === 0 || expandedNetworks.has(e.container)
     )
 
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, visibleOrchDevices, visibleOrchEdges)
-  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, orchDevicesByServerId, orchTopology])
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, visibleOrchDevices, visibleOrchEdges, deviceAlertsByIp)
+  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, orchDevicesByServerId, orchTopology, deviceAlertsByIp])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
