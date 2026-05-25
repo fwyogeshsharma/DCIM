@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import threading
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 
@@ -104,6 +105,30 @@ def get_links(layer: str = None):
     return {"links": links, "count": len(links)}
 
 
+def _patch_link_endpoints(s, src_id: str, dst_id: str):
+    """Background: run patch_metrics + patch_lldp on both link endpoints.
+
+    Mirrors what the desktop UI does via _regenerate_device_live — keeps the
+    .snmprec files in sync with the in-memory topology state so that broken /
+    restored links are reflected in ifOperStatus AND the LLDP neighbor table.
+    """
+    if s.device_manager is None or s.topology is None:
+        return
+    src_dev = s.device_manager.get_device(src_id)
+    dst_dev = s.device_manager.get_device(dst_id)
+    if not (src_dev or dst_dev):
+        return
+
+    from core.snmprec_generator import SNMPRecGenerator
+    gen = SNMPRecGenerator(s.snmp_datasets_dir)
+    for dev in filter(None, [src_dev, dst_dev]):
+        try:
+            gen.patch_metrics(dev)
+            gen.patch_lldp(dev, s.topology)
+        except Exception:
+            pass
+
+
 def _send_link_traps(s, src_id: str, dst_id: str, layer: str, is_down: bool):
     """Send LINK_DOWN or LINK_UP traps on both endpoints of a production link.
     Management links carry no SNMP interface OIDs so traps are skipped."""
@@ -159,6 +184,11 @@ def break_link(req: LinkActionRequest):
         s.topology.break_link(req.src_id, req.dst_id, req.layer)
         s.notify_ui("link_changed", req.src_id, req.dst_id, True)
         _send_link_traps(s, req.src_id, req.dst_id, req.layer, is_down=True)
+        threading.Thread(
+            target=_patch_link_endpoints,
+            args=(s, req.src_id, req.dst_id),
+            daemon=True,
+        ).start()
         return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] broken — LINK_DOWN traps sent")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -174,6 +204,11 @@ def restore_link(req: LinkActionRequest):
         s.topology.restore_link(req.src_id, req.dst_id, req.layer)
         s.notify_ui("link_changed", req.src_id, req.dst_id, False)
         _send_link_traps(s, req.src_id, req.dst_id, req.layer, is_down=False)
+        threading.Thread(
+            target=_patch_link_endpoints,
+            args=(s, req.src_id, req.dst_id),
+            daemon=True,
+        ).start()
         return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] restored — LINK_UP traps sent")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
