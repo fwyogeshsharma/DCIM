@@ -322,6 +322,22 @@ export default function Topology() {
 
   const topologyLinks = USE_MOCK_DATA ? mockData!.topologyLinks : realTopologyLinks
 
+  // Alert counts for ingest-API devices, keyed by mgmt_ip
+  const { data: deviceAlertSummary } = useQuery({
+    queryKey: ['device-alert-summary'],
+    queryFn: () => api.getDeviceAlertSummary(),
+    staleTime: 30000,
+    refetchInterval: USE_MOCK_DATA ? false : 30000,
+    enabled: !USE_MOCK_DATA,
+  })
+  const deviceAlertsByIp = useMemo(() => {
+    const map = new Map<string, { active: number; critical: number; warning: number }>()
+    deviceAlertSummary?.forEach(d => {
+      if (d.device_ip) map.set(d.device_ip, { active: d.active, critical: d.critical, warning: d.warning })
+    })
+    return map
+  }, [deviceAlertSummary])
+
   // ── Seed trap state from existing unresolved traps on mount ───────────────
   // SSE only fires for newly-inserted traps; existing active traps in the DB
   // must be loaded once so the topology reflects current reality immediately.
@@ -634,6 +650,39 @@ export default function Topology() {
             distance: 130,
             linkType: 'device-agent',
           })
+        }
+      })
+    }
+
+    // Create synthetic nodes for devices that appear in topology_links but are
+    // not in snmpDevices (e.g. ingested via the /ingest API). These are always
+    // visible regardless of server expansion state.
+    if (topologyLinks && topologyLinks.length > 0) {
+      const existingIps = new Set(deviceNodes.map(n => n.ip).filter(Boolean) as string[])
+      topologyLinks.forEach(tl => {
+        const endpoints: [string, string][] = [
+          [tl.source_ip, tl.source_name],
+          [tl.target_ip, tl.target_name],
+        ]
+        for (const [ip, name] of endpoints) {
+          if (!ip || existingIps.has(ip)) continue
+          existingIps.add(ip)
+          const ts = new Date(tl.last_seen).getTime()
+          const isActive = !isNaN(ts) && ts > twoHoursAgo
+          const nodeId = `ingest-device-${ip}`
+          if (!deviceNodeIds.has(nodeId)) {
+            deviceNodeIds.add(nodeId)
+            const alertInfo = deviceAlertsByIp.get(ip)
+            deviceNodes.push({
+              id: nodeId,
+              name: name || ip,
+              type: 'network' as const,
+              status: isActive ? 'online' : 'offline',
+              ip,
+              alerts: alertInfo?.active ?? 0,
+              metrics: 0,
+            })
+          }
         }
       })
     }

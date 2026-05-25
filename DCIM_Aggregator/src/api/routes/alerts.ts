@@ -98,6 +98,31 @@ export function createAlertsRouter(dbPool: Pool): Router {
     }
   })
 
+  // Alert counts per device, keyed by mgmt_ip — used by topology to attach
+  // alert badges to ingest-API devices (which have no agent_id, only an IP).
+  router.get('/by-device-ip', async (req, res) => {
+    try {
+      const { rows } = await dbPool.query(`
+        SELECT
+          d.mgmt_ip::text AS device_ip,
+          d.hostname,
+          COUNT(*)                                                                                                        AS total,
+          COUNT(CASE WHEN COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END)                   AS active,
+          COUNT(CASE WHEN LOWER(e.severity) = 'critical'                       AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS critical,
+          COUNT(CASE WHEN LOWER(e.severity) IN ('major','warning')             AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS warning,
+          COUNT(CASE WHEN LOWER(e.severity) IN ('minor','info','informational') AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS info
+        FROM events e
+        JOIN devices d ON d.id = e.device_id
+        WHERE d.mgmt_ip IS NOT NULL
+        GROUP BY d.mgmt_ip, d.hostname
+        ORDER BY active DESC
+      `)
+      res.json({ success: true, data: rows })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // Alert stats
   router.get('/stats', async (req, res) => {
     try {

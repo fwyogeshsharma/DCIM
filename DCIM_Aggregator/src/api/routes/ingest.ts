@@ -101,6 +101,15 @@ interface IngestPayload {
   events?: IngestEvent[]
 }
 
+// Thresholds for auto-generating alert events from ingested metrics.
+const METRIC_THRESHOLDS: Record<string, { warn: number; crit: number; unit: string }> = {
+  cpu_util:      { warn: 80, crit: 90, unit: '%' },
+  mem_util:      { warn: 80, crit: 90, unit: '%' },
+  disk_util:     { warn: 85, crit: 95, unit: '%' },
+  temperature:   { warn: 45, crit: 55, unit: '°C' },
+  if_error_rate: { warn: 1,  crit: 5,  unit: '%' },
+}
+
 // ── Router ─────────────────────────────────────────────────────────────────────
 
 export function createIngestRouter(dbPool: Pool): Router {
@@ -245,7 +254,7 @@ export function createIngestRouter(dbPool: Pool): Router {
           }
         }
 
-        // ── 4. Insert metrics (ignore duplicates) ────────────────────────────
+        // ── 4. Insert metrics + auto-generate threshold alerts ───────────────
         for (const m of dev.metrics ?? []) {
           const ifaceKey = m.interface_name ? `${deviceId}:${m.interface_name}` : undefined
           const ifaceId = ifaceKey ? (ifaceIdMap.get(ifaceKey) ?? null) : null
@@ -260,6 +269,38 @@ export function createIngestRouter(dbPool: Pool): Router {
             m.collector_agent ?? 'EDR', m.collector_protocol ?? 'SNMP',
             ifaceId,
           ])
+
+          const thr = METRIC_THRESHOLDS[m.metric_name]
+          if (thr && m.value >= thr.warn) {
+            const severity = m.value >= thr.crit ? 'critical' : 'warning'
+            const threshold = m.value >= thr.crit ? thr.crit : thr.warn
+            // Skip if an active alert for this device+metric already exists within 10 min
+            const { rows: existing } = await client.query(`
+              SELECT id FROM events
+              WHERE device_id = $1
+                AND event_name = $2
+                AND COALESCE((event_payload->>'resolved')::boolean, false) = false
+                AND ts >= NOW() - INTERVAL '10 minutes'
+              LIMIT 1
+            `, [deviceId, m.metric_name])
+            if (existing.length === 0) {
+              await client.query(`
+                INSERT INTO events (device_id, source_hostname, ts, kind, event_name, severity,
+                                    source_ip, event_payload, collector_agent)
+                VALUES ($1,$2,now(),'alert',$3,$4,$5::inet,$6,$7)
+              `, [
+                deviceId, dev.hostname, m.metric_name, severity,
+                dev.mgmt_ip ?? null,
+                JSON.stringify({
+                  message: `${m.metric_name} is ${m.value}${thr.unit} (threshold: ${threshold}${thr.unit})`,
+                  actual_value: m.value,
+                  threshold_value: threshold,
+                  resolved: false,
+                }),
+                m.collector_agent ?? 'EDR',
+              ])
+            }
+          }
         }
       }
 

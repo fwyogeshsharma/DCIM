@@ -99,6 +99,7 @@ const WIDE_LAYER_ROW_DEPTH = 14 // Z step between wrap rows
 
 export type OrcDevice = { name: string; ip_address: string; type: string; vendor: string }
 export type OrcTopologyEdge = { src_ip: string; dst_ip: string; container?: string }
+export type DeviceAlertInfo = { active: number; critical: number; warning: number }
 
 export function computeHierarchicalLayout(
   servers: ServerConfig[],
@@ -106,7 +107,8 @@ export function computeHierarchicalLayout(
   snmpDevices: SNMPDevice[] = [],
   topologyLinks: TopologyLink[] = [],
   orchDevicesByServerId?: Map<string, OrcDevice[]>,
-  orchTopologyEdges?: OrcTopologyEdge[]
+  orchTopologyEdges?: OrcTopologyEdge[],
+  deviceAlertsByIp?: Map<string, DeviceAlertInfo>
 ): LayoutResult {
   const enabledServers = servers.filter((s) => s.enabled)
   const nodes: LayoutNode[] = []
@@ -318,6 +320,40 @@ export function computeHierarchicalLayout(
       })
     }
   })
+
+  // ── Synthetic nodes for ingest-API devices ──────────────────────────
+  // Devices ingested via POST /api/v1/ingest live in the `devices` table,
+  // not in snmpDevices. Create a minimal node for any topology-link endpoint
+  // whose IP isn't already rendered so the edges become visible.
+  if (topologyLinks.length > 0) {
+    const existingIps = new Set(nodes.map((n) => n.ip).filter(Boolean) as string[])
+    topologyLinks.forEach((tl) => {
+      const endpoints: [string, string][] = [
+        [tl.source_ip, tl.source_name],
+        [tl.target_ip, tl.target_name],
+      ]
+      for (const [ip, name] of endpoints) {
+        if (!ip || existingIps.has(ip)) continue
+        existingIps.add(ip)
+        const ts = new Date(tl.last_seen).getTime()
+        const active = !isNaN(ts) && ts > deviceActiveCutoff
+        const nodeId = `ingest-device-${ip}`
+        if (nodeIdSet.has(nodeId)) continue
+        nodeIdSet.add(nodeId)
+        const alertInfo = deviceAlertsByIp?.get(ip)
+        nodes.push({
+          id: nodeId,
+          name: name || ip,
+          type: 'network',
+          status: active ? 'online' : 'offline',
+          position: [0, 0, 0],
+          color: alertInfo?.critical ? '#ef4444' : alertInfo?.warning ? '#f59e0b' : active ? '#06b6d4' : '#475569',
+          ip,
+          alerts: alertInfo?.active ?? 0,
+        })
+      }
+    })
+  }
 
   // ── Device ↔ device links: orchestrator topology (primary) ──────────
   // Covers all nodes (agent type = orchDevs, network type = SNMP) by IP.

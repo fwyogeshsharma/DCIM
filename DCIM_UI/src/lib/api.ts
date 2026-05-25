@@ -262,6 +262,19 @@ class APIClient {
     return this.request(`/traps/timeline?${params.toString()}`)
   }
 
+  // Alert counts keyed by device mgmt_ip — used by topology to badge ingest-API nodes.
+  async getDeviceAlertSummary(): Promise<Array<{
+    device_ip: string
+    hostname: string
+    total: number
+    active: number
+    critical: number
+    warning: number
+    info: number
+  }>> {
+    return this.request('/alerts/by-device-ip')
+  }
+
   // Topology links — device↔device edges discovered via LLDP/CDP/ARP by the
   // SNMP walker and CIDR-sweep deep-scan. Used by the Topology page to render
   // the actual network wiring between discovered devices.
