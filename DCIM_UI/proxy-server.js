@@ -158,9 +158,9 @@ app.get('/api/v1/servers', async (req, res) => {
   }
 });
 
-// Helper: fetch all agents from DCIM server (reused by multiple routes)
+// Helper: fetch all agents — use aggregator which is always available
 async function fetchAgents() {
-  const url = `http://${CONFIG.dcim.host}:${CONFIG.dcim.port}/api/v1/agents`;
+  const url = `http://${AGG_HOST}:${AGG_PORT}/api/v1/agents`;
   const raw = await new Promise((resolve, reject) => {
     http.get(url, { headers: { 'X-Agent-ID': 'ui-dashboard' } }, (r) => {
       let b = ''; r.on('data', c => b += c); r.on('end', () => resolve(b)); r.on('error', reject);
@@ -342,29 +342,37 @@ app.delete('/api/v1/servers/:id', (req, res) => proxyToAggregator(req, res))
 app.post('/api/v1/servers', (req, res) => proxyToAggregator(req, res))
 app.put('/api/v1/servers/:id', (req, res) => proxyToAggregator(req, res))
 
-// Proxy all /api/v1/* requests to DCIM server
-// CERTIFICATE CHECKS DISABLED - using plain HTTP instead of HTTPS
+// SNMP devices + metrics — aggregator owns these
+app.all('/api/v1/snmp*', (req, res) => proxyToAggregator(req, res))
+
+// Metrics — aggregator stores ingest metrics
+app.all('/api/v1/metrics*', (req, res) => proxyToAggregator(req, res))
+
+// Ingest endpoint — aggregator only
+app.all('/api/v1/ingest*', (req, res) => proxyToAggregator(req, res))
+
+// Statistics, anomalies, search, RCA — aggregator
+app.all('/api/v1/statistics*', (req, res) => proxyToAggregator(req, res))
+app.all('/api/v1/anomalies*', (req, res) => proxyToAggregator(req, res))
+app.all('/api/v1/search*', (req, res) => proxyToAggregator(req, res))
+app.all('/api/v1/rca*', (req, res) => proxyToAggregator(req, res))
+
+// Fallback catch-all — also send to aggregator now that DCIM servers are not running.
+// The aggregator will return a proper 404 for unknown paths.
 app.all('/api/v1/*', async (req, res) => {
   const targetPath = req.path;
   const queryString = req.url.split('?')[1] || '';
-  const targetUrl = `http://${CONFIG.dcim.host}:${CONFIG.dcim.port}${targetPath}${queryString ? '?' + queryString : ''}`;
+  const targetUrl = `http://${AGG_HOST}:${AGG_PORT}${targetPath}${queryString ? '?' + queryString : ''}`;
 
-  console.log(`  → Forwarding to: ${targetUrl}`);
+  console.log(`  → Fallback to aggregator: ${targetUrl}`);
 
   const options = {
     method: req.method,
-    headers: {
-      ...req.headers,
-      host: `${CONFIG.dcim.host}:${CONFIG.dcim.port}`,
-      'X-Agent-ID': 'ui-dashboard'
-    },
-    // agent: httpsAgent // CERTIFICATE CHECKS DISABLED
+    headers: { ...req.headers, host: `${AGG_HOST}:${AGG_PORT}` },
   };
 
-  // Remove headers that shouldn't be forwarded
   delete options.headers['host'];
   delete options.headers['connection'];
-  // Strip conditional cache headers so backend always returns fresh data (200 not 304)
   delete options.headers['if-none-match'];
   delete options.headers['if-modified-since'];
   delete options.headers['if-match'];
@@ -373,45 +381,16 @@ app.all('/api/v1/*', async (req, res) => {
 
   const proxyReq = http.request(targetUrl, options, (proxyRes) => {
     console.log(`  ← Response: ${proxyRes.statusCode}`);
-
-    // Forward response headers
     res.status(proxyRes.statusCode);
-    Object.keys(proxyRes.headers).forEach(key => {
-      res.setHeader(key, proxyRes.headers[key]);
-    });
-
-    // Forward response body
+    Object.keys(proxyRes.headers).forEach(key => res.setHeader(key, proxyRes.headers[key]));
     proxyRes.pipe(res);
   });
 
-  // Handle errors
   proxyReq.on('error', (error) => {
     console.error('  ✗ Proxy error:', error.message);
-
-    if (error.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
-      res.status(500).json({
-        error: 'Certificate verification failed',
-        message: 'Server certificate is self-signed. You may need to add it to trusted certificates.'
-      });
-    } else if (error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
-      res.status(500).json({
-        error: 'Certificate verification failed',
-        message: 'Unable to verify server certificate signature.'
-      });
-    } else if (error.code === 'ECONNREFUSED') {
-      res.status(503).json({
-        error: 'Connection refused',
-        message: `Cannot connect to DCIM server at ${CONFIG.dcim.host}:${CONFIG.dcim.port}`
-      });
-    } else {
-      res.status(500).json({
-        error: 'Proxy error',
-        message: error.message
-      });
-    }
+    if (!res.headersSent) res.status(503).json({ error: 'Aggregator unavailable', message: error.message });
   });
 
-  // Forward request body
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     proxyReq.write(JSON.stringify(req.body));
   }
