@@ -137,14 +137,16 @@ def start_gnmi_simulator(req: GnmiStartRequest = None):
             device_ips = [d.ip_address for d in devices]
             # Dataset files keyed by mgmt_ip (or ip_address when no mgmt_ip);
             # build bound_ip_ports with the same key so load_device() finds them.
+            # Use the requested port for all per-device servers so the API port
+            # parameter is the single source of truth (same as the desktop UI).
+            gnmi_port = (req.port if req else None) or 50051
             bound_ip_ports = {
-                (d.mgmt_ip or d.ip_address): d.gnmi_port
+                (d.mgmt_ip or d.ip_address): gnmi_port
                 for d in devices
                 if (d.mgmt_ip or d.ip_address) in s.gnmi_bound_ips
             }
 
             s.update_job(job_id, message="Starting gNMI server...")
-            gnmi_port = (req.port if req else None) or 50051
             ok = s.gnmi.start(device_ips, port=gnmi_port,
                               bound_ip_ports=bound_ip_ports if bound_ip_ports else None)
             if not ok:

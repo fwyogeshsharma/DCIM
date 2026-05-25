@@ -2657,7 +2657,11 @@ class MainWindow(QMainWindow):
                        if d.mgmt_ip and d.mgmt_ip in bound_set
                        else d.ip_address)
             if bind_ip in bound_set:
-                bound_ip_ports[bind_ip] = d.gnmi_port
+                # Use the panel port (user-configured) as the gRPC bind port for
+                # all per-device servers so the "gNMI Port" spinner is the single
+                # source of truth.  d.gnmi_port is only a per-device override when
+                # it differs from the panel default.
+                bound_ip_ports[bind_ip] = port if port else d.gnmi_port
 
         # Register auto-proxy callback — called from background thread when
         # per-device binding completely fails; dispatched to main thread via QTimer.
