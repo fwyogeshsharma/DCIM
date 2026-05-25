@@ -97,8 +97,6 @@ const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const WIDE_LAYER_THRESHOLD = 40
 const WIDE_LAYER_ROW_DEPTH = 14 // Z step between wrap rows
 
-export type OrcDevice = { name: string; ip_address: string; type: string; vendor: string }
-export type OrcTopologyEdge = { src_ip: string; dst_ip: string; container?: string }
 export type DeviceAlertInfo = { active: number; critical: number; warning: number }
 
 export function computeHierarchicalLayout(
@@ -106,8 +104,8 @@ export function computeHierarchicalLayout(
   agents: Agent[],
   snmpDevices: SNMPDevice[] = [],
   topologyLinks: TopologyLink[] = [],
-  orchDevicesByServerId?: Map<string, OrcDevice[]>,
-  orchTopologyEdges?: OrcTopologyEdge[],
+  _unused1?: unknown,
+  _unused2?: unknown,
   deviceAlertsByIp?: Map<string, DeviceAlertInfo>
 ): LayoutResult {
   const enabledServers = servers.filter((s) => s.enabled)
@@ -216,64 +214,29 @@ export function computeHierarchicalLayout(
     nodeIdSet.add(serverId)
   })
 
-  // ── Agent nodes: orchestrator devices (if available) or DCIM agents ─
+  // ── Agent nodes from DCIM agents ────────────────────────────────────
   enabledServers.forEach((server) => {
     const serverId = `server-${server.id}`
-    const rawId = server.id
-    const orchDevs = orchDevicesByServerId?.get(rawId)
-
-    if (orchDevs && orchDevs.length > 0) {
-      // Use sim-network device list — richer names + type info
-      orchDevs.forEach((dev) => {
-        const orchId = `orc-${rawId}-${dev.name}`
-        if (nodeIdSet.has(orchId)) return
-        nodeIdSet.add(orchId)
-
-        const agentMatch = agents.find(
-          (a) => a.server_id === rawId && a.hostname.endsWith(dev.name)
-        )
-        const status = (agentMatch?.status ?? 'online') as 'online' | 'offline'
-
-        nodes.push({
-          id: orchId,
-          name: dev.name,
-          type: 'agent',
-          deviceType: dev.type,
-          status,
-          position: [0, 0, 0],
-          color: status === 'online' ? '#10b981' : '#ef4444',
-          ip: dev.ip_address,
-          serverId: rawId,
-          agentId: agentMatch?.agent_id ?? dev.name,
-          serverName: server.name,
-          metrics: agentMatch?.total_metrics,
-          alerts: agentMatch?.total_alerts,
-        })
+    const serverAgents = agentsByEffectiveServer.get(serverId) || []
+    serverAgents.forEach((agent) => {
+      const compoundId = `${agent.server_id}:${agent.agent_id}`
+      if (nodeIdSet.has(compoundId)) return
+      nodeIdSet.add(compoundId)
+      nodes.push({
+        id: compoundId,
+        name: agent.hostname,
+        type: 'agent',
+        status: agent.status === 'online' ? 'online' : 'offline',
+        position: [0, 0, 0],
+        color: agent.status === 'online' ? '#10b981' : '#ef4444',
+        ip: agent.ip_address,
+        serverId: agent.server_id,
+        agentId: agent.agent_id,
+        serverName: server.name,
+        metrics: agent.total_metrics,
+        alerts: agent.total_alerts,
       })
-    } else {
-      // Fallback: use DCIM agents
-      const serverAgents = agentsByEffectiveServer.get(serverId) || []
-      serverAgents.forEach((agent) => {
-        const compoundId = `${agent.server_id}:${agent.agent_id}`
-        if (nodeIdSet.has(compoundId)) return
-        nodeIdSet.add(compoundId)
-
-        nodes.push({
-          id: compoundId,
-          name: agent.hostname,
-          type: 'agent',
-          status: agent.status === 'online' ? 'online' : 'offline',
-          position: [0, 0, 0],
-          color: agent.status === 'online' ? '#10b981' : '#ef4444',
-          ip: agent.ip_address,
-          serverId: agent.server_id,
-          agentId: agent.agent_id,
-          serverName: server.name,
-          metrics: agent.total_metrics,
-          alerts: agent.total_alerts,
-        })
-      })
-    }
+    })
   })
 
   // ── SNMP device nodes ────────────────────────────────────────────────
@@ -355,34 +318,12 @@ export function computeHierarchicalLayout(
     })
   }
 
-  // ── Device ↔ device links: orchestrator topology (primary) ──────────
-  // Covers all nodes (agent type = orchDevs, network type = SNMP) by IP.
+  // ── Device ↔ device links from topology_links (aggregator DB) ───────
   const allNodeByIp = new Map<string, LayoutNode>()
   nodes.forEach((n) => { if (n.ip && n.type !== 'server') allNodeByIp.set(n.ip, n) })
   const seenPairsGlobal = new Set<string>()
 
-  if (orchTopologyEdges && orchTopologyEdges.length > 0) {
-    orchTopologyEdges.forEach((e) => {
-      const srcN = allNodeByIp.get(e.src_ip)
-      const tgtN = allNodeByIp.get(e.dst_ip)
-      if (!srcN || !tgtN || srcN.id === tgtN.id) return
-      const pairKey = [srcN.id, tgtN.id].sort().join('|')
-      if (seenPairsGlobal.has(pairKey)) return
-      seenPairsGlobal.add(pairKey)
-      const connected = srcN.status === 'online' && tgtN.status === 'online'
-      links.push({
-        sourceId: srcN.id,
-        targetId: tgtN.id,
-        sourcePos: [0, 0, 0],
-        targetPos: [0, 0, 0],
-        connected,
-        linkType: 'device-device',
-      })
-    })
-  }
-
-  // ── Device ↔ device links: DB topology_links fallback ────────────────
-  if (topologyLinks.length > 0 && (!orchTopologyEdges || orchTopologyEdges.length === 0)) {
+  if (topologyLinks.length > 0) {
     topologyLinks.forEach((tl) => {
       const srcN = allNodeByIp.get(tl.source_ip)
       const tgtN = allNodeByIp.get(tl.target_ip)

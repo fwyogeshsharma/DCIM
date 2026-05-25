@@ -276,40 +276,6 @@ export default function Topology() {
 
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
 
-  // Fetch live devices from every sim-network container via the orchestrator
-  const { data: orchDevices } = useQuery<{ container: string; data: { name: string; ip_address: string; type: string; vendor: string }[] }[]>({
-    queryKey: ['orc-devices'],
-    queryFn: () => fetch('/orchestrator/devices').then(r => r.json()),
-    staleTime: 30000,
-    refetchInterval: 30000,
-    enabled: !USE_MOCK_DATA,
-  })
-
-  // Map server_id → orchestrator device list, derived from server metadata
-  const orchDevicesByServerId = useMemo(() => {
-    if (!orchDevices || !servers) return new Map<string, typeof orchDevices[0]['data']>()
-    const map = new Map<string, typeof orchDevices[0]['data']>()
-    for (const srv of (servers ?? [])) {
-      const network = srv.metadata?.network as string | undefined      // e.g. "network-a"
-      if (!network) continue
-      const simName = 'sim-' + network                                 // "sim-network-a"
-      const entry = orchDevices.find(o => o.container === simName)
-      if (entry && srv.id) map.set(srv.id, entry.data)
-    }
-    return map
-  }, [orchDevices, servers])
-
-  // Topology edges (src_ip↔dst_ip) from the simulator's loaded topology JSON
-  const { data: orchTopology } = useQuery<{
-    nodes: { id: string; name: string; ip_address: string; type: string; container: string }[]
-    edges: { src_ip: string; dst_ip: string; src_iface: number; dst_iface: number; layer: string; container: string }[]
-  }>({
-    queryKey: ['orc-topology'],
-    queryFn: () => fetch('/orchestrator/topology').then(r => r.json()),
-    staleTime: 60000,
-    refetchInterval: 60000,
-    enabled: !USE_MOCK_DATA,
-  })
 
   // Device↔device wiring from the topology_links table (walker LLDP/CDP + discovery deep-scan)
   const { data: realTopologyLinks } = useQuery({
@@ -474,52 +440,29 @@ export default function Topology() {
       expandedServers.has(`server-${agent.server_id}`)
     )
 
-    // Build agent nodes — prefer orchestrator device names/info when available
+    // Build agent nodes from DCIM agents
     const agentNodes: TopoNode[] = (() => {
       const nodes: TopoNode[] = []
       for (const sid of expandedServers) {
         const rawServerId = sid.replace(/^server-/, '')
         const parentServer = serverConfigMap.get(rawServerId)
-        const orchDevs = orchDevicesByServerId.get(rawServerId)
-
-        if (orchDevs && orchDevs.length > 0) {
-          // Use sim-network device list (richer names + type info)
-          orchDevs.forEach(dev => {
-            const agentMatch = agents.find(a => a.server_id === rawServerId && a.hostname.endsWith(dev.name))
+        visibleAgents
+          .filter(a => a.server_id === rawServerId)
+          .forEach(agent => {
+            const filtered = filteredDataMap.get(agent.agent_id)
             nodes.push({
-              id: `orc-${rawServerId}-${dev.name}`,
-              name: dev.name,
+              id: `${agent.server_id}:${agent.agent_id}`,
+              name: agent.hostname,
               type: 'agent' as const,
-              deviceType: dev.type,
-              status: (agentMatch?.status ?? 'online') as 'online' | 'offline',
-              metrics: agentMatch?.total_metrics,
-              alerts: agentMatch?.total_alerts,
-              ip: dev.ip_address,
-              serverId: rawServerId,
-              agentId: agentMatch?.agent_id ?? dev.name,
-              serverName: parentServer?.name,
+              status: agent.status as 'online' | 'offline',
+              metrics: filtered?.metrics_count ?? agent.total_metrics,
+              alerts: filtered?.alerts_count ?? agent.total_alerts,
+              ip: agent.ip_address,
+              serverId: agent.server_id,
+              agentId: agent.agent_id,
+              serverName: parentServer?.name || agent.server_name,
             })
           })
-        } else {
-          // Fallback: use DCIM agents
-          visibleAgents
-            .filter(a => a.server_id === rawServerId)
-            .forEach(agent => {
-              const filtered = filteredDataMap.get(agent.agent_id)
-              nodes.push({
-                id: `${agent.server_id}:${agent.agent_id}`,
-                name: agent.hostname,
-                type: 'agent' as const,
-                status: agent.status as 'online' | 'offline',
-                metrics: filtered?.metrics_count ?? agent.total_metrics,
-                alerts: filtered?.alerts_count ?? agent.total_alerts,
-                ip: agent.ip_address,
-                serverId: agent.server_id,
-                agentId: agent.agent_id,
-                serverName: parentServer?.name || agent.server_name,
-              })
-            })
-        }
       }
       return nodes
     })()
@@ -754,46 +697,6 @@ export default function Topology() {
       })
     }
 
-    // Build IP→node lookup covering all rendered nodes (agents + SNMP devices)
-    const agentNodeByIp = new Map<string, TopoNode>()
-    agentNodes.forEach(an => { if (an.ip) agentNodeByIp.set(an.ip, an) })
-    const allNodeByIp = new Map<string, TopoNode>([...deviceNodeByIp, ...agentNodeByIp])
-
-    // Physical device↔device edges from the orchestrator's loaded topology JSON.
-    // These are the real wired connections between devices (Core-R1 → Fabric-SW1, etc.)
-    // Only edges where both endpoints are currently rendered will appear.
-    const orchTopoLinks: TopoLink[] = []
-    if (orchTopology && orchTopology.edges.length > 0) {
-      const seenPairs = new Set<string>()
-      orchTopology.edges.forEach(e => {
-        const srcNode = allNodeByIp.get(e.src_ip)
-        const tgtNode = allNodeByIp.get(e.dst_ip)
-        if (!srcNode || !tgtNode || srcNode.id === tgtNode.id) return
-        const pairKey = [srcNode.id, tgtNode.id].sort().join('|')
-        if (seenPairs.has(pairKey)) return
-        seenPairs.add(pairKey)
-        const bothOnline = srcNode.status === 'online' && tgtNode.status === 'online'
-        orchTopoLinks.push({
-          source: srcNode.id,
-          target: tgtNode.id,
-          strength: bothOnline ? 0.9 : 0.3,
-          distance: 120,
-          linkType: 'device-device',
-          d2dInfo: {
-            sourceIp: e.src_ip,
-            sourceName: srcNode.name,
-            sourcePort: e.src_iface,
-            targetIp: e.dst_ip,
-            targetName: tgtNode.name,
-            targetPort: String(e.dst_iface),
-            lastSeen: new Date().toISOString(),
-            sourceStatus: srcNode.status,
-            targetStatus: tgtNode.status,
-          },
-        })
-      })
-    }
-
     // Custom links from Advanced Editor — only include if both endpoints are rendered
     const allNodeIds = new Set(nodes.map(n => n.id))
     const customTopoLinks: TopoLink[] = (customTopology?.links ?? [])
@@ -805,12 +708,9 @@ export default function Topology() {
         distance: 160,
       }))
 
-    // Physical device-device wiring.
-    // Prefer orchestrator topology edges for physical links; fall back to LLDP discovery.
-    const physicalLinks = orchTopoLinks.length > 0 ? orchTopoLinks : deviceToDeviceLinks
     const links: TopoLink[] = [
       ...deviceLinks,
-      ...physicalLinks,
+      ...deviceToDeviceLinks,
       ...customTopoLinks,
     ]
 

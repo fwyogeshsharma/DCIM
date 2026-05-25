@@ -1763,27 +1763,6 @@ export default function Topology3D() {
     return map
   }, [deviceAlertSummary])
 
-  // Fetch live devices from every sim-network container via the orchestrator
-  const { data: orchDevices } = useQuery<{ container: string; data: { name: string; ip_address: string; type: string; vendor: string }[] }[]>({
-    queryKey: ['orc-devices-3d'],
-    queryFn: () => fetch('/orchestrator/devices').then(r => r.json()),
-    staleTime: 30000,
-    refetchInterval: 30000,
-    enabled: !USE_MOCK_DATA,
-  })
-
-  // Fetch physical device-device wiring from the orchestrator topology
-  const { data: orchTopology } = useQuery<{
-    nodes: any[]
-    edges: { src_ip: string; dst_ip: string; container: string }[]
-  }>({
-    queryKey: ['orc-topology-3d'],
-    queryFn: () => fetch('/orchestrator/topology').then(r => r.json()),
-    staleTime: 60000,
-    refetchInterval: 60000,
-    enabled: !USE_MOCK_DATA,
-  })
-
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
@@ -1931,41 +1910,15 @@ export default function Topology3D() {
     setExpandedServers(new Set())
   }, [])
 
-  // Map server_id → orchestrator device list (same logic as 2D Topology.tsx)
-  const orchDevicesByServerId = useMemo(() => {
-    if (!orchDevices || !servers) return undefined
-    const map = new Map<string, { name: string; ip_address: string; type: string; vendor: string }[]>()
-    for (const srv of servers) {
-      if (!srv.enabled) continue
-      const network = srv.metadata?.network as string | undefined  // e.g. "network-a"
-      if (!network) continue
-      const simName = 'sim-' + network                             // "sim-network-a"
-      const entry = orchDevices.find(o => o.container === simName)
-      if (entry && srv.id) map.set(srv.id, entry.data)
-    }
-    return map.size > 0 ? map : undefined
-  }, [orchDevices, servers])
-
-  // Compute agent counts per server — prefer orchestrator device count when available
+  // Compute agent counts per server
   const agentCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    if (orchDevicesByServerId) {
-      for (const [rawId, devs] of orchDevicesByServerId) {
-        counts[`server-${rawId}`] = devs.length
-      }
-      // Fallback for servers without orchestrator data
-      agents?.forEach(a => {
-        const sid = `server-${a.server_id}`
-        if (!counts[sid]) counts[sid] = (counts[sid] || 0) + 1
-      })
-    } else {
-      agents?.forEach(a => {
-        const sid = `server-${a.server_id}`
-        counts[sid] = (counts[sid] || 0) + 1
-      })
-    }
+    agents?.forEach(a => {
+      const sid = `server-${a.server_id}`
+      counts[sid] = (counts[sid] || 0) + 1
+    })
     return counts
-  }, [agents, orchDevicesByServerId])
+  }, [agents])
 
   // Temperature map for heatmap mode — latest reading per agent_id
   const tempMap = useMemo(() => {
@@ -1986,34 +1939,8 @@ export default function Topology3D() {
       d => expandedServers.has(`server-${d.server_id}`)
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
-
-    // Build a filtered orchDevicesByServerId with only expanded servers
-    let visibleOrchDevices: typeof orchDevicesByServerId
-    if (orchDevicesByServerId) {
-      const filtered = new Map<string, { name: string; ip_address: string; type: string; vendor: string }[]>()
-      for (const [sid, devs] of orchDevicesByServerId) {
-        if (expandedServers.has(`server-${sid}`)) filtered.set(sid, devs)
-      }
-      if (filtered.size > 0) visibleOrchDevices = filtered
-    }
-
-    // Filter orchestrator topology edges to only those whose containers are expanded
-    const expandedNetworks = new Set<string>()
-    if (orchDevicesByServerId) {
-      for (const sid of expandedServers) {
-        const rawId = sid.replace(/^server-/, '')
-        if (orchDevicesByServerId.has(rawId)) {
-          const srv = servers.find(s => `server-${s.id}` === sid)
-          if (srv?.metadata?.network) expandedNetworks.add('sim-' + srv.metadata.network)
-        }
-      }
-    }
-    const visibleOrchEdges = orchTopology?.edges.filter(
-      e => !e.container || expandedNetworks.size === 0 || expandedNetworks.has(e.container)
-    )
-
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, visibleOrchDevices, visibleOrchEdges, deviceAlertsByIp)
-  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, orchDevicesByServerId, orchTopology, deviceAlertsByIp])
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp)
+  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
