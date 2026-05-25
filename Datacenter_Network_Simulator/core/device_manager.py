@@ -330,6 +330,7 @@ class Device:
     datacenter_city: str = ""
     datacenter: str = ""
     room: str = ""
+    floor: str = ""
     rack_row: int = 0
     rack_num: int = 0
     rack_unit: int = 0
@@ -435,6 +436,8 @@ class Device:
             if self.datacenter_city:
                 parts.append(self.datacenter_city)
             parts.append(self.datacenter)
+            if self.floor:
+                parts.append(f"Floor {self.floor}")
             if self.room:
                 parts.append(f"Room {self.room}")
             if self.rack_row:

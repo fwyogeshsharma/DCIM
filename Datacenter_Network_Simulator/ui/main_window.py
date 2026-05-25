@@ -1286,6 +1286,9 @@ class MainWindow(QMainWindow):
                 node.device = device
                 node.update()
             self._console_panel.log(f"Updated device: {device.name}", "info")
+            # Patch snmprec so sysLocation/sysName changes reflect immediately
+            if self._sim_panel._running:
+                self._regenerate_device_live(device_id)
 
     def _remove_device(self, device_id: str):
         device = self.device_manager.get_device(device_id)
@@ -1835,6 +1838,7 @@ class MainWindow(QMainWindow):
             f"gNMI Port:   {device.gnmi_port}\n"
             f"Community:   {device.snmp_community}\n"
             f"Interfaces:  {device.interface_count}\n"
+            f"Location:    {device.sys_location}\n"
             f"CPU:         {device.cpu_usage}%\n"
             f"Memory:      {device.memory_used // (1024**2)} / {device.memory_total // (1024**2)} MB\n"
             f"Neighbors:{neighbor_text}\n"

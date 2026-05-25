@@ -204,6 +204,10 @@ class DeviceDialog(QDialog):
         self.room_edit.setPlaceholderText("e.g. A")
         loc_form.addRow("Room:", self.room_edit)
 
+        self.floor_edit = QLineEdit()
+        self.floor_edit.setPlaceholderText("e.g. 1")
+        loc_form.addRow("Floor:", self.floor_edit)
+
         self.rack_row_spin = QSpinBox()
         self.rack_row_spin.setRange(0, 999)
         self.rack_row_spin.setSpecialValueText("—")
@@ -223,7 +227,7 @@ class DeviceDialog(QDialog):
         self.loc_preview.setStyleSheet("color: gray; font-style: italic;")
         loc_form.addRow("", self.loc_preview)
 
-        for w in (self.country_edit, self.dc_edit, self.dc_city_edit, self.room_edit):
+        for w in (self.country_edit, self.dc_edit, self.dc_city_edit, self.room_edit, self.floor_edit):
             w.textChanged.connect(self._update_loc_preview)
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):
             w.valueChanged.connect(self._update_loc_preview)
@@ -294,6 +298,8 @@ class DeviceDialog(QDialog):
         parts.append(dc)
         if self.room_edit.text().strip():
             parts.append(f"Room {self.room_edit.text().strip()}")
+        if self.floor_edit.text().strip():
+            parts.append(f"Floor {self.floor_edit.text().strip()}")
         dtype = self.type_combo.currentData()
         if dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU):
             row = self.rack_row_spin.value()
@@ -383,6 +389,7 @@ class DeviceDialog(QDialog):
         self.dc_city_edit.setText(self.device.datacenter_city)
         self.dc_edit.setText(self.device.datacenter)
         self.room_edit.setText(self.device.room)
+        self.floor_edit.setText(self.device.floor)
         self.rack_row_spin.setValue(self.device.rack_row)
         self.rack_num_spin.setValue(self.device.rack_num)
         self.rack_unit_spin.setValue(self.device.rack_unit)
@@ -428,6 +435,7 @@ class DeviceDialog(QDialog):
             "datacenter_city":  self.dc_city_edit.text().strip(),
             "datacenter":       self.dc_edit.text().strip(),
             "room":             self.room_edit.text().strip(),
+            "floor":            self.floor_edit.text().strip(),
             "rack_row":         self.rack_row_spin.value(),
             "rack_num":         self.rack_num_spin.value(),
             "rack_unit":        self.rack_unit_spin.value(),

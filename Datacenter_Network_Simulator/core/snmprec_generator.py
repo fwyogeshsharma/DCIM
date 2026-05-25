@@ -296,6 +296,11 @@ class SNMPRecGenerator:
             updates[f"{SYSTEM_BASE}.3.0"] = ("67", str(device.sys_uptime))
             updates[f"{SYSTEM_BASE}.8.0"] = ("67", str(device.sys_uptime))
 
+            # Editable system OIDs — keep in sync with device fields
+            updates[f"{SYSTEM_BASE}.5.0"] = ("4", device.name)
+            updates[f"{SYSTEM_BASE}.6.0"] = ("4", device.sys_location)
+            updates[f"{SYSTEM_BASE}.4.0"] = ("4", f"admin@{device.name.lower()}.example.com")
+
             # Interface counters
             ifx_base = "1.3.6.1.2.1.31.1.1.1"
             for iface in device.interfaces:

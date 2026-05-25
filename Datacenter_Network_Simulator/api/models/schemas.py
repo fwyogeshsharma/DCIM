@@ -265,6 +265,7 @@ class AddDeviceRequest(BaseModel):
     datacenter_city: str = ""
     datacenter: str = ""
     room: str = ""
+    floor: str = ""
     rack_row: int = 0
     rack_num: int = 0
     rack_unit: int = 0
@@ -275,5 +276,6 @@ class EditDeviceRequest(BaseModel):
     vendor: Optional[str] = None
     snmp_port: Optional[int] = None
     gnmi_port: Optional[int] = None
+    floor: Optional[str] = None
     sys_location: Optional[str] = None
     sys_contact: Optional[str] = None

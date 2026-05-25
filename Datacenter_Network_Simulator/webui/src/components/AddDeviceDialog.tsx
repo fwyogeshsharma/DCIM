@@ -237,9 +237,10 @@ function buildSysLocation(f: Form): string {
   if (f.country)         parts.push(f.country)
   if (f.datacenter_city) parts.push(f.datacenter_city)
   parts.push(f.datacenter)
-  if (f.room)     parts.push(`Room ${f.room}`)
-  if (f.rack_row) parts.push(`Row ${f.rack_row}`)
-  if (f.rack_num) parts.push(`Rack ${f.rack_num}`)
+  if (f.floor)     parts.push(`Floor ${f.floor}`)
+  if (f.room)      parts.push(`Room ${f.room}`)
+  if (f.rack_row)  parts.push(`Row ${f.rack_row}`)
+  if (f.rack_num)  parts.push(`Rack ${f.rack_num}`)
   if (f.rack_unit) parts.push(`U${f.rack_unit}`)
   return parts.join(', ')
 }
@@ -260,6 +261,7 @@ interface Form {
   datacenter_city: string
   datacenter: string
   room: string
+  floor: string
   rack_row: number
   rack_num: number
   rack_unit: number
@@ -303,7 +305,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
     ip_address: '', mgmt_ip: '', snmp_port: 161, gnmi_port: 57400,
     sys_contact: '',
     country: '', datacenter_city: '', datacenter: '',
-    room: '', rack_row: 0, rack_num: 0, rack_unit: 0,
+    room: '', floor: '', rack_row: 0, rack_num: 0, rack_unit: 0,
     metrics_enabled: true,
   })
   const [busy, setBusy] = useState(false)
@@ -432,6 +434,10 @@ export default function AddDeviceDialog({ onClose }: Props) {
           <FormRow label="Room">
             <input style={{ flex: 1 }} value={form.room}
               onChange={e => set('room', e.target.value)} placeholder="e.g. A" />
+          </FormRow>
+          <FormRow label="Floor">
+            <input style={{ flex: 1 }} value={form.floor}
+              onChange={e => set('floor', e.target.value)} placeholder="e.g. 1" />
           </FormRow>
           <FormRow label="Row">
             <input type="number" style={spinnerStyle} value={form.rack_row || ''}

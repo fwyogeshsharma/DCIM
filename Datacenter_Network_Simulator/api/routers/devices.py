@@ -197,6 +197,7 @@ def add_device(req: AddDeviceRequest):
         if req.country:      loc_parts.append(req.country)
         if req.datacenter_city: loc_parts.append(req.datacenter_city)
         loc_parts.append(req.datacenter)
+        if req.floor:        loc_parts.append(f"Floor {req.floor}")
         if req.room:         loc_parts.append(f"Room {req.room}")
         if req.rack_row:     loc_parts.append(f"Row {req.rack_row}")
         if req.rack_num:     loc_parts.append(f"Rack {req.rack_num}")
@@ -221,6 +222,7 @@ def add_device(req: AddDeviceRequest):
             datacenter_city=req.datacenter_city,
             datacenter=req.datacenter,
             room=req.room,
+            floor=req.floor,
             rack_row=req.rack_row,
             rack_num=req.rack_num,
             rack_unit=req.rack_unit,
