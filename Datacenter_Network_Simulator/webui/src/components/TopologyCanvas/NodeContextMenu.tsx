@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { DeviceInfo } from '../../api/types'
+import { VENDORS, MODELS, deviceTypeLabel } from '../../data/deviceConstants'
 
 // ── Applicable traps per device_type (mirrors Python APPLICABLE_TRAPS, LINK_DOWN/LINK_UP excluded) ──
 
@@ -159,10 +160,49 @@ function MenuItem({
 
 // ── EditDeviceDialog ──────────────────────────────────────────────────────────
 
+const editOverlay: React.CSSProperties = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000,
+}
+const editDialog: React.CSSProperties = {
+  background: 'var(--bg-card)', border: '1px solid var(--border)',
+  borderRadius: 6, width: 420, maxHeight: '90vh',
+  display: 'flex', flexDirection: 'column',
+  boxShadow: '0 16px 48px rgba(0,0,0,0.8)',
+}
+const SEC: React.CSSProperties = {
+  fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+  textTransform: 'uppercase' as const, letterSpacing: '0.8px',
+  borderBottom: '1px solid var(--border)',
+  paddingBottom: 4, marginBottom: 6, marginTop: 10,
+}
+const spinW: React.CSSProperties = { width: 72 }
+
+function buildLocPreview(f: {
+  country: string; datacenter_city: string; datacenter: string;
+  floor: string; room: string; rack_row: number; rack_num: number; rack_unit: number
+}): string {
+  if (!f.datacenter) return ''
+  const p: string[] = []
+  if (f.country)         p.push(f.country)
+  if (f.datacenter_city) p.push(f.datacenter_city)
+  p.push(f.datacenter)
+  if (f.floor)    p.push(`Floor ${f.floor}`)
+  if (f.room)     p.push(`Room ${f.room}`)
+  if (f.rack_row) p.push(`Row ${f.rack_row}`)
+  if (f.rack_num) p.push(`Rack ${f.rack_num}`)
+  if (f.rack_unit) p.push(`U${f.rack_unit}`)
+  return p.join(', ')
+}
+
 export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onClose: () => void }) {
   const { fetchGraph, fetchDevices } = useStore()
   const [form, setFormState] = useState({
-    name: '', vendor: '', snmp_port: 161, gnmi_port: 57400, sys_contact: '',
+    device_type: '', name: '', vendor: '', model_name: '',
+    snmp_port: 161, gnmi_port: 57400,
+    sys_contact: '', metrics_enabled: true,
+    country: '', datacenter_city: '', datacenter: '',
+    room: '', floor: '', rack_row: 0, rack_num: 0, rack_unit: 0,
   })
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState('')
@@ -171,15 +211,41 @@ export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onCl
     api.device(deviceId).then((d: unknown) => {
       const dev = d as DeviceInfo
       setFormState({
+        device_type: dev.device_type,
         name: dev.name, vendor: dev.vendor,
+        model_name: dev.model_name || '',
         snmp_port: dev.snmp_port, gnmi_port: dev.gnmi_port,
         sys_contact: dev.sys_contact || '',
+        metrics_enabled: dev.metrics_enabled ?? true,
+        country: dev.country || '',
+        datacenter_city: dev.datacenter_city || '',
+        datacenter: dev.datacenter || '',
+        room: dev.room || '',
+        floor: dev.floor || '',
+        rack_row: dev.rack_row ?? 0,
+        rack_num: dev.rack_num ?? 0,
+        rack_unit: dev.rack_unit ?? 0,
       })
     }).catch(() => {})
   }, [deviceId])
 
   const set = <K extends keyof typeof form>(k: K, v: typeof form[K]) =>
     setFormState(f => ({ ...f, [k]: v }))
+
+  // Vendor options filtered to those with known models for this device type
+  const vendorOptions = useMemo(() => {
+    const filtered = VENDORS.filter(v => MODELS[`${form.device_type}:${v}`]?.length > 0)
+    // Always include current vendor so existing data isn't lost
+    if (form.vendor && !filtered.includes(form.vendor)) return [form.vendor, ...filtered]
+    return filtered.length > 0 ? filtered : VENDORS
+  }, [form.device_type, form.vendor])
+
+  // Model options filtered by device_type + vendor
+  const modelOptions = useMemo(() => {
+    return MODELS[`${form.device_type}:${form.vendor}`] || []
+  }, [form.device_type, form.vendor])
+
+  const locPreview = buildLocPreview(form)
 
   async function submit() {
     if (!form.name.trim()) { setErr('Name required'); return }
@@ -193,28 +259,59 @@ export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onCl
   }
 
   return createPortal(
-    <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(2px)' }}
-      onMouseDown={e => e.target === e.currentTarget && onClose()}
-    >
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, width: 360, boxShadow: '0 16px 48px rgba(0,0,0,0.8)' }}>
-        <div className="panel-header" style={{ borderRadius: '6px 6px 0 0' }}>
+    <div style={editOverlay} onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div style={editDialog}>
+        <div className="panel-header" style={{ borderRadius: '6px 6px 0 0', flexShrink: 0 }}>
           <span className="title">Edit Device</span>
           <button onClick={onClose} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer', padding: '0 4px' }}>✕</button>
         </div>
-        <div style={{ padding: '12px 18px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+        <div style={{ padding: '10px 16px 14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+          {/* Device Identity */}
+          <div style={SEC}>Device Identity</div>
+          <ERow label="Type">
+            <span style={{ color: 'var(--text)', fontSize: 11 }}>{deviceTypeLabel(form.device_type)}</span>
+          </ERow>
           <ERow label="Name">
-            <input style={{ flex: 1 }} value={form.name} onChange={e => set('name', e.target.value)} />
+            <input style={{ flex: 1 }} value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Router1" />
           </ERow>
           <ERow label="Vendor">
-            <input style={{ flex: 1 }} value={form.vendor} onChange={e => set('vendor', e.target.value)} />
+            <select style={{ flex: 1 }} value={form.vendor}
+              onChange={e => {
+                const v = e.target.value
+                const models = MODELS[`${form.device_type}:${v}`] || []
+                if (models.length > 0 && !models.includes(form.model_name)) {
+                  setFormState(f => ({ ...f, vendor: v, model_name: models[0] }))
+                } else {
+                  set('vendor', v)
+                }
+              }}>
+              {vendorOptions.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
           </ERow>
+          <ERow label="Model">
+            {modelOptions.length > 0 ? (
+              <select style={{ flex: 1 }} value={form.model_name}
+                onChange={e => set('model_name', e.target.value)}
+                disabled={modelOptions.length === 0}>
+                {modelOptions.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            ) : (
+              <input style={{ flex: 1 }} value={form.model_name}
+                onChange={e => set('model_name', e.target.value)}
+                placeholder="e.g. Custom Model" />
+            )}
+          </ERow>
+
+          {/* Network Settings */}
+          <div style={SEC}>Network Settings</div>
           <ERow label="SNMP Port">
-            <input type="number" style={{ width: 80 }} value={form.snmp_port}
+            <input type="number" style={spinW} value={form.snmp_port}
               onChange={e => set('snmp_port', parseInt(e.target.value) || 161)} />
           </ERow>
           <ERow label="gNMI Port">
-            <input type="number" style={{ width: 80 }} value={form.gnmi_port}
+            <input type="number" style={spinW} value={form.gnmi_port}
               onChange={e => set('gnmi_port', parseInt(e.target.value) || 57400)} />
           </ERow>
           <ERow label="Contact">
@@ -222,11 +319,61 @@ export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onCl
               onChange={e => set('sys_contact', e.target.value)}
               placeholder="e.g. admin@dc1.example.com" />
           </ERow>
-          {err && <div style={{ color: 'var(--red)', fontSize: 11 }}>{err}</div>}
+          <ERow label="">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: 'var(--text-muted)' }}>
+              <input type="checkbox" checked={form.metrics_enabled}
+                onChange={e => set('metrics_enabled', e.target.checked)}
+                style={{ accentColor: 'var(--accent)', width: 13, height: 13 }} />
+              Enable metric simulation
+            </label>
+          </ERow>
+
+          {/* Physical Location */}
+          <div style={SEC}>Physical Location</div>
+          <ERow label="Country">
+            <input style={{ flex: 1 }} value={form.country}
+              onChange={e => set('country', e.target.value)} placeholder="e.g. USA" />
+          </ERow>
+          <ERow label="City">
+            <input style={{ flex: 1 }} value={form.datacenter_city}
+              onChange={e => set('datacenter_city', e.target.value)} placeholder="e.g. Dallas" />
+          </ERow>
+          <ERow label="Datacenter">
+            <input style={{ flex: 1 }} value={form.datacenter}
+              onChange={e => set('datacenter', e.target.value)} placeholder="e.g. DC1" />
+          </ERow>
+          <ERow label="Floor">
+            <input style={{ flex: 1 }} value={form.floor}
+              onChange={e => set('floor', e.target.value)} placeholder="e.g. 1" />
+          </ERow>
+          <ERow label="Room">
+            <input style={{ flex: 1 }} value={form.room}
+              onChange={e => set('room', e.target.value)} placeholder="e.g. A" />
+          </ERow>
+          <ERow label="Row">
+            <input type="number" style={spinW} value={form.rack_row || ''}
+              onChange={e => set('rack_row', parseInt(e.target.value) || 0)} placeholder="—" min={0} />
+          </ERow>
+          <ERow label="Rack">
+            <input type="number" style={spinW} value={form.rack_num || ''}
+              onChange={e => set('rack_num', parseInt(e.target.value) || 0)} placeholder="—" min={0} />
+          </ERow>
+          <ERow label="Unit (U)">
+            <input type="number" style={spinW} value={form.rack_unit || ''}
+              onChange={e => set('rack_unit', parseInt(e.target.value) || 0)} placeholder="—" min={0} />
+          </ERow>
+          {locPreview && (
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', marginTop: 4, paddingLeft: 100 }}>
+              sysLocation: {locPreview}
+            </div>
+          )}
+
+          {err && <div style={{ color: 'var(--red)', fontSize: 10, marginTop: 6 }}>{err}</div>}
         </div>
-        <div style={{ display: 'flex', gap: 8, padding: '8px 18px 14px', borderTop: '1px solid var(--border)' }}>
+
+        <div style={{ display: 'flex', gap: 8, padding: '8px 16px 12px', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
           <button className="primary" style={{ flex: 1 }} onClick={submit} disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? 'Saving…' : 'OK'}
           </button>
           <button style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
         </div>
@@ -238,8 +385,10 @@ export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onCl
 
 function ERow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ color: 'var(--text-muted)', fontSize: 11, width: 80, textAlign: 'right', flexShrink: 0 }}>{label}:</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+      <span style={{ color: 'var(--text-muted)', fontSize: 11, width: 96, textAlign: 'right', flexShrink: 0 }}>
+        {label ? `${label}` : ''}
+      </span>
       {children}
     </div>
   )

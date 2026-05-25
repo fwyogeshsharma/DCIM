@@ -200,6 +200,16 @@ class DeviceInfo(BaseModel):
     uptime: int
     model_name: Optional[str] = None
     os_name: Optional[str] = None
+    # Physical location (editable)
+    country: str = ""
+    datacenter_city: str = ""
+    datacenter: str = ""
+    room: str = ""
+    floor: str = ""
+    rack_row: int = 0
+    rack_num: int = 0
+    rack_unit: int = 0
+    metrics_enabled: bool = True
     os_version: Optional[str] = None
     # All-device environmental
     cpu_temp: Optional[float] = None
@@ -274,8 +284,17 @@ class AddDeviceRequest(BaseModel):
 class EditDeviceRequest(BaseModel):
     name: Optional[str] = None
     vendor: Optional[str] = None
+    model_name: Optional[str] = None
     snmp_port: Optional[int] = None
     gnmi_port: Optional[int] = None
-    floor: Optional[str] = None
-    sys_location: Optional[str] = None
     sys_contact: Optional[str] = None
+    metrics_enabled: Optional[bool] = None
+    country: Optional[str] = None
+    datacenter_city: Optional[str] = None
+    datacenter: Optional[str] = None
+    room: Optional[str] = None
+    floor: Optional[str] = None
+    rack_row: Optional[int] = None
+    rack_num: Optional[int] = None
+    rack_unit: Optional[int] = None
+    sys_location: Optional[str] = None

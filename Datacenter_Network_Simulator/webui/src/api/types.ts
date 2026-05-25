@@ -34,6 +34,15 @@ export interface DeviceInfo {
   model_name?: string
   os_name?: string
   os_version?: string
+  country?: string
+  datacenter_city?: string
+  datacenter?: string
+  room?: string
+  floor?: string
+  rack_row?: number
+  rack_num?: number
+  rack_unit?: number
+  metrics_enabled?: boolean
   cpu_temp?: number
   inlet_temp?: number
   humidity?: number

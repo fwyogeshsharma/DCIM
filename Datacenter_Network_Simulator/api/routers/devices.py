@@ -87,6 +87,15 @@ def _device_to_info(device) -> DeviceInfo:
         model_name=getattr(device, "model_name", None),
         os_name=getattr(device, "os_name", None),
         os_version=getattr(device, "os_version", None),
+        country=getattr(device, "country", ""),
+        datacenter_city=getattr(device, "datacenter_city", ""),
+        datacenter=getattr(device, "datacenter", ""),
+        room=getattr(device, "room", ""),
+        floor=getattr(device, "floor", ""),
+        rack_row=getattr(device, "rack_row", 0),
+        rack_num=getattr(device, "rack_num", 0),
+        rack_unit=getattr(device, "rack_unit", 0),
+        metrics_enabled=getattr(device, "metrics_enabled", True),
         cpu_temp=getattr(device, "cpu_temp", None),
         inlet_temp=getattr(device, "inlet_temp", None),
         humidity=getattr(device, "humidity", None) if dt == "sensor" else None,
@@ -254,7 +263,7 @@ def edit_device(device_id: str, req: EditDeviceRequest):
     if "vendor" in update:
         from core.device_manager import Vendor
         try:
-            update["vendor"] = Vendor(update["vendor"].lower())
+            update["vendor"] = Vendor(update["vendor"])
         except ValueError:
             raise HTTPException(status_code=400, detail=f"Invalid vendor '{update['vendor']}'")
 
