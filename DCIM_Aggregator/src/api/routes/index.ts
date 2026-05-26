@@ -163,20 +163,24 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
   // ── SNMP devices ───────────────────────────────────────────────────────────
   app.get('/api/v1/snmp/devices', async (req, res) => {
     try {
-      const { agent_id } = req.query
+      const { agent_id, server_id } = req.query
       let query = `
         SELECT DISTINCT ON (d.mgmt_ip)
           d.id::text       AS id,
           d.hostname       AS device_name,
           d.mgmt_ip::text  AS device_ip,
-          d.network_id     AS agent_id,
+          d.id::text       AS agent_id,
+          d.network_id     AS server_id,
           d.network_id     AS server_name,
+          d.device_type,
           d.last_seen_at   AS last_seen
         FROM devices d
         WHERE d.snmp_enabled = true
       `
       const params: any[] = []
-      if (agent_id) { params.push(agent_id); query += ` AND d.network_id = $1` }
+      let i = 1
+      if (agent_id) { params.push(agent_id); query += ` AND d.id::text = $${i++}` }
+      if (server_id) { params.push(server_id); query += ` AND d.network_id = $${i++}` }
       query += ` ORDER BY d.mgmt_ip, d.last_seen_at DESC NULLS LAST`
       const { rows } = await dbPool.query(query, params)
       res.json({ success: true, data: rows, count: rows.length })
@@ -262,11 +266,13 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         SELECT
           id::text           AS id,
           hostname           AS device_name,
-          mgmt_ip::text      AS device_host,
+          mgmt_ip::text      AS device_ip,
           last_seen_at       AS last_seen,
+          network_id         AS server_id,
           network_id         AS server_name,
           device_type,
           vendor,
+          snmp_enabled,
           CASE
             WHEN is_reachable AND last_seen_at >= NOW() - INTERVAL '1800 seconds' THEN 'online'
             ELSE 'offline'

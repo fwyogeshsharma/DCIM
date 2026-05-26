@@ -116,37 +116,30 @@ app.use((req, res, next) => {
 // }
 console.log('ℹ️  Certificate checks disabled - connecting without mTLS');
 
-// Synthesise /api/v1/servers from live agent data so the topology gets
-// real server_ids (DCIM-assigned) mapped to friendly names and colours.
+// Synthesise /api/v1/servers from the aggregator's devices (new unified schema).
+// Devices are grouped by network_id — one server node per distinct network.
 app.get('/api/v1/servers', async (req, res) => {
   try {
-    const agentUrl = `http://${CONFIG.dcim.host}:${CONFIG.dcim.port}/api/v1/agents`;
-    const agentRes = await new Promise((resolve, reject) => {
-      http.get(agentUrl, { headers: { 'X-Agent-ID': 'ui-dashboard' } }, resolve).on('error', reject);
-    });
-    let body = '';
-    for await (const chunk of agentRes) body += chunk;
-    const { data: agents = [] } = JSON.parse(body);
+    const agents = await fetchAgents();
 
-    // Group agents by server_id and derive server name from agent_id prefix
+    // Group devices by network_id (= server_id in the unified schema)
     const groups = {};
     for (const a of agents) {
-      if (!groups[a.server_id]) groups[a.server_id] = [];
-      groups[a.server_id].push(a);
+      const sid = a.server_id;
+      if (!groups[sid]) groups[sid] = [];
+      groups[sid].push(a);
     }
 
     const COLORS = ['#3b82f6', '#8b5cf6', '#10b981'];
     const servers = Object.entries(groups).map(([id, agts], i) => {
-      // agent_ids look like "network-a-SRV-A1-01" — take first two segments
-      const prefix = agts[0].agent_id.split('-').slice(0, 2).join('-');
-      const letter = prefix.replace('network-', '');
-      const name = `dcim-server-${letter}`;
+      // id is the network_id string (e.g. "network-a", "network-b", "network-c")
+      const name = `dcim-server-${id.replace('network-', '')}`;
       return {
         id,
         name,
         url: `http://${name}:8080`,
         enabled: true,
-        metadata: { color: COLORS[i % COLORS.length], network: prefix },
+        metadata: { color: COLORS[i % COLORS.length], network: id },
         health: { status: 'healthy' },
         hasCerts: false,
       };
@@ -183,6 +176,7 @@ app.get('/api/v1/snmp/devices', async (req, res) => {
         agent_id:    a.agent_id,
         server_id:   a.server_id,
         last_seen:   a.last_seen,
+        device_type: a.device_type || null,
       }));
     res.json({ success: true, data: devices, count: devices.length });
   } catch (err) {
