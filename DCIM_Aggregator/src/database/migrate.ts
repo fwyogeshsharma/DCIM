@@ -31,11 +31,20 @@ async function runMigrations() {
     `)
     logger.info('Dropped legacy tables (if any)')
 
-    // Run the single unified init SQL
-    const sqlPath = path.join(__dirname, 'migrations', '001_init.sql')
-    const sql = fs.readFileSync(sqlPath, 'utf-8')
-    await pool.query(sql)
-    logger.info('✓ Schema initialised from 001_init.sql')
+    // Run every migration file in lexicographic order (001_init.sql,
+    // 002_topology_relation.sql, …). Each file is idempotent, so re-running is
+    // a no-op against an already-migrated database.
+    const migrationsDir = path.join(__dirname, 'migrations')
+    const files = fs
+      .readdirSync(migrationsDir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()
+
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8')
+      await pool.query(sql)
+      logger.info(`✓ Applied ${file}`)
+    }
 
     logger.info('Migration completed successfully')
   } catch (error) {
