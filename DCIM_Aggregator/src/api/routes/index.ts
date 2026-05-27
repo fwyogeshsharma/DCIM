@@ -310,7 +310,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
         // "tier" from its device_type name, then pick the lowest-tier connected
         // neighbour as parent. This works even when every row has relation='peer'.
         dbPool.query(`
-          WITH
+          WITH RECURSIVE
           tiered AS (
             SELECT
               id, hostname, device_type, mgmt_ip, network_id, group_id,
