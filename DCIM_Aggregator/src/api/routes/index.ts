@@ -258,6 +258,85 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     }
   })
 
+  // ── Networks summary ───────────────────────────────────────────────────────
+  app.get('/api/v1/networks/summary', async (req, res) => {
+    try {
+      const { rows } = await dbPool.query(`
+        SELECT
+          d.network_id,
+          COUNT(*)::int                                                                                              AS total_devices,
+          COUNT(CASE WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 1 END)::int AS online,
+          COUNT(CASE WHEN d.last_seen_at <  NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+                      OR d.last_seen_at IS NULL THEN 1 END)::int                                                    AS offline,
+          COUNT(DISTINCT d.device_type)::int                                                                        AS device_types,
+          MAX(d.last_seen_at)                                                                                       AS last_seen,
+          COALESCE(SUM(ac.active_alerts), 0)::int                                                                   AS active_alerts,
+          COALESCE(SUM(ac.critical_alerts), 0)::int                                                                 AS critical_alerts
+        FROM devices d
+        LEFT JOIN (
+          SELECT
+            e.device_id,
+            COUNT(CASE WHEN COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int          AS active_alerts,
+            COUNT(CASE WHEN LOWER(e.severity) = 'critical'
+                        AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int          AS critical_alerts
+          FROM events e
+          GROUP BY e.device_id
+        ) ac ON ac.device_id = d.id
+        GROUP BY d.network_id
+        ORDER BY d.network_id
+      `)
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
+  // ── Topology tree (recursive hierarchy from topology_tree view) ───────────
+  app.get('/api/v1/topology/tree', async (req, res) => {
+    try {
+      const { network_id } = req.query
+      let where = '1=1'
+      const params: any[] = []
+      if (network_id) { params.push(network_id); where = `tt.network_id = $1` }
+
+      const { rows } = await dbPool.query(`
+        SELECT
+          tt.device_id::text                                                                             AS device_id,
+          tt.hostname,
+          tt.device_type,
+          tt.mgmt_ip::text                                                                               AS mgmt_ip,
+          tt.network_id,
+          tt.group_id,
+          tt.parent_device_id::text                                                                      AS parent_device_id,
+          tt.parent_hostname,
+          tt.depth,
+          tt.is_root,
+          CASE
+            WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online'
+            ELSE 'offline'
+          END                                                                                            AS status,
+          COALESCE(ac.active_alerts,  0)::int                                                            AS active_alerts,
+          COALESCE(ac.critical_alerts, 0)::int                                                           AS critical_alerts
+        FROM topology_tree tt
+        JOIN   devices d ON d.id = tt.device_id
+        LEFT JOIN (
+          SELECT
+            device_id,
+            COUNT(CASE WHEN COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int          AS active_alerts,
+            COUNT(CASE WHEN LOWER(severity) = 'critical'
+                        AND COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int          AS critical_alerts
+          FROM events
+          GROUP BY device_id
+        ) ac ON ac.device_id = tt.device_id
+        WHERE ${where}
+        ORDER BY tt.depth, tt.network_id, tt.hostname
+      `, params)
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // ── Topology nodes ─────────────────────────────────────────────────────────
   app.get('/api/v1/topology/nodes', async (req, res) => {
     try {

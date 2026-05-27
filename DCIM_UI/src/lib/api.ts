@@ -448,6 +448,40 @@ class APIClient {
     return this.request(`/agents/stats/by-server?limit=${limit}`)
   }
 
+  // Topology tree — full device hierarchy from topology_tree view
+  async getTopologyTree(networkId?: string): Promise<Array<{
+    device_id: string
+    hostname: string
+    device_type: string
+    mgmt_ip: string | null
+    network_id: string
+    group_id: string
+    parent_device_id: string | null
+    parent_hostname: string | null
+    depth: number
+    is_root: boolean
+    status: 'online' | 'offline'
+    active_alerts: number
+    critical_alerts: number
+  }>> {
+    const qs = networkId ? `?network_id=${encodeURIComponent(networkId)}` : ''
+    return this.request(`/topology/tree${qs}`)
+  }
+
+  // Networks summary — per-network device counts, online/offline, alerts
+  async getNetworksSummary(): Promise<Array<{
+    network_id: string
+    total_devices: number
+    online: number
+    offline: number
+    device_types: number
+    last_seen: string | null
+    active_alerts: number
+    critical_alerts: number
+  }>> {
+    return this.request('/networks/summary')
+  }
+
   // Recently active agents (lightweight)
   async getRecentAgents(limit = 6): Promise<Array<{
     agent_id: string
