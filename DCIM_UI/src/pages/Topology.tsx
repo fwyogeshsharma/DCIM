@@ -35,6 +35,19 @@ interface TreeNode {
   critical_alerts: number
 }
 
+interface TreeLink {
+  id: string
+  src_device_id: string
+  dst_device_id: string
+  is_active: boolean
+  relation: string
+  link_speed_mbps: number | null
+  src_hostname: string
+  dst_hostname: string
+  src_status: 'online' | 'offline'
+  dst_status: 'online' | 'offline'
+}
+
 interface TopoNode extends d3.SimulationNodeDatum {
   id: string
   name: string
@@ -131,12 +144,15 @@ export default function Topology() {
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
-  const { data: rawTree, isLoading } = useQuery({
+  const { data: topoData, isLoading } = useQuery({
     queryKey: ['topology-tree'],
     queryFn: () => api.getTopologyTree(),
     staleTime: 15000,
     refetchInterval: 30000,
   })
+
+  const rawTree: TreeNode[] = topoData?.nodes ?? []
+  const rawLinks: TreeLink[] = topoData?.links ?? []
 
   const { data: activeTraps } = useQuery({
     queryKey: ['active-traps-seed'],
@@ -217,14 +233,18 @@ export default function Topology() {
   // ── Derived data ───────────────────────────────────────────────────────────
 
   const networks = useMemo(() => {
-    if (!rawTree) return []
     return [...new Set(rawTree.map(n => n.network_id))].sort()
   }, [rawTree])
 
   const tree = useMemo(() => {
-    if (!rawTree) return []
     return networkFilter === 'all' ? rawTree : rawTree.filter(n => n.network_id === networkFilter)
   }, [rawTree, networkFilter])
+
+  // Filter links to only those whose both endpoints are in the current tree view
+  const treeLinks = useMemo(() => {
+    const nodeIds = new Set(tree.map(n => n.device_id))
+    return rawLinks.filter(l => nodeIds.has(l.src_device_id) && nodeIds.has(l.dst_device_id))
+  }, [rawLinks, tree])
 
   const stats = useMemo(() => ({
     total: tree.length,
@@ -243,6 +263,9 @@ export default function Topology() {
     d3.select(svgRef.current).selectAll('*').remove()
 
     if (!tree || tree.length === 0) return
+
+    // Expose treeLinks to the effect via closure (avoids stale ref issues)
+    const effectLinks = treeLinks
 
     const width = svgRef.current.clientWidth
     const height = svgRef.current.clientHeight
@@ -272,19 +295,41 @@ export default function Topology() {
       parentName: row.parent_hostname,
     }))
 
-    // Build links: each non-root node → its parent
+    // Build edges from ALL topology_links (not just parent→child).
+    // This draws every physical cable: uplinks, downlinks, AND peer/spine-mesh.
     const nodeIds = new Set(nodes.map(n => n.id))
-    const links: TopoLink[] = tree
-      .filter(row => row.parent_device_id !== null && nodeIds.has(row.parent_device_id))
-      .map(row => {
-        const child = nodes.find(n => n.id === row.device_id)
-        const parent = nodes.find(n => n.id === row.parent_device_id!)
-        return {
-          source: row.device_id,
-          target: row.parent_device_id!,
-          online: (child?.status === 'online') && (parent?.status === 'online'),
-        }
+    const seenPairs = new Set<string>()
+    const links: TopoLink[] = []
+    for (const tl of effectLinks) {
+      if (!nodeIds.has(tl.src_device_id) || !nodeIds.has(tl.dst_device_id)) continue
+      // Deduplicate bidirectional duplicates (A→B and B→A drawn once)
+      const pairKey = [tl.src_device_id, tl.dst_device_id].sort().join('|')
+      if (seenPairs.has(pairKey)) continue
+      seenPairs.add(pairKey)
+      links.push({
+        source: tl.src_device_id,
+        target: tl.dst_device_id,
+        online: tl.src_status === 'online' && tl.dst_status === 'online',
       })
+    }
+
+    // Fallback: if topology_links is empty, draw parent→child edges from tree
+    if (links.length === 0) {
+      for (const row of tree) {
+        if (row.parent_device_id && nodeIds.has(row.parent_device_id)) {
+          const pairKey = [row.device_id, row.parent_device_id].sort().join('|')
+          if (seenPairs.has(pairKey)) continue
+          seenPairs.add(pairKey)
+          const child = nodes.find(n => n.id === row.device_id)
+          const parent = nodes.find(n => n.id === row.parent_device_id!)
+          links.push({
+            source: row.device_id,
+            target: row.parent_device_id!,
+            online: (child?.status === 'online') && (parent?.status === 'online'),
+          })
+        }
+      }
+    }
 
     // Layered layout: depth directly maps to layer (root=0 at top)
     const layeredInput = nodes.map(n => ({ id: n.id, layer: n.depth }))
@@ -542,7 +587,7 @@ export default function Topology() {
     return () => {
       if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null }
     }
-  }, [tree, trapAlerts, linkDownAlerts])
+  }, [tree, treeLinks, trapAlerts, linkDownAlerts])
 
   // ── Zoom controls ──────────────────────────────────────────────────────────
 

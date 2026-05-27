@@ -291,47 +291,136 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     }
   })
 
-  // ── Topology tree (recursive hierarchy from topology_tree view) ───────────
+  // ── Topology tree ──────────────────────────────────────────────────────────
+  // Returns { nodes, links } where:
+  //   nodes — every device with tier-based depth (inferred from device_type,
+  //           independent of the `relation` column which defaults to 'peer')
+  //   links — every topology_links row so the UI can draw ALL physical edges
+  //           (uplinks, downlinks, AND peer/spine-mesh links)
   app.get('/api/v1/topology/tree', async (req, res) => {
     try {
       const { network_id } = req.query
-      let where = '1=1'
       const params: any[] = []
-      if (network_id) { params.push(network_id); where = `tt.network_id = $1` }
+      const netFilter = network_id ? `AND d.network_id = $1` : ''
+      if (network_id) params.push(network_id)
 
-      const { rows } = await dbPool.query(`
-        SELECT
-          tt.device_id::text                                                                             AS device_id,
-          tt.hostname,
-          tt.device_type,
-          tt.mgmt_ip::text                                                                               AS mgmt_ip,
-          tt.network_id,
-          tt.group_id,
-          tt.parent_device_id::text                                                                      AS parent_device_id,
-          tt.parent_hostname,
-          tt.depth,
-          tt.is_root,
-          CASE
-            WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online'
-            ELSE 'offline'
-          END                                                                                            AS status,
-          COALESCE(ac.active_alerts,  0)::int                                                            AS active_alerts,
-          COALESCE(ac.critical_alerts, 0)::int                                                           AS critical_alerts
-        FROM topology_tree tt
-        JOIN   devices d ON d.id = tt.device_id
-        LEFT JOIN (
+      const [nodesResult, linksResult] = await Promise.all([
+        // ── Nodes: tier-based BFS depth ──────────────────────────────────────
+        // We never use the `relation` column. Instead we assign each device a
+        // "tier" from its device_type name, then pick the lowest-tier connected
+        // neighbour as parent. This works even when every row has relation='peer'.
+        dbPool.query(`
+          WITH
+          tiered AS (
+            SELECT
+              id, hostname, device_type, mgmt_ip, network_id, group_id,
+              last_seen_at, is_reachable,
+              CASE
+                WHEN LOWER(device_type) ~ 'router|rtr|edge.router|cluster.router|firewall|^fw$' THEN 0
+                WHEN LOWER(device_type) ~ 'load.bal|^lb$|spine|super.spine|fabric|core.switch' THEN 1
+                WHEN LOWER(device_type) ~ 'aggregat|agg.switch|pod.gw|pod.gateway'             THEN 2
+                WHEN LOWER(device_type) ~ 'leaf|tor|top.of.rack|access.switch'                 THEN 3
+                WHEN LOWER(device_type) ~ 'server|compute|host|gpu|storage|nas|san'            THEN 4
+                WHEN LOWER(device_type) ~ 'pdu|ups|power|oob|out.of.band'                      THEN 5
+                ELSE                                                                                  3
+              END AS tier
+            FROM devices d
+            WHERE 1=1 ${netFilter}
+          ),
+          -- One parent per child: the lowest-tier (= highest in hierarchy)
+          -- neighbour reachable via any topology_link direction.
+          parent_of AS (
+            SELECT DISTINCT ON (child_id) child_id, parent_id
+            FROM (
+              SELECT c.id AS child_id, p.id AS parent_id
+              FROM topology_links tl
+              JOIN tiered c ON c.id = tl.src_device_id
+              JOIN tiered p ON p.id = tl.dst_device_id
+              WHERE p.tier < c.tier
+              UNION ALL
+              SELECT c.id AS child_id, p.id AS parent_id
+              FROM topology_links tl
+              JOIN tiered c ON c.id = tl.dst_device_id
+              JOIN tiered p ON p.id = tl.src_device_id
+              WHERE p.tier < c.tier
+            ) edges
+            ORDER BY child_id, parent_id
+          ),
+          -- BFS from roots (devices with no lower-tier parent)
+          tree AS (
+            SELECT id AS device_id, NULL::uuid AS parent_id, 0 AS depth
+            FROM tiered
+            WHERE NOT EXISTS (SELECT 1 FROM parent_of po WHERE po.child_id = tiered.id)
+            UNION ALL
+            SELECT po.child_id, po.parent_id, t.depth + 1
+            FROM parent_of po
+            JOIN tree t ON po.parent_id = t.device_id
+            WHERE t.depth < 30
+          )
           SELECT
-            device_id,
-            COUNT(CASE WHEN COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int          AS active_alerts,
-            COUNT(CASE WHEN LOWER(severity) = 'critical'
-                        AND COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int          AS critical_alerts
-          FROM events
-          GROUP BY device_id
-        ) ac ON ac.device_id = tt.device_id
-        WHERE ${where}
-        ORDER BY tt.depth, tt.network_id, tt.hostname
-      `, params)
-      res.json({ success: true, data: rows, count: rows.length })
+            t.device_id::text,
+            d.hostname,
+            d.device_type,
+            d.mgmt_ip::text                                                                        AS mgmt_ip,
+            d.network_id,
+            d.group_id,
+            t.parent_id::text                                                                      AS parent_device_id,
+            p.hostname                                                                             AS parent_hostname,
+            t.depth,
+            (t.parent_id IS NULL)                                                                  AS is_root,
+            CASE
+              WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+              THEN 'online' ELSE 'offline'
+            END                                                                                    AS status,
+            COALESCE(ac.active_alerts,   0)::int                                                   AS active_alerts,
+            COALESCE(ac.critical_alerts, 0)::int                                                   AS critical_alerts
+          FROM tree t
+          JOIN   devices d  ON d.id = t.device_id
+          LEFT JOIN devices p  ON p.id = t.parent_id
+          LEFT JOIN (
+            SELECT device_id,
+              COUNT(CASE WHEN COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int         AS active_alerts,
+              COUNT(CASE WHEN LOWER(severity) = 'critical'
+                          AND COALESCE((event_payload->>'resolved')::boolean, false) = false THEN 1 END)::int         AS critical_alerts
+            FROM events GROUP BY device_id
+          ) ac ON ac.device_id = t.device_id
+          ORDER BY t.depth, d.network_id, d.hostname
+        `, params),
+
+        // ── Links: every physical edge, both directions ───────────────────────
+        // We return ALL topology_links (including peer/spine-mesh) so the UI can
+        // draw every cable, not just the hierarchical parent→child edges.
+        dbPool.query(`
+          SELECT
+            tl.id::text,
+            tl.src_device_id::text,
+            tl.dst_device_id::text,
+            tl.is_active,
+            tl.relation,
+            tl.link_speed_mbps,
+            tl.link_type,
+            d1.hostname    AS src_hostname,
+            d1.network_id  AS src_network_id,
+            d2.hostname    AS dst_hostname,
+            d2.network_id  AS dst_network_id,
+            CASE WHEN d1.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online' ELSE 'offline' END AS src_status,
+            CASE WHEN d2.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds' THEN 'online' ELSE 'offline' END AS dst_status
+          FROM topology_links tl
+          JOIN devices d1 ON d1.id = tl.src_device_id
+          JOIN devices d2 ON d2.id = tl.dst_device_id
+          ${network_id ? `WHERE d1.network_id = $1 AND d2.network_id = $1` : ''}
+          ORDER BY d1.hostname, d2.hostname
+        `, params),
+      ])
+
+      res.json({
+        success: true,
+        data: {
+          nodes: nodesResult.rows,
+          links: linksResult.rows,
+        },
+        count: nodesResult.rows.length,
+      })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

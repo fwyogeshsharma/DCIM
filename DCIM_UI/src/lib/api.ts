@@ -448,22 +448,36 @@ class APIClient {
     return this.request(`/agents/stats/by-server?limit=${limit}`)
   }
 
-  // Topology tree — full device hierarchy from topology_tree view
-  async getTopologyTree(networkId?: string): Promise<Array<{
-    device_id: string
-    hostname: string
-    device_type: string
-    mgmt_ip: string | null
-    network_id: string
-    group_id: string
-    parent_device_id: string | null
-    parent_hostname: string | null
-    depth: number
-    is_root: boolean
-    status: 'online' | 'offline'
-    active_alerts: number
-    critical_alerts: number
-  }>> {
+  // Topology tree — device hierarchy + all physical links
+  async getTopologyTree(networkId?: string): Promise<{
+    nodes: Array<{
+      device_id: string
+      hostname: string
+      device_type: string
+      mgmt_ip: string | null
+      network_id: string
+      group_id: string
+      parent_device_id: string | null
+      parent_hostname: string | null
+      depth: number
+      is_root: boolean
+      status: 'online' | 'offline'
+      active_alerts: number
+      critical_alerts: number
+    }>
+    links: Array<{
+      id: string
+      src_device_id: string
+      dst_device_id: string
+      is_active: boolean
+      relation: string
+      link_speed_mbps: number | null
+      src_hostname: string
+      dst_hostname: string
+      src_status: 'online' | 'offline'
+      dst_status: 'online' | 'offline'
+    }>
+  }> {
     const qs = networkId ? `?network_id=${encodeURIComponent(networkId)}` : ''
     return this.request(`/topology/tree${qs}`)
   }
