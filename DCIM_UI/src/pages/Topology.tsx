@@ -298,6 +298,7 @@ export default function Topology() {
     // Build edges from ALL topology_links (not just parent→child).
     // This draws every physical cable: uplinks, downlinks, AND peer/spine-mesh.
     const nodeIds = new Set(nodes.map(n => n.id))
+    const nodeById = new Map(nodes.map(n => [n.id, n]))
     const seenPairs = new Set<string>()
     const links: TopoLink[] = []
     for (const tl of effectLinks) {
@@ -313,22 +314,24 @@ export default function Topology() {
       })
     }
 
-    // Fallback: if topology_links is empty, draw parent→child edges from tree
-    if (links.length === 0) {
-      for (const row of tree) {
-        if (row.parent_device_id && nodeIds.has(row.parent_device_id)) {
-          const pairKey = [row.device_id, row.parent_device_id].sort().join('|')
-          if (seenPairs.has(pairKey)) continue
-          seenPairs.add(pairKey)
-          const child = nodes.find(n => n.id === row.device_id)
-          const parent = nodes.find(n => n.id === row.parent_device_id!)
-          links.push({
-            source: row.device_id,
-            target: row.parent_device_id!,
-            online: (child?.status === 'online') && (parent?.status === 'online'),
-          })
-        }
-      }
+    // Guarantee every device stays attached to its parent. A physical
+    // topology_links row can be missing or stale for a device that has gone
+    // offline (its agent stopped reporting the cable), which previously left
+    // the node floating with no edge. We always add the hierarchy parent→child
+    // edge from the tree — deduped against the physical links above — so
+    // offline devices remain connected to their parent just like online ones.
+    for (const row of tree) {
+      if (!row.parent_device_id || !nodeIds.has(row.parent_device_id)) continue
+      const pairKey = [row.device_id, row.parent_device_id].sort().join('|')
+      if (seenPairs.has(pairKey)) continue
+      seenPairs.add(pairKey)
+      const child = nodeById.get(row.device_id)
+      const parent = nodeById.get(row.parent_device_id)
+      links.push({
+        source: row.device_id,
+        target: row.parent_device_id,
+        online: child?.status === 'online' && parent?.status === 'online',
+      })
     }
 
     // Layered layout: depth directly maps to layer (root=0 at top)
