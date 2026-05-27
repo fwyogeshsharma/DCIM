@@ -4,6 +4,7 @@ import { Pool, PoolClient } from 'pg'
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface IngestInterface {
+  id?: string
   interface_name: string
   interface_index?: number
   interface_description?: string
@@ -15,6 +16,7 @@ interface IngestInterface {
   access_vlan_id?: number
   mtu_bytes?: number
   addresses?: Array<{
+    id?: string
     address: string
     address_family?: string
     is_primary?: boolean
@@ -34,6 +36,7 @@ interface IngestMetric {
 }
 
 interface IngestDevice {
+  id?: string
   hostname: string
   device_type: string
   vendor?: string
@@ -67,6 +70,7 @@ interface IngestDevice {
 }
 
 interface IngestTopologyLink {
+  id?: string
   layer: string
   src_hostname: string
   src_port_name?: string
@@ -76,9 +80,12 @@ interface IngestTopologyLink {
   link_type?: string
   protocol?: string
   is_active?: boolean
+  relation?: string
 }
 
 interface IngestEvent {
+  id?: string
+  device_id?: string
   hostname?: string
   source_ip?: string
   kind?: string
@@ -146,49 +153,49 @@ export function createIngestRouter(dbPool: Pool): Router {
             snmp_enabled, gnmi_enabled, snmp_port, snmp_version, gnmi_port,
             collector_agent, country, datacenter_city, datacenter, room,
             rack_row, rack_num, rack_unit, power_draw_w,
-            is_reachable, last_seen_at, updated_at
+            is_reachable, last_seen_at, updated_at, id
           ) VALUES (
-            $1,$2,$3,$4,$5,
-            $6,$7,$8,$9,
-            $10,$11,$12,$13,$14,
-            $15,$16,$17,$18,
-            $19,$20,$21,$22,$23,
-            $24,$25,$26,$27,$28,
-            $29,$30,$31,$32,
-            $33, now(), now()
-          )
-          ON CONFLICT (org_id, datacenter_id, floor_id, network_id, group_id, hostname)
+                     $1,$2,$3,$4,$5,
+                     $6,$7,$8,$9,
+                     $10,$11,$12,$13,$14,
+                     $15,$16,$17,$18,
+                     $19,$20,$21,$22,$23,
+                     $24,$25,$26,$27,$28,
+                     $29,$30,$31,$32,
+                     $33, now(), now(), COALESCE($34::uuid, gen_random_uuid())
+                   )
+            ON CONFLICT (org_id, datacenter_id, floor_id, network_id, group_id, hostname)
           DO UPDATE SET
             device_type      = EXCLUDED.device_type,
-            vendor           = COALESCE(EXCLUDED.vendor,           devices.vendor),
-            model_name       = COALESCE(EXCLUDED.model_name,       devices.model_name),
-            os_name          = COALESCE(EXCLUDED.os_name,          devices.os_name),
-            os_version       = COALESCE(EXCLUDED.os_version,       devices.os_version),
-            sys_oid          = COALESCE(EXCLUDED.sys_oid,          devices.sys_oid),
-            sys_description  = COALESCE(EXCLUDED.sys_description,  devices.sys_description),
-            sys_location     = COALESCE(EXCLUDED.sys_location,     devices.sys_location),
-            mgmt_ip          = COALESCE(EXCLUDED.mgmt_ip,          devices.mgmt_ip),
-            prod_ip          = COALESCE(EXCLUDED.prod_ip,          devices.prod_ip),
-            loopback_ip      = COALESCE(EXCLUDED.loopback_ip,      devices.loopback_ip),
-            oob_ip           = COALESCE(EXCLUDED.oob_ip,           devices.oob_ip),
-            snmp_enabled     = EXCLUDED.snmp_enabled,
-            gnmi_enabled     = EXCLUDED.gnmi_enabled,
-            snmp_port        = EXCLUDED.snmp_port,
-            snmp_version     = EXCLUDED.snmp_version,
-            gnmi_port        = EXCLUDED.gnmi_port,
-            collector_agent  = EXCLUDED.collector_agent,
-            country          = COALESCE(EXCLUDED.country,          devices.country),
-            datacenter_city  = COALESCE(EXCLUDED.datacenter_city,  devices.datacenter_city),
-            datacenter       = COALESCE(EXCLUDED.datacenter,       devices.datacenter),
-            room             = COALESCE(EXCLUDED.room,             devices.room),
-            rack_row         = COALESCE(EXCLUDED.rack_row,         devices.rack_row),
-            rack_num         = COALESCE(EXCLUDED.rack_num,         devices.rack_num),
-            rack_unit        = COALESCE(EXCLUDED.rack_unit,        devices.rack_unit),
-            power_draw_w     = COALESCE(EXCLUDED.power_draw_w,     devices.power_draw_w),
-            is_reachable     = EXCLUDED.is_reachable,
-            last_seen_at     = now(),
-            updated_at       = now()
-          RETURNING id
+                           vendor           = COALESCE(EXCLUDED.vendor,           devices.vendor),
+                           model_name       = COALESCE(EXCLUDED.model_name,       devices.model_name),
+                           os_name          = COALESCE(EXCLUDED.os_name,          devices.os_name),
+                           os_version       = COALESCE(EXCLUDED.os_version,       devices.os_version),
+                           sys_oid          = COALESCE(EXCLUDED.sys_oid,          devices.sys_oid),
+                           sys_description  = COALESCE(EXCLUDED.sys_description,  devices.sys_description),
+                           sys_location     = COALESCE(EXCLUDED.sys_location,     devices.sys_location),
+                           mgmt_ip          = COALESCE(EXCLUDED.mgmt_ip,          devices.mgmt_ip),
+                           prod_ip          = COALESCE(EXCLUDED.prod_ip,          devices.prod_ip),
+                           loopback_ip      = COALESCE(EXCLUDED.loopback_ip,      devices.loopback_ip),
+                           oob_ip           = COALESCE(EXCLUDED.oob_ip,           devices.oob_ip),
+                           snmp_enabled     = EXCLUDED.snmp_enabled,
+                           gnmi_enabled     = EXCLUDED.gnmi_enabled,
+                           snmp_port        = EXCLUDED.snmp_port,
+                           snmp_version     = EXCLUDED.snmp_version,
+                           gnmi_port        = EXCLUDED.gnmi_port,
+                           collector_agent  = EXCLUDED.collector_agent,
+                           country          = COALESCE(EXCLUDED.country,          devices.country),
+                           datacenter_city  = COALESCE(EXCLUDED.datacenter_city,  devices.datacenter_city),
+                           datacenter       = COALESCE(EXCLUDED.datacenter,       devices.datacenter),
+                           room             = COALESCE(EXCLUDED.room,             devices.room),
+                           rack_row         = COALESCE(EXCLUDED.rack_row,         devices.rack_row),
+                           rack_num         = COALESCE(EXCLUDED.rack_num,         devices.rack_num),
+                           rack_unit        = COALESCE(EXCLUDED.rack_unit,        devices.rack_unit),
+                           power_draw_w     = COALESCE(EXCLUDED.power_draw_w,     devices.power_draw_w),
+                           is_reachable     = EXCLUDED.is_reachable,
+                           last_seen_at     = now(),
+                           updated_at       = now()
+                           RETURNING id
         `, [
           body.org_id, body.datacenter_id, body.floor_id, body.network_id, body.group_id,
           dev.hostname, dev.device_type, dev.vendor ?? null, dev.model_name ?? null,
@@ -201,6 +208,7 @@ export function createIngestRouter(dbPool: Pool): Router {
           dev.country ?? null, dev.datacenter_city ?? null, dev.datacenter ?? null, dev.room ?? null,
           dev.rack_row ?? null, dev.rack_num ?? null, dev.rack_unit ?? null, dev.power_draw_w ?? null,
           dev.is_reachable ?? true,
+          dev.id ?? null,
         ])
 
         const deviceId = rows[0].id
@@ -208,30 +216,47 @@ export function createIngestRouter(dbPool: Pool): Router {
 
         // ── 2. Upsert interfaces ─────────────────────────────────────────────
         for (const iface of dev.interfaces ?? []) {
+          // The interfaces table has TWO unique keys: (device_id, interface_name)
+          // and partial (device_id, interface_index) [uix_iface_device_idx]. A
+          // single ON CONFLICT arbiter can't cover both, so a renamed port (same
+          // ifIndex, new ifName) or a reindexed port (same name, new ifIndex)
+          // throws a duplicate-key on whichever key isn't the arbiter. Pre-delete
+          // any DIFFERENT row that collides on either key, then upsert by primary
+          // key (id). Steady state deletes nothing (the live row matches by id),
+          // so this neither churns ids nor nulls metric→interface links.
+          await client.query(`
+            DELETE FROM interfaces
+            WHERE device_id = $1
+              AND (interface_name = $2 OR ($3::int IS NOT NULL AND interface_index = $3))
+              AND ($4::uuid IS NULL OR id <> $4)
+          `, [deviceId, iface.interface_name, iface.interface_index ?? null, iface.id ?? null])
+
           const { rows: ifRows } = await client.query<{ id: string }>(`
             INSERT INTO interfaces (
               device_id, interface_name, interface_index, interface_description,
               interface_type, interface_mac_address, speed_mbps,
-              admin_status, operational_status, access_vlan_id, mtu_bytes, updated_at
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now())
-            ON CONFLICT (device_id, interface_name) DO UPDATE SET
-              interface_index       = COALESCE(EXCLUDED.interface_index,       interfaces.interface_index),
-              interface_description = COALESCE(EXCLUDED.interface_description, interfaces.interface_description),
-              interface_type        = COALESCE(EXCLUDED.interface_type,        interfaces.interface_type),
-              interface_mac_address = COALESCE(EXCLUDED.interface_mac_address, interfaces.interface_mac_address),
-              speed_mbps            = COALESCE(EXCLUDED.speed_mbps,            interfaces.speed_mbps),
-              admin_status          = EXCLUDED.admin_status,
-              operational_status    = EXCLUDED.operational_status,
-              access_vlan_id        = COALESCE(EXCLUDED.access_vlan_id,        interfaces.access_vlan_id),
-              mtu_bytes             = COALESCE(EXCLUDED.mtu_bytes,             interfaces.mtu_bytes),
-              updated_at            = now()
-            RETURNING id
+              admin_status, operational_status, access_vlan_id, mtu_bytes, updated_at, id
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now(), COALESCE($12::uuid, gen_random_uuid()))
+              ON CONFLICT (id) DO UPDATE SET
+              interface_name        = EXCLUDED.interface_name,
+                                    interface_index       = COALESCE(EXCLUDED.interface_index,       interfaces.interface_index),
+                                    interface_description = COALESCE(EXCLUDED.interface_description, interfaces.interface_description),
+                                    interface_type        = COALESCE(EXCLUDED.interface_type,        interfaces.interface_type),
+                                    interface_mac_address = COALESCE(EXCLUDED.interface_mac_address, interfaces.interface_mac_address),
+                                    speed_mbps            = COALESCE(EXCLUDED.speed_mbps,            interfaces.speed_mbps),
+                                    admin_status          = EXCLUDED.admin_status,
+                                    operational_status    = EXCLUDED.operational_status,
+                                    access_vlan_id        = COALESCE(EXCLUDED.access_vlan_id,        interfaces.access_vlan_id),
+                                    mtu_bytes             = COALESCE(EXCLUDED.mtu_bytes,             interfaces.mtu_bytes),
+                                    updated_at            = now()
+                                    RETURNING id
           `, [
             deviceId, iface.interface_name, iface.interface_index ?? null,
             iface.interface_description ?? null, iface.interface_type ?? null,
             iface.interface_mac_address ?? null, iface.speed_mbps ?? null,
             iface.admin_status ?? 1, iface.operational_status ?? 1,
             iface.access_vlan_id ?? null, iface.mtu_bytes ?? null,
+            iface.id ?? null,
           ])
 
           const ifaceId = ifRows[0].id
@@ -240,16 +265,16 @@ export function createIngestRouter(dbPool: Pool): Router {
           // ── 3. Upsert interface addresses ──────────────────────────────────
           for (const addr of iface.addresses ?? []) {
             await client.query(`
-              INSERT INTO interface_addresses (interface_id, address, address_family, is_primary, vrf, updated_at)
-              VALUES ($1,$2,$3,$4,$5,now())
-              ON CONFLICT (interface_id, address) DO UPDATE SET
+              INSERT INTO interface_addresses (interface_id, address, address_family, is_primary, vrf, updated_at, id)
+              VALUES ($1,$2,$3,$4,$5,now(), COALESCE($6::uuid, gen_random_uuid()))
+                ON CONFLICT (interface_id, address) DO UPDATE SET
                 address_family = EXCLUDED.address_family,
-                is_primary     = EXCLUDED.is_primary,
-                vrf            = COALESCE(EXCLUDED.vrf, interface_addresses.vrf),
-                updated_at     = now()
+                                                         is_primary     = EXCLUDED.is_primary,
+                                                         vrf            = COALESCE(EXCLUDED.vrf, interface_addresses.vrf),
+                                                         updated_at     = now()
             `, [
               ifaceId, addr.address, addr.address_family ?? 'ipv4',
-              addr.is_primary ?? true, addr.vrf ?? null,
+              addr.is_primary ?? true, addr.vrf ?? null, addr.id ?? null,
             ])
           }
         }
@@ -262,7 +287,7 @@ export function createIngestRouter(dbPool: Pool): Router {
             INSERT INTO metrics (device_id, ts, metric_name, tag, value, attributes,
                                  collector_agent, collector_protocol, interface_id)
             VALUES ($1, $2::timestamptz, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING
+              ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING
           `, [
             deviceId, m.ts ?? 'now()', m.metric_name, m.tag ?? '', m.value,
             m.attributes ? JSON.stringify(m.attributes) : null,
@@ -281,7 +306,7 @@ export function createIngestRouter(dbPool: Pool): Router {
                 AND event_name = $2
                 AND COALESCE((event_payload->>'resolved')::boolean, false) = false
                 AND ts >= NOW() - INTERVAL '10 minutes'
-              LIMIT 1
+                LIMIT 1
             `, [deviceId, m.metric_name])
             if (existing.length === 0) {
               await client.query(`
@@ -317,17 +342,18 @@ export function createIngestRouter(dbPool: Pool): Router {
           INSERT INTO topology_links (
             layer, src_device_id, src_port_name, src_interface_id,
             dst_device_id, dst_port_name, dst_interface_id,
-            link_speed_mbps, link_type, protocol, is_active, updated_at
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now())
-          ON CONFLICT (layer, src_device_id, src_port_name, dst_device_id) DO UPDATE SET
+            link_speed_mbps, link_type, protocol, is_active, relation, updated_at, id
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,now(), COALESCE($13::uuid, gen_random_uuid()))
+            ON CONFLICT (layer, src_device_id, src_port_name, dst_device_id) DO UPDATE SET
             dst_port_name    = EXCLUDED.dst_port_name,
-            src_interface_id = EXCLUDED.src_interface_id,
-            dst_interface_id = EXCLUDED.dst_interface_id,
-            link_speed_mbps  = COALESCE(EXCLUDED.link_speed_mbps, topology_links.link_speed_mbps),
-            link_type        = COALESCE(EXCLUDED.link_type,        topology_links.link_type),
-            protocol         = EXCLUDED.protocol,
-            is_active        = EXCLUDED.is_active,
-            updated_at       = now()
+                                                                                  src_interface_id = EXCLUDED.src_interface_id,
+                                                                                  dst_interface_id = EXCLUDED.dst_interface_id,
+                                                                                  link_speed_mbps  = COALESCE(EXCLUDED.link_speed_mbps, topology_links.link_speed_mbps),
+                                                                                  link_type        = COALESCE(EXCLUDED.link_type,        topology_links.link_type),
+                                                                                  protocol         = EXCLUDED.protocol,
+                                                                                  is_active        = EXCLUDED.is_active,
+                                                                                  relation         = EXCLUDED.relation,
+                                                                                  updated_at       = now()
         `, [
           link.layer,
           srcId, link.src_port_name ?? '',
@@ -336,22 +362,24 @@ export function createIngestRouter(dbPool: Pool): Router {
           dstIfaceKey ? (ifaceIdMap.get(dstIfaceKey) ?? null) : null,
           link.link_speed_mbps ?? null, link.link_type ?? null,
           link.protocol ?? 'lldp', link.is_active ?? true,
+          link.relation ?? 'peer', link.id ?? null,
         ])
       }
 
       // ── 6. Insert events ───────────────────────────────────────────────────
       for (const ev of body.events ?? []) {
-        const deviceId = ev.hostname ? (deviceIdMap.get(ev.hostname) ?? null) : null
+        const deviceId = (ev.hostname ? deviceIdMap.get(ev.hostname) : undefined) ?? ev.device_id ?? null
         await client.query(`
           INSERT INTO events (device_id, source_hostname, ts, kind, event_name, severity,
-                              trap_oid, source_ip, event_payload, collector_agent)
-          VALUES ($1,$2,$3::timestamptz,$4,$5,$6,$7,$8::inet,$9,$10)
+                              trap_oid, source_ip, event_payload, collector_agent, id)
+          VALUES ($1,$2,$3::timestamptz,$4,$5,$6,$7,$8::inet,$9,$10, COALESCE($11::uuid, gen_random_uuid()))
         `, [
           deviceId, ev.hostname ?? null, ev.ts ?? 'now()',
           ev.kind ?? 'event', ev.event_name, ev.severity ?? 'informational',
           ev.trap_oid ?? null, ev.source_ip ?? null,
           ev.payload ? JSON.stringify(ev.payload) : null,
           ev.collector_agent ?? 'EDR',
+          ev.id ?? null,
         ])
       }
 
