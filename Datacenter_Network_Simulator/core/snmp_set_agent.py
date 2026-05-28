@@ -80,6 +80,45 @@ _OID_SORTED: List[str] = sorted(
     key=lambda o: tuple(int(x) for x in o.split(".")),
 )
 
+# ── System MIB-II OIDs (sysContact / sysName / sysLocation) — OctetString R/W ──
+
+_SYS_BASE = "1.3.6.1.2.1.1"
+
+# OID → Device attribute name (all OctetString)
+_SYSTEM_OID_MAP: Dict[str, str] = {
+    f"{_SYS_BASE}.4.0": "sys_contact",
+    f"{_SYS_BASE}.5.0": "name",
+    f"{_SYS_BASE}.6.0": "sys_location_override",
+}
+
+# ── Enterprise asset OIDs (dcimSimulator.asset = 1.3.6.1.4.1.99999.4) ──────────
+
+_ASSET_BASE = "1.3.6.1.4.1.99999.4"
+
+# OID → (Device attr name, "str" | "int")
+_ASSET_OID_MAP: Dict[str, Tuple[str, str]] = {
+    f"{_ASSET_BASE}.1.0":  ("country",         "str"),
+    f"{_ASSET_BASE}.2.0":  ("datacenter_city", "str"),
+    f"{_ASSET_BASE}.3.0":  ("datacenter",      "str"),
+    f"{_ASSET_BASE}.4.0":  ("floor",           "str"),
+    f"{_ASSET_BASE}.5.0":  ("room",            "str"),
+    f"{_ASSET_BASE}.6.0":  ("rack_row",        "int"),
+    f"{_ASSET_BASE}.7.0":  ("rack_num",        "int"),
+    f"{_ASSET_BASE}.8.0":  ("rack_unit",       "int"),
+    f"{_ASSET_BASE}.9.0":  ("model_name",      "str"),
+    f"{_ASSET_BASE}.10.0": ("power_draw_w",    "int"),
+}
+
+
+def _oid_tuple(oid: str) -> tuple:
+    return tuple(int(x) for x in oid.split("."))
+
+
+_ALL_OID_SORTED: List[str] = sorted(
+    list(_SYSTEM_OID_MAP) + list(_OID_TABLE) + list(_ASSET_OID_MAP),
+    key=_oid_tuple,
+)
+
 
 # ── Condition field accessors ──────────────────────────────────────────────────
 
@@ -108,9 +147,12 @@ _ERR_NO_SUCH    = 2
 class _SnmpHandler:
     """Decodes an SNMP request, processes it, encodes and returns the response."""
 
-    def __init__(self, rule_engine, on_change_cb: Optional[Callable]):
-        self._re        = rule_engine
-        self._on_change = on_change_cb
+    def __init__(self, rule_engine, on_change_cb: Optional[Callable],
+                 device_lookup=None, on_device_updated=None):
+        self._re               = rule_engine
+        self._on_change        = on_change_cb
+        self._device_lookup    = device_lookup    # Callable[[str], Optional[Device]]
+        self._on_device_updated = on_device_updated  # Callable[[Device], None]
 
     def handle(self, data: bytes) -> Optional[bytes]:
         try:
@@ -155,7 +197,34 @@ class _SnmpHandler:
         result = []
         for oid, _ in vbs:
             oid_str = str(oid)
-            entry   = _OID_TABLE.get(oid_str)
+
+            if oid_str in _SYSTEM_OID_MAP:
+                device = self._device_lookup(device_ip) if self._device_lookup else None
+                if device is None:
+                    result.append((oid, univ.OctetString(b"noSuchObject")))
+                    continue
+                attr = _SYSTEM_OID_MAP[oid_str]
+                if attr == "sys_location_override":
+                    val = device.sys_location  # property handles override/compute
+                else:
+                    val = getattr(device, attr, "") or ""
+                result.append((oid, univ.OctetString(str(val).encode())))
+                continue
+
+            if oid_str in _ASSET_OID_MAP:
+                device = self._device_lookup(device_ip) if self._device_lookup else None
+                if device is None:
+                    result.append((oid, univ.OctetString(b"noSuchObject")))
+                    continue
+                attr, typ = _ASSET_OID_MAP[oid_str]
+                raw = getattr(device, attr, "" if typ == "str" else 0)
+                if typ == "int":
+                    result.append((oid, univ.Integer(int(raw or 0))))
+                else:
+                    result.append((oid, univ.OctetString(str(raw or "").encode())))
+                continue
+
+            entry = _OID_TABLE.get(oid_str)
             if entry is None:
                 result.append((oid, univ.OctetString(b"noSuchObject")))
                 continue
@@ -179,24 +248,46 @@ class _SnmpHandler:
             if next_oid is None:
                 result.append((oid, univ.OctetString(b"endOfMibView")))
                 continue
+            next_oid_obj = univ.ObjectIdentifier(_oid_tuple(next_oid))
+
+            if next_oid in _SYSTEM_OID_MAP:
+                device = self._device_lookup(device_ip) if self._device_lookup else None
+                if device is None:
+                    result.append((next_oid_obj, univ.OctetString(b"noSuchObject")))
+                    continue
+                attr = _SYSTEM_OID_MAP[next_oid]
+                val = device.sys_location if attr == "sys_location_override" else (getattr(device, attr, "") or "")
+                result.append((next_oid_obj, univ.OctetString(str(val).encode())))
+                continue
+
+            if next_oid in _ASSET_OID_MAP:
+                device = self._device_lookup(device_ip) if self._device_lookup else None
+                if device is None:
+                    result.append((next_oid_obj, univ.OctetString(b"noSuchObject")))
+                    continue
+                attr, typ = _ASSET_OID_MAP[next_oid]
+                raw = getattr(device, attr, "" if typ == "str" else 0)
+                if typ == "int":
+                    result.append((next_oid_obj, univ.Integer(int(raw or 0))))
+                else:
+                    result.append((next_oid_obj, univ.OctetString(str(raw or "").encode())))
+                continue
+
             entry = _OID_TABLE[next_oid]
             rule_name, field_path, _, multiplier = entry
             rule = self._re.get_rule(rule_name)
             if rule is None:
-                result.append((oid, univ.OctetString(b"noSuchObject")))
+                result.append((next_oid_obj, univ.OctetString(b"noSuchObject")))
                 continue
             override = self._re.get_device_threshold(device_ip, rule_name, field_path)
             raw = override if override is not None else _path_get(rule, field_path)
-            next_oid_obj = univ.ObjectIdentifier(
-                tuple(int(x) for x in next_oid.split("."))
-            )
             result.append((next_oid_obj, univ.Integer(round(raw * multiplier))))
         return _ERR_NO_ERROR, 0, result
 
     def _next_oid(self, oid_str: str) -> Optional[str]:
-        oid_ints = tuple(int(x) for x in oid_str.split("."))
-        for candidate in _OID_SORTED:
-            if tuple(int(x) for x in candidate.split(".")) > oid_ints:
+        oid_ints = _oid_tuple(oid_str)
+        for candidate in _ALL_OID_SORTED:
+            if _oid_tuple(candidate) > oid_ints:
                 return candidate
         return None
 
@@ -205,7 +296,44 @@ class _SnmpHandler:
     def _do_set(self, vbs, device_ip: str):
         for i, (oid, val) in enumerate(vbs, start=1):
             oid_str = str(oid)
-            entry   = _OID_TABLE.get(oid_str)
+
+            if oid_str in _SYSTEM_OID_MAP:
+                device = self._device_lookup(device_ip) if self._device_lookup else None
+                if device is None:
+                    return _ERR_NO_SUCH, i, vbs
+                try:
+                    str_val = bytes(val).decode("utf-8", errors="replace").strip()
+                except Exception:
+                    return _ERR_WRONG_TYPE, i, vbs
+                attr = _SYSTEM_OID_MAP[oid_str]
+                setattr(device, attr, str_val)
+                log.info("[SnmpSetAgent] SET device=%s %s=%r", device_ip, attr, str_val)
+                if self._on_device_updated:
+                    try:
+                        self._on_device_updated(device)
+                    except Exception as exc:
+                        log.warning("[SnmpSetAgent] on_device_updated error: %s", exc)
+                continue
+
+            if oid_str in _ASSET_OID_MAP:
+                device = self._device_lookup(device_ip) if self._device_lookup else None
+                if device is None:
+                    return _ERR_NO_SUCH, i, vbs
+                attr, typ = _ASSET_OID_MAP[oid_str]
+                try:
+                    new_val = int(val) if typ == "int" else bytes(val).decode("utf-8", errors="replace").strip()
+                except Exception:
+                    return _ERR_WRONG_TYPE, i, vbs
+                setattr(device, attr, new_val)
+                log.info("[SnmpSetAgent] SET device=%s %s=%r", device_ip, attr, new_val)
+                if self._on_device_updated:
+                    try:
+                        self._on_device_updated(device)
+                    except Exception as exc:
+                        log.warning("[SnmpSetAgent] on_device_updated error: %s", exc)
+                continue
+
+            entry = _OID_TABLE.get(oid_str)
             if entry is None:
                 return _ERR_NO_SUCH, i, vbs
 
@@ -278,11 +406,15 @@ class SnmpSetAgent:
         host: str = "0.0.0.0",
         port: int = 1161,
         on_change_cb: Optional[Callable[[str, str], None]] = None,
+        device_lookup=None,
+        on_device_updated=None,
     ):
-        self._re        = rule_engine
-        self._host      = host
-        self._port      = port
-        self._on_change = on_change_cb
+        self._re               = rule_engine
+        self._host             = host
+        self._port             = port
+        self._on_change        = on_change_cb
+        self._device_lookup    = device_lookup
+        self._on_device_updated = on_device_updated
         self._sock: Optional[socket.socket] = None
         self._thread: Optional[threading.Thread] = None
         self._running   = False
@@ -332,7 +464,8 @@ class SnmpSetAgent:
         log.info("[SnmpSetAgent] Stopped.")
 
     def _serve(self):
-        handler = _SnmpHandler(self._re, self._on_change)
+        handler = _SnmpHandler(self._re, self._on_change,
+                               self._device_lookup, self._on_device_updated)
         print(f"[SnmpSetAgent] serve thread running on {self._host}:{self._port}", flush=True)
         while self._running:
             try:

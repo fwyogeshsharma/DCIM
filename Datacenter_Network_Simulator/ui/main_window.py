@@ -468,6 +468,8 @@ class MainWindow(QMainWindow):
             self._rule_engine,
             port=1161,
             on_change_cb=self._on_snmp_threshold_changed,
+            device_lookup=self._lookup_device_by_ip,
+            on_device_updated=self._on_snmp_device_updated,
         )
         self._trap_rules_path = Path("trap_rules.json")
         self._device_thresholds_path = Path("device_thresholds.json")
@@ -1654,6 +1656,24 @@ class MainWindow(QMainWindow):
         QMetaObject.invokeMethod(self._rules_panel, "refresh",
                                  Qt.ConnectionType.QueuedConnection)
 
+    def _lookup_device_by_ip(self, ip: str):
+        """Called from SnmpSetAgent thread — device_manager reads are thread-safe."""
+        for d in self.device_manager.get_all_devices():
+            if d.ip_address == ip or d.mgmt_ip == ip:
+                return d
+        return None
+
+    def _on_snmp_device_updated(self, device):
+        """Called from SnmpSetAgent thread after SNMP SET changes a device attribute."""
+        try:
+            from core.snmprec_generator import SNMPRecGenerator
+            SNMPRecGenerator(self._snmp_datasets_dir).generate_device(device, self.topology)
+        except Exception as exc:
+            log.warning("[MainWindow] snmprec regen after SNMP SET: %s", exc)
+        from PySide6.QtCore import QMetaObject, Qt
+        QMetaObject.invokeMethod(self, "_sync_devices_ui",
+                                 Qt.ConnectionType.QueuedConnection)
+
     def _on_rule_engine_toggled(self, enabled: bool):
         self._trap_engine.set_rule_engine_enabled(enabled)
         self._trap_panel.set_rule_engine_active(enabled)
@@ -2140,6 +2160,15 @@ class MainWindow(QMainWindow):
             self.state_store.set_log_callback(self._console_panel.log)
             self.state_store.start()
             self.state_store.enable_snmp_sync(self.snmpsim)
+            set_port = self._sim_panel.get_set_port()
+            if set_port != self._snmp_set_agent.port:
+                self._snmp_set_agent = SnmpSetAgent(
+                    self._rule_engine,
+                    port=set_port,
+                    on_change_cb=self._on_snmp_threshold_changed,
+                    device_lookup=self._lookup_device_by_ip,
+                    on_device_updated=self._on_snmp_device_updated,
+                )
             if not self._snmp_set_agent.is_running():
                 if self._snmp_set_agent.start():
                     self._console_panel.log(

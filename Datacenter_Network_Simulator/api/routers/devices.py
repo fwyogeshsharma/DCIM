@@ -271,6 +271,12 @@ def edit_device(device_id: str, req: EditDeviceRequest):
         for k, v in update.items():
             setattr(device, k, v)
         s.notify_ui("sync_devices")
+        if s.topology is not None:
+            try:
+                from core.snmprec_generator import SNMPRecGenerator
+                SNMPRecGenerator(s.snmp_datasets_dir).generate_device(device, s.topology)
+            except Exception:
+                pass
         return _device_to_info(device)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

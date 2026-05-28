@@ -79,7 +79,7 @@ export const api = {
   // snmp
   snmpStatus:     ()                  => get('/snmp/status'),
   genSnmp:        ()                  => post('/snmp/datasets/generate'),
-  startSnmp:      (port = 161)        => post('/snmp/start', { port }),
+  startSnmp:      (port = 161, mgmtPort = 1161) => post('/snmp/start', { port, mgmt_port: mgmtPort }),
   stopSnmp:       ()                  => post('/snmp/stop'),
   clearSnmp:      ()                  => post('/snmp/clear'),
   setTrapReceiver:(ip: string, port: number) => post('/snmp/trap-receiver', { ip, port }),

@@ -589,7 +589,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{SYSTEM_BASE}.1.0", "4", device.sys_descr),
             _oid_entry(f"{SYSTEM_BASE}.2.0", "6", device.sys_oid),  # sysObjectID
             _oid_entry(f"{SYSTEM_BASE}.3.0", "67", str(device.sys_uptime)),
-            _oid_entry(f"{SYSTEM_BASE}.4.0", "4", f"admin@{device.name.lower()}.example.com"),
+            _oid_entry(f"{SYSTEM_BASE}.4.0", "4", device.sys_contact or f"admin@{device.name.lower()}.example.com"),
             _oid_entry(f"{SYSTEM_BASE}.5.0", "4", device.name),
             _oid_entry(f"{SYSTEM_BASE}.6.0", "4", device.sys_location),
             _oid_entry(f"{SYSTEM_BASE}.7.0", "2", "72"),  # sysServices

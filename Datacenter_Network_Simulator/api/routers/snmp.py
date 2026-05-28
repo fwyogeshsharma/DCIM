@@ -169,6 +169,36 @@ def start_snmp_simulator(req: SnmpStartRequest = None):
                 s.state_store.start()
                 s.state_store.enable_snmp_sync(s.snmpsim)
 
+            # Start SNMP SET management agent
+            mgmt_port = (req.mgmt_port if req else None) or 1161
+            if s.snmp_set_agent is None or not s.snmp_set_agent.is_running():
+                from core.snmp_set_agent import SnmpSetAgent
+
+                def _lookup(ip):
+                    if s.device_manager is None:
+                        return None
+                    for d in s.device_manager.get_all_devices():
+                        if d.ip_address == ip or getattr(d, "mgmt_ip", "") == ip:
+                            return d
+                    return None
+
+                def _on_updated(device):
+                    try:
+                        from core.snmprec_generator import SNMPRecGenerator
+                        if s.topology:
+                            SNMPRecGenerator(s.snmp_datasets_dir).generate_device(device, s.topology)
+                    except Exception:
+                        pass
+
+                agent = SnmpSetAgent(
+                    s.rule_engine,
+                    port=mgmt_port,
+                    device_lookup=_lookup,
+                    on_device_updated=_on_updated,
+                )
+                agent.start()
+                s.snmp_set_agent = agent
+
             s.notify_ui("sync_snmp")
             s.notify_ui("sync_binding")
             s.update_job(
@@ -197,6 +227,9 @@ def stop_snmp_simulator():
     if s.state_store:
         s.state_store.disable_snmp_sync()
     s.snmpsim.stop()
+    if s.snmp_set_agent and s.snmp_set_agent.is_running():
+        s.snmp_set_agent.stop()
+        s.snmp_set_agent = None
     s.stop_ticker_if_idle()
     s.notify_ui("sync_snmp")
     s.notify_ui("sync_binding")

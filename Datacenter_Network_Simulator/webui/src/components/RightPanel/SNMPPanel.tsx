@@ -65,8 +65,10 @@ export default function SNMPPanel() {
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
   const [linkCounts, setLinkCounts] = useState({ production: 0, management: 0, power: 0 })
-  const [snmpPort,  setSnmpPort]  = useState(161)
-  const [portFocused, setPortFocused] = useState(false)
+  const [snmpPort,       setSnmpPort]       = useState(161)
+  const [mgmtPort,       setMgmtPort]       = useState(1161)
+  const [portFocused,    setPortFocused]    = useState(false)
+  const [mgmtPortFocused,setMgmtPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 
   const running = snmp?.running        ?? false
@@ -128,7 +130,7 @@ export default function SNMPPanel() {
   async function start() {
     setBusy(true); setOperation('start')
     try {
-      const j = await api.startSnmp(snmpPort) as { job_id: string }
+      const j = await api.startSnmp(snmpPort, mgmtPort) as { job_id: string }
       await pollJob(j.job_id, () => {})
       fetchSnmp()
     } catch { /* ignore */ }
@@ -252,38 +254,75 @@ export default function SNMPPanel() {
           </div>
         )}
 
-        {/* SNMP port */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-            SNMP Port
-          </label>
-          <input
-            type="number"
-            min={1} max={65535}
-            value={snmpPort}
-            onChange={e => setSnmpPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 161)))}
-            onFocus={() => setPortFocused(true)}
-            onBlur={() => setPortFocused(false)}
-            disabled={busy || running}
-            style={{
-              width: 90,
-              background: '#0d1117',
-              border: `1px solid ${portFocused ? '#58a6ff' : 'var(--border)'}`,
-              borderRadius: 4,
-              color: portFocused ? '#58a6ff' : 'var(--text)',
-              fontSize: 13,
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              padding: '4px 8px',
-              outline: 'none',
-              opacity: (busy || running) ? 0.4 : 1,
-              transition: 'border-color 0.15s, color 0.15s',
-            }}
-            title="UDP port snmpsim will listen on (default 161, use 1161+ if Windows SNMP service is running)"
-          />
-          <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text-muted)', opacity: 0.5 }}>
-            1–65535
-          </span>
+        {/* Port Configuration group */}
+        <div className="group-box">
+          <span className="group-box-label">Port Configuration</span>
+
+          {/* SNMP Port row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <label style={{ fontSize: 10, color: 'var(--text)', whiteSpace: 'nowrap' }}>SNMP Port</label>
+            <input
+              type="number"
+              min={1} max={65535}
+              value={snmpPort}
+              onChange={e => setSnmpPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 161)))}
+              onFocus={() => setPortFocused(true)}
+              onBlur={() => setPortFocused(false)}
+              disabled={busy || running}
+              style={{
+                width: 72,
+                background: '#0d1117',
+                border: `1px solid ${portFocused ? '#58a6ff' : 'var(--border)'}`,
+                borderRadius: 4,
+                color: portFocused ? '#58a6ff' : 'var(--text)',
+                fontSize: 12,
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                padding: '3px 7px',
+                outline: 'none',
+                opacity: (busy || running) ? 0.4 : 1,
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              title="UDP port snmpsim will listen on. Use 1611+ if Windows SNMP service occupies 161."
+            />
+          </div>
+          <div style={{ fontSize: 9, color: '#484f58', marginBottom: 6, paddingLeft: 1 }}>
+            Read-only · GET / WALK · NMS &amp; monitoring tools
+          </div>
+
+          <div style={{ borderTop: '1px solid #21262d', margin: '4px 0' }} />
+
+          {/* Mgmt Port row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
+            <label style={{ fontSize: 10, color: 'var(--text)', whiteSpace: 'nowrap' }}>Mgmt Port</label>
+            <input
+              type="number"
+              min={1} max={65535}
+              value={mgmtPort}
+              onChange={e => setMgmtPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 1161)))}
+              onFocus={() => setMgmtPortFocused(true)}
+              onBlur={() => setMgmtPortFocused(false)}
+              disabled={busy || running}
+              style={{
+                width: 72,
+                background: '#0d1117',
+                border: `1px solid ${mgmtPortFocused ? '#58a6ff' : 'var(--border)'}`,
+                borderRadius: 4,
+                color: mgmtPortFocused ? '#58a6ff' : 'var(--text)',
+                fontSize: 12,
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                padding: '3px 7px',
+                outline: 'none',
+                opacity: (busy || running) ? 0.4 : 1,
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              title="UDP port for SNMP SET requests. DCIM systems update sysName, sysLocation, rack fields here. Community = device IP."
+            />
+          </div>
+          <div style={{ fontSize: 9, color: '#484f58', paddingLeft: 1 }}>
+            Write · SET · sysName / sysLocation / rack fields
+          </div>
         </div>
 
         {/* Action buttons — primary flow: Generate → Start/Stop → Clear */}

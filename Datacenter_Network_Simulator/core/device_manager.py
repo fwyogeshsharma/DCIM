@@ -349,6 +349,9 @@ class Device:
     humidity: float = 0.0   # relative humidity %RH
     dewpoint: float = 0.0   # dew-point °C
     airflow:  float = 0.0   # airflow m/s (APC NetBotz)
+    # SNMP-SET writable identity fields (empty = use computed defaults)
+    sys_contact: str = ""           # sysContact; blank → "admin@{name}.example.com"
+    sys_location_override: str = "" # sysLocation override; blank → computed from rack fields
 
     def __post_init__(self):
         if isinstance(self.device_type, str):
@@ -429,6 +432,8 @@ class Device:
 
     @property
     def sys_location(self) -> str:
+        if self.sys_location_override:
+            return self.sys_location_override
         if self.datacenter:
             parts = []
             if self.country:

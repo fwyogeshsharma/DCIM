@@ -84,6 +84,7 @@ class TrapReceiverRequest(BaseModel):
 
 class SnmpStartRequest(BaseModel):
     port: int = Field(161, ge=1, le=65535, description="UDP port for snmpsim to listen on")
+    mgmt_port: int = Field(1161, ge=1, le=65535, description="UDP port for SNMP SET management agent")
 
 
 class SnmpStatusResponse(BaseModel):

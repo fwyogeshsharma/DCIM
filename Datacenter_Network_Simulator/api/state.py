@@ -52,6 +52,7 @@ class AppState:
         self.state_store: Optional["DeviceStateStore"] = None
         self.rule_engine: Optional["RuleEngine"] = None
         self.trap_engine: Optional["TrapEngine"] = None
+        self.snmp_set_agent: Optional[Any] = None
 
         # Binding state (mirrors MainWindow's _bound_ips etc.)
         self.selected_adapter: str = ""

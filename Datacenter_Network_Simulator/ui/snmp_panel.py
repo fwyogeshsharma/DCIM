@@ -183,10 +183,17 @@ class SNMPPanel(QWidget):
         self.progress.hide()
         layout.addWidget(self.progress)
 
-        # ── SNMP Port ──────────────────────────────────────────────────────
+        # ── Port Configuration group ───────────────────────────────────────
+        port_group = QGroupBox("Port Configuration")
+        port_group.setStyleSheet(self._group_style())
+        port_group_layout = QVBoxLayout(port_group)
+        port_group_layout.setContentsMargins(8, 6, 8, 8)
+        port_group_layout.setSpacing(4)
+
+        # SNMP Port (snmpsim / read)
         port_row = QHBoxLayout()
         port_lbl = QLabel("SNMP Port:")
-        port_lbl.setStyleSheet("color: #8b949e; font-size: 8pt;")
+        port_lbl.setStyleSheet("color: #c9d1d9; font-size: 8pt;")
         self.spin_port = QSpinBox()
         self.spin_port.setRange(1, 65535)
         self.spin_port.setValue(161)
@@ -204,7 +211,46 @@ class SNMPPanel(QWidget):
         port_row.addWidget(port_lbl)
         port_row.addStretch()
         port_row.addWidget(self.spin_port)
-        layout.addLayout(port_row)
+        port_group_layout.addLayout(port_row)
+        snmp_port_hint = QLabel("Read  ·  GET  ·  WALK")
+        snmp_port_hint.setStyleSheet("color: #484f58; font-size: 7pt; padding-left: 1px;")
+        port_group_layout.addWidget(snmp_port_hint)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("color: #21262d; margin-top: 2px; margin-bottom: 2px;")
+        port_group_layout.addWidget(sep)
+
+        # Mgmt Port (SET agent / write)
+        set_port_row = QHBoxLayout()
+        set_port_lbl = QLabel("Mgmt Port:")
+        set_port_lbl.setStyleSheet("color: #c9d1d9; font-size: 8pt;")
+        self.spin_set_port = QSpinBox()
+        self.spin_set_port.setRange(1, 65535)
+        self.spin_set_port.setValue(1161)
+        self.spin_set_port.setFixedWidth(70)
+        self.spin_set_port.setToolTip(
+            "UDP port the SNMP management agent listens on for SNMP SET requests.\n"
+            "DCIM systems use snmpset on this port to update sysName, sysLocation,\n"
+            "rack position, model, and other asset fields.\n"
+            "Community string = device IP address.\n"
+            "Default: 1161"
+        )
+        self.spin_set_port.setStyleSheet(
+            "QSpinBox { background: #21262d; color: #e6edf3; "
+            "border: 1px solid #30363d; border-radius: 4px; padding: 3px 6px; } "
+            "QSpinBox:focus { border-color: #58a6ff; } "
+            "QSpinBox:disabled { color: #6e7681; }"
+        )
+        set_port_row.addWidget(set_port_lbl)
+        set_port_row.addStretch()
+        set_port_row.addWidget(self.spin_set_port)
+        port_group_layout.addLayout(set_port_row)
+        mgmt_port_hint = QLabel("Write  ·  SET")
+        mgmt_port_hint.setStyleSheet("color: #484f58; font-size: 7pt; padding-left: 1px;")
+        port_group_layout.addWidget(mgmt_port_hint)
+
+        layout.addWidget(port_group)
 
         # ── Action buttons ─────────────────────────────────────────────────
         self.btn_generate = QPushButton("Generate Datasets")
@@ -310,6 +356,9 @@ class SNMPPanel(QWidget):
     def get_snmp_port(self) -> int:
         return self.spin_port.value()
 
+    def get_set_port(self) -> int:
+        return self.spin_set_port.value()
+
     def set_simulator_running(self, running: bool):
         self._running = running
         self.stats_group.setVisible(running)
@@ -319,6 +368,7 @@ class SNMPPanel(QWidget):
         self.btn_stop.setEnabled(running)
         self.btn_generate.setEnabled(not running)
         self.spin_port.setEnabled(not running)
+        self.spin_set_port.setEnabled(not running)
 
     def set_datasets_ready(self, ready: bool):
         self.btn_start.setEnabled(ready and not self._running)
