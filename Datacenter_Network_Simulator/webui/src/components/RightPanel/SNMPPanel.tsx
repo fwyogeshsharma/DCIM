@@ -287,7 +287,7 @@ export default function SNMPPanel() {
             />
           </div>
           <div style={{ fontSize: 9, color: '#484f58', marginBottom: 6, paddingLeft: 1 }}>
-            Read-only · GET / WALK · NMS &amp; monitoring tools
+            Read · GET / WALK · NMS &amp; monitoring tools
           </div>
 
           <div style={{ borderTop: '1px solid #21262d', margin: '4px 0' }} />
@@ -321,7 +321,7 @@ export default function SNMPPanel() {
             />
           </div>
           <div style={{ fontSize: 9, color: '#484f58', paddingLeft: 1 }}>
-            Write · SET · sysName / sysLocation / rack fields
+            Write · SET
           </div>
         </div>
 
