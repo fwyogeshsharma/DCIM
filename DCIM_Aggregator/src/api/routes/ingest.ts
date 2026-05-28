@@ -160,66 +160,26 @@ export function createIngestRouter(dbPool: Pool): Router {
 
       // ── 1. Upsert devices ──────────────────────────────────────────────────
       for (const dev of body.devices ?? []) {
-        const { rows } = await client.query<{ id: string }>(`
-          INSERT INTO devices (
-            org_id, datacenter_id, floor_id, network_id, group_id,
-            hostname, device_type, vendor, model_name,
-            os_name, os_version, sys_oid, sys_description, sys_location,
-            mgmt_ip, prod_ip, loopback_ip, oob_ip,
-            snmp_enabled, gnmi_enabled, snmp_port, snmp_version, gnmi_port,
-            collector_agent, country, datacenter_city, datacenter, room,
-            rack_row, rack_num, rack_unit, power_draw_w,
-            is_reachable, last_seen_at, updated_at, id,
-            device_role, role_confidence, role_source
-          ) VALUES (
-                     $1,$2,$3,$4,$5,
-                     $6,$7,$8,$9,
-                     $10,$11,$12,$13,$14,
-                     $15,$16,$17,$18,
-                     $19,$20,$21,$22,$23,
-                     $24,$25,$26,$27,$28,
-                     $29,$30,$31,$32,
-                     $33, now(), now(), COALESCE($34::uuid, gen_random_uuid()),
-                     $35, $36, $37
-                   )
-            ON CONFLICT (id)
-          DO UPDATE SET
-            hostname         = EXCLUDED.hostname,
-                           device_role      = EXCLUDED.device_role,
-                           role_confidence  = EXCLUDED.role_confidence,
-                           role_source      = EXCLUDED.role_source,
-                           device_type      = EXCLUDED.device_type,
-                           vendor           = COALESCE(EXCLUDED.vendor,           devices.vendor),
-                           model_name       = COALESCE(EXCLUDED.model_name,       devices.model_name),
-                           os_name          = COALESCE(EXCLUDED.os_name,          devices.os_name),
-                           os_version       = COALESCE(EXCLUDED.os_version,       devices.os_version),
-                           sys_oid          = COALESCE(EXCLUDED.sys_oid,          devices.sys_oid),
-                           sys_description  = COALESCE(EXCLUDED.sys_description,  devices.sys_description),
-                           sys_location     = COALESCE(EXCLUDED.sys_location,     devices.sys_location),
-                           mgmt_ip          = COALESCE(EXCLUDED.mgmt_ip,          devices.mgmt_ip),
-                           prod_ip          = COALESCE(EXCLUDED.prod_ip,          devices.prod_ip),
-                           loopback_ip      = COALESCE(EXCLUDED.loopback_ip,      devices.loopback_ip),
-                           oob_ip           = COALESCE(EXCLUDED.oob_ip,           devices.oob_ip),
-                           snmp_enabled     = EXCLUDED.snmp_enabled,
-                           gnmi_enabled     = EXCLUDED.gnmi_enabled,
-                           snmp_port        = EXCLUDED.snmp_port,
-                           snmp_version     = EXCLUDED.snmp_version,
-                           gnmi_port        = EXCLUDED.gnmi_port,
-                           collector_agent  = EXCLUDED.collector_agent,
-                           country          = COALESCE(EXCLUDED.country,          devices.country),
-                           datacenter_city  = COALESCE(EXCLUDED.datacenter_city,  devices.datacenter_city),
-                           datacenter       = COALESCE(EXCLUDED.datacenter,       devices.datacenter),
-                           room             = COALESCE(EXCLUDED.room,             devices.room),
-                           rack_row         = COALESCE(EXCLUDED.rack_row,         devices.rack_row),
-                           rack_num         = COALESCE(EXCLUDED.rack_num,         devices.rack_num),
-                           rack_unit        = COALESCE(EXCLUDED.rack_unit,        devices.rack_unit),
-                           power_draw_w     = COALESCE(EXCLUDED.power_draw_w,     devices.power_draw_w),
-                           is_reachable     = EXCLUDED.is_reachable,
-                           last_seen_at     = now(),
-                           updated_at       = now()
-                           RETURNING id
-        `, [
-          body.org_id, body.datacenter_id, body.floor_id, body.network_id, body.group_id,
+        // Stable-identity upsert. Match an existing row first by mgmt_ip (stable
+        // across BOTH a hostname change and a DCS DB reset, which regenerates
+        // device ids), then by hostname. The matched row is UPDATEd in place — so
+        // a rename never inserts a duplicate, and a forwarded id that no longer
+        // matches any row (post-reset) never trips the uix_devices_identity
+        // hostname index (the cause of the duplicate-key 500s). Only a genuinely
+        // new device is INSERTed, adopting the forwarded id.
+        const found = await client.query<{ id: string }>(
+            `SELECT id FROM devices
+             WHERE org_id = $1 AND network_id = $2 AND group_id = $3
+               AND ( ($4::inet IS NOT NULL AND mgmt_ip = $4::inet)
+                     OR (datacenter_id = $5 AND floor_id = $6 AND hostname = $7) )
+             ORDER BY ($4::inet IS NOT NULL AND mgmt_ip = $4::inet) DESC
+             LIMIT 1`,
+            [body.org_id, body.network_id, body.group_id, dev.mgmt_ip ?? null,
+              body.datacenter_id, body.floor_id, dev.hostname],
+        )
+
+        // Shared column values $1..$31 — identical for the UPDATE and the INSERT.
+        const dp = [
           dev.hostname, dev.device_type, dev.vendor ?? null, dev.model_name ?? null,
           dev.os_name ?? null, dev.os_version ?? null, dev.sys_oid ?? null,
           dev.sys_description ?? null, dev.sys_location ?? null,
@@ -230,11 +190,56 @@ export function createIngestRouter(dbPool: Pool): Router {
           dev.country ?? null, dev.datacenter_city ?? null, dev.datacenter ?? null, dev.room ?? null,
           dev.rack_row ?? null, dev.rack_num ?? null, dev.rack_unit ?? null, dev.power_draw_w ?? null,
           dev.is_reachable ?? true,
-          dev.id ?? null,
           dev.device_role ?? null, dev.role_confidence ?? null, dev.role_source ?? null,
-        ])
+        ]
 
-        const deviceId = rows[0].id
+        let deviceId: string
+        if (found.rows[0]) {
+          deviceId = found.rows[0].id
+          await client.query(`
+            UPDATE devices SET
+              hostname=$1, device_type=$2,
+              vendor=COALESCE($3,vendor), model_name=COALESCE($4,model_name),
+              os_name=COALESCE($5,os_name), os_version=COALESCE($6,os_version),
+              sys_oid=COALESCE($7,sys_oid), sys_description=COALESCE($8,sys_description),
+              sys_location=COALESCE($9,sys_location),
+              mgmt_ip=COALESCE($10::inet,mgmt_ip), prod_ip=COALESCE($11::inet,prod_ip),
+              loopback_ip=COALESCE($12::inet,loopback_ip), oob_ip=COALESCE($13::inet,oob_ip),
+              snmp_enabled=$14, gnmi_enabled=$15, snmp_port=$16, snmp_version=$17, gnmi_port=$18,
+              collector_agent=$19,
+              country=COALESCE($20,country), datacenter_city=COALESCE($21,datacenter_city),
+              datacenter=COALESCE($22,datacenter), room=COALESCE($23,room),
+              rack_row=COALESCE($24,rack_row), rack_num=COALESCE($25,rack_num),
+              rack_unit=COALESCE($26,rack_unit), power_draw_w=COALESCE($27,power_draw_w),
+              is_reachable=$28, device_role=$29, role_confidence=$30, role_source=$31,
+              last_seen_at=now(), updated_at=now()
+            WHERE id=$32
+          `, [...dp, deviceId])
+        } else {
+          const { rows } = await client.query<{ id: string }>(`
+            INSERT INTO devices (
+              hostname, device_type, vendor, model_name,
+              os_name, os_version, sys_oid, sys_description, sys_location,
+              mgmt_ip, prod_ip, loopback_ip, oob_ip,
+              snmp_enabled, gnmi_enabled, snmp_port, snmp_version, gnmi_port,
+              collector_agent, country, datacenter_city, datacenter, room,
+              rack_row, rack_num, rack_unit, power_draw_w,
+              is_reachable, device_role, role_confidence, role_source,
+              org_id, datacenter_id, floor_id, network_id, group_id,
+              last_seen_at, updated_at, id
+            ) VALUES (
+              $1,$2,$3,$4,$5,$6,$7,$8,$9,
+              $10::inet,$11::inet,$12::inet,$13::inet,
+              $14,$15,$16,$17,$18,$19,
+              $20,$21,$22,$23,$24,$25,$26,$27,
+              $28,$29,$30,$31,
+              $33,$34,$35,$36,$37,
+              now(), now(), COALESCE($32::uuid, gen_random_uuid())
+            ) RETURNING id
+          `, [...dp, dev.id ?? null,
+            body.org_id, body.datacenter_id, body.floor_id, body.network_id, body.group_id])
+          deviceId = rows[0].id
+        }
         deviceIdMap.set(dev.hostname, deviceId)
 
         // ── 2. Upsert interfaces ─────────────────────────────────────────────
