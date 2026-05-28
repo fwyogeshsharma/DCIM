@@ -65,6 +65,9 @@ interface IngestDevice {
   rack_num?: number
   rack_unit?: number
   power_draw_w?: number
+  device_role?: string
+  role_confidence?: number
+  role_source?: string
   is_reachable?: boolean
   interfaces?: IngestInterface[]
   metrics?: IngestMetric[]
@@ -166,7 +169,8 @@ export function createIngestRouter(dbPool: Pool): Router {
             snmp_enabled, gnmi_enabled, snmp_port, snmp_version, gnmi_port,
             collector_agent, country, datacenter_city, datacenter, room,
             rack_row, rack_num, rack_unit, power_draw_w,
-            is_reachable, last_seen_at, updated_at, id
+            is_reachable, last_seen_at, updated_at, id,
+            device_role, role_confidence, role_source
           ) VALUES (
                      $1,$2,$3,$4,$5,
                      $6,$7,$8,$9,
@@ -175,11 +179,15 @@ export function createIngestRouter(dbPool: Pool): Router {
                      $19,$20,$21,$22,$23,
                      $24,$25,$26,$27,$28,
                      $29,$30,$31,$32,
-                     $33, now(), now(), COALESCE($34::uuid, gen_random_uuid())
+                     $33, now(), now(), COALESCE($34::uuid, gen_random_uuid()),
+                     $35, $36, $37
                    )
             ON CONFLICT (id)
           DO UPDATE SET
             hostname         = EXCLUDED.hostname,
+                           device_role      = EXCLUDED.device_role,
+                           role_confidence  = EXCLUDED.role_confidence,
+                           role_source      = EXCLUDED.role_source,
                            device_type      = EXCLUDED.device_type,
                            vendor           = COALESCE(EXCLUDED.vendor,           devices.vendor),
                            model_name       = COALESCE(EXCLUDED.model_name,       devices.model_name),
@@ -223,6 +231,7 @@ export function createIngestRouter(dbPool: Pool): Router {
           dev.rack_row ?? null, dev.rack_num ?? null, dev.rack_unit ?? null, dev.power_draw_w ?? null,
           dev.is_reachable ?? true,
           dev.id ?? null,
+          dev.device_role ?? null, dev.role_confidence ?? null, dev.role_source ?? null,
         ])
 
         const deviceId = rows[0].id
@@ -355,8 +364,8 @@ export function createIngestRouter(dbPool: Pool): Router {
         if (cached) return cached
         const r = await client.query<{ id: string }>(
             `SELECT id FROM devices
-           WHERE org_id = $1 AND network_id = $2 AND group_id = $3 AND hostname = $4
-           LIMIT 1`,
+             WHERE org_id = $1 AND network_id = $2 AND group_id = $3 AND hostname = $4
+               LIMIT 1`,
             [body.org_id, body.network_id, body.group_id, hostname],
         )
         const id = r.rows[0]?.id ?? null
