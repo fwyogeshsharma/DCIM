@@ -197,27 +197,33 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
       const params: any[] = []
       let i = 1
 
-      if (source_ip)  { params.push(source_ip);                  conditions.push(`e.source_ip = $${i++}::inet`) }
-      if (device_name){ params.push(`%${device_name}%`);         conditions.push(`e.source_hostname ILIKE $${i++}`) }
+      if (source_ip)  { params.push(source_ip);                  conditions.push(`COALESCE(e.source_ip, d.mgmt_ip) = $${i++}::inet`) }
+      if (device_name){ params.push(`%${device_name}%`);         conditions.push(`COALESCE(e.source_hostname, d.hostname) ILIKE $${i++}`) }
       if (severity)   { params.push(String(severity).toLowerCase()); conditions.push(`LOWER(e.severity) = $${i++}`) }
       if (resolved !== undefined) {
         params.push(resolved === 'true'); conditions.push(`COALESCE((e.event_payload->>'resolved')::boolean, false) = $${i++}`)
       }
 
       params.push(Math.min(parseInt(String(limit)) || 200, 2000))
+      // Fall back to the device's hostname/mgmt_ip when the trap row didn't
+      // carry them, so the topology can always match the trap to a node by
+      // either key. trap_type/description are the field names the UI reads.
       const { rows } = await dbPool.query(`
         SELECT
-          e.id::text           AS id,
-          e.device_id::text    AS device_id,
-          e.ts                 AS timestamp,
+          e.id::text                                            AS id,
+          e.device_id::text                                     AS device_id,
+          e.ts                                                  AS timestamp,
+          e.event_name                                          AS trap_type,
           e.event_name,
           e.severity,
           e.trap_oid,
-          e.source_ip::text    AS source_ip,
-          e.source_hostname    AS device_name,
+          COALESCE(e.source_ip::text, d.mgmt_ip::text)          AS source_ip,
+          COALESCE(e.source_hostname, d.hostname)               AS device_name,
+          COALESCE(e.event_payload->>'message', e.event_name)   AS description,
           e.event_payload,
           COALESCE((e.event_payload->>'resolved')::boolean, false) AS resolved
         FROM events e
+        LEFT JOIN devices d ON d.id = e.device_id
         WHERE ${conditions.join(' AND ')}
         ORDER BY e.ts DESC LIMIT $${i}
       `, params)

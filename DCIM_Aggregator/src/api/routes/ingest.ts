@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { Pool, PoolClient } from 'pg'
+import { emitSSEEvent } from '../../events/sseEmitter'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,18 @@ export function createIngestRouter(dbPool: Pool): Router {
       const deviceIdMap = new Map<string, string>()
       // (device_id + interface_name) → interface UUID lookup
       const ifaceIdMap = new Map<string, string>()
+      // Trap events seen in this payload — emitted over SSE after COMMIT so the
+      // topology page reacts live (highlights the node, draws link-down).
+      const trapsToEmit: Array<{
+        deviceId: string | null
+        source_ip: string | null
+        device_name: string | null
+        trap_type: string
+        trap_oid: string | null
+        severity: string
+        description: string
+        timestamp: string | null
+      }> = []
 
       // ── 1. Upsert devices ──────────────────────────────────────────────────
       for (const dev of body.devices ?? []) {
@@ -381,9 +394,53 @@ export function createIngestRouter(dbPool: Pool): Router {
           ev.collector_agent ?? 'EDR',
           ev.id ?? null,
         ])
+
+        if ((ev.kind ?? 'event') === 'trap') {
+          const msg = ev.payload?.message
+          trapsToEmit.push({
+            deviceId,
+            source_ip:   ev.source_ip ?? null,
+            device_name: ev.hostname ?? null,
+            trap_type:   ev.event_name,
+            trap_oid:    ev.trap_oid ?? null,
+            severity:    ev.severity ?? 'critical',
+            description: typeof msg === 'string' ? msg : ev.event_name,
+            timestamp:   ev.ts ?? null,
+          })
+        }
       }
 
       await client.query('COMMIT')
+
+      // Push live trap events to connected topology clients (SSE). Resolve each
+      // trap's hostname + mgmt_ip from the device row so the topology can match
+      // the node by either key. Runs after COMMIT — best-effort, never fails the
+      // ingest if a client write or lookup errors.
+      if (trapsToEmit.length > 0) {
+        const ids = [...new Set(trapsToEmit.map(t => t.deviceId).filter(Boolean))] as string[]
+        const meta = new Map<string, { hostname: string | null; mgmt_ip: string | null }>()
+        if (ids.length > 0) {
+          try {
+            const { rows } = await dbPool.query(
+              `SELECT id::text AS id, hostname, mgmt_ip::text AS mgmt_ip FROM devices WHERE id = ANY($1::uuid[])`,
+              [ids]
+            )
+            for (const r of rows) meta.set(r.id, { hostname: r.hostname, mgmt_ip: r.mgmt_ip })
+          } catch { /* non-fatal — fall back to event-supplied fields */ }
+        }
+        for (const t of trapsToEmit) {
+          const m = t.deviceId ? meta.get(t.deviceId) : undefined
+          emitSSEEvent('trap', {
+            source_ip:   t.source_ip   ?? m?.mgmt_ip  ?? null,
+            device_name: t.device_name ?? m?.hostname ?? null,
+            trap_type:   t.trap_type,
+            trap_oid:    t.trap_oid ?? '',
+            severity:    t.severity,
+            description: t.description,
+            timestamp:   t.timestamp ?? new Date().toISOString(),
+          })
+        }
+      }
 
       res.status(201).json({
         success: true,

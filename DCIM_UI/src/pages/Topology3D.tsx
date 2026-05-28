@@ -33,6 +33,12 @@ interface TrapFeedItem {
 // ── Toggle this to use 500+ node mock data for testing ──
 const USE_MOCK_DATA = false
 
+// A trap is a link-down event if its type normalizes to "linkdown". Collectors
+// emit this interchangeably as linkDown / LINK_DOWN / link-down, so compare on
+// the letters only.
+const isLinkDownType = (s?: string) =>
+  (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKDOWN')
+
 // ── Temperature → colour mapping for heatmap mode ───────────────────────────
 // Range: 10°C (min) → 55°C (max). Critical zone: 35–45°C
 function tempToColor(t: number): string {
@@ -1818,7 +1824,7 @@ export default function Topology3D() {
       if (name) next.set(name, alert)
       return next
     })
-    const isLinkDown = (data.trap_type ?? '').toUpperCase().includes('LINK_DOWN')
+    const isLinkDown = isLinkDownType(data.trap_type)
     if (isLinkDown) {
       setLinkDownAlerts(prev => {
         const next = new Map(prev)
@@ -1875,7 +1881,7 @@ export default function Topology3D() {
     })
     setLinkDownAlerts(prev => {
       const next = new Map(prev)
-      traps.filter(t => (t.trap_type ?? '').toUpperCase().includes('LINK_DOWN')).forEach(t => {
+      traps.filter(t => isLinkDownType(t.trap_type)).forEach(t => {
         const a: TrapAlert = { trapType: t.trap_type ?? '', severity: t.severity ?? 'critical', description: t.description ?? '', deviceName: t.device_name ?? '', timestamp: t.timestamp ?? new Date().toISOString() }
         if (t.source_ip) next.set(t.source_ip, a)
         if (t.device_name) next.set(t.device_name, a)

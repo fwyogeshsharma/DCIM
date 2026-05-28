@@ -121,6 +121,12 @@ function deviceVisuals(deviceType: string) {
   return { icon: '📡', fill: '#1e293b', stroke: '#475569', radius: 18 }
 }
 
+// A trap is a link-down event if its type normalizes to "linkdown". Collectors
+// emit this interchangeably as linkDown / LINK_DOWN / link-down, so compare on
+// the letters only.
+const isLinkDownType = (s?: string) =>
+  (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKDOWN')
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Topology() {
@@ -180,7 +186,7 @@ export default function Topology() {
     })
     setLinkDownAlerts(prev => {
       const next = new Map(prev)
-      traps.filter(t => (t.trap_type ?? '').toUpperCase().includes('LINK_DOWN')).forEach(t => {
+      traps.filter(t => isLinkDownType(t.trap_type)).forEach(t => {
         const alert: TrapAlert = {
           trapType: t.trap_type ?? '', severity: t.severity ?? 'critical',
           description: t.description ?? '', deviceName: t.device_name ?? '',
@@ -211,7 +217,7 @@ export default function Topology() {
     const keys = [ip, name].filter(Boolean) as string[]
     keys.forEach(k => { const ex = trapTimeoutsRef.current.get(k); if (ex) clearTimeout(ex) })
     setTrapAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
-    const isLinkDown = (data.trap_type ?? '').toUpperCase().includes('LINK_DOWN')
+    const isLinkDown = isLinkDownType(data.trap_type)
     if (isLinkDown) {
       setLinkDownAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
     }
