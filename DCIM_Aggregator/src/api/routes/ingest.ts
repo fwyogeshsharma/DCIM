@@ -177,9 +177,10 @@ export function createIngestRouter(dbPool: Pool): Router {
                      $29,$30,$31,$32,
                      $33, now(), now(), COALESCE($34::uuid, gen_random_uuid())
                    )
-            ON CONFLICT (org_id, datacenter_id, floor_id, network_id, group_id, hostname)
+            ON CONFLICT (id)
           DO UPDATE SET
-            device_type      = EXCLUDED.device_type,
+            hostname         = EXCLUDED.hostname,
+                           device_type      = EXCLUDED.device_type,
                            vendor           = COALESCE(EXCLUDED.vendor,           devices.vendor),
                            model_name       = COALESCE(EXCLUDED.model_name,       devices.model_name),
                            os_name          = COALESCE(EXCLUDED.os_name,          devices.os_name),
@@ -343,9 +344,29 @@ export function createIngestRouter(dbPool: Pool): Router {
       }
 
       // ── 5. Upsert topology links ───────────────────────────────────────────
+      // Resolve a link endpoint to a device UUID. Endpoints upserted in THIS
+      // payload are already in deviceIdMap; but the far end of an inter-datacenter
+      // / cross-floor cable lives in a DIFFERENT (dc,floor) payload, so it won't
+      // be in the map — fall back to a DB lookup by hostname within the tenant.
+      // Without this, every cross-scope link hit `!srcId || !dstId` and was
+      // silently dropped ("topology_links always misses some entries").
+      const resolveEndpoint = async (hostname: string): Promise<string | null> => {
+        const cached = deviceIdMap.get(hostname)
+        if (cached) return cached
+        const r = await client.query<{ id: string }>(
+            `SELECT id FROM devices
+           WHERE org_id = $1 AND network_id = $2 AND group_id = $3 AND hostname = $4
+           LIMIT 1`,
+            [body.org_id, body.network_id, body.group_id, hostname],
+        )
+        const id = r.rows[0]?.id ?? null
+        if (id) deviceIdMap.set(hostname, id)
+        return id
+      }
+
       for (const link of body.topology_links ?? []) {
-        const srcId = deviceIdMap.get(link.src_hostname)
-        const dstId = deviceIdMap.get(link.dst_hostname)
+        const srcId = await resolveEndpoint(link.src_hostname)
+        const dstId = await resolveEndpoint(link.dst_hostname)
         if (!srcId || !dstId) continue
 
         const srcIfaceKey = link.src_port_name ? `${srcId}:${link.src_port_name}` : undefined
@@ -422,8 +443,8 @@ export function createIngestRouter(dbPool: Pool): Router {
         if (ids.length > 0) {
           try {
             const { rows } = await dbPool.query(
-              `SELECT id::text AS id, hostname, mgmt_ip::text AS mgmt_ip FROM devices WHERE id = ANY($1::uuid[])`,
-              [ids]
+                `SELECT id::text AS id, hostname, mgmt_ip::text AS mgmt_ip FROM devices WHERE id = ANY($1::uuid[])`,
+                [ids]
             )
             for (const r of rows) meta.set(r.id, { hostname: r.hostname, mgmt_ip: r.mgmt_ip })
           } catch { /* non-fatal — fall back to event-supplied fields */ }
