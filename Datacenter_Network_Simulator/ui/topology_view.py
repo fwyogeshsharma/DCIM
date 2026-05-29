@@ -85,6 +85,12 @@ DEVICE_COLORS = {
         "text": QColor("white"),
         "icon": "SNS",
     },
+    DeviceType.ENERGY_MONITOR: {
+        "fill": QColor("#16a34a"),
+        "border": QColor("#14532d"),
+        "text": QColor("white"),
+        "icon": "EV2",
+    },
 }
 
 # Edge color/style by network layer
@@ -478,10 +484,9 @@ class _LinkTooltip(QWidget):
             rows.append(("Prod IP",  f'<span style="{mono}">{device.ip_address}</span>'))
         if device.mgmt_ip:
             rows.append(("Mgmt IP", f'<span style="{mono}">{device.mgmt_ip}</span>'))
-        rows += [
-            ("SNMP Port", f'<span style="{mono}">{device.snmp_port}</span>'),
-            ("gNMI Port", f'<span style="{mono}">{device.gnmi_port}</span>'),
-        ]
+        rows.append(("SNMP Port", f'<span style="{mono}">{device.snmp_port}</span>'))
+        if device.device_type in (DeviceType.ROUTER, DeviceType.SWITCH):
+            rows.append(("gNMI Port", f'<span style="{mono}">{device.gnmi_port}</span>'))
         lines = "".join(
             f'<span style="color:#8b949e;">{k}:</span>'
             f'&nbsp;&nbsp;<span style="color:#e6edf3;">{v}</span><br>'

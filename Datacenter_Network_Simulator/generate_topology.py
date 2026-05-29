@@ -335,6 +335,77 @@ class TopologyBuilder:
                         node["device"]["snmp_community"] = mgmt_ip
                         break
 
+    def add_ev2_monitors(self, pdus: list, dc_id: int = 1,
+                         circuits_per_pdu: int = 42,
+                         name_prefix: str = "R",
+                         mgmt_ip_pool=None) -> list:
+        """Mount one Verdigris EV2 on every PDU with CT coils on each circuit.
+
+        Physical model:
+          - Rack PDU  → EV2 CT coils on each outlet (server-level granularity)
+          - Floor PDU → EV2 CT coils on each breaker circuit (rack-level granularity)
+
+        circuits_per_pdu: 24 / 42 / 84 — must match the PDU breaker/outlet count.
+        name_prefix:      "R" for rack PDUs  →  EV2-DCx-R01
+                          "FP" for floor PDU →  EV2-DCx-FP01
+
+        Each EV2 is positioned beside its PDU on the canvas and linked via a
+        power-layer edge (representing the physical CT wiring).
+
+        Returns list of EV2 Device objects added.
+        """
+        if not pdus:
+            return []
+
+        pdu_ids = {p.id for p in pdus}
+        pdu_pos: dict = {}
+        for node in self.nodes:
+            if node["id"] in pdu_ids:
+                pdu_pos[node["id"]] = node["position"]
+
+        ev2_devices = []
+        for p_idx, pdu in enumerate(pdus):
+            pos = pdu_pos.get(pdu.id)
+            if not pos:
+                continue
+
+            # Place EV2 directly beside the PDU (80 px to the right)
+            cx = pos["x"] + 80
+            cy = pos["y"]
+
+            ev2 = self.add(
+                f"EV2-DC{dc_id}-{name_prefix}{p_idx+1:02d}",
+                DeviceType.ENERGY_MONITOR,
+                Vendor.VERDIGRIS,
+                1,          # 1 logical interface (BACnet/IP)
+                cx, cy,
+                mgmt_only=True,
+            )
+            for node in self.nodes:
+                if node["id"] == ev2.id:
+                    node["device"]["model_name"]   = f"Verdigris EV2-{circuits_per_pdu}"
+                    node["device"]["monitored_pdu"] = pdu.id
+                    # Flag which level this monitor sits at
+                    node["device"]["pdu_level"] = (
+                        "floor" if name_prefix == "FP" else "rack"
+                    )
+                    break
+
+            # Power edge = CT coil wiring
+            self.link(ev2, pdu, layer="power")
+
+            if mgmt_ip_pool:
+                mgmt_ip = mgmt_ip_pool.next_ip()
+                for node in self.nodes:
+                    if node["id"] == ev2.id:
+                        node["device"]["mgmt_ip"]        = mgmt_ip
+                        node["device"]["snmp_community"] = mgmt_ip
+                        break
+
+            ev2_devices.append(ev2)
+
+        return ev2_devices
+
     def to_dict(self):
         layers = sorted({e.get("layer", "production") for e in self.edges})
         return {
@@ -903,13 +974,42 @@ def build_dual_dc_enterprise():
         ups_vendor=Vendor.EATON, pdu_vendor=Vendor.RARITAN,
         floor_pdu_vendor=Vendor.VERTIV)
 
-    # Wire power devices into their DC's OOB management network
+    # ── EV2 energy monitors — Floor PDU level (breaker circuits → per-rack) ──
+    # Each floor PDU has 24 breaker circuits feeding individual racks
+    ev2_fpdu_dc1 = t.add_ev2_monitors(
+        [dc1_power['floor_pdu']], dc_id=1,
+        circuits_per_pdu=24, name_prefix="FP",
+        mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
+    ev2_fpdu_dc2 = t.add_ev2_monitors(
+        [dc2_power['floor_pdu']], dc_id=2,
+        circuits_per_pdu=24, name_prefix="FP",
+        mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
+
+    # ── EV2 energy monitors — Rack PDU level (outlet circuits → per-server) ──
+    # Each rack PDU has 42 outlet circuits feeding individual servers
+    ev2_rack_dc1 = t.add_ev2_monitors(
+        dc1_power['rack_pdus'], dc_id=1,
+        circuits_per_pdu=42, name_prefix="R",
+        mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
+    ev2_rack_dc2 = t.add_ev2_monitors(
+        dc2_power['rack_pdus'], dc_id=2,
+        circuits_per_pdu=42, name_prefix="R",
+        mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
+
+    all_ev2_dc1 = ev2_fpdu_dc1 + ev2_rack_dc1
+    all_ev2_dc2 = ev2_fpdu_dc2 + ev2_rack_dc2
+
+    # Wire power devices into their DC's OOB management network (with IP assignment)
     t.wire_to_mgmt(
         [dc1_power['floor_pdu']] + dc1_power['ups_list'] + dc1_power['rack_pdus'],
         mgmt1['oob_switches'], mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
     t.wire_to_mgmt(
         [dc2_power['floor_pdu']] + dc2_power['ups_list'] + dc2_power['rack_pdus'],
         mgmt2['oob_switches'], mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
+
+    # Wire EV2 monitors to OOB (IPs already assigned in add_ev2_monitors)
+    t.wire_to_mgmt(all_ev2_dc1, mgmt1['oob_switches'], mgmt_ip_pool=None)
+    t.wire_to_mgmt(all_ev2_dc2, mgmt2['oob_switches'], mgmt_ip_pool=None)
 
     return t
 

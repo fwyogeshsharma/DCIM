@@ -186,9 +186,7 @@ class _SnmpHandler:
             return self._build_response(pMod, community.encode(),
                                         req_id, err_status, err_idx, rsp_vbs)
         except Exception as exc:
-            import traceback
-            print(f"[SnmpSetAgent] handle() exception: {exc}", flush=True)
-            traceback.print_exc()
+            log.exception("[SnmpSetAgent] handle() error: %s", exc)
             return None
 
     # ── GET ────────────────────────────────────────────────────────────────────
@@ -466,20 +464,17 @@ class SnmpSetAgent:
     def _serve(self):
         handler = _SnmpHandler(self._re, self._on_change,
                                self._device_lookup, self._on_device_updated)
-        print(f"[SnmpSetAgent] serve thread running on {self._host}:{self._port}", flush=True)
+        log.info("[SnmpSetAgent] Listening on %s:%d", self._host, self._port)
         while self._running:
             try:
                 data, addr = self._sock.recvfrom(65535)
-                print(f"[SnmpSetAgent] received {len(data)} bytes from {addr}", flush=True)
                 response = handler.handle(data)
-                print(f"[SnmpSetAgent] response: {len(response) if response else 'None'} bytes", flush=True)
                 if response:
                     self._sock.sendto(response, addr)
-                    print(f"[SnmpSetAgent] sent to {addr}", flush=True)
             except socket.timeout:
                 continue
             except OSError as e:
-                print(f"[SnmpSetAgent] OSError: {e}", flush=True)
+                log.warning("[SnmpSetAgent] socket error: %s", e)
                 break
 
     @staticmethod

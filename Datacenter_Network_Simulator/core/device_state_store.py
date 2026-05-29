@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from core.device_manager import Device, DeviceManager
     from core.topology_engine import TopologyEngine
     from simulator.snmpsim_controller import SNMPSimController
+    from simulator.bacnet_controller import BACnetController
 
 log = logging.getLogger(__name__)
 
@@ -95,6 +96,9 @@ class DeviceStateStore:
         # SNMP sync
         self._snmp_ctrl: Optional["SNMPSimController"] = None
         self._snmp_enabled: bool = False
+
+        # BACnet controller (optional — only active when BACnet sim is running)
+        self._bacnet_ctrl: Optional["BACnetController"] = None
 
         # Background ticker
         self._thread: Optional[threading.Thread] = None
@@ -237,6 +241,16 @@ class DeviceStateStore:
         self._snmp_enabled = False
         self._snmp_ctrl    = None
         self._log("[StateStore] SNMP sync disabled.", "info")
+
+    def enable_bacnet(self, ctrl: "BACnetController"):
+        """Register BACnet controller — its tick() is called every tick cycle."""
+        self._bacnet_ctrl = ctrl
+        self._log("[StateStore] BACnet telemetry sync enabled.", "info")
+
+    def disable_bacnet(self):
+        """Deregister BACnet controller."""
+        self._bacnet_ctrl = None
+        self._log("[StateStore] BACnet telemetry sync disabled.", "info")
 
     # ------------------------------------------------------------------ #
     #  Lifecycle                                                           #
@@ -395,6 +409,13 @@ class DeviceStateStore:
 
         if self._rule_engine_cb:
             self._publish_facts(devices)
+
+        # BACnet telemetry tick — advances EV2 engine and dispatches COV
+        if self._bacnet_ctrl:
+            try:
+                self._bacnet_ctrl.tick(self._tick_interval)
+            except Exception:
+                log.exception("[StateStore] BACnet tick error")
 
         if self._tick_cb:
             try:

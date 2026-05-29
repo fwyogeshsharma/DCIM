@@ -134,13 +134,15 @@ class ConsolePanel(QWidget):
         self._tabs.setStyleSheet(_TAB_STYLE)
         self._tabs.setDocumentMode(True)
 
-        snmp_widget,  self._snmp_te  = _make_tab("SNMP Simulator log")
-        gnmi_widget,  self._gnmi_te  = _make_tab("gNMI Simulator log")
-        sflow_widget, self._sflow_te = _make_tab("sFlow Simulator log")
+        snmp_widget,   self._snmp_te   = _make_tab("SNMP Simulator log")
+        gnmi_widget,   self._gnmi_te   = _make_tab("gNMI Simulator log")
+        sflow_widget,  self._sflow_te  = _make_tab("sFlow Simulator log")
+        bacnet_widget, self._bacnet_te = _make_tab("BACnet/IP Simulator log")
 
-        self._tabs.addTab(snmp_widget,  "SNMP Simulator")
-        self._tabs.addTab(gnmi_widget,  "gNMI Simulator")
-        self._tabs.addTab(sflow_widget, "sFlow Simulator")
+        self._tabs.addTab(snmp_widget,   "SNMP Simulator")
+        self._tabs.addTab(gnmi_widget,   "gNMI Simulator")
+        self._tabs.addTab(sflow_widget,  "sFlow Simulator")
+        self._tabs.addTab(bacnet_widget, "BACnet/IP")
 
         layout.addWidget(self._tabs)
 
@@ -175,8 +177,15 @@ class ConsolePanel(QWidget):
         self._append(self._sflow_te,
                      f'<span style="color:{color};">{message}</span>')
 
+    def log_bacnet(self, message: str, level: str = "info"):
+        """Append a message to the BACnet/IP Simulator tab."""
+        color = _COLORS.get(level, "#58a6ff")
+        self._append(self._bacnet_te,
+                     f'<span style="color:{color};">{message}</span>')
+
     def log_batch(self, snmp_lines: list, gnmi_lines: list,
-                  sflow_lines: list = None) -> None:
+                  sflow_lines: list = None,
+                  bacnet_lines: list = None) -> None:
         """Append multiple pre-formatted (message, level) pairs in one pass.
         Called by _drain_log_queue to avoid N individual append() calls per tick."""
         if snmp_lines:
@@ -200,6 +209,13 @@ class ConsolePanel(QWidget):
                 for msg, lvl in sflow_lines
             )
             self._append(self._sflow_te, html)
+        if bacnet_lines:
+            html = "".join(
+                f'<span style="color:{_COLORS.get(lvl, _COLORS["info"])};">'
+                f'{msg}</span>'
+                for msg, lvl in bacnet_lines
+            )
+            self._append(self._bacnet_te, html)
 
     def clear_log(self):
         """Clear the currently visible tab."""
@@ -208,5 +224,7 @@ class ConsolePanel(QWidget):
             self._snmp_te.clear()
         elif idx == 1:
             self._gnmi_te.clear()
-        else:
+        elif idx == 2:
             self._sflow_te.clear()
+        else:
+            self._bacnet_te.clear()

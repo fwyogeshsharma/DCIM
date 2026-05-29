@@ -48,7 +48,8 @@ class AppState:
         self.ip_manager: Optional["IPManager"] = None
         self.snmpsim: Optional["SNMPSimController"] = None
         self.gnmi: Optional["GNMIController"] = None
-        self.sflow: Optional[Any] = None  # SFlowController (set by MainWindow)
+        self.sflow:   Optional[Any] = None  # SFlowController (set by MainWindow)
+        self.bacnet:  Optional[Any] = None  # BACnetController (set by MainWindow)
         self.state_store: Optional["DeviceStateStore"] = None
         self.rule_engine: Optional["RuleEngine"] = None
         self.trap_engine: Optional["TrapEngine"] = None
@@ -106,6 +107,7 @@ class AppState:
         snmpsim=None,
         gnmi=None,
         sflow=None,
+        bacnet=None,
         state_store=None,
         rule_engine=None,
         trap_engine=None,
@@ -118,6 +120,7 @@ class AppState:
         self.snmpsim = snmpsim
         self.gnmi = gnmi
         self.sflow = sflow
+        self.bacnet = bacnet
         self.state_store = state_store
         self.rule_engine = rule_engine
         self.trap_engine = trap_engine
@@ -181,10 +184,11 @@ class AppState:
         """Stop the metrics ticker only when ALL simulators are stopped."""
         if self.state_store is None or not self.state_store.is_running():
             return
-        snmp_on  = bool(self.snmpsim  and self.snmpsim.is_running())
-        gnmi_on  = bool(self.gnmi     and self.gnmi.is_running())
-        sflow_on = bool(self.sflow    and self.sflow.is_running())
-        if not snmp_on and not gnmi_on and not sflow_on:
+        snmp_on   = bool(self.snmpsim and self.snmpsim.is_running())
+        gnmi_on   = bool(self.gnmi    and self.gnmi.is_running())
+        sflow_on  = bool(self.sflow   and self.sflow.is_running())
+        bacnet_on = bool(self.bacnet  and self.bacnet.is_running())
+        if not snmp_on and not gnmi_on and not sflow_on and not bacnet_on:
             self.state_store.stop()
 
     def get_all_bind_ips(self) -> List[str]:
@@ -238,19 +242,23 @@ class AppState:
 
     @staticmethod
     def _sse_event(event: str, *args) -> dict:
-        if event in ("log", "log_sflow", "log_gnmi", "console_log") and len(args) >= 1:
+        if event in ("log", "log_sflow", "log_gnmi", "log_bacnet", "console_log") and len(args) >= 1:
             msg = args[0]
             level = args[1] if len(args) > 1 else "info"
             if event == "log_sflow":
                 tab = "sflow"
             elif event == "log_gnmi":
                 tab = "gnmi"
+            elif event == "log_bacnet":
+                tab = "bacnet"
             else:
                 tab = "snmp"
                 if isinstance(msg, str) and "[gNMI]" in msg:
                     tab = "gnmi"
                 elif isinstance(msg, str) and "[sFlow]" in msg:
                     tab = "sflow"
+                elif isinstance(msg, str) and "[BACnet]" in msg:
+                    tab = "bacnet"
             return {"type": "log", "tab": tab, "msg": str(msg), "level": str(level)}
         if event in ("snmp_progress", "gnmi_progress", "binding_progress"):
             done = args[0] if len(args) > 0 else 0

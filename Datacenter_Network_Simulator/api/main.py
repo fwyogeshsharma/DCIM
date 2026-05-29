@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow
+from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow, bacnet
 from api.routers import events, jobs, tick
 from api.routers import graph as graph_router
 
@@ -49,7 +49,8 @@ app.include_router(gnmi.router, prefix="/api")
 app.include_router(rules.router, prefix="/api")
 app.include_router(traps.router, prefix="/api")
 app.include_router(devices.router, prefix="/api")
-app.include_router(sflow.router, prefix="/api")
+app.include_router(sflow.router,   prefix="/api")
+app.include_router(bacnet.router,  prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(tick.router, prefix="/api")

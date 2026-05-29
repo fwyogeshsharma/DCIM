@@ -562,4 +562,29 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
                     [_g(_GE, 1)],
                     "Rack monitor with camera, temp/humidity, 1 × GE"),
     ],
+
+    # ── Verdigris — Energy Monitors ──────────────────────────────────────────
+    (DeviceType.ENERGY_MONITOR, Vendor.VERDIGRIS): [
+        DeviceModel(
+            "Verdigris EV2-42",
+            Vendor.VERDIGRIS,
+            DeviceType.ENERGY_MONITOR,
+            [_g(_GE, 1)],
+            "BACnet/IP energy intelligence platform — 42 circuits, 3-phase",
+        ),
+        DeviceModel(
+            "Verdigris EV2-24",
+            Vendor.VERDIGRIS,
+            DeviceType.ENERGY_MONITOR,
+            [_g(_GE, 1)],
+            "BACnet/IP energy intelligence platform — 24 circuits, 3-phase",
+        ),
+        DeviceModel(
+            "Verdigris EV2-84",
+            Vendor.VERDIGRIS,
+            DeviceType.ENERGY_MONITOR,
+            [_g(_GE, 1)],
+            "BACnet/IP energy intelligence platform — 84 circuits, 3-phase",
+        ),
+    ],
 }

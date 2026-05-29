@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { api, fetchWithAbort } from '../api/client'
 import type {
-  GraphDevice, GraphLink, SnmpStatus, GnmiStatus, SFlowStatus,
+  GraphDevice, GraphLink, SnmpStatus, GnmiStatus, SFlowStatus, BacnetStatus,
   BindingStatus, RulesTable, TrapRecord, LogEntry,
   HealthStatus, AdaptersResponse, DeviceInfo, JobStatus,
 } from '../api/types'
@@ -39,6 +39,7 @@ interface Store {
   snmp:    SnmpStatus | null
   gnmi:    GnmiStatus | null
   sflow:   SFlowStatus | null
+  bacnet:  BacnetStatus | null
   binding: BindingStatus | null
   adapters: AdaptersResponse | null
   rules:   RulesTable | null
@@ -86,6 +87,7 @@ interface Store {
   fetchSnmp:    () => Promise<void>
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
+  fetchBacnet:  () => Promise<void>
   fetchBinding: () => Promise<void>
   fetchAdapters:() => Promise<void>
   fetchRules:   () => Promise<void>
@@ -105,6 +107,7 @@ export const useStore = create<Store>((set, get) => ({
   snmp:         null,
   gnmi:         null,
   sflow:        null,
+  bacnet:       null,
   binding:      null,
   adapters:     null,
   rules:        null,
@@ -164,6 +167,10 @@ export const useStore = create<Store>((set, get) => ({
     try { set({ sflow: await fetchWithAbort<SFlowStatus>('/sflow/status') }) } catch { /* ignore */ }
   },
 
+  fetchBacnet: async () => {
+    try { set({ bacnet: await fetchWithAbort<BacnetStatus>('/bacnet/status') }) } catch { /* ignore */ }
+  },
+
   fetchBinding: async () => {
     try { set({ binding: await fetchWithAbort<BindingStatus>('/binding/status') }) } catch { /* ignore */ }
   },
@@ -201,6 +208,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchSnmp()
     s.fetchGnmi()
     s.fetchSflow()
+    s.fetchBacnet()
     s.fetchBinding()
     s.fetchRules()
     s.fetchHealth()
@@ -212,6 +220,7 @@ export const useStore = create<Store>((set, get) => ({
       st.fetchSnmp()
       st.fetchGnmi()
       st.fetchSflow()
+      st.fetchBacnet()
       st.fetchBinding()
       st.fetchHealth()
       st.fetchTraps()
@@ -238,6 +247,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'snmp')     s.fetchSnmp()
             if (t === 'gnmi')     s.fetchGnmi()
             if (t === 'sflow')    s.fetchSflow()
+            if (t === 'bacnet')   s.fetchBacnet()
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()
             if (t === 'devices')  s.fetchDevices()

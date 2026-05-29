@@ -19,7 +19,8 @@ class DeviceType(str, Enum):
     PDU           = "pdu"
     FLOOR_PDU     = "floor_pdu"
     OOB_SWITCH    = "oob_switch"   # Out-of-band management switch
-    SENSOR        = "sensor"       # Environmental sensor (temp/humidity)
+    SENSOR         = "sensor"        # Environmental sensor (temp/humidity)
+    ENERGY_MONITOR = "energy_monitor"  # BACnet/IP energy intelligence platform
 
 
 class Vendor(str, Enum):
@@ -45,6 +46,8 @@ class Vendor(str, Enum):
     VERTIV            = "Vertiv (Liebert)"
     RARITAN           = "Raritan"
     SERVER_TECHNOLOGY = "Server Technology"
+    # Energy monitoring
+    VERDIGRIS = "Verdigris Technologies"
 
 
 class InterfaceType(str, Enum):
@@ -111,6 +114,7 @@ VENDOR_SYSOID = {
     Vendor.VERTIV:            "1.3.6.1.4.1.476.1.42.2.10.2.1.1",
     Vendor.RARITAN:           "1.3.6.1.4.1.13742.6",
     Vendor.SERVER_TECHNOLOGY: "1.3.6.1.4.1.1718.3.1",
+    Vendor.VERDIGRIS:         "1.3.6.1.4.1.57628.1",   # Verdigris Technologies
 }
 
 VENDOR_SYSDESCR = {
@@ -131,6 +135,7 @@ VENDOR_SYSDESCR = {
     Vendor.VERTIV:            "Liebert IntelliSlot Web/SNMP Card, firmware version 1.55, Liebert GXT5 UPS",
     Vendor.RARITAN:           "Raritan PX3 Rack PDU SNMP Agent, firmware version 3.7.0",
     Vendor.SERVER_TECHNOLOGY: "Server Technology Sentry SNMP Agent, firmware version 8.2a",
+    Vendor.VERDIGRIS:         "Verdigris EV2 Energy Intelligence Platform, BACnet/IP, firmware 2.4.1",
 }
 
 # Per-model sysDescr overrides — more specific than vendor defaults.
@@ -422,6 +427,12 @@ class Device:
             if self.model_name:
                 return f"{self.model_name}, {base}"
             return base
+        if self.device_type == DeviceType.ENERGY_MONITOR:
+            base = VENDOR_SYSDESCR.get(self.vendor,
+                                        "BACnet/IP Energy Monitoring Device")
+            if self.model_name:
+                return f"{self.model_name}, {base}"
+            return base
         return VENDOR_SYSDESCR.get(self.vendor, "Generic Device")
 
     @property
@@ -492,6 +503,10 @@ class Device:
                 Vendor.VERTIV:  "Geist GTHD firmware",
                 Vendor.APC:     "APC NetBotz firmware",
             }.get(self.vendor, "Sensor firmware")
+        if self.device_type == DeviceType.ENERGY_MONITOR:
+            return {
+                Vendor.VERDIGRIS: "Verdigris EV2 BACnet/IP firmware",
+            }.get(self.vendor, "Energy Monitor firmware")
         descr = self.sys_descr
         if "NX-OS"     in descr: return "Cisco NX-OS"
         if "IOS XR"    in descr: return "Cisco IOS XR"

@@ -150,6 +150,23 @@ export interface SFlowStatus {
   active_devices: number
 }
 
+export interface BacnetDevice {
+  ip: string
+  instance: number
+  name: string
+  circuits: number
+  status: string
+}
+
+export interface BacnetStatus {
+  running: boolean
+  base_instance: number
+  frequency_hz: number
+  port: number
+  active_devices: number
+  devices: BacnetDevice[]
+}
+
 export interface BindingStatus {
   selected_adapter: string
   subnet_mask: string
@@ -221,7 +238,7 @@ export interface HealthStatus {
 
 export interface LogEntry {
   id: number
-  tab: 'snmp' | 'gnmi' | 'sflow'
+  tab: 'snmp' | 'gnmi' | 'sflow' | 'bacnet'
   msg: string
   level: string
   ts: number

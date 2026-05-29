@@ -31,6 +31,7 @@ export default function BindingPanel() {
   const {
     binding, adapters, fetchBinding, fetchAdapters,
     bindingBusy, bindingProgress, setBindingBusy, setBindingProgress,
+    bacnet, snmp, gnmi,
   } = useStore()
   const [selectedAdapter, setSelectedAdapter] = useState('')
   const [mask, setMask] = useState('255.255.255.0')
@@ -102,8 +103,13 @@ export default function BindingPanel() {
     : 0
   const determinate = !!(bindingProgress && bindingProgress.total > 0)
 
-  const canBind   = !bindingBusy && !!selectedAdapter
-  const canUnbind = !bindingBusy && boundCount > 0
+  const bacnetRunning = bacnet?.running ?? false
+  const snmpRunning   = snmp?.running   ?? false
+  const gnmiRunning   = gnmi?.running   ?? false
+  const simRunning    = bacnetRunning || snmpRunning || gnmiRunning
+  const simName       = snmpRunning ? 'SNMP' : gnmiRunning ? 'gNMI' : 'BACnet'
+  const canBind   = !bindingBusy && !simRunning && !!selectedAdapter
+  const canUnbind = !bindingBusy && !simRunning && boundCount > 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -192,8 +198,9 @@ export default function BindingPanel() {
             onClick={doBind}
             disabled={!canBind}
             title={
-              !selectedAdapter ? 'Select an adapter first'
-              : bindingBusy   ? 'Operation in progress'
+              simRunning         ? `Stop ${simName} simulator before changing bindings`
+              : !selectedAdapter ? 'Select an adapter first'
+              : bindingBusy      ? 'Operation in progress'
               : 'Bind device IPs to selected adapter'
             }
           >
@@ -206,7 +213,8 @@ export default function BindingPanel() {
             onClick={doUnbind}
             disabled={!canUnbind}
             title={
-              bindingBusy        ? 'Operation in progress'
+              simRunning         ? `Stop ${simName} simulator before changing bindings`
+              : bindingBusy      ? 'Operation in progress'
               : boundCount === 0 ? 'Nothing bound to remove'
               : 'Remove all device IP bindings'
             }

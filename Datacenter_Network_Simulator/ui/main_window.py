@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QToolBar, QLineEdit, QSizePolicy,
 )
 from PySide6.QtCore import Qt, QThread, Signal, QObject, QTimer, QSize
-from PySide6.QtGui import QAction, QIcon, QFont, QColor, QKeySequence
+from PySide6.QtGui import QAction, QIcon, QPixmap, QFont, QColor, QKeySequence
 
 from core.device_manager import Device, DeviceManager, DeviceType, Vendor
 from core.device_models import DEVICE_MODELS
@@ -36,6 +36,7 @@ from core.ip_binder import (
 from simulator.snmpsim_controller import SNMPSimController
 from simulator.gnmi_controller import GNMIController
 from simulator.sflow_controller import SFlowController
+from simulator.bacnet_controller import BACnetController
 from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
 from core.trap_engine import TrapEngine
 from core.rule_engine import RuleEngine
@@ -48,15 +49,17 @@ from ui.snmp_panel import SNMPPanel
 from ui.trap_panel import TrapPanel
 from ui.gnmi_panel import GNMIPanel
 from ui.sflow_panel import SFlowPanel
+from ui.bacnet_panel import BACnetPanel
 from ui.console_panel import ConsolePanel
 from ui.binding_panel import BindingPanel
 from ui.discovery_dialog import DiscoveryDialog
 from ui.tick_settings_dialog import TickSettingsDialog
 
 
-DATASETS_DIR      = "datasets"
-SNMP_DATASETS_DIR = os.path.join(DATASETS_DIR, "snmp")
-GNMI_DATASETS_DIR = os.path.join(DATASETS_DIR, "gnmi")
+DATASETS_DIR        = "datasets"
+SNMP_DATASETS_DIR   = os.path.join(DATASETS_DIR, "snmp")
+GNMI_DATASETS_DIR   = os.path.join(DATASETS_DIR, "gnmi")
+BACNET_DATASETS_DIR = os.path.join(DATASETS_DIR, "bacnet")
 TOPOLOGIES_DIR = "topologies"
 
 
@@ -432,20 +435,23 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Datacenter Network Simulator v2.2")
         self.setMinimumSize(1200, 750)
-        self._datasets_dir      = DATASETS_DIR
-        self._snmp_datasets_dir = SNMP_DATASETS_DIR
-        self._gnmi_datasets_dir = GNMI_DATASETS_DIR
-        self._topologies_dir    = TOPOLOGIES_DIR
-        os.makedirs(self._snmp_datasets_dir, exist_ok=True)
-        os.makedirs(self._gnmi_datasets_dir, exist_ok=True)
-        os.makedirs(self._topologies_dir, exist_ok=True)
+        self._datasets_dir        = DATASETS_DIR
+        self._snmp_datasets_dir   = SNMP_DATASETS_DIR
+        self._gnmi_datasets_dir   = GNMI_DATASETS_DIR
+        self._bacnet_datasets_dir = BACNET_DATASETS_DIR
+        self._topologies_dir      = TOPOLOGIES_DIR
+        os.makedirs(self._snmp_datasets_dir,   exist_ok=True)
+        os.makedirs(self._gnmi_datasets_dir,   exist_ok=True)
+        os.makedirs(self._bacnet_datasets_dir, exist_ok=True)
+        os.makedirs(self._topologies_dir,      exist_ok=True)
 
         self.device_manager = DeviceManager()
         self.topology = TopologyEngine()
         self.ip_manager = IPManager()
         self.snmpsim = SNMPSimController(self._snmp_datasets_dir)
-        self.gnmi  = GNMIController(self._gnmi_datasets_dir)
-        self.sflow = SFlowController()
+        self.gnmi    = GNMIController(self._gnmi_datasets_dir)
+        self.sflow   = SFlowController()
+        self.bacnet  = BACnetController(self._bacnet_datasets_dir)
         self.state_store = DeviceStateStore(
             self.device_manager, self.topology, self._snmp_datasets_dir,
             tick_interval=30.0, snmp_sync_every=1,
@@ -454,6 +460,9 @@ class MainWindow(QMainWindow):
         self.sflow.set_state_store(self.state_store)
         self.sflow.set_topology(self.topology)
         self.sflow.set_device_manager(self.device_manager)
+        # BACnet callbacks (log forwarded to console BACnet tab)
+        self.bacnet.set_log_callback(self._on_bacnet_log)
+        self.bacnet.set_ready_callback(self._on_bacnet_ready)
         self._trap_engine = TrapEngine(self)
 
         # Rule engine — loaded with default rules; disabled until user enables it
@@ -555,6 +564,7 @@ class MainWindow(QMainWindow):
                 snmpsim=self.snmpsim,
                 gnmi=self.gnmi,
                 sflow=self.sflow,
+                bacnet=self.bacnet,
                 state_store=self.state_store,
                 rule_engine=self._rule_engine,
                 trap_engine=self._trap_engine,
@@ -712,25 +722,31 @@ class MainWindow(QMainWindow):
         self._sflow_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._sflow_panel)
 
-        # Panel 6 — Console
+        # Panel 6 — BACnet/IP Simulator
+        self._bacnet_panel = BACnetPanel()
+        self._bacnet_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._bacnet_panel)
+
+        # Panel 7 — Console
         self._console_panel = ConsolePanel()
         self._console_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._console_panel)
 
-        # Panel 7 — Rule Engine
+        # Panel 8 — Rule Engine
         self._rules_panel = RulesPanel()
         self._rules_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._rules_panel)
 
-        for i in range(7):
+        for i in range(8):
             self._right_splitter.setStretchFactor(i, 1)
-        self._right_splitter.setSizes([250, 250, 300, 250, 250, 250, 250])
+        self._right_splitter.setSizes([250, 250, 300, 250, 250, 260, 250, 250])
 
         # Only the IP Binder panel visible on startup
         self._sim_panel.setVisible(False)
         self._trap_panel.setVisible(False)
         self._gnmi_panel.setVisible(False)
         self._sflow_panel.setVisible(False)
+        self._bacnet_panel.setVisible(False)
         self._console_panel.setVisible(False)
         self._rules_panel.setVisible(False)
 
@@ -822,6 +838,24 @@ class MainWindow(QMainWindow):
         self._act_panel_sflow.toggled.connect(self._on_toggle_sflow_panel)
         tb.addAction(self._act_panel_sflow)
 
+        tb.addSeparator()
+
+        # BACnet/IP Simulator
+        _bacnet_icon_path = str(
+            Path(__file__).parent.parent / "assets" / "icons" / "bacnet.png"
+        )
+        _bacnet_icon = QIcon(
+            QPixmap(_bacnet_icon_path).scaled(
+                28, 28, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+        )
+        self._act_panel_bacnet = QAction(_bacnet_icon, "", self)
+        self._act_panel_bacnet.setCheckable(True)
+        self._act_panel_bacnet.setChecked(False)
+        self._act_panel_bacnet.setToolTip("BACnet/IP Simulator (Verdigris EV2)")
+        self._act_panel_bacnet.toggled.connect(self._on_toggle_bacnet_panel)
+        tb.addAction(self._act_panel_bacnet)
+
         # ── Spacer — pushes bottom group to the foot of the toolbar ───────
         _spacer = QWidget()
         _spacer.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
@@ -876,6 +910,7 @@ class MainWindow(QMainWindow):
             self._act_panel_traps.isChecked(),
             self._act_panel_gnmi.isChecked(),
             self._act_panel_sflow.isChecked(),
+            self._act_panel_bacnet.isChecked(),
             self._act_panel_console.isChecked(),
             self._act_panel_rules.isChecked(),
         ])
@@ -932,6 +967,15 @@ class MainWindow(QMainWindow):
         else:
             self._resize_right_dock()
 
+    def _on_toggle_bacnet_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+        self._bacnet_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
+            self._right_dock.hide()
+        else:
+            self._resize_right_dock()
+
     def _on_toggle_console_panel(self, visible: bool):
         if visible:
             self._right_dock.show()
@@ -958,8 +1002,8 @@ class MainWindow(QMainWindow):
         if not visible and not self.isMinimized():
             for btn in (self._act_panel_binding, self._act_panel_sim,
                         self._act_panel_traps, self._act_panel_gnmi,
-                        self._act_panel_sflow, self._act_panel_console,
-                        self._act_panel_rules):
+                        self._act_panel_sflow, self._act_panel_bacnet,
+                        self._act_panel_console, self._act_panel_rules):
                 btn.blockSignals(True)
                 btn.setChecked(False)
                 btn.blockSignals(False)
@@ -1113,6 +1157,10 @@ class MainWindow(QMainWindow):
         # sFlow menu actions
         self._act_sflow_start.triggered.connect(self._start_sflow)
         self._act_sflow_stop.triggered.connect(self._stop_sflow)
+
+        # BACnet panel signals
+        self._bacnet_panel.sig_start.connect(self._start_bacnet)
+        self._bacnet_panel.sig_stop.connect(self._stop_bacnet)
 
         # sFlow controller callbacks
         self.sflow.set_log_callback(self._on_sflow_log)
@@ -1670,9 +1718,13 @@ class MainWindow(QMainWindow):
             SNMPRecGenerator(self._snmp_datasets_dir).generate_device(device, self.topology)
         except Exception as exc:
             log.warning("[MainWindow] snmprec regen after SNMP SET: %s", exc)
-        from PySide6.QtCore import QMetaObject, Qt
-        QMetaObject.invokeMethod(self, "_sync_devices_ui",
-                                 Qt.ConnectionType.QueuedConnection)
+        # Post to the thread-safe ui_queue that the main-thread drain loop handles.
+        # Avoids crossing into Qt from a non-Qt thread via QMetaObject.invokeMethod.
+        try:
+            from api.state import AppState
+            AppState.get().notify_ui("sync_devices")
+        except Exception:
+            pass
 
     def _on_rule_engine_toggled(self, enabled: bool):
         self._trap_engine.set_rule_engine_enabled(enabled)
@@ -3199,6 +3251,139 @@ class MainWindow(QMainWindow):
         except Exception:
             self._log_queue.put(("log_sflow", msg, "info"))
 
+    def _sync_bacnet_ui(self):
+        """Sync BACnet panel — always runs on Qt main thread via drain loop."""
+        try:
+            running = self.bacnet.is_running()
+            self._binding_panel.set_bacnet_locked(running)
+            self._bacnet_panel.set_running(running)
+            if running:
+                summary = self.bacnet.get_device_summary()
+                self._bacnet_panel.refresh_device_table(summary)
+                self._status_label.setText(
+                    f"BACnet/IP running — {len(summary)} EV2 device(s) on UDP :47808"
+                )
+                if not hasattr(self, "_bacnet_refresh_timer"):
+                    self._bacnet_refresh_timer = QTimer(self)
+                    self._bacnet_refresh_timer.timeout.connect(self._refresh_bacnet_panel)
+                self._bacnet_refresh_timer.start(2000)
+            else:
+                if hasattr(self, "_bacnet_refresh_timer"):
+                    self._bacnet_refresh_timer.stop()
+                self._bacnet_panel.refresh_device_table([])
+                self._bacnet_panel.refresh_subscriber_table([])
+                self._bacnet_panel.refresh_cov_events([])
+                self._status_label.setText("BACnet/IP stopped.")
+        except Exception as e:
+            self._console_panel.log(f"BACnet UI sync error: {e}", "error")
+
+    # ------------------------------------------------------------------ #
+    #  BACnet/IP Simulator                                                 #
+    # ------------------------------------------------------------------ #
+
+    def _start_bacnet(self):
+        if self.bacnet.is_running():
+            return
+        from core.device_manager import DeviceType
+        import re as _re
+
+        devices = [
+            d for d in self.device_manager.get_all_devices()
+            if d.device_type == DeviceType.ENERGY_MONITOR
+        ]
+        if not devices:
+            QMessageBox.warning(
+                self, "BACnet/IP",
+                "No Energy Monitor devices in topology.\n\n"
+                "Add Verdigris EV2 devices (Device Type → energy_monitor, "
+                "Vendor → Verdigris Technologies) and bind IPs first."
+            )
+            return
+
+        # Only start on IPs that are actually bound to a network interface.
+        # Unbound IPs have no OS route — their send sockets would bind to the
+        # wrong source IP and BACnet tools would never find the device.
+        # EV2 devices are mgmt_only so ip_address is "" and the real IP is mgmt_ip.
+        bound_set = set(self._bound_ips) | set(self._gnmi_bound_ips)
+        bound_devices = [
+            d for d in devices
+            if (d.ip_address and d.ip_address in bound_set)
+            or (d.mgmt_ip    and d.mgmt_ip    in bound_set)
+        ]
+
+        if not bound_devices:
+            QMessageBox.warning(
+                self, "BACnet/IP — IPs Not Bound",
+                f"Found {len(devices)} EV2 device(s) in topology but none of their "
+                f"IPs are bound to a network interface.\n\n"
+                f"Bind IPs first (Binding panel → Bind IPs), then start BACnet."
+            )
+            return
+
+        unbound = len(devices) - len(bound_devices)
+        if unbound:
+            self._console_panel.log_bacnet(
+                f"[BACnet] Warning: {unbound} EV2 device(s) skipped — IPs not bound.",
+                "warning"
+            )
+
+        if not self.state_store.is_running():
+            self.state_store.start()
+
+        cfg = self._bacnet_panel.get_config()
+
+        # Per-device circuit count from model_name (e.g. "Verdigris EV2-42" → 42)
+        # Use mgmt_ip as the device IP when ip_address is empty (mgmt_only devices)
+        circuits_map: dict = {}
+        device_ips: list = []
+        for d in bound_devices:
+            ip = d.ip_address or d.mgmt_ip
+            device_ips.append(ip)
+            m = _re.search(r"EV2-(\d+)", d.model_name or "")
+            circuits_map[ip] = int(m.group(1)) if m else 42
+
+        self.bacnet.start(
+            device_ips    = device_ips,
+            base_instance = cfg["base_instance"],
+            circuits_map  = circuits_map,
+            frequency_hz  = cfg["frequency_hz"],
+            port          = cfg.get("port", 47808),
+        )
+        self.state_store.enable_bacnet(self.bacnet)
+
+    def _stop_bacnet(self):
+        self._binding_panel.set_bacnet_locked(False)
+        self.state_store.disable_bacnet()
+        self.bacnet.stop()
+        if hasattr(self, "_bacnet_refresh_timer"):
+            self._bacnet_refresh_timer.stop()
+        self._bacnet_panel.set_running(False)
+        self._bacnet_panel.refresh_device_table([])
+        self._bacnet_panel.refresh_subscriber_table([])
+        self._bacnet_panel.refresh_cov_events([])
+        self._status_label.setText("BACnet/IP stopped.")
+
+    def _on_bacnet_log(self, msg: str, level: str = "info"):
+        self._log_queue.put(("log_bacnet", msg, level))
+
+    def _on_bacnet_ready(self):
+        # Called from BACnet background thread — no Qt here, just post to queue.
+        try:
+            from api.state import AppState
+            AppState.get().notify_ui("sync_bacnet")
+        except Exception:
+            pass
+
+    def _refresh_bacnet_panel(self):
+        try:
+            if not self.bacnet.is_running():
+                self._bacnet_refresh_timer.stop()
+                return
+            self._bacnet_panel.refresh_subscriber_table(self.bacnet.get_all_subscribers())
+            self._bacnet_panel.refresh_cov_events(self.bacnet.get_cov_events())
+        except Exception as e:
+            log.warning("[BACnet] panel refresh error: %s", e)
+
     def _sync_sflow_ui(self):
         try:
             running = self.sflow.is_running()
@@ -3278,6 +3463,7 @@ class MainWindow(QMainWindow):
                 DeviceType.UPS:           QColor("#c9a227"),
                 DeviceType.PDU:           QColor("#d44f00"),
                 DeviceType.FLOOR_PDU:     QColor("#b03060"),
+                DeviceType.ENERGY_MONITOR: QColor("#16a34a"),
             }
             _consolas = QFont("Consolas", 9)
             for row, device in enumerate(devices):
@@ -3334,9 +3520,10 @@ class MainWindow(QMainWindow):
         than N individual append() calls.
         """
         _MAX_PER_TICK = 100
-        snmp_lines:  list = []
-        gnmi_lines:  list = []
-        sflow_lines: list = []
+        snmp_lines:   list = []
+        gnmi_lines:   list = []
+        sflow_lines:  list = []
+        bacnet_lines: list = []
         processed = 0
         try:
             while processed < _MAX_PER_TICK:
@@ -3348,6 +3535,8 @@ class MainWindow(QMainWindow):
                     gnmi_lines.append((item[1], item[2]))
                 elif item[0] == "log_sflow":
                     sflow_lines.append((item[1], item[2]))
+                elif item[0] == "log_bacnet":
+                    bacnet_lines.append((item[1], item[2]))
                 elif item[0] == "status":
                     self._sim_panel.set_status(item[1])
                 elif item[0] == "snmpsim_ready":
@@ -3385,6 +3574,8 @@ class MainWindow(QMainWindow):
                     self._sync_snmp_ui()
                 elif item[0] == "sync_gnmi":
                     self._sync_gnmi_ui()
+                elif item[0] == "sync_bacnet":
+                    self._sync_bacnet_ui()
                 elif item[0] == "sync_rules":
                     self._sync_rules_ui()
                 elif item[0] == "sync_devices":
@@ -3401,8 +3592,10 @@ class MainWindow(QMainWindow):
                         pass
         except queue.Empty:
             pass
-        if snmp_lines or gnmi_lines or sflow_lines:
-            self._console_panel.log_batch(snmp_lines, gnmi_lines, sflow_lines)
+        if snmp_lines or gnmi_lines or sflow_lines or bacnet_lines:
+            self._console_panel.log_batch(
+                snmp_lines, gnmi_lines, sflow_lines, bacnet_lines
+            )
 
     def _refresh_status(self):
         if self.snmpsim.is_running():
@@ -3496,5 +3689,9 @@ class MainWindow(QMainWindow):
         # Stop gNMI server if running
         if self.gnmi.is_running():
             self.gnmi.stop()
+        # Stop BACnet server if running
+        if self.bacnet.is_running():
+            self.state_store.disable_bacnet()
+            self.bacnet.stop()
         self._trap_engine.stop()
         event.accept()

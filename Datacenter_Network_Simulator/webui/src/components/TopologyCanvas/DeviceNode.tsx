@@ -63,10 +63,9 @@ function DeviceNode({ data, selected, dragging }: NodeProps) {
   if (d.os_version) rows.push(['Version', d.os_version])
   if (d.ip_address) rows.push(['Prod IP', d.ip_address])
   if (d.mgmt_ip)    rows.push(['Mgmt IP', d.mgmt_ip])
-  rows.push(
-    ['SNMP Port', String(d.snmp_port ?? 161)],
-    ['gNMI Port', String(d.gnmi_port ?? 57400)],
-  )
+  rows.push(['SNMP Port', String(d.snmp_port ?? 161)])
+  if (['router', 'switch'].includes(d.device_type))
+    rows.push(['gNMI Port', String(d.gnmi_port ?? 57400)])
 
   return (
     <div

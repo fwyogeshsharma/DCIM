@@ -330,10 +330,12 @@ export default function AddDeviceDialog({ onClose }: Props) {
             <input type="number" style={spinnerStyle} value={form.snmp_port}
               onChange={e => set('snmp_port', parseInt(e.target.value) || 161)} />
           </FormRow>
+          {['router', 'switch'].includes(form.device_type) && (
           <FormRow label="gNMI Port">
             <input type="number" style={spinnerStyle} value={form.gnmi_port}
               onChange={e => set('gnmi_port', parseInt(e.target.value) || 57400)} />
           </FormRow>
+          )}
           <FormRow label="Community">
             <input style={{ flex: 1, color: 'var(--text-muted)', fontStyle: 'italic' }}
               value="" readOnly placeholder="auto (mirrors IP address)" />

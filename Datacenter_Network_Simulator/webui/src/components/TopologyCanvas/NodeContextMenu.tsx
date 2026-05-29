@@ -310,10 +310,12 @@ export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onCl
             <input type="number" style={spinW} value={form.snmp_port}
               onChange={e => set('snmp_port', parseInt(e.target.value) || 161)} />
           </ERow>
+          {['router', 'switch'].includes(form.device_type) && (
           <ERow label="gNMI Port">
             <input type="number" style={spinW} value={form.gnmi_port}
               onChange={e => set('gnmi_port', parseInt(e.target.value) || 57400)} />
           </ERow>
+          )}
           <ERow label="Contact">
             <input style={{ flex: 1 }} value={form.sys_contact}
               onChange={e => set('sys_contact', e.target.value)}
@@ -426,7 +428,8 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
     if (info.ip_address)   rows.push(['Prod IP', info.ip_address])
     if (info.mgmt_ip)      rows.push(['Mgmt IP', info.mgmt_ip])
     rows.push(['SNMP Port', String(info.snmp_port)])
-    rows.push(['gNMI Port', String(info.gnmi_port)])
+    if (['router', 'switch'].includes(info.device_type))
+      rows.push(['gNMI Port', String(info.gnmi_port)])
     if (info.sys_contact)  rows.push(['Contact',  info.sys_contact])
     if (info.sys_location) rows.push(['Location', info.sys_location])
     rows.push(['Interfaces', String(info.interface_count)])

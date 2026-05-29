@@ -10,9 +10,10 @@ const LEVEL_COLOR: Record<string, string> = {
 }
 
 const TABS: { id: LogEntry['tab']; label: string }[] = [
-  { id: 'snmp',  label: 'SNMP Simulator' },
-  { id: 'gnmi',  label: 'gNMI Simulation' },
-  { id: 'sflow', label: 'sFlow' },
+  { id: 'snmp',   label: 'SNMP Simulator' },
+  { id: 'gnmi',   label: 'gNMI Simulation' },
+  { id: 'sflow',  label: 'sFlow' },
+  { id: 'bacnet', label: 'BACnet/IP' },
 ]
 
 function LogLine({ entry }: { entry: LogEntry }) {

@@ -13,14 +13,15 @@ from core.device_manager import Device, DeviceType, Vendor
 from core.device_models import DEVICE_MODELS, IFACE_SHORT_LABEL
 
 _TYPE_LABELS = {
-    DeviceType.ROUTER:        "Router",
-    DeviceType.SWITCH:        "Switch",
-    DeviceType.SERVER:        "Server",
-    DeviceType.FIREWALL:      "Firewall",
-    DeviceType.LOAD_BALANCER: "Load Balancer",
-    DeviceType.UPS:           "UPS",
-    DeviceType.PDU:           "Rack PDU",
-    DeviceType.FLOOR_PDU:     "Floor PDU / RPP",
+    DeviceType.ROUTER:         "Router",
+    DeviceType.SWITCH:         "Switch",
+    DeviceType.SERVER:         "Server",
+    DeviceType.FIREWALL:       "Firewall",
+    DeviceType.LOAD_BALANCER:  "Load Balancer",
+    DeviceType.UPS:            "UPS",
+    DeviceType.PDU:            "Rack PDU",
+    DeviceType.FLOOR_PDU:      "Floor PDU / RPP",
+    DeviceType.ENERGY_MONITOR: "Energy Monitor (EV2)",
 }
 
 VENDORS_BY_TYPE = {
@@ -73,6 +74,9 @@ VENDORS_BY_TYPE = {
         Vendor.EATON,
         Vendor.VERTIV,
         Vendor.RARITAN,
+    ],
+    DeviceType.ENERGY_MONITOR: [
+        Vendor.VERDIGRIS,
     ],
 }
 
@@ -342,7 +346,7 @@ class DeviceDialog(QDialog):
         # Rack PDU:  rack-mounted,      no gNMI, has management interface
         # Floor PDU: no rack placement, no gNMI, has management interface
         show_rack    = dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU)
-        show_gnmi    = dtype not in (DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU)
+        show_gnmi    = dtype in (DeviceType.ROUTER, DeviceType.SWITCH)
         show_prod_ip = dtype in self._PROD_IP_TYPES
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):
             w.setVisible(show_rack)
@@ -411,13 +415,25 @@ class DeviceDialog(QDialog):
         self.model_combo.setStyleSheet("")
         self.accept()
 
+    # Device types that live only on the OOB management network.
+    # They must NOT receive a production IP — ip_address stays empty.
+    _MGMT_ONLY_TYPES = frozenset({
+        DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU,
+        DeviceType.OOB_SWITCH, DeviceType.SENSOR,
+        DeviceType.ENERGY_MONITOR,
+    })
+
     def get_values(self) -> dict:
-        ip = self.ip_edit.text().strip()
-        if not ip and self.ip_manager:
-            try:
-                ip = self.ip_manager.next_ip()
-            except RuntimeError:
-                ip = "192.168.1.100"
+        dtype = self.type_combo.currentData()
+        if dtype in self._MGMT_ONLY_TYPES:
+            ip = ""   # management-only: no production IP allocated
+        else:
+            ip = self.ip_edit.text().strip()
+            if not ip and self.ip_manager:
+                try:
+                    ip = self.ip_manager.next_ip()
+                except RuntimeError:
+                    ip = "192.168.1.100"
 
         model = self.model_combo.currentData()
         return {

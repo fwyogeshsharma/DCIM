@@ -39,6 +39,7 @@ class BindingPanel(QWidget):
         super().__init__(parent)
         self._snmp_locked        = False
         self._gnmi_locked        = False
+        self._bacnet_locked      = False
         self._total_bound        = 0
         self._binding_in_progress = False
         self._build_ui()
@@ -251,12 +252,17 @@ class BindingPanel(QWidget):
         self._gnmi_locked = locked
         self._update_lock_state()
 
+    def set_bacnet_locked(self, locked: bool):
+        """Lock the adapter controls while BACnet simulator is running."""
+        self._bacnet_locked = locked
+        self._update_lock_state()
+
     def _update_lock_state(self):
         if self._binding_in_progress:
             self.btn_bind.setEnabled(False)
             self.btn_unbind.setEnabled(False)
             return
-        unlocked = not (self._snmp_locked or self._gnmi_locked)
+        unlocked = not (self._snmp_locked or self._gnmi_locked or self._bacnet_locked)
         self.iface_combo.setEnabled(unlocked)
         self.mask_edit.setEnabled(unlocked)
         self.btn_refresh_ifaces.setEnabled(unlocked)
