@@ -100,42 +100,47 @@ const ROLE_LAYERS: Record<string, number> = {
   firewall:      1,
   load_balancer: 2,
   core:          3,
-  oob_switch:    3,
   spine:         4,
   distribution:  4,
   leaf:          5,
   tor:           5,
   access:        5,
-  server:        6,
-  pdu:           7,
-  ups:           8,
-  floor_pdu:     9,
+  oob_switch:    6,
+  sensor:        7,
+  server:        8,
+  pdu:           9,
+  ups:           10,
+  floor_pdu:     11,
 }
 
 const ROLE_TIER_LABELS: Record<number, string> = {
-  0: 'Edge Routers',
-  1: 'Firewalls',
-  2: 'Load Balancers',
-  3: 'Core Switches',
-  4: 'Spine Switches',
-  5: 'Leaf / ToR Switches',
-  6: 'Servers',
-  7: 'PDUs',
-  8: 'UPS',
-  9: 'Floor PDUs',
+  0:  'Edge Routers',
+  1:  'Firewalls',
+  2:  'Load Balancers',
+  3:  'Core Switches',
+  4:  'Spine Switches',
+  5:  'Leaf / ToR Switches',
+  6:  'OOB Switches',
+  7:  'Sensors',
+  8:  'Servers',
+  9:  'PDUs',
+  10: 'UPS',
+  11: 'Floor PDUs',
 }
 
 const TIER_COLORS: Record<number, string> = {
-  0: '#3b82f6',
-  1: '#f97316',
-  2: '#2dd4bf',
-  3: '#6366f1',
-  4: '#a855f7',
-  5: '#22c55e',
-  6: '#38bdf8',
-  7: '#f59e0b',
-  8: '#84cc16',
-  9: '#fb923c',
+  0:  '#3b82f6',
+  1:  '#f97316',
+  2:  '#2dd4bf',
+  3:  '#6366f1',
+  4:  '#a855f7',
+  5:  '#22c55e',
+  6:  '#64748b',
+  7:  '#f43f5e',
+  8:  '#38bdf8',
+  9:  '#f59e0b',
+  10: '#84cc16',
+  11: '#fb923c',
 }
 
 function roleToLayer(role: string | null, fallback: number): number {
@@ -177,6 +182,8 @@ function deviceVisuals(deviceType: string, deviceRole?: string | null) {
     return { icon: '⚡', fill: '#2d1200', stroke: '#fb923c', radius: 16 }
   if (role === 'pdu' || /pdu|power/.test(dt))
     return { icon: '⚡', fill: '#422006', stroke: '#f59e0b', radius: 18 }
+  if (role === 'sensor' || /sensor|thermometer|hygrometer/.test(dt))
+    return { icon: '🌡️', fill: '#1f1a2e', stroke: '#f43f5e', radius: 14 }
   if (role === 'oob_switch' || /oob|out.?of.?band/.test(dt))
     return { icon: '🔌', fill: '#1e293b', stroke: '#64748b', radius: 18 }
   if (/switch/.test(dt))
@@ -204,6 +211,7 @@ export default function Topology() {
   const [showLegend, setShowLegend] = useState(true)
   const [showStats, setShowStats] = useState(true)
   const [showTrapFeed, setShowTrapFeed] = useState(true)
+  const [showTierBands, setShowTierBands] = useState(true)
   const [networkFilter, setNetworkFilter] = useState<string>('all')
 
   const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
@@ -500,7 +508,7 @@ export default function Topology() {
     merge.append('feMergeNode').attr('in', 'SourceGraphic')
 
     // Tier bands — rendered first so they appear behind links and nodes
-    if (layerYMap.size > 0) {
+    if (showTierBands && layerYMap.size > 0) {
       const sortedLyrs = [...layerYMap.keys()].sort((a, b) => a - b)
       const allX = visNodes.map(n => n.x!).filter(x => isFinite(x))
       const xMin = allX.length ? Math.min(...allX) - 130 : -300
@@ -726,7 +734,7 @@ export default function Topology() {
     return () => {
       if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null }
     }
-  }, [tree, treeLinks, trapAlerts, linkDownAlerts])
+  }, [tree, treeLinks, trapAlerts, linkDownAlerts, showTierBands])
 
   // ── Zoom controls ──────────────────────────────────────────────────────────
 
@@ -804,6 +812,18 @@ export default function Topology() {
           >
             <Edit3 className="w-4 h-4" />
             Editor
+          </button>
+          <button
+            onClick={() => setShowTierBands(v => !v)}
+            title={showTierBands ? 'Hide tier bands' : 'Show tier bands'}
+            className={`flex items-center gap-1.5 px-3 py-2 border rounded-lg transition-colors text-sm font-medium ${
+              showTierBands
+                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/30'
+                : 'bg-slate-800/50 border-white/10 text-slate-400 hover:bg-slate-700/50'
+            }`}
+          >
+            <span className="text-base leading-none">🏷️</span>
+            Tiers
           </button>
           <button onClick={handleZoomIn} className="p-2 bg-slate-800/50 hover:bg-slate-700/50 border border-white/10 rounded-lg transition-colors" title="Zoom in">
             <ZoomIn className="w-5 h-5 text-slate-300" />
@@ -898,6 +918,8 @@ export default function Topology() {
                   { fill: '#1a1a4e', stroke: '#6366f1', icon: '🏗️', label: 'Core Switch' },
                   { fill: '#3b0764', stroke: '#a855f7', icon: '🕸️', label: 'Spine Switch' },
                   { fill: '#14532d', stroke: '#22c55e', icon: '🌿', label: 'Leaf / ToR' },
+                  { fill: '#1e293b', stroke: '#64748b', icon: '🔌', label: 'OOB Switch' },
+                  { fill: '#1f1a2e', stroke: '#f43f5e', icon: '🌡️', label: 'Sensor' },
                   { fill: '#0c4a6e', stroke: '#38bdf8', icon: '💻', label: 'Server' },
                   { fill: '#422006', stroke: '#f59e0b', icon: '⚡', label: 'PDU' },
                   { fill: '#1a2e05', stroke: '#84cc16', icon: '🔋', label: 'UPS' },

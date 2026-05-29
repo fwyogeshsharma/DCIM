@@ -18,6 +18,8 @@ export interface LayoutNode {
   lastSeen?: string
   /** Raw device type from orchestrator, e.g. "DeviceType.ROUTER" */
   deviceType?: string
+  /** Fabric role from devices.device_role (migration 003) */
+  deviceRole?: string | null
   /** Latest temperature reading (°C) for heatmap mode */
   temperature?: number
 }
@@ -49,40 +51,53 @@ export interface LayoutResult {
   links: LayoutLink[]
 }
 
-// ── Floor navigation levels (one per tier in the hierarchy) ─────────────────
-// Listed bottom-to-top so index 0 = lowest Y plane (infrastructure) and
-// index 5 = highest Y plane (DCIM servers). The navigator renders them
-// reversed so the top button moves the camera "up".
+// ── Floor navigation levels — one per tier in the 12-tier fabric hierarchy ──
+// Listed bottom-to-top: index 0 = lowest Y plane (floor_pdu),
+// index 11 = highest Y plane (edge routers / DCIM servers).
+// Y values match node 3D positions: layer L node → 3D Y = -(L * LAYER_GAP_Y).
 export const FLOORS = [
-  { name: 'Infrastructure', label: 'L6', y: -140, color: '#64748b' },
-  { name: 'Compute/Srvs',   label: 'L5', y: -112, color: '#10b981' },
-  { name: 'ToR Switches',   label: 'L4', y: -84,  color: '#06b6d4' },
-  { name: 'Agg Switches',   label: 'L3', y: -56,  color: '#f59e0b' },
-  { name: 'Core Routers',   label: 'L2', y: -28,  color: '#ef4444' },
-  { name: 'DCIM Servers',   label: 'L1', y: 20,   color: '#a855f7' },
+  { name: 'Floor PDUs',    label: 'T12', y: -308, color: '#fb923c' },
+  { name: 'UPS',           label: 'T11', y: -280, color: '#84cc16' },
+  { name: 'PDUs',          label: 'T10', y: -252, color: '#f59e0b' },
+  { name: 'Servers',       label: 'T9',  y: -224, color: '#38bdf8' },
+  { name: 'Sensors',       label: 'T8',  y: -196, color: '#f43f5e' },
+  { name: 'OOB Switches',  label: 'T7',  y: -168, color: '#64748b' },
+  { name: 'Leaf / ToR',    label: 'T6',  y: -140, color: '#22c55e' },
+  { name: 'Spine',         label: 'T5',  y: -112, color: '#a855f7' },
+  { name: 'Core',          label: 'T4',  y:  -84, color: '#6366f1' },
+  { name: 'Load Balancers', label: 'T3', y:  -56, color: '#2dd4bf' },
+  { name: 'Firewalls',     label: 'T2',  y:  -28, color: '#f97316' },
+  { name: 'Edge Routers',  label: 'T1',  y:   20, color: '#3b82f6' },
 ]
 
-// ── Role-based layer assignment ──────────────────────────────────────────────
-// Mirrors Topology.tsx exactly:
-//   0  server (DCIM server config node)
-//   1  routers / LBs
-//   2  aggregation / fabric / spine switches
-//   3  ToR / leaf switches
-//   4  compute servers
-//   5  infrastructure (OOB, PDU, UPS, sensors)
-//
-// For SNMP devices that don't carry a DeviceType enum, name-pattern detection
-// is used as a fallback. Unrecognised devices fall back to `2 + BFS depth`.
-function roleLayerOf(name: string): number | null {
+// ── Role → layer mapping (mirrors ROLE_LAYERS in Topology.tsx) ───────────────
+const ROLE_LAYERS_3D: Record<string, number> = {
+  edge_router: 0, firewall: 1, load_balancer: 2, core: 3,
+  spine: 4, distribution: 4,
+  leaf: 5, tor: 5, access: 5,
+  oob_switch: 6,
+  sensor: 7,
+  server: 8, pdu: 9, ups: 10, floor_pdu: 11,
+}
+
+function roleLayerOf(role: string | null | undefined, name: string): number | null {
+  if (role) {
+    const l = ROLE_LAYERS_3D[role.toLowerCase()]
+    if (l !== undefined) return l
+  }
   if (!name) return null
-  if (/core-?r\b|cluster-?r\b|\brouter\b|\brtr\b|^r\d/i.test(name)) return 1
-  if (/\blb\b|load-?balancer/i.test(name)) return 1
-  if (/^agg-|fabric|spine|super-?spine|\bagg\b/i.test(name)) return 2
-  if (/\bpod\b|aggregation/i.test(name)) return 2
-  if (/^tor-|\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 3
-  if (/^oob-|^sensor|^fpdu|^ups-|^pdu-/i.test(name)) return 5
-  if (/gpu|storage|\bnas\b|\bsan\b/i.test(name)) return 5
-  if (/^srv-|compute|host/i.test(name)) return 4
+  if (/core-?r\b|cluster-?r\b|\brouter\b|\brtr\b|^r\d/i.test(name)) return 0
+  if (/\bfirewall\b|\bfw\b/i.test(name)) return 1
+  if (/\blb\b|load-?balancer/i.test(name)) return 2
+  if (/^core-?sw|^csw/i.test(name)) return 3
+  if (/^agg-|fabric|spine|super-?spine|\bagg\b|\bpod\b|aggregation/i.test(name)) return 4
+  if (/^tor-|\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
+  if (/^oob-/i.test(name)) return 6
+  if (/^sensor/i.test(name)) return 7
+  if (/^fpdu|^floor-?pdu/i.test(name)) return 11
+  if (/^ups-/i.test(name)) return 10
+  if (/^pdu-/i.test(name)) return 9
+  if (/gpu|storage|\bnas\b|\bsan\b|^srv-|compute|host/i.test(name)) return 8
   return null
 }
 
@@ -106,7 +121,8 @@ export function computeHierarchicalLayout(
   topologyLinks: TopologyLink[] = [],
   _unused1?: unknown,
   _unused2?: unknown,
-  deviceAlertsByIp?: Map<string, DeviceAlertInfo>
+  deviceAlertsByIp?: Map<string, DeviceAlertInfo>,
+  roleByIp?: Map<string, string>
 ): LayoutResult {
   const enabledServers = servers.filter((s) => s.enabled)
   const nodes: LayoutNode[] = []
@@ -267,6 +283,7 @@ export function computeHierarchicalLayout(
       agentId: device.agent_id,
       agentName: agentHostnameById.get(device.agent_id) || device.agent_id,
       lastSeen: device.last_seen,
+      deviceRole: device.device_ip ? (roleByIp?.get(device.device_ip) ?? null) : null,
     })
 
     const d = device.device_ip ? deviceDepth.get(device.device_ip) : undefined
@@ -313,6 +330,7 @@ export function computeHierarchicalLayout(
           color: alertInfo?.critical ? '#ef4444' : alertInfo?.warning ? '#f59e0b' : active ? '#06b6d4' : '#475569',
           ip,
           alerts: alertInfo?.active ?? 0,
+          deviceRole: roleByIp?.get(ip) ?? null,
         })
       }
     })
@@ -354,29 +372,36 @@ export function computeHierarchicalLayout(
     })
   }
 
-  // ── Layer assignment (mirrors Topology.tsx layerOf exactly) ─────────
+  // ── Layer assignment — device_role first, then DeviceType enum, then name patterns ──
   const layerOfNode = (n: LayoutNode): number => {
     if (n.type === 'server') return 0
-    if (n.type === 'agent') {
-      if (n.deviceType) {
-        const dt = n.deviceType
-        if (dt.includes('ROUTER')) return 1
-        if (dt.includes('SERVER')) return 4
-        if (dt.includes('OOB_SWITCH') || dt.includes('SENSOR') ||
-            dt.includes('FLOOR_PDU') || dt.includes('UPS') ||
-            dt.includes('PDU')) return 5
-        if (dt.includes('SWITCH')) {
-          if (/^agg-/i.test(n.name || '')) return 2
-          if (/^tor-/i.test(n.name || '')) return 3
-          return 2
-        }
-      }
-      return 1
+    if (n.deviceRole) {
+      const l = ROLE_LAYERS_3D[n.deviceRole.toLowerCase()]
+      if (l !== undefined) return l
     }
-    const byRole = roleLayerOf(n.name || '')
+    if (n.type === 'agent' && n.deviceType) {
+      const dt = n.deviceType
+      if (dt.includes('ROUTER'))     return 0
+      if (dt.includes('FIREWALL'))   return 1
+      if (dt.includes('LOAD_BALANCER')) return 2
+      if (dt.includes('OOB_SWITCH')) return 6
+      if (dt.includes('SENSOR'))     return 7
+      if (dt.includes('FLOOR_PDU'))  return 11
+      if (dt.includes('UPS'))        return 10
+      if (dt.includes('PDU'))        return 9
+      if (dt.includes('SERVER'))     return 8
+      if (dt.includes('SWITCH')) {
+        if (/^core/i.test(n.name || ''))         return 3
+        if (/^agg-|spine|fabric/i.test(n.name || '')) return 4
+        if (/^tor-|\bleaf\b/i.test(n.name || '')) return 5
+        return 4
+      }
+      return 0
+    }
+    const byRole = roleLayerOf(n.deviceRole, n.name || '')
     if (byRole !== null) return byRole
     const d = n.ip ? deviceDepth.get(n.ip) ?? 0 : 0
-    return 2 + d
+    return Math.min(4 + d, 8)
   }
 
   const layered = computeLayeredLayout(

@@ -1569,6 +1569,7 @@ function SceneContent({
   linkDownAlerts,
   heatmapMode,
   tempMap,
+  showTierBands,
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
@@ -1585,6 +1586,7 @@ function SceneContent({
   linkDownAlerts: Map<string, TrapAlert>
   heatmapMode: boolean
   tempMap: Map<string, number>
+  showTierBands: boolean
 }) {
   return (
     <>
@@ -1608,6 +1610,21 @@ function SceneContent({
         fadeStrength={1.5}
         infiniteGrid
       />
+
+      {/* Tier band planes */}
+      {showTierBands && FLOORS.map((floor, i) => (
+        <group key={`tier-${i}`}>
+          <mesh position={[0, floor.y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[500, 500]} />
+            <meshBasicMaterial color={floor.color} transparent opacity={0.04} depthWrite={false} />
+          </mesh>
+          <Billboard position={[-220, floor.y + 1, 0]}>
+            <Text fontSize={4} color={floor.color} anchorX="left" fillOpacity={0.85}>
+              {floor.label}  {floor.name}
+            </Text>
+          </Billboard>
+        </group>
+      ))}
 
       {/* Connection lines */}
       {links.map((link, i) => {
@@ -1761,6 +1778,13 @@ export default function Topology3D() {
     refetchInterval: USE_MOCK_DATA ? false : 30000,
     enabled: !USE_MOCK_DATA,
   })
+  const { data: topologyTree } = useQuery({
+    queryKey: ['topology-tree-3d'],
+    queryFn: () => api.getTopologyTree(),
+    staleTime: 60000,
+    refetchInterval: USE_MOCK_DATA ? false : 60000,
+    enabled: !USE_MOCK_DATA,
+  })
   const deviceAlertsByIp = useMemo(() => {
     const map = new Map<string, { active: number; critical: number; warning: number }>()
     deviceAlertSummary?.forEach(d => {
@@ -1768,6 +1792,14 @@ export default function Topology3D() {
     })
     return map
   }, [deviceAlertSummary])
+
+  const roleByIp = useMemo(() => {
+    const map = new Map<string, string>()
+    topologyTree?.nodes.forEach(n => {
+      if (n.mgmt_ip && n.device_role) map.set(n.mgmt_ip, n.device_role)
+    })
+    return map
+  }, [topologyTree])
 
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
@@ -1781,6 +1813,7 @@ export default function Topology3D() {
   const [showLegend, setShowLegend] = useState(true)
   const [showStats, setShowStats] = useState(true)
   const [heatmapMode, setHeatmapMode] = useState(false)
+  const [showTierBands, setShowTierBands] = useState(true)
 
   // Expand/collapse state
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
@@ -1945,8 +1978,8 @@ export default function Topology3D() {
       d => expandedServers.has(`server-${d.server_id}`)
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp)
-  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp])
+    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
+  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
@@ -2050,6 +2083,17 @@ export default function Topology3D() {
               </button>
             )}
           <button
+            onClick={() => setShowTierBands(t => !t)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border text-sm ${
+              showTierBands
+                ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/30'
+                : 'bg-slate-700 hover:bg-slate-600 text-white border-white/10'
+            }`}
+            title="Toggle tier band planes"
+          >
+            🏷️ Tiers
+          </button>
+          <button
             onClick={() => setHeatmapMode(h => !h)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border text-sm ${
               heatmapMode
@@ -2097,6 +2141,7 @@ export default function Topology3D() {
               linkDownAlerts={linkDownAlerts}
               heatmapMode={heatmapMode}
               tempMap={tempMap}
+              showTierBands={showTierBands}
             />
           </Canvas>
 
@@ -2165,18 +2210,11 @@ export default function Topology3D() {
                 <span className="text-slate-300">Device Link</span>
               </div>
               <div className="mt-2 pt-2 border-t border-white/10 space-y-1">
-                <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-wide">Hierarchy</p>
-                {[
-                  { label: 'L1', name: 'DCIM Servers',    color: '#a855f7' },
-                  { label: 'L2', name: 'Core Routers',    color: '#ef4444' },
-                  { label: 'L3', name: 'Agg Switches',    color: '#f59e0b' },
-                  { label: 'L4', name: 'ToR Switches',    color: '#06b6d4' },
-                  { label: 'L5', name: 'Compute/Srvs',    color: '#10b981' },
-                  { label: 'L6', name: 'Infrastructure',  color: '#64748b' },
-                ].map(tier => (
-                  <div key={tier.label} className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono w-5" style={{ color: tier.color }}>{tier.label}</span>
-                    <span className="text-slate-400 text-[10px]">{tier.name}</span>
+                <p className="text-slate-500 text-[10px] font-semibold uppercase tracking-wide">Tier Hierarchy</p>
+                {[...FLOORS].reverse().map(floor => (
+                  <div key={floor.label} className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono w-7" style={{ color: floor.color }}>{floor.label}</span>
+                    <span className="text-slate-400 text-[10px]">{floor.name}</span>
                   </div>
                 ))}
                 <p className="text-slate-400 text-[10px] pt-1">Double-click a server to expand</p>
