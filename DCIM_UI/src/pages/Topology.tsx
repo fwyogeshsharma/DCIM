@@ -12,6 +12,7 @@ import {
   Edit3,
   X,
   Network,
+  Search,
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { computeLayeredLayout } from '@/lib/topology-layered'
@@ -213,6 +214,8 @@ export default function Topology() {
   const [showTrapFeed, setShowTrapFeed] = useState(true)
   const [showTierBands, setShowTierBands] = useState(true)
   const [networkFilter, setNetworkFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const prevSearchRef = useRef('')
 
   const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
   const [linkDownAlerts, setLinkDownAlerts] = useState<Map<string, TrapAlert>>(new Map())
@@ -330,6 +333,15 @@ export default function Topology() {
     networks: new Set(tree.map(n => n.network_id)).size,
     withAlerts: tree.filter(n => n.active_alerts > 0).length,
   }), [tree])
+
+  // Count of devices matching the search query (by hostname or management IP)
+  const matchCount = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return 0
+    return tree.filter(n =>
+      n.hostname.toLowerCase().includes(q) || (n.mgmt_ip ?? '').toLowerCase().includes(q)
+    ).length
+  }, [tree, searchQuery])
 
   // ── D3 rendering ───────────────────────────────────────────────────────────
 
@@ -594,8 +606,19 @@ export default function Topology() {
 
     // Node groups
     const nodeG = g.append('g').selectAll<SVGGElement, TopoNode>('g').data(visNodes).enter().append('g')
+      .classed('topo-node-group', true)
       .attr('transform', d => `translate(${d.x ?? 0},${d.y ?? 0})`)
       .style('cursor', 'pointer')
+
+    // Search highlight ring (hidden until a search match — toggled by the search effect)
+    nodeG.append('circle')
+      .attr('class', 'search-ring')
+      .attr('r', d => deviceVisuals(d.deviceType, d.deviceRole).radius + 8)
+      .attr('fill', 'none')
+      .attr('stroke', '#fbbf24')
+      .attr('stroke-width', 3.5)
+      .attr('opacity', 0)
+      .style('pointer-events', 'none')
 
     // Main circle
     nodeG.append('circle')
@@ -736,6 +759,48 @@ export default function Topology() {
     }
   }, [tree, treeLinks, trapAlerts, linkDownAlerts, showTierBands])
 
+  // ── Search highlight ─────────────────────────────────────────────────────────
+  // Runs after the graph is (re)rendered. Highlights nodes whose hostname or
+  // management IP contains the query, dims the rest, and pans to fit the matches.
+  useEffect(() => {
+    if (!svgRef.current) return
+    const q = searchQuery.trim().toLowerCase()
+    const groups = d3.select(svgRef.current).selectAll<SVGGElement, TopoNode>('g.topo-node-group')
+    if (groups.empty()) return
+
+    const matched: TopoNode[] = []
+    groups.each(function (d) {
+      const isMatch = q !== '' &&
+        (d.name.toLowerCase().includes(q) || (d.ip ?? '').toLowerCase().includes(q))
+      if (isMatch) matched.push(d)
+      const sel = d3.select(this)
+      sel.style('opacity', q === '' ? 1 : isMatch ? 1 : 0.15)
+      sel.select('.search-ring').attr('opacity', isMatch ? 1 : 0)
+    })
+
+    // Pan/zoom to the matches only when the query itself changes (not on trap refreshes)
+    const queryChanged = prevSearchRef.current !== searchQuery
+    prevSearchRef.current = searchQuery
+    if (queryChanged && q !== '' && matched.length > 0 && zoomRef.current) {
+      const xs = matched.map(d => d.x!).filter(isFinite)
+      const ys = matched.map(d => d.y!).filter(isFinite)
+      if (xs.length) {
+        const width = svgRef.current.clientWidth
+        const height = svgRef.current.clientHeight
+        const pad = 140
+        const contentW = (Math.max(...xs) - Math.min(...xs)) + pad * 2
+        const contentH = (Math.max(...ys) - Math.min(...ys)) + pad * 2
+        const scale = Math.min(width / contentW, height / contentH, 1.4)
+        const cx = (Math.min(...xs) + Math.max(...xs)) / 2
+        const cy = (Math.min(...ys) + Math.max(...ys)) / 2
+        d3.select(svgRef.current).transition().duration(450).call(
+          zoomRef.current.transform as any,
+          d3.zoomIdentity.translate(width / 2 - cx * scale, height / 2 - cy * scale).scale(scale)
+        )
+      }
+    }
+  }, [searchQuery, tree, treeLinks, trapAlerts, linkDownAlerts, showTierBands])
+
   // ── Zoom controls ──────────────────────────────────────────────────────────
 
   const handleZoomIn = () => {
@@ -777,6 +842,31 @@ export default function Topology() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Device search */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search name or IP…"
+              className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+            />
+            {searchQuery.trim() !== '' && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                <span className={`text-[11px] font-medium ${matchCount > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
+                  {matchCount}
+                </span>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-slate-400 hover:text-white transition-colors"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
           {/* Network filter */}
           {networks.length > 1 && (
             <select

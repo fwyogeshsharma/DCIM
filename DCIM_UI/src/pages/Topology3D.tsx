@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { computeHierarchicalLayout, type LayoutNode, type LayoutLink, FLOORS } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X, Thermometer } from 'lucide-react'
+import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X, Thermometer, Search } from 'lucide-react'
 import * as THREE from 'three'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { useSSE } from '@/hooks/useSSE'
@@ -217,6 +217,24 @@ function HeatmapGradientOverlay({ nodes, tempMap }: {
   )
 }
 
+// ── Search Highlight Halo ─────────────────────────────────────────────────────
+// Pulsing amber wireframe box drawn around a node that matches the search query.
+
+function SearchHalo({ size }: { size: [number, number, number] }) {
+  const ref = useRef<THREE.Mesh>(null)
+  useFrame(({ clock }) => {
+    if (!ref.current) return
+    const mat = ref.current.material as THREE.MeshBasicMaterial
+    mat.opacity = 0.5 + Math.sin(clock.getElapsedTime() * 3) * 0.3
+  })
+  return (
+    <mesh ref={ref}>
+      <boxGeometry args={size} />
+      <meshBasicMaterial color="#fbbf24" wireframe transparent opacity={0.6} depthWrite={false} />
+    </mesh>
+  )
+}
+
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
 
 function RackPost({ position }: { position: [number, number, number] }) {
@@ -291,6 +309,7 @@ function ServerNode({
   onDoubleClick,
   heatmapMode = false,
   temperature,
+  searchMatch = false,
 }: {
   node: LayoutNode
   isSelected: boolean
@@ -301,6 +320,7 @@ function ServerNode({
   onDoubleClick: (node: LayoutNode) => void
   heatmapMode?: boolean
   temperature?: number
+  searchMatch?: boolean
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const glowRef = useRef<THREE.Mesh>(null)
@@ -460,6 +480,9 @@ function ServerNode({
         </mesh>
       )}
 
+      {/* ── Search match halo ── */}
+      {searchMatch && <SearchHalo size={[8.2, 14.2, 6]} />}
+
       {/* ── Label ── */}
       <Billboard position={[0, 8.5, 0]}>
         <Text
@@ -536,6 +559,7 @@ function AgentNode({
   useFloat = true,
   heatmapMode = false,
   temperature,
+  searchMatch = false,
 }: {
   node: LayoutNode
   isSelected: boolean
@@ -544,6 +568,7 @@ function AgentNode({
   useFloat?: boolean
   heatmapMode?: boolean
   temperature?: number
+  searchMatch?: boolean
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -681,6 +706,9 @@ function AgentNode({
         </mesh>
       )}
 
+      {/* ── Search match halo ── */}
+      {searchMatch && <SearchHalo size={[7, 3.2, 5]} />}
+
       {/* ── Label ── */}
       <Billboard position={[0, 2.5, 0]}>
         <Text
@@ -767,6 +795,7 @@ function DeviceNode({
   hasTrap = false,
   heatmapMode = false,
   temperature,
+  searchMatch = false,
 }: {
   node: LayoutNode
   isSelected: boolean
@@ -775,6 +804,7 @@ function DeviceNode({
   hasTrap?: boolean
   heatmapMode?: boolean
   temperature?: number
+  searchMatch?: boolean
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
@@ -913,6 +943,9 @@ function DeviceNode({
         </mesh>
       )}
 
+      {/* Search match halo */}
+      {searchMatch && <SearchHalo size={[4.4, 1.6, 2.6]} />}
+
       {/* Label */}
       <Billboard position={[0, 1.5, 0]}>
         <Text
@@ -985,6 +1018,7 @@ function PDUNode({
   onHover,
   heatmapMode = false,
   temperature,
+  searchMatch = false,
 }: {
   node: LayoutNode
   isSelected: boolean
@@ -992,6 +1026,7 @@ function PDUNode({
   onHover: (hovering: boolean) => void
   heatmapMode?: boolean
   temperature?: number
+  searchMatch?: boolean
 }) {
   const glowRef = useRef<THREE.Mesh>(null)
   const boltRef = useRef<THREE.Mesh>(null)
@@ -1184,6 +1219,9 @@ function PDUNode({
           <meshBasicMaterial color={boltColor} wireframe transparent opacity={0.5} />
         </mesh>
       )}
+
+      {/* ── Search match halo ── */}
+      {searchMatch && <SearchHalo size={[2.8, 10.2, 2.6]} />}
 
       {/* ── Label ── */}
       <Billboard position={[0, 7.0, 0]}>
@@ -1570,6 +1608,7 @@ function SceneContent({
   heatmapMode,
   tempMap,
   showTierBands,
+  matchIds,
 }: {
   nodes: LayoutNode[]
   links: LayoutLink[]
@@ -1587,6 +1626,7 @@ function SceneContent({
   heatmapMode: boolean
   tempMap: Map<string, number>
   showTierBands: boolean
+  matchIds: Set<string> | null
 }) {
   return (
     <>
@@ -1653,6 +1693,7 @@ function SceneContent({
             onDoubleClick={onDoubleClickServer}
             heatmapMode={heatmapMode}
             temperature={tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? undefined}
+            searchMatch={matchIds?.has(node.id) ?? false}
           />
         ))}
 
@@ -1673,6 +1714,7 @@ function SceneContent({
               onHover={onHover}
               heatmapMode={heatmapMode}
               temperature={nodeTemp}
+              searchMatch={matchIds?.has(node.id) ?? false}
             />
           ) : (
             <AgentNode
@@ -1684,6 +1726,7 @@ function SceneContent({
               useFloat={enableFloat}
               heatmapMode={heatmapMode}
               temperature={nodeTemp}
+              searchMatch={matchIds?.has(node.id) ?? false}
             />
           )
         })
@@ -1705,6 +1748,7 @@ function SceneContent({
               onHover={onHover}
               heatmapMode={heatmapMode}
               temperature={nodeTemp}
+              searchMatch={matchIds?.has(node.id) ?? false}
             />
           ) : (
             <DeviceNode
@@ -1716,6 +1760,7 @@ function SceneContent({
               hasTrap={(!!node.ip && trapAlerts.has(node.ip)) || (!!node.name && trapAlerts.has(node.name))}
               heatmapMode={heatmapMode}
               temperature={nodeTemp}
+              searchMatch={matchIds?.has(node.id) ?? false}
             />
           )
         })}
@@ -1814,21 +1859,31 @@ export default function Topology3D() {
   const [showStats, setShowStats] = useState(true)
   const [heatmapMode, setHeatmapMode] = useState(false)
   const [showTierBands, setShowTierBands] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Expand/collapse state
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
 
-  // Auto-expand all servers when heatmap activates so agent positions are in the layout
-  const preHeatmapExpandRef = useRef<Set<string>>(new Set())
+  // Auto-expand all servers while heatmap OR search is active, so every agent &
+  // device is present in the layout (collapsed servers omit their children, and
+  // a search hit on a hidden device would otherwise have nothing to highlight).
+  const searchActive = searchQuery.trim() !== ''
+  const forceExpandAll = heatmapMode || searchActive
+  const preForceExpandRef = useRef<Set<string>>(new Set())
+  const wasForcedRef = useRef(false)
   useEffect(() => {
-    if (heatmapMode && servers) {
-      preHeatmapExpandRef.current = new Set(expandedServers)
+    if (forceExpandAll && servers) {
+      if (!wasForcedRef.current) {
+        preForceExpandRef.current = new Set(expandedServers)
+        wasForcedRef.current = true
+      }
       setExpandedServers(new Set(servers.filter(s => s.enabled).map(s => `server-${s.id}`)))
-    } else if (!heatmapMode) {
-      setExpandedServers(new Set(preHeatmapExpandRef.current))
+    } else if (!forceExpandAll && wasForcedRef.current) {
+      setExpandedServers(new Set(preForceExpandRef.current))
+      wasForcedRef.current = false
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heatmapMode, servers])
+  }, [forceExpandAll, servers])
 
   // ── SNMP trap state (mirrors 2D Topology) ────────────────────────────────
   const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
@@ -1981,6 +2036,19 @@ export default function Topology3D() {
     return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
   }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
 
+  // IDs of layout nodes whose name or IP matches the search query (null = no search)
+  const searchMatchIds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return null
+    const ids = new Set<string>()
+    layout.nodes.forEach(n => {
+      if (n.name?.toLowerCase().includes(q) || (n.ip ?? '').toLowerCase().includes(q)) {
+        ids.add(n.id)
+      }
+    })
+    return ids
+  }, [layout.nodes, searchQuery])
+
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
   const [panX, setPanX] = useState(0)
@@ -2060,6 +2128,31 @@ export default function Topology3D() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Device search */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search name or IP…"
+              className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+            />
+            {searchActive && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                <span className={`text-[11px] font-medium ${searchMatchIds && searchMatchIds.size > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
+                  {searchMatchIds?.size ?? 0}
+                </span>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="text-slate-400 hover:text-white transition-colors"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={hasExpanded ? collapseAll : expandAll}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
@@ -2142,6 +2235,7 @@ export default function Topology3D() {
               heatmapMode={heatmapMode}
               tempMap={tempMap}
               showTierBands={showTierBands}
+              matchIds={searchMatchIds}
             />
           </Canvas>
 
