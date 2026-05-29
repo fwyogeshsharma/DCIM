@@ -48,8 +48,12 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
     so MoveFileExW(MOVEFILE_REPLACE_EXISTING) always fails with WinError 5.
     After a brief retry window we fall back to writing bytes directly into
     the live file.  Two strategies are tried in order:
-      1. open(dst, 'wb')  — CREATE_ALWAYS (truncate then write)
-      2. open(dst, 'r+b') — OPEN_EXISTING (overwrite then truncate)
+      1. open(dst, 'r+b') — OPEN_EXISTING (overwrite then truncate, NO empty-file window)
+      2. open(dst, 'wb')  — CREATE_ALWAYS (truncate then write, last resort)
+    r+b is tried first because wb truncates the file to zero before writing,
+    creating a brief window where SNMPSim reads an empty file and returns no
+    response for any OID query.  r+b overwrites in place without truncating,
+    so the file always contains valid (possibly briefly stale) content.
     SNMPSim uses Python's default FILE_SHARE_WRITE sharing so at least one
     of these succeeds.  The dbm was pre-built from the same byte content so
     byte offsets remain correct for the updated live file.
@@ -81,12 +85,11 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
         raise last_rename_exc
 
     write_exc: Optional[OSError] = None
-    for mode in ("wb", "r+b"):
+    for mode in ("r+b", "wb"):
         try:
             with open(dst, mode) as fout:
                 fout.write(data)
-                if mode == "r+b":
-                    fout.truncate()
+                fout.truncate()  # always truncate: r+b removes old tail, wb is already truncated
             # Restore src mtime on dst so dbm_mtime (src_mtime+1) > dst_mtime.
             # Without this, dst's mtime is "now" which can exceed dbm_mtime and
             # cause SNMPSim to discard our pre-built index and rebuild its own.
