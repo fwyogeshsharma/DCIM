@@ -18,8 +18,6 @@ import AIAnalytics from './pages/AIAnalytics'
 import NaturalLanguageQuery from './pages/NaturalLanguageQuery'
 import Settings from './pages/Settings'
 import ServerManagement from './pages/ServerManagement'
-import SimulatorControl from './pages/SimulatorControl'
-import SimulatorTopology from './pages/SimulatorTopology'
 import Reports from './pages/Reports'
 import NetworkOps from './pages/NetworkOps'
 import FireSafety from './pages/FireSafety'
@@ -57,7 +55,6 @@ function App() {
         <div className="min-h-screen bg-background text-foreground">
           <Routes>
             <Route path="/" element={<LandingOptimized />} />
-            <Route path="/simulator" element={<SimulatorTopology />} />
             <Route path="/app" element={<AppLayout />}>
               <Route index element={<Navigate to="/app/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
@@ -72,8 +69,7 @@ function App() {
               <Route path="nl-query" element={<NaturalLanguageQuery />} />
               <Route path="servers" element={<ServerManagement />} />
               <Route path="settings" element={<Settings />} />
-              <Route path="simulator" element={<SimulatorControl />} />
-              <Route path="reports" element={<Reports />} />
+<Route path="reports" element={<Reports />} />
               <Route path="network-ops" element={<NetworkOps />} />
               <Route path="fire-safety" element={<FireSafety />} />
             </Route>

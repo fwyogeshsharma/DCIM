@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ServerCog,
-  Terminal,
   Zap as ZapIcon,
   Radio,
   Flame
@@ -30,7 +29,6 @@ const navigation = [
   { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit },
   { name: 'NL Query', href: '/nl-query', icon: MessageSquareText },
   { name: 'Servers', href: '/servers', icon: ServerCog },
-  { name: 'Simulator', href: '/simulator', icon: Terminal },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
