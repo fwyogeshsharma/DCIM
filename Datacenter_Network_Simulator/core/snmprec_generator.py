@@ -470,7 +470,7 @@ class SNMPRecGenerator:
             try:
                 with _tempfile.NamedTemporaryFile(
                         "w", dir=str(self.output_dir), suffix=".snmprec.tmp",
-                        encoding="utf-8", delete=False) as f:
+                        encoding="utf-8", newline="\n", delete=False) as f:
                     f.write(new_content)
                     tmp_snmprec = f.name
 
@@ -565,7 +565,7 @@ class SNMPRecGenerator:
             try:
                 with _tempfile.NamedTemporaryFile(
                         "w", dir=str(self.output_dir), suffix=".snmprec.tmp",
-                        encoding="utf-8", delete=False) as f:
+                        encoding="utf-8", newline="\n", delete=False) as f:
                     f.write(new_content)
                     tmp = f.name
                 mtime = int(os.stat(tmp).st_mtime)
@@ -1102,7 +1102,7 @@ class SNMPRecGenerator:
             import tempfile as _tmp
             with _tmp.NamedTemporaryFile(
                     "w", dir=_tmp.gettempdir(), suffix=".snmprec.tmp",
-                    encoding="utf-8", delete=False) as f:
+                    encoding="utf-8", newline="\n", delete=False) as f:
                 f.writelines(lines)
                 tmp = f.name
             target_mtime = int(os.stat(tmp).st_mtime) + 1
@@ -1118,5 +1118,5 @@ class SNMPRecGenerator:
 
     def _write_file(self, filepath: str, entries: List[OidEntry]):
         lines = [f"{oid}|{typ}|{val}\n" for oid, typ, val in entries]
-        with open(filepath, "w", encoding="utf-8") as f:
+        with open(filepath, "w", encoding="utf-8", newline="\n") as f:
             f.writelines(lines)
