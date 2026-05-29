@@ -360,6 +360,8 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
             t.device_id::text,
             d.hostname,
             d.device_type,
+            d.device_role,
+            d.role_confidence,
             d.mgmt_ip::text                                                                        AS mgmt_ip,
             d.network_id,
             d.group_id,

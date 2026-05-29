@@ -454,6 +454,8 @@ class APIClient {
       device_id: string
       hostname: string
       device_type: string
+      device_role: string | null
+      role_confidence: number | null
       mgmt_ip: string | null
       network_id: string
       group_id: string

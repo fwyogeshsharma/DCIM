@@ -23,6 +23,8 @@ interface TreeNode {
   device_id: string
   hostname: string
   device_type: string
+  device_role: string | null
+  role_confidence: number | null
   mgmt_ip: string | null
   network_id: string
   group_id: string
@@ -52,6 +54,7 @@ interface TopoNode extends d3.SimulationNodeDatum {
   id: string
   name: string
   deviceType: string
+  deviceRole: string | null
   depth: number
   isRoot: boolean
   status: 'online' | 'offline'
@@ -88,33 +91,93 @@ interface TrapFeedItem {
   timestamp: string
 }
 
-// ── Device visual properties by type ─────────────────────────────────────────
+// ── Role → tier layer mapping ─────────────────────────────────────────────────
+// Defines the fixed vertical row for each device_role.  Devices without a role
+// fall back to their BFS depth so the topology still renders sensibly.
 
-function deviceVisuals(deviceType: string) {
+const ROLE_LAYERS: Record<string, number> = {
+  edge_router:   0,
+  firewall:      1,
+  load_balancer: 2,
+  core:          3,
+  oob_switch:    3,
+  spine:         4,
+  distribution:  4,
+  leaf:          5,
+  tor:           5,
+  access:        5,
+  server:        6,
+  pdu:           7,
+  ups:           8,
+  floor_pdu:     9,
+}
+
+const ROLE_TIER_LABELS: Record<number, string> = {
+  0: 'Edge Routers',
+  1: 'Firewalls',
+  2: 'Load Balancers',
+  3: 'Core Switches',
+  4: 'Spine Switches',
+  5: 'Leaf / ToR Switches',
+  6: 'Servers',
+  7: 'PDUs',
+  8: 'UPS',
+  9: 'Floor PDUs',
+}
+
+const TIER_COLORS: Record<number, string> = {
+  0: '#3b82f6',
+  1: '#f97316',
+  2: '#2dd4bf',
+  3: '#6366f1',
+  4: '#a855f7',
+  5: '#22c55e',
+  6: '#38bdf8',
+  7: '#f59e0b',
+  8: '#84cc16',
+  9: '#fb923c',
+}
+
+function roleToLayer(role: string | null, fallback: number): number {
+  if (role) {
+    const l = ROLE_LAYERS[role.toLowerCase()]
+    if (l !== undefined) return l
+  }
+  return fallback
+}
+
+// ── Device visual properties by role then type ────────────────────────────────
+
+function deviceVisuals(deviceType: string, deviceRole?: string | null) {
+  const role = (deviceRole || '').toLowerCase()
   const dt = (deviceType || '').toLowerCase()
-  if (/router|rtr|edge.?router|cluster.?router/.test(dt))
+  if (role === 'edge_router' || /router|rtr|edge.?router|cluster.?router/.test(dt))
     return { icon: '🔀', fill: '#1e3a8a', stroke: '#3b82f6', radius: 28 }
-  if (/firewall|fw/.test(dt))
+  if (role === 'firewall' || /firewall|fw/.test(dt))
     return { icon: '🛡️', fill: '#7c2d12', stroke: '#f97316', radius: 26 }
-  if (/load.?bal|^lb$/.test(dt))
+  if (role === 'load_balancer' || /load.?bal|^lb$/.test(dt))
     return { icon: '⚖️', fill: '#134e4a', stroke: '#2dd4bf', radius: 24 }
-  if (/super.?spine|spine|fabric/.test(dt))
+  if (role === 'core')
+    return { icon: '🏗️', fill: '#1a1a4e', stroke: '#6366f1', radius: 26 }
+  if (role === 'spine' || role === 'distribution' || /super.?spine|spine|fabric/.test(dt))
     return { icon: '🕸️', fill: '#3b0764', stroke: '#a855f7', radius: 26 }
   if (/aggregat|agg.?switch/.test(dt))
     return { icon: '🔗', fill: '#1e3a5f', stroke: '#818cf8', radius: 24 }
-  if (/leaf|tor|top.?of.?rack/.test(dt))
+  if (role === 'leaf' || role === 'tor' || role === 'access' || /leaf|tor|top.?of.?rack/.test(dt))
     return { icon: '🌿', fill: '#14532d', stroke: '#22c55e', radius: 22 }
   if (/gpu/.test(dt))
     return { icon: '🖥️', fill: '#500724', stroke: '#f43f5e', radius: 20 }
   if (/storage|nas|san/.test(dt))
     return { icon: '💾', fill: '#3b2200', stroke: '#eab308', radius: 20 }
-  if (/compute|server|host/.test(dt))
+  if (role === 'server' || /compute|server|host/.test(dt))
     return { icon: '💻', fill: '#0c4a6e', stroke: '#38bdf8', radius: 20 }
-  if (/ups/.test(dt))
+  if (role === 'ups' || /ups/.test(dt))
     return { icon: '🔋', fill: '#1a2e05', stroke: '#84cc16', radius: 18 }
-  if (/pdu|power/.test(dt))
+  if (role === 'floor_pdu')
+    return { icon: '⚡', fill: '#2d1200', stroke: '#fb923c', radius: 16 }
+  if (role === 'pdu' || /pdu|power/.test(dt))
     return { icon: '⚡', fill: '#422006', stroke: '#f59e0b', radius: 18 }
-  if (/oob|out.?of.?band/.test(dt))
+  if (role === 'oob_switch' || /oob|out.?of.?band/.test(dt))
     return { icon: '🔌', fill: '#1e293b', stroke: '#64748b', radius: 18 }
   if (/switch/.test(dt))
     return { icon: '🔌', fill: '#1e3a5f', stroke: '#60a5fa', radius: 22 }
@@ -289,6 +352,7 @@ export default function Topology() {
       id: row.device_id,
       name: row.hostname,
       deviceType: row.device_type,
+      deviceRole: row.device_role,
       depth: row.depth,
       isRoot: row.is_root,
       status: row.status,
@@ -340,8 +404,13 @@ export default function Topology() {
       })
     }
 
-    // Layered layout: depth directly maps to layer (root=0 at top)
-    const layeredInput = nodes.map(n => ({ id: n.id, layer: n.depth }))
+    // Layered layout: device_role maps each node to a fixed tier row.
+    // Devices without a role fall back to their BFS depth.
+    const LAYER_GAP_Y = 160
+    const layeredInput = nodes.map(n => ({
+      id: n.id,
+      layer: roleToLayer(n.deviceRole, n.depth),
+    }))
     const layeredEdges = links.map(l => ({
       source: typeof l.source === 'string' ? l.source : (l.source as TopoNode).id,
       target: typeof l.target === 'string' ? l.target : (l.target as TopoNode).id,
@@ -349,7 +418,7 @@ export default function Topology() {
 
     const layered = computeLayeredLayout(layeredInput, layeredEdges, {
       nodeGapX: 100,
-      layerGapY: 160,
+      layerGapY: LAYER_GAP_Y,
       iterations: 28,
       originX: width / 2,
       originY: 90,
@@ -358,6 +427,15 @@ export default function Topology() {
     nodes.forEach(n => {
       const p = layered.positions.get(n.id)
       if (p) { n.x = p.x; n.y = p.y }
+    })
+
+    // Build layer → y mapping so we can draw tier band labels behind everything
+    const layerYMap = new Map<number, number>()
+    layeredInput.forEach(({ id, layer }) => {
+      if (!layerYMap.has(layer)) {
+        const p = layered.positions.get(id)
+        if (p) layerYMap.set(layer, p.y)
+      }
     })
 
     // Drop unpositioned nodes
@@ -421,6 +499,59 @@ export default function Topology() {
     merge.append('feMergeNode').attr('in', 'glow')
     merge.append('feMergeNode').attr('in', 'SourceGraphic')
 
+    // Tier bands — rendered first so they appear behind links and nodes
+    if (layerYMap.size > 0) {
+      const sortedLyrs = [...layerYMap.keys()].sort((a, b) => a - b)
+      const allX = visNodes.map(n => n.x!).filter(x => isFinite(x))
+      const xMin = allX.length ? Math.min(...allX) - 130 : -300
+      const xMax = allX.length ? Math.max(...allX) + 80 : 300
+      const bandG = g.append('g').attr('class', 'tier-bands')
+
+      sortedLyrs.forEach((lyr, i) => {
+        const y = layerYMap.get(lyr)!
+        const prevY = i > 0 ? layerYMap.get(sortedLyrs[i - 1])! : y - LAYER_GAP_Y
+        const nextY = i < sortedLyrs.length - 1 ? layerYMap.get(sortedLyrs[i + 1])! : y + LAYER_GAP_Y
+        const bandTop = (prevY + y) / 2
+        const bandBot = (y + nextY) / 2
+        const color = TIER_COLORS[lyr] ?? '#1e293b'
+        const label = (ROLE_TIER_LABELS[lyr] ?? `Tier ${lyr}`).toUpperCase()
+
+        // Semi-transparent row background
+        bandG.append('rect')
+          .attr('x', xMin - 10)
+          .attr('y', bandTop)
+          .attr('width', xMax - xMin + 20)
+          .attr('height', bandBot - bandTop)
+          .attr('rx', 6)
+          .attr('fill', color)
+          .attr('opacity', 0.055)
+
+        // Left-side tier label
+        bandG.append('text')
+          .attr('x', xMin - 14)
+          .attr('y', y)
+          .attr('text-anchor', 'end')
+          .attr('dominant-baseline', 'middle')
+          .attr('font-size', '9px')
+          .attr('font-weight', '700')
+          .attr('letter-spacing', '0.08em')
+          .attr('fill', color)
+          .attr('opacity', 0.75)
+          .text(label)
+
+        // Thin separator line at top of each band (skip the very first)
+        if (i > 0) {
+          bandG.append('line')
+            .attr('x1', xMin - 10).attr('y1', bandTop)
+            .attr('x2', xMax + 10).attr('y2', bandTop)
+            .attr('stroke', color)
+            .attr('stroke-width', 0.5)
+            .attr('stroke-dasharray', '6,4')
+            .attr('opacity', 0.25)
+        }
+      })
+    }
+
     // Links (parent–child edges)
     const linkSel = g.append('g').selectAll('line').data(visLinks).enter().append('line')
       .attr('stroke', l => {
@@ -461,14 +592,14 @@ export default function Topology() {
     // Main circle
     nodeG.append('circle')
       .attr('r', d => {
-        const v = deviceVisuals(d.deviceType)
+        const v = deviceVisuals(d.deviceType, d.deviceRole)
         return hasTrap(d) ? v.radius + 2 : v.radius
       })
-      .attr('fill', d => d.status === 'offline' ? '#0f172a' : deviceVisuals(d.deviceType).fill)
+      .attr('fill', d => d.status === 'offline' ? '#0f172a' : deviceVisuals(d.deviceType, d.deviceRole).fill)
       .attr('stroke', d => {
         if (hasTrap(d)) return '#ef4444'
         if (d.status === 'offline') return '#ef4444'
-        return deviceVisuals(d.deviceType).stroke
+        return deviceVisuals(d.deviceType, d.deviceRole).stroke
       })
       .attr('stroke-width', d => (hasTrap(d) || d.status === 'offline') ? 3 : 2)
       .attr('filter', d => (d.status === 'offline' || hasTrap(d)) ? 'url(#glow-red)' : null)
@@ -476,18 +607,18 @@ export default function Topology() {
     // Icon text
     nodeG.append('text')
       .attr('text-anchor', 'middle').attr('dy', '0.35em')
-      .attr('font-size', d => `${Math.max(10, deviceVisuals(d.deviceType).radius - 8)}px`)
+      .attr('font-size', d => `${Math.max(10, deviceVisuals(d.deviceType, d.deviceRole).radius - 8)}px`)
       .attr('fill', 'white')
       .text(d => {
         if (hasTrap(d)) return '⚠️'
         if (d.status === 'offline') return '💤'
-        return deviceVisuals(d.deviceType).icon
+        return deviceVisuals(d.deviceType, d.deviceRole).icon
       })
 
     // Hostname label
     nodeG.append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', d => deviceVisuals(d.deviceType).radius + 14)
+      .attr('dy', d => deviceVisuals(d.deviceType, d.deviceRole).radius + 14)
       .attr('font-size', '10px')
       .attr('font-weight', 'bold')
       .attr('fill', d => d.status === 'offline' ? '#6b7280' : '#e2e8f0')
@@ -497,22 +628,22 @@ export default function Topology() {
     nodeG.filter(d => d.isRoot)
       .append('text')
       .attr('text-anchor', 'middle')
-      .attr('dy', d => deviceVisuals(d.deviceType).radius + 26)
+      .attr('dy', d => deviceVisuals(d.deviceType, d.deviceRole).radius + 26)
       .attr('font-size', '9px')
       .attr('fill', '#94a3b8')
       .text(d => d.networkId.replace(/_/g, ' '))
 
     // Alert badge
     nodeG.filter(d => d.alerts > 0).append('circle')
-      .attr('cx', d => deviceVisuals(d.deviceType).radius - 4)
-      .attr('cy', d => -(deviceVisuals(d.deviceType).radius - 4))
+      .attr('cx', d => deviceVisuals(d.deviceType, d.deviceRole).radius - 4)
+      .attr('cy', d => -(deviceVisuals(d.deviceType, d.deviceRole).radius - 4))
       .attr('r', 9)
       .attr('fill', d => d.criticalAlerts > 0 ? '#ef4444' : '#f59e0b')
       .attr('stroke', '#0f172a').attr('stroke-width', 1.5)
 
     nodeG.filter(d => d.alerts > 0).append('text')
-      .attr('x', d => deviceVisuals(d.deviceType).radius - 4)
-      .attr('y', d => -(deviceVisuals(d.deviceType).radius - 4))
+      .attr('x', d => deviceVisuals(d.deviceType, d.deviceRole).radius - 4)
+      .attr('y', d => -(deviceVisuals(d.deviceType, d.deviceRole).radius - 4))
       .attr('text-anchor', 'middle').attr('dy', '0.35em')
       .attr('font-size', '8px').attr('fill', 'white').attr('font-weight', 'bold')
       .text(d => d.alerts > 99 ? '99+' : String(d.alerts))
@@ -520,10 +651,10 @@ export default function Topology() {
     // Pulse ring for offline nodes (skip for very large graphs)
     if (visNodes.length <= 200) {
       nodeG.filter(d => d.status === 'offline').append('circle')
-        .attr('r', d => deviceVisuals(d.deviceType).radius)
+        .attr('r', d => deviceVisuals(d.deviceType, d.deviceRole).radius)
         .attr('fill', 'none').attr('stroke', '#ef4444').attr('stroke-width', 2).attr('opacity', 0.9)
         .each(function (d) {
-          const r = deviceVisuals(d.deviceType).radius
+          const r = deviceVisuals(d.deviceType, d.deviceRole).radius
           const el = d3.select(this)
           el.append('animate').attr('attributeName', 'r').attr('values', `${r};${r + 14};${r}`).attr('dur', '1.5s').attr('repeatCount', 'indefinite')
           el.append('animate').attr('attributeName', 'opacity').attr('values', '0.9;0;0.9').attr('dur', '1.5s').attr('repeatCount', 'indefinite')
@@ -542,14 +673,13 @@ export default function Topology() {
           <span class="${d.status === 'online' ? 'text-green-400' : 'text-red-400'} font-semibold">${d.status === 'online' ? 'Online' : 'Offline'}</span>
           <span class="text-slate-400">Type</span>
           <span class="text-slate-200">${d.deviceType || '—'}</span>
+          ${d.deviceRole ? `<span class="text-slate-400">Tier</span><span class="text-indigo-300 font-semibold">${d.deviceRole.replace(/_/g, ' ')}</span>` : ''}
           <span class="text-slate-400">Network</span>
           <span class="text-blue-300">${d.networkId.replace(/_/g, ' ')}</span>
           ${d.ip ? `<span class="text-slate-400">IP</span><span class="text-slate-200 font-mono text-[11px]">${d.ip}</span>` : ''}
           ${d.parentName
             ? `<span class="text-slate-400">Parent</span><span class="text-purple-300">${d.parentName}</span>`
             : `<span class="text-slate-400">Role</span><span class="text-yellow-300">Root / Gateway</span>`}
-          <span class="text-slate-400">Depth</span>
-          <span class="text-slate-300">${d.depth}</span>
           ${d.alerts > 0 ? `<span class="text-slate-400">Alerts</span><span class="${d.criticalAlerts > 0 ? 'text-red-400 font-bold' : 'text-yellow-400'}">${d.alerts} (${d.criticalAlerts} critical)</span>` : ''}
         </div>
         ${activeTrap ? `
@@ -762,12 +892,16 @@ export default function Topology() {
               </div>
               <div className="space-y-2 text-xs">
                 {[
-                  { fill: '#1e3a8a', stroke: '#3b82f6', icon: '🔀', label: 'Router / Gateway' },
+                  { fill: '#1e3a8a', stroke: '#3b82f6', icon: '🔀', label: 'Edge Router' },
                   { fill: '#7c2d12', stroke: '#f97316', icon: '🛡️', label: 'Firewall' },
-                  { fill: '#3b0764', stroke: '#a855f7', icon: '🕸️', label: 'Spine / Fabric' },
+                  { fill: '#134e4a', stroke: '#2dd4bf', icon: '⚖️', label: 'Load Balancer' },
+                  { fill: '#1a1a4e', stroke: '#6366f1', icon: '🏗️', label: 'Core Switch' },
+                  { fill: '#3b0764', stroke: '#a855f7', icon: '🕸️', label: 'Spine Switch' },
                   { fill: '#14532d', stroke: '#22c55e', icon: '🌿', label: 'Leaf / ToR' },
-                  { fill: '#0c4a6e', stroke: '#38bdf8', icon: '💻', label: 'Compute / Server' },
-                  { fill: '#422006', stroke: '#f59e0b', icon: '⚡', label: 'PDU / Power' },
+                  { fill: '#0c4a6e', stroke: '#38bdf8', icon: '💻', label: 'Server' },
+                  { fill: '#422006', stroke: '#f59e0b', icon: '⚡', label: 'PDU' },
+                  { fill: '#1a2e05', stroke: '#84cc16', icon: '🔋', label: 'UPS' },
+                  { fill: '#2d1200', stroke: '#fb923c', icon: '⚡', label: 'Floor PDU' },
                 ].map(item => (
                   <div key={item.label} className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0"
@@ -870,6 +1004,15 @@ export default function Topology() {
                 <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Device Type</p>
                 <p className="text-sm text-white">{selectedNode.deviceType || '—'}</p>
               </div>
+
+              {selectedNode.deviceRole && (
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Fabric Tier</p>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+                    {selectedNode.deviceRole.replace(/_/g, ' ')}
+                  </span>
+                </div>
+              )}
 
               <div>
                 <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Network</p>
