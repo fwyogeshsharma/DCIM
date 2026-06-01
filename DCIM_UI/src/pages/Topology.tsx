@@ -203,6 +203,28 @@ const isLinkDownType = (s?: string) =>
 const isLinkUpType = (s?: string) =>
   (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKUP')
 
+// A link trap names BOTH endpoints (source + dst). To break only that one edge —
+// not every cable on the source device — we key link-down state by the UNORDERED
+// endpoint pair. pairKey() builds the canonical key for one identifier type;
+// null when either side is missing.
+const pairKey = (a?: string | null, b?: string | null): string | null => {
+  const x = (a ?? '').trim().toLowerCase()
+  const y = (b ?? '').trim().toLowerCase()
+  if (!x || !y) return null
+  return [x, y].sort().join('||')
+}
+
+// All candidate pair keys for a link trap / edge: device_id, hostname, and ip —
+// whichever both ends happen to share. An edge is "down" if ANY of its keys is in
+// the link-down set. If the trap carries no dst endpoint, this is empty and NO
+// edge is broken (avoids the old behaviour of lighting up every link on a device).
+const linkPairKeys = (
+  src: { id?: string | null; name?: string | null; ip?: string | null },
+  dst: { id?: string | null; name?: string | null; ip?: string | null },
+): string[] =>
+  [pairKey(src.id, dst.id), pairKey(src.name, dst.name), pairKey(src.ip, dst.ip)]
+    .filter((k): k is string => !!k)
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Topology() {
@@ -265,14 +287,18 @@ export default function Topology() {
     })
     setLinkDownAlerts(prev => {
       const next = new Map(prev)
-      traps.filter(t => isLinkDownType(t.trap_type)).forEach(t => {
+      // Only still-open (unresolved) linkDowns; a resolved one means the link is
+      // back up and must not re-break on the 30s reseed.
+      traps.filter(t => isLinkDownType(t.trap_type) && !t.resolved).forEach(t => {
         const alert: TrapAlert = {
           trapType: t.trap_type ?? '', severity: t.severity ?? 'critical',
           description: t.description ?? '', deviceName: t.device_name ?? '',
           timestamp: t.timestamp ?? new Date().toISOString(),
         }
-        if (t.source_ip) next.set(t.source_ip, alert)
-        if (t.device_name) next.set(t.device_name, alert)
+        linkPairKeys(
+          { id: t.device_id, name: t.device_name, ip: t.source_ip },
+          { id: t.dst_device_id, name: t.dst_hostname, ip: t.dst_ip },
+        ).forEach(k => next.set(k, alert))
       })
       return next
     })
@@ -288,9 +314,14 @@ export default function Topology() {
     const ip: string | undefined = data.source_ip
     const name: string | undefined = data.device_name
     if (!ip && !name) return
-    const keys = [ip, name].filter(Boolean) as string[]
+    const keys = [ip, name].filter(Boolean) as string[]    // device-level keys → node glow
     const isLinkDown = isLinkDownType(data.trap_type)
     const isLinkUp = isLinkUpType(data.trap_type)
+    // Pair keys identifying the SPECIFIC link this trap is about (source ↔ peer).
+    const lKeys = linkPairKeys(
+      { id: data.device_id, name, ip },
+      { id: data.dst_device_id, name: data.dst_hostname, ip: data.dst_ip },
+    )
 
     // A new transition for these keys supersedes any pending auto-expire timer.
     keys.forEach(k => { const ex = trapTimeoutsRef.current.get(k); if (ex) { clearTimeout(ex); trapTimeoutsRef.current.delete(k) } })
@@ -302,11 +333,10 @@ export default function Topology() {
       description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
     }, ...prev].slice(0, 30))
 
-    // linkUp = link restored: clear the link-down edge state AND the red node glow
-    // for these keys so the cable renders green/normal again immediately. Nothing
-    // left to auto-expire.
+    // linkUp = link restored: clear THIS link's down-state (by pair key) and the
+    // red node glow so the cable renders green/normal again immediately.
     if (isLinkUp) {
-      setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      if (lKeys.length) setLinkDownAlerts(prev => { const next = new Map(prev); lKeys.forEach(k => next.delete(k)); return next })
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
       return
     }
@@ -317,12 +347,14 @@ export default function Topology() {
       timestamp: data.timestamp ?? new Date().toISOString(),
     }
     setTrapAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
-    if (isLinkDown) {
-      setLinkDownAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
+    // Break only the affected edge. With no dst endpoint, lKeys is empty → no edge
+    // is marked down (better than breaking every link on the device).
+    if (isLinkDown && lKeys.length) {
+      setLinkDownAlerts(prev => { const next = new Map(prev); lKeys.forEach(k => next.set(k, alert)); return next })
     }
     const timeout = setTimeout(() => {
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
-      if (isLinkDown) setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      if (isLinkDown && lKeys.length) setLinkDownAlerts(prev => { const next = new Map(prev); lKeys.forEach(k => next.delete(k)); return next })
       keys.forEach(k => trapTimeoutsRef.current.delete(k))
     }, 5 * 60 * 1000)
     keys.forEach(k => trapTimeoutsRef.current.set(k, timeout))
@@ -500,11 +532,15 @@ export default function Topology() {
     const hasTrap = (d: TopoNode) =>
       (!!d.ip && trapAlerts.has(d.ip)) || trapAlerts.has(d.name)
 
+    // Down only when THIS edge's endpoint pair matches a link-down trap — so a
+    // single linkDown breaks just its own cable, not every link on the device.
     const isLinkDownTrap = (l: TopoLink) => {
       const sn = l.source as TopoNode
       const tn = l.target as TopoNode
-      return linkDownAlerts.has(sn.ip ?? '') || linkDownAlerts.has(sn.name) ||
-             linkDownAlerts.has(tn.ip ?? '') || linkDownAlerts.has(tn.name)
+      return linkPairKeys(
+        { id: sn.id, name: sn.name, ip: sn.ip },
+        { id: tn.id, name: tn.name, ip: tn.ip },
+      ).some(k => linkDownAlerts.has(k))
     }
 
     // Auto-fit on first load or node count change

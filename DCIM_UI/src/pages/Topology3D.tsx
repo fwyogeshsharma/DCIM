@@ -43,6 +43,24 @@ const isLinkDownType = (s?: string) =>
 const isLinkUpType = (s?: string) =>
   (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKUP')
 
+// A link trap names BOTH endpoints. Key link-down state by the UNORDERED endpoint
+// pair so only that one edge breaks — not every cable on the source device. 3D
+// node ids are synthetic, so we match on hostname / ip (what both ends expose).
+const pairKey = (a?: string | null, b?: string | null): string | null => {
+  const x = (a ?? '').trim().toLowerCase()
+  const y = (b ?? '').trim().toLowerCase()
+  if (!x || !y) return null
+  return [x, y].sort().join('||')
+}
+
+// Candidate pair keys (hostname pair, ip pair) for an edge or a link trap. An edge
+// is "down" if ANY key is in the set; empty (no dst endpoint) → nothing breaks.
+const linkPairKeys = (
+  src: { name?: string | null; ip?: string | null },
+  dst: { name?: string | null; ip?: string | null },
+): string[] =>
+  [pairKey(src.name, dst.name), pairKey(src.ip, dst.ip)].filter((k): k is string => !!k)
+
 // ── Temperature → colour mapping for heatmap mode ───────────────────────────
 // Range: 10°C (min) → 55°C (max). Critical zone: 35–45°C
 function tempToColor(t: number): string {
@@ -1673,9 +1691,13 @@ function SceneContent({
       {/* Connection lines */}
       {links.map((link, i) => {
         const info = link.d2dInfo
+        // Down only when THIS edge's endpoint pair matches a link-down trap, so a
+        // single linkDown breaks just its own cable, not every link on the device.
         const isLinkDown = info
-          ? linkDownAlerts.has(info.sourceIp) || linkDownAlerts.has(info.sourceName ?? '') ||
-            linkDownAlerts.has(info.targetIp) || linkDownAlerts.has(info.targetName ?? '')
+          ? linkPairKeys(
+              { name: info.sourceName, ip: info.sourceIp },
+              { name: info.targetName, ip: info.targetIp },
+            ).some(k => linkDownAlerts.has(k))
           : false
         return (
           <ConnectionLine key={`${link.sourceId}-${link.targetId}-${i}`} link={link} isLinkDown={isLinkDown} />
@@ -1900,9 +1922,14 @@ export default function Topology3D() {
     const ip: string | undefined = data.source_ip
     const name: string | undefined = data.device_name
     if (!ip && !name) return
-    const keys = [ip, name].filter(Boolean) as string[]
+    const keys = [ip, name].filter(Boolean) as string[]    // device-level keys → node glow
     const isLinkDown = isLinkDownType(data.trap_type)
     const isLinkUp = isLinkUpType(data.trap_type)
+    // Pair keys identifying the SPECIFIC link this trap is about (source ↔ peer).
+    const lKeys = linkPairKeys(
+      { name, ip },
+      { name: data.dst_hostname, ip: data.dst_ip },
+    )
 
     // A new transition for these keys supersedes any pending auto-expire timer.
     keys.forEach(k => { const t = trapTimeoutsRef.current.get(k); if (t) { clearTimeout(t); trapTimeoutsRef.current.delete(k) } })
@@ -1914,10 +1941,10 @@ export default function Topology3D() {
       description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
     }, ...prev].slice(0, 30))
 
-    // linkUp = link restored: clear the link-down edge state AND red node glow for
-    // these keys so the cable renders green/normal again. Nothing left to expire.
+    // linkUp = link restored: clear THIS link's down-state (by pair key) and the
+    // red node glow so the cable renders green/normal again immediately.
     if (isLinkUp) {
-      setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      if (lKeys.length) setLinkDownAlerts(prev => { const next = new Map(prev); lKeys.forEach(k => next.delete(k)); return next })
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
       return
     }
@@ -1936,18 +1963,18 @@ export default function Topology3D() {
       if (name) next.set(name, alert)
       return next
     })
-    if (isLinkDown) {
+    // Break only the affected edge; empty lKeys (no dst) → no edge marked down.
+    if (isLinkDown && lKeys.length) {
       setLinkDownAlerts(prev => {
         const next = new Map(prev)
-        if (ip) next.set(ip, alert)
-        if (name) next.set(name, alert)
+        lKeys.forEach(k => next.set(k, alert))
         return next
       })
     }
     const TRAP_TTL = Math.max(60_000, 5 * 60 * 1000)
     const timeout = setTimeout(() => {
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
-      if (isLinkDown) setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      if (isLinkDown && lKeys.length) setLinkDownAlerts(prev => { const next = new Map(prev); lKeys.forEach(k => next.delete(k)); return next })
       keys.forEach(k => trapTimeoutsRef.current.delete(k))
     }, TRAP_TTL)
     keys.forEach(k => trapTimeoutsRef.current.set(k, timeout))
@@ -1987,10 +2014,14 @@ export default function Topology3D() {
     })
     setLinkDownAlerts(prev => {
       const next = new Map(prev)
-      traps.filter(t => isLinkDownType(t.trap_type)).forEach(t => {
+      // Only still-open (unresolved) linkDowns; a resolved one means the link is
+      // back up and must not re-break on the 30s reseed. Key by the endpoint pair.
+      traps.filter(t => isLinkDownType(t.trap_type) && !t.resolved).forEach(t => {
         const a: TrapAlert = { trapType: t.trap_type ?? '', severity: t.severity ?? 'critical', description: t.description ?? '', deviceName: t.device_name ?? '', timestamp: t.timestamp ?? new Date().toISOString() }
-        if (t.source_ip) next.set(t.source_ip, a)
-        if (t.device_name) next.set(t.device_name, a)
+        linkPairKeys(
+          { name: t.device_name, ip: t.source_ip },
+          { name: t.dst_hostname, ip: t.dst_ip },
+        ).forEach(k => next.set(k, a))
       })
       return next
     })

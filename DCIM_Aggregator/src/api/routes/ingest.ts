@@ -159,6 +159,8 @@ export function createIngestRouter(dbPool: Pool): Router {
         deviceId: string | null
         source_ip: string | null
         device_name: string | null
+        dstDeviceId: string | null
+        dst_hostname: string | null
         trap_type: string
         trap_oid: string | null
         severity: string
@@ -481,6 +483,8 @@ export function createIngestRouter(dbPool: Pool): Router {
             deviceId,
             source_ip:   ev.source_ip ?? null,
             device_name: ev.hostname ?? null,
+            dstDeviceId: dstDeviceId,
+            dst_hostname: ev.dst_hostname ?? null,
             trap_type:   ev.event_name,
             trap_oid:    ev.trap_oid ?? null,
             severity:    ev.severity ?? 'critical',
@@ -497,7 +501,11 @@ export function createIngestRouter(dbPool: Pool): Router {
       // the node by either key. Runs after COMMIT — best-effort, never fails the
       // ingest if a client write or lookup errors.
       if (trapsToEmit.length > 0) {
-        const ids = [...new Set(trapsToEmit.map(t => t.deviceId).filter(Boolean))] as string[]
+        // Resolve hostname + mgmt_ip for BOTH endpoints (source and peer) so the
+        // topology can match the exact link by either key on either end.
+        const ids = [...new Set(
+          trapsToEmit.flatMap(t => [t.deviceId, t.dstDeviceId]).filter(Boolean)
+        )] as string[]
         const meta = new Map<string, { hostname: string | null; mgmt_ip: string | null }>()
         if (ids.length > 0) {
           try {
@@ -509,10 +517,16 @@ export function createIngestRouter(dbPool: Pool): Router {
           } catch { /* non-fatal — fall back to event-supplied fields */ }
         }
         for (const t of trapsToEmit) {
-          const m = t.deviceId ? meta.get(t.deviceId) : undefined
+          const m  = t.deviceId    ? meta.get(t.deviceId)    : undefined
+          const dm = t.dstDeviceId ? meta.get(t.dstDeviceId) : undefined
           emitSSEEvent('trap', {
-            source_ip:   t.source_ip   ?? m?.mgmt_ip  ?? null,
-            device_name: t.device_name ?? m?.hostname ?? null,
+            device_id:    t.deviceId,
+            source_ip:    t.source_ip   ?? m?.mgmt_ip  ?? null,
+            device_name:  t.device_name ?? m?.hostname ?? null,
+            // Peer endpoint — present on link traps so the UI breaks only this edge.
+            dst_device_id: t.dstDeviceId,
+            dst_ip:        dm?.mgmt_ip  ?? null,
+            dst_hostname:  t.dst_hostname ?? dm?.hostname ?? null,
             trap_type:   t.trap_type,
             trap_oid:    t.trap_oid ?? '',
             severity:    t.severity,

@@ -221,11 +221,17 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
           e.trap_oid,
           COALESCE(e.source_ip::text, d.mgmt_ip::text)          AS source_ip,
           COALESCE(e.source_hostname, d.hostname)               AS device_name,
+          -- Peer endpoint (link traps) so the UI can break only the affected edge.
+          e.dst_device_id::text                                 AS dst_device_id,
+          COALESCE(e.dst_hostname, dd.hostname)                 AS dst_hostname,
+          dd.mgmt_ip::text                                      AS dst_ip,
+          e.link_id::text                                       AS link_id,
           COALESCE(e.event_payload->>'message', e.event_name)   AS description,
           e.event_payload,
           COALESCE((e.event_payload->>'resolved')::boolean, false) AS resolved
         FROM events e
-        LEFT JOIN devices d ON d.id = e.device_id
+        LEFT JOIN devices d  ON d.id  = e.device_id
+        LEFT JOIN devices dd ON dd.id = e.dst_device_id
         WHERE ${conditions.join(' AND ')}
         ORDER BY e.ts DESC LIMIT $${i}
       `, params)
