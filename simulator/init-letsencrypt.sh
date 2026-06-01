@@ -10,7 +10,12 @@
 
 set -e
 
-COMPOSE="docker compose -f ../docker-compose.yml"
+# Use whichever Compose is installed: v2 plugin ("docker compose") or v1 ("docker-compose").
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE="docker compose -f ../docker-compose.yml"
+else
+  COMPOSE="docker-compose -f ../docker-compose.yml"
+fi
 
 DOMAIN="fwdcim.faberwork.com"
 EMAIL="aman.yadav@faberwork.com"
