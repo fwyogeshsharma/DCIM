@@ -2,5 +2,6 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/DCIM_Aggregator/src/database/migrations/003_device_role.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/DCIM_Aggregator/src/database/migrations/004_event_link_columns.sql" dialect="GenericSQL" />
   </component>
 </project>
