@@ -29,7 +29,10 @@ Usage examples
   # Also walk LLDP neighbours
   python test_snmp.py 10.0.0.1 --lldp
 
-  # Full test (system + interfaces + LLDP)
+  # Query all sensor readings (Raritan DPX2-T3H1: inlet/mid/exhaust + humidity)
+  python test_snmp.py 192.168.0.209 --sensor
+
+  # Full test (system + interfaces + LLDP + sensors)
   python test_snmp.py 10.0.0.1 --full
 
   # Quiet — only print failures
@@ -90,13 +93,27 @@ PERF_OIDS: List[Tuple[str, str]] = [
     ("1.3.6.1.4.1.2021.4.5.0",   "memTotalKB"),
     ("1.3.6.1.4.1.2021.4.6.0",   "memAvailKB"),
     ("1.3.6.1.4.1.2021.4.14.0",  "memBufferKB"),
+
+    # Disk (UCD-SNMP-MIB dskTable index 1 = first mount)
+    ("1.3.6.1.4.1.2021.9.1.5.1", "diskPercent"),
+    ("1.3.6.1.4.1.2021.9.1.6.1", "diskTotalKB"),
+    ("1.3.6.1.4.1.2021.9.1.7.1", "diskAvailKB"),
 ]
 
 # ENTITY-SENSOR-MIB
 # Temperature sensors often appear under:
 # 1.3.6.1.2.1.99.1.1.1.4
 
-TEMP_SENSOR_OID = "1.3.6.1.2.1.99.1.1.1.4"
+TEMP_SENSOR_OID      = "1.3.6.1.2.1.99.1.1.1.4"
+CISCO_ENVMON_TEMP_OID = "1.3.6.1.4.1.9.9.13.1.3.1.3"  # ciscoEnvMonTemperatureStatusValue
+
+# Vendor sensor OIDs
+_RARITAN_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1"   # Raritan PX2/DPX2 external sensor table
+_GEIST_SENSOR   = "1.3.6.1.4.1.21239.5.1"           # Vertiv Geist probe tables
+_APC_NETBOTZ    = "1.3.6.1.4.1.318.1.1.10.4.2.2.1"  # APC NetBotz sensor value table
+
+# Raritan sensorType codes
+_RARITAN_TYPES = {"10": "temp", "11": "humidity", "28": "water"}
 
 
 # ── Result model ──────────────────────────────────────────────────────────────
@@ -126,6 +143,7 @@ class DeviceResult:
     unreachable:      bool            = False
     error:            Optional[str]   = None
     temperatures: List[dict] = field(default_factory=list)
+    sensor_readings: List[dict] = field(default_factory=list)
 
     @property
     def passed(self) -> int:
@@ -243,10 +261,15 @@ async def _snmp_walk(ip: str, community: str, port: int,
         next_oids = []
         for name, val in varBinds:
             name_str = str(name)
+            val_str  = val.prettyPrint()
+            # endOfMibView — snmpsim repeats last OID with this value; stop.
+            if "No more variables" in val_str or val_str == "endOfMibView":
+                done.set_result(None)
+                return False
             if not name_str.startswith(oid_prefix):
                 done.set_result(None)
                 return False
-            rows.append((name_str, val.prettyPrint()))
+            rows.append((name_str, val_str))
             next_oids.append((name, univ.Null()))
             if len(rows) >= max_rows:
                 done.set_result(None)
@@ -274,13 +297,126 @@ async def _snmp_walk(ip: str, community: str, port: int,
     return rows
 
 
+# ── Sensor data query ────────────────────────────────────────────────────────
+
+async def _query_sensor_data(agent_ip: str, community: str, port: int,
+                              timeout: int) -> List[dict]:
+    """Walk vendor OID trees and return labelled sensor readings.
+
+    Tries Raritan → Vertiv Geist → APC NetBotz in order; returns on first hit.
+    Each reading: {"label": str, "value": float|str, "unit": str, "alarm": bool}
+    """
+    readings: List[dict] = []
+
+    # ── Raritan DPX2 ─────────────────────────────────────────────────────────
+    rows = await _snmp_walk(agent_ip, community, port, _RARITAN_SENSOR, timeout, 60)
+    if rows:
+        pfx = _RARITAN_SENSOR + "."
+        slot_types:  Dict[int, str] = {}
+        slot_values: Dict[int, str] = {}
+        for oid_str, val in rows:
+            tail = oid_str[len(pfx):].split(".")  # e.g. ["3","1","1"]
+            if len(tail) < 3:
+                continue
+            sub, slot_s = tail[0], tail[2]
+            try:
+                slot = int(slot_s)
+                if sub == "3":
+                    slot_types[slot] = val
+                elif sub == "4":
+                    slot_values[slot] = val
+            except (ValueError, IndexError):
+                pass
+
+        if slot_types:
+            _TEMP_LABELS = ["Inlet Temp", "Mid-Rack Temp", "Exhaust Temp"]
+            temp_count = 0
+            for slot in sorted(slot_types):
+                stype = slot_types[slot]
+                try:
+                    v = int(slot_values.get(slot, "0"))
+                except ValueError:
+                    continue
+                if stype == "10":   # temperature ×10 °C
+                    label = _TEMP_LABELS[temp_count] if temp_count < 3 else f"Temp {temp_count+1}"
+                    readings.append({"label": label, "value": v / 10.0, "unit": "°C", "alarm": False})
+                    temp_count += 1
+                elif stype == "11": # humidity ×10 %
+                    readings.append({"label": "Humidity", "value": v / 10.0, "unit": "%RH", "alarm": False})
+                elif stype == "28": # water detection 0=dry 1=wet
+                    readings.append({"label": "Leak Sensor", "value": "WET" if v else "dry",
+                                     "unit": "", "alarm": bool(v)})
+
+    if readings:
+        return readings
+
+    # ── Vertiv Geist ─────────────────────────────────────────────────────────
+    rows = await _snmp_walk(agent_ip, community, port, _GEIST_SENSOR, timeout, 60)
+    if rows:
+        row_map = {oid: val for oid, val in rows}
+
+        def _g(sub: str, col: str, idx: int) -> Optional[str]:
+            return row_map.get(f"{_GEIST_SENSOR}.{sub}.1.{col}.{idx}")
+
+        for probe_idx in range(1, 5):
+            t_raw = _g("4", "4", probe_idx)
+            if t_raw:
+                try:
+                    loc = _g("4", "2", probe_idx) or "Inlet"
+                    readings.append({"label": f"{loc} Temp", "value": round(int(t_raw) / 10.0, 1),
+                                     "unit": "°C", "alarm": False})
+                except ValueError:
+                    pass
+            h_raw = _g("5", "4", probe_idx)
+            if h_raw:
+                try:
+                    loc = _g("5", "2", probe_idx) or "Inlet"
+                    readings.append({"label": f"{loc} Humidity", "value": round(int(h_raw) / 10.0, 1),
+                                     "unit": "%RH", "alarm": False})
+                except ValueError:
+                    pass
+            d_raw = _g("6", "4", probe_idx)
+            if d_raw:
+                try:
+                    loc = _g("6", "2", probe_idx) or "Inlet"
+                    readings.append({"label": f"{loc} Dewpoint", "value": round(int(d_raw) / 10.0, 1),
+                                     "unit": "°C", "alarm": False})
+                except ValueError:
+                    pass
+
+    if readings:
+        return readings
+
+    # ── APC NetBotz ──────────────────────────────────────────────────────────
+    rows = await _snmp_walk(agent_ip, community, port, _APC_NETBOTZ, timeout, 30)
+    if rows:
+        row_map = {oid: val for oid, val in rows}
+        _NETBOTZ = [
+            (f"{_APC_NETBOTZ}.10.1", f"{_APC_NETBOTZ}.2.1", "°C",  0.1),
+            (f"{_APC_NETBOTZ}.10.2", f"{_APC_NETBOTZ}.2.2", "%RH", 1.0),
+            (f"{_APC_NETBOTZ}.10.3", f"{_APC_NETBOTZ}.2.3", "m/s", 0.1),
+        ]
+        for val_oid, lbl_oid, unit, scale in _NETBOTZ:
+            raw = row_map.get(val_oid)
+            label = row_map.get(lbl_oid) or val_oid.rsplit(".", 1)[-1]
+            if raw:
+                try:
+                    readings.append({"label": label, "value": round(int(raw) * scale, 1),
+                                     "unit": unit, "alarm": False})
+                except (ValueError, TypeError):
+                    pass
+
+    return readings
+
+
 # ── Per-device test ───────────────────────────────────────────────────────────
 
 async def _test_device(ip: str, agent_ip: str, community: str, port: int,
                        timeout: int,
                        do_interfaces: bool,
                        do_lldp: bool,
-                       do_metrics: bool) -> DeviceResult:
+                       do_metrics: bool,
+                       do_sensor: bool = False) -> DeviceResult:
     result = DeviceResult(ip=ip, community=community, port=port)
     t0 = time.perf_counter()
 
@@ -372,7 +508,7 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
             for oid_str, val in rows:
                 try:
                     temp_c = int(val) / 10
-                except Exception:
+                except (ValueError, TypeError):
                     temp_c = val
 
                 result.temperatures.append({
@@ -380,9 +516,28 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
                     "value": temp_c,
                 })
 
-        except Exception:
+        except (ValueError, TypeError):
             pass
 
+        # CISCO-ENVMON-MIB: walk only when sysObjectID indicates Cisco (1.3.6.1.4.1.9.*)
+        sys_oid = next(
+            (r.value for r in result.system if r.name == "sysObjectID" and r.ok),
+            ""
+        )
+        if sys_oid.startswith("1.3.6.1.4.1.9."):
+            try:
+                cisco_rows = await _snmp_walk(
+                    agent_ip, community, port,
+                    CISCO_ENVMON_TEMP_OID, timeout, 20,
+                )
+                for oid_str, val in cisco_rows:
+                    try:
+                        temp_c = float(int(val))
+                    except (ValueError, TypeError):
+                        temp_c = val
+                    result.temperatures.append({"oid": oid_str, "value": temp_c})
+            except (ValueError, TypeError):
+                pass
 
     # ── Interface table walk ───────────────────────────────────────────────────
     # IF-MIB stores each column for all interfaces before moving to the next
@@ -430,6 +585,14 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
             elif col == 7: nbr_map[key]["port_id"]    = val
             elif col == 9: nbr_map[key]["sys_name"]   = val
         result.lldp_neighbours = list(nbr_map.values())
+
+    # ── Vendor sensor readings ────────────────────────────────────────────────
+    if do_sensor:
+        try:
+            result.sensor_readings = await _query_sensor_data(
+                agent_ip, community, port, timeout)
+        except Exception:
+            pass
 
     result.elapsed_ms = (time.perf_counter() - t0) * 1000
     return result
@@ -511,14 +674,52 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
         except Exception:
             pass
 
+        try:
+            dpct_val  = perf_map.get("diskPercent")
+            dtot_val  = perf_map.get("diskTotalKB")
+            davail_val = perf_map.get("diskAvailKB")
+
+            if dpct_val is not None:
+                try:
+                    dpct  = int(dpct_val)
+                    dtot  = int(dtot_val)  if dtot_val  else 0
+                    davail = int(davail_val) if davail_val else 0
+                    print(f"    Disk Usage     : {dpct}%")
+                    if dtot > 0:
+                        print(f"    Disk Used      : {(dtot - davail) // 1024} MB")
+                        print(f"    Disk Total     : {dtot // 1024} MB")
+                except (ValueError, TypeError):
+                    print("    Disk Usage     : unavailable")
+            else:
+                print("    Disk Usage     : unavailable")
+        except (ValueError, TypeError):
+            pass
+
     # Temperature sensors
     if result.temperatures:
         print(f"\n  {bold('Temperature Sensors')}:")
 
+        _TEMP_LABELS = {
+            "1.3.6.1.2.1.99.1.1.1.4.1":          "Inlet Temperature",
+            "1.3.6.1.2.1.99.1.1.1.4.2":          "CPU Temperature",
+            "1.3.6.1.4.1.9.9.13.1.3.1.3.1":      "Cisco Inlet Temp",
+            "1.3.6.1.4.1.9.9.13.1.3.1.3.2":      "Cisco CPU Temp",
+        }
         for sensor in result.temperatures:
-            print(
-                f"    {sensor['oid']}  =  {sensor['value']} °C"
-            )
+            label = _TEMP_LABELS.get(sensor['oid'], sensor['oid'])
+            print(f"    {label:<22} =  {sensor['value']} °C")
+
+    # Vendor sensor readings (Raritan / Vertiv Geist / APC NetBotz)
+    if result.sensor_readings:
+        print(f"\n  {bold('Sensor Readings')}:")
+        col_w = max(len(r["label"]) for r in result.sensor_readings) + 2
+        for r in result.sensor_readings:
+            val_str = f"{r['value']} {r['unit']}".strip()
+            alarm   = r.get("alarm", False)
+            line    = f"    {r['label']:<{col_w}} {val_str}"
+            print(red(line) if alarm else line)
+        if not result.temperatures:
+            print()
 
     # Summary line
     total = len(result.system)
@@ -630,13 +831,17 @@ def _parse_args() -> argparse.Namespace:
                    help="Only print failures and summary")
     p.add_argument("--metrics", "-m", action="store_true",
                    help="Collect CPU, memory and temperature metrics")
+    p.add_argument("--sensor", "-s", action="store_true",
+                   help="Query vendor sensor OIDs (Raritan DPX2 / Vertiv Geist / APC NetBotz) "
+                        "and display all readings (temp/humidity/dewpoint/airflow/leak)")
     return p.parse_args()
 
 
 async def _main(args: argparse.Namespace) -> int:
-    do_ifaces = args.interfaces or args.full
-    do_lldp   = args.lldp or args.full
+    do_ifaces  = args.interfaces or args.full
+    do_lldp    = args.lldp or args.full
     do_metrics = args.metrics or args.full
+    do_sensor  = args.sensor or args.full
 
     print(bold(f"\ndataCenter SNMP Tester  —  {len(args.ips)} device(s)"))
     print(grey(f"agent={args.agent}  port={args.port}  timeout={args.timeout}s  "
@@ -653,10 +858,11 @@ async def _main(args: argparse.Namespace) -> int:
             do_interfaces = do_ifaces,
             do_lldp       = do_lldp,
             do_metrics=do_metrics,
+            do_sensor=do_sensor,
         )
         for ip in args.ips
     ]
-    results: List[DeviceResult] = await asyncio.gather(*tasks)
+    results: List[DeviceResult] = list(await asyncio.gather(*tasks))
 
     for result in results:
         _print_device(result, quiet=args.quiet)

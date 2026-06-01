@@ -143,6 +143,7 @@ UCD_DISK    = f"{UCD_BASE}.9.1"
 _RARITAN_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1"   # Raritan PX2/DPX2 external sensor table
 _GEIST_SENSOR   = "1.3.6.1.4.1.21239.5.1"           # Vertiv Geist probe tables
 _APC_NETBOTZ    = "1.3.6.1.4.1.318.1.1.10.4.2.2.1"  # APC NetBotz sensor value table
+_CISCO_ENVMON_TEMP = "1.3.6.1.4.1.9.9.13.1.3.1"      # CISCO-ENVMON-MIB ciscoEnvMonTemperatureStatusTable
 
 
 def _sort_oids(entries: List[OidEntry]) -> List[OidEntry]:
@@ -226,6 +227,7 @@ class SNMPRecGenerator:
             entries += generate_lldp_entries(device, prod_tuples)
             if device.vendor == Vendor.CISCO_SYSTEMS:
                 entries += generate_cdp_entries(device, prod_tuples)
+                entries += self._cisco_envmon_temp_entries(device)
         elif device.device_type == DeviceType.OOB_SWITCH:
             # OOB switch LLDP shows every device connected to its management ports.
             mgmt_tuples = [(n, lp, rp) for n, lp, rp, lyr in neighbor_tuples
@@ -344,12 +346,25 @@ class SNMPRecGenerator:
                 updates[f"{UCD_CPU}.1.0"]  = ("2",  str(cpu_user))
                 updates[f"{UCD_CPU}.2.0"]  = ("2",  str(cpu_system))
                 updates[f"{UCD_CPU}.4.0"]  = ("2",  str(cpu_idle))
-                updates[f"{UCD_MEM}.4.0"]  = ("42", str(device.memory_total // 1024))
-                updates[f"{UCD_MEM}.5.0"]  = ("42", str(mem_free // 1024))
-                updates[f"{UCD_MEM}.11.0"] = ("42", str(device.memory_used  // 1024))
+                updates[f"{UCD_MEM}.5.0"]  = ("2", str(device.memory_total // 1024))
+                updates[f"{UCD_MEM}.6.0"]  = ("2", str(mem_free // 1024))
+                updates[f"{UCD_MEM}.11.0"] = ("2", str(device.memory_used  // 1024))
+                # ENTITY-SENSOR-MIB temperature (×10 Celsius)
+                updates["1.3.6.1.2.1.99.1.1.1.4.1"] = ("2", str(int(device.inlet_temp * 10)))
+                updates["1.3.6.1.2.1.99.1.1.1.4.2"] = ("2", str(int(device.cpu_temp   * 10)))
                 updates[f"{UCD_DISK}.5.1"] = ("2",  str(disk_pct))
                 updates[f"{UCD_DISK}.6.1"] = ("2",  str(disk_total_kb))
                 updates[f"{UCD_DISK}.7.1"] = ("2",  str(disk_avail_kb))
+
+            # CISCO-ENVMON-MIB temperature — Cisco switches / routers
+            _CISCO_NET = (DeviceType.SWITCH, DeviceType.ROUTER,
+                          DeviceType.FIREWALL, DeviceType.LOAD_BALANCER)
+            if device.vendor == Vendor.CISCO_SYSTEMS and device.device_type in _CISCO_NET:
+                _b = _CISCO_ENVMON_TEMP
+                updates[f"{_b}.3.1"] = ("66", str(int(round(device.inlet_temp))))
+                updates[f"{_b}.3.2"] = ("66", str(int(round(device.cpu_temp))))
+                updates[f"{_b}.6.1"] = ("2",  str(2 if device.inlet_temp >= 40 else 1))
+                updates[f"{_b}.6.2"] = ("2",  str(2 if device.cpu_temp   >= 75 else 1))
 
             # Sensor environmental readings
             if device.device_type == DeviceType.SENSOR:
@@ -358,8 +373,21 @@ class SNMPRecGenerator:
                 dewpt_t10   = int(round(device.dewpoint   * 10))
                 airflow_t10 = int(round(device.airflow    * 10))
                 if device.vendor == Vendor.RARITAN:
-                    updates[f"{_RARITAN_SENSOR}.4.1.1"] = ("2", str(inlet_t10))
-                    updates[f"{_RARITAN_SENSOR}.4.1.2"] = ("2", str(humid_t10))
+                    if device.model_name == "Raritan DPX2-T3H1":
+                        mid_t10     = int(round(device.mid_temp    * 10))
+                        exhaust_t10 = int(round(device.outlet_temp * 10))
+                        updates[f"{_RARITAN_SENSOR}.4.1.1"] = ("2", str(inlet_t10))
+                        updates[f"{_RARITAN_SENSOR}.4.1.2"] = ("2", str(mid_t10))
+                        updates[f"{_RARITAN_SENSOR}.4.1.3"] = ("2", str(exhaust_t10))
+                        updates[f"{_RARITAN_SENSOR}.4.1.4"] = ("2", str(humid_t10))
+                    elif device.model_name == "Raritan DPX2-CC2":
+                        # Slot 1: water detection stays 0 (no leak) under normal simulation
+                        # Slot 2: temperature probe updates with ambient
+                        updates[f"{_RARITAN_SENSOR}.4.1.1"] = ("2", "0")
+                        updates[f"{_RARITAN_SENSOR}.4.1.2"] = ("2", str(inlet_t10))
+                    else:
+                        updates[f"{_RARITAN_SENSOR}.4.1.1"] = ("2", str(inlet_t10))
+                        updates[f"{_RARITAN_SENSOR}.4.1.2"] = ("2", str(humid_t10))
                 elif device.vendor == Vendor.VERTIV:
                     updates[f"{_GEIST_SENSOR}.4.1.4.1"] = ("2", str(inlet_t10))
                     updates[f"{_GEIST_SENSOR}.5.1.4.1"] = ("2", str(humid_t10))
@@ -764,12 +792,12 @@ class SNMPRecGenerator:
         mem_free        = device.memory_total - device.memory_used
         entries += [
             _oid_entry(f"{UCD_MEM}.1.0",  "2", "1"),
-            _oid_entry(f"{UCD_MEM}.4.0",  "42", str(mem_total_bytes // 1024)),   # memTotalReal
-            _oid_entry(f"{UCD_MEM}.5.0",  "42", str(mem_free        // 1024)),   # memAvailReal
-            _oid_entry(f"{UCD_MEM}.6.0",  "42", str(mem_total_bytes // 2048)),   # memTotalFree
-            _oid_entry(f"{UCD_MEM}.11.0", "42", str(device.memory_used // 1024)),# memCached
-            _oid_entry(f"{UCD_MEM}.12.0", "42", str(random.randint(100,2000))),  # memBuffer
-            _oid_entry(f"{UCD_MEM}.14.0", "4",  "memory"),
+            _oid_entry(f"{UCD_MEM}.4.0",  "2", "0"),                             # memAvailSwap (no swap)
+            _oid_entry(f"{UCD_MEM}.5.0",  "2", str(mem_total_bytes // 1024)),    # memTotalReal
+            _oid_entry(f"{UCD_MEM}.6.0",  "2", str(mem_free        // 1024)),    # memAvailReal
+            _oid_entry(f"{UCD_MEM}.11.0", "2", str(device.memory_used // 1024)), # memCached
+            _oid_entry(f"{UCD_MEM}.12.0", "2", str(random.randint(100, 2000))),  # memBuffer
+            _oid_entry(f"{UCD_MEM}.14.0", "4", "memory"),
         ]
 
         # Disk usage via UCD
@@ -785,6 +813,14 @@ class SNMPRecGenerator:
             _oid_entry(f"{UCD_DISK}.8.1",  "2",  "80"),   # dskMinPercent threshold
             _oid_entry(f"{UCD_DISK}.9.1",  "2",  "0"),    # dskErrorFlag
             _oid_entry(f"{UCD_DISK}.10.1", "4",  ""),     # dskErrorMsg
+        ]
+
+        # ENTITY-SENSOR-MIB entPhySensorValue (1.3.6.1.2.1.99.1.1.1.4.*)
+        # Values stored ×10 so 1 decimal place survives integer encoding.
+        _ESM = "1.3.6.1.2.1.99.1.1.1"
+        entries += [
+            _oid_entry(f"{_ESM}.4.1", "2", str(int(device.inlet_temp * 10))),  # inlet/chassis temp
+            _oid_entry(f"{_ESM}.4.2", "2", str(int(device.cpu_temp   * 10))),  # CPU die temp
         ]
 
         return entries
@@ -867,6 +903,32 @@ class SNMPRecGenerator:
     #  Environmental sensor OIDs (vendor-specific MIB branches)           #
     # ------------------------------------------------------------------ #
 
+    def _cisco_envmon_temp_entries(self, device: Device) -> List[OidEntry]:
+        """CISCO-ENVMON-MIB ciscoEnvMonTemperatureStatusTable.
+
+        Two entries: index 1 = Inlet (chassis inlet air), index 2 = CPU/ASIC.
+        State: 1=normal, 2=warning, 3=critical, 4=shutdown, 5=notPresent, 6=notFunctioning.
+        """
+        inlet = int(round(device.inlet_temp))
+        cpu   = int(round(device.cpu_temp))
+        s_in  = 2 if device.inlet_temp >= 40 else 1
+        s_cpu = 2 if device.cpu_temp   >= 75 else 1
+        b = _CISCO_ENVMON_TEMP
+        return [
+            _oid_entry(f"{b}.1.1", "2",  "1"),
+            _oid_entry(f"{b}.2.1", "4",  "Inlet"),
+            _oid_entry(f"{b}.3.1", "66", str(inlet)),   # Gauge32, Celsius
+            _oid_entry(f"{b}.4.1", "2",  "40"),
+            _oid_entry(f"{b}.5.1", "2",  "0"),
+            _oid_entry(f"{b}.6.1", "2",  str(s_in)),
+            _oid_entry(f"{b}.1.2", "2",  "2"),
+            _oid_entry(f"{b}.2.2", "4",  "CPU"),
+            _oid_entry(f"{b}.3.2", "66", str(cpu)),     # Gauge32, Celsius
+            _oid_entry(f"{b}.4.2", "2",  "75"),
+            _oid_entry(f"{b}.5.2", "2",  "0"),
+            _oid_entry(f"{b}.6.2", "2",  str(s_cpu)),
+        ]
+
     def _sensor_entries(self, device: Device) -> List[OidEntry]:
         """Return vendor-specific OIDs for temp, humidity, dewpoint, and airflow."""
         entries: List[OidEntry] = []
@@ -877,18 +939,56 @@ class SNMPRecGenerator:
 
         if device.vendor == Vendor.RARITAN:
             # Raritan PX2/DPX2 external sensor table (RARITAN-PX2-MIB)
-            # Two sensor slots: index 1 = temperature, index 2 = humidity
+            # T1H1: slot 1=temperature, slot 2=humidity
+            # T3H1: slot 1=inlet temp, slot 2=mid-rack temp, slot 3=exhaust temp, slot 4=humidity
             b = _RARITAN_SENSOR
-            entries += [
-                _oid_entry(f"{b}.2.1.1", "2",  "1"),              # sensorIndex
-                _oid_entry(f"{b}.3.1.1", "2",  "10"),             # sensorType=temperature
-                _oid_entry(f"{b}.4.1.1", "2",  str(inlet_t10)),   # value ×10 °C
-                _oid_entry(f"{b}.5.1.1", "2",  "4"),              # sensorState=normal
-                _oid_entry(f"{b}.2.1.2", "2",  "2"),              # sensorIndex
-                _oid_entry(f"{b}.3.1.2", "2",  "11"),             # sensorType=humidity
-                _oid_entry(f"{b}.4.1.2", "2",  str(humid_t10)),   # value ×10 %
-                _oid_entry(f"{b}.5.1.2", "2",  "4"),              # sensorState=normal
-            ]
+            if device.model_name == "Raritan DPX2-T3H1":
+                mid_t10     = int(round(device.mid_temp    * 10))
+                exhaust_t10 = int(round(device.outlet_temp * 10))
+                entries += [
+                    _oid_entry(f"{b}.2.1.1", "2", "1"),              # slot 1 index
+                    _oid_entry(f"{b}.3.1.1", "2", "10"),             # type=temperature
+                    _oid_entry(f"{b}.4.1.1", "2", str(inlet_t10)),   # inlet ×10 °C
+                    _oid_entry(f"{b}.5.1.1", "2", "4"),              # state=normal
+                    _oid_entry(f"{b}.2.1.2", "2", "2"),              # slot 2 index
+                    _oid_entry(f"{b}.3.1.2", "2", "10"),             # type=temperature
+                    _oid_entry(f"{b}.4.1.2", "2", str(mid_t10)),     # mid-rack ×10 °C
+                    _oid_entry(f"{b}.5.1.2", "2", "4"),              # state=normal
+                    _oid_entry(f"{b}.2.1.3", "2", "3"),              # slot 3 index
+                    _oid_entry(f"{b}.3.1.3", "2", "10"),             # type=temperature
+                    _oid_entry(f"{b}.4.1.3", "2", str(exhaust_t10)), # exhaust ×10 °C
+                    _oid_entry(f"{b}.5.1.3", "2", "4"),              # state=normal
+                    _oid_entry(f"{b}.2.1.4", "2", "4"),              # slot 4 index
+                    _oid_entry(f"{b}.3.1.4", "2", "11"),             # type=humidity
+                    _oid_entry(f"{b}.4.1.4", "2", str(humid_t10)),   # value ×10 %
+                    _oid_entry(f"{b}.5.1.4", "2", "4"),              # state=normal
+                ]
+            elif device.model_name == "Raritan DPX2-CC2":
+                # Slot 1: water rope sensor (sensorType=28 waterDetection), value 0=dry 1=wet
+                # Slot 2: temperature probe (sensorType=10)
+                # Deployed under raised floor / near CRAC units to detect flooding
+                entries += [
+                    _oid_entry(f"{b}.2.1.1", "2", "1"),
+                    _oid_entry(f"{b}.3.1.1", "2", "28"),   # sensorType=waterDetection
+                    _oid_entry(f"{b}.4.1.1", "2", "0"),    # 0=no water
+                    _oid_entry(f"{b}.5.1.1", "2", "4"),    # state=normal
+                    _oid_entry(f"{b}.2.1.2", "2", "2"),
+                    _oid_entry(f"{b}.3.1.2", "2", "10"),   # sensorType=temperature
+                    _oid_entry(f"{b}.4.1.2", "2", str(inlet_t10)),
+                    _oid_entry(f"{b}.5.1.2", "2", "4"),
+                ]
+            else:
+                # DPX2-T1H1: slot 1=temperature, slot 2=humidity
+                entries += [
+                    _oid_entry(f"{b}.2.1.1", "2",  "1"),
+                    _oid_entry(f"{b}.3.1.1", "2",  "10"),
+                    _oid_entry(f"{b}.4.1.1", "2",  str(inlet_t10)),
+                    _oid_entry(f"{b}.5.1.1", "2",  "4"),
+                    _oid_entry(f"{b}.2.1.2", "2",  "2"),
+                    _oid_entry(f"{b}.3.1.2", "2",  "11"),
+                    _oid_entry(f"{b}.4.1.2", "2",  str(humid_t10)),
+                    _oid_entry(f"{b}.5.1.2", "2",  "4"),
+                ]
 
         elif device.vendor == Vendor.VERTIV:
             # Vertiv Geist GTHD (GEIST-MIB enterprise 21239.5.1)

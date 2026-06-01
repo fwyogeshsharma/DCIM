@@ -12,11 +12,26 @@ from core.device_manager import Device, DeviceType, Vendor
 from core.ip_manager import IPManager
 
 _SERVER_VENDORS = [Vendor.DELL, Vendor.HPE, Vendor.LENOVO, Vendor.SUPERMICRO]
-_SENSOR_VENDORS = [Vendor.RARITAN, Vendor.VERTIV, Vendor.APC]
+# (vendor, model) pairs cycled when placing sensors.
+# T3H1: hub with 3 external temp probe cables — inlet/mid-rack/exhaust per rack.
+# CC2:  contact closure hub wired to a water rope sensor — under-floor flood detection.
+_SENSOR_SPECS = [
+    (Vendor.RARITAN, "Raritan DPX2-T3H1"),   # rack — inlet/mid-rack/exhaust + humidity
+    (Vendor.VERTIV,  "Vertiv Geist GTHD"),    # aisle — temp + humidity + dewpoint
+    (Vendor.APC,     "APC NetBotz 355"),      # rack-mount — temp/humidity/camera
+    (Vendor.APC,     "APC NetBotz 250"),      # room wall-mount — ambient
+    (Vendor.RARITAN, "Raritan DPX2-CC2"),     # under-floor — water leak + temperature
+]
 _OOB_MODELS = {
     Vendor.CISCO_SYSTEMS: "Cisco Catalyst 1000-48T",
     Vendor.HPE:           "HPE Aruba 2530-48G",
     Vendor.DELL:          "Dell N1148T-ON",
+}
+# Aggregation-tier OOB core switch — sits above all row OOB switches
+_OOB_CORE_MODELS = {
+    Vendor.CISCO_SYSTEMS: "Cisco Catalyst 9300-48T",
+    Vendor.HPE:           "HPE Aruba 6300M-24G",
+    Vendor.DELL:          "Dell N3248TE-ON",
 }
 _SENSOR_MODELS = {
     Vendor.RARITAN: "Raritan DPX2-T1H1",
@@ -99,9 +114,11 @@ class TopologyBuilder:
 
     def add_mgmt_network(self, devices: list, dc_id: int = 1,
                          mgmt_subnet_base: str = "192.168",
+                         mgmt_subnet_override: str = None,
                          oob_vendor: Vendor = Vendor.CISCO_SYSTEMS,
                          ports_per_oob: int = 46,
-                         n_sensors: int = 2) -> dict:
+                         n_sensors: int = 2,
+                         base_loc: dict = None) -> dict:
         """Create OOB management switches, wire all devices via mgmt layer,
         and add environmental sensors.
 
@@ -134,12 +151,39 @@ class TopologyBuilder:
             oob_xs = [x_min + i * (x_max - x_min) / (n_oob - 1) for i in range(n_oob)]
 
         # Separate management IP pool per DC
+        _subnet = mgmt_subnet_override or f"{mgmt_subnet_base}.{dc_id}.0/24"
         mgmt_ip_pool = IPManager(
-            subnet=f"{mgmt_subnet_base}.{dc_id}.0/24",
+            subnet=_subnet,
             start_offset=0,
         )
 
-        # Create OOB switches
+        # OOB core (aggregation) switch — single top-level switch per DC.
+        # All row OOB switches uplink to this in a star topology, eliminating
+        # the single-point-of-failure daisy chain.
+        core_y = oob_y + 220
+        core_cx = (x_min + x_max) / 2
+        oob_core_model = _OOB_CORE_MODELS.get(oob_vendor, "Cisco Catalyst 9300-48T")
+        oob_core_mgmt_ip = mgmt_ip_pool.next_ip()
+        oob_core = self.add(
+            f"OOB-CORE-DC{dc_id}",
+            DeviceType.OOB_SWITCH,
+            oob_vendor,
+            n_oob * 2 + 4,   # enough uplink ports for all row switches + spares
+            core_cx, core_y,
+            mgmt_only=True,
+        )
+        for node in self.nodes:
+            if node["id"] == oob_core.id:
+                node["device"]["model_name"] = oob_core_model
+                node["device"]["mgmt_ip"] = oob_core_mgmt_ip
+                node["device"]["snmp_community"] = oob_core_mgmt_ip
+                if base_loc:
+                    for k, v in {**base_loc, "room": "Server Hall",
+                                 "rack_row": 1, "rack_num": 9, "rack_unit": 42}.items():
+                        node["device"][k] = v
+                break
+
+        # Row OOB access switches
         oob_switches = []
         oob_model = _OOB_MODELS.get(oob_vendor, "Cisco Catalyst 1000-48T")
         for i, ox in enumerate(oob_xs):
@@ -150,21 +194,24 @@ class TopologyBuilder:
                 oob_vendor,
                 ports_per_oob + 4,
                 ox, oob_y,
-                mgmt_only=True,   # no prod IP; management-only device
+                mgmt_only=True,
             )
             for node in self.nodes:
                 if node["id"] == oob.id:
                     node["device"]["model_name"] = oob_model
                     node["device"]["mgmt_ip"] = oob_mgmt_ip
                     node["device"]["snmp_community"] = oob_mgmt_ip
+                    if base_loc:
+                        for k, v in {**base_loc, "room": "Server Hall",
+                                     "rack_row": 1, "rack_num": 10 + i,
+                                     "rack_unit": 42}.items():
+                            node["device"][k] = v
                     break
             oob_switches.append(oob)
-
-        # Uplink mesh between OOB switches
-        for i in range(len(oob_switches) - 1):
-            self.link(oob_switches[i], oob_switches[i + 1], layer="management")
+            self.link(oob, oob_core, layer="management")
 
         # Update device_positions map with OOB switch positions
+        pos_map[oob_core.id] = (core_cx, core_y)
         for oob in oob_switches:
             for node in self.nodes:
                 if node["id"] == oob.id:
@@ -186,11 +233,38 @@ class TopologyBuilder:
                     break
             self.link(device, nearest, layer="management")
 
-        # Add environmental sensors
+        # Add environmental sensors with physical location metadata.
+        # Location fields power both sysLocation OID and asset OIDs (port 1161)
+        # so a DCIM system can identify exactly where each sensor is mounted.
+        #
+        # Placement scheme (cycles through _SENSOR_SPECS):
+        #   T3H1       → in-rack (U1), rack probes cover inlet/mid/exhaust
+        #   Geist GTHD → hot-aisle (no rack unit, row-level placement)
+        #   NetBotz 355 → rack-mount (U1)
+        #   NetBotz 250 → room wall-mount (no rack, Room label only)
+        #   DPX2-CC2   → under raised floor (rack_unit=0, floor label "UF")
+        #
+        _RACK_UNIT_BY_SPEC = {
+            "Raritan DPX2-T3H1":  1,    # in-rack, probes extend to U1/mid/top
+            "Vertiv Geist GTHD":  0,    # aisle sensor, not rack-mounted
+            "APC NetBotz 355":    1,    # rack-mount
+            "APC NetBotz 250":    0,    # wall-mount, no rack unit
+            "Raritan DPX2-CC2":   0,    # under-floor, no rack unit
+        }
+        _ROOM_BY_SPEC = {
+            "Raritan DPX2-T3H1":  "A",
+            "Vertiv Geist GTHD":  "A",
+            "APC NetBotz 355":    "A",
+            "APC NetBotz 250":    "A",  # room-level — same room
+            "Raritan DPX2-CC2":   "UF", # under-floor
+        }
+        # Sensors per row — distribute evenly across ~3 rows
+        sensors_per_row = max(1, n_sensors // 3)
+
         sensors = []
         sensor_y = oob_y + 160
         for s in range(n_sensors):
-            sv = _SENSOR_VENDORS[s % len(_SENSOR_VENDORS)]
+            sv, sensor_model = _SENSOR_SPECS[s % len(_SENSOR_SPECS)]
             sx = x_min + (s + 0.5) * (x_max - x_min + 100) / max(n_sensors, 1) - 50
             sensor_mgmt_ip = mgmt_ip_pool.next_ip()
             sensor = self.add(
@@ -199,15 +273,35 @@ class TopologyBuilder:
                 sv,
                 1,
                 sx, sensor_y,
-                mgmt_only=True,   # no prod IP; management-only device
+                mgmt_only=True,
             )
             sensors.append(sensor)
-            sensor_model = _SENSOR_MODELS.get(sv, "Raritan DPX2-T1H1")
+
+            rack_row = s // sensors_per_row + 1
+            rack_num = s % sensors_per_row + 1
+            rack_unit = _RACK_UNIT_BY_SPEC.get(sensor_model, 0)
+            room      = _ROOM_BY_SPEC.get(sensor_model, "A")
+
             for node in self.nodes:
                 if node["id"] == sensor.id:
-                    node["device"]["model_name"] = sensor_model
-                    node["device"]["mgmt_ip"] = sensor_mgmt_ip
+                    node["device"]["model_name"]    = sensor_model
+                    node["device"]["mgmt_ip"]        = sensor_mgmt_ip
                     node["device"]["snmp_community"] = sensor_mgmt_ip
+                    # Use base_loc fields when available (full country/city/dc/floor)
+                    if base_loc:
+                        for k, v in base_loc.items():
+                            node["device"][k] = v
+                    else:
+                        node["device"]["datacenter"] = f"DC{dc_id}"
+                        node["device"]["floor"]      = "1"
+                    node["device"]["room"]     = "Server Hall" if room == "A" else "Under Floor"
+                    node["device"]["rack_row"] = rack_row
+                    node["device"]["rack_num"] = rack_num
+                    node["device"]["rack_unit"] = rack_unit
+                    if sensor_model == "Raritan DPX2-T3H1":
+                        inlet = node["device"]["inlet_temp"]
+                        node["device"]["mid_temp"]    = round(inlet + random.uniform(3.0, 7.0), 1)
+                        node["device"]["outlet_temp"] = round(inlet + random.uniform(8.0, 14.0), 1)
                     break
             nearest = min(
                 oob_switches,
@@ -215,8 +309,8 @@ class TopologyBuilder:
             )
             self.link(sensor, nearest, layer="management")
 
-        return {"oob_switches": oob_switches, "sensors": sensors,
-                "mgmt_ip_pool": mgmt_ip_pool}
+        return {"oob_core": oob_core, "oob_switches": oob_switches,
+                "sensors": sensors, "mgmt_ip_pool": mgmt_ip_pool}
 
     # ---------------------------------------------------------------- #
     #  Power chain                                                       #
@@ -226,7 +320,8 @@ class TopologyBuilder:
                         ups_vendor: Vendor = Vendor.APC,
                         pdu_vendor: Vendor = Vendor.APC,
                         floor_pdu_vendor: Vendor = Vendor.EATON,
-                        devices_per_rack: int = 20) -> dict:
+                        devices_per_rack: int = 20,
+                        base_loc: dict = None) -> dict:
         """Create floor PDU → UPS → rack PDU → device power-layer edges.
 
         Returns dict with keys 'floor_pdu', 'ups_list', 'rack_pdus'.
@@ -254,6 +349,10 @@ class TopologyBuilder:
         for node in self.nodes:
             if node["id"] == floor_pdu.id:
                 node["device"]["model_name"] = "Eaton PDU 80kVA"
+                if base_loc:
+                    for k, v in {**base_loc, "room": "Power Room",
+                                 "rack_row": 1, "rack_num": 1, "rack_unit": 4}.items():
+                        node["device"][k] = v
                 break
 
         # Split devices into racks
@@ -262,10 +361,14 @@ class TopologyBuilder:
         ups_list = []
         rack_pdus = []
 
+        racks_per_row = max(1, math.ceil(math.sqrt(n_racks)))
         for r in range(n_racks):
             rack_cx = x_min + (r + 0.5) * rack_width - 100
             ups_y = power_y - 160
             rack_pdu_y = power_y - 320
+
+            pwr_row  = r // racks_per_row + 1
+            pwr_rack = r % racks_per_row + 1
 
             ups = self.add(
                 f"UPS-DC{dc_id}-R{r+1}", DeviceType.UPS, ups_vendor,
@@ -274,6 +377,11 @@ class TopologyBuilder:
             for node in self.nodes:
                 if node["id"] == ups.id:
                     node["device"]["model_name"] = "APC Smart-UPS 3000"
+                    if base_loc:
+                        for k, v in {**base_loc, "room": "Power Room",
+                                     "rack_row": pwr_row, "rack_num": pwr_rack,
+                                     "rack_unit": 1}.items():
+                            node["device"][k] = v
                     break
             ups_list.append(ups)
             self.link(floor_pdu, ups, layer="power")
@@ -285,6 +393,11 @@ class TopologyBuilder:
             for node in self.nodes:
                 if node["id"] == rack_pdu.id:
                     node["device"]["model_name"] = "APC AP8941"
+                    if base_loc:
+                        for k, v in {**base_loc, "room": "Server Hall",
+                                     "rack_row": pwr_row + 1, "rack_num": pwr_rack,
+                                     "rack_unit": 0}.items():
+                            node["device"][k] = v
                     break
             rack_pdus.append(rack_pdu)
             self.link(ups, rack_pdu, layer="power")
@@ -502,7 +615,7 @@ def build_three_tier_datacenter():
     mgmt = t.add_mgmt_network(prod_devices, dc_id=1, n_sensors=2)
 
     # ---- Power chain (OOB switches and sensors also run on electricity) ----
-    all_powered = prod_devices + mgmt['oob_switches'] + mgmt['sensors']
+    all_powered = prod_devices + [mgmt['oob_core']] + mgmt['oob_switches'] + mgmt['sensors']
     power = t.add_power_chain(all_powered, dc_id=1)
     t.wire_to_mgmt([power['floor_pdu']] + power['ups_list'] + power['rack_pdus'],
                    mgmt['oob_switches'], mgmt_ip_pool=mgmt['mgmt_ip_pool'])
@@ -585,7 +698,7 @@ def build_spine_leaf():
     mgmt = t.add_mgmt_network(prod_devices, dc_id=1, n_sensors=2)
 
     # ---- Power chain (OOB switches and sensors also run on electricity) ----
-    all_powered = prod_devices + mgmt['oob_switches'] + mgmt['sensors']
+    all_powered = prod_devices + [mgmt['oob_core']] + mgmt['oob_switches'] + mgmt['sensors']
     power = t.add_power_chain(all_powered, dc_id=1)
     t.wire_to_mgmt([power['floor_pdu']] + power['ups_list'] + power['rack_pdus'],
                    mgmt['oob_switches'], mgmt_ip_pool=mgmt['mgmt_ip_pool'])
@@ -786,7 +899,7 @@ def build_hyperscale_pod():
     mgmt = t.add_mgmt_network(prod_devices, dc_id=1, n_sensors=4)
 
     # ---- Power chain (OOB switches and sensors also run on electricity) ----
-    all_powered = prod_devices + mgmt['oob_switches'] + mgmt['sensors']
+    all_powered = prod_devices + [mgmt['oob_core']] + mgmt['oob_switches'] + mgmt['sensors']
     power = t.add_power_chain(all_powered, dc_id=1)
     t.wire_to_mgmt([power['floor_pdu']] + power['ups_list'] + power['rack_pdus'],
                    mgmt['oob_switches'], mgmt_ip_pool=mgmt['mgmt_ip_pool'])
@@ -803,7 +916,10 @@ def _build_dc(t: "TopologyBuilder", dc: str, n_spine: int, n_leaf: int,
               switch_vendor: Vendor = Vendor.CISCO_SYSTEMS,
               core_model: str = "Cisco Nexus 9364C",
               spine_model: str = "Cisco Nexus 93180YC-FX",
-              leaf_model: str = "Cisco Nexus 93180YC-FX"):
+              leaf_model: str = "Cisco Nexus 93180YC-FX",
+              country: str = "USA",
+              city: str = "Chicago",
+              floor_num: str = "1"):
     """
     Build one datacenter into topology builder t using the large_4dc_enterprise
     architecture:
@@ -913,6 +1029,72 @@ def _build_dc(t: "TopologyBuilder", dc: str, n_spine: int, n_leaf: int,
                     lx + 90, SRV_Y + 140)
         t.link(lf, srv)
 
+    # ── Physical location assignment ─────────────────────────────────
+    # Building layout:  one Server Hall + one Power Room per floor.
+    # Row 1 = network row (ER/FW/LB/CORE/SPINE/OOB gear)
+    # Row 2+ = compute rows (leaf ToR + servers), 5 racks per row
+    _L = dict(country=country, datacenter_city=city, datacenter=dc,
+              floor=floor_num, room="Server Hall")
+
+    # Network row (Row 1)
+    _set_location(t, er1,   **_L, rack_row=1, rack_num=1, rack_unit=42)
+    _set_location(t, er2,   **_L, rack_row=1, rack_num=1, rack_unit=40)
+    _set_location(t, fw1,   **_L, rack_row=1, rack_num=2, rack_unit=42)
+    _set_location(t, fw2,   **_L, rack_row=1, rack_num=2, rack_unit=40)
+    _set_location(t, lb1,   **_L, rack_row=1, rack_num=3, rack_unit=42)
+    _set_location(t, lb2,   **_L, rack_row=1, rack_num=3, rack_unit=40)
+    _set_location(t, core1, **_L, rack_row=1, rack_num=4, rack_unit=42)
+    _set_location(t, core2, **_L, rack_row=1, rack_num=4, rack_unit=40)
+    for i, sp in enumerate(spines):
+        _set_location(t, sp, **_L, rack_row=1, rack_num=5 + i, rack_unit=42)
+
+    # Compute rows (Row 2+): each leaf switch is top-of-rack (U42),
+    # servers fill from U1 upward in 2U slots.
+    racks_per_row = max(1, math.ceil(n_leaf / 2))
+    for li, lf in enumerate(leaves):
+        cmp_row  = (li // racks_per_row) + 2   # row 2, 3, ...
+        cmp_rack = (li % racks_per_row) + 1    # rack 1..racks_per_row
+        _set_location(t, lf, **_L, rack_row=cmp_row, rack_num=cmp_rack, rack_unit=42)
+
+    # Servers were added in order: srv_idx increments across leaf loop.
+    # Re-walk leaves to assign server locations using the same li index.
+    srv_num = 1
+    for li, lf in enumerate(leaves):
+        cmp_row  = (li // racks_per_row) + 2
+        cmp_rack = (li % racks_per_row) + 1
+        for si in range(srv_per_leaf):
+            srv_name = f"{dc}-SRV{srv_num:03d}"
+            for node in t.nodes:
+                if node["device"].get("name") == srv_name:
+                    for k, v in {**_L,
+                                 "rack_row": cmp_row,
+                                 "rack_num": cmp_rack,
+                                 "rack_unit": si * 2 + 1}.items():
+                        node["device"][k] = v
+                    break
+            srv_num += 1
+
+    # Special servers (DHCP1/2, DNS1/2, NTP1/2, MON1/2, STOR1/2)
+    # placed beside their leaf's rack at U35+
+    special_names = [f"{dc}-{n}" for n, _ in [
+        ("DHCP1", None), ("DHCP2", None), ("DNS1", None), ("DNS2", None),
+        ("NTP1",  None), ("NTP2",  None), ("MON1", None), ("MON2", None),
+        ("STOR1", None), ("STOR2", None),
+    ]]
+    for idx, sname in enumerate(special_names):
+        li = idx  # one special per leaf (LF01–LF10)
+        if li >= len(leaves):
+            break
+        cmp_row  = (li // racks_per_row) + 2
+        cmp_rack = (li % racks_per_row) + 1
+        rack_unit = srv_per_leaf * 2 + 1 + idx % 2 * 2  # above regular servers
+        for node in t.nodes:
+            if node["device"].get("name") == sname:
+                for k, v in {**_L, "rack_row": cmp_row, "rack_num": cmp_rack,
+                             "rack_unit": rack_unit}.items():
+                    node["device"][k] = v
+                break
+
     # Collect all devices added by this DC build (snapshot before return)
     all_dc_devices = [d for d in t._all_devices
                       if d.name.startswith(f"{dc}-")]
@@ -925,6 +1107,15 @@ def _set_model(t: "TopologyBuilder", dev, model_name: str):
     for node in t.nodes:
         if node["id"] == dev.id:
             node["device"]["model_name"] = model_name
+            return
+
+
+def _set_location(t: "TopologyBuilder", dev, **kwargs):
+    """Patch physical location fields into the already-stored node dict."""
+    for node in t.nodes:
+        if node["id"] == dev.id:
+            for k, v in kwargs.items():
+                node["device"][k] = v
             return
 
 
@@ -945,34 +1136,47 @@ def build_dual_dc_enterprise():
 
     dc1_er1, dc1_er2, dc1_devices = _build_dc(
         t, "DC1", n_spine=4, n_leaf=10, srv_per_leaf=17,
-        x_offset=DC1_X_OFFSET)
+        x_offset=DC1_X_OFFSET,
+        country="USA", city="Chicago", floor_num="1")
     dc2_er1, dc2_er2, dc2_devices = _build_dc(
         t, "DC2", n_spine=3, n_leaf=8, srv_per_leaf=15,
         x_offset=DC2_X_OFFSET,
         switch_vendor=Vendor.DELL,
         core_model="Dell Z9264F-ON",
         spine_model="Dell Z9264F-ON",
-        leaf_model="Dell S5248F-ON")
+        leaf_model="Dell S5248F-ON",
+        country="USA", city="Chicago", floor_num="2")
 
     # ── DCI links ────────────────────────────────────────────────────
     t.link(dc1_er1, dc2_er1)   # primary
     t.link(dc1_er2, dc2_er2)   # secondary
 
     # ── Management networks (separate OOB domain per DC) ─────────────
+    _dc1_loc = dict(country="USA", datacenter_city="Chicago", datacenter="DC1", floor="1")
+    _dc2_loc = dict(country="USA", datacenter_city="Chicago", datacenter="DC2", floor="2")
+
     mgmt1 = t.add_mgmt_network(dc1_devices, dc_id=1,
-                                oob_vendor=Vendor.CISCO_SYSTEMS, n_sensors=4)
+                                mgmt_subnet_override="192.168.0.0/22",
+                                oob_vendor=Vendor.CISCO_SYSTEMS, n_sensors=20,
+                                base_loc=_dc1_loc)
     mgmt2 = t.add_mgmt_network(dc2_devices, dc_id=2,
-                                oob_vendor=Vendor.DELL, n_sensors=2)
+                                mgmt_subnet_override="192.168.4.0/22",
+                                oob_vendor=Vendor.DELL, n_sensors=18,
+                                base_loc=_dc2_loc)
+
+    # ── Cross-DC OOB link (DCI for management plane) ─────────────────
+    # Allows DC2 devices to be managed even when DC1 production fabric is down.
+    t.link(mgmt1['oob_core'], mgmt2['oob_core'], layer="management")
 
     # ── Power chains (OOB switches and sensors also run on electricity) ──
     dc1_power = t.add_power_chain(
-        dc1_devices + mgmt1['oob_switches'] + mgmt1['sensors'], dc_id=1,
+        dc1_devices + [mgmt1['oob_core']] + mgmt1['oob_switches'] + mgmt1['sensors'], dc_id=1,
         ups_vendor=Vendor.APC, pdu_vendor=Vendor.APC,
-        floor_pdu_vendor=Vendor.EATON)
+        floor_pdu_vendor=Vendor.EATON, base_loc=_dc1_loc)
     dc2_power = t.add_power_chain(
-        dc2_devices + mgmt2['oob_switches'] + mgmt2['sensors'], dc_id=2,
+        dc2_devices + [mgmt2['oob_core']] + mgmt2['oob_switches'] + mgmt2['sensors'], dc_id=2,
         ups_vendor=Vendor.EATON, pdu_vendor=Vendor.RARITAN,
-        floor_pdu_vendor=Vendor.VERTIV)
+        floor_pdu_vendor=Vendor.VERTIV, base_loc=_dc2_loc)
 
     # ── EV2 energy monitors — Floor PDU level (breaker circuits → per-rack) ──
     # Each floor PDU has 24 breaker circuits feeding individual racks

@@ -106,13 +106,21 @@ class EV2TelemetryEngine:
         # Simulates higher load during business hours
         self._start_time = time.time()
 
-        # ── Alarm latch times (suppresses rapid flapping) ─────────
-        self._alarm_overcurrent      = False
-        self._alarm_voltage_imbalance= False
-        self._alarm_high_thd         = False
-        self._alarm_phase_loss       = False
-        self._alarm_sensor_fault     = False
-        self._fault_recovery_timer   = 0.0
+        # ── Alarm state + debounce counters ──────────────────────
+        # Each alarm requires ALARM_DEBOUNCE consecutive ticks above
+        # threshold before activating — suppresses single-event spikes.
+        self._alarm_overcurrent       = False
+        self._alarm_voltage_imbalance = False
+        self._alarm_high_thd          = False
+        self._alarm_phase_loss        = False
+        self._alarm_sensor_fault      = False
+        self._fault_recovery_timer    = 0.0
+
+        self._ALARM_DEBOUNCE = 2   # ticks above threshold required to latch
+        self._cnt_overcurrent       = 0
+        self._cnt_voltage_imbalance = 0
+        self._cnt_high_thd          = 0
+        self._cnt_phase_loss        = 0
 
     # ─────────────────────────────────────────────────────────────
     #  Diurnal load multiplier (0.3 – 1.0 over 24 h)
@@ -332,27 +340,46 @@ class EV2TelemetryEngine:
             cs.thd  = max(1.0, min(12.0, cs.thd))
 
     def _update_alarms(self):
-        """Evaluate alarm conditions based on current state."""
+        """Evaluate alarm conditions with debounce — N consecutive ticks required."""
+
+        def _debounce(condition: bool, counter_attr: str, alarm_attr: str) -> None:
+            if condition:
+                new_cnt = getattr(self, counter_attr) + 1
+                setattr(self, counter_attr, new_cnt)
+                if new_cnt >= self._ALARM_DEBOUNCE:
+                    setattr(self, alarm_attr, True)
+            else:
+                setattr(self, counter_attr, 0)
+                setattr(self, alarm_attr, False)
+
         # Overcurrent: any phase > threshold
-        self._alarm_overcurrent = (
+        _debounce(
             self._ia > self.OVERCURRENT_THRESHOLD or
             self._ib > self.OVERCURRENT_THRESHOLD or
-            self._ic > self.OVERCURRENT_THRESHOLD
+            self._ic > self.OVERCURRENT_THRESHOLD,
+            '_cnt_overcurrent', '_alarm_overcurrent',
         )
 
         # Voltage imbalance: max - min phase voltage > threshold
         v_max = max(self._va, self._vb, self._vc)
         v_min = min(self._va, self._vb, self._vc)
-        self._alarm_voltage_imbalance = (v_max - v_min) > self.VOLTAGE_IMBALANCE_THRESH
+        _debounce(
+            (v_max - v_min) > self.VOLTAGE_IMBALANCE_THRESH,
+            '_cnt_voltage_imbalance', '_alarm_voltage_imbalance',
+        )
 
         # High THD: current THD exceeds threshold
-        self._alarm_high_thd = self._i_thd > self.HIGH_THD_THRESH
+        _debounce(
+            self._i_thd > self.HIGH_THD_THRESH,
+            '_cnt_high_thd', '_alarm_high_thd',
+        )
 
         # Phase loss: any phase voltage below threshold
-        self._alarm_phase_loss = (
+        _debounce(
             self._va < self.PHASE_LOSS_THRESH or
             self._vb < self.PHASE_LOSS_THRESH or
-            self._vc < self.PHASE_LOSS_THRESH
+            self._vc < self.PHASE_LOSS_THRESH,
+            '_cnt_phase_loss', '_alarm_phase_loss',
         )
 
         # Sensor fault: random occurrence 0.05% chance per tick, clears after 5 ticks
@@ -361,7 +388,7 @@ class EV2TelemetryEngine:
             if self._fault_recovery_timer <= 0:
                 self._alarm_sensor_fault = False
         elif random.random() < 0.0005:
-            self._alarm_sensor_fault  = True
+            self._alarm_sensor_fault   = True
             self._fault_recovery_timer = random.randint(3, 8)
 
     # ─────────────────────────────────────────────────────────────

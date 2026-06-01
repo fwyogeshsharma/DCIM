@@ -202,6 +202,7 @@ MODEL_SYSDESCR = {
     # Environmental Sensors
     "Raritan DPX2-T1H1":  "Raritan DPX2 Environmental Sensor, 1× temperature, 1× humidity, fw 3.7.0",
     "Raritan DPX2-T3H1":  "Raritan DPX2 Environmental Sensor, 3× temperature, 1× humidity, fw 3.7.0",
+    "Raritan DPX2-CC2":   "Raritan DPX2 Contact Closure Sensor, 2× contact closure (water rope + temp probe), fw 3.7.0",
     "Vertiv Geist GTHD":  "Geist Temperature/Humidity/Dewpoint Sensor, fw 4.6.0",
     "Vertiv Geist IMD-3": "Geist Intelligent Rack Monitoring Device, 3-sensor, fw 4.6.0",
     "APC NetBotz 250":    "APC NetBotz Room Monitor 250, temperature/humidity/airflow, fw 5.2.0",
@@ -267,6 +268,7 @@ MODEL_SYSOID = {
     # Environmental Sensor OIDs
     "Raritan DPX2-T1H1":  "1.3.6.1.4.1.13742.8.1.1",
     "Raritan DPX2-T3H1":  "1.3.6.1.4.1.13742.8.1.2",
+    "Raritan DPX2-CC2":   "1.3.6.1.4.1.13742.8.1.3",
     "Vertiv Geist GTHD":  "1.3.6.1.4.1.21239.5.2.1",
     "Vertiv Geist IMD-3": "1.3.6.1.4.1.21239.5.2.2",
     "APC NetBotz 250":    "1.3.6.1.4.1.318.1.3.8.1",
@@ -350,6 +352,8 @@ class Device:
     # Temperatures in °C — CPU/ASIC and chassis inlet
     cpu_temp: float = field(default_factory=lambda: round(random.uniform(38.0, 62.0), 1))
     inlet_temp: float = field(default_factory=lambda: round(random.uniform(22.0, 38.0), 1))
+    mid_temp:    float = 0.0   # mid-rack temp °C (Raritan DPX2-T3H1 probe 2)
+    outlet_temp: float = 0.0   # exhaust temp °C (Raritan DPX2-T3H1 probe 3)
     # Environmental sensor readings (populated for DeviceType.SENSOR; 0.0 on other devices)
     humidity: float = 0.0   # relative humidity %RH
     dewpoint: float = 0.0   # dew-point °C
@@ -390,6 +394,9 @@ class Device:
             self.humidity = round(random.uniform(30.0, 70.0), 1)
             self.dewpoint = round(self.inlet_temp - ((100.0 - self.humidity) / 5.0), 1)
             self.airflow  = round(random.uniform(0.5, 2.5), 2)
+        if self.model_name == "Raritan DPX2-T3H1" and self.mid_temp == 0.0:
+            self.mid_temp    = round(self.inlet_temp + random.uniform(3.0, 7.0), 1)
+            self.outlet_temp = round(self.inlet_temp + random.uniform(8.0, 14.0), 1)
         if not self.interfaces:
             self._generate_interfaces()
 

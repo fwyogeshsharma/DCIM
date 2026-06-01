@@ -219,6 +219,15 @@ class EV2BACnetDevice:
     #  Telemetry update
     # ─────────────────────────────────────────────────────────────
 
+    def get_snapshot(self) -> Dict[str, float]:
+        """Return {object_name: present_value} for all known objects."""
+        result: Dict[str, float] = {}
+        for name, key in self._name_to_key.items():
+            obj = self._objects.get(key)
+            if obj is not None:
+                result[name] = obj.present_value
+        return result
+
     def update_present_values(self, values: Dict[str, float]):
         """
         Apply a tick's telemetry values to BACnet object present_values.

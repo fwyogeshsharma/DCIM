@@ -45,6 +45,8 @@ export interface DeviceInfo {
   metrics_enabled?: boolean
   cpu_temp?: number
   inlet_temp?: number
+  mid_temp?: number
+  outlet_temp?: number
   humidity?: number
   dewpoint?: number
   airflow?: number
@@ -234,6 +236,53 @@ export interface HealthStatus {
   rule_engine_enabled: boolean
   bound_ips: number
   gnmi_bound_ips: number
+}
+
+// ── Verdigris EV2 BACnet metrics ─────────────────────────────────────────────
+
+export interface EV2CircuitMetrics {
+  circuit:      number
+  label:        string
+  device_name?: string
+  current?:     number
+  kw?:          number
+  kwh?:         number
+  pf?:          number
+  thd?:         number
+}
+
+export interface EV2PanelMetrics {
+  total_kw?:    number
+  total_kwh?:   number
+  voltage_pha?: number
+  voltage_phb?: number
+  voltage_phc?: number
+  current_pha?: number
+  current_phb?: number
+  current_phc?: number
+  frequency?:   number
+  power_factor?: number
+  voltage_thd?: number
+  current_thd?: number
+  harmonic_3?:  number
+  harmonic_5?:  number
+  harmonic_7?:  number
+  harmonic_9?:  number
+  alarm_overcurrent:       boolean
+  alarm_voltage_imbalance: boolean
+  alarm_high_thd:          boolean
+  alarm_phase_loss:        boolean
+  alarm_sensor_fault:      boolean
+}
+
+export interface EV2DeviceSnapshot {
+  ip:                  string
+  instance:            number
+  name:                string
+  circuits:            number
+  monitored_pdu_name?: string
+  panel:               EV2PanelMetrics
+  circuit_list:        EV2CircuitMetrics[]
 }
 
 export interface LogEntry {

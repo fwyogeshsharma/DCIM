@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from api.state import AppState
-from api.models.schemas import OkResponse
+from api.models.schemas import OkResponse, EV2DeviceSnapshot, EV2PanelMetrics, EV2CircuitMetrics
 
 router = APIRouter(prefix="/bacnet", tags=["BACnet"])
 
@@ -82,13 +82,37 @@ def bacnet_start(cfg: BACnetConfig):
                    "Bind IPs first (Binding panel → Bind IPs), then start BACnet."
         )
 
-    # Build per-device circuit count from model_name ("Verdigris EV2-42" → 42)
+    # Build per-device circuit count.
+    # Walk the power graph: EV2 → PDU → count PDU's other power connections.
+    # This is correct regardless of whether monitored_pdu is set on the Device.
+    # Fallback: parse capacity from model_name ("Verdigris EV2-42" → 42).
+    _power_edges = s.topology.get_edges_by_layer("power") if s.topology else []
+
     circuits_map: dict = {}
     device_ips: list = []
     for d in bound_devices:
         ip = d.ip_address or getattr(d, "mgmt_ip", None)
         if ip:
             device_ips.append(ip)
+            if _power_edges:
+                # Step 1: find the PDU this EV2 is wired to (its power neighbour)
+                pdu_id = next(
+                    (v if u == d.id else u)
+                    for u, v, _ in _power_edges
+                    if d.id in (u, v)
+                ) if any(d.id in (u, v) for u, v, _ in _power_edges) else None
+
+                if pdu_id:
+                    # Step 2: count PDU's power connections excluding the EV2
+                    actual = sum(
+                        1 for u, v, _ in _power_edges
+                        if pdu_id in (u, v) and d.id not in (u, v)
+                    )
+                    if actual > 0:
+                        circuits_map[ip] = actual
+                        continue
+
+            # Fallback: derive from model name
             m = _re.search(r"EV2-(\d+)", d.model_name or "")
             circuits_map[ip] = int(m.group(1)) if m else 42
 
@@ -138,3 +162,123 @@ def bacnet_stop():
     s.notify_ui("console_log", "[BACnet] Stopped.", "info")
     s.notify_ui("sync_bacnet")
     return OkResponse(message="BACnet simulator stopped")
+
+
+@router.get("/ev2/metrics", response_model=list[EV2DeviceSnapshot])
+def ev2_metrics():
+    """Return current BACnet present-values for all running EV2 devices.
+
+    Returns an empty list (not 503) when BACnet is not running so the
+    frontend can show a graceful offline state.
+    """
+    s = _state()
+    if s.bacnet is None or not s.bacnet.is_running():
+        return []
+
+    snapshots = s.bacnet.get_telemetry_snapshot()
+
+    # Build topology helpers once for all snapshots
+    from core.device_manager import DeviceType as _DT
+    _power_edges = s.topology.get_edges_by_layer("power") if s.topology else []
+    _dm          = s.device_manager
+
+    # IP → EV2 Device object (for topology graph lookups)
+    _ip_to_ev2: dict = {}
+    if _dm:
+        for _d in _dm.get_devices_by_type(_DT.ENERGY_MONITOR):
+            _ip = _d.ip_address or getattr(_d, "mgmt_ip", "")
+            if _ip:
+                _ip_to_ev2[_ip] = _d
+
+    result: list[EV2DeviceSnapshot] = []
+
+    for snap in snapshots:
+        v = snap["values"]
+
+        def _f(key: str) -> float | None:
+            val = v.get(key)
+            return float(val) if val is not None else None
+
+        # ── Resolve PDU name + ordered circuit→device map ─────────────
+        pdu_name:          str | None            = None
+        circuit_names:     dict[int, str]        = {}
+
+        ev2_dev = _ip_to_ev2.get(snap["ip"])
+        if ev2_dev and _power_edges and _dm:
+            ev2_id = ev2_dev.id
+
+            # Step 1: find the PDU this EV2 is connected to via power edge
+            pdu_id = next(
+                (v2 if u == ev2_id else u)
+                for u, v2, _ in _power_edges
+                if ev2_id in (u, v2)
+            ) if any(ev2_id in (u, v2) for u, v2, _ in _power_edges) else None
+
+            if pdu_id:
+                pdu_dev = _dm.get_device(pdu_id)
+                pdu_name = pdu_dev.name if pdu_dev else None
+
+                # Step 2: collect PDU's other power neighbours, sort by name
+                neighbor_ids = [
+                    (v2 if u == pdu_id else u)
+                    for u, v2, _ in _power_edges
+                    if pdu_id in (u, v2) and ev2_id not in (u, v2)
+                ]
+                neighbors = [
+                    _dm.get_device(nid) for nid in neighbor_ids
+                ]
+                neighbors = [n for n in neighbors if n is not None]
+                neighbors.sort(key=lambda d: d.name)
+                circuit_names = {i + 1: d.name for i, d in enumerate(neighbors)}
+
+        # ── Build panel metrics ────────────────────────────────────────
+        panel = EV2PanelMetrics(
+            total_kw=_f("Panel_Total_kW"),
+            total_kwh=_f("Panel_Total_kWh"),
+            voltage_pha=_f("Voltage_PhA"),
+            voltage_phb=_f("Voltage_PhB"),
+            voltage_phc=_f("Voltage_PhC"),
+            current_pha=_f("Current_PhA"),
+            current_phb=_f("Current_PhB"),
+            current_phc=_f("Current_PhC"),
+            frequency=_f("Line_Frequency"),
+            power_factor=_f("Panel_PF"),
+            voltage_thd=_f("Voltage_THD"),
+            current_thd=_f("Current_THD"),
+            harmonic_3=_f("Harmonic_3_Current"),
+            harmonic_5=_f("Harmonic_5_Current"),
+            harmonic_7=_f("Harmonic_7_Current"),
+            harmonic_9=_f("Harmonic_9_Current"),
+            alarm_overcurrent=       bool(v.get("Alarm_Overcurrent",      0)),
+            alarm_voltage_imbalance= bool(v.get("Alarm_VoltageImbalance", 0)),
+            alarm_high_thd=          bool(v.get("Alarm_HighTHD",          0)),
+            alarm_phase_loss=        bool(v.get("Alarm_PhaseLoss",        0)),
+            alarm_sensor_fault=      bool(v.get("Alarm_SensorFault",      0)),
+        )
+
+        # ── Build circuit list ─────────────────────────────────────────
+        circuits: list[EV2CircuitMetrics] = []
+        for n in range(1, snap["circuits"] + 1):
+            lb = f"Ckt{n:02d}"
+            circuits.append(EV2CircuitMetrics(
+                circuit=n,
+                label=lb,
+                device_name=circuit_names.get(n),
+                current=_f(f"{lb}_Current"),
+                kw=_f(f"{lb}_kW"),
+                kwh=_f(f"{lb}_kWh"),
+                pf=_f(f"{lb}_PF"),
+                thd=_f(f"{lb}_THD"),
+            ))
+
+        result.append(EV2DeviceSnapshot(
+            ip=snap["ip"],
+            instance=snap["instance"],
+            name=snap["name"],
+            circuits=snap["circuits"],
+            monitored_pdu_name=pdu_name,
+            panel=panel,
+            circuit_list=circuits,
+        ))
+
+    return result

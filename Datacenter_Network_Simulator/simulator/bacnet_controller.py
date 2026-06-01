@@ -494,3 +494,22 @@ class BACnetController:
                 "status":   "Active" if self._running else "Stopped",
             })
         return result
+
+    def get_telemetry_snapshot(self) -> List[dict]:
+        """Return per-device snapshot of all current BACnet present values.
+
+        Each entry: {ip, instance, name, circuits, values: {name: float}}.
+        Returns empty list if not running.
+        """
+        if not self._running:
+            return []
+        result = []
+        for instance, dev in self._devices.items():
+            result.append({
+                "ip":       dev.device_ip,
+                "instance": instance,
+                "name":     dev.device_name,
+                "circuits": dev.circuits,
+                "values":   dev.get_snapshot(),
+            })
+        return result

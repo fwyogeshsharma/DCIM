@@ -104,6 +104,7 @@ export const api = {
   bacnetStart:  (cfg: { base_instance: number; frequency_hz: number; port: number }) =>
     post('/bacnet/start', cfg),
   bacnetStop:   ()                        => post('/bacnet/stop'),
+  ev2Metrics:   ()                        => get('/bacnet/ev2/metrics'),
 
   // rules
   rules:          ()                  => get('/rules'),

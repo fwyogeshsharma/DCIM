@@ -216,6 +216,8 @@ class DeviceInfo(BaseModel):
     cpu_temp: Optional[float] = None
     inlet_temp: Optional[float] = None
     # Sensor-specific
+    mid_temp: Optional[float] = None
+    outlet_temp: Optional[float] = None
     humidity: Optional[float] = None
     dewpoint: Optional[float] = None
     airflow: Optional[float] = None
@@ -257,6 +259,53 @@ class DeviceInfo(BaseModel):
 class DevicesResponse(BaseModel):
     total: int
     devices: List[DeviceInfo]
+
+
+# ── Verdigris EV2 BACnet metrics ──────────────────────────────────────────────
+
+class EV2CircuitMetrics(BaseModel):
+    circuit:      int
+    label:        str
+    device_name:  Optional[str]   = None   # topology device on this circuit
+    current:      Optional[float] = None   # A
+    kw:           Optional[float] = None   # kW
+    kwh:          Optional[float] = None   # kWh cumulative
+    pf:           Optional[float] = None   # power factor 0-1
+    thd:          Optional[float] = None   # current THD %
+
+
+class EV2PanelMetrics(BaseModel):
+    total_kw:    Optional[float] = None
+    total_kwh:   Optional[float] = None
+    voltage_pha: Optional[float] = None
+    voltage_phb: Optional[float] = None
+    voltage_phc: Optional[float] = None
+    current_pha: Optional[float] = None
+    current_phb: Optional[float] = None
+    current_phc: Optional[float] = None
+    frequency:   Optional[float] = None
+    power_factor: Optional[float] = None
+    voltage_thd: Optional[float] = None
+    current_thd: Optional[float] = None
+    harmonic_3:  Optional[float] = None
+    harmonic_5:  Optional[float] = None
+    harmonic_7:  Optional[float] = None
+    harmonic_9:  Optional[float] = None
+    alarm_overcurrent:      bool = False
+    alarm_voltage_imbalance: bool = False
+    alarm_high_thd:         bool = False
+    alarm_phase_loss:       bool = False
+    alarm_sensor_fault:     bool = False
+
+
+class EV2DeviceSnapshot(BaseModel):
+    ip:                str
+    instance:          int
+    name:              str
+    circuits:          int
+    monitored_pdu_name: Optional[str] = None
+    panel:             EV2PanelMetrics
+    circuit_list:      List[EV2CircuitMetrics] = []
 
 
 class AddDeviceRequest(BaseModel):

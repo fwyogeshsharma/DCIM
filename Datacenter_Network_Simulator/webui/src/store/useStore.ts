@@ -3,7 +3,7 @@ import { api, fetchWithAbort } from '../api/client'
 import type {
   GraphDevice, GraphLink, SnmpStatus, GnmiStatus, SFlowStatus, BacnetStatus,
   BindingStatus, RulesTable, TrapRecord, LogEntry,
-  HealthStatus, AdaptersResponse, DeviceInfo, JobStatus,
+  HealthStatus, AdaptersResponse, DeviceInfo, JobStatus, EV2DeviceSnapshot,
 } from '../api/types'
 
 let _logSeq = 0
@@ -33,7 +33,8 @@ interface Store {
   activeLayer:  string
 
   // devices list
-  devices: DeviceInfo[]
+  devices:    DeviceInfo[]
+  ev2Metrics: EV2DeviceSnapshot[]
 
   // simulator status
   snmp:    SnmpStatus | null
@@ -87,7 +88,8 @@ interface Store {
   fetchSnmp:    () => Promise<void>
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
-  fetchBacnet:  () => Promise<void>
+  fetchBacnet:     () => Promise<void>
+  fetchEV2Metrics: () => Promise<void>
   fetchBinding: () => Promise<void>
   fetchAdapters:() => Promise<void>
   fetchRules:   () => Promise<void>
@@ -104,6 +106,7 @@ export const useStore = create<Store>((set, get) => ({
   graphLinks:   [],
   activeLayer:  'all',
   devices:      [],
+  ev2Metrics:   [],
   snmp:         null,
   gnmi:         null,
   sflow:        null,
@@ -169,6 +172,13 @@ export const useStore = create<Store>((set, get) => ({
 
   fetchBacnet: async () => {
     try { set({ bacnet: await fetchWithAbort<BacnetStatus>('/bacnet/status') }) } catch { /* ignore */ }
+  },
+
+  fetchEV2Metrics: async () => {
+    try {
+      const data = await api.ev2Metrics() as EV2DeviceSnapshot[]
+      set({ ev2Metrics: data })
+    } catch { /* ignore */ }
   },
 
   fetchBinding: async () => {

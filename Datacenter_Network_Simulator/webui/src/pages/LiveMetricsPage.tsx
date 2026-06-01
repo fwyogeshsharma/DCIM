@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import type { DeviceInfo, IfaceStats } from '../api/types'
+import type { DeviceInfo, IfaceStats, EV2DeviceSnapshot, EV2CircuitMetrics } from '../api/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -649,47 +649,190 @@ function PduTable({ rows }: { rows: DeviceInfo[] }) {
 
 // ── Sensor table ──────────────────────────────────────────────────────────────
 
+type SensorMetricCfg = { key: keyof DeviceInfo; label: string; unit: string; warn: number; crit: number }
+
+const SENSOR_MODEL_METRICS: Record<string, SensorMetricCfg[]> = {
+  'Raritan DPX2-T3H1': [
+    { key: 'inlet_temp',  label: 'Inlet Temp',   unit: '°C',   warn: 35, crit: 45 },
+    { key: 'mid_temp',    label: 'Mid-Rack Temp', unit: '°C',   warn: 38, crit: 48 },
+    { key: 'outlet_temp', label: 'Exhaust Temp',  unit: '°C',   warn: 42, crit: 52 },
+    { key: 'humidity',    label: 'Humidity',       unit: '%',    warn: 70, crit: 85 },
+  ],
+  'Raritan DPX2-CC2': [
+    { key: 'inlet_temp', label: 'Floor Temp', unit: '°C', warn: 35, crit: 45 },
+  ],
+  'Vertiv Geist GTHD': [
+    { key: 'inlet_temp', label: 'Inlet Temp', unit: '°C', warn: 35, crit: 45 },
+    { key: 'humidity',   label: 'Humidity',   unit: '%',  warn: 70, crit: 85 },
+    { key: 'dewpoint',   label: 'Dewpoint',   unit: '°C', warn: 20, crit: 25 },
+  ],
+  'APC NetBotz 355': [
+    { key: 'inlet_temp', label: 'Inlet Temp', unit: '°C',   warn: 35, crit: 45 },
+    { key: 'humidity',   label: 'Humidity',   unit: '%',    warn: 70, crit: 85 },
+    { key: 'airflow',    label: 'Airflow',    unit: ' m/s', warn: 3,  crit: 3.8 },
+  ],
+  'APC NetBotz 250': [
+    { key: 'inlet_temp', label: 'Inlet Temp', unit: '°C',   warn: 35, crit: 45 },
+    { key: 'humidity',   label: 'Humidity',   unit: '%',    warn: 70, crit: 85 },
+    { key: 'airflow',    label: 'Airflow',    unit: ' m/s', warn: 3,  crit: 3.8 },
+  ],
+}
+
+function getSensorMetrics(model: string): SensorMetricCfg[] {
+  return SENSOR_MODEL_METRICS[model] ?? [
+    { key: 'inlet_temp', label: 'Inlet Temp', unit: '°C', warn: 35, crit: 45 },
+  ]
+}
+
 function SensorTable({ rows }: { rows: DeviceInfo[] }) {
   const sort = useSortState('name')
-  const sorted = useMemo(() => [...rows].sort((a, b) => {
-    const dir = sort.dir === 'asc' ? 1 : -1
-    switch (sort.col) {
-      case 'name':     return a.name.localeCompare(b.name) * dir
-      case 'ip':       return a.ip_address.localeCompare(b.ip_address) * dir
-      case 'humidity': return ((a.humidity ?? 0) - (b.humidity ?? 0)) * dir
-      case 'dewpoint': return ((a.dewpoint ?? 0) - (b.dewpoint ?? 0)) * dir
-      case 'airflow':  return ((a.airflow ?? 0) - (b.airflow ?? 0)) * dir
-      case 'itemp':    return ((a.inlet_temp ?? 0) - (b.inlet_temp ?? 0)) * dir
-      case 'uptime':   return (a.uptime - b.uptime) * dir
-      default: return 0
+
+  const groups = useMemo(() => {
+    const map = new Map<string, DeviceInfo[]>()
+    for (const d of rows) {
+      const model = d.model_name ?? 'Unknown Sensor'
+      if (!map.has(model)) map.set(model, [])
+      map.get(model)!.push(d)
     }
-  }), [rows, sort.col, sort.dir])
+    const dir = sort.dir === 'asc' ? 1 : -1
+    for (const devices of map.values()) {
+      devices.sort((a, b) => {
+        if (sort.col === 'ip')     return a.ip_address.localeCompare(b.ip_address) * dir
+        if (sort.col === 'uptime') return (a.uptime - b.uptime) * dir
+        return a.name.localeCompare(b.name) * dir
+      })
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [rows, sort.col, sort.dir])
+
+  return (
+    <div>
+      {groups.map(([model, devices], gi) => {
+        const metrics = getSensorMetrics(model)
+        return (
+          <div key={model} style={{ marginBottom: gi < groups.length - 1 ? 20 : 0 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', padding: '4px 10px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              {model} &nbsp;·&nbsp; {devices.length} device{devices.length !== 1 ? 's' : ''}
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 18, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }} />
+                  <SortTH label="Name"   id="name"   sort={sort} minW={140} />
+                  <SortTH label="IP"     id="ip"     sort={sort} />
+                  {metrics.map(m => (
+                    <SortTH key={String(m.key)} label={m.label} id={String(m.key)} sort={sort} align="right" minW={90} />
+                  ))}
+                  <SortTH label="Uptime" id="uptime" sort={sort} align="right" minW={80} />
+                </tr>
+              </thead>
+              <tbody>
+                {devices.map((d, i) => (
+                  <tr key={d.id} style={ROW_STYLE(i)}>
+                    <td style={{ width: 18 }} />
+                    <NameCell d={d} />
+                    <IpCell d={d} />
+                    {metrics.map(m => (
+                      <td key={String(m.key)} style={{ padding: '6px 10px', textAlign: 'right' }}>
+                        <NumCell val={d[m.key] as number | undefined} unit={m.unit} warn={m.warn} crit={m.crit} />
+                      </td>
+                    ))}
+                    <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtUptime(d.uptime)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── EV2 energy monitor tab ────────────────────────────────────────────────────
+
+function fmtVal(v: number | undefined, decimals = 1): string {
+  return v == null ? '—' : v.toFixed(decimals)
+}
+
+function AlarmPill({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span style={{
+      display: 'inline-block', padding: '2px 7px', borderRadius: 10, fontSize: 9,
+      fontWeight: 600, marginRight: 4,
+      background: active ? '#c0392b22' : 'var(--bg-card)',
+      color: active ? '#e74c3c' : 'var(--text-muted)',
+      border: `1px solid ${active ? '#e74c3c' : 'var(--border)'}`,
+    }}>{label}</span>
+  )
+}
+
+function StatCell({ label, value, unit, warn, crit }: { label: string; value?: number; unit: string; warn?: number; crit?: number }) {
+  const color = value == null ? 'var(--text-muted)'
+    : crit != null && value >= crit ? '#e74c3c'
+    : warn != null && value >= warn ? '#f39c12'
+    : 'var(--text)'
+  return (
+    <div style={{ minWidth: 80, padding: '6px 10px', borderRight: '1px solid var(--border)' }}>
+      <div style={{ fontSize: 8, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>
+        {value == null ? '—' : value.toFixed(unit === ' kWh' ? 1 : unit === ' kW' ? 2 : unit === ' Hz' ? 2 : unit === ' PF' ? 3 : 1)}{value != null ? unit : ''}
+      </div>
+    </div>
+  )
+}
+
+function EV2CircuitTable({ circuits }: { circuits: EV2CircuitMetrics[] }) {
+  const [sortCol, setSortCol] = useState<string>('circuit')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const sorted = useMemo(() => {
+    return [...circuits].sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1
+      if (sortCol === 'circuit')     return (a.circuit - b.circuit) * dir
+      if (sortCol === 'device_name') return (a.device_name ?? '').localeCompare(b.device_name ?? '') * dir
+      if (sortCol === 'current')     return ((a.current ?? 0) - (b.current ?? 0)) * dir
+      if (sortCol === 'kw')          return ((a.kw ?? 0) - (b.kw ?? 0)) * dir
+      if (sortCol === 'kwh')         return ((a.kwh ?? 0) - (b.kwh ?? 0)) * dir
+      if (sortCol === 'pf')          return ((a.pf ?? 0) - (b.pf ?? 0)) * dir
+      if (sortCol === 'thd')         return ((a.thd ?? 0) - (b.thd ?? 0)) * dir
+      return 0
+    })
+  }, [circuits, sortCol, sortDir])
+
+  function th(label: string, col: string, align: 'left' | 'right' = 'right') {
+    const active = sortCol === col
+    return (
+      <th onClick={() => { if (active) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('asc') } }}
+        style={{ padding: '4px 8px', textAlign: align, fontSize: 9, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', userSelect: 'none' }}>
+        {label}{active ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}
+      </th>
+    )
+  }
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
-      <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+      <thead>
         <tr>
-          <th style={{ width: 18, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }} />
-          <SortTH label="Name"       id="name"     sort={sort} minW={140} />
-          <SortTH label="IP"         id="ip"       sort={sort} />
-          <SortTH label="Humidity"   id="humidity" sort={sort} align="right" minW={90} />
-          <SortTH label="Dew Point"  id="dewpoint" sort={sort} align="right" minW={90} />
-          <SortTH label="Airflow"    id="airflow"  sort={sort} align="right" minW={90} />
-          <SortTH label="Inlet Temp" id="itemp"    sort={sort} align="right" minW={90} />
-          <SortTH label="Uptime"     id="uptime"   sort={sort} align="right" minW={80} />
+          {th('Circuit', 'circuit', 'left')}
+          {th('Device', 'device_name', 'left')}
+          {th('Current (A)', 'current')}
+          {th('kW', 'kw')}
+          {th('kWh', 'kwh')}
+          {th('PF', 'pf')}
+          {th('THD %', 'thd')}
         </tr>
       </thead>
       <tbody>
-        {sorted.map((d, i) => (
-          <tr key={d.id} style={ROW_STYLE(i)}>
-            <td style={{ width: 18 }} />
-            <NameCell d={d} />
-            <IpCell d={d} />
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.humidity}   unit="%" warn={70} crit={85} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.dewpoint}   unit="°C" warn={20} crit={25} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.airflow}    unit=" m/s" warn={3} crit={3.8} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.inlet_temp} unit="°C" warn={35} crit={45} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtUptime(d.uptime)}</td>
+        {sorted.map((c, i) => (
+          <tr key={c.circuit} style={{ background: i % 2 === 0 ? 'transparent' : 'var(--bg-stripe, rgba(255,255,255,0.02))' }}>
+            <td style={{ padding: '3px 8px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>{c.label}</td>
+            <td style={{ padding: '3px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.device_name ?? '—'}</td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.current} unit=" A"  warn={16} crit={20} /></td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.kw}      unit=" kW" warn={3}  crit={4}  /></td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{fmtVal(c.kwh, 1)}</td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.pf}      unit=""    warn={0}  crit={0}  /></td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.thd}     unit="%"   warn={5}  crit={7}  /></td>
           </tr>
         ))}
       </tbody>
@@ -697,12 +840,102 @@ function SensorTable({ rows }: { rows: DeviceInfo[] }) {
   )
 }
 
+function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+
+  if (snapshots.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
+        BACnet offline — start BACnet simulator to see EV2 metrics
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {snapshots.map((snap) => {
+        const p = snap.panel
+        const isExpanded = expanded.has(snap.instance)
+        const anyAlarm = p.alarm_overcurrent || p.alarm_voltage_imbalance || p.alarm_high_thd || p.alarm_phase_loss || p.alarm_sensor_fault
+        return (
+          <div key={snap.instance} style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+            {/* Device header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontWeight: 700, fontSize: 11, color: 'var(--text)' }}>{snap.name}</span>
+              <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{snap.ip}</span>
+              {snap.monitored_pdu_name && (
+                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--accent)' }}>
+                  PDU: {snap.monitored_pdu_name}
+                </span>
+              )}
+              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>{snap.circuits} circuits</span>
+              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>inst {snap.instance}</span>
+              {anyAlarm && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#c0392b22', border: '1px solid #e74c3c', color: '#e74c3c', fontWeight: 700 }}>ALARM</span>}
+            </div>
+
+            {/* Panel summary */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', background: 'var(--bg-base)' }}>
+              <StatCell label="Total kW"  value={p.total_kw}     unit=" kW"  warn={150} crit={180} />
+              <StatCell label="Total kWh" value={p.total_kwh}    unit=" kWh" />
+              <StatCell label="V Phase A" value={p.voltage_pha}  unit=" V"   warn={245} crit={255} />
+              <StatCell label="V Phase B" value={p.voltage_phb}  unit=" V"   warn={245} crit={255} />
+              <StatCell label="V Phase C" value={p.voltage_phc}  unit=" V"   warn={245} crit={255} />
+              <StatCell label="I Phase A" value={p.current_pha}  unit=" A"   warn={70}  crit={85}  />
+              <StatCell label="I Phase B" value={p.current_phb}  unit=" A"   warn={70}  crit={85}  />
+              <StatCell label="I Phase C" value={p.current_phc}  unit=" A"   warn={70}  crit={85}  />
+              <StatCell label="Frequency" value={p.frequency}    unit=" Hz"  warn={51}  crit={52}  />
+              <StatCell label="Power Factor" value={p.power_factor} unit=" PF" />
+            </div>
+
+            {/* Power quality */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', background: 'var(--bg-base)' }}>
+              <StatCell label="V THD"  value={p.voltage_thd} unit="%" warn={5}  crit={8}  />
+              <StatCell label="I THD"  value={p.current_thd} unit="%" warn={5}  crit={7}  />
+              <StatCell label="H3 %" value={p.harmonic_3}    unit="%" warn={10} crit={15} />
+              <StatCell label="H5 %" value={p.harmonic_5}    unit="%" warn={10} crit={15} />
+              <StatCell label="H7 %" value={p.harmonic_7}    unit="%" warn={10} crit={15} />
+              <StatCell label="H9 %" value={p.harmonic_9}    unit="%" warn={10} crit={15} />
+            </div>
+
+            {/* Alarms — only show active ones; "No alarms" when all clear */}
+            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border)', background: 'var(--bg-panel)' }}>
+              {anyAlarm ? (
+                <>
+                  {p.alarm_overcurrent       && <AlarmPill label="Overcurrent"       active />}
+                  {p.alarm_voltage_imbalance && <AlarmPill label="Voltage Imbalance" active />}
+                  {p.alarm_high_thd          && <AlarmPill label="High THD"          active />}
+                  {p.alarm_phase_loss        && <AlarmPill label="Phase Loss"        active />}
+                  {p.alarm_sensor_fault      && <AlarmPill label="Sensor Fault"      active />}
+                </>
+              ) : (
+                <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                  No alarms
+                </span>
+              )}
+            </div>
+
+            {/* Circuits toggle */}
+            <div style={{ background: 'var(--bg-panel)' }}>
+              <button
+                onClick={() => setExpanded(s => { const n = new Set(s); isExpanded ? n.delete(snap.instance) : n.add(snap.instance); return n })}
+                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: isExpanded ? '1px solid var(--border)' : 'none', padding: '5px 12px', textAlign: 'left', cursor: 'pointer', fontSize: 10, color: 'var(--text-muted)' }}>
+                {isExpanded ? '▼' : '▶'} Circuits ({snap.circuits})
+              </button>
+              {isExpanded && <EV2CircuitTable circuits={snap.circuit_list} />}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── tabs ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'all' | 'network' | 'server' | 'ups' | 'pdu' | 'sensor'
+type Tab = 'all' | 'network' | 'server' | 'ups' | 'pdu' | 'sensor' | 'energy'
 
 const TAB_LABELS: Record<Tab, string> = {
-  all: 'All', network: 'Network', server: 'Server', ups: 'UPS', pdu: 'PDU', sensor: 'Sensor',
+  all: 'All', network: 'Network', server: 'Server', ups: 'UPS', pdu: 'PDU', sensor: 'Sensor', energy: 'Energy (EV2)',
 }
 
 const TAB_TYPES: Record<Tab, string[]> = {
@@ -712,14 +945,23 @@ const TAB_TYPES: Record<Tab, string[]> = {
   ups:     ['ups'],
   pdu:     ['pdu', 'floor_pdu'],
   sensor:  ['sensor'],
+  energy:  [],   // data comes from ev2Metrics, not devices[]
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function LiveMetricsPage() {
-  const { devices, setActiveView } = useStore()
+  const { devices, ev2Metrics, setActiveView, fetchEV2Metrics } = useStore()
   const [tab,    setTab]    = useState<Tab>('all')
   const [search, setSearch] = useState('')
+
+  // Poll EV2 metrics every 30 s when energy tab is active
+  useEffect(() => {
+    if (tab !== 'energy') return
+    fetchEV2Metrics()
+    const id = setInterval(fetchEV2Metrics, 30_000)
+    return () => clearInterval(id)
+  }, [tab, fetchEV2Metrics])
 
   const counts = useMemo((): Record<Tab, number> => ({
     all:     devices.length,
@@ -728,9 +970,11 @@ export default function LiveMetricsPage() {
     ups:     devices.filter(d => TAB_TYPES.ups.includes(d.device_type)).length,
     pdu:     devices.filter(d => TAB_TYPES.pdu.includes(d.device_type)).length,
     sensor:  devices.filter(d => TAB_TYPES.sensor.includes(d.device_type)).length,
-  }), [devices])
+    energy:  ev2Metrics.length,
+  }), [devices, ev2Metrics])
 
   const filtered = useMemo(() => {
+    if (tab === 'energy') return []   // energy tab uses ev2Metrics directly
     let list = devices
     const types = TAB_TYPES[tab]
     if (types.length > 0) list = list.filter(d => types.includes(d.device_type))
@@ -744,7 +988,7 @@ export default function LiveMetricsPage() {
       )
     }
     return list
-  }, [devices, tab, search])
+  }, [devices, ev2Metrics, tab, search])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg-base)', overflow: 'hidden' }}>
@@ -802,17 +1046,19 @@ export default function LiveMetricsPage() {
       )}
 
       {/* Table */}
-      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}>
-        {filtered.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
-            {devices.length === 0 ? 'No topology loaded' : `No ${TAB_LABELS[tab].toLowerCase()} devices`}
-          </div>
-        ) : tab === 'all'     ? <AllTable     rows={filtered} />
-          : tab === 'network' ? <NetworkTable rows={filtered} />
-          : tab === 'server'  ? <ServerTable  rows={filtered} />
-          : tab === 'ups'     ? <UpsTable     rows={filtered} />
-          : tab === 'pdu'     ? <PduTable     rows={filtered} />
-          :                     <SensorTable  rows={filtered} />
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: tab === 'energy' ? 12 : 0 }}>
+        {tab === 'energy'
+          ? <EV2MetricsTab snapshots={ev2Metrics} />
+          : filtered.length === 0
+            ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
+                {devices.length === 0 ? 'No topology loaded' : `No ${TAB_LABELS[tab].toLowerCase()} devices`}
+              </div>
+            : tab === 'all'     ? <AllTable     rows={filtered} />
+            : tab === 'network' ? <NetworkTable rows={filtered} />
+            : tab === 'server'  ? <ServerTable  rows={filtered} />
+            : tab === 'ups'     ? <UpsTable     rows={filtered} />
+            : tab === 'pdu'     ? <PduTable     rows={filtered} />
+            :                     <SensorTable  rows={filtered} />
         }
       </div>
 
