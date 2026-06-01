@@ -302,3 +302,45 @@ export interface NLQueryResponse {
   explanation: string
   data: any[]
 }
+
+// ── Critical tickets ─────────────────────────────────────────────────────────
+export type TicketStatus = 'open' | 'acknowledged' | 'in_progress' | 'resolved' | 'closed'
+export type TicketPriority = 'P1' | 'P2' | 'P3' | 'P4'
+export type TicketCategory = 'power' | 'cooling' | 'network' | 'compliance' | 'security' | 'other'
+
+export interface Ticket {
+  id: string
+  ticket_number: string
+  org_id: string
+  datacenter_id: string
+  event_id: string | null
+  device_id: string | null
+  source_hostname: string | null
+  severity: string
+  priority: TicketPriority
+  status: TicketStatus
+  category: TicketCategory
+  title: string
+  description: string | null
+  assigned_to: string | null
+  root_cause: string | null
+  resolution: string | null
+  sla_due_at: string | null
+  acknowledged_at: string | null
+  resolved_at: string | null
+  closed_at: string | null
+  attributes: Record<string, any> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TicketActivity {
+  id: string
+  ticket_id: string
+  activity_type: 'created' | 'comment' | 'status_change' | 'assignment' | 'escalation'
+  actor: string | null
+  from_status: string | null
+  to_status: string | null
+  message: string | null
+  created_at: string
+}

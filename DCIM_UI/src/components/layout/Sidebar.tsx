@@ -13,7 +13,8 @@ import {
   ServerCog,
   Zap as ZapIcon,
   Radio,
-  Flame
+  Flame,
+  Ticket
 } from 'lucide-react'
 import { useUIStore } from '@/stores/useUIStore'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Agents', href: '/agents', icon: Server },
   { name: 'Alerts', href: '/alerts', icon: AlertTriangle },
+  { name: 'Tickets', href: '/tickets', icon: Ticket },
   { name: 'Power Mgmt', href: '/reports', icon: ZapIcon },
   { name: 'Network Ops', href: '/network-ops', icon: Radio },
   { name: 'Fire & Safety', href: '/fire-safety', icon: Flame },

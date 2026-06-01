@@ -21,6 +21,7 @@ import ServerManagement from './pages/ServerManagement'
 import Reports from './pages/Reports'
 import NetworkOps from './pages/NetworkOps'
 import FireSafety from './pages/FireSafety'
+import Tickets from './pages/Tickets'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +63,7 @@ function App() {
               <Route path="agents/:agentId" element={<AgentDetail />} />
               <Route path="agents/:agentId/analytics" element={<AgentAnalytics />} />
               <Route path="alerts" element={<Alerts />} />
+              <Route path="tickets" element={<Tickets />} />
               <Route path="topology" element={<Topology />} />
               <Route path="topology-3d" element={<Topology3D />} />
               <Route path="topology-editor" element={<TopologyEditor />} />

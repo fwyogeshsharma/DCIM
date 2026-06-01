@@ -12,6 +12,8 @@ import type {
   MetricFilter,
   AlertFilter,
   ServerConfig,
+  Ticket,
+  TicketActivity,
 } from './types'
 
 // Use aggregator service URL if available, otherwise fall back to direct server URL
@@ -496,6 +498,69 @@ class APIClient {
     critical_alerts: number
   }>> {
     return this.request('/networks/summary')
+  }
+
+  // ── Critical tickets ───────────────────────────────────────────────────────
+  async getTickets(filter?: {
+    status?: string; priority?: string; assigned_to?: string; category?: string
+    q?: string; limit?: number; offset?: number
+  }): Promise<{ data: Ticket[]; total: number; hasMore: boolean }> {
+    const params = new URLSearchParams()
+    if (filter?.status)      params.append('status', filter.status)
+    if (filter?.priority)    params.append('priority', filter.priority)
+    if (filter?.assigned_to) params.append('assigned_to', filter.assigned_to)
+    if (filter?.category)    params.append('category', filter.category)
+    if (filter?.q)           params.append('q', filter.q)
+    if (filter?.limit !== undefined)  params.append('limit', String(filter.limit))
+    if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
+    const qs = params.toString()
+    const res = await fetch(`${this.baseURL}/tickets${qs ? `?${qs}` : ''}`, { cache: 'no-store' })
+    const json = await res.json()
+    return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
+  }
+
+  async getTicketStats(): Promise<{
+    total: number; open: number; unacked: number; in_progress: number
+    resolved: number; closed: number; unassigned: number; p1_open: number
+  }> {
+    return this.request('/tickets/stats')
+  }
+
+  async getTicketAssignees(): Promise<Array<{ name: string; open_tickets: number }>> {
+    return this.request('/tickets/assignees')
+  }
+
+  async getTicket(id: string): Promise<Ticket & { activity: TicketActivity[] }> {
+    return this.request(`/tickets/${id}`)
+  }
+
+  // Generate a ticket from a critical alert/event. Returns the existing open
+  // ticket (deduped) if one already exists for that event.
+  async createTicketFromAlert(data: {
+    event_id: string; priority?: string; category?: string
+    assigned_to?: string; actor?: string; title?: string; description?: string
+  }): Promise<Ticket> {
+    return this.request('/tickets/from-alert', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async createTicket(data: Partial<Ticket> & { title: string; actor?: string }): Promise<Ticket> {
+    return this.request('/tickets', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateTicket(id: string, data: Partial<Ticket> & { actor?: string }): Promise<Ticket> {
+    return this.request(`/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+  }
+
+  async assignTicket(id: string, assigned_to: string | null, actor?: string): Promise<Ticket> {
+    return this.request(`/tickets/${id}/assign`, {
+      method: 'POST', body: JSON.stringify({ assigned_to, actor }),
+    })
+  }
+
+  async addTicketComment(id: string, message: string, actor?: string): Promise<TicketActivity[]> {
+    return this.request(`/tickets/${id}/comment`, {
+      method: 'POST', body: JSON.stringify({ message, actor }),
+    })
   }
 
   // Recently active agents (lightweight)

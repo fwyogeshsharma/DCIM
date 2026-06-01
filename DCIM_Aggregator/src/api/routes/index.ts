@@ -6,6 +6,7 @@ import { createServersRouter } from './servers'
 import { createAgentsRouter } from './agents'
 import { createMetricsRouter } from './metrics'
 import { createAlertsRouter } from './alerts'
+import { createTicketsRouter } from './tickets'
 import { createIngestRouter } from './ingest'
 import { addSSEClient, removeSSEClient } from '../../events/sseEmitter'
 
@@ -24,6 +25,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
   app.use('/api/v1/agents',   createAgentsRouter(dbPool))
   app.use('/api/v1/metrics',  createMetricsRouter(dbPool, cacheService))
   app.use('/api/v1/alerts',   createAlertsRouter(dbPool))
+  app.use('/api/v1/tickets',  createTicketsRouter(dbPool))
   app.use('/api/v1/ingest',   createIngestRouter(dbPool))
 
   // ── Dashboard stats ────────────────────────────────────────────────────────
