@@ -99,6 +99,14 @@ interface IngestEvent {
   ts?: string
   payload?: Record<string, unknown>
   collector_agent?: string
+  // Link-event correlation (migration 004). A linkDown/linkUp that DCS correlated
+  // to a topology_links row carries the peer endpoint + the link id. All NULL for
+  // non-link events.
+  src_port_name?: string
+  dst_hostname?: string
+  dst_port_name?: string
+  dst_device_id?: string
+  link_id?: string
 }
 
 interface IngestPayload {
@@ -417,18 +425,55 @@ export function createIngestRouter(dbPool: Pool): Router {
       // ── 6. Insert events ───────────────────────────────────────────────────
       for (const ev of body.events ?? []) {
         const deviceId = (ev.hostname ? deviceIdMap.get(ev.hostname) : undefined) ?? ev.device_id ?? null
+        // Resolve the peer endpoint for link events (migration 004): prefer a
+        // forwarded dst_device_id, else look up dst_hostname within the tenant —
+        // same resolver the topology links use, so a cross-(dc,floor) peer that
+        // isn't in this payload still resolves.
+        const dstDeviceId = ev.dst_hostname
+          ? (await resolveEndpoint(ev.dst_hostname)) ?? ev.dst_device_id ?? null
+          : ev.dst_device_id ?? null
         await client.query(`
           INSERT INTO events (device_id, source_hostname, ts, kind, event_name, severity,
-                              trap_oid, source_ip, event_payload, collector_agent, id)
-          VALUES ($1,$2,$3::timestamptz,$4,$5,$6,$7,$8::inet,$9,$10, COALESCE($11::uuid, gen_random_uuid()))
+                              trap_oid, source_ip, event_payload, collector_agent,
+                              src_port_name, dst_device_id, dst_hostname, dst_port_name, link_id, id)
+          VALUES ($1,$2,$3::timestamptz,$4,$5,$6,$7,$8::inet,$9,$10,
+                  $11,$12::uuid,$13,$14,$15::uuid, COALESCE($16::uuid, gen_random_uuid()))
         `, [
           deviceId, ev.hostname ?? null, ev.ts ?? 'now()',
           ev.kind ?? 'event', ev.event_name, ev.severity ?? 'informational',
           ev.trap_oid ?? null, ev.source_ip ?? null,
           ev.payload ? JSON.stringify(ev.payload) : null,
           ev.collector_agent ?? 'EDR',
+          ev.src_port_name ?? null, dstDeviceId, ev.dst_hostname ?? null,
+          ev.dst_port_name ?? null, ev.link_id ?? null,
           ev.id ?? null,
         ])
+
+        // ── 6a. Auto-resolve the matching linkDown on a linkUp/restore ─────────
+        // A linkUp means the link came back, so the still-open linkDown for the
+        // same link should stop showing as an active alert. Correlate on link_id
+        // when DCS forwarded one, else on the endpoint pair (source_hostname +
+        // dst_hostname) in EITHER orientation — the down may have been recorded
+        // from the peer's side. Derive the counterpart name from this event's name
+        // (linkUp→linkDown, OOBSwitchLinkUp→OOBSwitchLinkDown, …) so vendor
+        // variants pair up too.
+        const evNameLower = (ev.event_name ?? '').toLowerCase()
+        if (evNameLower.includes('linkup')) {
+          const downName = evNameLower.replace('linkup', 'linkdown')
+          await client.query(`
+            UPDATE events SET
+              event_payload = COALESCE(event_payload, '{}'::jsonb)
+                              || jsonb_build_object('resolved', true, 'resolved_at', now()::text)
+            WHERE LOWER(event_name) = $1
+              AND COALESCE((event_payload->>'resolved')::boolean, false) = false
+              AND (
+                ($2::uuid IS NOT NULL AND link_id = $2::uuid)
+                OR ($2::uuid IS NULL AND $3 IS NOT NULL AND $4 IS NOT NULL
+                    AND ( (source_hostname = $3 AND dst_hostname = $4)
+                       OR (source_hostname = $4 AND dst_hostname = $3) ))
+              )
+          `, [downName, ev.link_id ?? null, ev.hostname ?? null, ev.dst_hostname ?? null])
+        }
 
         if ((ev.kind ?? 'event') === 'trap') {
           const msg = ev.payload?.message

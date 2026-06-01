@@ -198,6 +198,11 @@ function deviceVisuals(deviceType: string, deviceRole?: string | null) {
 const isLinkDownType = (s?: string) =>
   (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKDOWN')
 
+// A trap is a link-up (restore) event if its type normalizes to "linkup" — the
+// counterpart to linkDown. Same loose match (linkUp / LINK_UP / OOBSwitchLinkUp).
+const isLinkUpType = (s?: string) =>
+  (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKUP')
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Topology() {
@@ -283,23 +288,38 @@ export default function Topology() {
     const ip: string | undefined = data.source_ip
     const name: string | undefined = data.device_name
     if (!ip && !name) return
-    const alert: TrapAlert = {
-      trapType: data.trap_type ?? '', severity: data.severity ?? 'critical',
-      description: data.description ?? '', deviceName: name ?? '',
-      timestamp: data.timestamp ?? new Date().toISOString(),
-    }
     const keys = [ip, name].filter(Boolean) as string[]
-    keys.forEach(k => { const ex = trapTimeoutsRef.current.get(k); if (ex) clearTimeout(ex) })
-    setTrapAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
     const isLinkDown = isLinkDownType(data.trap_type)
-    if (isLinkDown) {
-      setLinkDownAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
-    }
+    const isLinkUp = isLinkUpType(data.trap_type)
+
+    // A new transition for these keys supersedes any pending auto-expire timer.
+    keys.forEach(k => { const ex = trapTimeoutsRef.current.get(k); if (ex) { clearTimeout(ex); trapTimeoutsRef.current.delete(k) } })
+
+    // Always surface the trap in the live feed (including the restore).
     setTrapFeed(prev => [{
       id: Date.now(), sourceIp: ip ?? '', deviceName: name ?? '',
       trapType: data.trap_type ?? '', severity: data.severity ?? 'critical',
       description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
     }, ...prev].slice(0, 30))
+
+    // linkUp = link restored: clear the link-down edge state AND the red node glow
+    // for these keys so the cable renders green/normal again immediately. Nothing
+    // left to auto-expire.
+    if (isLinkUp) {
+      setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      return
+    }
+
+    const alert: TrapAlert = {
+      trapType: data.trap_type ?? '', severity: data.severity ?? 'critical',
+      description: data.description ?? '', deviceName: name ?? '',
+      timestamp: data.timestamp ?? new Date().toISOString(),
+    }
+    setTrapAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
+    if (isLinkDown) {
+      setLinkDownAlerts(prev => { const next = new Map(prev); if (ip) next.set(ip, alert); if (name) next.set(name, alert); return next })
+    }
     const timeout = setTimeout(() => {
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
       if (isLinkDown) setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })

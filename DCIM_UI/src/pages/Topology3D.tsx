@@ -39,6 +39,10 @@ const USE_MOCK_DATA = false
 const isLinkDownType = (s?: string) =>
   (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKDOWN')
 
+// linkUp (restore) counterpart — loose match (linkUp / LINK_UP / OOBSwitchLinkUp).
+const isLinkUpType = (s?: string) =>
+  (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKUP')
+
 // ── Temperature → colour mapping for heatmap mode ───────────────────────────
 // Range: 10°C (min) → 55°C (max). Critical zone: 35–45°C
 function tempToColor(t: number): string {
@@ -1896,6 +1900,28 @@ export default function Topology3D() {
     const ip: string | undefined = data.source_ip
     const name: string | undefined = data.device_name
     if (!ip && !name) return
+    const keys = [ip, name].filter(Boolean) as string[]
+    const isLinkDown = isLinkDownType(data.trap_type)
+    const isLinkUp = isLinkUpType(data.trap_type)
+
+    // A new transition for these keys supersedes any pending auto-expire timer.
+    keys.forEach(k => { const t = trapTimeoutsRef.current.get(k); if (t) { clearTimeout(t); trapTimeoutsRef.current.delete(k) } })
+
+    // Always surface the trap in the live feed (including the restore).
+    setTrapFeed(prev => [{
+      id: Date.now(), sourceIp: ip ?? '', deviceName: name ?? '',
+      trapType: data.trap_type ?? '', severity: data.severity ?? 'critical',
+      description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
+    }, ...prev].slice(0, 30))
+
+    // linkUp = link restored: clear the link-down edge state AND red node glow for
+    // these keys so the cable renders green/normal again. Nothing left to expire.
+    if (isLinkUp) {
+      setLinkDownAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
+      return
+    }
+
     const alert: TrapAlert = {
       trapType: data.trap_type ?? '',
       severity: data.severity ?? 'critical',
@@ -1904,15 +1930,12 @@ export default function Topology3D() {
       timestamp: data.timestamp ?? new Date().toISOString(),
       ifaceIndex: data.iface_index != null ? Number(data.iface_index) : undefined,
     }
-    const keys = [ip, name].filter(Boolean) as string[]
-    keys.forEach(k => { const t = trapTimeoutsRef.current.get(k); if (t) clearTimeout(t) })
     setTrapAlerts(prev => {
       const next = new Map(prev)
       if (ip) next.set(ip, alert)
       if (name) next.set(name, alert)
       return next
     })
-    const isLinkDown = isLinkDownType(data.trap_type)
     if (isLinkDown) {
       setLinkDownAlerts(prev => {
         const next = new Map(prev)
@@ -1921,11 +1944,6 @@ export default function Topology3D() {
         return next
       })
     }
-    setTrapFeed(prev => [{
-      id: Date.now(), sourceIp: ip ?? '', deviceName: name ?? '',
-      trapType: data.trap_type ?? '', severity: data.severity ?? 'critical',
-      description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
-    }, ...prev].slice(0, 30))
     const TRAP_TTL = Math.max(60_000, 5 * 60 * 1000)
     const timeout = setTimeout(() => {
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
