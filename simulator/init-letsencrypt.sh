@@ -1,8 +1,16 @@
 #!/bin/bash
 # Run this ONCE on the VM before starting the full stack.
 # It creates a dummy cert so Nginx can start, then swaps in a real Let's Encrypt cert.
+#
+# Run from this directory (e.g. /home/DCIM/simulator): `bash init-letsencrypt.sh`.
+# It drives the ROOT compose (../docker-compose.yml), whose nginx/certbot services
+# bind-mount ./simulator/certbot/{conf,www}. Because this script's CERT_PATH
+# (./certbot/conf/...) resolves to that same host dir, the dummy/real cert it writes
+# is exactly what nginx serves — one source of truth, no named volumes.
 
 set -e
+
+COMPOSE="docker compose -f ../docker-compose.yml"
 
 DOMAIN="fwdcim.faberwork.com"
 EMAIL="aman.yadav@faberwork.com"
@@ -29,7 +37,7 @@ if [ ! -f "./certbot/conf/options-ssl-nginx.conf" ]; then
 fi
 
 echo "==> Starting Nginx with dummy cert..."
-docker-compose -f docker-compose.simulator.yml up -d nginx
+$COMPOSE up -d nginx
 
 echo "==> Waiting for Nginx to be ready..."
 sleep 5
@@ -40,7 +48,7 @@ rm -rf "./certbot/conf/archive"
 rm -rf "./certbot/conf/renewal"
 
 echo "==> Requesting real Let's Encrypt certificate..."
-docker-compose -f docker-compose.simulator.yml run --rm certbot \
+$COMPOSE run --rm certbot \
   certonly --webroot \
   --webroot-path=/var/www/certbot \
   --email "$EMAIL" \
@@ -49,7 +57,7 @@ docker-compose -f docker-compose.simulator.yml run --rm certbot \
   -d "$DOMAIN"
 
 echo "==> Reloading Nginx with real certificate..."
-docker-compose -f docker-compose.simulator.yml exec nginx nginx -s reload
+$COMPOSE exec nginx nginx -s reload
 
 echo ""
 echo "Done! https://$DOMAIN is live."
