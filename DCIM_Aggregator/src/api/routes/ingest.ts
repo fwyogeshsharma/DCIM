@@ -181,9 +181,9 @@ export function createIngestRouter(dbPool: Pool): Router {
             `SELECT id FROM devices
              WHERE org_id = $1 AND network_id = $2 AND group_id = $3
                AND ( ($4::inet IS NOT NULL AND mgmt_ip = $4::inet)
-                     OR (datacenter_id = $5 AND floor_id = $6 AND hostname = $7) )
+               OR (datacenter_id = $5 AND floor_id = $6 AND hostname = $7) )
              ORDER BY ($4::inet IS NOT NULL AND mgmt_ip = $4::inet) DESC
-             LIMIT 1`,
+               LIMIT 1`,
             [body.org_id, body.network_id, body.group_id, dev.mgmt_ip ?? null,
               body.datacenter_id, body.floor_id, dev.hostname],
         )
@@ -208,21 +208,21 @@ export function createIngestRouter(dbPool: Pool): Router {
           deviceId = found.rows[0].id
           await client.query(`
             UPDATE devices SET
-              hostname=$1, device_type=$2,
-              vendor=COALESCE($3,vendor), model_name=COALESCE($4,model_name),
-              os_name=COALESCE($5,os_name), os_version=COALESCE($6,os_version),
-              sys_oid=COALESCE($7,sys_oid), sys_description=COALESCE($8,sys_description),
-              sys_location=COALESCE($9,sys_location),
-              mgmt_ip=COALESCE($10::inet,mgmt_ip), prod_ip=COALESCE($11::inet,prod_ip),
-              loopback_ip=COALESCE($12::inet,loopback_ip), oob_ip=COALESCE($13::inet,oob_ip),
-              snmp_enabled=$14, gnmi_enabled=$15, snmp_port=$16, snmp_version=$17, gnmi_port=$18,
-              collector_agent=$19,
-              country=COALESCE($20,country), datacenter_city=COALESCE($21,datacenter_city),
-              datacenter=COALESCE($22,datacenter), room=COALESCE($23,room),
-              rack_row=COALESCE($24,rack_row), rack_num=COALESCE($25,rack_num),
-              rack_unit=COALESCE($26,rack_unit), power_draw_w=COALESCE($27,power_draw_w),
-              is_reachable=$28, device_role=$29, role_confidence=$30, role_source=$31,
-              last_seen_at=now(), updated_at=now()
+                             hostname=$1, device_type=$2,
+                             vendor=COALESCE($3,vendor), model_name=COALESCE($4,model_name),
+                             os_name=COALESCE($5,os_name), os_version=COALESCE($6,os_version),
+                             sys_oid=COALESCE($7,sys_oid), sys_description=COALESCE($8,sys_description),
+                             sys_location=COALESCE($9,sys_location),
+                             mgmt_ip=COALESCE($10::inet,mgmt_ip), prod_ip=COALESCE($11::inet,prod_ip),
+                             loopback_ip=COALESCE($12::inet,loopback_ip), oob_ip=COALESCE($13::inet,oob_ip),
+                             snmp_enabled=$14, gnmi_enabled=$15, snmp_port=$16, snmp_version=$17, gnmi_port=$18,
+                             collector_agent=$19,
+                             country=COALESCE($20,country), datacenter_city=COALESCE($21,datacenter_city),
+                             datacenter=COALESCE($22,datacenter), room=COALESCE($23,room),
+                             rack_row=COALESCE($24,rack_row), rack_num=COALESCE($25,rack_num),
+                             rack_unit=COALESCE($26,rack_unit), power_draw_w=COALESCE($27,power_draw_w),
+                             is_reachable=$28, device_role=$29, role_confidence=$30, role_source=$31,
+                             last_seen_at=now(), updated_at=now()
             WHERE id=$32
           `, [...dp, deviceId])
         } else {
@@ -238,14 +238,14 @@ export function createIngestRouter(dbPool: Pool): Router {
               org_id, datacenter_id, floor_id, network_id, group_id,
               last_seen_at, updated_at, id
             ) VALUES (
-              $1,$2,$3,$4,$5,$6,$7,$8,$9,
-              $10::inet,$11::inet,$12::inet,$13::inet,
-              $14,$15,$16,$17,$18,$19,
-              $20,$21,$22,$23,$24,$25,$26,$27,
-              $28,$29,$30,$31,
-              $33,$34,$35,$36,$37,
-              now(), now(), COALESCE($32::uuid, gen_random_uuid())
-            ) RETURNING id
+                       $1,$2,$3,$4,$5,$6,$7,$8,$9,
+                       $10::inet,$11::inet,$12::inet,$13::inet,
+                       $14,$15,$16,$17,$18,$19,
+                       $20,$21,$22,$23,$24,$25,$26,$27,
+                       $28,$29,$30,$31,
+                       $33,$34,$35,$36,$37,
+                       now(), now(), COALESCE($32::uuid, gen_random_uuid())
+                     ) RETURNING id
           `, [...dp, dev.id ?? null,
             body.org_id, body.datacenter_id, body.floor_id, body.network_id, body.group_id])
           deviceId = rows[0].id
@@ -432,8 +432,8 @@ export function createIngestRouter(dbPool: Pool): Router {
         // same resolver the topology links use, so a cross-(dc,floor) peer that
         // isn't in this payload still resolves.
         const dstDeviceId = ev.dst_hostname
-          ? (await resolveEndpoint(ev.dst_hostname)) ?? ev.dst_device_id ?? null
-          : ev.dst_device_id ?? null
+            ? (await resolveEndpoint(ev.dst_hostname)) ?? ev.dst_device_id ?? null
+            : ev.dst_device_id ?? null
         await client.query(`
           INSERT INTO events (device_id, source_hostname, ts, kind, event_name, severity,
                               trap_oid, source_ip, event_payload, collector_agent,
@@ -465,14 +465,14 @@ export function createIngestRouter(dbPool: Pool): Router {
           await client.query(`
             UPDATE events SET
               event_payload = COALESCE(event_payload, '{}'::jsonb)
-                              || jsonb_build_object('resolved', true, 'resolved_at', now()::text)
+                || jsonb_build_object('resolved', true, 'resolved_at', now()::text)
             WHERE LOWER(event_name) = $1
               AND COALESCE((event_payload->>'resolved')::boolean, false) = false
               AND (
-                ($2::uuid IS NOT NULL AND link_id = $2::uuid)
-                OR ($2::uuid IS NULL AND $3 IS NOT NULL AND $4 IS NOT NULL
-                    AND ( (source_hostname = $3 AND dst_hostname = $4)
-                       OR (source_hostname = $4 AND dst_hostname = $3) ))
+              ($2::uuid IS NOT NULL AND link_id = $2::uuid)
+                OR ($2::uuid IS NULL AND $3::text IS NOT NULL AND $4::text IS NOT NULL
+                    AND ( (source_hostname = $3::text AND dst_hostname = $4::text)
+                       OR (source_hostname = $4::text AND dst_hostname = $3::text) ))
               )
           `, [downName, ev.link_id ?? null, ev.hostname ?? null, ev.dst_hostname ?? null])
         }
@@ -504,7 +504,7 @@ export function createIngestRouter(dbPool: Pool): Router {
         // Resolve hostname + mgmt_ip for BOTH endpoints (source and peer) so the
         // topology can match the exact link by either key on either end.
         const ids = [...new Set(
-          trapsToEmit.flatMap(t => [t.deviceId, t.dstDeviceId]).filter(Boolean)
+            trapsToEmit.flatMap(t => [t.deviceId, t.dstDeviceId]).filter(Boolean)
         )] as string[]
         const meta = new Map<string, { hostname: string | null; mgmt_ip: string | null }>()
         if (ids.length > 0) {
