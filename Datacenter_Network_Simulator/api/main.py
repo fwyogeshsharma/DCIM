@@ -57,7 +57,12 @@ app.include_router(tick.router, prefix="/api")
 
 
 import os as _os
-_webui_dist = _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "webui", "dist")
+_root = _os.path.dirname(_os.path.dirname(__file__))
+_webui_dist = _os.path.join(_root, "webui", "dist")
+_assets_dir  = _os.path.join(_root, "assets")
+if _os.path.isdir(_assets_dir):
+    from fastapi.staticfiles import StaticFiles as _SF
+    app.mount("/assets", _SF(directory=_assets_dir), name="assets")
 if _os.path.isdir(_webui_dist):
     from fastapi.staticfiles import StaticFiles
     app.mount("/web", StaticFiles(directory=_webui_dist, html=True), name="webui")

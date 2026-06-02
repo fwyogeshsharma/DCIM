@@ -24,6 +24,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/assets': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        agent: proxyAgent,
+      },
       '/api/events': {
         target: 'http://localhost:8000',
         changeOrigin: true,

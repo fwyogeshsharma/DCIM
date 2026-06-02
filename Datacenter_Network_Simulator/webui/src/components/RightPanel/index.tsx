@@ -16,22 +16,27 @@ const DEFAULT_WIDTH = 320
 const STORAGE_KEY   = 'dcim:right-panel-width'
 
 interface Tab {
-  id: string
-  icon: string
-  label: string
-  component: React.ReactNode
+  id:           string
+  icon:         string
+  iconSrc?:     string    // if set, renders <img> instead of emoji
+  iconWhiteBg?: boolean   // true = logo has white bg; wrap in white pill
+  iconInvert?:  boolean   // true = dark icon on transparent bg; apply invert(1) for dark theme
+  iconSize?:    number    // override rendered px size (default 22)
+  iconColor?:   string    // override inactive text color
+  label:        string
+  component:    React.ReactNode
 }
 
 const TABS: Tab[] = [
   { id: 'binding', icon: '🔗',  label: 'Binding',      component: <BindingPanel /> },
-  { id: 'snmp',    icon: '🖥️',  label: 'SNMP',         component: <SNMPPanel />    },
-  { id: 'gnmi',    icon: '📡',  label: 'gNMI',         component: <GNMIPanel />    },
-  { id: 'sflow',   icon: '📶',  label: 'sFlow',        component: <SFlowPanel />   },
-  { id: 'bacnet',  icon: '🔋',  label: 'BACnet/IP',    component: <BACnetPanel />  },
+  { id: 'snmp',    icon: '🖥️',  iconSrc: '/assets/icons/snmp.png', iconInvert: true, label: 'SNMP', component: <SNMPPanel /> },
+  { id: 'gnmi',    icon: '📡',  iconSrc: '/assets/icons/gnmi.svg', label: 'gNMI', component: <GNMIPanel /> },
+  { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
+  { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
-  { id: 'rules',   icon: '⚙️',  label: 'Rules',        component: <RulesPanel />   },
-  { id: 'tick',    icon: '🔃',   label: 'Metrics Tick', component: <TickPanel />    },
-  { id: 'console', icon: '>_',  label: 'Console',      component: <ConsolePanel /> },
+  { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
+  { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
+  { id: 'console', icon: '>_',  iconColor: '#c9d1d9', label: 'Console', component: <ConsolePanel /> },
 ]
 
 function TabButton({
@@ -43,11 +48,11 @@ function TabButton({
       onClick={onClick}
       style={{
         position: 'relative',
-        width: 40, height: 40,
-        border: 'none', borderRadius: 4,
+        width: 44, height: 44,
+        border: 'none', borderRadius: 7,
         background: active ? 'var(--bg-selected)' : 'transparent',
-        color: active ? 'var(--text)' : 'var(--text-dim)',
-        fontSize: tab.icon === '>_' ? 11 : 18,
+        color: active ? 'var(--text)' : (tab.iconColor ?? 'var(--text-dim)'),
+        fontSize: tab.icon === '>_' ? 13 : 21,
         fontFamily: tab.icon === '>_' ? 'Consolas, monospace' : 'inherit',
         fontWeight: tab.icon === '>_' ? 700 : 400,
         cursor: 'pointer',
@@ -64,7 +69,35 @@ function TabButton({
           background: 'var(--accent)',
         }} />
       )}
-      {tab.icon}
+      {tab.iconSrc
+        ? tab.iconWhiteBg
+          ? <div style={{
+              width: tab.iconSize ?? 30, height: tab.iconSize ?? 30,
+              borderRadius: 5, overflow: 'hidden',
+              background: '#fff', padding: 2,
+              opacity: active ? 1 : 0.82,
+              boxShadow: active ? '0 0 0 1.5px var(--accent)' : '0 0 0 1px rgba(255,255,255,0.18)',
+              flexShrink: 0,
+            }}>
+              <img src={tab.iconSrc} alt={tab.label}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+            </div>
+          : <img src={tab.iconSrc} alt={tab.label}
+              style={{
+                width:  tab.iconSize ?? 26,
+                height: tab.iconSize ?? 26,
+                objectFit: 'contain',
+                opacity: active ? 1 : 0.93,
+                filter: tab.iconInvert
+                  ? active
+                    ? 'invert(1) hue-rotate(180deg) brightness(1.1)'
+                    : 'invert(1) hue-rotate(180deg) brightness(1.4)'
+                  : active
+                    ? 'contrast(2) brightness(1.5) drop-shadow(0 0 2px rgba(255,255,255,0.2))'
+                    : 'contrast(2) brightness(1.8)',
+              }} />
+        : tab.icon
+      }
       {badge && (
         <span
           title={badge}
@@ -94,7 +127,6 @@ export default function RightPanel() {
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!dragRef.current) return
-      // Dragging left edge: moving left increases width
       const dx = dragRef.current.startX - e.clientX
       const next = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, dragRef.current.startW + dx))
       setWidth(next)
@@ -181,14 +213,14 @@ export default function RightPanel() {
 
       {/* Icon tab strip */}
       <div style={{
-        width: 44,
+        width: 54,
         background: 'linear-gradient(180deg, #0c1220 0%, #0a0f1a 100%)',
         borderLeft: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '6px 0',
-        gap: 2,
+        padding: '10px 0',
+        gap: 4,
       }}>
         {TABS.slice(0, 5).map(t => (
           <TabButton
@@ -202,9 +234,9 @@ export default function RightPanel() {
 
         <div style={{ flex: 1 }} />
         <div style={{
-          width: 22, height: 1,
+          width: 28, height: 1,
           background: 'var(--border)',
-          margin: '4px 0',
+          margin: '6px 0',
         }} />
 
         {TABS.slice(5).map(t => (

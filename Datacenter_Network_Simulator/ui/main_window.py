@@ -20,8 +20,9 @@ from PySide6.QtWidgets import (
     QSpinBox, QComboBox, QFormLayout, QDialogButtonBox,
     QGroupBox, QToolBar, QLineEdit, QSizePolicy,
 )
-from PySide6.QtCore import Qt, QThread, Signal, QObject, QTimer, QSize
-from PySide6.QtGui import QAction, QIcon, QPixmap, QFont, QColor, QKeySequence
+from PySide6.QtCore import Qt, QThread, Signal, QObject, QTimer, QSize, QRectF
+from PySide6.QtGui import (QAction, QIcon, QImage, QPixmap, QFont, QColor,
+                           QKeySequence, QPainter, QPainterPath, QBrush)
 
 from core.device_manager import Device, DeviceManager, DeviceType, Vendor
 from core.device_models import DEVICE_MODELS
@@ -53,7 +54,7 @@ from ui.bacnet_panel import BACnetPanel
 from ui.console_panel import ConsolePanel
 from ui.binding_panel import BindingPanel
 from ui.discovery_dialog import DiscoveryDialog
-from ui.tick_settings_dialog import TickSettingsDialog
+from ui.tick_panel import TickPanel as TickSidePanel
 
 
 DATASETS_DIR        = "datasets"
@@ -737,9 +738,14 @@ class MainWindow(QMainWindow):
         self._rules_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._rules_panel)
 
-        for i in range(8):
+        # Panel 9 — Metrics Tick
+        self._tick_panel = TickSidePanel()
+        self._tick_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._tick_panel)
+
+        for i in range(9):
             self._right_splitter.setStretchFactor(i, 1)
-        self._right_splitter.setSizes([250, 250, 300, 250, 250, 260, 250, 250])
+        self._right_splitter.setSizes([250, 250, 300, 250, 250, 260, 250, 250, 300])
 
         # Only the IP Binder panel visible on startup
         self._sim_panel.setVisible(False)
@@ -749,6 +755,7 @@ class MainWindow(QMainWindow):
         self._bacnet_panel.setVisible(False)
         self._console_panel.setVisible(False)
         self._rules_panel.setVisible(False)
+        self._tick_panel.setVisible(False)
 
         self._right_dock = QDockWidget(self)
         self._right_dock.setObjectName("right_panels_dock")
@@ -773,8 +780,11 @@ class MainWindow(QMainWindow):
                 color: #8b949e;
                 font-family: 'Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji', 'Twemoji Mozilla', sans-serif;
                 font-size: 17px;
-                padding: 8px 3px;
-                min-width: 28px;
+                padding: 4px;
+                min-width: 33px;
+                min-height: 33px;
+                max-width: 33px;
+                max-height: 33px;
             }
             QToolButton:hover {
                 background: #21262d;
@@ -796,6 +806,7 @@ class MainWindow(QMainWindow):
         tb.setMovable(False)
         tb.setFloatable(False)
         tb.setOrientation(Qt.Vertical)
+        tb.setIconSize(QSize(24, 24))
         tb.setStyleSheet(_TB_STYLE)
 
         # ── Top group: simulators ──────────────────────────────────────────
@@ -810,18 +821,70 @@ class MainWindow(QMainWindow):
 
         tb.addSeparator()
 
-        # SNMP Simulator
-        self._act_panel_sim = QAction("🖥️", self)
+        # Helper: load image via QPixmap, scale at HiDPI resolution, boost brightness
+        from PySide6.QtWidgets import QApplication as _QApp2
+        _dpr2 = _QApp2.instance().devicePixelRatio()
+
+        def _bright_icon(path: str, size: int, factor: float = 1.6) -> QIcon:
+            _phys = int(size * _dpr2)
+            _img = QPixmap(path).scaled(
+                _phys, _phys, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            ).toImage().convertToFormat(QImage.Format_ARGB32)
+            for _iy in range(_img.height()):
+                for _ix in range(_img.width()):
+                    _c = _img.pixelColor(_ix, _iy)
+                    if _c.alpha() > 10:
+                        _c.setRed(  min(255, int(_c.red()   * factor)))
+                        _c.setGreen(min(255, int(_c.green() * factor)))
+                        _c.setBlue( min(255, int(_c.blue()  * factor)))
+                        _img.setPixelColor(_ix, _iy, _c)
+            _pix = QPixmap.fromImage(_img)
+            _pix.setDevicePixelRatio(_dpr2)
+            return QIcon(_pix)
+
+        # SNMP Simulator — strip white bg, boost brightness
+        _snmp_icon_path = str(
+            Path(__file__).parent.parent / "assets" / "icons" / "snmp.png"
+        )
+        from PySide6.QtWidgets import QApplication as _QApp
+        _dpr      = _QApp.instance().devicePixelRatio()
+        _log_size = 24                          # logical px
+        _phy_size = int(_log_size * _dpr)       # physical px — crisp on HiDPI
+
+        _snmp_img = QPixmap(_snmp_icon_path).scaled(
+            _phy_size, _phy_size, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        ).toImage().convertToFormat(QImage.Format_ARGB32)
+        for _iy in range(_snmp_img.height()):
+            for _ix in range(_snmp_img.width()):
+                _c = _snmp_img.pixelColor(_ix, _iy)
+                if _c.red() > 220 and _c.green() > 220 and _c.blue() > 220:
+                    _c.setAlpha(0)
+                else:
+                    _c.setRed(  min(255, int(_c.red()   * 1.6)))
+                    _c.setGreen(min(255, int(_c.green() * 1.6)))
+                    _c.setBlue( min(255, int(_c.blue()  * 1.6)))
+                _snmp_img.setPixelColor(_ix, _iy, _c)
+        _snmp_result = QPixmap.fromImage(_snmp_img)
+        _snmp_result.setDevicePixelRatio(_dpr)  # tell Qt: this is already HiDPI
+        _snmp_icon = QIcon(_snmp_result)
+        self._act_panel_sim = QAction(_snmp_icon, "", self)
         self._act_panel_sim.setCheckable(True)
         self._act_panel_sim.setChecked(False)
         self._act_panel_sim.setToolTip("SNMP Simulator")
         self._act_panel_sim.toggled.connect(self._on_toggle_sim_panel)
         tb.addAction(self._act_panel_sim)
+        _snmp_btn = tb.widgetForAction(self._act_panel_sim)
+        if _snmp_btn:
+            _snmp_btn.setIconSize(QSize(24, 24))
 
         tb.addSeparator()
 
         # gNMI Simulator
-        self._act_panel_gnmi = QAction("📡", self)
+        _gnmi_icon_path = str(
+            Path(__file__).parent.parent / "assets" / "icons" / "gnmi.svg"
+        )
+        _gnmi_icon = _bright_icon(_gnmi_icon_path, 24, factor=1.7)
+        self._act_panel_gnmi = QAction(_gnmi_icon, "", self)
         self._act_panel_gnmi.setCheckable(True)
         self._act_panel_gnmi.setChecked(False)
         self._act_panel_gnmi.setToolTip("gNMI Simulator")
@@ -830,8 +893,27 @@ class MainWindow(QMainWindow):
 
         tb.addSeparator()
 
-        # sFlow Simulator
-        self._act_panel_sflow = QAction("📶", self)
+        # sFlow Simulator — invert RGB then boost brightness
+        _sflow_icon_path = str(
+            Path(__file__).parent.parent / "assets" / "icons" / "sflow.png"
+        )
+        _sf_phy = int(24 * _dpr2)
+        _sflow_img = QPixmap(_sflow_icon_path).scaled(
+            _sf_phy, _sf_phy, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        ).toImage().convertToFormat(QImage.Format_ARGB32)
+        _sflow_img.invertPixels(QImage.InvertRgb)
+        for _iy in range(_sflow_img.height()):
+            for _ix in range(_sflow_img.width()):
+                _c = _sflow_img.pixelColor(_ix, _iy)
+                if _c.alpha() > 10:
+                    _c.setRed(  min(255, int(_c.red()   * 1.4)))
+                    _c.setGreen(min(255, int(_c.green() * 1.4)))
+                    _c.setBlue( min(255, int(_c.blue()  * 1.4)))
+                    _sflow_img.setPixelColor(_ix, _iy, _c)
+        _sf_pix = QPixmap.fromImage(_sflow_img)
+        _sf_pix.setDevicePixelRatio(_dpr2)
+        _sflow_icon = QIcon(_sf_pix)
+        self._act_panel_sflow = QAction(_sflow_icon, "", self)
         self._act_panel_sflow.setCheckable(True)
         self._act_panel_sflow.setChecked(False)
         self._act_panel_sflow.setToolTip("sFlow Simulator")
@@ -844,11 +926,12 @@ class MainWindow(QMainWindow):
         _bacnet_icon_path = str(
             Path(__file__).parent.parent / "assets" / "icons" / "bacnet.png"
         )
-        _bacnet_icon = QIcon(
-            QPixmap(_bacnet_icon_path).scaled(
-                28, 28, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
+        _bacnet_phy = int(24 * _dpr2)
+        _bacnet_pix = QPixmap(_bacnet_icon_path).scaled(
+            _bacnet_phy, _bacnet_phy, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
+        _bacnet_pix.setDevicePixelRatio(_dpr2)
+        _bacnet_icon = QIcon(_bacnet_pix)
         self._act_panel_bacnet = QAction(_bacnet_icon, "", self)
         self._act_panel_bacnet.setCheckable(True)
         self._act_panel_bacnet.setChecked(False)
@@ -876,12 +959,66 @@ class MainWindow(QMainWindow):
         tb.addSeparator()
 
         # Rule Engine
-        self._act_panel_rules = QAction("⚙", self)
+        _rules_icon_path = str(
+            Path(__file__).parent.parent / "assets" / "icons" / "rules.png"
+        )
+        _rules_phy = int(20 * _dpr2)
+        _rules_img = QPixmap(_rules_icon_path).scaled(
+            _rules_phy, _rules_phy, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        ).toImage().convertToFormat(QImage.Format_ARGB32)
+        _rules_img.invertPixels(QImage.InvertRgb)
+        for _iy in range(_rules_img.height()):
+            for _ix in range(_rules_img.width()):
+                _c = _rules_img.pixelColor(_ix, _iy)
+                if _c.alpha() > 10:
+                    _c.setRed(  min(255, int(_c.red()   * 1.4)))
+                    _c.setGreen(min(255, int(_c.green() * 1.4)))
+                    _c.setBlue( min(255, int(_c.blue()  * 1.4)))
+                    _rules_img.setPixelColor(_ix, _iy, _c)
+        _rules_pix = QPixmap.fromImage(_rules_img)
+        _rules_pix.setDevicePixelRatio(_dpr2)
+        _rules_icon = QIcon(_rules_pix)
+        self._act_panel_rules = QAction(_rules_icon, "", self)
         self._act_panel_rules.setCheckable(True)
         self._act_panel_rules.setChecked(False)
         self._act_panel_rules.setToolTip("Rule Engine")
         self._act_panel_rules.toggled.connect(self._on_toggle_rules_panel)
         tb.addAction(self._act_panel_rules)
+        _rules_btn = tb.widgetForAction(self._act_panel_rules)
+        if _rules_btn:
+            _rules_btn.setIconSize(QSize(20, 20))
+
+        tb.addSeparator()
+
+        # Metrics Tick
+        _tick_icon_path = str(
+            Path(__file__).parent.parent / "assets" / "icons" / "tick.png"
+        )
+        _tick_phy  = int(20 * _dpr2)
+        _tick_img = QPixmap(_tick_icon_path).scaled(
+            _tick_phy, _tick_phy, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        ).toImage().convertToFormat(QImage.Format_ARGB32)
+        _tick_img.invertPixels(QImage.InvertRgb)
+        for _iy in range(_tick_img.height()):
+            for _ix in range(_tick_img.width()):
+                _c = _tick_img.pixelColor(_ix, _iy)
+                if _c.alpha() > 0:
+                    _c.setRed(  min(255, int(_c.red()   * 1.4)))
+                    _c.setGreen(min(255, int(_c.green() * 1.4)))
+                    _c.setBlue( min(255, int(_c.blue()  * 1.4)))
+                    _tick_img.setPixelColor(_ix, _iy, _c)
+        _tick_pix = QPixmap.fromImage(_tick_img)
+        _tick_pix.setDevicePixelRatio(_dpr2)
+        _tick_icon = QIcon(_tick_pix)
+        self._act_panel_tick = QAction(_tick_icon, "", self)
+        self._act_panel_tick.setCheckable(True)
+        self._act_panel_tick.setChecked(False)
+        self._act_panel_tick.setToolTip("Metrics Tick")
+        self._act_panel_tick.toggled.connect(self._on_toggle_tick_panel)
+        tb.addAction(self._act_panel_tick)
+        _tick_btn = tb.widgetForAction(self._act_panel_tick)
+        if _tick_btn:
+            _tick_btn.setIconSize(QSize(20, 20))
 
         tb.addSeparator()
 
@@ -897,6 +1034,11 @@ class MainWindow(QMainWindow):
             _f = _btn.font()
             _f.setBold(True)
             _btn.setFont(_f)
+            _btn.setStyleSheet(
+                "QToolButton { color: #c9d1d9; }"
+                "QToolButton:hover { color: #e6edf3; background: #21262d; }"
+                "QToolButton:checked { color: #58a6ff; background: rgba(31,111,235,0.15); border-color: rgba(31,111,235,0.45); }"
+            )
 
         self._right_dock.visibilityChanged.connect(self._on_right_dock_visibility)
         self.addToolBar(Qt.RightToolBarArea, tb)
@@ -913,6 +1055,7 @@ class MainWindow(QMainWindow):
             self._act_panel_bacnet.isChecked(),
             self._act_panel_console.isChecked(),
             self._act_panel_rules.isChecked(),
+            self._act_panel_tick.isChecked(),
         ])
 
     def _resize_right_dock(self):
@@ -995,6 +1138,16 @@ class MainWindow(QMainWindow):
         else:
             self._resize_right_dock()
 
+    def _on_toggle_tick_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+            self._tick_panel.set_state_store(self.state_store)
+        self._tick_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
+            self._right_dock.hide()
+        else:
+            self._resize_right_dock()
+
     def _on_right_dock_visibility(self, visible: bool):
         """Outer dock hidden externally — uncheck all toolbar buttons.
         Skips minimise events: the dock goes invisible when the OS minimises the
@@ -1003,7 +1156,8 @@ class MainWindow(QMainWindow):
             for btn in (self._act_panel_binding, self._act_panel_sim,
                         self._act_panel_traps, self._act_panel_gnmi,
                         self._act_panel_sflow, self._act_panel_bacnet,
-                        self._act_panel_console, self._act_panel_rules):
+                        self._act_panel_console, self._act_panel_rules,
+                        self._act_panel_tick):
                 btn.blockSignals(True)
                 btn.setChecked(False)
                 btn.blockSignals(False)
@@ -1034,13 +1188,10 @@ class MainWindow(QMainWindow):
         self._act_add_device = QAction("&Add Device...", self, shortcut="Ctrl+D")
         self._act_bulk_add      = QAction("Bulk Add Devices...", self)
         self._act_remove_selected = QAction("&Remove Selected", self, shortcut="Del")
-        self._act_tick_settings = QAction("&Metrics Tick Settings...", self)
         dev_menu.addAction(self._act_add_device)
         dev_menu.addAction(self._act_bulk_add)
         dev_menu.addSeparator()
         dev_menu.addAction(self._act_remove_selected)
-        dev_menu.addSeparator()
-        dev_menu.addAction(self._act_tick_settings)
 
         # Topology
         topo_menu = menubar.addMenu("&Topology")
@@ -1116,7 +1267,6 @@ class MainWindow(QMainWindow):
         self._act_add_device.triggered.connect(self._add_device)
         self._act_bulk_add.triggered.connect(self._bulk_add)
         self._act_remove_selected.triggered.connect(self._remove_selected)
-        self._act_tick_settings.triggered.connect(self._open_tick_settings)
         self._act_link_mode.toggled.connect(self._toggle_link_mode)
         self._act_fit_view.triggered.connect(self._topology_view.fit_view)
         self._act_layout_default.triggered.connect(self._apply_default_layout)
@@ -1374,10 +1524,6 @@ class MainWindow(QMainWindow):
                     device_ids.append(dev_id)
         for dev_id in device_ids:
             self._remove_device(dev_id)
-
-    def _open_tick_settings(self):
-        dlg = TickSettingsDialog(self.state_store, self)
-        dlg.exec()
 
     def _bulk_add(self):
         dlg = BulkAddDialog(self)
@@ -2395,6 +2541,7 @@ class MainWindow(QMainWindow):
         # Unlock the Rule Engine button now that SNMP is running.
         self._trap_panel.set_rule_engine_available(True)
         self._rules_panel.set_rule_engine_available(True)
+        self._tick_panel.set_available(True)
 
 
     def _on_gnmi_ready(self):
@@ -2559,6 +2706,7 @@ class MainWindow(QMainWindow):
         self._on_rule_engine_toggled(False)
         self._trap_panel.set_rule_engine_available(False)
         self._rules_panel.set_rule_engine_available(False)
+        self._tick_panel.set_available(False)
         self._snmp_set_agent.stop()
         self._rules_panel.set_management_endpoint(None, None)
         self.snmpsim.stop()
@@ -2938,6 +3086,7 @@ class MainWindow(QMainWindow):
             self._on_rule_engine_toggled(False)
             self._trap_panel.set_rule_engine_available(False)
             self._rules_panel.set_rule_engine_available(False)
+            self._tick_panel.set_available(False)
             self.snmpsim.stop()
         if self.sflow.is_running():
             self.sflow.stop()
@@ -3211,6 +3360,7 @@ class MainWindow(QMainWindow):
             self._binding_panel.set_snmp_locked(running)
             self._trap_panel.set_rule_engine_available(running)
             self._rules_panel.set_rule_engine_available(running)
+            self._tick_panel.set_available(running)
             self._update_topology_edit_actions()
             if running:
                 self._update_sim_panel_counts()
