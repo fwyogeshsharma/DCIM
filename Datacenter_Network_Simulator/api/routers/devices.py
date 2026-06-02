@@ -113,9 +113,10 @@ def _device_to_info(device) -> DeviceInfo:
         ups_rectifier_status=ext.get("ups_rectifier_status") if dt == "ups" else None,
         ups_phase_status=ext.get("ups_phase_status")     if dt == "ups" else None,
         ups_operating_mode=(
-            "bypass" if ext.get("ups_bypass_status", "off") == "on"
-            else "battery" if ext.get("ups_status", "normal") in ("on_battery", "low_battery")
-            else "online") if dt == "ups" else None,
+            "bypass"  if ext.get("ups_bypass_status") == "on"
+            else "battery" if ext.get("ups_status") in ("on_battery", "low_battery")
+            else "online"  if "ups_status" in ext
+            else None) if dt == "ups" else None,
         ups_battery_health=ext.get("ups_battery_health") if dt == "ups" else None,
         ups_energy_kwh=ext.get("ups_energy_kwh")         if dt == "ups" else None,
         pdu_load=ext.get("pdu_load")                     if dt in ("pdu", "floor_pdu") else None,
