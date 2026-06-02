@@ -83,9 +83,9 @@ def bacnet_start(cfg: BACnetConfig):
         )
 
     # Build per-device circuit count.
-    # Walk the power graph: EV2 → PDU → count PDU's other power connections.
-    # This is correct regardless of whether monitored_pdu is set on the Device.
-    # Fallback: parse capacity from model_name ("Verdigris EV2-42" → 42).
+    # Walk the power graph: EV2 → panel → count panel's other power connections.
+    # This is correct regardless of whether monitored_panel is set on the Device.
+    # Fallback: parse capacity from model_name ("Verdigris EV2-24" → 24).
     _power_edges = s.topology.get_edges_by_layer("power") if s.topology else []
 
     circuits_map: dict = {}
@@ -199,7 +199,7 @@ def ev2_metrics():
             val = v.get(key)
             return float(val) if val is not None else None
 
-        # ── Resolve PDU name + ordered circuit→device map ─────────────
+        # ── Resolve panel name + ordered circuit→device map ───────────
         pdu_name:          str | None            = None
         circuit_names:     dict[int, str]        = {}
 
@@ -207,7 +207,7 @@ def ev2_metrics():
         if ev2_dev and _power_edges and _dm:
             ev2_id = ev2_dev.id
 
-            # Step 1: find the PDU this EV2 is connected to via power edge
+            # Step 1: find the electrical panel this EV2 is connected to via power edge
             pdu_id = next(
                 (v2 if u == ev2_id else u)
                 for u, v2, _ in _power_edges

@@ -64495,7 +64495,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "8a78fa37",
         "interfaces": [
@@ -64633,7 +64633,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "7c5f0811",
         "interfaces": [
@@ -64771,7 +64771,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "bea0339e",
         "interfaces": [
@@ -64909,7 +64909,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "e91e8369",
         "interfaces": [
@@ -65047,7 +65047,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "57f97faa",
         "interfaces": [
@@ -65185,7 +65185,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "b87f084e",
         "interfaces": [
@@ -65323,7 +65323,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "0fd1935a",
         "interfaces": [
@@ -65461,7 +65461,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "adccdac3",
         "interfaces": [
@@ -65599,7 +65599,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "925a2606",
         "interfaces": [
@@ -65737,7 +65737,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "a9970122",
         "interfaces": [
@@ -65875,7 +65875,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "dbb88205",
         "interfaces": [
@@ -66013,7 +66013,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "336c268e",
         "interfaces": [
@@ -66220,7 +66220,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "0ff3cec7",
         "interfaces": [
@@ -66358,7 +66358,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "959ed4bd",
         "interfaces": [
@@ -66496,7 +66496,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "bc89b5ac",
         "interfaces": [
@@ -66634,7 +66634,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "7f5e803e",
         "interfaces": [
@@ -66772,7 +66772,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "478f5d72",
         "interfaces": [
@@ -66910,7 +66910,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "21f044b4",
         "interfaces": [
@@ -67048,7 +67048,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "0662d25c",
         "interfaces": [
@@ -67186,7 +67186,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "bd8636ed",
         "interfaces": [
@@ -67324,7 +67324,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
         "id": "d379b1c6",
         "interfaces": [
@@ -67439,8 +67439,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_pdu": "586eacef",
-        "pdu_level": "floor"
+        "monitored_panel": "586eacef"
       }
     },
     {
@@ -67510,1499 +67509,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_pdu": "65a02682",
-        "pdu_level": "floor"
-      }
-    },
-    {
-      "id": "c2e1f55d",
-      "position": {
-        "x": -312,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R01",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.230",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "c2e1f55d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 278268442,
-            "out_octets": 218981744,
-            "in_errors": 36,
-            "out_errors": 73,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "2f:e0:27:19:1b:77",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.230",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 41,
-        "memory_total": 34359738368,
-        "memory_used": 16877767378,
-        "disk_total": 536870912000,
-        "disk_used": 381242265126,
-        "sys_uptime": 5993500,
-        "cpu_temp": 40.8,
-        "inlet_temp": 35.5,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "8a78fa37",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "7454c93d",
-      "position": {
-        "x": -95,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R02",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.231",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "7454c93d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 696477154,
-            "out_octets": 855342481,
-            "in_errors": 39,
-            "out_errors": 75,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "8f:7d:f9:91:fb:bf",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.231",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 88,
-        "memory_total": 8589934592,
-        "memory_used": 5361120239,
-        "disk_total": 1073741824000,
-        "disk_used": 780099944851,
-        "sys_uptime": 784261,
-        "cpu_temp": 46.0,
-        "inlet_temp": 30.5,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "7c5f0811",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "843477de",
-      "position": {
-        "x": 122,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R03",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.232",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "843477de",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 969691578,
-            "out_octets": 740629355,
-            "in_errors": 23,
-            "out_errors": 64,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "cc:68:c0:77:80:28",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.232",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 12,
-        "memory_total": 17179869184,
-        "memory_used": 5765636200,
-        "disk_total": 268435456000,
-        "disk_used": 135638986717,
-        "sys_uptime": 6848450,
-        "cpu_temp": 59.6,
-        "inlet_temp": 37.3,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "bea0339e",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "a07fc914",
-      "position": {
-        "x": 338,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R04",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.233",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "a07fc914",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 53863171,
-            "out_octets": 464297096,
-            "in_errors": 37,
-            "out_errors": 27,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "74:0d:b0:97:1f:ce",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.233",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 13,
-        "memory_total": 8589934592,
-        "memory_used": 5346429872,
-        "disk_total": 268435456000,
-        "disk_used": 88566788919,
-        "sys_uptime": 6073733,
-        "cpu_temp": 48.0,
-        "inlet_temp": 34.7,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "e91e8369",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "8349e358",
-      "position": {
-        "x": 555,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R05",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.234",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "8349e358",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 490723156,
-            "out_octets": 152664051,
-            "in_errors": 43,
-            "out_errors": 52,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "7e:7e:12:1f:4b:4f",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.234",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 77,
-        "memory_total": 17179869184,
-        "memory_used": 12982870395,
-        "disk_total": 536870912000,
-        "disk_used": 248418433658,
-        "sys_uptime": 1776201,
-        "cpu_temp": 44.6,
-        "inlet_temp": 24.3,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "57f97faa",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "3ca6b20c",
-      "position": {
-        "x": 772,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R06",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.235",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "3ca6b20c",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 527864098,
-            "out_octets": 260989097,
-            "in_errors": 14,
-            "out_errors": 90,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "f7:94:50:21:35:af",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.235",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 40,
-        "memory_total": 2147483648,
-        "memory_used": 1411612234,
-        "disk_total": 107374182400,
-        "disk_used": 40681060248,
-        "sys_uptime": 8054928,
-        "cpu_temp": 49.4,
-        "inlet_temp": 27.9,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "b87f084e",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "868d829f",
-      "position": {
-        "x": 988,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R07",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.236",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "868d829f",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 532813565,
-            "out_octets": 43345357,
-            "in_errors": 60,
-            "out_errors": 24,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "bd:ba:33:77:2f:0c",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.236",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 21,
-        "memory_total": 2147483648,
-        "memory_used": 1015519663,
-        "disk_total": 268435456000,
-        "disk_used": 127656904463,
-        "sys_uptime": 7370859,
-        "cpu_temp": 55.9,
-        "inlet_temp": 36.2,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "0fd1935a",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "fe45dbbb",
-      "position": {
-        "x": 1205,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R08",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.237",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "fe45dbbb",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 108813347,
-            "out_octets": 152082650,
-            "in_errors": 28,
-            "out_errors": 1,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "f1:b6:c1:e6:9a:a0",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.237",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 35,
-        "memory_total": 34359738368,
-        "memory_used": 11215694928,
-        "disk_total": 1073741824000,
-        "disk_used": 522693878333,
-        "sys_uptime": 9179925,
-        "cpu_temp": 50.5,
-        "inlet_temp": 34.3,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "adccdac3",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "df6976d3",
-      "position": {
-        "x": 1422,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R09",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.238",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "df6976d3",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 224762423,
-            "out_octets": 546745779,
-            "in_errors": 99,
-            "out_errors": 46,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "22:de:0e:65:38:4f",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.238",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 36,
-        "memory_total": 17179869184,
-        "memory_used": 5173839556,
-        "disk_total": 1073741824000,
-        "disk_used": 363622394950,
-        "sys_uptime": 704836,
-        "cpu_temp": 52.6,
-        "inlet_temp": 26.1,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "925a2606",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "75c69dac",
-      "position": {
-        "x": 1638,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R10",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.239",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "75c69dac",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 356914002,
-            "out_octets": 903984644,
-            "in_errors": 35,
-            "out_errors": 7,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "7d:46:f4:8b:34:af",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.239",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 13,
-        "memory_total": 34359738368,
-        "memory_used": 18956243635,
-        "disk_total": 107374182400,
-        "disk_used": 16239400602,
-        "sys_uptime": 5131603,
-        "cpu_temp": 44.4,
-        "inlet_temp": 33.8,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "a9970122",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "e6d7370a",
-      "position": {
-        "x": 1855,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R11",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.240",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "e6d7370a",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 80458298,
-            "out_octets": 968166519,
-            "in_errors": 79,
-            "out_errors": 23,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "04:f0:9a:8c:28:36",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.240",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 37,
-        "memory_total": 17179869184,
-        "memory_used": 4991303310,
-        "disk_total": 536870912000,
-        "disk_used": 101294847498,
-        "sys_uptime": 3171998,
-        "cpu_temp": 41.7,
-        "inlet_temp": 27.9,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "dbb88205",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "e389e154",
-      "position": {
-        "x": 2072,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC1-R12",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.241",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "e389e154",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 141826932,
-            "out_octets": 685595481,
-            "in_errors": 64,
-            "out_errors": 36,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "a5:62:3b:54:3f:de",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.241",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 42,
-        "memory_total": 34359738368,
-        "memory_used": 17745809697,
-        "disk_total": 1073741824000,
-        "disk_used": 691206596183,
-        "sys_uptime": 2844839,
-        "cpu_temp": 52.6,
-        "inlet_temp": 32.7,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "336c268e",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "9247681c",
-      "position": {
-        "x": 1560,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R01",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.172",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "9247681c",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 623317369,
-            "out_octets": 599407295,
-            "in_errors": 74,
-            "out_errors": 28,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "d8:e5:15:21:f0:4a",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.172",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 60,
-        "memory_total": 2147483648,
-        "memory_used": 1553876087,
-        "disk_total": 536870912000,
-        "disk_used": 63243775318,
-        "sys_uptime": 300638,
-        "cpu_temp": 59.5,
-        "inlet_temp": 35.9,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "0ff3cec7",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "7ccdd174",
-      "position": {
-        "x": 1800,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R02",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.173",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "7ccdd174",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 811730101,
-            "out_octets": 304898721,
-            "in_errors": 33,
-            "out_errors": 5,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "1f:1e:a2:81:7f:2e",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.173",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 14,
-        "memory_total": 8589934592,
-        "memory_used": 6668313282,
-        "disk_total": 107374182400,
-        "disk_used": 80285455482,
-        "sys_uptime": 9044746,
-        "cpu_temp": 58.7,
-        "inlet_temp": 32.3,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "959ed4bd",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "fdf2143a",
-      "position": {
-        "x": 2040,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R03",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.174",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "fdf2143a",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 168006544,
-            "out_octets": 475868360,
-            "in_errors": 21,
-            "out_errors": 38,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "9d:b7:11:71:6a:9b",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.174",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 90,
-        "memory_total": 4294967296,
-        "memory_used": 2486875568,
-        "disk_total": 268435456000,
-        "disk_used": 59257461188,
-        "sys_uptime": 2840667,
-        "cpu_temp": 55.1,
-        "inlet_temp": 28.7,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "bc89b5ac",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "37766fc1",
-      "position": {
-        "x": 2280,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R04",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.175",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "37766fc1",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 214927367,
-            "out_octets": 782737154,
-            "in_errors": 60,
-            "out_errors": 60,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "97:5c:50:d2:e2:20",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.175",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 66,
-        "memory_total": 17179869184,
-        "memory_used": 5530581439,
-        "disk_total": 536870912000,
-        "disk_used": 349777403429,
-        "sys_uptime": 9908996,
-        "cpu_temp": 45.7,
-        "inlet_temp": 33.4,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "7f5e803e",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "6efafe27",
-      "position": {
-        "x": 2520,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R05",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.176",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "6efafe27",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 723627220,
-            "out_octets": 435423470,
-            "in_errors": 17,
-            "out_errors": 49,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "14:a5:af:75:b9:b5",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.176",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 53,
-        "memory_total": 8589934592,
-        "memory_used": 3724503468,
-        "disk_total": 536870912000,
-        "disk_used": 153685373287,
-        "sys_uptime": 4148415,
-        "cpu_temp": 56.2,
-        "inlet_temp": 23.9,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "478f5d72",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "053485df",
-      "position": {
-        "x": 2760,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R06",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.177",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "053485df",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 815257551,
-            "out_octets": 981724892,
-            "in_errors": 7,
-            "out_errors": 28,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "89:f1:eb:81:8c:b2",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.177",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 49,
-        "memory_total": 34359738368,
-        "memory_used": 25747087158,
-        "disk_total": 536870912000,
-        "disk_used": 238433249072,
-        "sys_uptime": 9688877,
-        "cpu_temp": 52.1,
-        "inlet_temp": 33.7,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "21f044b4",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "a8d9d721",
-      "position": {
-        "x": 3000,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R07",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.178",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "a8d9d721",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 59692485,
-            "out_octets": 865393507,
-            "in_errors": 68,
-            "out_errors": 26,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "4a:29:5f:35:da:33",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.178",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 76,
-        "memory_total": 8589934592,
-        "memory_used": 6392765622,
-        "disk_total": 268435456000,
-        "disk_used": 65772050639,
-        "sys_uptime": 1860200,
-        "cpu_temp": 41.0,
-        "inlet_temp": 35.8,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "0662d25c",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "b24431f1",
-      "position": {
-        "x": 3240,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R08",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.179",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "b24431f1",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 902859737,
-            "out_octets": 729926499,
-            "in_errors": 12,
-            "out_errors": 81,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "0f:4b:7f:6f:30:49",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.179",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 87,
-        "memory_total": 17179869184,
-        "memory_used": 12265122524,
-        "disk_total": 1073741824000,
-        "disk_used": 425344797475,
-        "sys_uptime": 2438618,
-        "cpu_temp": 46.6,
-        "inlet_temp": 23.5,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "bd8636ed",
-        "pdu_level": "rack"
-      }
-    },
-    {
-      "id": "ac20ffe5",
-      "position": {
-        "x": 3480,
-        "y": 1900
-      },
-      "device": {
-        "name": "EV2-DC2-R09",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.180",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "ac20ffe5",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 917257620,
-            "out_octets": 815304221,
-            "in_errors": 78,
-            "out_errors": 69,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "f5:26:04:b6:82:95",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.180",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "",
-        "datacenter_city": "",
-        "datacenter": "",
-        "room": "",
-        "floor": "",
-        "rack_row": 0,
-        "rack_num": 0,
-        "rack_unit": 0,
-        "cpu_usage": 60,
-        "memory_total": 8589934592,
-        "memory_used": 6759212882,
-        "disk_total": 268435456000,
-        "disk_used": 76297739742,
-        "sys_uptime": 8498699,
-        "cpu_temp": 40.3,
-        "inlet_temp": 37.9,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_pdu": "d379b1c6",
-        "pdu_level": "rack"
+        "monitored_panel": "65a02682"
       }
     }
   ],
@@ -77765,153 +76272,6 @@
       "layer": "power"
     },
     {
-      "src": "c2e1f55d",
-      "dst": "8a78fa37",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7454c93d",
-      "dst": "7c5f0811",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "843477de",
-      "dst": "bea0339e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a07fc914",
-      "dst": "e91e8369",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8349e358",
-      "dst": "57f97faa",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "3ca6b20c",
-      "dst": "b87f084e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "868d829f",
-      "dst": "0fd1935a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "fe45dbbb",
-      "dst": "adccdac3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "df6976d3",
-      "dst": "925a2606",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "75c69dac",
-      "dst": "a9970122",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e6d7370a",
-      "dst": "dbb88205",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e389e154",
-      "dst": "336c268e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "9247681c",
-      "dst": "0ff3cec7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7ccdd174",
-      "dst": "959ed4bd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "fdf2143a",
-      "dst": "bc89b5ac",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "37766fc1",
-      "dst": "7f5e803e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6efafe27",
-      "dst": "478f5d72",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "053485df",
-      "dst": "21f044b4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a8d9d721",
-      "dst": "0662d25c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b24431f1",
-      "dst": "bd8636ed",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "ac20ffe5",
-      "dst": "d379b1c6",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "586eacef",
       "dst": "99b14bef",
       "src_iface": 0,
@@ -78227,157 +76587,10 @@
       "layer": "management"
     },
     {
-      "src": "c2e1f55d",
-      "dst": "8bbb6c34",
-      "src_iface": 0,
-      "dst_iface": 18,
-      "layer": "management"
-    },
-    {
-      "src": "7454c93d",
-      "dst": "056bae72",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "843477de",
-      "dst": "056bae72",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "a07fc914",
-      "dst": "056bae72",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "8349e358",
-      "dst": "99b14bef",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "3ca6b20c",
-      "dst": "99b14bef",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "868d829f",
-      "dst": "99b14bef",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "fe45dbbb",
-      "dst": "ffcb7266",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "df6976d3",
-      "dst": "ffcb7266",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "75c69dac",
-      "dst": "ffcb7266",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "e6d7370a",
-      "dst": "11c921cd",
-      "src_iface": 0,
-      "dst_iface": 17,
-      "layer": "management"
-    },
-    {
-      "src": "e389e154",
-      "dst": "11c921cd",
-      "src_iface": 0,
-      "dst_iface": 18,
-      "layer": "management"
-    },
-    {
       "src": "c8c6d5c2",
       "dst": "1051b7f6",
       "src_iface": 0,
       "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "9247681c",
-      "dst": "5d81fbf9",
-      "src_iface": 0,
-      "dst_iface": 19,
-      "layer": "management"
-    },
-    {
-      "src": "7ccdd174",
-      "dst": "acdab18a",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "fdf2143a",
-      "dst": "acdab18a",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "37766fc1",
-      "dst": "acdab18a",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "6efafe27",
-      "dst": "1051b7f6",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "053485df",
-      "dst": "1051b7f6",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "a8d9d721",
-      "dst": "1051b7f6",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "b24431f1",
-      "dst": "4719da33",
-      "src_iface": 0,
-      "dst_iface": 19,
-      "layer": "management"
-    },
-    {
-      "src": "ac20ffe5",
-      "dst": "4719da33",
-      "src_iface": 0,
-      "dst_iface": 20,
       "layer": "management"
     }
   ]
