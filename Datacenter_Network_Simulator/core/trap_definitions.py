@@ -4,8 +4,8 @@ SNMP Trap Definitions — OIDs, severity levels, and applicable device types.
 Enterprise OID tree: 1.3.6.1.4.1.99999
   .1.1-.1.8   general device traps (CPU, memory, temperature, ...)
   .2.1-.2.13  UPS enterprise traps
-  .4.1-.4.5   UPS pollable status OIDs
-  .5.1-.5.10  PDU pollable status OIDs
+  .4.1-.4.10  UPS pollable status OIDs
+  .5.1-.5.17  PDU pollable status OIDs
   .6.1-.6.13  PDU enterprise traps
 """
 from __future__ import annotations

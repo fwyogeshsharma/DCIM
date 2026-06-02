@@ -59,6 +59,9 @@ export interface DeviceInfo {
   ups_charger_status?: string
   ups_rectifier_status?: string
   ups_phase_status?: string
+  ups_operating_mode?: string
+  ups_battery_health?: number
+  ups_energy_kwh?: number
   pdu_load?: number
   pdu_voltage?: number
   pdu_power_factor?: number
@@ -69,6 +72,13 @@ export interface DeviceInfo {
   pdu_smoke?: string
   pdu_outlet_current?: number
   pdu_ground_fault?: string
+  pdu_real_power?: number
+  pdu_apparent_power?: number
+  pdu_energy_kwh?: number
+  pdu_frequency?: number
+  pdu_temperature?: number
+  pdu_humidity?: number
+  pdu_outlet_power?: number
   bgp_sessions_up?: number
   bgp_sessions_total?: number
   total_rx_bytes?: number

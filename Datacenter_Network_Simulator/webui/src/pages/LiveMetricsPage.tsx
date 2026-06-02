@@ -84,11 +84,15 @@ function StatePill({ val, okStates }: { val?: string; okStates: string[] }) {
   )
 }
 
-function NumCell({ val, unit, warn, crit, decimals = 1 }: {
-  val?: number; unit?: string; warn: number; crit: number; decimals?: number
+function NumCell({ val, unit, warn, crit, decimals = 1, invert = false }: {
+  val?: number; unit?: string; warn?: number; crit?: number; decimals?: number; invert?: boolean
 }) {
   if (val == null) return <span style={{ color: 'var(--text-dim)' }}>—</span>
-  const color = metricColor(val, warn, crit)
+  const color = warn == null || crit == null
+    ? 'var(--text)'
+    : invert
+      ? metricColor(-val, -warn, -crit)   // lower value is worse
+      : metricColor(val, warn, crit)
   return (
     <span style={{ color, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
       {val.toFixed(decimals)}{unit && <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{unit}</span>}
@@ -150,8 +154,8 @@ function useSortState(init: string) {
   return { col, dir, toggle }
 }
 
-function SortTH({ label, id, sort, align = 'left', minW }: {
-  label: string; id: string; sort: ReturnType<typeof useSortState>; align?: string; minW?: number
+function SortTH({ label, id, sort, align = 'left', minW, title }: {
+  label: string; id: string; sort: ReturnType<typeof useSortState>; align?: string; minW?: number; title?: string
 }) {
   const active = sort.col === id
   return (
@@ -164,7 +168,11 @@ function SortTH({ label, id, sort, align = 'left', minW }: {
       borderBottom: '1px solid var(--border)', minWidth: minW,
       background: 'var(--bg-panel)',
     }}>
-      {label}
+      {title
+        ? <span title={title} style={{ cursor: 'help' }}>
+            {label}<span style={{ marginLeft: 3, fontSize: 8, color: '#58a6ff', fontStyle: 'normal', textTransform: 'none', letterSpacing: 0 }}>ⓘ</span>
+          </span>
+        : label}
       <span style={{ marginLeft: 3, opacity: active ? 1 : 0.3, fontSize: 8 }}>
         {active ? (sort.dir === 'asc' ? '↑' : '↓') : '↕'}
       </span>
@@ -275,7 +283,7 @@ function AllTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="Name"     id="name"   sort={sort} minW={140} />
           <SortTH label="Type"     id="type"   sort={sort} />
           <SortTH label="IP"       id="ip"     sort={sort} />
-          <SortTH label="CPU"      id="cpu"    sort={sort} align="right" minW={80} />
+          <SortTH label="CPU Usage" id="cpu"    sort={sort} align="right" minW={80} />
           <SortTH label="Memory"   id="mem"    sort={sort} align="right" minW={100} />
           <SortTH label="Disk"     id="disk"   sort={sort} align="right" minW={100} />
           <SortTH label="CPU Temp" id="ctemp"  sort={sort} align="right" minW={80} />
@@ -362,9 +370,9 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="Interfaces" id="ifaces"   sort={sort} align="right" minW={80} />
           <SortTH label="RX Total"   id="rx"       sort={sort} align="right" minW={85} />
           <SortTH label="TX Total"   id="tx"       sort={sort} align="right" minW={85} />
-          <SortTH label="Errors"     id="errors"   sort={sort} align="right" minW={65} />
-          <SortTH label="Discards"   id="discards" sort={sort} align="right" minW={65} />
-          <SortTH label="BGP"        id="bgp"      sort={sort} align="right" minW={75} />
+          <SortTH label="Error Counters"   id="errors"   sort={sort} align="right" minW={90} />
+          <SortTH label="Discard Counters" id="discards" sort={sort} align="right" minW={100} />
+          <SortTH label="BGP Sessions" id="bgp"     sort={sort} align="right" minW={90} />
           <SortTH label="Uptime"     id="uptime"   sort={sort} align="right" minW={75} />
         </tr>
       </thead>
@@ -474,7 +482,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="CPU"        id="cpu"    sort={sort} align="right" minW={80} />
           <SortTH label="Memory"     id="mem"    sort={sort} align="right" minW={100} />
           <SortTH label="Disk"       id="disk"   sort={sort} align="right" minW={100} />
-          <SortTH label="CPU Temp"   id="ctemp"  sort={sort} align="right" minW={80} />
+          <SortTH label="CPU Temp"    id="ctemp"  sort={sort} align="right" minW={80} />
           <SortTH label="Inlet Temp" id="itemp"  sort={sort} align="right" minW={80} />
           <SortTH label="Interfaces" id="ifaces" sort={sort} align="right" minW={80} />
           <SortTH label="RX Total"   id="rx"     sort={sort} align="right" minW={90} />
@@ -537,7 +545,10 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
       case 'name':   return a.name.localeCompare(b.name) * dir
       case 'ip':     return a.ip_address.localeCompare(b.ip_address) * dir
       case 'status': return (a.ups_status ?? '').localeCompare(b.ups_status ?? '') * dir
+      case 'mode':   return (a.ups_operating_mode ?? '').localeCompare(b.ups_operating_mode ?? '') * dir
       case 'load':   return ((a.ups_output_load ?? 0) - (b.ups_output_load ?? 0)) * dir
+      case 'health': return ((a.ups_battery_health ?? 0) - (b.ups_battery_health ?? 0)) * dir
+      case 'energy': return ((a.ups_energy_kwh ?? 0) - (b.ups_energy_kwh ?? 0)) * dir
       case 'volt':   return ((a.ups_input_voltage ?? 0) - (b.ups_input_voltage ?? 0)) * dir
       case 'freq':   return ((a.ups_input_frequency ?? 0) - (b.ups_input_frequency ?? 0)) * dir
       default: return 0
@@ -551,15 +562,18 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
           <th style={{ width: 18, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }} />
           <SortTH label="Name"        id="name"   sort={sort} minW={140} />
           <SortTH label="IP"          id="ip"     sort={sort} />
-          <SortTH label="UPS Status"  id="status" sort={sort} />
-          <SortTH label="Battery"     id="batt"   sort={sort} />
-          <SortTH label="Output Load" id="load"   sort={sort} align="right" minW={90} />
-          <SortTH label="Input V"     id="volt"   sort={sort} align="right" minW={80} />
-          <SortTH label="Input Hz"    id="freq"   sort={sort} align="right" minW={80} />
-          <SortTH label="Fan"         id="fan"    sort={sort} />
-          <SortTH label="Charger"     id="chgr"   sort={sort} />
-          <SortTH label="Rectifier"   id="rect"   sort={sort} />
-          <SortTH label="Phase"       id="phase"  sort={sort} />
+          <SortTH label="Power Status"    id="status" sort={sort} />
+          <SortTH label="Operating Mode"  id="mode"   sort={sort} title="Derived: online when normal, battery when on_battery/low_battery, bypass when bypass_status=on" />
+          <SortTH label="Battery Status"  id="batt"   sort={sort} />
+          <SortTH label="Battery Health"  id="health" sort={sort} align="right" minW={100} />
+          <SortTH label="Output Load"     id="load"   sort={sort} align="right" minW={90} />
+          <SortTH label="Input Voltage"   id="volt"   sort={sort} align="right" minW={90} />
+          <SortTH label="Input Freq"      id="freq"   sort={sort} align="right" minW={80} />
+          <SortTH label="Fan Status"      id="fan"    sort={sort} />
+          <SortTH label="Charger Status"  id="chgr"   sort={sort} />
+          <SortTH label="Rectifier Status" id="rect"  sort={sort} />
+          <SortTH label="Phase Status"    id="phase"  sort={sort} />
+          <SortTH label="Energy (kWh)"    id="energy" sort={sort} align="right" minW={90} title="Derived: cumulative ∫(output_load% × 3kW) dt per tick" />
         </tr>
       </thead>
       <tbody>
@@ -569,10 +583,13 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
             <NameCell d={d} />
             <IpCell d={d} />
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_status}           okStates={['normal']} /></td>
+            <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_operating_mode}   okStates={['online']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_battery_status}   okStates={['normal']} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_battery_health}  unit="%" warn={80} crit={50} invert /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_load}     unit="%" warn={70} crit={90} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_voltage}   unit="V" warn={235} crit={245} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_frequency} unit="Hz" warn={50.3} crit={50.5} decimals={2} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_energy_kwh}      unit=" kWh" decimals={1} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_fan_status}       okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_charger_status}   okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_rectifier_status} okStates={['ok']} /></td>
@@ -594,11 +611,18 @@ function PduTable({ rows }: { rows: DeviceInfo[] }) {
       case 'name':  return a.name.localeCompare(b.name) * dir
       case 'type':  return a.device_type.localeCompare(b.device_type) * dir
       case 'ip':    return a.ip_address.localeCompare(b.ip_address) * dir
-      case 'load':  return ((a.pdu_load ?? 0) - (b.pdu_load ?? 0)) * dir
-      case 'volt':  return ((a.pdu_voltage ?? 0) - (b.pdu_voltage ?? 0)) * dir
-      case 'curr':  return ((a.pdu_outlet_current ?? 0) - (b.pdu_outlet_current ?? 0)) * dir
-      case 'pf':    return ((a.pdu_power_factor ?? 0) - (b.pdu_power_factor ?? 0)) * dir
-      case 'imbal': return ((a.pdu_phase_imbalance ?? 0) - (b.pdu_phase_imbalance ?? 0)) * dir
+      case 'load':   return ((a.pdu_load ?? 0) - (b.pdu_load ?? 0)) * dir
+      case 'volt':   return ((a.pdu_voltage ?? 0) - (b.pdu_voltage ?? 0)) * dir
+      case 'curr':   return ((a.pdu_outlet_current ?? 0) - (b.pdu_outlet_current ?? 0)) * dir
+      case 'pf':     return ((a.pdu_power_factor ?? 0) - (b.pdu_power_factor ?? 0)) * dir
+      case 'imbal':  return ((a.pdu_phase_imbalance ?? 0) - (b.pdu_phase_imbalance ?? 0)) * dir
+      case 'realw':  return ((a.pdu_real_power ?? 0) - (b.pdu_real_power ?? 0)) * dir
+      case 'va':     return ((a.pdu_apparent_power ?? 0) - (b.pdu_apparent_power ?? 0)) * dir
+      case 'outw':   return ((a.pdu_outlet_power ?? 0) - (b.pdu_outlet_power ?? 0)) * dir
+      case 'freq':   return ((a.pdu_frequency ?? 0) - (b.pdu_frequency ?? 0)) * dir
+      case 'temp':   return ((a.pdu_temperature ?? 0) - (b.pdu_temperature ?? 0)) * dir
+      case 'humid':  return ((a.pdu_humidity ?? 0) - (b.pdu_humidity ?? 0)) * dir
+      case 'energy': return ((a.pdu_energy_kwh ?? 0) - (b.pdu_energy_kwh ?? 0)) * dir
       default: return 0
     }
   }), [rows, sort.col, sort.dir])
@@ -611,16 +635,23 @@ function PduTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="Name"         id="name"  sort={sort} minW={140} />
           <SortTH label="Type"         id="type"  sort={sort} />
           <SortTH label="IP"           id="ip"    sort={sort} />
-          <SortTH label="Load"         id="load"  sort={sort} align="right" minW={80} />
-          <SortTH label="Voltage"      id="volt"  sort={sort} align="right" minW={80} />
-          <SortTH label="Current"      id="curr"  sort={sort} align="right" minW={80} />
-          <SortTH label="Power Factor" id="pf"    sort={sort} align="right" minW={90} />
-          <SortTH label="Phase Imbal"  id="imbal" sort={sort} align="right" minW={90} />
-          <SortTH label="Outlet"       id="outl"  sort={sort} />
-          <SortTH label="Breaker"      id="brkr"  sort={sort} />
-          <SortTH label="Failure"      id="fail"  sort={sort} />
-          <SortTH label="Smoke"        id="smk"   sort={sort} />
-          <SortTH label="Gnd Fault"    id="gnd"   sort={sort} />
+          <SortTH label="PDU Load"         id="load"  sort={sort} align="right" minW={80} />
+          <SortTH label="Input Voltage"   id="volt"  sort={sort} align="right" minW={90} />
+          <SortTH label="Outlet Current"  id="curr"  sort={sort} align="right" minW={90} />
+          <SortTH label="Power Factor"    id="pf"    sort={sort} align="right" minW={90} />
+          <SortTH label="Phase Imbalance" id="imbal" sort={sort} align="right" minW={100} />
+          <SortTH label="Real Power (W)"  id="realw" sort={sort} align="right" minW={90}  title="Derived: Input Voltage × Outlet Current × Power Factor" />
+          <SortTH label="Apparent (VA)"   id="va"    sort={sort} align="right" minW={90}  title="Derived: Input Voltage × Outlet Current" />
+          <SortTH label="Outlet Power (W)" id="outw" sort={sort} align="right" minW={90}  title="Derived: Input Voltage × Outlet Current × Power Factor (per-outlet)" />
+          <SortTH label="Input Freq"      id="freq"  sort={sort} align="right" minW={80} />
+          <SortTH label="Ambient Temp"    id="temp"  sort={sort} align="right" minW={90} />
+          <SortTH label="Ambient Humidity" id="humid" sort={sort} align="right" minW={100} />
+          <SortTH label="Energy (kWh)"    id="energy" sort={sort} align="right" minW={90}  title="Derived: cumulative ∫(Real Power kW) dt per tick" />
+          <SortTH label="Outlet Status"   id="outl"  sort={sort} />
+          <SortTH label="Breaker Status"  id="brkr"  sort={sort} />
+          <SortTH label="Outlet Failure"  id="fail"  sort={sort} />
+          <SortTH label="Smoke Detection" id="smk"   sort={sort} />
+          <SortTH label="Ground Fault"    id="gnd"   sort={sort} />
         </tr>
       </thead>
       <tbody>
@@ -635,6 +666,13 @@ function PduTable({ rows }: { rows: DeviceInfo[] }) {
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_outlet_current}  unit="A" warn={15} crit={20} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_power_factor}    unit="" warn={0} crit={0} decimals={2} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_phase_imbalance} unit="%" warn={10} crit={15} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_real_power}      unit=" W"   warn={4000} crit={5000} decimals={0} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_apparent_power}  unit=" VA"  decimals={0} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_outlet_power}    unit=" W"   warn={3500} crit={4500} decimals={0} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_frequency}       unit=" Hz"  warn={50.3} crit={50.5} decimals={2} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_temperature}     unit="°C"   warn={35} crit={40} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_humidity}        unit="%"    warn={70} crit={85} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_energy_kwh}      unit=" kWh" decimals={1} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.pdu_outlet_status}  okStates={['on']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.pdu_breaker_status} okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.pdu_outlet_failure} okStates={['ok']} /></td>

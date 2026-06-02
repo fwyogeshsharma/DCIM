@@ -63,6 +63,11 @@ class DeviceFact:
     ups_charger_status: str = "ok"        # ok | failure
     ups_rectifier_status: str = "ok"      # ok | failure
     ups_phase_status: str = "ok"          # ok | failure
+    ups_operating_mode: str = "online"    # online | battery | bypass | eco | standby
+    ups_bypass_status: str = "off"        # off | on
+    ups_battery_health: float = 100.0     # % state-of-health
+    ups_output_apparent_power: float = 0.0  # VA
+    ups_energy_kwh: float = 0.0           # cumulative output energy, kWh
 
     # PDU extended metrics (populated only for DeviceType.PDU / FLOOR_PDU)
     pdu_load: float = 0.0                 # % load

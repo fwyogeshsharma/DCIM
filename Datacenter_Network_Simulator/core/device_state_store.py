@@ -107,7 +107,7 @@ class DeviceStateStore:
         self._pause_ev = threading.Event()   # set → paused
         self._tick_count: int = 0
 
-        # Per-metric enable flags — toggled by TickSettingsDialog
+        # Per-metric enable flags — toggled by TickPanel
         self.metric_flags: Dict[str, bool] = {
             # All devices
             "cpu_usage":            True,
@@ -121,9 +121,13 @@ class DeviceStateStore:
             "iface_discards":       True,
             "interface_flap":       True,
             # Sensor devices
+            "sensor_ambient_temp":  True,
             "humidity":             True,
             "dewpoint":             True,
             "airflow":              True,
+            "mid_temp":             True,
+            "outlet_temp":          True,
+            "water_detection":      True,
             # UPS devices
             "ups_status":           True,
             "ups_output_load":      True,
@@ -134,6 +138,9 @@ class DeviceStateStore:
             "ups_charger_status":   True,
             "ups_rectifier_status": True,
             "ups_phase_status":     True,
+            "ups_bypass_status":    True,
+            "ups_battery_health":   True,
+            "ups_energy_kwh":       True,
             # PDU / Floor PDU devices
             "pdu_load":             True,
             "pdu_voltage":          True,
@@ -145,11 +152,15 @@ class DeviceStateStore:
             "pdu_smoke":            True,
             "pdu_outlet_current":   True,
             "pdu_ground_fault":     True,
+            "pdu_frequency":        True,
+            "pdu_temperature":      True,
+            "pdu_humidity":         True,
+            "pdu_energy_kwh":       True,
             # Router / Firewall
             "bgp_sessions":         True,
         }
 
-        # Per-metric limits — toggled and configured by TickSettingsDialog (Limits tab)
+        # Per-metric limits — toggled and configured by TickPanel (Limits tab)
         # Numeric: {"enabled": bool, "min": float, "max": float}
         # State lock: {"enabled": bool, "lock": str, "options": list[str]}
         self.metric_limits: Dict[str, dict] = {
@@ -159,14 +170,21 @@ class DeviceStateStore:
             "disk_pct":            {"enabled": False, "min": 0.0,   "max": 100.0},
             "cpu_temp":            {"enabled": False, "min": 20.0,  "max": 95.0},
             "inlet_temp":          {"enabled": False, "min": 15.0,  "max": 55.0},
+            "sensor_ambient_temp":  {"enabled": False, "min": 15.0,  "max": 35.0},
             "humidity":            {"enabled": False, "min": 10.0,  "max": 90.0},
             "airflow":             {"enabled": False, "min": 0.2,   "max": 4.0},
+            "mid_temp":            {"enabled": False, "min": 15.0,  "max": 55.0},
+            "outlet_temp":         {"enabled": False, "min": 15.0,  "max": 65.0},
             "ups_output_load":     {"enabled": False, "min": 0.0,   "max": 100.0},
             "ups_input_voltage":   {"enabled": False, "min": 200.0, "max": 240.0},
             "ups_input_frequency": {"enabled": False, "min": 49.5,  "max": 50.5},
+            "ups_battery_health":  {"enabled": False, "min": 0.0,   "max": 100.0},
             "pdu_load":            {"enabled": False, "min": 0.0,   "max": 100.0},
             "pdu_voltage":         {"enabled": False, "min": 205.0, "max": 235.0},
             "pdu_outlet_current":  {"enabled": False, "min": 0.0,   "max": 20.0},
+            "pdu_frequency":       {"enabled": False, "min": 49.5,  "max": 50.5},
+            "pdu_temperature":     {"enabled": False, "min": 15.0,  "max": 45.0},
+            "pdu_humidity":        {"enabled": False, "min": 10.0,  "max": 90.0},
             # State locks
             "ups_status":           {"enabled": False, "lock": "normal",      "options": ["normal", "on_battery", "low_battery"]},
             "ups_battery_status":   {"enabled": False, "lock": "normal",      "options": ["normal", "failure", "disconnected"]},
@@ -174,11 +192,13 @@ class DeviceStateStore:
             "ups_charger_status":   {"enabled": False, "lock": "ok",          "options": ["ok", "failure"]},
             "ups_rectifier_status": {"enabled": False, "lock": "ok",          "options": ["ok", "failure"]},
             "ups_phase_status":     {"enabled": False, "lock": "ok",          "options": ["ok", "failure"]},
+            "ups_bypass_status":    {"enabled": False, "lock": "off",         "options": ["off", "on"]},
             "pdu_outlet_status":    {"enabled": False, "lock": "on",          "options": ["on", "off"]},
             "pdu_breaker_status":   {"enabled": False, "lock": "ok",          "options": ["ok", "tripped"]},
             "pdu_outlet_failure":   {"enabled": False, "lock": "ok",          "options": ["ok", "failed"]},
             "pdu_smoke":            {"enabled": False, "lock": "no",          "options": ["no", "yes"]},
             "pdu_ground_fault":     {"enabled": False, "lock": "no",          "options": ["no", "yes"]},
+            "water_detection":      {"enabled": False, "lock": "dry",         "options": ["dry", "wet"]},
             "bgp_sessions":         {"enabled": False, "lock": "established", "options": ["established", "idle"]},
         }
 
@@ -458,6 +478,9 @@ class DeviceStateStore:
             "ups_charger_status": "ok",
             "ups_rectifier_status": "ok",
             "ups_phase_status": "ok",
+            "ups_bypass_status": "off",
+            "ups_battery_health": random.uniform(92.0, 100.0),
+            "ups_energy_kwh": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(216.0, 224.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -468,7 +491,12 @@ class DeviceStateStore:
             "pdu_smoke": "no",
             "pdu_outlet_current": random.uniform(5.0, 15.0),
             "pdu_ground_fault": "no",
+            "pdu_frequency": random.uniform(49.8, 50.2),
+            "pdu_temperature": random.uniform(18.0, 28.0),
+            "pdu_humidity": random.uniform(30.0, 60.0),
+            "pdu_energy_kwh": 0.0,
             "bgp_sessions": [],
+            "water_detection": "dry",
             "cpu_sustained": False,
             "mem_sustained": False,
         })
@@ -552,14 +580,20 @@ class DeviceStateStore:
                 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0))), 1)
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
 
-        # Chassis inlet temperature
-        if mf["inlet_temp"]:
+        # Chassis inlet temperature — servers/network gear only (CPU-linked)
+        if mf["inlet_temp"] and device.device_type != DeviceType.SENSOR:
             device.inlet_temp = round(max(15.0, min(55.0,
                 18.0 + device.cpu_usage * 0.12 + random.uniform(-0.5, 0.5))), 1)
             device.inlet_temp = self._num_limit("inlet_temp", device.inlet_temp)
 
         # Environmental readings — sensor devices only
         if device.device_type == DeviceType.SENSOR:
+            # Ambient temperature: independent random walk (not CPU-linked)
+            if mf["sensor_ambient_temp"]:
+                device.inlet_temp = round(max(15.0, min(35.0,
+                    device.inlet_temp + random.uniform(-0.3, 0.3))), 1)
+                device.inlet_temp = self._num_limit("sensor_ambient_temp", device.inlet_temp)
+
             if mf["humidity"]:
                 device.humidity = round(max(10.0, min(90.0,
                     device.humidity + random.uniform(-1.5, 1.5))), 1)
@@ -571,6 +605,19 @@ class DeviceStateStore:
                 device.airflow = round(max(0.2, min(4.0,
                     device.airflow + random.uniform(-0.15, 0.15))), 2)
                 device.airflow = self._num_limit("airflow", device.airflow)
+
+            # Mid-rack + exhaust temps — Raritan DPX2-T3H1 only
+            if device.model_name == "Raritan DPX2-T3H1":
+                if mf["mid_temp"]:
+                    target_mid = device.inlet_temp + random.uniform(3.0, 7.0)
+                    device.mid_temp = round(max(device.inlet_temp,
+                        min(55.0, device.mid_temp * 0.85 + target_mid * 0.15)), 1)
+                    device.mid_temp = self._num_limit("mid_temp", device.mid_temp)
+                if mf["outlet_temp"]:
+                    target_out = device.inlet_temp + random.uniform(8.0, 14.0)
+                    device.outlet_temp = round(max(device.mid_temp,
+                        min(65.0, device.outlet_temp * 0.85 + target_out * 0.15)), 1)
+                    device.outlet_temp = self._num_limit("outlet_temp", device.outlet_temp)
 
         # Interface counters — only UP interfaces
         _do_oct  = mf["iface_octets"]
@@ -629,6 +676,9 @@ class DeviceStateStore:
             "ups_charger_status": "ok",
             "ups_rectifier_status": "ok",
             "ups_phase_status": "ok",
+            "ups_bypass_status": "off",
+            "ups_battery_health": random.uniform(92.0, 100.0),
+            "ups_energy_kwh": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(216.0, 224.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -639,7 +689,12 @@ class DeviceStateStore:
             "pdu_smoke": "no",
             "pdu_outlet_current": random.uniform(5.0, 15.0),
             "pdu_ground_fault": "no",
+            "pdu_frequency": random.uniform(49.8, 50.2),
+            "pdu_temperature": random.uniform(18.0, 28.0),
+            "pdu_humidity": random.uniform(30.0, 60.0),
+            "pdu_energy_kwh": 0.0,
             "bgp_sessions": [],
+            "water_detection": "dry",
             "cpu_sustained": False,
             "mem_sustained": False,
         })
@@ -714,6 +769,29 @@ class DeviceStateStore:
                 elif random.random() < 0.15:
                     st[comp_key] = "ok"
                 st[comp_key] = self._state_lock(comp_key, st[comp_key])
+
+            # Bypass: rare switch to bypass (e.g. maintenance / overload), self-clears
+            if mf["ups_bypass_status"]:
+                byp = st.get("ups_bypass_status", "off")
+                if byp == "off" and random.random() < 0.0008:
+                    st["ups_bypass_status"] = "on"
+                elif byp == "on" and random.random() < 0.12:
+                    st["ups_bypass_status"] = "off"
+                st["ups_bypass_status"] = self._state_lock("ups_bypass_status", st["ups_bypass_status"])
+
+            # Battery health (state-of-health %): slow monotonic decay, faster on fault
+            if mf["ups_battery_health"]:
+                hp = st.get("ups_battery_health", 100.0)
+                decay = 0.05 if st.get("ups_battery_status", "normal") != "normal" else 0.002
+                hp = max(0.0, hp - random.uniform(0.0, decay))
+                st["ups_battery_health"] = round(self._num_limit("ups_battery_health", hp), 1)
+
+            # Output energy accumulator (kWh): integrate ~3 kW frame at current % load,
+            # assuming a ~1-minute tick interval. Flag gates accumulation (freeze counter).
+            if mf["ups_energy_kwh"]:
+                load_now = st.get("ups_output_load", 40.0)
+                st["ups_energy_kwh"] = round(st.get("ups_energy_kwh", 0.0)
+                                             + (load_now / 100.0) * 3.0 / 60.0, 3)
 
         # ── PDU / Floor PDU ───────────────────────────────────────────────
         if is_pdu:
@@ -799,8 +877,46 @@ class DeviceStateStore:
                     st["pdu_ground_fault"] = "no"
                 st["pdu_ground_fault"] = self._state_lock("pdu_ground_fault", st["pdu_ground_fault"])
 
+            if mf["pdu_frequency"]:
+                f = st.get("pdu_frequency", 50.0)
+                f = max(49.5, min(50.5, f + random.uniform(-0.05, 0.05)))
+                if random.random() < 0.002:
+                    f = random.choice([random.uniform(47.0, 48.9),
+                                       random.uniform(51.1, 53.0)])
+                st["pdu_frequency"] = round(self._num_limit("pdu_frequency", f), 2)
+
+            if mf["pdu_temperature"]:
+                t = st.get("pdu_temperature", 23.0)
+                t = max(15.0, min(45.0, t + random.uniform(-0.3, 0.3)))
+                st["pdu_temperature"] = round(self._num_limit("pdu_temperature", t), 1)
+
+            if mf["pdu_humidity"]:
+                h = st.get("pdu_humidity", 45.0)
+                h = max(10.0, min(90.0, h + random.uniform(-1.0, 1.0)))
+                st["pdu_humidity"] = round(self._num_limit("pdu_humidity", h), 1)
+
+            # Energy accumulator: integrate kW load × 1-min tick
+            if mf["pdu_energy_kwh"]:
+                load_now = st.get("pdu_load", 45.0)
+                volt_now = st.get("pdu_voltage", 220.0)
+                cur_now  = st.get("pdu_outlet_current", 10.0)
+                pf_now   = st.get("pdu_power_factor", 0.95)
+                real_kw  = (volt_now * cur_now * pf_now) / 1000.0
+                st["pdu_energy_kwh"] = round(st.get("pdu_energy_kwh", 0.0)
+                                             + real_kw / 60.0, 3)
+
         # Update module-level cache so snmprec_generator can read UPS/PDU states
         _ext_state_cache[name] = dict(st)
+
+        # ── Sensor — water detection (Raritan DPX2-CC2 only) ─────────────
+        if device.device_type == DeviceType.SENSOR and device.model_name == "Raritan DPX2-CC2":
+            if mf["water_detection"]:
+                wd = st.get("water_detection", "dry")
+                if wd == "dry" and random.random() < 0.0005:
+                    st["water_detection"] = "wet"
+                elif wd == "wet" and random.random() < 0.20:
+                    st["water_detection"] = "dry"
+                st["water_detection"] = self._state_lock("water_detection", st.get("water_detection", "dry"))
 
         # BGP sessions: only for routers and firewalls
         if mf["bgp_sessions"] and device.device_type.value in ("router", "firewall"):
@@ -870,6 +986,14 @@ class DeviceStateStore:
                     ups_charger_status=ext.get("ups_charger_status", "ok"),
                     ups_rectifier_status=ext.get("ups_rectifier_status", "ok"),
                     ups_phase_status=ext.get("ups_phase_status", "ok"),
+                    ups_operating_mode=(
+                        "bypass" if ext.get("ups_bypass_status", "off") == "on"
+                        else "battery" if ext.get("ups_status", "normal") in ("on_battery", "low_battery")
+                        else "online"),
+                    ups_bypass_status=ext.get("ups_bypass_status", "off"),
+                    ups_battery_health=float(ext.get("ups_battery_health", 100.0)),
+                    ups_output_apparent_power=float(ext.get("ups_output_load", 0.0)) * 30.0,
+                    ups_energy_kwh=float(ext.get("ups_energy_kwh", 0.0)),
                     pdu_load=float(ext.get("pdu_load", 0.0)),
                     pdu_voltage=float(ext.get("pdu_voltage", 220.0)),
                     pdu_power_factor=float(ext.get("pdu_power_factor", 0.95)),

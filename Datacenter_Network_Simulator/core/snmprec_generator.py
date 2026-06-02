@@ -381,9 +381,13 @@ class SNMPRecGenerator:
                         updates[f"{_RARITAN_SENSOR}.4.1.3"] = ("2", str(exhaust_t10))
                         updates[f"{_RARITAN_SENSOR}.4.1.4"] = ("2", str(humid_t10))
                     elif device.model_name == "Raritan DPX2-CC2":
-                        # Slot 1: water detection stays 0 (no leak) under normal simulation
-                        # Slot 2: temperature probe updates with ambient
-                        updates[f"{_RARITAN_SENSOR}.4.1.1"] = ("2", "0")
+                        try:
+                            from core.device_state_store import _get_ext_state
+                            _cc2_ext = _get_ext_state(device.name)
+                        except Exception:
+                            _cc2_ext = {}
+                        water_val = 1 if _cc2_ext.get("water_detection", "dry") == "wet" else 0
+                        updates[f"{_RARITAN_SENSOR}.4.1.1"] = ("2", str(water_val))
                         updates[f"{_RARITAN_SENSOR}.4.1.2"] = ("2", str(inlet_t10))
                     else:
                         updates[f"{_RARITAN_SENSOR}.4.1.1"] = ("2", str(inlet_t10))
@@ -441,6 +445,26 @@ class SNMPRecGenerator:
                 updates[f"{_UPS_ENT}.3.0"] = ("2", str(rec_s))
                 updates[f"{_UPS_ENT}.4.0"] = ("2", str(pha_s))
                 updates[f"{_UPS_ENT}.5.0"] = ("2", str(b_ex))
+                # Extended power metrics
+                bypass_on   = ext.get("ups_bypass_status", "off") == "on"
+                batt_health = int(round(ext.get("ups_battery_health", 100.0)))
+                energy_kwh  = int(round(ext.get("ups_energy_kwh", 0.0) * 10))
+                # upsOperatingMode: 3=bypass, 2=battery, 1=online
+                if bypass_on:
+                    op_mode = 3
+                elif ups_status in ("on_battery", "low_battery"):
+                    op_mode = 2
+                else:
+                    op_mode = 1
+                # upsBypassStatus: 1=not-on-bypass, 2=on-bypass
+                bypass_snmp = 2 if bypass_on else 1
+                # upsOutputApparentPower (VA): % load on a nominal 3000 VA frame
+                app_power = int(round(out_load * 30.0))
+                updates[f"{_UPS_ENT}.6.0"]  = ("2", str(op_mode))
+                updates[f"{_UPS_ENT}.7.0"]  = ("2", str(bypass_snmp))
+                updates[f"{_UPS_ENT}.8.0"]  = ("2", str(batt_health))
+                updates[f"{_UPS_ENT}.9.0"]  = ("2", str(app_power))
+                updates[f"{_UPS_ENT}.10.0"] = ("2", str(energy_kwh))
 
             # PDU pollable status OIDs
             if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
@@ -471,6 +495,21 @@ class SNMPRecGenerator:
                 updates[f"{_PDU_ENT}.8.0"]  = ("2", str(pdu_smk))
                 updates[f"{_PDU_ENT}.9.0"]  = ("2", str(pdu_cur))
                 updates[f"{_PDU_ENT}.10.0"] = ("2", str(pdu_gf))
+                # Derived power metrics
+                pdu_real_w    = int(round(pdu_volt * ext.get("pdu_outlet_current", 10.0) * ext.get("pdu_power_factor", 0.95)))
+                pdu_appar_va  = int(round(pdu_volt * ext.get("pdu_outlet_current", 10.0)))
+                pdu_outlet_w  = pdu_real_w  # per-outlet (single outlet model)
+                pdu_energy_x10 = int(round(ext.get("pdu_energy_kwh", 0.0) * 10))
+                pdu_freq_x10  = int(round(ext.get("pdu_frequency", 50.0) * 10))
+                pdu_temp_x10  = int(round(ext.get("pdu_temperature", 23.0) * 10))
+                pdu_hum_x10   = int(round(ext.get("pdu_humidity", 45.0) * 10))
+                updates[f"{_PDU_ENT}.11.0"] = ("2", str(pdu_real_w))
+                updates[f"{_PDU_ENT}.12.0"] = ("2", str(pdu_appar_va))
+                updates[f"{_PDU_ENT}.13.0"] = ("2", str(pdu_energy_x10))
+                updates[f"{_PDU_ENT}.14.0"] = ("2", str(pdu_freq_x10))
+                updates[f"{_PDU_ENT}.15.0"] = ("2", str(pdu_temp_x10))
+                updates[f"{_PDU_ENT}.16.0"] = ("2", str(pdu_hum_x10))
+                updates[f"{_PDU_ENT}.17.0"] = ("2", str(pdu_outlet_w))
 
             # Read existing file, replace matching OID lines.
             try:
@@ -875,6 +914,14 @@ class SNMPRecGenerator:
             _oid_entry(f"{_UPS_ENT}.4.0", "2", "2"),  # upsPhaseStatus (2=ok)
             _oid_entry(f"{_UPS_ENT}.5.0", "2", "2"),  # upsBatteryStatusEx (2=normal)
         ]
+        # Enterprise UPS extended power metrics (1.3.6.1.4.1.99999.4.6-.10)
+        entries += [
+            _oid_entry(f"{_UPS_ENT}.6.0",  "2", "1"),     # upsOperatingMode (1=online,2=battery,3=bypass,4=eco,5=standby)
+            _oid_entry(f"{_UPS_ENT}.7.0",  "2", "1"),     # upsBypassStatus (1=not-on-bypass,2=on-bypass)
+            _oid_entry(f"{_UPS_ENT}.8.0",  "2", "100"),   # upsBatteryHealthPercent %
+            _oid_entry(f"{_UPS_ENT}.9.0",  "2", "1200"),  # upsOutputApparentPower VA
+            _oid_entry(f"{_UPS_ENT}.10.0", "2", "0"),     # upsEnergyOutputKWh (kWh x10)
+        ]
         return entries
 
     # ------------------------------------------------------------------ #
@@ -896,6 +943,13 @@ class SNMPRecGenerator:
             _oid_entry(f"{_PDU_ENT}.8.0",  "2",  "1"),    # pduSmokeDetected (1=no)
             _oid_entry(f"{_PDU_ENT}.9.0",  "2",  "100"),  # pduOutletCurrent x10 A (10.0A)
             _oid_entry(f"{_PDU_ENT}.10.0", "2",  "1"),    # pduGroundFault (1=no)
+            _oid_entry(f"{_PDU_ENT}.11.0", "2",  "2090"), # pduRealPower W (220V × 10A × 0.95)
+            _oid_entry(f"{_PDU_ENT}.12.0", "2",  "2200"), # pduApparentPower VA (220V × 10A)
+            _oid_entry(f"{_PDU_ENT}.13.0", "2",  "0"),    # pduEnergyKWh x10
+            _oid_entry(f"{_PDU_ENT}.14.0", "2",  "500"),  # pduFrequency x10 Hz (50.0)
+            _oid_entry(f"{_PDU_ENT}.15.0", "2",  "230"),  # pduTemperature x10 °C (23.0)
+            _oid_entry(f"{_PDU_ENT}.16.0", "2",  "450"),  # pduHumidity x10 % (45.0)
+            _oid_entry(f"{_PDU_ENT}.17.0", "2",  "2090"), # pduOutletPower W (per-outlet)
         ]
         return entries
 

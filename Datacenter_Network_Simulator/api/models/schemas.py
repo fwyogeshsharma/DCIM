@@ -231,6 +231,9 @@ class DeviceInfo(BaseModel):
     ups_charger_status: Optional[str] = None
     ups_rectifier_status: Optional[str] = None
     ups_phase_status: Optional[str] = None
+    ups_operating_mode: Optional[str] = None
+    ups_battery_health: Optional[float] = None
+    ups_energy_kwh: Optional[float] = None
     # PDU-specific
     pdu_load: Optional[float] = None
     pdu_voltage: Optional[float] = None
@@ -242,6 +245,13 @@ class DeviceInfo(BaseModel):
     pdu_smoke: Optional[str] = None
     pdu_outlet_current: Optional[float] = None
     pdu_ground_fault: Optional[str] = None
+    pdu_real_power: Optional[float] = None
+    pdu_apparent_power: Optional[float] = None
+    pdu_energy_kwh: Optional[float] = None
+    pdu_frequency: Optional[float] = None
+    pdu_temperature: Optional[float] = None
+    pdu_humidity: Optional[float] = None
+    pdu_outlet_power: Optional[float] = None
     # Router/Firewall
     bgp_sessions_up: Optional[int] = None
     bgp_sessions_total: Optional[int] = None

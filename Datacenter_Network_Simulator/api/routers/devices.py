@@ -112,6 +112,12 @@ def _device_to_info(device) -> DeviceInfo:
         ups_charger_status=ext.get("ups_charger_status") if dt == "ups" else None,
         ups_rectifier_status=ext.get("ups_rectifier_status") if dt == "ups" else None,
         ups_phase_status=ext.get("ups_phase_status")     if dt == "ups" else None,
+        ups_operating_mode=(
+            "bypass" if ext.get("ups_bypass_status", "off") == "on"
+            else "battery" if ext.get("ups_status", "normal") in ("on_battery", "low_battery")
+            else "online") if dt == "ups" else None,
+        ups_battery_health=ext.get("ups_battery_health") if dt == "ups" else None,
+        ups_energy_kwh=ext.get("ups_energy_kwh")         if dt == "ups" else None,
         pdu_load=ext.get("pdu_load")                     if dt in ("pdu", "floor_pdu") else None,
         pdu_voltage=ext.get("pdu_voltage")               if dt in ("pdu", "floor_pdu") else None,
         pdu_power_factor=ext.get("pdu_power_factor")     if dt in ("pdu", "floor_pdu") else None,
@@ -122,6 +128,22 @@ def _device_to_info(device) -> DeviceInfo:
         pdu_smoke=ext.get("pdu_smoke")                   if dt in ("pdu", "floor_pdu") else None,
         pdu_outlet_current=ext.get("pdu_outlet_current") if dt in ("pdu", "floor_pdu") else None,
         pdu_ground_fault=ext.get("pdu_ground_fault")     if dt in ("pdu", "floor_pdu") else None,
+        pdu_real_power=(
+            ext["pdu_voltage"] * ext["pdu_outlet_current"] * ext["pdu_power_factor"]
+            if all(k in ext for k in ("pdu_voltage", "pdu_outlet_current", "pdu_power_factor")) else None
+        ) if dt in ("pdu", "floor_pdu") else None,
+        pdu_apparent_power=(
+            ext["pdu_voltage"] * ext["pdu_outlet_current"]
+            if all(k in ext for k in ("pdu_voltage", "pdu_outlet_current")) else None
+        ) if dt in ("pdu", "floor_pdu") else None,
+        pdu_energy_kwh=ext.get("pdu_energy_kwh")         if dt in ("pdu", "floor_pdu") else None,
+        pdu_frequency=ext.get("pdu_frequency")           if dt in ("pdu", "floor_pdu") else None,
+        pdu_temperature=ext.get("pdu_temperature")       if dt in ("pdu", "floor_pdu") else None,
+        pdu_humidity=ext.get("pdu_humidity")             if dt in ("pdu", "floor_pdu") else None,
+        pdu_outlet_power=(
+            ext["pdu_voltage"] * ext["pdu_outlet_current"] * ext["pdu_power_factor"]
+            if all(k in ext for k in ("pdu_voltage", "pdu_outlet_current", "pdu_power_factor")) else None
+        ) if dt in ("pdu", "floor_pdu") else None,
         bgp_sessions_up=sum(1 for s in sessions if s.get("state") == "established") if dt in ("router", "firewall") else None,
         bgp_sessions_total=len(sessions) if dt in ("router", "firewall") else None,
         **_iface_aggregates(device, dt),
