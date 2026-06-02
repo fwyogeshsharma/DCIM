@@ -258,6 +258,13 @@ class SNMPRecGenerator:
         if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
             entries += self._pdu_entries(device)
 
+        if device.device_type == DeviceType.GENERATOR:
+            entries += self._generator_entries(device)
+
+        # RPP is a passive breaker panel -- no SNMP agent, skip file generation
+        if device.device_type == DeviceType.RPP:
+            return
+
         # Sort and write
         # Output layout:  datasets/snmp/<snmp_addr>.snmprec
         # SNMPSim routes community "<snmp_addr>" → this file.
@@ -952,6 +959,32 @@ class SNMPRecGenerator:
             _oid_entry(f"{_PDU_ENT}.17.0", "2",  "2090"), # pduOutletPower W (per-outlet)
         ]
         return entries
+
+    # ------------------------------------------------------------------ #
+    #  Generator OIDs (enterprise 1.3.6.1.4.1.99999.7)                   #
+    # ------------------------------------------------------------------ #
+
+    def _generator_entries(self, device: Device) -> List[OidEntry]:
+        """Generator status OIDs — fuel, runtime, load, status, phase voltages."""
+        entries: List[OidEntry] = []
+        _GEN_ENT = "1.3.6.1.4.1.99999.7"
+        entries += [
+            _oid_entry(f"{_GEN_ENT}.1.0",  "2",  "80"),   # genFuelLevelPercent %
+            _oid_entry(f"{_GEN_ENT}.2.0",  "2",  "0"),    # genRunHours (hours)
+            _oid_entry(f"{_GEN_ENT}.3.0",  "2",  "1"),    # genStatus (1=standby,2=running,3=fault)
+            _oid_entry(f"{_GEN_ENT}.4.0",  "2",  "0"),    # genOutputLoadPercent %
+            _oid_entry(f"{_GEN_ENT}.5.0",  "2",  "0"),    # genOutputKW (kW)
+            _oid_entry(f"{_GEN_ENT}.6.0",  "2",  "4000"), # genOutputVoltagePhA x10 V (400.0)
+            _oid_entry(f"{_GEN_ENT}.7.0",  "2",  "4000"), # genOutputVoltagePhB x10 V
+            _oid_entry(f"{_GEN_ENT}.8.0",  "2",  "4000"), # genOutputVoltagePhC x10 V
+            _oid_entry(f"{_GEN_ENT}.9.0",  "2",  "500"),  # genOutputFrequency x10 Hz (50.0)
+            _oid_entry(f"{_GEN_ENT}.10.0", "2",  "1"),    # genCoolantTempOk (1=ok,2=warning)
+            _oid_entry(f"{_GEN_ENT}.11.0", "2",  "1"),    # genOilPressureOk (1=ok,2=warning)
+            _oid_entry(f"{_GEN_ENT}.12.0", "2",  "1"),    # genBatteryStatus (1=ok,2=fault)
+            _oid_entry(f"{_GEN_ENT}.13.0", "2",  "0"),    # genStartAttempts (counter)
+        ]
+        return entries
+
 
     # ------------------------------------------------------------------ #
     #  Environmental sensor OIDs (vendor-specific MIB branches)           #

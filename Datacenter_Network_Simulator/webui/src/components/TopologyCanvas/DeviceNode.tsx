@@ -11,6 +11,8 @@ const TYPE_COLOR: Record<string, string> = {
   oob_switch:    '#0e7490',
   pdu:           '#b45309',
   floor_pdu:     '#b45309',
+  rpp:           '#7c2d6e',
+  generator:     '#713f12',
   ups:           '#a16207',
   sensor:        '#374151',
 }
@@ -24,6 +26,8 @@ const TYPE_ICON: Record<string, string> = {
   oob_switch:    '◉',
   pdu:           '⚡',
   floor_pdu:     '⚡',
+  rpp:           '⚡',
+  generator:     '⚙',
   ups:           '🔋',
   sensor:        '◦',
 }

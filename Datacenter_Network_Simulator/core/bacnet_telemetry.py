@@ -59,8 +59,13 @@ class EV2TelemetryEngine:
         circuits: int = 42,
         frequency_hz: float = 50.0,
         nominal_voltage: float = 230.0,
+        active_circuits: int = 0,
     ):
+        # active_circuits: number of circuits with real downstream loads.
+        # Circuits beyond this index output zero — they are spare/unused breakers.
+        # 0 means all circuits are active (legacy behaviour).
         self._circuits       = circuits
+        self._active         = active_circuits if active_circuits > 0 else circuits
         self._freq_nominal   = frequency_hz
         self._v_nominal      = nominal_voltage
 
@@ -191,11 +196,19 @@ class EV2TelemetryEngine:
         for i, cs in enumerate(self._circuits_state):
             ckt = i + 1
             label = f"Ckt{ckt:02d}"
-            values[f"{label}_Current"] = round(cs.current, 2)
-            values[f"{label}_kW"]      = round(cs.kw,      3)
-            values[f"{label}_kWh"]     = round(cs.kwh,     3)
-            values[f"{label}_PF"]      = round(cs.pf,      3)
-            values[f"{label}_THD"]     = round(cs.thd,     2)
+            if i < self._active:
+                values[f"{label}_Current"] = round(cs.current, 2)
+                values[f"{label}_kW"]      = round(cs.kw,      3)
+                values[f"{label}_kWh"]     = round(cs.kwh,     3)
+                values[f"{label}_PF"]      = round(cs.pf,      3)
+                values[f"{label}_THD"]     = round(cs.thd,     2)
+            else:
+                # Spare/unused breaker — no load
+                values[f"{label}_Current"] = 0.0
+                values[f"{label}_kW"]      = 0.0
+                values[f"{label}_kWh"]     = 0.0
+                values[f"{label}_PF"]      = 0.0
+                values[f"{label}_THD"]     = 0.0
 
         return values
 

@@ -88,6 +88,12 @@ def bacnet_start(cfg: BACnetConfig):
     # Fallback: parse capacity from model_name ("Verdigris EV2-24" → 24).
     _power_edges = s.topology.get_edges_by_layer("power") if s.topology else []
 
+    # Build id→device_type map for upstream-filtering
+    _id_to_type: dict = {}
+    if s.topology and hasattr(s.topology, 'devices'):
+        for dev in s.topology.devices:
+            _id_to_type[dev.id] = getattr(dev, 'device_type', None)
+
     circuits_map: dict = {}
     device_ips: list = []
     for d in bound_devices:
@@ -103,18 +109,28 @@ def bacnet_start(cfg: BACnetConfig):
                 ) if any(d.id in (u, v) for u, v, _ in _power_edges) else None
 
                 if pdu_id:
-                    # Step 2: count PDU's power connections excluding the EV2
-                    actual = sum(
-                        1 for u, v, _ in _power_edges
+                    # Step 2: count DOWNSTREAM power connections only.
+                    # Exclude the EV2 itself and any upstream device (UPS/generator)
+                    # — CTs only clamp onto output breaker conductors.
+                    _upstream_types = {"ups", "generator"}
+                    downstream = [
+                        (v if u == pdu_id else u)
+                        for u, v, _ in _power_edges
                         if pdu_id in (u, v) and d.id not in (u, v)
-                    )
-                    if actual > 0:
-                        circuits_map[ip] = actual
+                        and _id_to_type.get(v if u == pdu_id else u) not in _upstream_types
+                    ]
+                    active = len(downstream)
+                    if active > 0:
+                        # capacity = model name (e.g. "EV2-12" → 12), active = downstream count
+                        m = _re.search(r"EV2-(\d+)", d.model_name or "")
+                        capacity = int(m.group(1)) if m else active
+                        circuits_map[ip] = (max(capacity, active), active)
                         continue
 
-            # Fallback: derive from model name
+            # Fallback: derive from model name — all circuits active
             m = _re.search(r"EV2-(\d+)", d.model_name or "")
-            circuits_map[ip] = int(m.group(1)) if m else 42
+            cap = int(m.group(1)) if m else 42
+            circuits_map[ip] = (cap, cap)
 
     unbound = len(ev2_devices) - len(bound_devices)
 
@@ -218,7 +234,8 @@ def ev2_metrics():
                 pdu_dev = _dm.get_device(pdu_id)
                 pdu_name = pdu_dev.name if pdu_dev else None
 
-                # Step 2: collect PDU's other power neighbours, sort by name
+                # Step 2: collect DOWNSTREAM power neighbours only (exclude upstream UPS/generator)
+                _upstream_types = {"ups", "generator"}
                 neighbor_ids = [
                     (v2 if u == pdu_id else u)
                     for u, v2, _ in _power_edges
@@ -227,7 +244,11 @@ def ev2_metrics():
                 neighbors = [
                     _dm.get_device(nid) for nid in neighbor_ids
                 ]
-                neighbors = [n for n in neighbors if n is not None]
+                neighbors = [
+                    n for n in neighbors
+                    if n is not None
+                    and getattr(n, 'device_type', None) not in _upstream_types
+                ]
                 neighbors.sort(key=lambda d: d.name)
                 circuit_names = {i + 1: d.name for i, d in enumerate(neighbors)}
 

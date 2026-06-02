@@ -52,7 +52,7 @@ function metricColor(v: number, warn: number, crit: number): string {
 const TYPE_BADGE: Record<string, string> = {
   switch: '#1e6ec8', router: '#8b5cf6', server: '#059669',
   firewall: '#dc2626', load_balancer: '#d97706', ups: '#0891b2',
-  pdu: '#065f46', floor_pdu: '#064e3b', oob_switch: '#4b5563', sensor: '#92400e',
+  pdu: '#065f46', floor_pdu: '#064e3b', rpp: '#4a044e', generator: '#713f12', oob_switch: '#4b5563', sensor: '#92400e',
 }
 
 const ROW_STYLE = (i: number): React.CSSProperties => ({
@@ -981,7 +981,7 @@ const TAB_TYPES: Record<Tab, string[]> = {
   network: ['router', 'switch', 'firewall', 'load_balancer', 'oob_switch'],
   server:  ['server'],
   ups:     ['ups'],
-  pdu:     ['pdu', 'floor_pdu'],
+  pdu:     ['pdu', 'floor_pdu', 'rpp'],
   sensor:  ['sensor'],
   energy:  [],   // data comes from ev2Metrics, not devices[]
 }

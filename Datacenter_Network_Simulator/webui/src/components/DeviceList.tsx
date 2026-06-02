@@ -16,6 +16,8 @@ const TYPE_COLOR: Record<string, string> = {
   oob_switch:    '#0e7490',
   pdu:           '#b45309',
   floor_pdu:     '#b03060',
+  rpp:           '#7c2d6e',
+  generator:     '#713f12',
   ups:           '#c9a227',
   sensor:        '#374151',
 }
@@ -29,6 +31,8 @@ const TYPE_LABEL: Record<string, string> = {
   oob_switch:    'OOB Sw',
   pdu:           'PDU',
   floor_pdu:     'Floor PDU',
+  rpp:           'RPP',
+  generator:     'Generator',
   ups:           'UPS',
   sensor:        'Sensor',
 }

@@ -320,7 +320,7 @@ class EV2DeviceSnapshot(BaseModel):
 
 class AddDeviceRequest(BaseModel):
     name: str
-    device_type: str = Field(..., description="router | switch | server | firewall | load_balancer | ups | pdu | floor_pdu | oob_switch | sensor")
+    device_type: str = Field(..., description="router | switch | server | firewall | load_balancer | ups | pdu | floor_pdu | rpp | oob_switch | sensor | generator")
     vendor: str = Field("Cisco Systems", description="Full vendor name e.g. 'Cisco Systems', 'Juniper Networks'")
     ip_address: str
     model_name: str = ""

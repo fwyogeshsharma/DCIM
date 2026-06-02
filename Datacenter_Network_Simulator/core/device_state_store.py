@@ -581,7 +581,7 @@ class DeviceStateStore:
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
 
         # Chassis inlet temperature — servers/network gear only (CPU-linked)
-        if mf["inlet_temp"] and device.device_type != DeviceType.SENSOR:
+        if mf["inlet_temp"] and device.device_type not in (DeviceType.SENSOR, DeviceType.RPP):
             device.inlet_temp = round(max(15.0, min(55.0,
                 18.0 + device.cpu_usage * 0.12 + random.uniform(-0.5, 0.5))), 1)
             device.inlet_temp = self._num_limit("inlet_temp", device.inlet_temp)

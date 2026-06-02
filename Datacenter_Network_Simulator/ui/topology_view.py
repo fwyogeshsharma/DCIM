@@ -579,7 +579,7 @@ class TopologyScene(QGraphicsScene):
         self._layer_filter = layer
         from core.device_manager import DeviceType as _DT
         _MGMT_TYPES  = frozenset({_DT.OOB_SWITCH, _DT.SENSOR})
-        _POWER_TYPES = frozenset({_DT.UPS, _DT.PDU, _DT.FLOOR_PDU, _DT.ENERGY_MONITOR})
+        _POWER_TYPES = frozenset({_DT.UPS, _DT.PDU, _DT.FLOOR_PDU, _DT.RPP, _DT.GENERATOR, _DT.ENERGY_MONITOR})
 
         for node in self._nodes.values():
             dtype = node.device.device_type
@@ -651,7 +651,7 @@ class TopologyScene(QGraphicsScene):
         """Fade or unfade only devices and edges that belong to *layer*."""
         from core.device_manager import DeviceType as _DT
         _MGMT_TYPES  = frozenset({_DT.OOB_SWITCH, _DT.SENSOR})
-        _POWER_TYPES = frozenset({_DT.UPS, _DT.PDU, _DT.FLOOR_PDU, _DT.ENERGY_MONITOR})
+        _POWER_TYPES = frozenset({_DT.UPS, _DT.PDU, _DT.FLOOR_PDU, _DT.RPP, _DT.GENERATOR, _DT.ENERGY_MONITOR})
         _PROD_TYPES  = frozenset({
             _DT.ROUTER, _DT.SWITCH, _DT.FIREWALL,
             _DT.SERVER, _DT.LOAD_BALANCER,

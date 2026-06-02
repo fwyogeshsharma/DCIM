@@ -9,6 +9,8 @@ const DEVICE_TYPE_COLOR: Record<string, string> = {
   oob_switch:    'var(--node-oob)',
   pdu:           'var(--node-pdu)',
   floor_pdu:     'var(--node-pdu)',
+  rpp:           '#7c2d6e',
+  generator:     '#713f12',
   ups:           'var(--node-ups)',
   sensor:        'var(--node-sensor)',
 }
@@ -22,6 +24,8 @@ const DEVICE_TYPE_SHORT: Record<string, string> = {
   oob_switch:    'OOB',
   pdu:           'PDU',
   floor_pdu:     'fPDU',
+  rpp:           'RPP',
+  generator:     'GEN',
   ups:           'UPS',
   sensor:        'SNS',
 }

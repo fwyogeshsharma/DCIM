@@ -130,8 +130,9 @@ class BACnetController:
 
         device_ips:    list of already-bound IPs (e.g. from IPBindWorker)
         base_instance: first BACnet device instance number (increments by 1)
-        circuits_map:  ip → circuit count (24/42/84); defaults to 42 for any
-                       IP not present in the map
+        circuits_map:  ip → (total_circuits, active_circuits) or int for legacy.
+                       total = EV2 capacity; active = downstream breakers in use.
+                       Circuits beyond active output zero (spare/unused breakers).
         frequency_hz:  mains frequency for telemetry engine
         port:          UDP port to bind (default 47808 = 0xBAC0)
         """
@@ -175,7 +176,12 @@ class BACnetController:
         for i, ip in enumerate(device_ips):
             instance    = base_instance + i
             device_name = f"Verdigris_EV2_{instance}"
-            circuits    = _cmap.get(ip, DEFAULT_CIRCUITS)
+            _entry = _cmap.get(ip, DEFAULT_CIRCUITS)
+            if isinstance(_entry, tuple):
+                circuits, active_circuits = _entry
+            else:
+                circuits = _entry
+                active_circuits = _entry  # legacy: all circuits active
             dev = EV2BACnetDevice(
                 device_ip=ip,
                 device_instance=instance,
@@ -189,6 +195,7 @@ class BACnetController:
             self._telemetry[instance] = EV2TelemetryEngine(
                 circuits=circuits,
                 frequency_hz=frequency_hz,
+                active_circuits=active_circuits,
             )
 
         # Start recv thread

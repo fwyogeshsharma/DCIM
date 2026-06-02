@@ -471,9 +471,6 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("APC FlexPDU 40kVA", Vendor.APC, DeviceType.FLOOR_PDU,
                     [_g(_GE, 1)],
                     "40kVA 3-phase, 6 breaker groups, floor-mounted"),
-        DeviceModel("APC Galaxy RPP 80A", Vendor.APC, DeviceType.FLOOR_PDU,
-                    [_g(_GE, 1)],
-                    "80A 3-phase RPP, 12 branch circuits, floor-mounted"),
     ],
 
     # ── Eaton — Floor PDU / RPP ───────────────────────────────────────────────
@@ -501,6 +498,51 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Raritan PX3-5000 Floor 30A", Vendor.RARITAN, DeviceType.FLOOR_PDU,
                     [_g(_GE, 1)],
                     "30A/208V, 24×C19 outlets, floor-mounted"),
+    ],
+
+    # ── Cummins — Diesel Generators ──────────────────────────────────────────
+    (DeviceType.GENERATOR, Vendor.CUMMINS): [
+        DeviceModel("Cummins C250D5", Vendor.CUMMINS, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "250kVA / 200kW diesel, PowerCommand 3.3, 1 × GE management"),
+        DeviceModel("Cummins C500D5", Vendor.CUMMINS, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "500kVA / 400kW diesel, PowerCommand 3.3, 1 × GE management"),
+        DeviceModel("Cummins C1000D5", Vendor.CUMMINS, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "1000kVA / 800kW diesel, PowerCommand 3.3, 1 × GE management"),
+    ],
+
+    # ── Caterpillar — Diesel Generators ──────────────────────────────────────
+    (DeviceType.GENERATOR, Vendor.CATERPILLAR): [
+        DeviceModel("Caterpillar XQ230", Vendor.CATERPILLAR, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "230kVA / 184kW diesel, EMCP 4.4B, 1 × GE management"),
+        DeviceModel("Caterpillar XQ600", Vendor.CATERPILLAR, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "600kVA / 480kW diesel, EMCP 4.4B, 1 × GE management"),
+    ],
+
+    # ── Kohler — Diesel Generators ───────────────────────────────────────────
+    (DeviceType.GENERATOR, Vendor.KOHLER): [
+        DeviceModel("Kohler 250REOZJB", Vendor.KOHLER, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "250kVA / 200kW diesel, Decision-Maker 3500, 1 × GE management"),
+        DeviceModel("Kohler 600REOZJB", Vendor.KOHLER, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "600kVA / 480kW diesel, Decision-Maker 3500, 1 × GE management"),
+    ],
+
+    # ── APC -- Remote Power Panel (passive) ──────────────────────────────────
+    (DeviceType.RPP, Vendor.APC): [
+        DeviceModel("APC Galaxy RPP 80A", Vendor.APC, DeviceType.RPP, [], "80A 3-phase RPP, 12 branch circuits, passive -- no SNMP"),
+        DeviceModel("APC Galaxy RPP 160A", Vendor.APC, DeviceType.RPP, [], "160A 3-phase RPP, 24 branch circuits, passive -- no SNMP"),
+    ],
+    (DeviceType.RPP, Vendor.SCHNEIDER): [
+        DeviceModel("Schneider PanelBoard 400A", Vendor.SCHNEIDER, DeviceType.RPP, [], "400A main breaker, 42 branch circuits, passive -- no SNMP"),
+    ],
+    (DeviceType.RPP, Vendor.EATON): [
+        DeviceModel("Eaton RPP 250A", Vendor.EATON, DeviceType.RPP, [], "250A 3-phase RPP, 42 branch circuits, passive -- no SNMP"),
     ],
 
     # ── Cisco — OOB Management Switches ──────────────────────────────────────

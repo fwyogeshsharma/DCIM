@@ -248,7 +248,7 @@ def apply_layout(req: LayoutRequest):
                 "router": 0, "firewall": 0,
                 "switch": 1, "load_balancer": 1,
                 "oob_switch": 2, "server": 2,
-                "ups": 3, "pdu": 3, "floor_pdu": 3, "sensor": 3,
+                "ups": 3, "pdu": 3, "floor_pdu": 3, "rpp": 3, "generator": 3, "sensor": 3,
             }
             shells: dict = {}
             for nid in node_ids:

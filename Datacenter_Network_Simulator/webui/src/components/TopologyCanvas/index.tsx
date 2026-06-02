@@ -38,6 +38,8 @@ const NODE_TYPE_COLOR: Record<string, string> = {
   oob_switch:    '#0e7490',
   pdu:           '#b45309',
   floor_pdu:     '#b03060',
+  rpp:           '#7c2d6e',
+  generator:     '#713f12',
   ups:           '#c9a227',
   sensor:        '#374151',
 }
@@ -65,7 +67,7 @@ function tierLayout(devices: GraphDevice[]): Map<string, { x: number; y: number 
     router: 0, firewall: 0,
     switch: 1, load_balancer: 1,
     oob_switch: 2, server: 2,
-    ups: 3, pdu: 3, floor_pdu: 3, sensor: 3,
+    ups: 3, pdu: 3, floor_pdu: 3, rpp: 3, generator: 3, sensor: 3,
   }
   const tiers: GraphDevice[][] = [[], [], [], []]
   for (const d of devices) tiers[TIER[d.device_type] ?? 2].push(d)

@@ -5,7 +5,7 @@
   },
   "nodes": [
     {
-      "id": "63b53c6b",
+      "id": "487142a3",
       "position": {
         "x": 600,
         "y": 80
@@ -27,7 +27,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "63b53c6b",
+        "id": "487142a3",
         "interfaces": [
           {
             "index": 1,
@@ -153,8 +153,8 @@
         "mgmt_ip": "192.168.1.5",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -171,6 +171,8 @@
         "sys_uptime": 4714226,
         "cpu_temp": 43.9,
         "inlet_temp": 24.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -179,7 +181,7 @@
       }
     },
     {
-      "id": "49a2c1fe",
+      "id": "156b6efb",
       "position": {
         "x": 900,
         "y": 80
@@ -201,7 +203,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "49a2c1fe",
+        "id": "156b6efb",
         "interfaces": [
           {
             "index": 1,
@@ -327,8 +329,8 @@
         "mgmt_ip": "192.168.1.6",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -345,6 +347,8 @@
         "sys_uptime": 3639704,
         "cpu_temp": 59.9,
         "inlet_temp": 31.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -353,7 +357,7 @@
       }
     },
     {
-      "id": "4b07c1c8",
+      "id": "50b1c799",
       "position": {
         "x": 300,
         "y": 280
@@ -375,7 +379,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "4b07c1c8",
+        "id": "50b1c799",
         "interfaces": [
           {
             "index": 1,
@@ -1101,8 +1105,8 @@
         "mgmt_ip": "192.168.1.7",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -1119,6 +1123,8 @@
         "sys_uptime": 6793979,
         "cpu_temp": 61.9,
         "inlet_temp": 32.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -1127,7 +1133,7 @@
       }
     },
     {
-      "id": "73418499",
+      "id": "f7044c89",
       "position": {
         "x": 600,
         "y": 280
@@ -1149,7 +1155,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "73418499",
+        "id": "f7044c89",
         "interfaces": [
           {
             "index": 1,
@@ -1875,8 +1881,8 @@
         "mgmt_ip": "192.168.1.8",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -1893,6 +1899,8 @@
         "sys_uptime": 9037982,
         "cpu_temp": 48.3,
         "inlet_temp": 27.9,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -1901,7 +1909,7 @@
       }
     },
     {
-      "id": "13a329eb",
+      "id": "a774b2ee",
       "position": {
         "x": 170,
         "y": 480
@@ -1923,7 +1931,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "13a329eb",
+        "id": "a774b2ee",
         "interfaces": [
           {
             "index": 1,
@@ -2649,8 +2657,8 @@
         "mgmt_ip": "192.168.1.9",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -2667,6 +2675,8 @@
         "sys_uptime": 519843,
         "cpu_temp": 52.9,
         "inlet_temp": 37.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -2675,7 +2685,7 @@
       }
     },
     {
-      "id": "bd2fd546",
+      "id": "0e9afe9d",
       "position": {
         "x": -150,
         "y": 680
@@ -2697,7 +2707,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "bd2fd546",
+        "id": "0e9afe9d",
         "interfaces": [
           {
             "index": 1,
@@ -2733,8 +2743,8 @@
         "mgmt_ip": "192.168.1.10",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "282d922e",
-        "ups_backup": "7477dee7",
+        "power_source": "db7215e7",
+        "ups_backup": "aad7eace",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -2751,6 +2761,8 @@
         "sys_uptime": 993502,
         "cpu_temp": 47.5,
         "inlet_temp": 28.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -2759,7 +2771,7 @@
       }
     },
     {
-      "id": "5c5976a1",
+      "id": "0f5b3625",
       "position": {
         "x": -70,
         "y": 680
@@ -2781,7 +2793,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "5c5976a1",
+        "id": "0f5b3625",
         "interfaces": [
           {
             "index": 1,
@@ -2817,8 +2829,8 @@
         "mgmt_ip": "192.168.1.11",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "282d922e",
-        "ups_backup": "7477dee7",
+        "power_source": "db7215e7",
+        "ups_backup": "aad7eace",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -2835,6 +2847,8 @@
         "sys_uptime": 1965405,
         "cpu_temp": 56.6,
         "inlet_temp": 25.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -2843,7 +2857,7 @@
       }
     },
     {
-      "id": "c86aace8",
+      "id": "9c1d3b67",
       "position": {
         "x": 10,
         "y": 680
@@ -2865,7 +2879,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "c86aace8",
+        "id": "9c1d3b67",
         "interfaces": [
           {
             "index": 1,
@@ -2901,8 +2915,8 @@
         "mgmt_ip": "192.168.1.12",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "282d922e",
-        "ups_backup": "7477dee7",
+        "power_source": "db7215e7",
+        "ups_backup": "aad7eace",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -2919,6 +2933,8 @@
         "sys_uptime": 6650726,
         "cpu_temp": 59.0,
         "inlet_temp": 22.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -2927,7 +2943,7 @@
       }
     },
     {
-      "id": "dccb5477",
+      "id": "637d9b67",
       "position": {
         "x": 90,
         "y": 680
@@ -2949,7 +2965,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "dccb5477",
+        "id": "637d9b67",
         "interfaces": [
           {
             "index": 1,
@@ -2985,8 +3001,8 @@
         "mgmt_ip": "192.168.1.13",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -3003,6 +3019,8 @@
         "sys_uptime": 3482135,
         "cpu_temp": 39.1,
         "inlet_temp": 25.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -3011,7 +3029,7 @@
       }
     },
     {
-      "id": "ada42b2b",
+      "id": "bdf04972",
       "position": {
         "x": 170,
         "y": 680
@@ -3033,7 +3051,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "ada42b2b",
+        "id": "bdf04972",
         "interfaces": [
           {
             "index": 1,
@@ -3069,8 +3087,8 @@
         "mgmt_ip": "192.168.1.14",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -3087,6 +3105,8 @@
         "sys_uptime": 8447057,
         "cpu_temp": 46.8,
         "inlet_temp": 34.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -3095,7 +3115,7 @@
       }
     },
     {
-      "id": "7f3c86c2",
+      "id": "db1f3848",
       "position": {
         "x": 250,
         "y": 680
@@ -3117,7 +3137,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "7f3c86c2",
+        "id": "db1f3848",
         "interfaces": [
           {
             "index": 1,
@@ -3153,8 +3173,8 @@
         "mgmt_ip": "192.168.1.15",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -3171,6 +3191,8 @@
         "sys_uptime": 4706274,
         "cpu_temp": 53.3,
         "inlet_temp": 34.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -3179,7 +3201,7 @@
       }
     },
     {
-      "id": "cd45bc5c",
+      "id": "c3abc7ba",
       "position": {
         "x": 330,
         "y": 680
@@ -3201,7 +3223,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "cd45bc5c",
+        "id": "c3abc7ba",
         "interfaces": [
           {
             "index": 1,
@@ -3237,8 +3259,8 @@
         "mgmt_ip": "192.168.1.16",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -3255,6 +3277,8 @@
         "sys_uptime": 1389923,
         "cpu_temp": 51.8,
         "inlet_temp": 30.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -3263,7 +3287,7 @@
       }
     },
     {
-      "id": "8cb2e87a",
+      "id": "ee61b3e8",
       "position": {
         "x": 410,
         "y": 680
@@ -3285,7 +3309,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "8cb2e87a",
+        "id": "ee61b3e8",
         "interfaces": [
           {
             "index": 1,
@@ -3321,8 +3345,8 @@
         "mgmt_ip": "192.168.1.17",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -3339,6 +3363,8 @@
         "sys_uptime": 1572884,
         "cpu_temp": 57.5,
         "inlet_temp": 37.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -3347,7 +3373,7 @@
       }
     },
     {
-      "id": "0e73e7a1",
+      "id": "6af81f55",
       "position": {
         "x": 490,
         "y": 680
@@ -3369,7 +3395,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "0e73e7a1",
+        "id": "6af81f55",
         "interfaces": [
           {
             "index": 1,
@@ -3405,8 +3431,8 @@
         "mgmt_ip": "192.168.1.18",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -3423,6 +3449,8 @@
         "sys_uptime": 5289037,
         "cpu_temp": 47.6,
         "inlet_temp": 33.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -3431,7 +3459,7 @@
       }
     },
     {
-      "id": "ce83d00b",
+      "id": "c4338a91",
       "position": {
         "x": 310,
         "y": 480
@@ -3453,7 +3481,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "ce83d00b",
+        "id": "c4338a91",
         "interfaces": [
           {
             "index": 1,
@@ -4179,8 +4207,8 @@
         "mgmt_ip": "192.168.1.19",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4197,6 +4225,8 @@
         "sys_uptime": 5513349,
         "cpu_temp": 60.4,
         "inlet_temp": 25.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4205,7 +4235,7 @@
       }
     },
     {
-      "id": "6572bef8",
+      "id": "398469ab",
       "position": {
         "x": -10,
         "y": 680
@@ -4227,7 +4257,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "6572bef8",
+        "id": "398469ab",
         "interfaces": [
           {
             "index": 1,
@@ -4263,8 +4293,8 @@
         "mgmt_ip": "192.168.1.20",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "282d922e",
-        "ups_backup": "7477dee7",
+        "power_source": "db7215e7",
+        "ups_backup": "aad7eace",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4281,6 +4311,8 @@
         "sys_uptime": 886584,
         "cpu_temp": 61.3,
         "inlet_temp": 37.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4289,7 +4321,7 @@
       }
     },
     {
-      "id": "c35def6d",
+      "id": "fed91823",
       "position": {
         "x": 70,
         "y": 680
@@ -4311,7 +4343,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "c35def6d",
+        "id": "fed91823",
         "interfaces": [
           {
             "index": 1,
@@ -4347,8 +4379,8 @@
         "mgmt_ip": "192.168.1.21",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "282d922e",
-        "ups_backup": "7477dee7",
+        "power_source": "db7215e7",
+        "ups_backup": "aad7eace",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4365,6 +4397,8 @@
         "sys_uptime": 3511424,
         "cpu_temp": 45.9,
         "inlet_temp": 23.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4373,7 +4407,7 @@
       }
     },
     {
-      "id": "446d8b40",
+      "id": "fed7d74b",
       "position": {
         "x": 150,
         "y": 680
@@ -4395,7 +4429,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "446d8b40",
+        "id": "fed7d74b",
         "interfaces": [
           {
             "index": 1,
@@ -4431,8 +4465,8 @@
         "mgmt_ip": "192.168.1.22",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4449,6 +4483,8 @@
         "sys_uptime": 6754381,
         "cpu_temp": 60.0,
         "inlet_temp": 30.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4457,7 +4493,7 @@
       }
     },
     {
-      "id": "69853c4d",
+      "id": "21a8a320",
       "position": {
         "x": 230,
         "y": 680
@@ -4479,7 +4515,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "69853c4d",
+        "id": "21a8a320",
         "interfaces": [
           {
             "index": 1,
@@ -4515,8 +4551,8 @@
         "mgmt_ip": "192.168.1.23",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4533,6 +4569,8 @@
         "sys_uptime": 5052504,
         "cpu_temp": 41.7,
         "inlet_temp": 27.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4541,7 +4579,7 @@
       }
     },
     {
-      "id": "32aa5e29",
+      "id": "3136e10e",
       "position": {
         "x": 310,
         "y": 680
@@ -4563,7 +4601,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "32aa5e29",
+        "id": "3136e10e",
         "interfaces": [
           {
             "index": 1,
@@ -4599,8 +4637,8 @@
         "mgmt_ip": "192.168.1.24",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4617,6 +4655,8 @@
         "sys_uptime": 7018793,
         "cpu_temp": 41.3,
         "inlet_temp": 32.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4625,7 +4665,7 @@
       }
     },
     {
-      "id": "90cd4f96",
+      "id": "56874ff6",
       "position": {
         "x": 390,
         "y": 680
@@ -4647,7 +4687,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "90cd4f96",
+        "id": "56874ff6",
         "interfaces": [
           {
             "index": 1,
@@ -4683,8 +4723,8 @@
         "mgmt_ip": "192.168.1.25",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4701,6 +4741,8 @@
         "sys_uptime": 4142786,
         "cpu_temp": 42.6,
         "inlet_temp": 30.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4709,7 +4751,7 @@
       }
     },
     {
-      "id": "563bdd20",
+      "id": "34f7fade",
       "position": {
         "x": 470,
         "y": 680
@@ -4731,7 +4773,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "563bdd20",
+        "id": "34f7fade",
         "interfaces": [
           {
             "index": 1,
@@ -4767,8 +4809,8 @@
         "mgmt_ip": "192.168.1.26",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4785,6 +4827,8 @@
         "sys_uptime": 8961040,
         "cpu_temp": 60.1,
         "inlet_temp": 25.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4793,7 +4837,7 @@
       }
     },
     {
-      "id": "e8dc81db",
+      "id": "bebed3bd",
       "position": {
         "x": 550,
         "y": 680
@@ -4815,7 +4859,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "e8dc81db",
+        "id": "bebed3bd",
         "interfaces": [
           {
             "index": 1,
@@ -4851,8 +4895,8 @@
         "mgmt_ip": "192.168.1.27",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4869,6 +4913,8 @@
         "sys_uptime": 6539870,
         "cpu_temp": 56.1,
         "inlet_temp": 24.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4877,7 +4923,7 @@
       }
     },
     {
-      "id": "60f50a69",
+      "id": "fad54790",
       "position": {
         "x": 630,
         "y": 680
@@ -4899,7 +4945,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "60f50a69",
+        "id": "fad54790",
         "interfaces": [
           {
             "index": 1,
@@ -4935,8 +4981,8 @@
         "mgmt_ip": "192.168.1.28",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -4953,6 +4999,8 @@
         "sys_uptime": 1537708,
         "cpu_temp": 56.5,
         "inlet_temp": 26.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -4961,7 +5009,7 @@
       }
     },
     {
-      "id": "fd57c9a8",
+      "id": "bdbdb2d7",
       "position": {
         "x": 450,
         "y": 480
@@ -4983,7 +5031,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "fd57c9a8",
+        "id": "bdbdb2d7",
         "interfaces": [
           {
             "index": 1,
@@ -5709,8 +5757,8 @@
         "mgmt_ip": "192.168.1.29",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -5727,6 +5775,8 @@
         "sys_uptime": 1832967,
         "cpu_temp": 38.6,
         "inlet_temp": 27.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -5735,7 +5785,7 @@
       }
     },
     {
-      "id": "f2c66f5f",
+      "id": "da9e87fa",
       "position": {
         "x": 130,
         "y": 680
@@ -5757,7 +5807,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "f2c66f5f",
+        "id": "da9e87fa",
         "interfaces": [
           {
             "index": 1,
@@ -5793,8 +5843,8 @@
         "mgmt_ip": "192.168.1.30",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -5811,6 +5861,8 @@
         "sys_uptime": 8963176,
         "cpu_temp": 59.3,
         "inlet_temp": 22.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -5819,7 +5871,7 @@
       }
     },
     {
-      "id": "d5492009",
+      "id": "748f308c",
       "position": {
         "x": 210,
         "y": 680
@@ -5841,7 +5893,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "d5492009",
+        "id": "748f308c",
         "interfaces": [
           {
             "index": 1,
@@ -5877,8 +5929,8 @@
         "mgmt_ip": "192.168.1.31",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -5895,6 +5947,8 @@
         "sys_uptime": 4755136,
         "cpu_temp": 40.0,
         "inlet_temp": 23.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -5903,7 +5957,7 @@
       }
     },
     {
-      "id": "77d7d616",
+      "id": "1a43563b",
       "position": {
         "x": 290,
         "y": 680
@@ -5925,7 +5979,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "77d7d616",
+        "id": "1a43563b",
         "interfaces": [
           {
             "index": 1,
@@ -5961,8 +6015,8 @@
         "mgmt_ip": "192.168.1.32",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -5979,6 +6033,8 @@
         "sys_uptime": 2848655,
         "cpu_temp": 49.9,
         "inlet_temp": 27.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -5987,7 +6043,7 @@
       }
     },
     {
-      "id": "9007135c",
+      "id": "bfd2e730",
       "position": {
         "x": 370,
         "y": 680
@@ -6009,7 +6065,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "9007135c",
+        "id": "bfd2e730",
         "interfaces": [
           {
             "index": 1,
@@ -6045,8 +6101,8 @@
         "mgmt_ip": "192.168.1.33",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -6063,6 +6119,8 @@
         "sys_uptime": 2739223,
         "cpu_temp": 44.1,
         "inlet_temp": 23.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -6071,7 +6129,7 @@
       }
     },
     {
-      "id": "03fbb9c6",
+      "id": "96b9c9e9",
       "position": {
         "x": 450,
         "y": 680
@@ -6093,7 +6151,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "03fbb9c6",
+        "id": "96b9c9e9",
         "interfaces": [
           {
             "index": 1,
@@ -6129,8 +6187,8 @@
         "mgmt_ip": "192.168.1.34",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -6147,6 +6205,8 @@
         "sys_uptime": 9688782,
         "cpu_temp": 46.9,
         "inlet_temp": 30.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -6155,7 +6215,7 @@
       }
     },
     {
-      "id": "042212df",
+      "id": "dbe5a070",
       "position": {
         "x": 530,
         "y": 680
@@ -6177,7 +6237,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "042212df",
+        "id": "dbe5a070",
         "interfaces": [
           {
             "index": 1,
@@ -6213,8 +6273,8 @@
         "mgmt_ip": "192.168.1.35",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -6231,6 +6291,8 @@
         "sys_uptime": 9269742,
         "cpu_temp": 56.3,
         "inlet_temp": 25.9,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -6239,7 +6301,7 @@
       }
     },
     {
-      "id": "91c59970",
+      "id": "da835f86",
       "position": {
         "x": 610,
         "y": 680
@@ -6261,7 +6323,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "91c59970",
+        "id": "da835f86",
         "interfaces": [
           {
             "index": 1,
@@ -6297,8 +6359,8 @@
         "mgmt_ip": "192.168.1.36",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -6315,6 +6377,8 @@
         "sys_uptime": 6349378,
         "cpu_temp": 49.0,
         "inlet_temp": 34.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -6323,7 +6387,7 @@
       }
     },
     {
-      "id": "727ef240",
+      "id": "cbfc8656",
       "position": {
         "x": 690,
         "y": 680
@@ -6345,7 +6409,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "727ef240",
+        "id": "cbfc8656",
         "interfaces": [
           {
             "index": 1,
@@ -6381,8 +6445,8 @@
         "mgmt_ip": "192.168.1.37",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -6399,6 +6463,8 @@
         "sys_uptime": 2707356,
         "cpu_temp": 40.5,
         "inlet_temp": 29.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -6407,7 +6473,7 @@
       }
     },
     {
-      "id": "6eead3ba",
+      "id": "13b854a1",
       "position": {
         "x": 770,
         "y": 680
@@ -6429,7 +6495,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "6eead3ba",
+        "id": "13b854a1",
         "interfaces": [
           {
             "index": 1,
@@ -6465,8 +6531,8 @@
         "mgmt_ip": "192.168.1.38",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -6483,6 +6549,8 @@
         "sys_uptime": 5113715,
         "cpu_temp": 44.2,
         "inlet_temp": 37.9,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -6491,7 +6559,7 @@
       }
     },
     {
-      "id": "0e9517b6",
+      "id": "3c209fa6",
       "position": {
         "x": 590,
         "y": 480
@@ -6513,7 +6581,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "0e9517b6",
+        "id": "3c209fa6",
         "interfaces": [
           {
             "index": 1,
@@ -7239,8 +7307,8 @@
         "mgmt_ip": "192.168.1.39",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7257,6 +7325,8 @@
         "sys_uptime": 3417700,
         "cpu_temp": 59.7,
         "inlet_temp": 29.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7265,7 +7335,7 @@
       }
     },
     {
-      "id": "434dcee1",
+      "id": "901c2d18",
       "position": {
         "x": 270,
         "y": 680
@@ -7287,7 +7357,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "434dcee1",
+        "id": "901c2d18",
         "interfaces": [
           {
             "index": 1,
@@ -7323,8 +7393,8 @@
         "mgmt_ip": "192.168.1.40",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7341,6 +7411,8 @@
         "sys_uptime": 4452450,
         "cpu_temp": 59.8,
         "inlet_temp": 28.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7349,7 +7421,7 @@
       }
     },
     {
-      "id": "be4e9daa",
+      "id": "4f29240a",
       "position": {
         "x": 350,
         "y": 680
@@ -7371,7 +7443,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "be4e9daa",
+        "id": "4f29240a",
         "interfaces": [
           {
             "index": 1,
@@ -7407,8 +7479,8 @@
         "mgmt_ip": "192.168.1.41",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7425,6 +7497,8 @@
         "sys_uptime": 5658579,
         "cpu_temp": 46.9,
         "inlet_temp": 31.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7433,7 +7507,7 @@
       }
     },
     {
-      "id": "f0030a56",
+      "id": "30721896",
       "position": {
         "x": 430,
         "y": 680
@@ -7455,7 +7529,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "f0030a56",
+        "id": "30721896",
         "interfaces": [
           {
             "index": 1,
@@ -7491,8 +7565,8 @@
         "mgmt_ip": "192.168.1.42",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7509,6 +7583,8 @@
         "sys_uptime": 5680596,
         "cpu_temp": 53.1,
         "inlet_temp": 24.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7517,7 +7593,7 @@
       }
     },
     {
-      "id": "e3f53ed1",
+      "id": "84bff3cf",
       "position": {
         "x": 510,
         "y": 680
@@ -7539,7 +7615,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "e3f53ed1",
+        "id": "84bff3cf",
         "interfaces": [
           {
             "index": 1,
@@ -7575,8 +7651,8 @@
         "mgmt_ip": "192.168.1.43",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7593,6 +7669,8 @@
         "sys_uptime": 400582,
         "cpu_temp": 54.2,
         "inlet_temp": 32.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7601,7 +7679,7 @@
       }
     },
     {
-      "id": "811d36f0",
+      "id": "1aa13f50",
       "position": {
         "x": 590,
         "y": 680
@@ -7623,7 +7701,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "811d36f0",
+        "id": "1aa13f50",
         "interfaces": [
           {
             "index": 1,
@@ -7659,8 +7737,8 @@
         "mgmt_ip": "192.168.1.44",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7677,6 +7755,8 @@
         "sys_uptime": 420859,
         "cpu_temp": 43.5,
         "inlet_temp": 33.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7685,7 +7765,7 @@
       }
     },
     {
-      "id": "233400fa",
+      "id": "fcc01f2a",
       "position": {
         "x": 670,
         "y": 680
@@ -7707,7 +7787,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "233400fa",
+        "id": "fcc01f2a",
         "interfaces": [
           {
             "index": 1,
@@ -7743,8 +7823,8 @@
         "mgmt_ip": "192.168.1.45",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7761,6 +7841,8 @@
         "sys_uptime": 2669046,
         "cpu_temp": 42.9,
         "inlet_temp": 33.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7769,7 +7851,7 @@
       }
     },
     {
-      "id": "5192ded9",
+      "id": "bfcd514c",
       "position": {
         "x": 750,
         "y": 680
@@ -7791,7 +7873,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "5192ded9",
+        "id": "bfcd514c",
         "interfaces": [
           {
             "index": 1,
@@ -7827,8 +7909,8 @@
         "mgmt_ip": "192.168.1.46",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7845,6 +7927,8 @@
         "sys_uptime": 3584526,
         "cpu_temp": 54.5,
         "inlet_temp": 29.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7853,7 +7937,7 @@
       }
     },
     {
-      "id": "140bda30",
+      "id": "69151c89",
       "position": {
         "x": 830,
         "y": 680
@@ -7875,7 +7959,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "140bda30",
+        "id": "69151c89",
         "interfaces": [
           {
             "index": 1,
@@ -7911,8 +7995,8 @@
         "mgmt_ip": "192.168.1.47",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -7929,6 +8013,8 @@
         "sys_uptime": 7247013,
         "cpu_temp": 55.7,
         "inlet_temp": 23.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -7937,7 +8023,7 @@
       }
     },
     {
-      "id": "f789403d",
+      "id": "59aa0ac3",
       "position": {
         "x": 910,
         "y": 680
@@ -7959,7 +8045,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "f789403d",
+        "id": "59aa0ac3",
         "interfaces": [
           {
             "index": 1,
@@ -7995,8 +8081,8 @@
         "mgmt_ip": "192.168.1.48",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -8013,6 +8099,8 @@
         "sys_uptime": 2898082,
         "cpu_temp": 40.7,
         "inlet_temp": 33.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -8021,7 +8109,7 @@
       }
     },
     {
-      "id": "d53b713a",
+      "id": "3fa80ecb",
       "position": {
         "x": 730,
         "y": 480
@@ -8043,7 +8131,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "d53b713a",
+        "id": "3fa80ecb",
         "interfaces": [
           {
             "index": 1,
@@ -8769,8 +8857,8 @@
         "mgmt_ip": "192.168.1.49",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -8787,6 +8875,8 @@
         "sys_uptime": 307369,
         "cpu_temp": 54.9,
         "inlet_temp": 32.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -8795,7 +8885,7 @@
       }
     },
     {
-      "id": "de88ba0c",
+      "id": "cf6e2c07",
       "position": {
         "x": 410,
         "y": 680
@@ -8817,7 +8907,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "de88ba0c",
+        "id": "cf6e2c07",
         "interfaces": [
           {
             "index": 1,
@@ -8853,8 +8943,8 @@
         "mgmt_ip": "192.168.1.50",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -8871,6 +8961,8 @@
         "sys_uptime": 4026181,
         "cpu_temp": 39.0,
         "inlet_temp": 25.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -8879,7 +8971,7 @@
       }
     },
     {
-      "id": "255837c6",
+      "id": "01d9ddc7",
       "position": {
         "x": 490,
         "y": 680
@@ -8901,7 +8993,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "255837c6",
+        "id": "01d9ddc7",
         "interfaces": [
           {
             "index": 1,
@@ -8937,8 +9029,8 @@
         "mgmt_ip": "192.168.1.51",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -8955,6 +9047,8 @@
         "sys_uptime": 210690,
         "cpu_temp": 50.0,
         "inlet_temp": 24.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -8963,7 +9057,7 @@
       }
     },
     {
-      "id": "68a11e27",
+      "id": "de2c1c51",
       "position": {
         "x": 570,
         "y": 680
@@ -8985,7 +9079,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "68a11e27",
+        "id": "de2c1c51",
         "interfaces": [
           {
             "index": 1,
@@ -9021,8 +9115,8 @@
         "mgmt_ip": "192.168.1.52",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -9039,6 +9133,8 @@
         "sys_uptime": 2245556,
         "cpu_temp": 51.8,
         "inlet_temp": 24.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -9047,7 +9143,7 @@
       }
     },
     {
-      "id": "7c4cfec2",
+      "id": "a4af342a",
       "position": {
         "x": 650,
         "y": 680
@@ -9069,7 +9165,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "7c4cfec2",
+        "id": "a4af342a",
         "interfaces": [
           {
             "index": 1,
@@ -9105,8 +9201,8 @@
         "mgmt_ip": "192.168.1.53",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -9123,6 +9219,8 @@
         "sys_uptime": 2913903,
         "cpu_temp": 55.4,
         "inlet_temp": 27.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -9131,7 +9229,7 @@
       }
     },
     {
-      "id": "018ce1c0",
+      "id": "eaa69fed",
       "position": {
         "x": 730,
         "y": 680
@@ -9153,7 +9251,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "018ce1c0",
+        "id": "eaa69fed",
         "interfaces": [
           {
             "index": 1,
@@ -9189,8 +9287,8 @@
         "mgmt_ip": "192.168.1.54",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -9207,6 +9305,8 @@
         "sys_uptime": 6313902,
         "cpu_temp": 59.0,
         "inlet_temp": 33.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -9215,7 +9315,7 @@
       }
     },
     {
-      "id": "25920185",
+      "id": "f471eaeb",
       "position": {
         "x": 810,
         "y": 680
@@ -9237,7 +9337,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "25920185",
+        "id": "f471eaeb",
         "interfaces": [
           {
             "index": 1,
@@ -9273,8 +9373,8 @@
         "mgmt_ip": "192.168.1.55",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -9291,6 +9391,8 @@
         "sys_uptime": 3546353,
         "cpu_temp": 54.5,
         "inlet_temp": 27.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -9299,7 +9401,7 @@
       }
     },
     {
-      "id": "0ad43ea4",
+      "id": "6afac572",
       "position": {
         "x": 890,
         "y": 680
@@ -9321,7 +9423,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "0ad43ea4",
+        "id": "6afac572",
         "interfaces": [
           {
             "index": 1,
@@ -9357,8 +9459,8 @@
         "mgmt_ip": "192.168.1.56",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -9375,6 +9477,8 @@
         "sys_uptime": 2097927,
         "cpu_temp": 55.9,
         "inlet_temp": 29.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -9383,7 +9487,7 @@
       }
     },
     {
-      "id": "51918581",
+      "id": "c95efa2c",
       "position": {
         "x": 970,
         "y": 680
@@ -9405,7 +9509,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "51918581",
+        "id": "c95efa2c",
         "interfaces": [
           {
             "index": 1,
@@ -9441,8 +9545,8 @@
         "mgmt_ip": "192.168.1.57",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -9459,6 +9563,8 @@
         "sys_uptime": 6547920,
         "cpu_temp": 60.3,
         "inlet_temp": 28.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -9467,7 +9573,7 @@
       }
     },
     {
-      "id": "57477e32",
+      "id": "5f390a22",
       "position": {
         "x": 1050,
         "y": 680
@@ -9489,7 +9595,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "57477e32",
+        "id": "5f390a22",
         "interfaces": [
           {
             "index": 1,
@@ -9525,8 +9631,8 @@
         "mgmt_ip": "192.168.1.58",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -9543,6 +9649,8 @@
         "sys_uptime": 6801385,
         "cpu_temp": 46.5,
         "inlet_temp": 28.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -9551,7 +9659,7 @@
       }
     },
     {
-      "id": "1478a6ee",
+      "id": "220f869b",
       "position": {
         "x": 900,
         "y": 280
@@ -9573,7 +9681,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "1478a6ee",
+        "id": "220f869b",
         "interfaces": [
           {
             "index": 1,
@@ -10299,8 +10407,8 @@
         "mgmt_ip": "192.168.1.59",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -10317,6 +10425,8 @@
         "sys_uptime": 2063085,
         "cpu_temp": 57.3,
         "inlet_temp": 37.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -10325,7 +10435,7 @@
       }
     },
     {
-      "id": "6c4114ff",
+      "id": "f4bba3f9",
       "position": {
         "x": 1200,
         "y": 280
@@ -10347,7 +10457,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "6c4114ff",
+        "id": "f4bba3f9",
         "interfaces": [
           {
             "index": 1,
@@ -11073,8 +11183,8 @@
         "mgmt_ip": "192.168.1.60",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -11091,6 +11201,8 @@
         "sys_uptime": 3285480,
         "cpu_temp": 50.6,
         "inlet_temp": 30.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -11099,7 +11211,7 @@
       }
     },
     {
-      "id": "29cddcef",
+      "id": "7bde3d07",
       "position": {
         "x": 770,
         "y": 480
@@ -11121,7 +11233,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "29cddcef",
+        "id": "7bde3d07",
         "interfaces": [
           {
             "index": 1,
@@ -11847,8 +11959,8 @@
         "mgmt_ip": "192.168.1.61",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -11865,6 +11977,8 @@
         "sys_uptime": 836621,
         "cpu_temp": 56.4,
         "inlet_temp": 36.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -11873,7 +11987,7 @@
       }
     },
     {
-      "id": "32e4f4d8",
+      "id": "09c7a470",
       "position": {
         "x": 450,
         "y": 680
@@ -11895,7 +12009,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "32e4f4d8",
+        "id": "09c7a470",
         "interfaces": [
           {
             "index": 1,
@@ -11931,8 +12045,8 @@
         "mgmt_ip": "192.168.1.62",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -11949,6 +12063,8 @@
         "sys_uptime": 7966313,
         "cpu_temp": 48.9,
         "inlet_temp": 36.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -11957,7 +12073,7 @@
       }
     },
     {
-      "id": "295362fe",
+      "id": "d7a13c4a",
       "position": {
         "x": 530,
         "y": 680
@@ -11979,7 +12095,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "295362fe",
+        "id": "d7a13c4a",
         "interfaces": [
           {
             "index": 1,
@@ -12015,8 +12131,8 @@
         "mgmt_ip": "192.168.1.63",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12033,6 +12149,8 @@
         "sys_uptime": 4328713,
         "cpu_temp": 41.2,
         "inlet_temp": 26.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12041,7 +12159,7 @@
       }
     },
     {
-      "id": "4a53f923",
+      "id": "92ff58b1",
       "position": {
         "x": 610,
         "y": 680
@@ -12063,7 +12181,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "4a53f923",
+        "id": "92ff58b1",
         "interfaces": [
           {
             "index": 1,
@@ -12099,8 +12217,8 @@
         "mgmt_ip": "192.168.1.64",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12117,6 +12235,8 @@
         "sys_uptime": 2906547,
         "cpu_temp": 43.1,
         "inlet_temp": 33.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12125,7 +12245,7 @@
       }
     },
     {
-      "id": "acd12da0",
+      "id": "8500c674",
       "position": {
         "x": 690,
         "y": 680
@@ -12147,7 +12267,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "acd12da0",
+        "id": "8500c674",
         "interfaces": [
           {
             "index": 1,
@@ -12183,8 +12303,8 @@
         "mgmt_ip": "192.168.1.65",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12201,6 +12321,8 @@
         "sys_uptime": 6508965,
         "cpu_temp": 54.3,
         "inlet_temp": 37.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12209,7 +12331,7 @@
       }
     },
     {
-      "id": "3f3db9a0",
+      "id": "bebd869a",
       "position": {
         "x": 770,
         "y": 680
@@ -12231,7 +12353,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "3f3db9a0",
+        "id": "bebd869a",
         "interfaces": [
           {
             "index": 1,
@@ -12267,8 +12389,8 @@
         "mgmt_ip": "192.168.1.66",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12285,6 +12407,8 @@
         "sys_uptime": 1240044,
         "cpu_temp": 38.3,
         "inlet_temp": 23.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12293,7 +12417,7 @@
       }
     },
     {
-      "id": "9fc2cb25",
+      "id": "f63072bc",
       "position": {
         "x": 850,
         "y": 680
@@ -12315,7 +12439,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "9fc2cb25",
+        "id": "f63072bc",
         "interfaces": [
           {
             "index": 1,
@@ -12351,8 +12475,8 @@
         "mgmt_ip": "192.168.1.67",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12369,6 +12493,8 @@
         "sys_uptime": 5042041,
         "cpu_temp": 49.2,
         "inlet_temp": 37.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12377,7 +12503,7 @@
       }
     },
     {
-      "id": "790384a7",
+      "id": "7294a37a",
       "position": {
         "x": 930,
         "y": 680
@@ -12399,7 +12525,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "790384a7",
+        "id": "7294a37a",
         "interfaces": [
           {
             "index": 1,
@@ -12435,8 +12561,8 @@
         "mgmt_ip": "192.168.1.68",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12453,6 +12579,8 @@
         "sys_uptime": 3093762,
         "cpu_temp": 53.5,
         "inlet_temp": 23.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12461,7 +12589,7 @@
       }
     },
     {
-      "id": "340c39ae",
+      "id": "0f1c1e31",
       "position": {
         "x": 1010,
         "y": 680
@@ -12483,7 +12611,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "340c39ae",
+        "id": "0f1c1e31",
         "interfaces": [
           {
             "index": 1,
@@ -12519,8 +12647,8 @@
         "mgmt_ip": "192.168.1.69",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12537,6 +12665,8 @@
         "sys_uptime": 9740863,
         "cpu_temp": 38.1,
         "inlet_temp": 33.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12545,7 +12675,7 @@
       }
     },
     {
-      "id": "999b7835",
+      "id": "579c2794",
       "position": {
         "x": 1090,
         "y": 680
@@ -12567,7 +12697,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "999b7835",
+        "id": "579c2794",
         "interfaces": [
           {
             "index": 1,
@@ -12603,8 +12733,8 @@
         "mgmt_ip": "192.168.1.70",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -12621,6 +12751,8 @@
         "sys_uptime": 3507796,
         "cpu_temp": 42.2,
         "inlet_temp": 22.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -12629,7 +12761,7 @@
       }
     },
     {
-      "id": "26aa9d1e",
+      "id": "924aa5d7",
       "position": {
         "x": 910,
         "y": 480
@@ -12651,7 +12783,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "26aa9d1e",
+        "id": "924aa5d7",
         "interfaces": [
           {
             "index": 1,
@@ -13377,8 +13509,8 @@
         "mgmt_ip": "192.168.1.71",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13395,6 +13527,8 @@
         "sys_uptime": 721473,
         "cpu_temp": 46.1,
         "inlet_temp": 27.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13403,7 +13537,7 @@
       }
     },
     {
-      "id": "05f69693",
+      "id": "b91ee08c",
       "position": {
         "x": 590,
         "y": 680
@@ -13425,7 +13559,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "05f69693",
+        "id": "b91ee08c",
         "interfaces": [
           {
             "index": 1,
@@ -13461,8 +13595,8 @@
         "mgmt_ip": "192.168.1.72",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13479,6 +13613,8 @@
         "sys_uptime": 7049018,
         "cpu_temp": 41.3,
         "inlet_temp": 31.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13487,7 +13623,7 @@
       }
     },
     {
-      "id": "77b76305",
+      "id": "7782f68c",
       "position": {
         "x": 670,
         "y": 680
@@ -13509,7 +13645,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "77b76305",
+        "id": "7782f68c",
         "interfaces": [
           {
             "index": 1,
@@ -13545,8 +13681,8 @@
         "mgmt_ip": "192.168.1.73",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13563,6 +13699,8 @@
         "sys_uptime": 8389630,
         "cpu_temp": 51.4,
         "inlet_temp": 29.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13571,7 +13709,7 @@
       }
     },
     {
-      "id": "843a0ae3",
+      "id": "97d0a726",
       "position": {
         "x": 750,
         "y": 680
@@ -13593,7 +13731,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "843a0ae3",
+        "id": "97d0a726",
         "interfaces": [
           {
             "index": 1,
@@ -13629,8 +13767,8 @@
         "mgmt_ip": "192.168.1.74",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13647,6 +13785,8 @@
         "sys_uptime": 4427037,
         "cpu_temp": 53.1,
         "inlet_temp": 29.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13655,7 +13795,7 @@
       }
     },
     {
-      "id": "b3b3e00f",
+      "id": "8a52a397",
       "position": {
         "x": 830,
         "y": 680
@@ -13677,7 +13817,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "b3b3e00f",
+        "id": "8a52a397",
         "interfaces": [
           {
             "index": 1,
@@ -13713,8 +13853,8 @@
         "mgmt_ip": "192.168.1.75",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13731,6 +13871,8 @@
         "sys_uptime": 8985420,
         "cpu_temp": 53.3,
         "inlet_temp": 23.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13739,7 +13881,7 @@
       }
     },
     {
-      "id": "dbcd32b0",
+      "id": "9448314d",
       "position": {
         "x": 910,
         "y": 680
@@ -13761,7 +13903,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "dbcd32b0",
+        "id": "9448314d",
         "interfaces": [
           {
             "index": 1,
@@ -13797,8 +13939,8 @@
         "mgmt_ip": "192.168.1.76",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13815,6 +13957,8 @@
         "sys_uptime": 1818286,
         "cpu_temp": 43.2,
         "inlet_temp": 30.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13823,7 +13967,7 @@
       }
     },
     {
-      "id": "4e8c9165",
+      "id": "ff0a8aa5",
       "position": {
         "x": 990,
         "y": 680
@@ -13845,7 +13989,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "4e8c9165",
+        "id": "ff0a8aa5",
         "interfaces": [
           {
             "index": 1,
@@ -13881,8 +14025,8 @@
         "mgmt_ip": "192.168.1.77",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13899,6 +14043,8 @@
         "sys_uptime": 2089725,
         "cpu_temp": 43.3,
         "inlet_temp": 35.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13907,7 +14053,7 @@
       }
     },
     {
-      "id": "85c909eb",
+      "id": "6fbc6b6e",
       "position": {
         "x": 1070,
         "y": 680
@@ -13929,7 +14075,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "85c909eb",
+        "id": "6fbc6b6e",
         "interfaces": [
           {
             "index": 1,
@@ -13965,8 +14111,8 @@
         "mgmt_ip": "192.168.1.78",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -13983,6 +14129,8 @@
         "sys_uptime": 2176911,
         "cpu_temp": 60.1,
         "inlet_temp": 25.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -13991,7 +14139,7 @@
       }
     },
     {
-      "id": "16194faa",
+      "id": "5c55a385",
       "position": {
         "x": 1150,
         "y": 680
@@ -14013,7 +14161,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "16194faa",
+        "id": "5c55a385",
         "interfaces": [
           {
             "index": 1,
@@ -14049,8 +14197,8 @@
         "mgmt_ip": "192.168.1.79",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -14067,6 +14215,8 @@
         "sys_uptime": 6248229,
         "cpu_temp": 54.8,
         "inlet_temp": 25.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -14075,7 +14225,7 @@
       }
     },
     {
-      "id": "1a383cce",
+      "id": "a8eb6230",
       "position": {
         "x": 1230,
         "y": 680
@@ -14097,7 +14247,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "1a383cce",
+        "id": "a8eb6230",
         "interfaces": [
           {
             "index": 1,
@@ -14133,8 +14283,8 @@
         "mgmt_ip": "192.168.1.80",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -14151,6 +14301,8 @@
         "sys_uptime": 4858210,
         "cpu_temp": 49.0,
         "inlet_temp": 33.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -14159,7 +14311,7 @@
       }
     },
     {
-      "id": "012e5c66",
+      "id": "07e121f6",
       "position": {
         "x": 1050,
         "y": 480
@@ -14181,7 +14333,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "012e5c66",
+        "id": "07e121f6",
         "interfaces": [
           {
             "index": 1,
@@ -14907,8 +15059,8 @@
         "mgmt_ip": "192.168.1.81",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -14925,6 +15077,8 @@
         "sys_uptime": 2930705,
         "cpu_temp": 39.6,
         "inlet_temp": 37.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -14933,7 +15087,7 @@
       }
     },
     {
-      "id": "ff868644",
+      "id": "a5ec67cf",
       "position": {
         "x": 730,
         "y": 680
@@ -14955,7 +15109,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "ff868644",
+        "id": "a5ec67cf",
         "interfaces": [
           {
             "index": 1,
@@ -14991,8 +15145,8 @@
         "mgmt_ip": "192.168.1.82",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "0855fa29",
-        "ups_backup": "49b8ed15",
+        "power_source": "85a4b788",
+        "ups_backup": "701ad50d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15009,6 +15163,8 @@
         "sys_uptime": 5355791,
         "cpu_temp": 39.1,
         "inlet_temp": 24.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15017,7 +15173,7 @@
       }
     },
     {
-      "id": "ec154771",
+      "id": "86699481",
       "position": {
         "x": 810,
         "y": 680
@@ -15039,7 +15195,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "ec154771",
+        "id": "86699481",
         "interfaces": [
           {
             "index": 1,
@@ -15075,8 +15231,8 @@
         "mgmt_ip": "192.168.1.83",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15093,6 +15249,8 @@
         "sys_uptime": 4465833,
         "cpu_temp": 41.9,
         "inlet_temp": 29.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15101,7 +15259,7 @@
       }
     },
     {
-      "id": "459b7614",
+      "id": "e251fe04",
       "position": {
         "x": 890,
         "y": 680
@@ -15123,7 +15281,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "459b7614",
+        "id": "e251fe04",
         "interfaces": [
           {
             "index": 1,
@@ -15159,8 +15317,8 @@
         "mgmt_ip": "192.168.1.84",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15177,6 +15335,8 @@
         "sys_uptime": 8456912,
         "cpu_temp": 54.2,
         "inlet_temp": 36.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15185,7 +15345,7 @@
       }
     },
     {
-      "id": "8339862d",
+      "id": "f250e991",
       "position": {
         "x": 970,
         "y": 680
@@ -15207,7 +15367,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "8339862d",
+        "id": "f250e991",
         "interfaces": [
           {
             "index": 1,
@@ -15243,8 +15403,8 @@
         "mgmt_ip": "192.168.1.85",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15261,6 +15421,8 @@
         "sys_uptime": 3646147,
         "cpu_temp": 58.7,
         "inlet_temp": 34.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15269,7 +15431,7 @@
       }
     },
     {
-      "id": "2724233a",
+      "id": "bc62ffe1",
       "position": {
         "x": 1050,
         "y": 680
@@ -15291,7 +15453,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "2724233a",
+        "id": "bc62ffe1",
         "interfaces": [
           {
             "index": 1,
@@ -15327,8 +15489,8 @@
         "mgmt_ip": "192.168.1.86",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15345,6 +15507,8 @@
         "sys_uptime": 5108781,
         "cpu_temp": 49.8,
         "inlet_temp": 28.9,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15353,7 +15517,7 @@
       }
     },
     {
-      "id": "c62c5c56",
+      "id": "d976f9b5",
       "position": {
         "x": 1130,
         "y": 680
@@ -15375,7 +15539,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "c62c5c56",
+        "id": "d976f9b5",
         "interfaces": [
           {
             "index": 1,
@@ -15411,8 +15575,8 @@
         "mgmt_ip": "192.168.1.87",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15429,6 +15593,8 @@
         "sys_uptime": 778438,
         "cpu_temp": 50.3,
         "inlet_temp": 37.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15437,7 +15603,7 @@
       }
     },
     {
-      "id": "a1f944d2",
+      "id": "273d23e8",
       "position": {
         "x": 1210,
         "y": 680
@@ -15459,7 +15625,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "a1f944d2",
+        "id": "273d23e8",
         "interfaces": [
           {
             "index": 1,
@@ -15495,8 +15661,8 @@
         "mgmt_ip": "192.168.1.88",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15513,6 +15679,8 @@
         "sys_uptime": 8667311,
         "cpu_temp": 48.2,
         "inlet_temp": 23.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15521,7 +15689,7 @@
       }
     },
     {
-      "id": "8c24fe97",
+      "id": "3d49dcce",
       "position": {
         "x": 1290,
         "y": 680
@@ -15543,7 +15711,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "8c24fe97",
+        "id": "3d49dcce",
         "interfaces": [
           {
             "index": 1,
@@ -15579,8 +15747,8 @@
         "mgmt_ip": "192.168.1.89",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15597,6 +15765,8 @@
         "sys_uptime": 3205251,
         "cpu_temp": 39.9,
         "inlet_temp": 37.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15605,7 +15775,7 @@
       }
     },
     {
-      "id": "cd4e721b",
+      "id": "2f0a7dbe",
       "position": {
         "x": 1370,
         "y": 680
@@ -15627,7 +15797,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "cd4e721b",
+        "id": "2f0a7dbe",
         "interfaces": [
           {
             "index": 1,
@@ -15663,8 +15833,8 @@
         "mgmt_ip": "192.168.1.90",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -15681,6 +15851,8 @@
         "sys_uptime": 3301127,
         "cpu_temp": 40.7,
         "inlet_temp": 22.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -15689,7 +15861,7 @@
       }
     },
     {
-      "id": "89acf531",
+      "id": "e4d076a6",
       "position": {
         "x": 1190,
         "y": 480
@@ -15711,7 +15883,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "89acf531",
+        "id": "e4d076a6",
         "interfaces": [
           {
             "index": 1,
@@ -16437,8 +16609,8 @@
         "mgmt_ip": "192.168.1.91",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -16455,6 +16627,8 @@
         "sys_uptime": 3477898,
         "cpu_temp": 45.1,
         "inlet_temp": 35.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -16463,7 +16637,7 @@
       }
     },
     {
-      "id": "79361eca",
+      "id": "8c9b1f0e",
       "position": {
         "x": 870,
         "y": 680
@@ -16485,7 +16659,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "79361eca",
+        "id": "8c9b1f0e",
         "interfaces": [
           {
             "index": 1,
@@ -16521,8 +16695,8 @@
         "mgmt_ip": "192.168.1.92",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -16539,6 +16713,8 @@
         "sys_uptime": 6477917,
         "cpu_temp": 62.0,
         "inlet_temp": 35.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -16547,7 +16723,7 @@
       }
     },
     {
-      "id": "4e15ac90",
+      "id": "6264cc1a",
       "position": {
         "x": 950,
         "y": 680
@@ -16569,7 +16745,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "4e15ac90",
+        "id": "6264cc1a",
         "interfaces": [
           {
             "index": 1,
@@ -16605,8 +16781,8 @@
         "mgmt_ip": "192.168.1.93",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -16623,6 +16799,8 @@
         "sys_uptime": 3633682,
         "cpu_temp": 49.0,
         "inlet_temp": 31.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -16631,7 +16809,7 @@
       }
     },
     {
-      "id": "3868c63b",
+      "id": "216a260d",
       "position": {
         "x": 1030,
         "y": 680
@@ -16653,7 +16831,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "3868c63b",
+        "id": "216a260d",
         "interfaces": [
           {
             "index": 1,
@@ -16689,8 +16867,8 @@
         "mgmt_ip": "192.168.1.94",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -16707,6 +16885,8 @@
         "sys_uptime": 3072698,
         "cpu_temp": 58.1,
         "inlet_temp": 35.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -16715,7 +16895,7 @@
       }
     },
     {
-      "id": "97177c75",
+      "id": "3a11ee0d",
       "position": {
         "x": 1110,
         "y": 680
@@ -16737,7 +16917,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "97177c75",
+        "id": "3a11ee0d",
         "interfaces": [
           {
             "index": 1,
@@ -16773,8 +16953,8 @@
         "mgmt_ip": "192.168.1.95",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -16791,6 +16971,8 @@
         "sys_uptime": 219712,
         "cpu_temp": 42.7,
         "inlet_temp": 35.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -16799,7 +16981,7 @@
       }
     },
     {
-      "id": "658d96e2",
+      "id": "0dc91384",
       "position": {
         "x": 1190,
         "y": 680
@@ -16821,7 +17003,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "658d96e2",
+        "id": "0dc91384",
         "interfaces": [
           {
             "index": 1,
@@ -16857,8 +17039,8 @@
         "mgmt_ip": "192.168.1.96",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -16875,6 +17057,8 @@
         "sys_uptime": 7356954,
         "cpu_temp": 58.3,
         "inlet_temp": 28.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -16883,7 +17067,7 @@
       }
     },
     {
-      "id": "fbae5ed5",
+      "id": "2acd6329",
       "position": {
         "x": 1270,
         "y": 680
@@ -16905,7 +17089,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "fbae5ed5",
+        "id": "2acd6329",
         "interfaces": [
           {
             "index": 1,
@@ -16941,8 +17125,8 @@
         "mgmt_ip": "192.168.1.97",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -16959,6 +17143,8 @@
         "sys_uptime": 5623472,
         "cpu_temp": 45.5,
         "inlet_temp": 32.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -16967,7 +17153,7 @@
       }
     },
     {
-      "id": "413b3c1b",
+      "id": "ed838245",
       "position": {
         "x": 1350,
         "y": 680
@@ -16989,7 +17175,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "413b3c1b",
+        "id": "ed838245",
         "interfaces": [
           {
             "index": 1,
@@ -17025,8 +17211,8 @@
         "mgmt_ip": "192.168.1.98",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -17043,6 +17229,8 @@
         "sys_uptime": 6431639,
         "cpu_temp": 45.5,
         "inlet_temp": 35.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -17051,7 +17239,7 @@
       }
     },
     {
-      "id": "a4b38fa8",
+      "id": "521b9a34",
       "position": {
         "x": 1430,
         "y": 680
@@ -17073,7 +17261,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "a4b38fa8",
+        "id": "521b9a34",
         "interfaces": [
           {
             "index": 1,
@@ -17109,8 +17297,8 @@
         "mgmt_ip": "192.168.1.99",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e80c3295",
-        "ups_backup": "bad2f5b5",
+        "power_source": "df3aca15",
+        "ups_backup": "927ca35e",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -17127,6 +17315,8 @@
         "sys_uptime": 5797818,
         "cpu_temp": 53.6,
         "inlet_temp": 32.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -17135,7 +17325,7 @@
       }
     },
     {
-      "id": "a7b328d0",
+      "id": "0accee82",
       "position": {
         "x": 1510,
         "y": 680
@@ -17157,7 +17347,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "a7b328d0",
+        "id": "0accee82",
         "interfaces": [
           {
             "index": 1,
@@ -17193,8 +17383,8 @@
         "mgmt_ip": "192.168.1.100",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e80c3295",
-        "ups_backup": "bad2f5b5",
+        "power_source": "df3aca15",
+        "ups_backup": "927ca35e",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -17211,6 +17401,8 @@
         "sys_uptime": 8708821,
         "cpu_temp": 61.0,
         "inlet_temp": 34.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -17219,7 +17411,7 @@
       }
     },
     {
-      "id": "c4cec96a",
+      "id": "23b258e5",
       "position": {
         "x": 1330,
         "y": 480
@@ -17241,7 +17433,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "c4cec96a",
+        "id": "23b258e5",
         "interfaces": [
           {
             "index": 1,
@@ -17967,8 +18159,8 @@
         "mgmt_ip": "192.168.1.101",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -17985,6 +18177,8 @@
         "sys_uptime": 8081342,
         "cpu_temp": 54.7,
         "inlet_temp": 37.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -17993,7 +18187,7 @@
       }
     },
     {
-      "id": "caae5b68",
+      "id": "8983f58c",
       "position": {
         "x": 1010,
         "y": 680
@@ -18015,7 +18209,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "caae5b68",
+        "id": "8983f58c",
         "interfaces": [
           {
             "index": 1,
@@ -18051,8 +18245,8 @@
         "mgmt_ip": "192.168.1.102",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18069,6 +18263,8 @@
         "sys_uptime": 4771743,
         "cpu_temp": 53.6,
         "inlet_temp": 27.9,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18077,7 +18273,7 @@
       }
     },
     {
-      "id": "f66f33ed",
+      "id": "8077ceba",
       "position": {
         "x": 1090,
         "y": 680
@@ -18099,7 +18295,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "f66f33ed",
+        "id": "8077ceba",
         "interfaces": [
           {
             "index": 1,
@@ -18135,8 +18331,8 @@
         "mgmt_ip": "192.168.1.103",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18153,6 +18349,8 @@
         "sys_uptime": 6515127,
         "cpu_temp": 50.3,
         "inlet_temp": 33.9,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18161,7 +18359,7 @@
       }
     },
     {
-      "id": "b14cb6e7",
+      "id": "5d3a3add",
       "position": {
         "x": 1170,
         "y": 680
@@ -18183,7 +18381,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "b14cb6e7",
+        "id": "5d3a3add",
         "interfaces": [
           {
             "index": 1,
@@ -18219,8 +18417,8 @@
         "mgmt_ip": "192.168.1.104",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18237,6 +18435,8 @@
         "sys_uptime": 5614500,
         "cpu_temp": 41.2,
         "inlet_temp": 27.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18245,7 +18445,7 @@
       }
     },
     {
-      "id": "fc2ea910",
+      "id": "8c6e679f",
       "position": {
         "x": 1250,
         "y": 680
@@ -18267,7 +18467,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "fc2ea910",
+        "id": "8c6e679f",
         "interfaces": [
           {
             "index": 1,
@@ -18303,8 +18503,8 @@
         "mgmt_ip": "192.168.1.105",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18321,6 +18521,8 @@
         "sys_uptime": 3329034,
         "cpu_temp": 39.3,
         "inlet_temp": 37.9,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18329,7 +18531,7 @@
       }
     },
     {
-      "id": "9dbaf3af",
+      "id": "15091f73",
       "position": {
         "x": 1330,
         "y": 680
@@ -18351,7 +18553,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "9dbaf3af",
+        "id": "15091f73",
         "interfaces": [
           {
             "index": 1,
@@ -18387,8 +18589,8 @@
         "mgmt_ip": "192.168.1.106",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18405,6 +18607,8 @@
         "sys_uptime": 6132783,
         "cpu_temp": 47.6,
         "inlet_temp": 24.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18413,7 +18617,7 @@
       }
     },
     {
-      "id": "59762acc",
+      "id": "b8bca738",
       "position": {
         "x": 1410,
         "y": 680
@@ -18435,7 +18639,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "59762acc",
+        "id": "b8bca738",
         "interfaces": [
           {
             "index": 1,
@@ -18471,8 +18675,8 @@
         "mgmt_ip": "192.168.1.107",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18489,6 +18693,8 @@
         "sys_uptime": 1306947,
         "cpu_temp": 46.0,
         "inlet_temp": 33.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18497,7 +18703,7 @@
       }
     },
     {
-      "id": "c83f12cf",
+      "id": "2659fcbd",
       "position": {
         "x": 1490,
         "y": 680
@@ -18519,7 +18725,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "c83f12cf",
+        "id": "2659fcbd",
         "interfaces": [
           {
             "index": 1,
@@ -18555,8 +18761,8 @@
         "mgmt_ip": "192.168.1.108",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e80c3295",
-        "ups_backup": "bad2f5b5",
+        "power_source": "df3aca15",
+        "ups_backup": "927ca35e",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18573,6 +18779,8 @@
         "sys_uptime": 5948179,
         "cpu_temp": 50.2,
         "inlet_temp": 29.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18581,7 +18789,7 @@
       }
     },
     {
-      "id": "1c36a1de",
+      "id": "10fd1336",
       "position": {
         "x": 1570,
         "y": 680
@@ -18603,7 +18811,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "1c36a1de",
+        "id": "10fd1336",
         "interfaces": [
           {
             "index": 1,
@@ -18639,8 +18847,8 @@
         "mgmt_ip": "192.168.1.109",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e80c3295",
-        "ups_backup": "bad2f5b5",
+        "power_source": "df3aca15",
+        "ups_backup": "927ca35e",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18657,6 +18865,8 @@
         "sys_uptime": 6548284,
         "cpu_temp": 47.5,
         "inlet_temp": 31.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18665,7 +18875,7 @@
       }
     },
     {
-      "id": "72c3d656",
+      "id": "572e29a2",
       "position": {
         "x": 1650,
         "y": 680
@@ -18687,7 +18897,7 @@
         ],
         "model_name": "",
         "metrics_enabled": true,
-        "id": "72c3d656",
+        "id": "572e29a2",
         "interfaces": [
           {
             "index": 1,
@@ -18723,8 +18933,8 @@
         "mgmt_ip": "192.168.1.110",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e80c3295",
-        "ups_backup": "bad2f5b5",
+        "power_source": "df3aca15",
+        "ups_backup": "927ca35e",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18741,6 +18951,8 @@
         "sys_uptime": 2925261,
         "cpu_temp": 57.6,
         "inlet_temp": 22.0,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18749,7 +18961,7 @@
       }
     },
     {
-      "id": "dc3214f3",
+      "id": "75390e15",
       "position": {
         "x": 750,
         "y": 1160
@@ -18771,7 +18983,7 @@
         ],
         "model_name": "Cisco Catalyst 9300-48T",
         "metrics_enabled": true,
-        "id": "dc3214f3",
+        "id": "75390e15",
         "interfaces": [
           {
             "index": 1,
@@ -18927,8 +19139,8 @@
         "mgmt_ip": "192.168.1.1",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -18945,6 +19157,8 @@
         "sys_uptime": 6958398,
         "cpu_temp": 48.6,
         "inlet_temp": 36.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -18953,7 +19167,7 @@
       }
     },
     {
-      "id": "54b7a42a",
+      "id": "5b7936a3",
       "position": {
         "x": -150,
         "y": 940
@@ -18975,7 +19189,7 @@
         ],
         "model_name": "Cisco Catalyst 1000-48T",
         "metrics_enabled": true,
-        "id": "54b7a42a",
+        "id": "5b7936a3",
         "interfaces": [
           {
             "index": 1,
@@ -19731,8 +19945,8 @@
         "mgmt_ip": "192.168.1.2",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "282d922e",
-        "ups_backup": "7477dee7",
+        "power_source": "db7215e7",
+        "ups_backup": "aad7eace",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -19749,6 +19963,8 @@
         "sys_uptime": 2788301,
         "cpu_temp": 60.3,
         "inlet_temp": 27.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -19757,7 +19973,7 @@
       }
     },
     {
-      "id": "1e5b1422",
+      "id": "ea9d7e84",
       "position": {
         "x": 750,
         "y": 940
@@ -19779,7 +19995,7 @@
         ],
         "model_name": "Cisco Catalyst 1000-48T",
         "metrics_enabled": true,
-        "id": "1e5b1422",
+        "id": "ea9d7e84",
         "interfaces": [
           {
             "index": 1,
@@ -20535,8 +20751,8 @@
         "mgmt_ip": "192.168.1.3",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e828362c",
-        "ups_backup": "e4bd71e0",
+        "power_source": "4b8bb327",
+        "ups_backup": "9622af9d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -20553,6 +20769,8 @@
         "sys_uptime": 2709561,
         "cpu_temp": 46.3,
         "inlet_temp": 22.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -20561,7 +20779,7 @@
       }
     },
     {
-      "id": "c0607494",
+      "id": "0acaf5af",
       "position": {
         "x": 1650,
         "y": 940
@@ -20583,7 +20801,7 @@
         ],
         "model_name": "Cisco Catalyst 1000-48T",
         "metrics_enabled": true,
-        "id": "c0607494",
+        "id": "0acaf5af",
         "interfaces": [
           {
             "index": 1,
@@ -21339,8 +21557,8 @@
         "mgmt_ip": "192.168.1.4",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "e80c3295",
-        "ups_backup": "bad2f5b5",
+        "power_source": "df3aca15",
+        "ups_backup": "927ca35e",
         "country": "",
         "datacenter_city": "",
         "datacenter": "",
@@ -21357,6 +21575,8 @@
         "sys_uptime": 7217262,
         "cpu_temp": 42.7,
         "inlet_temp": 23.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21365,7 +21585,7 @@
       }
     },
     {
-      "id": "458723e9",
+      "id": "1c9d8eab",
       "position": {
         "x": 275,
         "y": 1100
@@ -21387,7 +21607,7 @@
         ],
         "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
-        "id": "458723e9",
+        "id": "1c9d8eab",
         "interfaces": [
           {
             "index": 1,
@@ -21408,8 +21628,8 @@
         "mgmt_ip": "192.168.1.111",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "70072ea3",
-        "ups_backup": "929f4fa0",
+        "power_source": "ef67a32a",
+        "ups_backup": "422b3d6d",
         "country": "",
         "datacenter_city": "",
         "datacenter": "DC1",
@@ -21426,6 +21646,8 @@
         "sys_uptime": 6374015,
         "cpu_temp": 59.5,
         "inlet_temp": 35.1,
+        "mid_temp": 39.8,
+        "outlet_temp": 44.2,
         "humidity": 68.3,
         "dewpoint": 28.8,
         "airflow": 1.01,
@@ -21434,7 +21656,7 @@
       }
     },
     {
-      "id": "b94b9f46",
+      "id": "59bfba64",
       "position": {
         "x": 1225,
         "y": 1100
@@ -21456,20 +21678,20 @@
         ],
         "model_name": "Vertiv Geist GTHD",
         "metrics_enabled": true,
-        "id": "b94b9f46",
+        "id": "59bfba64",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 12704885,
-            "out_octets": 770660954,
-            "in_errors": 42,
-            "out_errors": 27,
+            "in_octets": 500694347,
+            "out_octets": 610315470,
+            "in_errors": 41,
+            "out_errors": 29,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "ee:a4:77:21:c5:91",
+            "mac_address": "21:c5:91:6c:6f:34",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21477,8 +21699,8 @@
         "mgmt_ip": "192.168.1.112",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
-        "power_source": "4ba7b7e4",
-        "ups_backup": "44540220",
+        "power_source": "d1afa6a3",
+        "ups_backup": "d1b5fae3",
         "country": "",
         "datacenter_city": "",
         "datacenter": "DC1",
@@ -21487,23 +21709,25 @@
         "rack_row": 2,
         "rack_num": 1,
         "rack_unit": 0,
-        "cpu_usage": 59,
-        "memory_total": 4294967296,
-        "memory_used": 1897416843,
-        "disk_total": 536870912000,
-        "disk_used": 325711239217,
-        "sys_uptime": 4215755,
-        "cpu_temp": 39.7,
-        "inlet_temp": 32.5,
-        "humidity": 34.9,
-        "dewpoint": 19.5,
-        "airflow": 1.14,
+        "cpu_usage": 36,
+        "memory_total": 2147483648,
+        "memory_used": 600215974,
+        "disk_total": 268435456000,
+        "disk_used": 82431949494,
+        "sys_uptime": 6335425,
+        "cpu_temp": 46.9,
+        "inlet_temp": 34.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 30.4,
+        "dewpoint": 20.6,
+        "airflow": 1.16,
         "sys_contact": "",
         "sys_location_override": ""
       }
     },
     {
-      "id": "96efa0da",
+      "id": "759eb4a3",
       "position": {
         "x": 750,
         "y": 1680
@@ -21525,20 +21749,20 @@
         ],
         "model_name": "Eaton PDU 80kVA",
         "metrics_enabled": true,
-        "id": "96efa0da",
+        "id": "759eb4a3",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 721851174,
-            "out_octets": 81341870,
-            "in_errors": 73,
-            "out_errors": 82,
+            "in_octets": 344727751,
+            "out_octets": 213762389,
+            "in_errors": 25,
+            "out_errors": 6,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "d7:de:a2:a3:65:64",
+            "mac_address": "fc:ff:17:8c:d7:3d",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21556,14 +21780,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 82,
-        "memory_total": 4294967296,
-        "memory_used": 3500725578,
-        "disk_total": 268435456000,
-        "disk_used": 167725780417,
-        "sys_uptime": 1826714,
-        "cpu_temp": 51.5,
-        "inlet_temp": 33.5,
+        "cpu_usage": 76,
+        "memory_total": 8589934592,
+        "memory_used": 5940204187,
+        "disk_total": 107374182400,
+        "disk_used": 32916537182,
+        "sys_uptime": 9729256,
+        "cpu_temp": 59.4,
+        "inlet_temp": 28.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21572,7 +21798,7 @@
       }
     },
     {
-      "id": "7477dee7",
+      "id": "aad7eace",
       "position": {
         "x": -83,
         "y": 1520
@@ -21594,20 +21820,20 @@
         ],
         "model_name": "APC Smart-UPS 3000",
         "metrics_enabled": true,
-        "id": "7477dee7",
+        "id": "aad7eace",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 351979097,
-            "out_octets": 635765132,
-            "in_errors": 49,
-            "out_errors": 30,
+            "in_octets": 842068017,
+            "out_octets": 920233666,
+            "in_errors": 73,
+            "out_errors": 0,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "0a:91:09:02:ec:91",
+            "mac_address": "ec:91:43:ce:12:14",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21625,14 +21851,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 11,
+        "cpu_usage": 20,
         "memory_total": 17179869184,
-        "memory_used": 4821706232,
-        "disk_total": 1073741824000,
-        "disk_used": 226818107527,
-        "sys_uptime": 885036,
-        "cpu_temp": 61.8,
-        "inlet_temp": 28.7,
+        "memory_used": 3673479575,
+        "disk_total": 268435456000,
+        "disk_used": 29955677536,
+        "sys_uptime": 5584048,
+        "cpu_temp": 52.2,
+        "inlet_temp": 25.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21641,7 +21869,7 @@
       }
     },
     {
-      "id": "282d922e",
+      "id": "db7215e7",
       "position": {
         "x": -83,
         "y": 1360
@@ -21661,22 +21889,22 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
-        "id": "282d922e",
+        "id": "db7215e7",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 103134123,
-            "out_octets": 892044883,
-            "in_errors": 53,
-            "out_errors": 92,
+            "in_octets": 810270926,
+            "out_octets": 372326196,
+            "in_errors": 51,
+            "out_errors": 10,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "9a:8c:a2:b1:cc:28",
+            "mac_address": "a0:fc:18:c9:98:e8",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21694,14 +21922,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 21,
-        "memory_total": 17179869184,
-        "memory_used": 10636128878,
+        "cpu_usage": 48,
+        "memory_total": 2147483648,
+        "memory_used": 1439060758,
         "disk_total": 107374182400,
-        "disk_used": 15584844444,
-        "sys_uptime": 9050091,
-        "cpu_temp": 60.0,
-        "inlet_temp": 22.6,
+        "disk_used": 29907769084,
+        "sys_uptime": 7983502,
+        "cpu_temp": 40.3,
+        "inlet_temp": 34.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21710,7 +21940,7 @@
       }
     },
     {
-      "id": "929f4fa0",
+      "id": "422b3d6d",
       "position": {
         "x": 250,
         "y": 1520
@@ -21732,20 +21962,20 @@
         ],
         "model_name": "APC Smart-UPS 3000",
         "metrics_enabled": true,
-        "id": "929f4fa0",
+        "id": "422b3d6d",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 978611676,
-            "out_octets": 131366157,
-            "in_errors": 47,
-            "out_errors": 79,
+            "in_octets": 347667253,
+            "out_octets": 925909147,
+            "in_errors": 88,
+            "out_errors": 92,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "34:0e:72:18:05:47",
+            "mac_address": "df:73:57:2d:61:bc",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21763,14 +21993,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 76,
-        "memory_total": 8589934592,
-        "memory_used": 4256124743,
-        "disk_total": 1073741824000,
-        "disk_used": 699689904533,
-        "sys_uptime": 889750,
-        "cpu_temp": 47.4,
-        "inlet_temp": 33.1,
+        "cpu_usage": 68,
+        "memory_total": 2147483648,
+        "memory_used": 444008173,
+        "disk_total": 536870912000,
+        "disk_used": 90375883583,
+        "sys_uptime": 1823751,
+        "cpu_temp": 38.7,
+        "inlet_temp": 22.8,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21779,7 +22011,7 @@
       }
     },
     {
-      "id": "70072ea3",
+      "id": "ef67a32a",
       "position": {
         "x": 250,
         "y": 1360
@@ -21799,22 +22031,22 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
-        "id": "70072ea3",
+        "id": "ef67a32a",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 970460642,
-            "out_octets": 578198900,
-            "in_errors": 0,
-            "out_errors": 88,
+            "in_octets": 284174852,
+            "out_octets": 354614288,
+            "in_errors": 88,
+            "out_errors": 78,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "1a:84:16:38:18:9b",
+            "mac_address": "c2:8a:57:46:eb:3d",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21832,14 +22064,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 18,
-        "memory_total": 8589934592,
-        "memory_used": 6755809310,
-        "disk_total": 1073741824000,
-        "disk_used": 364827081043,
-        "sys_uptime": 3897376,
-        "cpu_temp": 42.1,
-        "inlet_temp": 25.1,
+        "cpu_usage": 73,
+        "memory_total": 2147483648,
+        "memory_used": 496502951,
+        "disk_total": 107374182400,
+        "disk_used": 31974803279,
+        "sys_uptime": 4456836,
+        "cpu_temp": 59.2,
+        "inlet_temp": 22.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21848,7 +22082,7 @@
       }
     },
     {
-      "id": "49b8ed15",
+      "id": "701ad50d",
       "position": {
         "x": 583,
         "y": 1520
@@ -21870,20 +22104,20 @@
         ],
         "model_name": "APC Smart-UPS 3000",
         "metrics_enabled": true,
-        "id": "49b8ed15",
+        "id": "701ad50d",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 136601470,
-            "out_octets": 343880849,
-            "in_errors": 18,
-            "out_errors": 96,
+            "in_octets": 132397339,
+            "out_octets": 561239511,
+            "in_errors": 67,
+            "out_errors": 30,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "d3:e4:3e:7b:f4:fa",
+            "mac_address": "f4:fa:8f:a4:f7:73",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21901,14 +22135,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 14,
+        "cpu_usage": 21,
         "memory_total": 8589934592,
-        "memory_used": 2487182590,
-        "disk_total": 536870912000,
-        "disk_used": 214453593511,
-        "sys_uptime": 6467900,
-        "cpu_temp": 44.5,
-        "inlet_temp": 24.7,
+        "memory_used": 4025595936,
+        "disk_total": 268435456000,
+        "disk_used": 104799035768,
+        "sys_uptime": 9900080,
+        "cpu_temp": 59.3,
+        "inlet_temp": 37.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21917,7 +22153,7 @@
       }
     },
     {
-      "id": "0855fa29",
+      "id": "85a4b788",
       "position": {
         "x": 583,
         "y": 1360
@@ -21937,22 +22173,22 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
-        "id": "0855fa29",
+        "id": "85a4b788",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 898156491,
-            "out_octets": 938239533,
-            "in_errors": 31,
-            "out_errors": 84,
+            "in_octets": 919976409,
+            "out_octets": 222074031,
+            "in_errors": 88,
+            "out_errors": 9,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "69:27:26:fd:1e:6c",
+            "mac_address": "26:fd:1e:6c:06:6e",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -21970,14 +22206,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 40,
+        "cpu_usage": 16,
         "memory_total": 8589934592,
-        "memory_used": 5689954589,
-        "disk_total": 1073741824000,
-        "disk_used": 353751012104,
-        "sys_uptime": 3888807,
-        "cpu_temp": 40.2,
-        "inlet_temp": 34.3,
+        "memory_used": 3071284449,
+        "disk_total": 536870912000,
+        "disk_used": 279515009711,
+        "sys_uptime": 1489057,
+        "cpu_temp": 46.5,
+        "inlet_temp": 35.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -21986,7 +22224,7 @@
       }
     },
     {
-      "id": "e4bd71e0",
+      "id": "9622af9d",
       "position": {
         "x": 917,
         "y": 1520
@@ -22008,20 +22246,20 @@
         ],
         "model_name": "APC Smart-UPS 3000",
         "metrics_enabled": true,
-        "id": "e4bd71e0",
+        "id": "9622af9d",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 567554119,
-            "out_octets": 552825253,
-            "in_errors": 40,
-            "out_errors": 97,
+            "in_octets": 922763158,
+            "out_octets": 337466691,
+            "in_errors": 97,
+            "out_errors": 39,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "9f:e8:4e:36:42:70",
+            "mac_address": "e8:4e:36:42:70:ba",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -22039,14 +22277,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 6,
-        "memory_total": 4294967296,
-        "memory_used": 1441519648,
-        "disk_total": 1073741824000,
-        "disk_used": 519519259960,
-        "sys_uptime": 6560238,
-        "cpu_temp": 42.5,
-        "inlet_temp": 23.7,
+        "cpu_usage": 64,
+        "memory_total": 17179869184,
+        "memory_used": 10030295077,
+        "disk_total": 268435456000,
+        "disk_used": 118908589468,
+        "sys_uptime": 8281335,
+        "cpu_temp": 40.5,
+        "inlet_temp": 25.3,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -22055,7 +22295,7 @@
       }
     },
     {
-      "id": "e828362c",
+      "id": "4b8bb327",
       "position": {
         "x": 917,
         "y": 1360
@@ -22075,22 +22315,22 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
-        "id": "e828362c",
+        "id": "4b8bb327",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 737872507,
-            "out_octets": 330796342,
-            "in_errors": 73,
-            "out_errors": 82,
+            "in_octets": 934974335,
+            "out_octets": 620809183,
+            "in_errors": 82,
+            "out_errors": 13,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "34:4b:ec:36:38:7b",
+            "mac_address": "4b:ec:36:38:7b:08",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -22108,14 +22348,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 51,
+        "cpu_usage": 54,
         "memory_total": 17179869184,
-        "memory_used": 4202463178,
-        "disk_total": 1073741824000,
-        "disk_used": 402665090853,
-        "sys_uptime": 8714497,
-        "cpu_temp": 42.9,
-        "inlet_temp": 28.4,
+        "memory_used": 5269540236,
+        "disk_total": 268435456000,
+        "disk_used": 80435451436,
+        "sys_uptime": 6814324,
+        "cpu_temp": 42.5,
+        "inlet_temp": 26.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -22124,7 +22366,7 @@
       }
     },
     {
-      "id": "44540220",
+      "id": "d1b5fae3",
       "position": {
         "x": 1250,
         "y": 1520
@@ -22146,20 +22388,20 @@
         ],
         "model_name": "APC Smart-UPS 3000",
         "metrics_enabled": true,
-        "id": "44540220",
+        "id": "d1b5fae3",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 996281063,
-            "out_octets": 591884707,
-            "in_errors": 10,
-            "out_errors": 45,
+            "in_octets": 591884707,
+            "out_octets": 91266007,
+            "in_errors": 45,
+            "out_errors": 55,
             "in_discards": 0,
             "out_discards": 0,
-            "mac_address": "dc:6c:4d:cb:dc:aa",
+            "mac_address": "6c:4d:cb:dc:aa:1b",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -22177,14 +22419,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 7,
-        "memory_total": 17179869184,
-        "memory_used": 8490576458,
-        "disk_total": 268435456000,
-        "disk_used": 73182530653,
-        "sys_uptime": 4575434,
-        "cpu_temp": 38.7,
-        "inlet_temp": 32.6,
+        "cpu_usage": 63,
+        "memory_total": 4294967296,
+        "memory_used": 1841561440,
+        "disk_total": 536870912000,
+        "disk_used": 94978920810,
+        "sys_uptime": 579597,
+        "cpu_temp": 49.4,
+        "inlet_temp": 30.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -22193,7 +22437,7 @@
       }
     },
     {
-      "id": "4ba7b7e4",
+      "id": "d1afa6a3",
       "position": {
         "x": 1250,
         "y": 1360
@@ -22213,19 +22457,19 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
-        "id": "4ba7b7e4",
+        "id": "d1afa6a3",
         "interfaces": [
           {
             "index": 1,
             "name": "eth0",
             "speed": 1000000000,
             "oper_status": 1,
-            "in_octets": 316686428,
-            "out_octets": 204419997,
-            "in_errors": 51,
-            "out_errors": 22,
+            "in_octets": 204419997,
+            "out_octets": 433387352,
+            "in_errors": 22,
+            "out_errors": 76,
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "8d:fc:dd:37:19:7f",
@@ -22246,14 +22490,16 @@
         "rack_row": 0,
         "rack_num": 0,
         "rack_unit": 0,
-        "cpu_usage": 11,
-        "memory_total": 17179869184,
-        "memory_used": 11610173568,
+        "cpu_usage": 61,
+        "memory_total": 8589934592,
+        "memory_used": 6899546903,
         "disk_total": 536870912000,
-        "disk_used": 201156104304,
-        "sys_uptime": 6303890,
-        "cpu_temp": 40.3,
-        "inlet_temp": 32.4,
+        "disk_used": 121362653164,
+        "sys_uptime": 1741024,
+        "cpu_temp": 39.2,
+        "inlet_temp": 28.1,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -22262,7 +22508,7 @@
       }
     },
     {
-      "id": "bad2f5b5",
+      "id": "927ca35e",
       "position": {
         "x": 1583,
         "y": 1520
@@ -22284,7 +22530,7 @@
         ],
         "model_name": "APC Smart-UPS 3000",
         "metrics_enabled": true,
-        "id": "bad2f5b5",
+        "id": "927ca35e",
         "interfaces": [
           {
             "index": 1,
@@ -22323,6 +22569,8 @@
         "sys_uptime": 991503,
         "cpu_temp": 59.5,
         "inlet_temp": 31.2,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -22331,7 +22579,7 @@
       }
     },
     {
-      "id": "e80c3295",
+      "id": "df3aca15",
       "position": {
         "x": 1583,
         "y": 1360
@@ -22351,9 +22599,9 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8681",
         "metrics_enabled": true,
-        "id": "e80c3295",
+        "id": "df3aca15",
         "interfaces": [
           {
             "index": 1,
@@ -22392,6 +22640,8 @@
         "sys_uptime": 3515429,
         "cpu_temp": 46.3,
         "inlet_temp": 26.6,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
         "humidity": 0.0,
         "dewpoint": 0.0,
         "airflow": 0.0,
@@ -22402,2584 +22652,2584 @@
   ],
   "edges": [
     {
-      "src": "63b53c6b",
-      "dst": "49a2c1fe",
+      "src": "487142a3",
+      "dst": "156b6efb",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "63b53c6b",
-      "dst": "4b07c1c8",
+      "src": "487142a3",
+      "dst": "50b1c799",
       "src_iface": 1,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "49a2c1fe",
-      "dst": "4b07c1c8",
+      "src": "156b6efb",
+      "dst": "50b1c799",
       "src_iface": 1,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "63b53c6b",
-      "dst": "73418499",
+      "src": "487142a3",
+      "dst": "f7044c89",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "49a2c1fe",
-      "dst": "73418499",
+      "src": "156b6efb",
+      "dst": "f7044c89",
       "src_iface": 2,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "4b07c1c8",
-      "dst": "73418499",
+      "src": "50b1c799",
+      "dst": "f7044c89",
       "src_iface": 2,
       "dst_iface": 2,
       "layer": "production"
     },
     {
-      "src": "4b07c1c8",
-      "dst": "13a329eb",
+      "src": "50b1c799",
+      "dst": "a774b2ee",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "73418499",
-      "dst": "13a329eb",
+      "src": "f7044c89",
+      "dst": "a774b2ee",
       "src_iface": 3,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "bd2fd546",
+      "src": "a774b2ee",
+      "dst": "0e9afe9d",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "5c5976a1",
+      "src": "a774b2ee",
+      "dst": "0f5b3625",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "c86aace8",
+      "src": "a774b2ee",
+      "dst": "9c1d3b67",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "dccb5477",
+      "src": "a774b2ee",
+      "dst": "637d9b67",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "ada42b2b",
+      "src": "a774b2ee",
+      "dst": "bdf04972",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "7f3c86c2",
+      "src": "a774b2ee",
+      "dst": "db1f3848",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "cd45bc5c",
+      "src": "a774b2ee",
+      "dst": "c3abc7ba",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "8cb2e87a",
+      "src": "a774b2ee",
+      "dst": "ee61b3e8",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "13a329eb",
-      "dst": "0e73e7a1",
+      "src": "a774b2ee",
+      "dst": "6af81f55",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "4b07c1c8",
-      "dst": "ce83d00b",
+      "src": "50b1c799",
+      "dst": "c4338a91",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "73418499",
-      "dst": "ce83d00b",
+      "src": "f7044c89",
+      "dst": "c4338a91",
       "src_iface": 4,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "6572bef8",
+      "src": "c4338a91",
+      "dst": "398469ab",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "c35def6d",
+      "src": "c4338a91",
+      "dst": "fed91823",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "446d8b40",
+      "src": "c4338a91",
+      "dst": "fed7d74b",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "69853c4d",
+      "src": "c4338a91",
+      "dst": "21a8a320",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "32aa5e29",
+      "src": "c4338a91",
+      "dst": "3136e10e",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "90cd4f96",
+      "src": "c4338a91",
+      "dst": "56874ff6",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "563bdd20",
+      "src": "c4338a91",
+      "dst": "34f7fade",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "e8dc81db",
+      "src": "c4338a91",
+      "dst": "bebed3bd",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "ce83d00b",
-      "dst": "60f50a69",
+      "src": "c4338a91",
+      "dst": "fad54790",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "4b07c1c8",
-      "dst": "fd57c9a8",
+      "src": "50b1c799",
+      "dst": "bdbdb2d7",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "73418499",
-      "dst": "fd57c9a8",
+      "src": "f7044c89",
+      "dst": "bdbdb2d7",
       "src_iface": 5,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "f2c66f5f",
+      "src": "bdbdb2d7",
+      "dst": "da9e87fa",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "d5492009",
+      "src": "bdbdb2d7",
+      "dst": "748f308c",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "77d7d616",
+      "src": "bdbdb2d7",
+      "dst": "1a43563b",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "9007135c",
+      "src": "bdbdb2d7",
+      "dst": "bfd2e730",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "03fbb9c6",
+      "src": "bdbdb2d7",
+      "dst": "96b9c9e9",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "042212df",
+      "src": "bdbdb2d7",
+      "dst": "dbe5a070",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "91c59970",
+      "src": "bdbdb2d7",
+      "dst": "da835f86",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "727ef240",
+      "src": "bdbdb2d7",
+      "dst": "cbfc8656",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "6eead3ba",
+      "src": "bdbdb2d7",
+      "dst": "13b854a1",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "4b07c1c8",
-      "dst": "0e9517b6",
+      "src": "50b1c799",
+      "dst": "3c209fa6",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "73418499",
-      "dst": "0e9517b6",
+      "src": "f7044c89",
+      "dst": "3c209fa6",
       "src_iface": 6,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "434dcee1",
+      "src": "3c209fa6",
+      "dst": "901c2d18",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "be4e9daa",
+      "src": "3c209fa6",
+      "dst": "4f29240a",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "f0030a56",
+      "src": "3c209fa6",
+      "dst": "30721896",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "e3f53ed1",
+      "src": "3c209fa6",
+      "dst": "84bff3cf",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "811d36f0",
+      "src": "3c209fa6",
+      "dst": "1aa13f50",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "233400fa",
+      "src": "3c209fa6",
+      "dst": "fcc01f2a",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "5192ded9",
+      "src": "3c209fa6",
+      "dst": "bfcd514c",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "140bda30",
+      "src": "3c209fa6",
+      "dst": "69151c89",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "0e9517b6",
-      "dst": "f789403d",
+      "src": "3c209fa6",
+      "dst": "59aa0ac3",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "4b07c1c8",
-      "dst": "d53b713a",
+      "src": "50b1c799",
+      "dst": "3fa80ecb",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "73418499",
-      "dst": "d53b713a",
+      "src": "f7044c89",
+      "dst": "3fa80ecb",
       "src_iface": 7,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "de88ba0c",
+      "src": "3fa80ecb",
+      "dst": "cf6e2c07",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "255837c6",
+      "src": "3fa80ecb",
+      "dst": "01d9ddc7",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "68a11e27",
+      "src": "3fa80ecb",
+      "dst": "de2c1c51",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "7c4cfec2",
+      "src": "3fa80ecb",
+      "dst": "a4af342a",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "018ce1c0",
+      "src": "3fa80ecb",
+      "dst": "eaa69fed",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "25920185",
+      "src": "3fa80ecb",
+      "dst": "f471eaeb",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "0ad43ea4",
+      "src": "3fa80ecb",
+      "dst": "6afac572",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "51918581",
+      "src": "3fa80ecb",
+      "dst": "c95efa2c",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "d53b713a",
-      "dst": "57477e32",
+      "src": "3fa80ecb",
+      "dst": "5f390a22",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "63b53c6b",
-      "dst": "1478a6ee",
+      "src": "487142a3",
+      "dst": "220f869b",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "49a2c1fe",
-      "dst": "1478a6ee",
+      "src": "156b6efb",
+      "dst": "220f869b",
       "src_iface": 3,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "63b53c6b",
-      "dst": "6c4114ff",
+      "src": "487142a3",
+      "dst": "f4bba3f9",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "49a2c1fe",
-      "dst": "6c4114ff",
+      "src": "156b6efb",
+      "dst": "f4bba3f9",
       "src_iface": 4,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "1478a6ee",
-      "dst": "6c4114ff",
+      "src": "220f869b",
+      "dst": "f4bba3f9",
       "src_iface": 2,
       "dst_iface": 2,
       "layer": "production"
     },
     {
-      "src": "1478a6ee",
-      "dst": "29cddcef",
+      "src": "220f869b",
+      "dst": "7bde3d07",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "6c4114ff",
-      "dst": "29cddcef",
+      "src": "f4bba3f9",
+      "dst": "7bde3d07",
       "src_iface": 3,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "32e4f4d8",
+      "src": "7bde3d07",
+      "dst": "09c7a470",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "295362fe",
+      "src": "7bde3d07",
+      "dst": "d7a13c4a",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "4a53f923",
+      "src": "7bde3d07",
+      "dst": "92ff58b1",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "acd12da0",
+      "src": "7bde3d07",
+      "dst": "8500c674",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "3f3db9a0",
+      "src": "7bde3d07",
+      "dst": "bebd869a",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "9fc2cb25",
+      "src": "7bde3d07",
+      "dst": "f63072bc",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "790384a7",
+      "src": "7bde3d07",
+      "dst": "7294a37a",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "340c39ae",
+      "src": "7bde3d07",
+      "dst": "0f1c1e31",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "29cddcef",
-      "dst": "999b7835",
+      "src": "7bde3d07",
+      "dst": "579c2794",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "1478a6ee",
-      "dst": "26aa9d1e",
+      "src": "220f869b",
+      "dst": "924aa5d7",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "6c4114ff",
-      "dst": "26aa9d1e",
+      "src": "f4bba3f9",
+      "dst": "924aa5d7",
       "src_iface": 4,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "05f69693",
+      "src": "924aa5d7",
+      "dst": "b91ee08c",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "77b76305",
+      "src": "924aa5d7",
+      "dst": "7782f68c",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "843a0ae3",
+      "src": "924aa5d7",
+      "dst": "97d0a726",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "b3b3e00f",
+      "src": "924aa5d7",
+      "dst": "8a52a397",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "dbcd32b0",
+      "src": "924aa5d7",
+      "dst": "9448314d",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "4e8c9165",
+      "src": "924aa5d7",
+      "dst": "ff0a8aa5",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "85c909eb",
+      "src": "924aa5d7",
+      "dst": "6fbc6b6e",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "16194faa",
+      "src": "924aa5d7",
+      "dst": "5c55a385",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "1a383cce",
+      "src": "924aa5d7",
+      "dst": "a8eb6230",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "1478a6ee",
-      "dst": "012e5c66",
+      "src": "220f869b",
+      "dst": "07e121f6",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "6c4114ff",
-      "dst": "012e5c66",
+      "src": "f4bba3f9",
+      "dst": "07e121f6",
       "src_iface": 5,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "ff868644",
+      "src": "07e121f6",
+      "dst": "a5ec67cf",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "ec154771",
+      "src": "07e121f6",
+      "dst": "86699481",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "459b7614",
+      "src": "07e121f6",
+      "dst": "e251fe04",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "8339862d",
+      "src": "07e121f6",
+      "dst": "f250e991",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "2724233a",
+      "src": "07e121f6",
+      "dst": "bc62ffe1",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "c62c5c56",
+      "src": "07e121f6",
+      "dst": "d976f9b5",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "a1f944d2",
+      "src": "07e121f6",
+      "dst": "273d23e8",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "8c24fe97",
+      "src": "07e121f6",
+      "dst": "3d49dcce",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "012e5c66",
-      "dst": "cd4e721b",
+      "src": "07e121f6",
+      "dst": "2f0a7dbe",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "1478a6ee",
-      "dst": "89acf531",
+      "src": "220f869b",
+      "dst": "e4d076a6",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "6c4114ff",
-      "dst": "89acf531",
+      "src": "f4bba3f9",
+      "dst": "e4d076a6",
       "src_iface": 6,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "79361eca",
+      "src": "e4d076a6",
+      "dst": "8c9b1f0e",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "4e15ac90",
+      "src": "e4d076a6",
+      "dst": "6264cc1a",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "3868c63b",
+      "src": "e4d076a6",
+      "dst": "216a260d",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "97177c75",
+      "src": "e4d076a6",
+      "dst": "3a11ee0d",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "658d96e2",
+      "src": "e4d076a6",
+      "dst": "0dc91384",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "fbae5ed5",
+      "src": "e4d076a6",
+      "dst": "2acd6329",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "413b3c1b",
+      "src": "e4d076a6",
+      "dst": "ed838245",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "a4b38fa8",
+      "src": "e4d076a6",
+      "dst": "521b9a34",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "89acf531",
-      "dst": "a7b328d0",
+      "src": "e4d076a6",
+      "dst": "0accee82",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "1478a6ee",
-      "dst": "c4cec96a",
+      "src": "220f869b",
+      "dst": "23b258e5",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "6c4114ff",
-      "dst": "c4cec96a",
+      "src": "f4bba3f9",
+      "dst": "23b258e5",
       "src_iface": 7,
       "dst_iface": 1,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "caae5b68",
+      "src": "23b258e5",
+      "dst": "8983f58c",
       "src_iface": 2,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "f66f33ed",
+      "src": "23b258e5",
+      "dst": "8077ceba",
       "src_iface": 3,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "b14cb6e7",
+      "src": "23b258e5",
+      "dst": "5d3a3add",
       "src_iface": 4,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "fc2ea910",
+      "src": "23b258e5",
+      "dst": "8c6e679f",
       "src_iface": 5,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "9dbaf3af",
+      "src": "23b258e5",
+      "dst": "15091f73",
       "src_iface": 6,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "59762acc",
+      "src": "23b258e5",
+      "dst": "b8bca738",
       "src_iface": 7,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "c83f12cf",
+      "src": "23b258e5",
+      "dst": "2659fcbd",
       "src_iface": 8,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "1c36a1de",
+      "src": "23b258e5",
+      "dst": "10fd1336",
       "src_iface": 9,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "c4cec96a",
-      "dst": "72c3d656",
+      "src": "23b258e5",
+      "dst": "572e29a2",
       "src_iface": 10,
       "dst_iface": 0,
       "layer": "production"
     },
     {
-      "src": "54b7a42a",
-      "dst": "dc3214f3",
+      "src": "5b7936a3",
+      "dst": "75390e15",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "management"
     },
     {
-      "src": "1e5b1422",
-      "dst": "dc3214f3",
+      "src": "ea9d7e84",
+      "dst": "75390e15",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "management"
     },
     {
-      "src": "c0607494",
-      "dst": "dc3214f3",
+      "src": "0acaf5af",
+      "dst": "75390e15",
       "src_iface": 0,
       "dst_iface": 2,
       "layer": "management"
     },
     {
-      "src": "63b53c6b",
-      "dst": "1e5b1422",
+      "src": "487142a3",
+      "dst": "ea9d7e84",
       "src_iface": 5,
       "dst_iface": 1,
       "layer": "management"
     },
     {
-      "src": "49a2c1fe",
-      "dst": "1e5b1422",
+      "src": "156b6efb",
+      "dst": "ea9d7e84",
       "src_iface": 5,
       "dst_iface": 2,
       "layer": "management"
     },
     {
-      "src": "4b07c1c8",
-      "dst": "54b7a42a",
+      "src": "50b1c799",
+      "dst": "5b7936a3",
       "src_iface": 8,
       "dst_iface": 1,
       "layer": "management"
     },
     {
-      "src": "73418499",
-      "dst": "1e5b1422",
+      "src": "f7044c89",
+      "dst": "ea9d7e84",
       "src_iface": 8,
       "dst_iface": 3,
       "layer": "management"
     },
     {
-      "src": "13a329eb",
-      "dst": "54b7a42a",
+      "src": "a774b2ee",
+      "dst": "5b7936a3",
       "src_iface": 11,
       "dst_iface": 2,
       "layer": "management"
     },
     {
-      "src": "bd2fd546",
-      "dst": "54b7a42a",
+      "src": "0e9afe9d",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 3,
       "layer": "management"
     },
     {
-      "src": "5c5976a1",
-      "dst": "54b7a42a",
+      "src": "0f5b3625",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 4,
       "layer": "management"
     },
     {
-      "src": "c86aace8",
-      "dst": "54b7a42a",
+      "src": "9c1d3b67",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 5,
       "layer": "management"
     },
     {
-      "src": "dccb5477",
-      "dst": "54b7a42a",
+      "src": "637d9b67",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 6,
       "layer": "management"
     },
     {
-      "src": "ada42b2b",
-      "dst": "54b7a42a",
+      "src": "bdf04972",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 7,
       "layer": "management"
     },
     {
-      "src": "7f3c86c2",
-      "dst": "54b7a42a",
+      "src": "db1f3848",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 8,
       "layer": "management"
     },
     {
-      "src": "cd45bc5c",
-      "dst": "1e5b1422",
+      "src": "c3abc7ba",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 4,
       "layer": "management"
     },
     {
-      "src": "8cb2e87a",
-      "dst": "1e5b1422",
+      "src": "ee61b3e8",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 5,
       "layer": "management"
     },
     {
-      "src": "0e73e7a1",
-      "dst": "1e5b1422",
+      "src": "6af81f55",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 6,
       "layer": "management"
     },
     {
-      "src": "ce83d00b",
-      "dst": "1e5b1422",
+      "src": "c4338a91",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 7,
       "layer": "management"
     },
     {
-      "src": "6572bef8",
-      "dst": "54b7a42a",
+      "src": "398469ab",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 9,
       "layer": "management"
     },
     {
-      "src": "c35def6d",
-      "dst": "54b7a42a",
+      "src": "fed91823",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 10,
       "layer": "management"
     },
     {
-      "src": "446d8b40",
-      "dst": "54b7a42a",
+      "src": "fed7d74b",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 11,
       "layer": "management"
     },
     {
-      "src": "69853c4d",
-      "dst": "54b7a42a",
+      "src": "21a8a320",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 12,
       "layer": "management"
     },
     {
-      "src": "32aa5e29",
-      "dst": "1e5b1422",
+      "src": "3136e10e",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 8,
       "layer": "management"
     },
     {
-      "src": "90cd4f96",
-      "dst": "1e5b1422",
+      "src": "56874ff6",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 9,
       "layer": "management"
     },
     {
-      "src": "563bdd20",
-      "dst": "1e5b1422",
+      "src": "34f7fade",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 10,
       "layer": "management"
     },
     {
-      "src": "e8dc81db",
-      "dst": "1e5b1422",
+      "src": "bebed3bd",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 11,
       "layer": "management"
     },
     {
-      "src": "60f50a69",
-      "dst": "1e5b1422",
+      "src": "fad54790",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 12,
       "layer": "management"
     },
     {
-      "src": "fd57c9a8",
-      "dst": "1e5b1422",
+      "src": "bdbdb2d7",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 13,
       "layer": "management"
     },
     {
-      "src": "f2c66f5f",
-      "dst": "54b7a42a",
+      "src": "da9e87fa",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 13,
       "layer": "management"
     },
     {
-      "src": "d5492009",
-      "dst": "54b7a42a",
+      "src": "748f308c",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 14,
       "layer": "management"
     },
     {
-      "src": "77d7d616",
-      "dst": "54b7a42a",
+      "src": "1a43563b",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 15,
       "layer": "management"
     },
     {
-      "src": "9007135c",
-      "dst": "1e5b1422",
+      "src": "bfd2e730",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 14,
       "layer": "management"
     },
     {
-      "src": "03fbb9c6",
-      "dst": "1e5b1422",
+      "src": "96b9c9e9",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 15,
       "layer": "management"
     },
     {
-      "src": "042212df",
-      "dst": "1e5b1422",
+      "src": "dbe5a070",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 16,
       "layer": "management"
     },
     {
-      "src": "91c59970",
-      "dst": "1e5b1422",
+      "src": "da835f86",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 17,
       "layer": "management"
     },
     {
-      "src": "727ef240",
-      "dst": "1e5b1422",
+      "src": "cbfc8656",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 18,
       "layer": "management"
     },
     {
-      "src": "6eead3ba",
-      "dst": "1e5b1422",
+      "src": "13b854a1",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 19,
       "layer": "management"
     },
     {
-      "src": "0e9517b6",
-      "dst": "1e5b1422",
+      "src": "3c209fa6",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 20,
       "layer": "management"
     },
     {
-      "src": "434dcee1",
-      "dst": "54b7a42a",
+      "src": "901c2d18",
+      "dst": "5b7936a3",
       "src_iface": 1,
       "dst_iface": 16,
       "layer": "management"
     },
     {
-      "src": "be4e9daa",
-      "dst": "1e5b1422",
+      "src": "4f29240a",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 21,
       "layer": "management"
     },
     {
-      "src": "f0030a56",
-      "dst": "1e5b1422",
+      "src": "30721896",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 22,
       "layer": "management"
     },
     {
-      "src": "e3f53ed1",
-      "dst": "1e5b1422",
+      "src": "84bff3cf",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 23,
       "layer": "management"
     },
     {
-      "src": "811d36f0",
-      "dst": "1e5b1422",
+      "src": "1aa13f50",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 24,
       "layer": "management"
     },
     {
-      "src": "233400fa",
-      "dst": "1e5b1422",
+      "src": "fcc01f2a",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 25,
       "layer": "management"
     },
     {
-      "src": "5192ded9",
-      "dst": "1e5b1422",
+      "src": "bfcd514c",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 26,
       "layer": "management"
     },
     {
-      "src": "140bda30",
-      "dst": "1e5b1422",
+      "src": "69151c89",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 27,
       "layer": "management"
     },
     {
-      "src": "f789403d",
-      "dst": "1e5b1422",
+      "src": "59aa0ac3",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 28,
       "layer": "management"
     },
     {
-      "src": "d53b713a",
-      "dst": "1e5b1422",
+      "src": "3fa80ecb",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 29,
       "layer": "management"
     },
     {
-      "src": "de88ba0c",
-      "dst": "1e5b1422",
+      "src": "cf6e2c07",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 30,
       "layer": "management"
     },
     {
-      "src": "255837c6",
-      "dst": "1e5b1422",
+      "src": "01d9ddc7",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 31,
       "layer": "management"
     },
     {
-      "src": "68a11e27",
-      "dst": "1e5b1422",
+      "src": "de2c1c51",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 32,
       "layer": "management"
     },
     {
-      "src": "7c4cfec2",
-      "dst": "1e5b1422",
+      "src": "a4af342a",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 33,
       "layer": "management"
     },
     {
-      "src": "018ce1c0",
-      "dst": "1e5b1422",
+      "src": "eaa69fed",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 34,
       "layer": "management"
     },
     {
-      "src": "25920185",
-      "dst": "1e5b1422",
+      "src": "f471eaeb",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 35,
       "layer": "management"
     },
     {
-      "src": "0ad43ea4",
-      "dst": "1e5b1422",
+      "src": "6afac572",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 36,
       "layer": "management"
     },
     {
-      "src": "51918581",
-      "dst": "1e5b1422",
+      "src": "c95efa2c",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 37,
       "layer": "management"
     },
     {
-      "src": "57477e32",
-      "dst": "1e5b1422",
+      "src": "5f390a22",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 38,
       "layer": "management"
     },
     {
-      "src": "1478a6ee",
-      "dst": "1e5b1422",
+      "src": "220f869b",
+      "dst": "ea9d7e84",
       "src_iface": 8,
       "dst_iface": 39,
       "layer": "management"
     },
     {
-      "src": "6c4114ff",
-      "dst": "1e5b1422",
+      "src": "f4bba3f9",
+      "dst": "ea9d7e84",
       "src_iface": 8,
       "dst_iface": 40,
       "layer": "management"
     },
     {
-      "src": "29cddcef",
-      "dst": "1e5b1422",
+      "src": "7bde3d07",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 41,
       "layer": "management"
     },
     {
-      "src": "32e4f4d8",
-      "dst": "1e5b1422",
+      "src": "09c7a470",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 42,
       "layer": "management"
     },
     {
-      "src": "295362fe",
-      "dst": "1e5b1422",
+      "src": "d7a13c4a",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 43,
       "layer": "management"
     },
     {
-      "src": "4a53f923",
-      "dst": "1e5b1422",
+      "src": "92ff58b1",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 44,
       "layer": "management"
     },
     {
-      "src": "acd12da0",
-      "dst": "1e5b1422",
+      "src": "8500c674",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 45,
       "layer": "management"
     },
     {
-      "src": "3f3db9a0",
-      "dst": "1e5b1422",
+      "src": "bebd869a",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 46,
       "layer": "management"
     },
     {
-      "src": "9fc2cb25",
-      "dst": "1e5b1422",
+      "src": "f63072bc",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 47,
       "layer": "management"
     },
     {
-      "src": "790384a7",
-      "dst": "1e5b1422",
+      "src": "7294a37a",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 48,
       "layer": "management"
     },
     {
-      "src": "340c39ae",
-      "dst": "1e5b1422",
+      "src": "0f1c1e31",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "999b7835",
-      "dst": "1e5b1422",
+      "src": "579c2794",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "26aa9d1e",
-      "dst": "1e5b1422",
+      "src": "924aa5d7",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "05f69693",
-      "dst": "1e5b1422",
+      "src": "b91ee08c",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "77b76305",
-      "dst": "1e5b1422",
+      "src": "7782f68c",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "843a0ae3",
-      "dst": "1e5b1422",
+      "src": "97d0a726",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "b3b3e00f",
-      "dst": "1e5b1422",
+      "src": "8a52a397",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "dbcd32b0",
-      "dst": "1e5b1422",
+      "src": "9448314d",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "4e8c9165",
-      "dst": "1e5b1422",
+      "src": "ff0a8aa5",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "85c909eb",
-      "dst": "1e5b1422",
+      "src": "6fbc6b6e",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "16194faa",
-      "dst": "1e5b1422",
+      "src": "5c55a385",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "1a383cce",
-      "dst": "c0607494",
+      "src": "a8eb6230",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 1,
       "layer": "management"
     },
     {
-      "src": "012e5c66",
-      "dst": "1e5b1422",
+      "src": "07e121f6",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "ff868644",
-      "dst": "1e5b1422",
+      "src": "a5ec67cf",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "ec154771",
-      "dst": "1e5b1422",
+      "src": "86699481",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "459b7614",
-      "dst": "1e5b1422",
+      "src": "e251fe04",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "8339862d",
-      "dst": "1e5b1422",
+      "src": "f250e991",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "2724233a",
-      "dst": "1e5b1422",
+      "src": "bc62ffe1",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "c62c5c56",
-      "dst": "1e5b1422",
+      "src": "d976f9b5",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "a1f944d2",
-      "dst": "c0607494",
+      "src": "273d23e8",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 2,
       "layer": "management"
     },
     {
-      "src": "8c24fe97",
-      "dst": "c0607494",
+      "src": "3d49dcce",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 3,
       "layer": "management"
     },
     {
-      "src": "cd4e721b",
-      "dst": "c0607494",
+      "src": "2f0a7dbe",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 4,
       "layer": "management"
     },
     {
-      "src": "89acf531",
-      "dst": "1e5b1422",
+      "src": "e4d076a6",
+      "dst": "ea9d7e84",
       "src_iface": 11,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "79361eca",
-      "dst": "1e5b1422",
+      "src": "8c9b1f0e",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "4e15ac90",
-      "dst": "1e5b1422",
+      "src": "6264cc1a",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "3868c63b",
-      "dst": "1e5b1422",
+      "src": "216a260d",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "97177c75",
-      "dst": "1e5b1422",
+      "src": "3a11ee0d",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "658d96e2",
-      "dst": "1e5b1422",
+      "src": "0dc91384",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "fbae5ed5",
-      "dst": "c0607494",
+      "src": "2acd6329",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 5,
       "layer": "management"
     },
     {
-      "src": "413b3c1b",
-      "dst": "c0607494",
+      "src": "ed838245",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 6,
       "layer": "management"
     },
     {
-      "src": "a4b38fa8",
-      "dst": "c0607494",
+      "src": "521b9a34",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 7,
       "layer": "management"
     },
     {
-      "src": "a7b328d0",
-      "dst": "c0607494",
+      "src": "0accee82",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 8,
       "layer": "management"
     },
     {
-      "src": "c4cec96a",
-      "dst": "c0607494",
+      "src": "23b258e5",
+      "dst": "0acaf5af",
       "src_iface": 11,
       "dst_iface": 9,
       "layer": "management"
     },
     {
-      "src": "caae5b68",
-      "dst": "1e5b1422",
+      "src": "8983f58c",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "f66f33ed",
-      "dst": "1e5b1422",
+      "src": "8077ceba",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "b14cb6e7",
-      "dst": "1e5b1422",
+      "src": "5d3a3add",
+      "dst": "ea9d7e84",
       "src_iface": 1,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "fc2ea910",
-      "dst": "c0607494",
+      "src": "8c6e679f",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 10,
       "layer": "management"
     },
     {
-      "src": "9dbaf3af",
-      "dst": "c0607494",
+      "src": "15091f73",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 11,
       "layer": "management"
     },
     {
-      "src": "59762acc",
-      "dst": "c0607494",
+      "src": "b8bca738",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 12,
       "layer": "management"
     },
     {
-      "src": "c83f12cf",
-      "dst": "c0607494",
+      "src": "2659fcbd",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 13,
       "layer": "management"
     },
     {
-      "src": "1c36a1de",
-      "dst": "c0607494",
+      "src": "10fd1336",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 14,
       "layer": "management"
     },
     {
-      "src": "72c3d656",
-      "dst": "c0607494",
+      "src": "572e29a2",
+      "dst": "0acaf5af",
       "src_iface": 1,
       "dst_iface": 15,
       "layer": "management"
     },
     {
-      "src": "458723e9",
-      "dst": "54b7a42a",
+      "src": "1c9d8eab",
+      "dst": "5b7936a3",
       "src_iface": 0,
       "dst_iface": 17,
       "layer": "management"
     },
     {
-      "src": "b94b9f46",
-      "dst": "c0607494",
+      "src": "59bfba64",
+      "dst": "0acaf5af",
       "src_iface": 0,
       "dst_iface": 16,
       "layer": "management"
     },
     {
-      "src": "96efa0da",
-      "dst": "7477dee7",
+      "src": "759eb4a3",
+      "dst": "aad7eace",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "7477dee7",
-      "dst": "282d922e",
+      "src": "aad7eace",
+      "dst": "db7215e7",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "282d922e",
-      "dst": "bd2fd546",
+      "src": "db7215e7",
+      "dst": "0e9afe9d",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "282d922e",
-      "dst": "5c5976a1",
+      "src": "db7215e7",
+      "dst": "0f5b3625",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "282d922e",
-      "dst": "c86aace8",
+      "src": "db7215e7",
+      "dst": "9c1d3b67",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "282d922e",
-      "dst": "6572bef8",
+      "src": "db7215e7",
+      "dst": "398469ab",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "282d922e",
-      "dst": "c35def6d",
+      "src": "db7215e7",
+      "dst": "fed91823",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "282d922e",
-      "dst": "54b7a42a",
+      "src": "db7215e7",
+      "dst": "5b7936a3",
       "src_iface": 0,
       "dst_iface": 18,
       "layer": "power"
     },
     {
-      "src": "96efa0da",
-      "dst": "929f4fa0",
+      "src": "759eb4a3",
+      "dst": "422b3d6d",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "929f4fa0",
-      "dst": "70072ea3",
+      "src": "422b3d6d",
+      "dst": "ef67a32a",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "4b07c1c8",
+      "src": "ef67a32a",
+      "dst": "50b1c799",
       "src_iface": 0,
       "dst_iface": 9,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "13a329eb",
+      "src": "ef67a32a",
+      "dst": "a774b2ee",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "dccb5477",
+      "src": "ef67a32a",
+      "dst": "637d9b67",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "ada42b2b",
+      "src": "ef67a32a",
+      "dst": "bdf04972",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "7f3c86c2",
+      "src": "ef67a32a",
+      "dst": "db1f3848",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "cd45bc5c",
+      "src": "ef67a32a",
+      "dst": "c3abc7ba",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "8cb2e87a",
+      "src": "ef67a32a",
+      "dst": "ee61b3e8",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "ce83d00b",
+      "src": "ef67a32a",
+      "dst": "c4338a91",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "446d8b40",
+      "src": "ef67a32a",
+      "dst": "fed7d74b",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "69853c4d",
+      "src": "ef67a32a",
+      "dst": "21a8a320",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "32aa5e29",
+      "src": "ef67a32a",
+      "dst": "3136e10e",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "90cd4f96",
+      "src": "ef67a32a",
+      "dst": "56874ff6",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "f2c66f5f",
+      "src": "ef67a32a",
+      "dst": "da9e87fa",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "d5492009",
+      "src": "ef67a32a",
+      "dst": "748f308c",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "77d7d616",
+      "src": "ef67a32a",
+      "dst": "1a43563b",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "9007135c",
+      "src": "ef67a32a",
+      "dst": "bfd2e730",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "434dcee1",
+      "src": "ef67a32a",
+      "dst": "901c2d18",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "be4e9daa",
+      "src": "ef67a32a",
+      "dst": "4f29240a",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "de88ba0c",
+      "src": "ef67a32a",
+      "dst": "cf6e2c07",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "70072ea3",
-      "dst": "458723e9",
+      "src": "ef67a32a",
+      "dst": "1c9d8eab",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "96efa0da",
-      "dst": "49b8ed15",
+      "src": "759eb4a3",
+      "dst": "701ad50d",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "49b8ed15",
-      "dst": "0855fa29",
+      "src": "701ad50d",
+      "dst": "85a4b788",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "63b53c6b",
+      "src": "85a4b788",
+      "dst": "487142a3",
       "src_iface": 0,
       "dst_iface": 6,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "73418499",
+      "src": "85a4b788",
+      "dst": "f7044c89",
       "src_iface": 0,
       "dst_iface": 9,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "0e73e7a1",
+      "src": "85a4b788",
+      "dst": "6af81f55",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "563bdd20",
+      "src": "85a4b788",
+      "dst": "34f7fade",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "e8dc81db",
+      "src": "85a4b788",
+      "dst": "bebed3bd",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "60f50a69",
+      "src": "85a4b788",
+      "dst": "fad54790",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "fd57c9a8",
+      "src": "85a4b788",
+      "dst": "bdbdb2d7",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "03fbb9c6",
+      "src": "85a4b788",
+      "dst": "96b9c9e9",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "042212df",
+      "src": "85a4b788",
+      "dst": "dbe5a070",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "91c59970",
+      "src": "85a4b788",
+      "dst": "da835f86",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "727ef240",
+      "src": "85a4b788",
+      "dst": "cbfc8656",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "0e9517b6",
+      "src": "85a4b788",
+      "dst": "3c209fa6",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "f0030a56",
+      "src": "85a4b788",
+      "dst": "30721896",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "e3f53ed1",
+      "src": "85a4b788",
+      "dst": "84bff3cf",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "811d36f0",
+      "src": "85a4b788",
+      "dst": "1aa13f50",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "233400fa",
+      "src": "85a4b788",
+      "dst": "fcc01f2a",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "d53b713a",
+      "src": "85a4b788",
+      "dst": "3fa80ecb",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "255837c6",
+      "src": "85a4b788",
+      "dst": "01d9ddc7",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "68a11e27",
+      "src": "85a4b788",
+      "dst": "de2c1c51",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "7c4cfec2",
+      "src": "85a4b788",
+      "dst": "a4af342a",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "018ce1c0",
+      "src": "85a4b788",
+      "dst": "eaa69fed",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "32e4f4d8",
+      "src": "85a4b788",
+      "dst": "09c7a470",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "295362fe",
+      "src": "85a4b788",
+      "dst": "d7a13c4a",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "4a53f923",
+      "src": "85a4b788",
+      "dst": "92ff58b1",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "acd12da0",
+      "src": "85a4b788",
+      "dst": "8500c674",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "05f69693",
+      "src": "85a4b788",
+      "dst": "b91ee08c",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "77b76305",
+      "src": "85a4b788",
+      "dst": "7782f68c",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "0855fa29",
-      "dst": "ff868644",
+      "src": "85a4b788",
+      "dst": "a5ec67cf",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "96efa0da",
-      "dst": "e4bd71e0",
+      "src": "759eb4a3",
+      "dst": "9622af9d",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "e4bd71e0",
-      "dst": "e828362c",
+      "src": "9622af9d",
+      "dst": "4b8bb327",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "49a2c1fe",
+      "src": "4b8bb327",
+      "dst": "156b6efb",
       "src_iface": 0,
       "dst_iface": 6,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "6eead3ba",
+      "src": "4b8bb327",
+      "dst": "13b854a1",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "5192ded9",
+      "src": "4b8bb327",
+      "dst": "bfcd514c",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "140bda30",
+      "src": "4b8bb327",
+      "dst": "69151c89",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "f789403d",
+      "src": "4b8bb327",
+      "dst": "59aa0ac3",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "25920185",
+      "src": "4b8bb327",
+      "dst": "f471eaeb",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "0ad43ea4",
+      "src": "4b8bb327",
+      "dst": "6afac572",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "51918581",
+      "src": "4b8bb327",
+      "dst": "c95efa2c",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "57477e32",
+      "src": "4b8bb327",
+      "dst": "5f390a22",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "1478a6ee",
+      "src": "4b8bb327",
+      "dst": "220f869b",
       "src_iface": 0,
       "dst_iface": 9,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "29cddcef",
+      "src": "4b8bb327",
+      "dst": "7bde3d07",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "3f3db9a0",
+      "src": "4b8bb327",
+      "dst": "bebd869a",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "9fc2cb25",
+      "src": "4b8bb327",
+      "dst": "f63072bc",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "790384a7",
+      "src": "4b8bb327",
+      "dst": "7294a37a",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "340c39ae",
+      "src": "4b8bb327",
+      "dst": "0f1c1e31",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "26aa9d1e",
+      "src": "4b8bb327",
+      "dst": "924aa5d7",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "843a0ae3",
+      "src": "4b8bb327",
+      "dst": "97d0a726",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "b3b3e00f",
+      "src": "4b8bb327",
+      "dst": "8a52a397",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "dbcd32b0",
+      "src": "4b8bb327",
+      "dst": "9448314d",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "4e8c9165",
+      "src": "4b8bb327",
+      "dst": "ff0a8aa5",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "85c909eb",
+      "src": "4b8bb327",
+      "dst": "6fbc6b6e",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "012e5c66",
+      "src": "4b8bb327",
+      "dst": "07e121f6",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "ec154771",
+      "src": "4b8bb327",
+      "dst": "86699481",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "459b7614",
+      "src": "4b8bb327",
+      "dst": "e251fe04",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "8339862d",
+      "src": "4b8bb327",
+      "dst": "f250e991",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "2724233a",
+      "src": "4b8bb327",
+      "dst": "bc62ffe1",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "79361eca",
+      "src": "4b8bb327",
+      "dst": "8c9b1f0e",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "4e15ac90",
+      "src": "4b8bb327",
+      "dst": "6264cc1a",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "3868c63b",
+      "src": "4b8bb327",
+      "dst": "216a260d",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "caae5b68",
+      "src": "4b8bb327",
+      "dst": "8983f58c",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "dc3214f3",
+      "src": "4b8bb327",
+      "dst": "75390e15",
       "src_iface": 0,
       "dst_iface": 3,
       "layer": "power"
     },
     {
-      "src": "e828362c",
-      "dst": "1e5b1422",
+      "src": "4b8bb327",
+      "dst": "ea9d7e84",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "power"
     },
     {
-      "src": "96efa0da",
-      "dst": "44540220",
+      "src": "759eb4a3",
+      "dst": "d1b5fae3",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "44540220",
-      "dst": "4ba7b7e4",
+      "src": "d1b5fae3",
+      "dst": "d1afa6a3",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "6c4114ff",
+      "src": "d1afa6a3",
+      "dst": "f4bba3f9",
       "src_iface": 0,
       "dst_iface": 9,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "999b7835",
+      "src": "d1afa6a3",
+      "dst": "579c2794",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "16194faa",
+      "src": "d1afa6a3",
+      "dst": "5c55a385",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "1a383cce",
+      "src": "d1afa6a3",
+      "dst": "a8eb6230",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "c62c5c56",
+      "src": "d1afa6a3",
+      "dst": "d976f9b5",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "a1f944d2",
+      "src": "d1afa6a3",
+      "dst": "273d23e8",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "8c24fe97",
+      "src": "d1afa6a3",
+      "dst": "3d49dcce",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "cd4e721b",
+      "src": "d1afa6a3",
+      "dst": "2f0a7dbe",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "89acf531",
+      "src": "d1afa6a3",
+      "dst": "e4d076a6",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "97177c75",
+      "src": "d1afa6a3",
+      "dst": "3a11ee0d",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "658d96e2",
+      "src": "d1afa6a3",
+      "dst": "0dc91384",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "fbae5ed5",
+      "src": "d1afa6a3",
+      "dst": "2acd6329",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "413b3c1b",
+      "src": "d1afa6a3",
+      "dst": "ed838245",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "c4cec96a",
+      "src": "d1afa6a3",
+      "dst": "23b258e5",
       "src_iface": 0,
       "dst_iface": 12,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "f66f33ed",
+      "src": "d1afa6a3",
+      "dst": "8077ceba",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "b14cb6e7",
+      "src": "d1afa6a3",
+      "dst": "5d3a3add",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "fc2ea910",
+      "src": "d1afa6a3",
+      "dst": "8c6e679f",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "9dbaf3af",
+      "src": "d1afa6a3",
+      "dst": "15091f73",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "59762acc",
+      "src": "d1afa6a3",
+      "dst": "b8bca738",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "b94b9f46",
+      "src": "d1afa6a3",
+      "dst": "59bfba64",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "96efa0da",
-      "dst": "bad2f5b5",
+      "src": "759eb4a3",
+      "dst": "927ca35e",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "bad2f5b5",
-      "dst": "e80c3295",
+      "src": "927ca35e",
+      "dst": "df3aca15",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "e80c3295",
-      "dst": "a4b38fa8",
+      "src": "df3aca15",
+      "dst": "521b9a34",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e80c3295",
-      "dst": "a7b328d0",
+      "src": "df3aca15",
+      "dst": "0accee82",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e80c3295",
-      "dst": "c83f12cf",
+      "src": "df3aca15",
+      "dst": "2659fcbd",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e80c3295",
-      "dst": "1c36a1de",
+      "src": "df3aca15",
+      "dst": "10fd1336",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e80c3295",
-      "dst": "72c3d656",
+      "src": "df3aca15",
+      "dst": "572e29a2",
       "src_iface": 0,
       "dst_iface": 1,
       "layer": "power"
     },
     {
-      "src": "e80c3295",
-      "dst": "c0607494",
+      "src": "df3aca15",
+      "dst": "0acaf5af",
       "src_iface": 0,
       "dst_iface": 17,
       "layer": "power"
     },
     {
-      "src": "96efa0da",
-      "dst": "1e5b1422",
+      "src": "759eb4a3",
+      "dst": "ea9d7e84",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "7477dee7",
-      "dst": "54b7a42a",
+      "src": "aad7eace",
+      "dst": "5b7936a3",
       "src_iface": 0,
       "dst_iface": 19,
       "layer": "management"
     },
     {
-      "src": "929f4fa0",
-      "dst": "54b7a42a",
+      "src": "422b3d6d",
+      "dst": "5b7936a3",
       "src_iface": 0,
       "dst_iface": 20,
       "layer": "management"
     },
     {
-      "src": "49b8ed15",
-      "dst": "1e5b1422",
+      "src": "701ad50d",
+      "dst": "ea9d7e84",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "e4bd71e0",
-      "dst": "1e5b1422",
+      "src": "9622af9d",
+      "dst": "ea9d7e84",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "44540220",
-      "dst": "c0607494",
+      "src": "d1b5fae3",
+      "dst": "0acaf5af",
       "src_iface": 0,
       "dst_iface": 18,
       "layer": "management"
     },
     {
-      "src": "bad2f5b5",
-      "dst": "c0607494",
+      "src": "927ca35e",
+      "dst": "0acaf5af",
       "src_iface": 0,
       "dst_iface": 19,
       "layer": "management"
     },
     {
-      "src": "282d922e",
-      "dst": "54b7a42a",
+      "src": "db7215e7",
+      "dst": "5b7936a3",
       "src_iface": 0,
       "dst_iface": 21,
       "layer": "management"
     },
     {
-      "src": "70072ea3",
-      "dst": "54b7a42a",
+      "src": "ef67a32a",
+      "dst": "5b7936a3",
       "src_iface": 0,
       "dst_iface": 22,
       "layer": "management"
     },
     {
-      "src": "0855fa29",
-      "dst": "1e5b1422",
+      "src": "85a4b788",
+      "dst": "ea9d7e84",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "e828362c",
-      "dst": "1e5b1422",
+      "src": "4b8bb327",
+      "dst": "ea9d7e84",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
     },
     {
-      "src": "4ba7b7e4",
-      "dst": "c0607494",
+      "src": "d1afa6a3",
+      "dst": "0acaf5af",
       "src_iface": 0,
       "dst_iface": 20,
       "layer": "management"
     },
     {
-      "src": "e80c3295",
-      "dst": "c0607494",
+      "src": "df3aca15",
+      "dst": "0acaf5af",
       "src_iface": 0,
       "dst_iface": 21,
       "layer": "management"

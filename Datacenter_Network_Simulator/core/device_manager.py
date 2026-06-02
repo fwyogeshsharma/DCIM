@@ -21,6 +21,8 @@ class DeviceType(str, Enum):
     OOB_SWITCH    = "oob_switch"   # Out-of-band management switch
     SENSOR         = "sensor"        # Environmental sensor (temp/humidity)
     ENERGY_MONITOR = "energy_monitor"  # BACnet/IP energy intelligence platform
+    GENERATOR      = "generator"     # Diesel/gas standby generator
+    RPP            = "rpp"           # Remote Power Panel -- passive breaker panel, no SNMP
 
 
 class Vendor(str, Enum):
@@ -48,6 +50,11 @@ class Vendor(str, Enum):
     SERVER_TECHNOLOGY = "Server Technology"
     # Energy monitoring
     VERDIGRIS = "Verdigris Technologies"
+    # Generator vendors
+    CUMMINS    = "Cummins"
+    CATERPILLAR = "Caterpillar"
+    KOHLER     = "Kohler Power"
+    SCHNEIDER  = "Schneider Electric"
 
 
 class InterfaceType(str, Enum):
@@ -136,6 +143,10 @@ VENDOR_SYSDESCR = {
     Vendor.RARITAN:           "Raritan PX3 Rack PDU SNMP Agent, firmware version 3.7.0",
     Vendor.SERVER_TECHNOLOGY: "Server Technology Sentry SNMP Agent, firmware version 8.2a",
     Vendor.VERDIGRIS:         "Verdigris EV2 Energy Intelligence Platform, BACnet/IP, firmware 2.4.1",
+    Vendor.CUMMINS:           "Cummins PowerCommand 3.3, SNMP Agent v2.1, Diesel Standby Generator",
+    Vendor.CATERPILLAR:       "Caterpillar EMCP 4.4B, SNMP Agent v1.4, Diesel Generator Set",
+    Vendor.KOHLER:            "Kohler Decision-Maker 3500, SNMP Agent v1.0, Standby Generator",
+    Vendor.SCHNEIDER:         "Schneider Electric Remote Power Panel -- passive distribution, no SNMP agent",
 }
 
 # Per-model sysDescr overrides — more specific than vendor defaults.
@@ -514,6 +525,12 @@ class Device:
             return {
                 Vendor.VERDIGRIS: "Verdigris EV2 BACnet/IP firmware",
             }.get(self.vendor, "Energy Monitor firmware")
+        if self.device_type == DeviceType.GENERATOR:
+            return {
+                Vendor.CUMMINS:    "Cummins PowerCommand firmware",
+                Vendor.CATERPILLAR:"Caterpillar EMCP firmware",
+                Vendor.KOHLER:     "Kohler Decision-Maker firmware",
+            }.get(self.vendor, "Generator controller firmware")
         descr = self.sys_descr
         if "NX-OS"     in descr: return "Cisco NX-OS"
         if "IOS XR"    in descr: return "Cisco IOS XR"
@@ -545,6 +562,33 @@ class Device:
         # Standard "Version X.Y.Z" format used by Cisco, Juniper, Arista, etc.
         m = re.search(r'[Vv]ersion\s+([\d][.\d\w()]+)', descr)
         return m.group(1) if m else "Unknown"
+
+    @property
+    def firmware_version(self) -> str:
+        """Firmware version string for management-card / controller devices."""
+        if self.device_type in (DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU):
+            import re
+            m = re.search(r'fw(?:.*?)\s+([\d][.\d\w]+)', self.sys_descr, re.IGNORECASE)
+            if m:
+                return m.group(1)
+            m = re.search(r'firmware\s+v?([\d][.\d\w]+)', self.sys_descr, re.IGNORECASE)
+            if m:
+                return m.group(1)
+        if self.device_type == DeviceType.SENSOR:
+            import re
+            m = re.search(r'fw\s+([\d][.\d\w]+)', self.sys_descr, re.IGNORECASE)
+            return m.group(1) if m else "Unknown"
+        if self.device_type == DeviceType.ENERGY_MONITOR:
+            import re
+            m = re.search(r'firmware\s+([\d][.\d\w]+)', self.sys_descr, re.IGNORECASE)
+            return m.group(1) if m else "Unknown"
+        if self.device_type == DeviceType.GENERATOR:
+            import re
+            m = re.search(r'[Vv](\d[\d.]+)', self.sys_descr)
+            return m.group(1) if m else "Unknown"
+        if self.device_type == DeviceType.RPP:
+            return "Passive RPP -- no firmware"
+        return "N/A"
 
     def randomize_metrics(self):
         """Refresh metrics with new random values."""

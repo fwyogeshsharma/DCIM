@@ -139,6 +139,8 @@ function defaultVendorFor(type: string): string {
     ups:           'APC by Schneider Electric',
     pdu:           'APC by Schneider Electric',
     floor_pdu:     'APC by Schneider Electric',
+    rpp:           'APC by Schneider Electric',
+    generator:     'Cummins',
     oob_switch:    'Cisco Systems',
     sensor:        'Raritan',
   }

@@ -316,6 +316,194 @@ class TopologyBuilder:
     #  Power chain                                                       #
     # ---------------------------------------------------------------- #
 
+    def add_tier3_power_chain(self, devices: list, dc_id: int = 1,
+                              generator_vendor: Vendor = Vendor.CUMMINS,
+                              ups_vendor_a: Vendor = Vendor.EATON,
+                              ups_vendor_b: Vendor = Vendor.APC,
+                              rpp_vendor: Vendor = Vendor.APC,
+                              pdu_vendor_a: Vendor = Vendor.APC,
+                              pdu_vendor_b: Vendor = Vendor.RARITAN,
+                              devices_per_rack: int = 20,
+                              racks_per_row: int = 6,
+                              base_loc: dict = None) -> dict:
+        """Tier III power: Generator → dual UPS (A+B) → dual RPPs per row
+           → dual rack PDUs per rack → dual-homed devices.
+
+        Every rack has an A-side and B-side PDU fed from independent UPS/RPP
+        chains. Every device gets two power edges (dual-PSU path).
+
+        Returns dict with keys:
+          'generator', 'ups_a', 'ups_b',
+          'rpps_a', 'rpps_b',   (list, one per row)
+          'rack_pdus_a', 'rack_pdus_b'  (list, one per rack)
+        """
+        if not devices:
+            return {}
+
+        pos_map: dict = {}
+        dev_ids = {dev.id for dev in devices}
+        for node in self.nodes:
+            if node["id"] in dev_ids:
+                pos_map[node["id"]] = (node["position"]["x"], node["position"]["y"])
+
+        xs = [p[0] for p in pos_map.values()]
+        ys = [p[1] for p in pos_map.values()]
+        x_min, x_max = min(xs), max(xs)
+        y_max = max(ys)
+        cx_all = (x_min + x_max) / 2
+
+        # Layout constants
+        gen_y   = y_max + 680
+        ups_y   = y_max + 560
+        rpp_y   = y_max + 440
+        pdu_y   = y_max + 320
+
+        n_racks = max(1, math.ceil(len(devices) / devices_per_rack))
+        n_rows  = max(1, math.ceil(n_racks / racks_per_row))
+        rack_width = (x_max - x_min + 200) / n_racks
+
+        # ── Generator (single, centred) ──────────────────────────────────────
+        generator = self.add(
+            f"GEN-DC{dc_id}", DeviceType.GENERATOR, generator_vendor,
+            1, cx_all, gen_y, mgmt_only=True,
+        )
+        for node in self.nodes:
+            if node["id"] == generator.id:
+                node["device"]["model_name"] = "Cummins C500D5"
+                if base_loc:
+                    for k, v in {**base_loc, "room": "Generator Room",
+                                 "rack_row": 1, "rack_num": 1, "rack_unit": 0}.items():
+                        node["device"][k] = v
+                break
+
+        # ── Centralized UPS — A side and B side ──────────────────────────────
+        ups_a = self.add(
+            f"UPS-DC{dc_id}-A", DeviceType.UPS, ups_vendor_a,
+            1, cx_all - 160, ups_y, mgmt_only=True,
+        )
+        ups_b = self.add(
+            f"UPS-DC{dc_id}-B", DeviceType.UPS, ups_vendor_b,
+            1, cx_all + 160, ups_y, mgmt_only=True,
+        )
+        for node in self.nodes:
+            if node["id"] == ups_a.id:
+                node["device"]["model_name"] = "Eaton 93E 40kVA"
+                if base_loc:
+                    for k, v in {**base_loc, "room": "UPS Room",
+                                 "rack_row": 1, "rack_num": 1, "rack_unit": 2}.items():
+                        node["device"][k] = v
+                break
+        for node in self.nodes:
+            if node["id"] == ups_b.id:
+                node["device"]["model_name"] = "APC Symmetra PX 100"
+                if base_loc:
+                    for k, v in {**base_loc, "room": "UPS Room",
+                                 "rack_row": 1, "rack_num": 2, "rack_unit": 2}.items():
+                        node["device"][k] = v
+                break
+
+        self.link(generator, ups_a, layer="power")
+        self.link(generator, ups_b, layer="power")
+
+        # ── RPPs — one A+B pair per row ───────────────────────────────────────
+        rpps_a: list = []
+        rpps_b: list = []
+        for row in range(n_rows):
+            row_racks = list(range(row * racks_per_row,
+                                   min((row + 1) * racks_per_row, n_racks)))
+            if not row_racks:
+                continue
+            row_cx = x_min + (row_racks[0] + len(row_racks) / 2) * rack_width - 100
+
+            rpp_a = self.add(
+                f"RPP-DC{dc_id}-A{row+1}", DeviceType.RPP, rpp_vendor,
+                1, row_cx - 80, rpp_y, mgmt_only=True,
+            )
+            rpp_b = self.add(
+                f"RPP-DC{dc_id}-B{row+1}", DeviceType.RPP, rpp_vendor,
+                1, row_cx + 80, rpp_y, mgmt_only=True,
+            )
+            for node in self.nodes:
+                if node["id"] in (rpp_a.id, rpp_b.id):
+                    node["device"]["model_name"] = "APC Galaxy RPP 80A"
+                    if base_loc:
+                        for k, v in {**base_loc, "room": "Power Room",
+                                     "rack_row": row + 2, "rack_num": 1, "rack_unit": 0}.items():
+                            node["device"][k] = v
+
+            self.link(ups_a, rpp_a, layer="power")
+            self.link(ups_b, rpp_b, layer="power")
+            rpps_a.append(rpp_a)
+            rpps_b.append(rpp_b)
+
+        # ── Rack PDUs — one A+B pair per rack ─────────────────────────────────
+        rack_pdus_a: list = []
+        rack_pdus_b: list = []
+        for r in range(n_racks):
+            rack_cx  = x_min + (r + 0.5) * rack_width - 100
+            row_idx  = r // racks_per_row
+            pwr_row  = r // racks_per_row + 1
+            pwr_rack = r % racks_per_row + 1
+
+            pdu_a = self.add(
+                f"PDU-DC{dc_id}-R{r+1}A", DeviceType.PDU, pdu_vendor_a,
+                1, rack_cx - 40, pdu_y, mgmt_only=True,
+            )
+            pdu_b = self.add(
+                f"PDU-DC{dc_id}-R{r+1}B", DeviceType.PDU, pdu_vendor_b,
+                1, rack_cx + 40, pdu_y, mgmt_only=True,
+            )
+            for node in self.nodes:
+                if node["id"] == pdu_a.id:
+                    node["device"]["model_name"] = "APC AP8681"
+                    if base_loc:
+                        for k, v in {**base_loc, "room": "Server Hall",
+                                     "rack_row": pwr_row, "rack_num": pwr_rack,
+                                     "rack_unit": 0}.items():
+                            node["device"][k] = v
+                    break
+            for node in self.nodes:
+                if node["id"] == pdu_b.id:
+                    node["device"]["model_name"] = "Raritan PX3-5190R"
+                    if base_loc:
+                        for k, v in {**base_loc, "room": "Server Hall",
+                                     "rack_row": pwr_row, "rack_num": pwr_rack,
+                                     "rack_unit": 1}.items():
+                            node["device"][k] = v
+                    break
+
+            # Connect RPP → rack PDU (row-level RPP feeds this rack)
+            rpp_a = rpps_a[min(row_idx, len(rpps_a) - 1)]
+            rpp_b = rpps_b[min(row_idx, len(rpps_b) - 1)]
+            self.link(rpp_a, pdu_a, layer="power")
+            self.link(rpp_b, pdu_b, layer="power")
+            rack_pdus_a.append(pdu_a)
+            rack_pdus_b.append(pdu_b)
+
+            # Assign rack devices to both PDUs by x-proximity (dual-homed)
+            rack_x_start = x_min + r * rack_width - 100
+            rack_x_end   = rack_x_start + rack_width
+            for device in devices:
+                dx = pos_map.get(device.id, (0, 0))[0]
+                if rack_x_start <= dx < rack_x_end:
+                    for node in self.nodes:
+                        if node["id"] == device.id:
+                            node["device"]["power_source_a"] = pdu_a.id
+                            node["device"]["power_source_b"] = pdu_b.id
+                            break
+                    self.link(pdu_a, device, layer="power")
+                    self.link(pdu_b, device, layer="power")
+
+        return {
+            "generator":   generator,
+            "ups_a":       ups_a,
+            "ups_b":       ups_b,
+            "rpps_a":      rpps_a,
+            "rpps_b":      rpps_b,
+            "rack_pdus_a": rack_pdus_a,
+            "rack_pdus_b": rack_pdus_b,
+        }
+
     def add_power_chain(self, devices: list, dc_id: int = 1,
                         ups_vendor: Vendor = Vendor.APC,
                         pdu_vendor: Vendor = Vendor.APC,
@@ -1174,43 +1362,57 @@ def build_dual_dc_enterprise():
     # Allows DC2 devices to be managed even when DC1 production fabric is down.
     t.link(mgmt1['oob_core'], mgmt2['oob_core'], layer="management")
 
-    # ── Power chains (OOB switches and sensors also run on electricity) ──
-    dc1_power = t.add_power_chain(
-        dc1_devices + [mgmt1['oob_core']] + mgmt1['oob_switches'] + mgmt1['sensors'], dc_id=1,
-        ups_vendor=Vendor.APC, pdu_vendor=Vendor.APC,
-        floor_pdu_vendor=Vendor.EATON, base_loc=_dc1_loc)
-    dc2_power = t.add_power_chain(
-        dc2_devices + [mgmt2['oob_core']] + mgmt2['oob_switches'] + mgmt2['sensors'], dc_id=2,
-        ups_vendor=Vendor.EATON, pdu_vendor=Vendor.RARITAN,
-        floor_pdu_vendor=Vendor.VERTIV, base_loc=_dc2_loc)
+    # ── Tier III Power chains ─────────────────────────────────────────────────
+    # Generator → dual UPS (A+B) → dual RPPs per row → dual rack PDUs per rack
+    # Every device is dual-homed (two power edges, A-side + B-side).
+    dc1_power = t.add_tier3_power_chain(
+        dc1_devices + [mgmt1['oob_core']] + mgmt1['oob_switches'] + mgmt1['sensors'],
+        dc_id=1,
+        generator_vendor=Vendor.CUMMINS,
+        ups_vendor_a=Vendor.EATON,    ups_vendor_b=Vendor.APC,
+        rpp_vendor=Vendor.APC,
+        pdu_vendor_a=Vendor.APC,      pdu_vendor_b=Vendor.RARITAN,
+        base_loc=_dc1_loc)
+    dc2_power = t.add_tier3_power_chain(
+        dc2_devices + [mgmt2['oob_core']] + mgmt2['oob_switches'] + mgmt2['sensors'],
+        dc_id=2,
+        generator_vendor=Vendor.CATERPILLAR,
+        ups_vendor_a=Vendor.VERTIV,   ups_vendor_b=Vendor.EATON,
+        rpp_vendor=Vendor.APC,
+        pdu_vendor_a=Vendor.APC,      pdu_vendor_b=Vendor.RARITAN,
+        base_loc=_dc2_loc)
 
-    # ── EV2 energy monitors — Floor PDU / RPP level (one CT per rack UPS feed) ──
-    # Each floor PDU has 12 breaker circuits, one feeding each rack's UPS.
-    # EV2 gives per-rack power visibility. Per-server data comes from metered
-    # outlet rack PDUs (APC AP8681) via SNMP — no rack-level EV2 needed.
-    ev2_fpdu_dc1 = t.add_ev2_monitors(
-        [dc1_power['floor_pdu']], dc_id=1,
-        circuits_per_panel=24, name_prefix="FP",
+    # ── EV2 energy monitors — one per RPP (A-side + B-side per row) ──────────
+    # CTs clamp onto RPP output breakers → per-rack power visibility per feed.
+    all_rpps_dc1 = dc1_power['rpps_a'] + dc1_power['rpps_b']
+    all_rpps_dc2 = dc2_power['rpps_a'] + dc2_power['rpps_b']
+
+    ev2_dc1 = t.add_ev2_monitors(
+        all_rpps_dc1, dc_id=1,
+        circuits_per_panel=12, name_prefix="RPP",
         mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
-    ev2_fpdu_dc2 = t.add_ev2_monitors(
-        [dc2_power['floor_pdu']], dc_id=2,
-        circuits_per_panel=24, name_prefix="FP",
+    ev2_dc2 = t.add_ev2_monitors(
+        all_rpps_dc2, dc_id=2,
+        circuits_per_panel=12, name_prefix="RPP",
         mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
 
-    all_ev2_dc1 = ev2_fpdu_dc1
-    all_ev2_dc2 = ev2_fpdu_dc2
-
-    # Wire power devices into their DC's OOB management network (with IP assignment)
-    t.wire_to_mgmt(
-        [dc1_power['floor_pdu']] + dc1_power['ups_list'] + dc1_power['rack_pdus'],
-        mgmt1['oob_switches'], mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
-    t.wire_to_mgmt(
-        [dc2_power['floor_pdu']] + dc2_power['ups_list'] + dc2_power['rack_pdus'],
-        mgmt2['oob_switches'], mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
+    # ── Wire all power devices into OOB management ────────────────────────────
+    dc1_all_power = (
+        [dc1_power['generator'], dc1_power['ups_a'], dc1_power['ups_b']]
+        + dc1_power['rack_pdus_a'] + dc1_power['rack_pdus_b']
+    )
+    dc2_all_power = (
+        [dc2_power['generator'], dc2_power['ups_a'], dc2_power['ups_b']]
+        + dc2_power['rack_pdus_a'] + dc2_power['rack_pdus_b']
+    )
+    t.wire_to_mgmt(dc1_all_power, mgmt1['oob_switches'],
+                   mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
+    t.wire_to_mgmt(dc2_all_power, mgmt2['oob_switches'],
+                   mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
 
     # Wire EV2 monitors to OOB (IPs already assigned in add_ev2_monitors)
-    t.wire_to_mgmt(all_ev2_dc1, mgmt1['oob_switches'], mgmt_ip_pool=None)
-    t.wire_to_mgmt(all_ev2_dc2, mgmt2['oob_switches'], mgmt_ip_pool=None)
+    t.wire_to_mgmt(ev2_dc1, mgmt1['oob_switches'], mgmt_ip_pool=None)
+    t.wire_to_mgmt(ev2_dc2, mgmt2['oob_switches'], mgmt_ip_pool=None)
 
     return t
 
