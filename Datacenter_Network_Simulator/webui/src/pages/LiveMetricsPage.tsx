@@ -136,7 +136,7 @@ function TypeBadge({ dt }: { dt: string }) {
 function IpCell({ d }: { d: DeviceInfo }) {
   return (
     <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 10 }}>
-      {d.ip_address}
+      {d.mgmt_ip || d.ip_address}
     </td>
   )
 }
@@ -265,7 +265,7 @@ function AllTable({ rows }: { rows: DeviceInfo[] }) {
     switch (sort.col) {
       case 'name':   return a.name.localeCompare(b.name) * dir
       case 'type':   return a.device_type.localeCompare(b.device_type) * dir
-      case 'ip':     return a.ip_address.localeCompare(b.ip_address) * dir
+      case 'ip':     return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
       case 'cpu':    return (a.cpu_usage - b.cpu_usage) * dir
       case 'mem':    return (pct(a.memory_used, a.memory_total) - pct(b.memory_used, b.memory_total)) * dir
       case 'disk':   return (pct(a.disk_used, a.disk_total) - pct(b.disk_used, b.disk_total)) * dir
@@ -336,7 +336,7 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
     switch (sort.col) {
       case 'name':     return a.name.localeCompare(b.name) * dir
       case 'type':     return a.device_type.localeCompare(b.device_type) * dir
-      case 'ip':       return a.ip_address.localeCompare(b.ip_address) * dir
+      case 'ip':       return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
       case 'cpu':      return (a.cpu_usage - b.cpu_usage) * dir
       case 'mem':      return (pct(a.memory_used, a.memory_total) - pct(b.memory_used, b.memory_total)) * dir
       case 'disk':     return (pct(a.disk_used, a.disk_total) - pct(b.disk_used, b.disk_total)) * dir
@@ -458,7 +458,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
     const dir = sort.dir === 'asc' ? 1 : -1
     switch (sort.col) {
       case 'name':   return a.name.localeCompare(b.name) * dir
-      case 'ip':     return a.ip_address.localeCompare(b.ip_address) * dir
+      case 'ip':     return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
       case 'cpu':    return (a.cpu_usage - b.cpu_usage) * dir
       case 'mem':    return (pct(a.memory_used, a.memory_total) - pct(b.memory_used, b.memory_total)) * dir
       case 'disk':   return (pct(a.disk_used, a.disk_total) - pct(b.disk_used, b.disk_total)) * dir
@@ -543,7 +543,7 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
     const dir = sort.dir === 'asc' ? 1 : -1
     switch (sort.col) {
       case 'name':   return a.name.localeCompare(b.name) * dir
-      case 'ip':     return a.ip_address.localeCompare(b.ip_address) * dir
+      case 'ip':     return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
       case 'status': return (a.ups_status ?? '').localeCompare(b.ups_status ?? '') * dir
       case 'mode':   return (a.ups_operating_mode ?? '').localeCompare(b.ups_operating_mode ?? '') * dir
       case 'load':   return ((a.ups_output_load ?? 0) - (b.ups_output_load ?? 0)) * dir
@@ -610,7 +610,7 @@ function PduTable({ rows }: { rows: DeviceInfo[] }) {
     switch (sort.col) {
       case 'name':  return a.name.localeCompare(b.name) * dir
       case 'type':  return a.device_type.localeCompare(b.device_type) * dir
-      case 'ip':    return a.ip_address.localeCompare(b.ip_address) * dir
+      case 'ip':    return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
       case 'load':   return ((a.pdu_load ?? 0) - (b.pdu_load ?? 0)) * dir
       case 'volt':   return ((a.pdu_voltage ?? 0) - (b.pdu_voltage ?? 0)) * dir
       case 'curr':   return ((a.pdu_outlet_current ?? 0) - (b.pdu_outlet_current ?? 0)) * dir
@@ -735,7 +735,7 @@ function SensorTable({ rows }: { rows: DeviceInfo[] }) {
     const dir = sort.dir === 'asc' ? 1 : -1
     for (const devices of map.values()) {
       devices.sort((a, b) => {
-        if (sort.col === 'ip')     return a.ip_address.localeCompare(b.ip_address) * dir
+        if (sort.col === 'ip')     return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
         if (sort.col === 'uptime') return (a.uptime - b.uptime) * dir
         return a.name.localeCompare(b.name) * dir
       })
@@ -895,6 +895,7 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
         const p = snap.panel
         const isExpanded = expanded.has(snap.instance)
         const anyAlarm = p.alarm_overcurrent || p.alarm_voltage_imbalance || p.alarm_high_thd || p.alarm_phase_loss || p.alarm_sensor_fault
+        const activeCircuits = snap.circuit_list.filter(c => (c.current ?? 0) > 0 || (c.device_name ?? '').length > 0)
         return (
           <div key={snap.instance} style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             {/* Device header */}
@@ -957,9 +958,9 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
               <button
                 onClick={() => setExpanded(s => { const n = new Set(s); isExpanded ? n.delete(snap.instance) : n.add(snap.instance); return n })}
                 style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: isExpanded ? '1px solid var(--border)' : 'none', padding: '5px 12px', textAlign: 'left', cursor: 'pointer', fontSize: 10, color: 'var(--text-muted)' }}>
-                {isExpanded ? '▼' : '▶'} Circuits ({snap.circuits})
+                {isExpanded ? '▼' : '▶'} Circuits ({activeCircuits.length} / {snap.circuits})
               </button>
-              {isExpanded && <EV2CircuitTable circuits={snap.circuit_list} />}
+              {isExpanded && <EV2CircuitTable circuits={activeCircuits} />}
             </div>
           </div>
         )
@@ -981,7 +982,7 @@ const TAB_TYPES: Record<Tab, string[]> = {
   network: ['router', 'switch', 'firewall', 'load_balancer', 'oob_switch'],
   server:  ['server'],
   ups:     ['ups'],
-  pdu:     ['pdu', 'floor_pdu', 'rpp'],
+  pdu:     ['pdu', 'floor_pdu'],
   sensor:  ['sensor'],
   energy:  [],   // data comes from ev2Metrics, not devices[]
 }
@@ -1013,7 +1014,7 @@ export default function LiveMetricsPage() {
 
   const filtered = useMemo(() => {
     if (tab === 'energy') return []   // energy tab uses ev2Metrics directly
-    let list = devices
+    let list = devices.filter(d => d.device_type !== 'rpp')
     const types = TAB_TYPES[tab]
     if (types.length > 0) list = list.filter(d => types.includes(d.device_type))
     if (search.trim()) {

@@ -121,12 +121,13 @@ class SNMPPanel(QWidget):
         self.lbl_ups            = QLabel("UPS: 0")
         self.lbl_pdus           = QLabel("Rack PDUs: 0")
         self.lbl_floor_pdus     = QLabel("Floor PDUs: 0")
+        self.lbl_generators     = QLabel("Generators: 0")
         self.lbl_total          = QLabel("Total: 0")
 
         _net_lbls  = (self.lbl_switches, self.lbl_routers, self.lbl_servers,
                       self.lbl_firewalls, self.lbl_load_balancers)
         _infra_lbls = (self.lbl_oob_switches, self.lbl_sensors, self.lbl_ups,
-                       self.lbl_pdus, self.lbl_floor_pdus)
+                       self.lbl_pdus, self.lbl_floor_pdus, self.lbl_generators)
 
         for lbl in _net_lbls:
             lbl.setFont(QFont("Consolas", 9))
@@ -292,7 +293,8 @@ class SNMPPanel(QWidget):
     def set_device_counts(self, switches: int, routers: int, servers: int,
                           firewalls: int = 0, load_balancers: int = 0,
                           ups: int = 0, pdus: int = 0, floor_pdus: int = 0,
-                          oob_switches: int = 0, sensors: int = 0):
+                          oob_switches: int = 0, sensors: int = 0,
+                          generators: int = 0):
         _net_entries = [
             (self.lbl_switches,       "Switches",       switches),
             (self.lbl_routers,        "Routers",        routers),
@@ -306,6 +308,7 @@ class SNMPPanel(QWidget):
             (self.lbl_ups,            "UPS",            ups),
             (self.lbl_pdus,           "Rack PDUs",      pdus),
             (self.lbl_floor_pdus,     "Floor PDUs",     floor_pdus),
+            (self.lbl_generators,     "Generators",     generators),
         ]
         for lbl, name, n in _net_entries + _infra_entries:
             if n > 0:
@@ -316,7 +319,7 @@ class SNMPPanel(QWidget):
         has_infra = any(n > 0 for _, _, n in _infra_entries)
         self._stats_sep.setVisible(has_infra)
         total = (switches + routers + servers + firewalls + load_balancers
-                 + ups + pdus + floor_pdus + oob_switches + sensors)
+                 + ups + pdus + floor_pdus + oob_switches + sensors + generators)
         if total > 0:
             self.lbl_total.setText(f"Total: {total}")
             self.lbl_total.show()

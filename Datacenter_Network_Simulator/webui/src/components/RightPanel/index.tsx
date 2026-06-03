@@ -171,7 +171,7 @@ export default function RightPanel() {
     gnmi:    gnmi?.running   ? 'gNMI running'   : undefined,
     sflow:   sflow?.running  ? 'sFlow running'  : undefined,
     bacnet:  bacnet?.running ? 'BACnet running' : undefined,
-    traps:   traps.length > 0 ? `${traps.length} traps` : undefined,
+    traps:   snmp?.rule_engine_enabled ? 'Trap simulation running' : undefined,
   }
 
   return (

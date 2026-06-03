@@ -181,7 +181,7 @@ function Canvas() {
   const [linkMsg,    setLinkMsg]    = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [ctxMenu,      setCtxMenu]      = useState<{ nodeId: string; deviceType: string; deviceName: string; x: number; y: number } | null>(null)
+  const [ctxMenu,      setCtxMenu]      = useState<{ nodeId: string; deviceType: string; deviceName: string; modelName: string; x: number; y: number } | null>(null)
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null)
   const [infoDeviceId, setInfoDeviceId] = useState<string | null>(null)
 
@@ -284,6 +284,7 @@ function Canvas() {
       nodeId: node.id,
       deviceType: String(node.data.device_type || ''),
       deviceName: String(node.data.name || ''),
+      modelName: String(node.data.model_name || ''),
       x: e.clientX,
       y: e.clientY,
     })
@@ -494,6 +495,7 @@ function Canvas() {
           nodeId={ctxMenu.nodeId}
           deviceType={ctxMenu.deviceType}
           deviceName={ctxMenu.deviceName}
+          modelName={ctxMenu.modelName}
           x={ctxMenu.x}
           y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}

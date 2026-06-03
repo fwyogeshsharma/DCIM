@@ -26,6 +26,15 @@ const METRIC_LABEL: Record<string, [string, string]> = {
   pdu_power_factor:    ['pwr.factor',  ''],
   pdu_phase_imbalance: ['phase.imbal', '%'],
   pdu_outlet_current:  ['outlet.cur',  'A'],
+  pdu_frequency:       ['pdu.freq',    'Hz'],
+  pdu_temperature:     ['pdu.temp',    '°C'],
+  pdu_humidity:        ['pdu.humid',   '%'],
+  pdu_energy_kwh:      ['pdu.energy',  'kWh'],
+  ups_battery_health:  ['batt.health', '%'],
+  ups_bypass_status:   ['bypass',      ''],
+  ups_operating_mode:  ['mode',        ''],
+  mid_temp:            ['mid.temp',    '°C'],
+  outlet_temp:         ['exhaust.temp','°C'],
 }
 
 const CATEGORIES: [string, string[]][] = [
@@ -41,6 +50,9 @@ const CATEGORIES: [string, string[]][] = [
   ['Env. Sensors — Humidity',   ['SensorHighHumidity','SensorCriticalHumidity','SensorLowHumidity','SensorHumidityNormal']],
   ['Env. Sensors — Dew Point',  ['SensorHighDewPoint','SensorDewPointNormal']],
   ['Env. Sensors — Airflow',    ['SensorHighAirflow','SensorLowAirflow','SensorAirflowNormal']],
+  ['Env. Sensors — Mid/Exhaust Temp', ['SensorMidTempHigh','SensorMidTempNormal','SensorOutletTempHigh','SensorOutletTempNormal']],
+  ['Power / UPS Extended',      ['UPSBatteryLowHealth','UPSBatteryHealthRestored','UPSBypassActive','UPSBypassCleared']],
+  ['Power / PDU Environment',   ['PDUFrequencyFault','PDUFrequencyNormal','PDUTempHigh','PDUTempNormal','PDUHumidityHigh','PDUHumidityNormal']],
 ]
 
 function formatThreshold(conditions: Record<string, unknown>[]): string {
@@ -158,14 +170,6 @@ export default function RulesPanel() {
     setExpanded(prev => ({ ...prev, [label]: !isExpanded(label) }))
   }
 
-  async function toggleEngine() {
-    try {
-      if (rules?.rule_engine_enabled) await api.disableEngine()
-      else await api.enableEngine()
-      fetchRules()
-    } catch (e) { console.error(e) }
-  }
-
   async function toggleRule(name: string, enabled: boolean) {
     try {
       if (enabled) await api.disableRule(name)
@@ -180,22 +184,12 @@ export default function RulesPanel() {
   }
 
   const ruleList = rules?.rules ?? []
-  const engineOn = rules?.rule_engine_enabled ?? false
   const groups = groupRules(ruleList)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="panel-header">
-        <span className="title">Rule Engine</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: engineOn ? 'var(--green)' : 'var(--text-dim)' }}>
-            {engineOn ? 'ON' : 'OFF'}
-          </span>
-          <label className="toggle">
-            <input type="checkbox" checked={engineOn} onChange={toggleEngine} />
-            <span className="toggle-slider" />
-          </label>
-        </div>
+        <span className="title">Traps Rule Engine</span>
       </div>
 
       <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>

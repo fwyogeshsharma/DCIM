@@ -63,7 +63,11 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
     { type: 'TEMPERATURE_ALERT', label: 'Temperature Alert' },
     { type: 'HUMIDITY_ALERT',    label: 'Humidity Alert' },
     { type: 'DEWPOINT_ALERT',    label: 'Dew Point Alert' },
-    { type: 'AIRFLOW_ALERT',     label: 'Airflow Alert' },
+    { type: 'AIRFLOW_ALERT',             label: 'Airflow Alert' },
+    { type: 'SENSOR_MID_TEMP_HIGH',      label: 'Mid-Rack Temp High' },
+    { type: 'SENSOR_MID_TEMP_NORMAL',    label: 'Mid-Rack Temp Normal' },
+    { type: 'SENSOR_OUTLET_TEMP_HIGH',   label: 'Exhaust Temp High' },
+    { type: 'SENSOR_OUTLET_TEMP_NORMAL', label: 'Exhaust Temp Normal' },
   ],
   ups: [
     { type: 'COLD_START',               label: 'Cold Start' },
@@ -83,7 +87,11 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
     { type: 'UPS_FREQUENCY_OUT_RANGE',  label: 'Frequency Out of Range' },
     { type: 'UPS_RECTIFIER_FAILURE',    label: 'Rectifier Failure' },
     { type: 'UPS_PHASE_FAILURE',        label: 'Phase Failure' },
-    { type: 'TEMPERATURE_ALERT',        label: 'Temperature Alert' },
+    { type: 'TEMPERATURE_ALERT',          label: 'Temperature Alert' },
+    { type: 'UPS_BATTERY_LOW_HEALTH',     label: 'Battery Low Health' },
+    { type: 'UPS_BATTERY_HEALTH_RESTORED',label: 'Battery Health Restored' },
+    { type: 'UPS_BYPASS_ACTIVE',          label: 'Bypass Active' },
+    { type: 'UPS_BYPASS_CLEARED',         label: 'Bypass Cleared' },
   ],
   pdu: [
     { type: 'COLD_START',              label: 'Cold Start' },
@@ -101,6 +109,12 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
     { type: 'PDU_SMOKE_DETECTED',      label: 'Smoke Detected' },
     { type: 'PDU_OUTLET_CURRENT_HIGH', label: 'Outlet Current High' },
     { type: 'PDU_GROUND_FAULT',        label: 'Ground Fault' },
+    { type: 'PDU_FREQUENCY_FAULT',     label: 'Frequency Fault' },
+    { type: 'PDU_FREQUENCY_NORMAL',    label: 'Frequency Normal' },
+    { type: 'PDU_TEMP_HIGH',           label: 'PDU Temp High' },
+    { type: 'PDU_TEMP_NORMAL',         label: 'PDU Temp Normal' },
+    { type: 'PDU_HUMIDITY_HIGH',       label: 'PDU Humidity High' },
+    { type: 'PDU_HUMIDITY_NORMAL',     label: 'PDU Humidity Normal' },
   ],
   floor_pdu: [
     { type: 'COLD_START',           label: 'Cold Start' },
@@ -114,6 +128,26 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
     { type: 'PDU_POWER_FACTOR_LOW', label: 'Power Factor Low' },
     { type: 'PDU_SMOKE_DETECTED',   label: 'Smoke Detected' },
     { type: 'PDU_GROUND_FAULT',     label: 'Ground Fault' },
+    { type: 'PDU_FREQUENCY_FAULT',  label: 'Frequency Fault' },
+    { type: 'PDU_FREQUENCY_NORMAL', label: 'Frequency Normal' },
+    { type: 'PDU_TEMP_HIGH',        label: 'PDU Temp High' },
+    { type: 'PDU_TEMP_NORMAL',      label: 'PDU Temp Normal' },
+    { type: 'PDU_HUMIDITY_HIGH',    label: 'PDU Humidity High' },
+    { type: 'PDU_HUMIDITY_NORMAL',  label: 'PDU Humidity Normal' },
+  ],
+  rpp: [],
+  energy_monitor: [],
+  generator: [
+    { type: 'COLD_START',          label: 'Cold Start' },
+    { type: 'AUTH_FAILURE',        label: 'Auth Failure' },
+    { type: 'TEMPERATURE_ALERT',   label: 'Temperature Alert' },
+    { type: 'GEN_RUNNING',         label: 'Generator Running' },
+    { type: 'GEN_STOPPED',         label: 'Generator Stopped' },
+    { type: 'GEN_LOW_FUEL',        label: 'Low Fuel' },
+    { type: 'GEN_LOW_COOLANT',     label: 'Low Coolant' },
+    { type: 'GEN_BATTERY_FAILURE', label: 'Battery Failure' },
+    { type: 'GEN_TRANSFER_SWITCH', label: 'Transfer Switch Fault' },
+    { type: 'GEN_OVERCRANK',       label: 'Overcrank' },
   ],
 }
 
@@ -423,18 +457,19 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
     rows.push(['Type',    info.device_type.replace(/_/g, ' ')])
     rows.push(['Vendor',  info.vendor])
     if (info.model_name)   rows.push(['Model',   info.model_name])
-    if (info.os_name)      rows.push(['OS',      info.os_name])
-    if (info.os_version)   rows.push(['Version', info.os_version])
+    if (info.os_name    && info.os_name    !== 'Unknown') rows.push(['OS',      info.os_name])
+    if (info.os_version && info.os_version !== 'Unknown') rows.push(['Version', info.os_version])
     if (info.ip_address)   rows.push(['Prod IP', info.ip_address])
     if (info.mgmt_ip)      rows.push(['Mgmt IP', info.mgmt_ip])
-    rows.push(['SNMP Port', String(info.snmp_port)])
+    const isPassive = info.device_type === 'rpp'
+    if (!isPassive) rows.push(['SNMP Port', String(info.snmp_port)])
     if (['router', 'switch'].includes(info.device_type))
       rows.push(['gNMI Port', String(info.gnmi_port)])
     if (info.sys_contact)  rows.push(['Contact',  info.sys_contact])
     if (info.sys_location) rows.push(['Location', info.sys_location])
-    rows.push(['Interfaces', String(info.interface_count)])
-    if (info.cpu_usage > 0)   rows.push(['CPU',    `${info.cpu_usage.toFixed(1)} %`])
-    if (info.memory_used > 0) rows.push(['Memory', `${info.memory_used.toFixed(0)} MB`])
+    if (!isPassive) rows.push(['Interfaces', String(info.interface_count)])
+    if (!isPassive && info.cpu_usage > 0)   rows.push(['CPU',    `${info.cpu_usage.toFixed(1)} %`])
+    if (!isPassive && info.memory_used > 0) rows.push(['Memory', `${info.memory_used.toFixed(0)} MB`])
   }
 
   const LAYER_COLOR: Record<string, string> = {
@@ -515,6 +550,7 @@ interface Props {
   nodeId: string
   deviceType: string
   deviceName: string
+  modelName: string
   x: number
   y: number
   onClose: () => void
@@ -523,7 +559,7 @@ interface Props {
   onShowInfo: () => void
 }
 
-export default function NodeContextMenu({ nodeId, deviceType, deviceName, x, y, onClose, onLocate, onEditDevice, onShowInfo }: Props) {
+export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelName, x, y, onClose, onLocate, onEditDevice, onShowInfo }: Props) {
   const { snmp, fetchGraph, fetchDevices } = useStore()
   const menuRef  = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -579,10 +615,40 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, x, y, 
     catch (e) { alert(String(e)) }
   }
 
-  const traps = APPLICABLE_TRAPS[deviceType] || [
-    { type: 'COLD_START', label: 'Cold Start' },
-    { type: 'CPU_HIGH',   label: 'CPU High Usage' },
-  ]
+  function getSensorTraps(model: string): TrapEntry[] {
+    const base: TrapEntry[] = [
+      { type: 'COLD_START',            label: 'Cold Start' },
+      { type: 'AUTH_FAILURE',          label: 'Auth Failure' },
+      { type: 'TEMPERATURE_ALERT',     label: 'Temperature Alert' },
+    ]
+    const humidity: TrapEntry[] = [
+      { type: 'HUMIDITY_ALERT',        label: 'Humidity Alert' },
+      { type: 'SENSOR_HIGH_HUMIDITY',  label: 'High Humidity' },
+      { type: 'SENSOR_LOW_HUMIDITY',   label: 'Low Humidity' },
+    ]
+    const airflow: TrapEntry[] = [
+      { type: 'AIRFLOW_ALERT',         label: 'Airflow Alert' },
+    ]
+    const dewpoint: TrapEntry[] = [
+      { type: 'DEWPOINT_ALERT',        label: 'Dew Point Alert' },
+    ]
+    const midExhaust: TrapEntry[] = [
+      { type: 'SENSOR_MID_TEMP_HIGH',    label: 'Mid-Rack Temp High' },
+      { type: 'SENSOR_OUTLET_TEMP_HIGH', label: 'Exhaust Temp High' },
+    ]
+    if (model === 'Raritan DPX2-T3H1') return [...base, ...humidity, ...midExhaust]
+    if (model === 'Vertiv Geist GTHD')  return [...base, ...humidity, ...dewpoint]
+    if (model === 'APC NetBotz 355' || model === 'APC NetBotz 250') return [...base, ...humidity, ...airflow]
+    // DPX2-CC2 and unknown sensor models: inlet temp only
+    return base
+  }
+
+  const traps = deviceType === 'sensor'
+    ? getSensorTraps(modelName)
+    : APPLICABLE_TRAPS[deviceType] || [
+        { type: 'COLD_START', label: 'Cold Start' },
+        { type: 'CPU_HIGH',   label: 'CPU High Usage' },
+      ]
 
   const menu = (
     <div
@@ -595,7 +661,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, x, y, 
       <MenuItem label="Locate on Graph" onClick={() => { onLocate(); onClose() }} />
       <MenuItem label="Show Info"       onClick={() => { onClose(); onShowInfo() }} />
 
-      {snmpRunning && (
+      {snmpRunning && traps.length > 0 && (
         <>
           <MenuDivider />
           <div style={{ position: 'relative' }}

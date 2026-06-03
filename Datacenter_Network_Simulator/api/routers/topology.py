@@ -57,7 +57,7 @@ async def upload_topology(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="File must be a .json file")
     try:
         content = await file.read()
-        data = json.loads(content)
+        data = json.loads(content.decode("utf-8-sig"))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse JSON: {e}")
     try:

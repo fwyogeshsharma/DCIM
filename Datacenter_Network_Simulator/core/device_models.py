@@ -612,21 +612,7 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
             Vendor.VERDIGRIS,
             DeviceType.ENERGY_MONITOR,
             [_g(_GE, 1)],
-            "BACnet/IP energy intelligence platform — 42 circuits, 3-phase",
-        ),
-        DeviceModel(
-            "Verdigris EV2-24",
-            Vendor.VERDIGRIS,
-            DeviceType.ENERGY_MONITOR,
-            [_g(_GE, 1)],
-            "BACnet/IP energy intelligence platform — 24 circuits, 3-phase",
-        ),
-        DeviceModel(
-            "Verdigris EV2-84",
-            Vendor.VERDIGRIS,
-            DeviceType.ENERGY_MONITOR,
-            [_g(_GE, 1)],
-            "BACnet/IP energy intelligence platform — 84 circuits, 3-phase",
+            "BACnet/IP energy intelligence platform — 42 single-phase (14 three-phase) circuits, 4 voltage channels",
         ),
     ],
 }

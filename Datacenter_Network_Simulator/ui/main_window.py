@@ -2150,6 +2150,7 @@ class MainWindow(QMainWindow):
             len(dm.get_devices_by_type(DeviceType.FLOOR_PDU)),
             oob_switches=len(dm.get_devices_by_type(DeviceType.OOB_SWITCH)),
             sensors=len(dm.get_devices_by_type(DeviceType.SENSOR)),
+            generators=len(dm.get_devices_by_type(DeviceType.GENERATOR)),
         )
         self._sim_panel.set_link_counts(
             prod=len(self.topology.get_edges_by_layer("production")),
@@ -2454,6 +2455,25 @@ class MainWindow(QMainWindow):
         self._panel_bind_worker.log.connect(self._console_panel.log)
         self._panel_bind_worker.finished.connect(self._on_panel_bind_ips_finished)
         self._panel_bind_worker.error.connect(self._on_panel_bind_ips_error)
+
+        # Mirror progress + completion into AppState so the web UI sees live updates.
+        try:
+            from api.state import AppState as _AS
+            _s = _AS.get()
+            _s.selected_adapter = interface
+            _s.subnet_mask = mask
+            self._panel_bind_job_id = _s.create_job("bind_ips")
+            _s.notify_ui("binding_started")
+            _jid = self._panel_bind_job_id
+
+            def _fwd_progress(done, total, s=_s, jid=_jid):
+                s.update_job(jid, progress_done=done, progress_total=total)
+                s.notify_ui("binding_progress", done, total)
+
+            self._panel_bind_worker.progress.connect(_fwd_progress)
+        except Exception:
+            self._panel_bind_job_id = None
+
         self._panel_bind_thread.start()
 
     def _on_panel_bind_ips_finished(self):
@@ -2470,6 +2490,18 @@ class MainWindow(QMainWindow):
             self._console_panel.log(f"{len(bound_ips)} IPs bound to adapter.", "success")
         else:
             self._console_panel.log("No IPs were bound.", "error")
+        try:
+            from api.state import AppState as _AS
+            _s = _AS.get()
+            _s.bound_ips    = list(bound_ips)
+            _s.nte_contexts = dict(self._nte_contexts)
+            if self._panel_bind_job_id:
+                _s.update_job(self._panel_bind_job_id, status="completed",
+                              progress_done=len(bound_ips), progress_total=len(bound_ips))
+            _s.notify_ui("sync_binding")
+        except Exception:
+            pass
+        self._panel_bind_job_id = None
 
     def _on_panel_bind_ips_error(self, error: str):
         self._panel_bind_thread.quit()
@@ -2478,6 +2510,15 @@ class MainWindow(QMainWindow):
         self._panel_bind_worker = None
         self._binding_panel.set_snmp_locked(False)
         self._console_panel.log(f"Bind error: {error}", "error")
+        try:
+            from api.state import AppState as _AS
+            _s = _AS.get()
+            if self._panel_bind_job_id:
+                _s.update_job(self._panel_bind_job_id, status="failed")
+            _s.notify_ui("sync_binding")
+        except Exception:
+            pass
+        self._panel_bind_job_id = None
 
     def _on_panel_unbind_ips(self):
         """Remove all bound IPs (SNMP and gNMI) from the adapter."""
@@ -2501,6 +2542,20 @@ class MainWindow(QMainWindow):
         self._panel_unbind_worker.progress.connect(self._binding_panel.show_progress)
         self._panel_unbind_worker.log.connect(self._console_panel.log)
         self._panel_unbind_worker.finished.connect(self._on_panel_unbind_ips_finished)
+
+        try:
+            self._panel_unbind_job_id = _s.create_job("unbind_ips")
+            _s.notify_ui("binding_started")
+            _jid = self._panel_unbind_job_id
+
+            def _fwd_unbind_progress(done, total, s=_s, jid=_jid):
+                s.update_job(jid, progress_done=done, progress_total=total)
+                s.notify_ui("binding_progress", done, total)
+
+            self._panel_unbind_worker.progress.connect(_fwd_unbind_progress)
+        except Exception:
+            self._panel_unbind_job_id = None
+
         self._panel_unbind_thread.start()
 
     def _on_panel_unbind_ips_finished(self):
@@ -2524,8 +2579,13 @@ class MainWindow(QMainWindow):
             _s.nte_contexts = {}
             _s.gnmi_bound_ips = []
             _s.gnmi_nte_contexts = {}
+            if getattr(self, "_panel_unbind_job_id", None):
+                _s.update_job(self._panel_unbind_job_id, status="completed",
+                              progress_done=1, progress_total=1)
+            _s.notify_ui("sync_binding")
         except Exception:
             pass
+        self._panel_unbind_job_id = None
 
     def _on_snmpsim_ready(self):
         """Called (via queue) when SNMPSim logs its 'Listening at UDP/IPv4 endpoint' line."""
@@ -3258,7 +3318,7 @@ class MainWindow(QMainWindow):
         )
         if path:
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, "r", encoding="utf-8-sig") as f:
                     data = json.load(f)
                 self._load_topology_data(data)
                 self._console_panel.log(f"Topology loaded: {path}", "success")
@@ -3482,15 +3542,41 @@ class MainWindow(QMainWindow):
 
         cfg = self._bacnet_panel.get_config()
 
-        # Per-device circuit count from model_name (e.g. "Verdigris EV2-42" → 42)
-        # Use mgmt_ip as the device IP when ip_address is empty (mgmt_only devices)
+        # Per-device (total_circuits, active_circuits) map.
+        # Walk the power graph to count downstream breaker circuits so that
+        # only breakers with real loads generate telemetry; spare slots stay at 0.
+        _power_edges = self.topology.get_edges_by_layer("power")
+        _id_to_type: dict = {
+            dev.id: dev.device_type
+            for dev in self.device_manager.get_all_devices()
+        }
+        _upstream_types = {DeviceType.UPS, DeviceType.GENERATOR}
+
         circuits_map: dict = {}
         device_ips: list = []
         for d in bound_devices:
             ip = d.ip_address or d.mgmt_ip
             device_ips.append(ip)
             m = _re.search(r"EV2-(\d+)", d.model_name or "")
-            circuits_map[ip] = int(m.group(1)) if m else 42
+            capacity = int(m.group(1)) if m else 42
+
+            active = 0
+            if _power_edges:
+                pdu_id = next(
+                    (v if u == d.id else u)
+                    for u, v, _ in _power_edges
+                    if d.id in (u, v)
+                ) if any(d.id in (u, v) for u, v, _ in _power_edges) else None
+                if pdu_id:
+                    downstream = [
+                        (v if u == pdu_id else u)
+                        for u, v, _ in _power_edges
+                        if pdu_id in (u, v) and d.id not in (u, v)
+                        and _id_to_type.get(v if u == pdu_id else u) not in _upstream_types
+                    ]
+                    active = len(downstream)
+
+            circuits_map[ip] = (max(capacity, active), active) if active > 0 else (capacity, capacity)
 
         self.bacnet.start(
             device_ips    = device_ips,

@@ -962,6 +962,7 @@ class DeviceStateStore:
                 fact = DeviceFact(
                     device_id=device.name,
                     device_type=device.device_type.value,
+                    model_name=device.model_name,
                     ip_address=device.ip_address,
                     timestamp=now,
                     cpu_usage=float(device.cpu_usage),
@@ -977,6 +978,8 @@ class DeviceStateStore:
                     humidity=float(device.humidity),
                     dewpoint=float(device.dewpoint),
                     airflow=float(device.airflow),
+                    mid_temp=float(device.mid_temp),
+                    outlet_temp=float(device.outlet_temp),
                     ups_status=ext.get("ups_status", "normal"),
                     ups_output_load=float(ext.get("ups_output_load", 0.0)),
                     ups_battery_status=ext.get("ups_battery_status", "normal"),
@@ -1004,6 +1007,10 @@ class DeviceStateStore:
                     pdu_smoke=ext.get("pdu_smoke", "no"),
                     pdu_outlet_current=float(ext.get("pdu_outlet_current", 0.0)),
                     pdu_ground_fault=ext.get("pdu_ground_fault", "no"),
+                    pdu_frequency=float(ext.get("pdu_frequency", 50.0)),
+                    pdu_temperature=float(ext.get("pdu_temperature", 0.0)),
+                    pdu_humidity=float(ext.get("pdu_humidity", 0.0)),
+                    pdu_energy_kwh=float(ext.get("pdu_energy_kwh", 0.0)),
                     bgp_sessions=[
                         BGPSessionFact(peer_addr=s["peer"], state=s["state"])
                         for s in ext.get("bgp_sessions", [])

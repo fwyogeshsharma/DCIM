@@ -39,7 +39,7 @@ _SENSOR_MODELS = {
     Vendor.APC:     "APC NetBotz 250",
 }
 
-TOPOLOGIES_DIR = Path("topologies")
+TOPOLOGIES_DIR = Path("../topologies")
 TOPOLOGIES_DIR.mkdir(exist_ok=True)
 
 
@@ -650,7 +650,7 @@ class TopologyBuilder:
           Do NOT call this for rack PDUs — per-server granularity comes from
           metered-outlet rack PDUs (e.g. APC AP8681) via SNMP, not from EV2.
 
-        circuits_per_panel: number of breaker circuits on the panel (24 / 42).
+        circuits_per_panel: number of breaker circuits on the panel (42 for real EV2).
         name_prefix:        "FP" for floor PDU / RPP  →  EV2-DCx-FP01
 
         Each EV2 is positioned beside its panel on the canvas and linked via a
@@ -1389,11 +1389,11 @@ def build_dual_dc_enterprise():
 
     ev2_dc1 = t.add_ev2_monitors(
         all_rpps_dc1, dc_id=1,
-        circuits_per_panel=12, name_prefix="RPP",
+        circuits_per_panel=42, name_prefix="RPP",
         mgmt_ip_pool=mgmt1['mgmt_ip_pool'])
     ev2_dc2 = t.add_ev2_monitors(
         all_rpps_dc2, dc_id=2,
-        circuits_per_panel=12, name_prefix="RPP",
+        circuits_per_panel=42, name_prefix="RPP",
         mgmt_ip_pool=mgmt2['mgmt_ip_pool'])
 
     # ── Wire all power devices into OOB management ────────────────────────────

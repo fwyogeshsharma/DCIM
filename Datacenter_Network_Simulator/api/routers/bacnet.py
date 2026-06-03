@@ -85,7 +85,7 @@ def bacnet_start(cfg: BACnetConfig):
     # Build per-device circuit count.
     # Walk the power graph: EV2 → panel → count panel's other power connections.
     # This is correct regardless of whether monitored_panel is set on the Device.
-    # Fallback: parse capacity from model_name ("Verdigris EV2-24" → 24).
+    # Fallback: parse capacity from model_name ("Verdigris EV2-42" → 42).
     _power_edges = s.topology.get_edges_by_layer("power") if s.topology else []
 
     # Build id→device_type map for upstream-filtering
@@ -121,7 +121,7 @@ def bacnet_start(cfg: BACnetConfig):
                     ]
                     active = len(downstream)
                     if active > 0:
-                        # capacity = model name (e.g. "EV2-12" → 12), active = downstream count
+                        # capacity = model name (e.g. "EV2-42" → 42), active = downstream count
                         m = _re.search(r"EV2-(\d+)", d.model_name or "")
                         capacity = int(m.group(1)) if m else active
                         circuits_map[ip] = (max(capacity, active), active)

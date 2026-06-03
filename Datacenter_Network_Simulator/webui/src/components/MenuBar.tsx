@@ -187,7 +187,7 @@ export default function MenuBar() {
   const [showAbout, setShowAbout] = useState(false)
 
   const {
-    snmp, gnmi, sflow, devices, health,
+    snmp, gnmi, sflow, bacnet, devices,
     fetchGraph, fetchDevices, fetchSnmp, selectedDeviceId,
     linkMode, setLinkMode, triggerFitView, setLayoutAlgo, setRightTab, setActiveView,
   } = useStore()
@@ -413,16 +413,11 @@ export default function MenuBar() {
           value={sflow?.running ? 'running' : 'idle'}
           color={sflow?.running ? 'var(--green)' : undefined}
         />
-        <div
-          title={`API ${health?.status === 'ok' ? 'connected' : 'disconnected'}`}
-          style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: health?.status === 'ok' ? 'var(--green)' : 'var(--red)',
-            boxShadow: health?.status === 'ok'
-              ? '0 0 6px var(--green)'
-              : '0 0 6px var(--red)',
-            marginLeft: 4,
-          }}
+        <StatusChip
+          label="BACnet"
+          dot={bacnet?.running ? 'var(--green)' : 'var(--text-dim)'}
+          value={bacnet?.running ? 'running' : 'idle'}
+          color={bacnet?.running ? 'var(--green)' : undefined}
         />
       </div>
 

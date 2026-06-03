@@ -230,9 +230,13 @@ def stop_snmp_simulator():
     if s.snmp_set_agent and s.snmp_set_agent.is_running():
         s.snmp_set_agent.stop()
         s.snmp_set_agent = None
+    if s.trap_engine and s.rule_engine_enabled:
+        s.trap_engine.set_rule_engine_enabled(False)
+        s.rule_engine_enabled = False
     s.stop_ticker_if_idle()
     s.notify_ui("sync_snmp")
     s.notify_ui("sync_binding")
+    s.notify_ui("sync_rules")
     return OkResponse(message="SNMP simulator stopped")
 
 

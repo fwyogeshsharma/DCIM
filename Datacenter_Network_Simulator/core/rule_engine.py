@@ -82,6 +82,7 @@ class Rule:
     enabled: bool = True
     priority: int = 100         # higher value = higher priority (fires first)
     device_types: List[str] = field(default_factory=list)  # empty = all types
+    model_names: List[str] = field(default_factory=list)   # empty = all models
     is_recovery: bool = False
     recovery_of: str = ""       # alert rule name this rule recovers from
 
@@ -93,6 +94,7 @@ class Rule:
             "enabled": self.enabled,
             "priority": self.priority,
             "device_types": self.device_types,
+            "model_names": self.model_names,
             "is_recovery": self.is_recovery,
             "recovery_of": self.recovery_of,
             "condition": _condition_to_dict(self.condition),
@@ -212,6 +214,8 @@ class RuleEngine:
         # Rack correlation: rack_id → set of device_ids that are impaired
         self._rack_impaired: Dict[str, Set[str]] = defaultdict(set)
 
+        self._enabled: bool = False
+
         # Manual/test fires not routed through _do_fire (e.g. initial test traps)
         self._manual_fire_counts: Dict[str, int] = defaultdict(int)
 
@@ -220,6 +224,9 @@ class RuleEngine:
         self._link_down_pending_up: Set[tuple] = set()
 
     # ── Public API ────────────────────────────────────────────────────────────
+
+    def set_enabled(self, enabled: bool):
+        self._enabled = enabled
 
     def set_action_callback(self, cb: Callable[[TrapAction], None]):
         self._action_cb = cb
@@ -339,6 +346,8 @@ class RuleEngine:
         Called by DeviceStateStore's ticker thread once per device per tick.
         Fires action_cb for each rule that triggers.
         """
+        if not self._enabled:
+            return
         if not self._action_cb:
             return
 
@@ -359,6 +368,8 @@ class RuleEngine:
             if not rule.enabled:
                 continue
             if rule.device_types and fact.device_type not in rule.device_types:
+                continue
+            if rule.model_names and fact.model_name not in rule.model_names:
                 continue
 
             cond = rule.condition
@@ -419,6 +430,11 @@ class RuleEngine:
             "ups_charger_status":    fact.ups_charger_status,
             "ups_rectifier_status":  fact.ups_rectifier_status,
             "ups_phase_status":      fact.ups_phase_status,
+            "ups_operating_mode":    fact.ups_operating_mode,
+            "ups_bypass_status":     fact.ups_bypass_status,
+            "ups_battery_health":    fact.ups_battery_health,
+            "ups_output_apparent_power": fact.ups_output_apparent_power,
+            "ups_energy_kwh":        fact.ups_energy_kwh,
             # PDU extended
             "pdu_load":              fact.pdu_load,
             "pdu_voltage":           fact.pdu_voltage,
@@ -430,6 +446,13 @@ class RuleEngine:
             "pdu_smoke":             fact.pdu_smoke,
             "pdu_outlet_current":    fact.pdu_outlet_current,
             "pdu_ground_fault":      fact.pdu_ground_fault,
+            "pdu_frequency":         fact.pdu_frequency,
+            "pdu_temperature":       fact.pdu_temperature,
+            "pdu_humidity":          fact.pdu_humidity,
+            "pdu_energy_kwh":        fact.pdu_energy_kwh,
+            # Sensor extended
+            "mid_temp":              fact.mid_temp,
+            "outlet_temp":           fact.outlet_temp,
         }
 
     # ── State helpers ─────────────────────────────────────────────────────────

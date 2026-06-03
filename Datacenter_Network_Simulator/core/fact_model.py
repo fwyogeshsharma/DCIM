@@ -33,6 +33,7 @@ class DeviceFact:
     """
     device_id: str       # device.name (unique within topology)
     device_type: str     # router | switch | server | firewall | load_balancer
+    model_name: str      # device model name e.g. "Raritan DPX2-T3H1"
     ip_address: str
     timestamp: float     # Unix epoch (seconds)
 
@@ -50,6 +51,8 @@ class DeviceFact:
     humidity: float = 0.0          # % relative humidity
     dewpoint: float = 0.0          # °C dew-point (Vertiv Geist only)
     airflow: float = 0.0           # m/s (APC NetBotz only)
+    mid_temp: float = 0.0          # °C mid-rack temp (Raritan DPX2-T3H1 probe 2)
+    outlet_temp: float = 0.0       # °C exhaust temp (Raritan DPX2-T3H1 probe 3)
 
     # Power / UPS
     ups_status: str = "normal"  # normal | on_battery | low_battery
@@ -80,6 +83,10 @@ class DeviceFact:
     pdu_smoke: str = "no"                 # no | yes
     pdu_outlet_current: float = 0.0       # A
     pdu_ground_fault: str = "no"          # no | yes
+    pdu_frequency: float = 50.0           # Hz
+    pdu_temperature: float = 0.0          # °C ambient inside PDU
+    pdu_humidity: float = 0.0             # % RH inside PDU
+    pdu_energy_kwh: float = 0.0           # cumulative energy, kWh
 
     # Routing protocol sessions
     bgp_sessions: List[BGPSessionFact] = field(default_factory=list)

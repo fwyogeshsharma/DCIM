@@ -44,6 +44,7 @@ def _rule(name: str, cond: Condition, oid: str, *,
           severity: str = "major",
           priority: int = 100,
           device_types: list | None = None,
+          model_names: list | None = None,
           recovery: bool = False,
           recovery_of: str = "") -> Rule:
     return Rule(
@@ -53,6 +54,7 @@ def _rule(name: str, cond: Condition, oid: str, *,
         severity=severity,
         priority=priority,
         device_types=device_types or [],
+        model_names=model_names or [],
         is_recovery=recovery,
         recovery_of=recovery_of,
     )
@@ -367,19 +369,22 @@ DEFAULT_RULES: List[Rule] = [
           _threshold("humidity", ">", 70.0),
           "1.3.6.1.4.1.99999.1.6",
           severity="major", priority=175,
-          device_types=["sensor"]),
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     _rule("SensorCriticalHumidity",
           _threshold("humidity", ">", 80.0),
           "1.3.6.1.4.1.99999.1.6",
           severity="critical", priority=180,
-          device_types=["sensor"]),
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     _rule("SensorLowHumidity",
           _threshold("humidity", "<", 30.0),
           "1.3.6.1.4.1.99999.1.6",
           severity="major", priority=175,
-          device_types=["sensor"]),
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     _rule("SensorHumidityNormal",
           _composite(
@@ -389,6 +394,8 @@ DEFAULT_RULES: List[Rule] = [
           ),
           "1.3.6.1.6.3.1.1.5.4",
           severity="informational", priority=100,
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
           recovery=True, recovery_of="SensorHighHumidity"),
 
     # ── Dew-point alert (Vertiv Geist GTHD — condensation risk) ──────────────
@@ -397,12 +404,15 @@ DEFAULT_RULES: List[Rule] = [
           _threshold("dewpoint", ">", 21.0),
           "1.3.6.1.4.1.99999.1.7",
           severity="critical", priority=185,
-          device_types=["sensor"]),
+          device_types=["sensor"],
+          model_names=["Vertiv Geist GTHD"]),
 
     _rule("SensorDewPointNormal",
           _threshold("dewpoint", "<=", 17.0),
           "1.3.6.1.6.3.1.1.5.4",
           severity="informational", priority=100,
+          device_types=["sensor"],
+          model_names=["Vertiv Geist GTHD"],
           recovery=True, recovery_of="SensorHighDewPoint"),
 
     # ── Airflow alert (APC NetBotz 250 — cooling anomaly) ────────────────────
@@ -411,13 +421,15 @@ DEFAULT_RULES: List[Rule] = [
           _threshold("airflow", ">", 3.5),
           "1.3.6.1.4.1.99999.1.8",
           severity="major", priority=170,
-          device_types=["sensor"]),
+          device_types=["sensor"],
+          model_names=["APC NetBotz 355", "APC NetBotz 250"]),
 
     _rule("SensorLowAirflow",
           _threshold("airflow", "<", 0.3),
           "1.3.6.1.4.1.99999.1.8",
           severity="critical", priority=180,
-          device_types=["sensor"]),
+          device_types=["sensor"],
+          model_names=["APC NetBotz 355", "APC NetBotz 250"]),
 
     _rule("SensorAirflowNormal",
           _composite(
@@ -427,7 +439,110 @@ DEFAULT_RULES: List[Rule] = [
           ),
           "1.3.6.1.6.3.1.1.5.4",
           severity="informational", priority=100,
+          device_types=["sensor"],
+          model_names=["APC NetBotz 355", "APC NetBotz 250"],
           recovery=True, recovery_of="SensorHighAirflow"),
+
+    # ── UPS extended traps ────────────────────────────────────────────────────
+
+    _rule("UPSBatteryLowHealth",
+          _threshold("ups_battery_health", "<", 50.0),
+          "1.3.6.1.4.1.99999.2.14",
+          severity="major", priority=180,
+          device_types=["ups"]),
+
+    _rule("UPSBatteryHealthRestored",
+          _threshold("ups_battery_health", ">", 70.0),
+          "1.3.6.1.4.1.99999.2.15",
+          severity="informational", priority=100,
+          device_types=["ups"],
+          recovery=True, recovery_of="UPSBatteryLowHealth"),
+
+    _rule("UPSBypassActive",
+          _state_change("ups_bypass_status", "off", "on"),
+          "1.3.6.1.4.1.99999.2.16",
+          severity="major", priority=190,
+          device_types=["ups"]),
+
+    _rule("UPSBypassCleared",
+          _state_change("ups_bypass_status", "on", "off"),
+          "1.3.6.1.4.1.99999.2.17",
+          severity="informational", priority=100,
+          device_types=["ups"],
+          recovery=True, recovery_of="UPSBypassActive"),
+
+    # ── PDU environment traps ─────────────────────────────────────────────────
+
+    _rule("PDUFrequencyFault",
+          _threshold("pdu_frequency", "<", 49.5),
+          "1.3.6.1.4.1.99999.6.14",
+          severity="major", priority=175,
+          device_types=["pdu", "floor_pdu"]),
+
+    _rule("PDUFrequencyNormal",
+          _threshold("pdu_frequency", ">", 49.5),
+          "1.3.6.1.4.1.99999.6.15",
+          severity="informational", priority=100,
+          device_types=["pdu", "floor_pdu"],
+          recovery=True, recovery_of="PDUFrequencyFault"),
+
+    _rule("PDUTempHigh",
+          _threshold("pdu_temperature", ">", 35.0),
+          "1.3.6.1.4.1.99999.6.16",
+          severity="major", priority=175,
+          device_types=["pdu", "floor_pdu"]),
+
+    _rule("PDUTempNormal",
+          _threshold("pdu_temperature", "<", 30.0),
+          "1.3.6.1.4.1.99999.6.17",
+          severity="informational", priority=100,
+          device_types=["pdu", "floor_pdu"],
+          recovery=True, recovery_of="PDUTempHigh"),
+
+    _rule("PDUHumidityHigh",
+          _threshold("pdu_humidity", ">", 70.0),
+          "1.3.6.1.4.1.99999.6.18",
+          severity="major", priority=175,
+          device_types=["pdu", "floor_pdu"]),
+
+    _rule("PDUHumidityNormal",
+          _threshold("pdu_humidity", "<", 60.0),
+          "1.3.6.1.4.1.99999.6.19",
+          severity="informational", priority=100,
+          device_types=["pdu", "floor_pdu"],
+          recovery=True, recovery_of="PDUHumidityHigh"),
+
+    # ── Sensor mid/outlet temp traps ──────────────────────────────────────────
+
+    _rule("SensorMidTempHigh",
+          _threshold("mid_temp", ">", 38.0),
+          "1.3.6.1.4.1.99999.1.9",
+          severity="major", priority=180,
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1"]),
+
+    _rule("SensorMidTempNormal",
+          _threshold("mid_temp", "<", 35.0),
+          "1.3.6.1.4.1.99999.1.11",
+          severity="informational", priority=100,
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1"],
+          recovery=True, recovery_of="SensorMidTempHigh"),
+
+    _rule("SensorOutletTempHigh",
+          _threshold("outlet_temp", ">", 45.0),
+          "1.3.6.1.4.1.99999.1.10",
+          severity="major", priority=180,
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1"]),
+
+    _rule("SensorOutletTempNormal",
+          _threshold("outlet_temp", "<", 42.0),
+          "1.3.6.1.4.1.99999.1.12",
+          severity="informational", priority=100,
+          device_types=["sensor"],
+          model_names=["Raritan DPX2-T3H1"],
+          recovery=True, recovery_of="SensorOutletTempHigh"),
 ]
 
 

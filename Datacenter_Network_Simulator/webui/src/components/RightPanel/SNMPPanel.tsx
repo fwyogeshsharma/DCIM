@@ -60,18 +60,17 @@ function StatRow({ label, value, labelColor, valueColor }: {
 }
 
 export default function SNMPPanel() {
-  const { snmp, fetchSnmp, devices } = useStore()
+  const { snmp, fetchSnmp, devices, snmpPort, mgmtPort, setSnmpPort, setMgmtPort } = useStore()
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
   const [linkCounts, setLinkCounts] = useState({ production: 0, management: 0, power: 0 })
-  const [snmpPort,       setSnmpPort]       = useState(161)
-  const [mgmtPort,       setMgmtPort]       = useState(1161)
   const [portFocused,    setPortFocused]    = useState(false)
   const [mgmtPortFocused,setMgmtPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 
-  const running = snmp?.running        ?? false
+  const running = snmp?.running ?? false
+  const ready   = snmp?.ready   ?? false
   const hasData = snmp?.datasets_generated ?? false
 
   // Resume in-progress job if panel was closed mid-operation
@@ -102,9 +101,12 @@ export default function SNMPPanel() {
     }).catch(() => {})
   }, [running])
 
+  const SNMP_TYPES = new Set(['switch','router','server','firewall','load_balancer',
+    'oob_switch','sensor','ups','pdu','floor_pdu','generator'])
+  const snmpDevices = devices.filter(d => SNMP_TYPES.has(d.device_type))
   const tc: Record<string, number> = {}
-  for (const d of devices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
-  const total = devices.length
+  for (const d of snmpDevices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
+  const total = snmpDevices.length
 
   // Badge state for header
   type BadgeCfg = { cls: string; dot: string; text: string }
@@ -113,6 +115,7 @@ export default function SNMPPanel() {
   else if (operation === 'start')    badge = { cls: 'ready',   dot: 'yellow', text: 'Starting' }
   else if (operation === 'stop')     badge = { cls: 'ready',   dot: 'yellow', text: 'Stopping' }
   else if (operation === 'clear')    badge = { cls: 'ready',   dot: 'yellow', text: 'Clearing' }
+  else if (running && !ready)        badge = { cls: 'ready',   dot: 'yellow', text: 'Starting…' }
   else if (running)                  badge = { cls: 'running', dot: 'green',  text: 'Running' }
   else if (hasData)                  badge = { cls: 'ready',   dot: 'green',  text: 'Ready' }
   else                               badge = { cls: 'stopped', dot: 'grey',   text: 'Idle' }
@@ -216,6 +219,7 @@ export default function SNMPPanel() {
             {(tc['ups']           ?? 0) > 0 && <StatRow label="UPS:"            value={tc['ups']           ?? 0} />}
             {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
             {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
+            {(tc['generator']     ?? 0) > 0 && <StatRow label="Generators:"     value={tc['generator']     ?? 0} />}
             <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
             <div style={{ height: 4 }} />
             <StatRow
@@ -235,12 +239,13 @@ export default function SNMPPanel() {
             {(tc['server']        ?? 0) > 0 && <StatRow label="Servers:"        value={tc['server']        ?? 0} />}
             {(tc['firewall']      ?? 0) > 0 && <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />}
             {(tc['load_balancer'] ?? 0) > 0 && <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />}
-            {(['oob_switch','sensor','ups','pdu','floor_pdu'].some(t => (tc[t] ?? 0) > 0)) && <div style={{ height: 4 }} />}
+            {(['oob_switch','sensor','ups','pdu','floor_pdu','generator'].some(t => (tc[t] ?? 0) > 0)) && <div style={{ height: 4 }} />}
             {(tc['oob_switch']    ?? 0) > 0 && <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />}
             {(tc['sensor']        ?? 0) > 0 && <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />}
             {(tc['ups']           ?? 0) > 0 && <StatRow label="UPS:"            value={tc['ups']           ?? 0} />}
             {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
             {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
+            {(tc['generator']     ?? 0) > 0 && <StatRow label="Generators:"     value={tc['generator']     ?? 0} />}
             <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
           </div>
         )}

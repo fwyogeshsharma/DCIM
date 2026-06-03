@@ -80,6 +80,19 @@ _CATEGORIES: List[tuple] = [
     ("Env. Sensors — Airflow", [
         "SensorHighAirflow", "SensorLowAirflow", "SensorAirflowNormal",
     ]),
+    ("Env. Sensors — Mid/Exhaust Temp", [
+        "SensorMidTempHigh", "SensorMidTempNormal",
+        "SensorOutletTempHigh", "SensorOutletTempNormal",
+    ]),
+    ("Power / UPS Extended", [
+        "UPSBatteryLowHealth", "UPSBatteryHealthRestored",
+        "UPSBypassActive", "UPSBypassCleared",
+    ]),
+    ("Power / PDU Environment", [
+        "PDUFrequencyFault", "PDUFrequencyNormal",
+        "PDUTempHigh", "PDUTempNormal",
+        "PDUHumidityHigh", "PDUHumidityNormal",
+    ]),
 ]
 
 
@@ -189,18 +202,11 @@ class RulesPanel(QWidget):
         title_bar.setStyleSheet("background:#21262d; border-bottom:1px solid #30363d;")
         tb = QHBoxLayout(title_bar)
         tb.setContentsMargins(8, 0, 8, 0)
-        lbl = QLabel("Rule Engine")
+        lbl = QLabel("Traps Rule Engine")
         lbl.setFont(QFont("Arial", 9, QFont.Bold))
         lbl.setStyleSheet("color:#e6edf3; background:transparent; border:none;")
         tb.addWidget(lbl)
         tb.addStretch()
-        self._engine_toggle = QPushButton("● Disabled")
-        self._engine_toggle.setCheckable(True)
-        self._engine_toggle.setEnabled(False)
-        self._engine_toggle.setFixedWidth(90)
-        self._engine_toggle.setStyleSheet(self._toggle_style(False))
-        self._engine_toggle.toggled.connect(self._on_engine_toggled)
-        tb.addWidget(self._engine_toggle)
         root.addWidget(title_bar)
 
         content = QWidget()
@@ -462,17 +468,9 @@ class RulesPanel(QWidget):
 
     def set_engine_active(self, active: bool):
         """Update visual state only — does NOT emit any signal."""
-        self._engine_toggle.blockSignals(True)
-        self._engine_toggle.setChecked(active)
-        self._engine_toggle.setText("● Active" if active else "● Disabled")
-        self._engine_toggle.setStyleSheet(self._toggle_style(active))
-        self._engine_toggle.blockSignals(False)
 
     def set_rule_engine_available(self, available: bool):
         """Enable or disable the toggle button (grayed out when SNMP sim is not running)."""
-        self._engine_toggle.setEnabled(available)
-        if not available:
-            self.set_engine_active(False)
 
     def set_management_endpoint(self, host, port):
         """Update the SNMP management endpoint info bar."""
@@ -491,11 +489,6 @@ class RulesPanel(QWidget):
                 "color:#3fb950; background:#0d1117; border:1px solid #238636;"
                 " border-radius:3px; padding:2px 6px;"
             )
-
-    def _on_engine_toggled(self, checked: bool):
-        self._engine_toggle.setText("● Active" if checked else "● Disabled")
-        self._engine_toggle.setStyleSheet(self._toggle_style(checked))
-        self.sig_rule_engine_toggled.emit(checked)
 
     def _on_enable_all(self):
         if self._rule_engine:

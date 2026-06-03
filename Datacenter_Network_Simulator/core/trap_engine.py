@@ -95,6 +95,8 @@ class TrapEngine(QObject):
 
     def set_rule_engine_enabled(self, enabled: bool):
         self._rule_engine_enabled = enabled
+        if self._rule_engine is not None:
+            self._rule_engine.set_enabled(enabled)
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -188,6 +190,14 @@ class TrapEngine(QObject):
             kwargs["metric_value"] = action.extra["temperature"]
         elif "memory_usage" in action.extra:
             kwargs["metric_value"] = action.extra["memory_usage"]
+        else:
+            # Generic: extract the triggering metric's value from extra
+            cond = getattr(action.rule, "condition", None)
+            metric_name = getattr(cond, "metric", None) if cond else None
+            if metric_name and metric_name in action.extra:
+                val = action.extra[metric_name]
+                if isinstance(val, (int, float)):
+                    kwargs["metric_value"] = val
 
         kwargs["rule_name"] = action.rule.rule_name
 
@@ -492,4 +502,76 @@ class TrapEngine(QObject):
         if trap_type == _AIRFLOW_ALERT:
             val = kwargs.get("metric_value", device.airflow)
             return f"Airflow {float(val):.2f} m/s  (range 0.3–3.5 m/s)"
-        return ""
+        # PDU load / power
+        if trap_type in (TrapType.PDU_LOAD_HIGH, TrapType.PDU_LOAD_CRITICAL):
+            val = kwargs.get("metric_value", "—")
+            return f"PDU load {float(val):.1f}%"
+        if trap_type in (TrapType.PDU_VOLTAGE_HIGH, TrapType.PDU_VOLTAGE_LOW):
+            val = kwargs.get("metric_value", "—")
+            return f"Input voltage {float(val):.1f} V"
+        if trap_type == TrapType.PDU_PHASE_IMBALANCE:
+            val = kwargs.get("metric_value", "—")
+            return f"Phase imbalance {float(val):.1f}%"
+        if trap_type == TrapType.PDU_POWER_FACTOR_LOW:
+            val = kwargs.get("metric_value", "—")
+            return f"Power factor {float(val):.2f}"
+        if trap_type == TrapType.PDU_OUTLET_CURRENT_HIGH:
+            val = kwargs.get("metric_value", "—")
+            return f"Outlet current {float(val):.1f} A"
+        if trap_type == TrapType.PDU_FREQUENCY_FAULT:
+            val = kwargs.get("metric_value", "—")
+            return f"Frequency {float(val):.2f} Hz  (normal 49.5–50.5 Hz)"
+        if trap_type == TrapType.PDU_TEMP_HIGH:
+            val = kwargs.get("metric_value", "—")
+            return f"PDU temp {float(val):.1f}°C  (threshold 35°C)"
+        if trap_type == TrapType.PDU_HUMIDITY_HIGH:
+            val = kwargs.get("metric_value", "—")
+            return f"PDU humidity {float(val):.1f}%  (threshold 70%)"
+        if trap_type == TrapType.PDU_OUTLET_ON:
+            return "Outlet switched on"
+        if trap_type == TrapType.PDU_OUTLET_OFF:
+            return "Outlet switched off"
+        if trap_type == TrapType.PDU_BREAKER_TRIPPED:
+            return "Circuit breaker tripped"
+        if trap_type == TrapType.PDU_SMOKE_DETECTED:
+            return "Smoke sensor triggered"
+        if trap_type == TrapType.PDU_GROUND_FAULT:
+            return "Ground fault detected"
+        if trap_type == TrapType.PDU_OUTLET_FAILURE:
+            return "Outlet hardware fault"
+        # UPS extended
+        if trap_type == TrapType.UPS_BATTERY_LOW_HEALTH:
+            val = kwargs.get("metric_value", "—")
+            return f"Battery health {float(val):.1f}%  (threshold 50%)"
+        if trap_type == TrapType.UPS_BYPASS_ACTIVE:
+            return "UPS switched to bypass mode"
+        if trap_type == TrapType.UPS_BYPASS_CLEARED:
+            return "UPS exited bypass mode"
+        if trap_type == TrapType.UPS_BATTERY_HEALTH_RESTORED:
+            val = kwargs.get("metric_value", "—")
+            return f"Battery health recovered to {float(val):.1f}%"
+        # Sensor mid/outlet temp
+        if trap_type == TrapType.SENSOR_MID_TEMP_HIGH:
+            val = kwargs.get("metric_value", "—")
+            return f"Mid-rack temp {float(val):.1f}°C  (threshold 38°C)"
+        if trap_type == TrapType.SENSOR_OUTLET_TEMP_HIGH:
+            val = kwargs.get("metric_value", "—")
+            return f"Exhaust temp {float(val):.1f}°C  (threshold 45°C)"
+        # Generator
+        if trap_type == TrapType.GEN_RUNNING:
+            return "Generator started — utility power lost"
+        if trap_type == TrapType.GEN_STOPPED:
+            return "Generator stopped — utility power restored"
+        if trap_type == TrapType.GEN_LOW_FUEL:
+            return "Fuel tank below 20%"
+        if trap_type == TrapType.GEN_LOW_COOLANT:
+            return "Coolant level low"
+        if trap_type == TrapType.GEN_BATTERY_FAILURE:
+            return "Starting battery fault"
+        if trap_type == TrapType.GEN_TRANSFER_SWITCH:
+            return "ATS relay failure"
+        if trap_type == TrapType.GEN_OVERCRANK:
+            return "Failed to start — max crank attempts exceeded"
+        # Fallback: use trap definition description
+        defn = TRAP_DEFINITIONS.get(trap_type)
+        return defn.description if defn else ""

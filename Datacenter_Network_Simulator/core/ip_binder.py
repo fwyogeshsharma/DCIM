@@ -407,7 +407,7 @@ def add_ips_fast(
     mask: str = "255.255.255.0",
     log_cb: Optional[Callable[[str, str], None]] = None,
     progress_cb: Optional[Callable[[int, int], None]] = None,
-    workers: int = 4,
+    workers: int = 1,
     cancelled_fn: Optional[Callable[[], bool]] = None,
 ) -> Tuple[List[str], Dict[str, int]]:
     """

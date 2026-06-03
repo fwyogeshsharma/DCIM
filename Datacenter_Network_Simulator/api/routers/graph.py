@@ -49,6 +49,7 @@ def get_graph(layer: str = None):
             "os_version": getattr(device, "os_version", ""),
             "snmp_port": getattr(device, "snmp_port", 161),
             "gnmi_port": getattr(device, "gnmi_port", 57400),
+            "model_name": getattr(device, "model_name", ""),
         })
 
     links_out = []

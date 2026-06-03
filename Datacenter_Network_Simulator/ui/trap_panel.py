@@ -87,7 +87,7 @@ class TrapPanel(QWidget):
         layout.addWidget(recv_group)
 
         # ── Rule Engine toggle ─────────────────────────────────────────────
-        self._rule_engine_btn = QPushButton("⚙  Rule Engine  OFF")
+        self._rule_engine_btn = QPushButton("⚙  Trap Simulation  OFF")
         self._rule_engine_btn.setCheckable(True)
         self._rule_engine_btn.setEnabled(False)
         self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
@@ -205,7 +205,7 @@ class TrapPanel(QWidget):
         self._rule_engine_btn.blockSignals(True)
         self._rule_engine_btn.setChecked(active)
         if active:
-            self._rule_engine_btn.setText("⚙  Rule Engine  ON")
+            self._rule_engine_btn.setText("⚙  Trap Simulation  ON")
             self._rule_engine_btn.setStyleSheet(
                 "QPushButton { background:#1f6feb; color:white; border:none; "
                 "border-radius:6px; padding:8px; font-weight:bold; } "
@@ -213,7 +213,7 @@ class TrapPanel(QWidget):
                 "QPushButton:checked { background:#1158c7; }"
             )
         else:
-            self._rule_engine_btn.setText("⚙  Rule Engine  OFF")
+            self._rule_engine_btn.setText("⚙  Trap Simulation  OFF")
             self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
         self._rule_engine_btn.blockSignals(False)
 
@@ -231,7 +231,7 @@ class TrapPanel(QWidget):
 
     def _on_rule_engine_toggled(self, checked: bool):
         if checked:
-            self._rule_engine_btn.setText("⚙  Rule Engine  ON")
+            self._rule_engine_btn.setText("⚙  Trap Simulation  ON")
             self._rule_engine_btn.setStyleSheet(
                 "QPushButton { background:#1f6feb; color:white; border:none; "
                 "border-radius:6px; padding:8px; font-weight:bold; } "
@@ -239,7 +239,7 @@ class TrapPanel(QWidget):
                 "QPushButton:checked { background:#1158c7; }"
             )
         else:
-            self._rule_engine_btn.setText("⚙  Rule Engine  OFF")
+            self._rule_engine_btn.setText("⚙  Trap Simulation  OFF")
             self._rule_engine_btn.setStyleSheet(self._btn_secondary_style())
         self.sig_rule_engine.emit(checked)
 

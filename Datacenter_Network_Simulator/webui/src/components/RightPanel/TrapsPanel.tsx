@@ -88,8 +88,8 @@ export default function TrapsPanel() {
   type BadgeCfg = { cls: string; dot: string; text: string }
   let badge: BadgeCfg
   if (!engineAvail)   badge = { cls: 'stopped', dot: 'grey',   text: 'Idle' }
-  else if (engineOn)  badge = { cls: 'running', dot: 'green',  text: `Engine ON · ${traps.length}` }
-  else                badge = { cls: 'ready',   dot: 'yellow', text: `Engine OFF · ${traps.length}` }
+  else if (engineOn)  badge = { cls: 'running', dot: 'green',  text: `Traps ON · ${traps.length}` }
+  else                badge = { cls: 'ready',   dot: 'yellow', text: `Traps OFF · ${traps.length}` }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -147,7 +147,7 @@ export default function TrapsPanel() {
         }>
           <span className="label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <IconEngine />
-            Rule Engine
+            Trap Simulation
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: engineOn ? 'var(--green)' : 'var(--text-dim)' }}>

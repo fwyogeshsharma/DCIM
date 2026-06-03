@@ -18,6 +18,9 @@ import argparse
 import asyncio
 import sys
 from datetime import datetime
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pyasn1.codec.ber import decoder as ber_decoder
 from pysnmp.proto import api as snmp_api
@@ -33,39 +36,127 @@ try:
         defn.oid: defn.severity for defn in TRAP_DEFINITIONS.values()
     }
 except ImportError:
-    # Fallback when run outside the project root
+    # Fallback when run truly outside the project root
     TRAP_OID_LABELS = {
+        # Standard SNMPv2-MIB
         "1.3.6.1.6.3.1.1.5.1":  "Cold Start",
         "1.3.6.1.6.3.1.1.5.2":  "Warm Start",
         "1.3.6.1.6.3.1.1.5.3":  "Link Down",
         "1.3.6.1.6.3.1.1.5.4":  "Link Up",
         "1.3.6.1.6.3.1.1.5.5":  "Authentication Failure",
+        # Routing
         "1.3.6.1.2.1.15.0.2":   "BGP Session Down",
+        # UPS-MIB
         "1.3.6.1.2.1.33.2.0.1": "UPS On Battery",
         "1.3.6.1.2.1.33.2.0.2": "UPS Low Battery",
-        "1.3.6.1.4.1.99999.1.1":"CPU High Usage",
-        "1.3.6.1.4.1.99999.1.2":"Memory High Usage",
-        "1.3.6.1.4.1.99999.1.3":"Temperature Alert",
-        "1.3.6.1.4.1.99999.1.4":"Link Flap",
-        "1.3.6.1.4.1.99999.1.5":"Rack Failure",
-        "1.3.6.1.4.1.99999.1.6":"Humidity Alert",
-        "1.3.6.1.4.1.99999.1.7":"Dew Point Alert",
-        "1.3.6.1.4.1.99999.1.8":"Airflow Alert",
+        # Enterprise general (.1.x)
+        "1.3.6.1.4.1.99999.1.1": "CPU High Usage",
+        "1.3.6.1.4.1.99999.1.2": "Memory High Usage",
+        "1.3.6.1.4.1.99999.1.3": "Temperature Alert",
+        "1.3.6.1.4.1.99999.1.4": "Link Flap",
+        "1.3.6.1.4.1.99999.1.5": "Rack Failure",
+        "1.3.6.1.4.1.99999.1.6": "Humidity Alert",
+        "1.3.6.1.4.1.99999.1.7": "Dew Point Alert",
+        "1.3.6.1.4.1.99999.1.8": "Airflow Alert",
+        "1.3.6.1.4.1.99999.1.9": "Mid-Rack Temp High",
+        "1.3.6.1.4.1.99999.1.10": "Exhaust Temp High",
+        "1.3.6.1.4.1.99999.1.11": "Mid-Rack Temp Normal",
+        "1.3.6.1.4.1.99999.1.12": "Exhaust Temp Normal",
+        # Enterprise UPS extended (.2.x)
+        "1.3.6.1.4.1.99999.2.1": "Battery Normal",
+        "1.3.6.1.4.1.99999.2.2": "Utility Power Restored",
+        "1.3.6.1.4.1.99999.2.3": "Output Overload",
+        "1.3.6.1.4.1.99999.2.4": "Output Normal",
+        "1.3.6.1.4.1.99999.2.5": "Fan Failure",
+        "1.3.6.1.4.1.99999.2.6": "Battery Failure",
+        "1.3.6.1.4.1.99999.2.7": "Battery Disconnected",
+        "1.3.6.1.4.1.99999.2.8": "Charger Failure",
+        "1.3.6.1.4.1.99999.2.9": "Input Voltage High",
+        "1.3.6.1.4.1.99999.2.10": "Input Voltage Low",
+        "1.3.6.1.4.1.99999.2.11": "Frequency Out of Range",
+        "1.3.6.1.4.1.99999.2.12": "Rectifier Failure",
+        "1.3.6.1.4.1.99999.2.13": "Phase Failure",
+        "1.3.6.1.4.1.99999.2.14": "Battery Low Health",
+        "1.3.6.1.4.1.99999.2.15": "Battery Health Restored",
+        "1.3.6.1.4.1.99999.2.16": "Bypass Active",
+        "1.3.6.1.4.1.99999.2.17": "Bypass Cleared",
+        # Enterprise Generator (.3.x)
+        "1.3.6.1.4.1.99999.3.1": "Generator Running",
+        "1.3.6.1.4.1.99999.3.2": "Generator Stopped",
+        "1.3.6.1.4.1.99999.3.3": "Low Fuel",
+        "1.3.6.1.4.1.99999.3.4": "Low Coolant",
+        "1.3.6.1.4.1.99999.3.5": "Battery Failure",
+        "1.3.6.1.4.1.99999.3.6": "Transfer Switch Fault",
+        "1.3.6.1.4.1.99999.3.7": "Overcrank",
+        # Enterprise PDU (.6.x)
+        "1.3.6.1.4.1.99999.6.1": "Outlet On",
+        "1.3.6.1.4.1.99999.6.2": "Outlet Off",
+        "1.3.6.1.4.1.99999.6.3": "Breaker Tripped",
+        "1.3.6.1.4.1.99999.6.4": "Load High",
+        "1.3.6.1.4.1.99999.6.5": "Load Critical",
+        "1.3.6.1.4.1.99999.6.6": "Voltage High",
+        "1.3.6.1.4.1.99999.6.7": "Voltage Low",
+        "1.3.6.1.4.1.99999.6.8": "Phase Imbalance",
+        "1.3.6.1.4.1.99999.6.9": "Power Factor Low",
+        "1.3.6.1.4.1.99999.6.10": "Outlet Failure",
+        "1.3.6.1.4.1.99999.6.11": "Smoke Detected",
+        "1.3.6.1.4.1.99999.6.12": "Outlet Current High",
+        "1.3.6.1.4.1.99999.6.13": "Ground Fault",
+        "1.3.6.1.4.1.99999.6.14": "PDU Frequency Fault",
+        "1.3.6.1.4.1.99999.6.15": "PDU Frequency Normal",
+        "1.3.6.1.4.1.99999.6.16": "PDU Temperature High",
+        "1.3.6.1.4.1.99999.6.17": "PDU Temperature Normal",
+        "1.3.6.1.4.1.99999.6.18": "PDU Humidity High",
+        "1.3.6.1.4.1.99999.6.19": "PDU Humidity Normal",
     }
     _TRAP_OID_SEVERITY = {
-        "1.3.6.1.6.3.1.1.5.3":  "major",
-        "1.3.6.1.6.3.1.1.5.5":  "major",
-        "1.3.6.1.2.1.15.0.2":   "critical",
-        "1.3.6.1.2.1.33.2.0.1": "critical",
-        "1.3.6.1.2.1.33.2.0.2": "critical",
-        "1.3.6.1.4.1.99999.1.1":"major",
-        "1.3.6.1.4.1.99999.1.2":"major",
-        "1.3.6.1.4.1.99999.1.3":"critical",
-        "1.3.6.1.4.1.99999.1.4":"critical",
-        "1.3.6.1.4.1.99999.1.5":"critical",
-        "1.3.6.1.4.1.99999.1.6":"major",
-        "1.3.6.1.4.1.99999.1.7":"critical",
-        "1.3.6.1.4.1.99999.1.8":"major",
+        "1.3.6.1.6.3.1.1.5.3":   "major",
+        "1.3.6.1.6.3.1.1.5.5":   "major",
+        "1.3.6.1.2.1.15.0.2":    "critical",
+        "1.3.6.1.2.1.33.2.0.1":  "critical",
+        "1.3.6.1.2.1.33.2.0.2":  "critical",
+        "1.3.6.1.4.1.99999.1.1": "major",
+        "1.3.6.1.4.1.99999.1.2": "major",
+        "1.3.6.1.4.1.99999.1.3": "critical",
+        "1.3.6.1.4.1.99999.1.4": "critical",
+        "1.3.6.1.4.1.99999.1.5": "critical",
+        "1.3.6.1.4.1.99999.1.6": "major",
+        "1.3.6.1.4.1.99999.1.7": "critical",
+        "1.3.6.1.4.1.99999.1.8": "major",
+        "1.3.6.1.4.1.99999.1.9": "major",
+        "1.3.6.1.4.1.99999.1.10": "major",
+        "1.3.6.1.4.1.99999.2.3": "critical",
+        "1.3.6.1.4.1.99999.2.5": "critical",
+        "1.3.6.1.4.1.99999.2.6": "critical",
+        "1.3.6.1.4.1.99999.2.7": "critical",
+        "1.3.6.1.4.1.99999.2.8": "critical",
+        "1.3.6.1.4.1.99999.2.9": "major",
+        "1.3.6.1.4.1.99999.2.10": "major",
+        "1.3.6.1.4.1.99999.2.11": "major",
+        "1.3.6.1.4.1.99999.2.12": "critical",
+        "1.3.6.1.4.1.99999.2.13": "critical",
+        "1.3.6.1.4.1.99999.2.14": "major",
+        "1.3.6.1.4.1.99999.2.16": "major",
+        "1.3.6.1.4.1.99999.3.1": "critical",
+        "1.3.6.1.4.1.99999.3.3": "major",
+        "1.3.6.1.4.1.99999.3.4": "major",
+        "1.3.6.1.4.1.99999.3.5": "critical",
+        "1.3.6.1.4.1.99999.3.6": "critical",
+        "1.3.6.1.4.1.99999.3.7": "critical",
+        "1.3.6.1.4.1.99999.6.3": "critical",
+        "1.3.6.1.4.1.99999.6.4": "major",
+        "1.3.6.1.4.1.99999.6.5": "critical",
+        "1.3.6.1.4.1.99999.6.6": "major",
+        "1.3.6.1.4.1.99999.6.7": "major",
+        "1.3.6.1.4.1.99999.6.8": "major",
+        "1.3.6.1.4.1.99999.6.9": "major",
+        "1.3.6.1.4.1.99999.6.10": "critical",
+        "1.3.6.1.4.1.99999.6.11": "critical",
+        "1.3.6.1.4.1.99999.6.12": "major",
+        "1.3.6.1.4.1.99999.6.13": "critical",
+        "1.3.6.1.4.1.99999.6.14": "major",
+        "1.3.6.1.4.1.99999.6.16": "major",
+        "1.3.6.1.4.1.99999.6.18": "major",
     }
 
 # ── Varbind OID → human-readable label ───────────────────────────────────────
@@ -86,7 +177,7 @@ OID_LABELS: dict[str, str] = {
     # UPS-MIB
     "1.3.6.1.2.1.33.1.2.1.0":   "upsAlarmId",
     "1.3.6.1.2.1.33.1.2.4.0":   "upsEstimatedMinutesRemaining",
-    # Enterprise varbinds (1.3.6.1.4.1.99999.2.x)
+    # Enterprise varbinds — resource metrics
     "1.3.6.1.4.1.99999.2.1":    "cpuUsage (%)",
     "1.3.6.1.4.1.99999.2.2":    "memoryUsage (%)",
     "1.3.6.1.4.1.99999.2.3":    "temperature (°C)",
@@ -97,7 +188,7 @@ OID_LABELS: dict[str, str] = {
     "1.3.6.1.4.1.99999.2.8":    "linkFlapWindowSec",
     "1.3.6.1.4.1.99999.2.9":    "rackId",
     "1.3.6.1.4.1.99999.2.10":   "devicesDown",
-    # Environmental sensor varbinds
+    # Enterprise varbinds — environmental sensor
     "1.3.6.1.4.1.99999.2.11":   "ambientTemp (°C)",
     "1.3.6.1.4.1.99999.2.12":   "humidity (%)",
     "1.3.6.1.4.1.99999.2.13":   "dewpoint (°C×10)",
@@ -263,7 +354,7 @@ async def _run(host: str, port: int):
     for oid, name in sorted(TRAP_OID_LABELS.items()):
         sev = _TRAP_OID_SEVERITY.get(oid, "")
         marker = _SEV_MARKERS.get(sev, "      ")
-        print(f"    {marker}  {name:<28} {oid}")
+        print(f"    {marker}  {name:<40} {oid}")
     print()
 
     transport, _ = await loop.create_datagram_endpoint(

@@ -6,6 +6,7 @@ Enterprise OID tree: 1.3.6.1.4.1.99999
   .2.1-.2.13  UPS enterprise traps
   .4.1-.4.10  UPS pollable status OIDs
   .5.1-.5.17  PDU pollable status OIDs
+  .3.1-.3.7   Generator enterprise traps
   .6.1-.6.13  PDU enterprise traps
 """
 from __future__ import annotations
@@ -63,6 +64,31 @@ class TrapType(str, Enum):
     PDU_SMOKE_DETECTED        = "smokeDetected"
     PDU_OUTLET_CURRENT_HIGH   = "outletCurrentHigh"
     PDU_GROUND_FAULT          = "groundFault"
+    # PDU environment traps (1.3.6.1.4.1.99999.6.14–6.19)
+    PDU_FREQUENCY_FAULT       = "pduFrequencyFault"
+    PDU_FREQUENCY_NORMAL      = "pduFrequencyNormal"
+    PDU_TEMP_HIGH             = "pduTempHigh"
+    PDU_TEMP_NORMAL           = "pduTempNormal"
+    PDU_HUMIDITY_HIGH         = "pduHumidityHigh"
+    PDU_HUMIDITY_NORMAL       = "pduHumidityNormal"
+    # UPS extended traps (1.3.6.1.4.1.99999.2.14–2.17)
+    UPS_BATTERY_LOW_HEALTH    = "batteryLowHealth"
+    UPS_BATTERY_HEALTH_RESTORED = "batteryHealthRestored"
+    UPS_BYPASS_ACTIVE         = "bypassActive"
+    UPS_BYPASS_CLEARED        = "bypassCleared"
+    # Sensor mid/outlet temp traps (1.3.6.1.4.1.99999.1.9–1.12)
+    SENSOR_MID_TEMP_HIGH      = "sensorMidTempHigh"
+    SENSOR_OUTLET_TEMP_HIGH   = "sensorOutletTempHigh"
+    SENSOR_MID_TEMP_NORMAL    = "sensorMidTempNormal"
+    SENSOR_OUTLET_TEMP_NORMAL = "sensorOutletTempNormal"
+    # Generator enterprise traps (1.3.6.1.4.1.99999.3.x)
+    GEN_RUNNING           = "generatorRunning"
+    GEN_STOPPED           = "generatorStopped"
+    GEN_LOW_FUEL          = "generatorLowFuel"
+    GEN_LOW_COOLANT       = "generatorLowCoolant"
+    GEN_BATTERY_FAILURE   = "generatorBatteryFailure"
+    GEN_TRANSFER_SWITCH   = "generatorTransferSwitch"
+    GEN_OVERCRANK         = "generatorOvercrank"
 
 
 SEVERITY_COLOR = {
@@ -275,6 +301,70 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
     TrapType.PDU_GROUND_FAULT: TrapDefinition(
         TrapType.PDU_GROUND_FAULT, "1.3.6.1.4.1.99999.6.13",
         "Ground Fault", "PDU ground fault detected", "critical"),
+    TrapType.PDU_FREQUENCY_FAULT: TrapDefinition(
+        TrapType.PDU_FREQUENCY_FAULT, "1.3.6.1.4.1.99999.6.14",
+        "PDU Frequency Fault", "PDU input frequency outside 49.5–50.5 Hz band", "major"),
+    TrapType.PDU_FREQUENCY_NORMAL: TrapDefinition(
+        TrapType.PDU_FREQUENCY_NORMAL, "1.3.6.1.4.1.99999.6.15",
+        "PDU Frequency Normal", "PDU input frequency returned to normal range", "informational"),
+    TrapType.PDU_TEMP_HIGH: TrapDefinition(
+        TrapType.PDU_TEMP_HIGH, "1.3.6.1.4.1.99999.6.16",
+        "PDU Temperature High", "PDU ambient temperature has exceeded 35°C", "major"),
+    TrapType.PDU_TEMP_NORMAL: TrapDefinition(
+        TrapType.PDU_TEMP_NORMAL, "1.3.6.1.4.1.99999.6.17",
+        "PDU Temperature Normal", "PDU ambient temperature returned to normal", "informational"),
+    TrapType.PDU_HUMIDITY_HIGH: TrapDefinition(
+        TrapType.PDU_HUMIDITY_HIGH, "1.3.6.1.4.1.99999.6.18",
+        "PDU Humidity High", "PDU ambient humidity has exceeded 70%", "major"),
+    TrapType.PDU_HUMIDITY_NORMAL: TrapDefinition(
+        TrapType.PDU_HUMIDITY_NORMAL, "1.3.6.1.4.1.99999.6.19",
+        "PDU Humidity Normal", "PDU ambient humidity returned to normal", "informational"),
+    TrapType.UPS_BATTERY_LOW_HEALTH: TrapDefinition(
+        TrapType.UPS_BATTERY_LOW_HEALTH, "1.3.6.1.4.1.99999.2.14",
+        "Battery Low Health", "UPS battery state-of-health has fallen below 50%", "major"),
+    TrapType.UPS_BATTERY_HEALTH_RESTORED: TrapDefinition(
+        TrapType.UPS_BATTERY_HEALTH_RESTORED, "1.3.6.1.4.1.99999.2.15",
+        "Battery Health Restored", "UPS battery health has recovered above 70%", "informational"),
+    TrapType.UPS_BYPASS_ACTIVE: TrapDefinition(
+        TrapType.UPS_BYPASS_ACTIVE, "1.3.6.1.4.1.99999.2.16",
+        "Bypass Active", "UPS has switched to bypass mode", "major"),
+    TrapType.UPS_BYPASS_CLEARED: TrapDefinition(
+        TrapType.UPS_BYPASS_CLEARED, "1.3.6.1.4.1.99999.2.17",
+        "Bypass Cleared", "UPS has exited bypass mode", "informational"),
+    TrapType.SENSOR_MID_TEMP_HIGH: TrapDefinition(
+        TrapType.SENSOR_MID_TEMP_HIGH, "1.3.6.1.4.1.99999.1.9",
+        "Mid-Rack Temp High", "Mid-rack temperature probe has exceeded 38°C", "major"),
+    TrapType.SENSOR_OUTLET_TEMP_HIGH: TrapDefinition(
+        TrapType.SENSOR_OUTLET_TEMP_HIGH, "1.3.6.1.4.1.99999.1.10",
+        "Exhaust Temp High", "Rack exhaust temperature probe has exceeded 45°C", "major"),
+    TrapType.SENSOR_MID_TEMP_NORMAL: TrapDefinition(
+        TrapType.SENSOR_MID_TEMP_NORMAL, "1.3.6.1.4.1.99999.1.11",
+        "Mid-Rack Temp Normal", "Mid-rack temperature returned to normal", "informational"),
+    TrapType.SENSOR_OUTLET_TEMP_NORMAL: TrapDefinition(
+        TrapType.SENSOR_OUTLET_TEMP_NORMAL, "1.3.6.1.4.1.99999.1.12",
+        "Exhaust Temp Normal", "Rack exhaust temperature returned to normal", "informational"),
+    # ── Generator enterprise traps ────────────────────────────────────────────
+    TrapType.GEN_RUNNING: TrapDefinition(
+        TrapType.GEN_RUNNING, "1.3.6.1.4.1.99999.3.1",
+        "Generator Running", "Generator has started; utility power lost, ATS transferred to generator", "critical"),
+    TrapType.GEN_STOPPED: TrapDefinition(
+        TrapType.GEN_STOPPED, "1.3.6.1.4.1.99999.3.2",
+        "Generator Stopped", "Generator has stopped; utility power restored, ATS transferred to mains", "informational"),
+    TrapType.GEN_LOW_FUEL: TrapDefinition(
+        TrapType.GEN_LOW_FUEL, "1.3.6.1.4.1.99999.3.3",
+        "Low Fuel", "Generator fuel tank level below 20%", "major"),
+    TrapType.GEN_LOW_COOLANT: TrapDefinition(
+        TrapType.GEN_LOW_COOLANT, "1.3.6.1.4.1.99999.3.4",
+        "Low Coolant", "Generator coolant level is low", "major"),
+    TrapType.GEN_BATTERY_FAILURE: TrapDefinition(
+        TrapType.GEN_BATTERY_FAILURE, "1.3.6.1.4.1.99999.3.5",
+        "Battery Failure", "Generator starting battery fault detected", "critical"),
+    TrapType.GEN_TRANSFER_SWITCH: TrapDefinition(
+        TrapType.GEN_TRANSFER_SWITCH, "1.3.6.1.4.1.99999.3.6",
+        "Transfer Switch Fault", "Automatic transfer switch relay failure", "critical"),
+    TrapType.GEN_OVERCRANK: TrapDefinition(
+        TrapType.GEN_OVERCRANK, "1.3.6.1.4.1.99999.3.7",
+        "Overcrank", "Generator failed to start after maximum crank attempts", "critical"),
 }
 
 # Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)
@@ -332,6 +422,8 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.HUMIDITY_ALERT,
         TrapType.DEWPOINT_ALERT,
         TrapType.AIRFLOW_ALERT,
+        TrapType.SENSOR_MID_TEMP_HIGH, TrapType.SENSOR_MID_TEMP_NORMAL,
+        TrapType.SENSOR_OUTLET_TEMP_HIGH, TrapType.SENSOR_OUTLET_TEMP_NORMAL,
     ],
     "ups": [
         TrapType.COLD_START,
@@ -346,6 +438,8 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.UPS_FREQUENCY_OUT_RANGE,
         TrapType.UPS_RECTIFIER_FAILURE, TrapType.UPS_PHASE_FAILURE,
         TrapType.TEMPERATURE_ALERT,
+        TrapType.UPS_BATTERY_LOW_HEALTH, TrapType.UPS_BATTERY_HEALTH_RESTORED,
+        TrapType.UPS_BYPASS_ACTIVE, TrapType.UPS_BYPASS_CLEARED,
     ],
     "pdu": [
         TrapType.COLD_START,
@@ -358,6 +452,9 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.PDU_PHASE_IMBALANCE, TrapType.PDU_POWER_FACTOR_LOW,
         TrapType.PDU_OUTLET_FAILURE, TrapType.PDU_SMOKE_DETECTED,
         TrapType.PDU_OUTLET_CURRENT_HIGH, TrapType.PDU_GROUND_FAULT,
+        TrapType.PDU_FREQUENCY_FAULT, TrapType.PDU_FREQUENCY_NORMAL,
+        TrapType.PDU_TEMP_HIGH, TrapType.PDU_TEMP_NORMAL,
+        TrapType.PDU_HUMIDITY_HIGH, TrapType.PDU_HUMIDITY_NORMAL,
     ],
     "floor_pdu": [
         TrapType.COLD_START,
@@ -368,6 +465,19 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.PDU_VOLTAGE_HIGH, TrapType.PDU_VOLTAGE_LOW,
         TrapType.PDU_PHASE_IMBALANCE, TrapType.PDU_POWER_FACTOR_LOW,
         TrapType.PDU_SMOKE_DETECTED, TrapType.PDU_GROUND_FAULT,
+        TrapType.PDU_FREQUENCY_FAULT, TrapType.PDU_FREQUENCY_NORMAL,
+        TrapType.PDU_TEMP_HIGH, TrapType.PDU_TEMP_NORMAL,
+        TrapType.PDU_HUMIDITY_HIGH, TrapType.PDU_HUMIDITY_NORMAL,
+    ],
+    "generator": [
+        TrapType.COLD_START,
+        TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+        TrapType.GEN_RUNNING, TrapType.GEN_STOPPED,
+        TrapType.GEN_LOW_FUEL, TrapType.GEN_LOW_COOLANT,
+        TrapType.GEN_BATTERY_FAILURE,
+        TrapType.GEN_TRANSFER_SWITCH,
+        TrapType.GEN_OVERCRANK,
     ],
 }
 
@@ -384,9 +494,48 @@ _BGP_CAPABLE_SWITCH_MODELS: set[str] = {
 }
 
 
+# Per-model sensor trap sets (only metrics that sensor physically measures)
+_SENSOR_MODEL_TRAPS: dict[str, list[TrapType]] = {
+    "Raritan DPX2-T3H1": [
+        TrapType.COLD_START, TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+        TrapType.HUMIDITY_ALERT,
+        TrapType.SENSOR_MID_TEMP_HIGH, TrapType.SENSOR_MID_TEMP_NORMAL,
+        TrapType.SENSOR_OUTLET_TEMP_HIGH, TrapType.SENSOR_OUTLET_TEMP_NORMAL,
+    ],
+    "Raritan DPX2-CC2": [
+        TrapType.COLD_START, TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+    ],
+    "Vertiv Geist GTHD": [
+        TrapType.COLD_START, TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+        TrapType.HUMIDITY_ALERT,
+        TrapType.DEWPOINT_ALERT,
+    ],
+    "APC NetBotz 355": [
+        TrapType.COLD_START, TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+        TrapType.HUMIDITY_ALERT,
+        TrapType.AIRFLOW_ALERT,
+    ],
+    "APC NetBotz 250": [
+        TrapType.COLD_START, TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+        TrapType.HUMIDITY_ALERT,
+        TrapType.AIRFLOW_ALERT,
+    ],
+}
+
+
 def get_applicable_traps(device_type: str, vendor: str,
                          model_name: str = "") -> list[TrapType]:
     """Return applicable trap types for a device."""
+    if device_type == "sensor":
+        return list(_SENSOR_MODEL_TRAPS.get(model_name, [
+            TrapType.COLD_START, TrapType.AUTH_FAILURE,
+            TrapType.TEMPERATURE_ALERT,
+        ]))
     base = list(APPLICABLE_TRAPS.get(device_type, [
         TrapType.COLD_START, TrapType.LINK_DOWN, TrapType.LINK_UP,
         TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,

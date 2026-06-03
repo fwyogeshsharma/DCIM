@@ -107,6 +107,7 @@ export interface GraphDevice {
   os_version?: string
   snmp_port?: number
   gnmi_port?: number
+  model_name?: string
 }
 
 export interface GraphLink {

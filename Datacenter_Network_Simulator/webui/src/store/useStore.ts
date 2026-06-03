@@ -74,6 +74,12 @@ interface Store {
   setBindingBusy:     (v: boolean) => void
   setBindingProgress: (p: { done: number; total: number } | null) => void
 
+  // SNMP panel port config (survives tab switches)
+  snmpPort: number
+  mgmtPort: number
+  setSnmpPort: (p: number) => void
+  setMgmtPort: (p: number) => void
+
   // actions
   setLayer:          (l: string) => void
   setRightTab:       (t: string) => void
@@ -129,6 +135,11 @@ export const useStore = create<Store>((set, get) => ({
   bindingProgress: null,
   setBindingBusy:     (v) => set({ bindingBusy: v }),
   setBindingProgress: (p) => set({ bindingProgress: p }),
+
+  snmpPort: 161,
+  mgmtPort: 1161,
+  setSnmpPort: (p) => set({ snmpPort: p }),
+  setMgmtPort: (p) => set({ mgmtPort: p }),
 
   setLayer:          (l) => { set({ activeLayer: l }); get().fetchGraph() },
   setRightTab:       (t) => set({ rightTab: t }),

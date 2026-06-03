@@ -158,6 +158,16 @@ def start_api_server(host: str = "0.0.0.0", port: int = 8000):
             loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
+        def _suppress_win_connection_reset(loop, context):
+            exc = context.get("exception")
+            # WinError 10054: remote host forcibly closed connection during
+            # ProactorEventLoop cleanup — spurious Windows noise, not a real error.
+            if isinstance(exc, ConnectionResetError):
+                return
+            loop.default_exception_handler(context)
+
+        loop.set_exception_handler(_suppress_win_connection_reset)
+
         config = uvicorn.Config(
             app,
             host=host,

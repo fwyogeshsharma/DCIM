@@ -34,7 +34,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.bacnet_object_model import (
     BACNET_PORT, BVLL_TYPE,
