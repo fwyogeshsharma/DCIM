@@ -466,5 +466,100 @@ export function createInventoryRouter(dbPool: Pool): Router {
     }
   })
 
+  // ── Sync from monitoring ───────────────────────────────────────────────────
+  // Upserts all rows from `devices` + `topology_links` into the inventory
+  // tables, mirroring the logic in migration 006_inventory_seed.sql.
+  // Returns counts of inserted/updated rows.
+  router.post('/sync', async (req, res) => {
+    try {
+      // Devices
+      const devResult = await dbPool.query(`
+        INSERT INTO dc_inventory_devices (
+          org_id, datacenter_id,
+          device_id,
+          hostname, device_type,
+          vendor, model,
+          datacenter_name, room,
+          rack, rack_unit,
+          status,
+          power_capacity_w,
+          notes
+        )
+        SELECT
+          d.org_id,
+          d.datacenter_id,
+          d.id,
+          d.hostname,
+          d.device_type,
+          d.vendor,
+          d.model_name,
+          d.datacenter,
+          d.room,
+          d.rack_num::TEXT,
+          d.rack_unit,
+          'in_use',
+          d.power_draw_w,
+          d.sys_description
+        FROM devices d
+        ON CONFLICT (org_id, datacenter_id, hostname) DO UPDATE SET
+          device_id         = EXCLUDED.device_id,
+          device_type       = EXCLUDED.device_type,
+          vendor            = COALESCE(EXCLUDED.vendor,           dc_inventory_devices.vendor),
+          model             = COALESCE(EXCLUDED.model,            dc_inventory_devices.model),
+          datacenter_name   = COALESCE(EXCLUDED.datacenter_name,  dc_inventory_devices.datacenter_name),
+          room              = COALESCE(EXCLUDED.room,             dc_inventory_devices.room),
+          rack              = COALESCE(EXCLUDED.rack,             dc_inventory_devices.rack),
+          rack_unit         = COALESCE(EXCLUDED.rack_unit,        dc_inventory_devices.rack_unit),
+          power_capacity_w  = COALESCE(EXCLUDED.power_capacity_w, dc_inventory_devices.power_capacity_w),
+          status            = CASE
+                                WHEN dc_inventory_devices.status = 'decommissioned' THEN 'decommissioned'
+                                ELSE 'in_use'
+                              END,
+          updated_at        = NOW()
+      `)
+
+      // Links
+      const linkResult = await dbPool.query(`
+        INSERT INTO dc_inventory_links (
+          org_id, datacenter_id,
+          topology_link_id,
+          src_device_id, dst_device_id,
+          src_port, dst_port,
+          link_type, speed_mbps,
+          status
+        )
+        SELECT
+          inv_src.org_id,
+          inv_src.datacenter_id,
+          tl.id,
+          inv_src.id,
+          inv_dst.id,
+          NULLIF(tl.src_port_name, ''),
+          NULLIF(tl.dst_port_name, ''),
+          COALESCE(tl.link_type, 'ethernet'),
+          tl.link_speed_mbps,
+          CASE WHEN tl.is_active THEN 'active' ELSE 'disconnected' END
+        FROM topology_links tl
+        JOIN dc_inventory_devices inv_src ON inv_src.device_id = tl.src_device_id
+        JOIN dc_inventory_devices inv_dst ON inv_dst.device_id = tl.dst_device_id
+        ON CONFLICT (topology_link_id) WHERE topology_link_id IS NOT NULL
+        DO UPDATE SET
+          status     = EXCLUDED.status,
+          speed_mbps = COALESCE(EXCLUDED.speed_mbps, dc_inventory_links.speed_mbps),
+          updated_at = NOW()
+      `)
+
+      res.json({
+        success: true,
+        data: {
+          devices_synced: devResult.rowCount,
+          links_synced:   linkResult.rowCount,
+        },
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   return router
 }

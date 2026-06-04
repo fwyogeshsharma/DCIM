@@ -645,6 +645,10 @@ class APIClient {
   async deleteInventoryLink(id: string): Promise<void> {
     return this.request(`/inventory/links/${id}`, { method: 'DELETE' })
   }
+
+  async syncInventory(): Promise<{ devices_synced: number; links_synced: number }> {
+    return this.request('/inventory/sync', { method: 'POST' })
+  }
 }
 
 export const api = new APIClient(API_BASE_URL)

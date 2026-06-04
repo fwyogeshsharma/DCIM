@@ -5,7 +5,7 @@ import {
   Plus, Search, X, Server, Network, HardDrive, Cpu, MemoryStick,
   Zap, Package, Link as LinkIcon, Edit3, Trash2, ChevronDown,
   ChevronRight, Activity, Wifi, WifiOff, AlertCircle, CheckCircle2,
-  Wrench, Archive, RefreshCw,
+  Wrench, Archive, RefreshCw, DatabaseZap,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -623,8 +623,22 @@ export default function Inventory() {
   const [editDevice, setEditDevice] = useState<InventoryDevice | undefined>()
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [editLink, setEditLink] = useState<InventoryLink | undefined>()
+  const [syncing, setSyncing] = useState(false)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['inventory'] })
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      const result = await api.syncInventory()
+      toast.success(`Synced ${result.devices_synced} devices and ${result.links_synced} links from monitoring`)
+      refresh()
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const { data: summary, isLoading: sumLoading } = useQuery({
     queryKey: ['inventory', 'summary'],
@@ -703,8 +717,18 @@ export default function Inventory() {
             <button
               onClick={() => { refresh(); toast.success('Refreshed') }}
               className="p-2 text-slate-400 hover:text-white border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
+              title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors disabled:opacity-50"
+              title="Import all monitored devices and topology links into inventory"
+            >
+              <DatabaseZap className={`w-3.5 h-3.5 ${syncing ? 'animate-pulse' : ''}`} />
+              {syncing ? 'Syncing…' : 'Sync from Monitoring'}
             </button>
             <button
               onClick={openAddLink}
