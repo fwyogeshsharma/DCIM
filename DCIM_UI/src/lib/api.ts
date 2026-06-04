@@ -17,6 +17,7 @@ import type {
   EnergyDevice,
   EnergyReading,
   EnergyTimeseriesPoint,
+  EnergyTrendRow,
 } from './types'
 
 // Use aggregator service URL if available, otherwise fall back to direct server URL
@@ -181,6 +182,15 @@ class APIClient {
     if (filter.time_range) params.append('time_range', filter.time_range)
     if (filter.interval) params.append('interval', filter.interval)
     return this.request<EnergyTimeseriesPoint[]>(`/energy/timeseries?${params.toString()}`)
+  }
+
+  // Active power summed per meter scope per time bucket (PUE Power Trend).
+  async getEnergyTrend(filter?: { time_range?: string; interval?: string }): Promise<EnergyTrendRow[]> {
+    const params = new URLSearchParams()
+    if (filter?.time_range) params.append('time_range', filter.time_range)
+    if (filter?.interval) params.append('interval', filter.interval)
+    const qs = params.toString()
+    return this.request<EnergyTrendRow[]>(`/energy/trend${qs ? `?${qs}` : ''}`)
   }
 
   // Alert endpoints

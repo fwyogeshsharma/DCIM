@@ -277,6 +277,13 @@ export default function Reports() {
     refetchInterval: 30000,
   })
 
+  // Active power per meter scope over time — shared source for the Power Trend.
+  const trendInterval = timeRange === '24h' ? '1 hour' : timeRange === '7d' ? '6 hours' : '1 day'
+  const { data: energyTrend } = useQuery({
+    queryKey: ['energy-trend', timeRange],
+    queryFn: () => api.getEnergyTrend({ time_range: timeRange, interval: trendInterval }),
+  })
+
   const { data: powerMetrics, isLoading: powerLoading } = useQuery({
     queryKey: ['report-power', timeRange],
     queryFn: () => api.getMetrics({ metric_type: 'power_consumption', time_range: timeRange, limit: 10000 }),
@@ -582,6 +589,40 @@ export default function Reports() {
   const metered = pueStats.meterCount > 0
   const dispPue = metered ? pueStats.pue : summaryStats.pue
   const dispDcie = metered ? pueStats.dcie : summaryStats.dcie
+
+  // Pivot the per-scope trend rows into chart points { time, facility, it, cooling }.
+  // Facility line = facility-scoped meters if any exist, else the sum of all meters
+  // (mirrors the PUE facility fallback so the chart matches the KPIs).
+  const facilityTrend = useMemo(() => {
+    const rows = energyTrend ?? []
+    if (rows.length === 0) return []
+    const hasFacility = rows.some((r) => normalizeScope(r.scope) === SCOPE.FACILITY)
+    const byBucket = new Map<string, { it: number; cooling: number; facility: number; other: number }>()
+    for (const r of rows) {
+      const b = byBucket.get(r.bucket) ?? { it: 0, cooling: 0, facility: 0, other: 0 }
+      const sc = normalizeScope(r.scope)
+      const kw = Number(r.total_kw) || 0
+      if (sc === SCOPE.IT) b.it += kw
+      else if (sc === SCOPE.COOLING) b.cooling += kw
+      else if (sc === SCOPE.FACILITY) b.facility += kw
+      else b.other += kw
+      byBucket.set(r.bucket, b)
+    }
+    return [...byBucket.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([bucket, v]) => {
+        const d = new Date(bucket)
+        const time = timeRange === '24h'
+          ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+          : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        return {
+          time,
+          facility: parseFloat((hasFacility ? v.facility : v.it + v.cooling + v.other).toFixed(2)),
+          it: parseFloat(v.it.toFixed(2)),
+          cooling: parseFloat(v.cooling.toFixed(2)),
+        }
+      })
+  }, [energyTrend, timeRange])
 
   // Energy cost. Prefer measured facility power from meters (kW→W); fall back to
   // summed server power when no meters exist. Also surface the real cumulative
@@ -963,11 +1004,28 @@ export default function Reports() {
             </div>
           )}
 
-          {/* Power trend chart */}
+          {/* Power trend chart — metered facility/IT/cooling (kW) when meters exist,
+              else per-server power_consumption (W). */}
           <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
             <h3 className="text-xl font-semibold text-white mb-1">Power Trend</h3>
-            <p className="text-sm text-slate-400 mb-4">Avg power consumption per server over time</p>
-            {chartData.length > 0 ? (
+            <p className="text-sm text-slate-400 mb-4">
+              {metered ? 'Metered facility / IT / cooling power over time' : 'Avg power consumption per server over time'}
+            </p>
+            {metered && facilityTrend.length > 0 ? (
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={facilityTrend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={{ stroke: '#334155' }} tickLine={false} />
+                    <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => `${v}kW`} />
+                    <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12, color: '#e2e8f0' }} formatter={(v: number, n: string) => [`${v} kW`, n.charAt(0).toUpperCase() + n.slice(1)]} />
+                    <Area type="monotone" dataKey="facility" name="Facility" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.12} strokeWidth={2} dot={false} connectNulls />
+                    <Area type="monotone" dataKey="it" name="IT" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.12} strokeWidth={2} dot={false} connectNulls />
+                    <Area type="monotone" dataKey="cooling" name="Cooling" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.12} strokeWidth={2} dot={false} connectNulls />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : !metered && chartData.length > 0 ? (
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>

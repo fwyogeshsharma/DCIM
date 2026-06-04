@@ -142,6 +142,13 @@ export interface EnergyTimeseriesPoint {
   min_value: number
 }
 
+// Aggregated active power per meter scope per time bucket (PUE Power Trend).
+export interface EnergyTrendRow {
+  bucket: string
+  scope: string
+  total_kw: number
+}
+
 // One directed edge between two discovered SNMP devices, from the
 // topology_links table populated by the walker's LLDP/CDP/ARP correlation
 // and by discovery's deep-scan.

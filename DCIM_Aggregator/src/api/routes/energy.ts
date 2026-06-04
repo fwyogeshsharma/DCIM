@@ -134,5 +134,38 @@ export function createEnergyRouter(dbPool: Pool, cacheService: CacheService): Ro
     }
   })
 
+  // ── Scope trend ──────────────────────────────────────────────────────────────
+  // Time-bucketed active power summed per meter scope (facility / it / cooling),
+  // for the PUE tab's shared Power Trend. Two-level aggregation: average each
+  // meter within a bucket, then sum meters of the same scope.
+  router.get('/trend', async (req, res) => {
+    try {
+      const { time_range = '24h', interval = '1 hour', metric_name = 'energy.active_power_kw' } = req.query
+      const safeTimeRange = validateTimeRange(String(time_range))
+      const safeInterval = validateInterval(String(interval))
+
+      const { rows } = await dbPool.query(`
+        SELECT bucket, scope, SUM(meter_avg) AS total_kw
+        FROM (
+          SELECT
+            time_bucket('${safeInterval}', ts)        AS bucket,
+            device_id,
+            COALESCE(attributes->>'scope', '')         AS scope,
+            AVG(value)                                 AS meter_avg
+          FROM energy_metrics
+          WHERE metric_name = $1
+            AND tag = ''
+            AND ts >= NOW() - $2::interval
+          GROUP BY bucket, device_id, COALESCE(attributes->>'scope', '')
+        ) per_meter
+        GROUP BY bucket, scope
+        ORDER BY bucket ASC
+      `, [metric_name, safeTimeRange])
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   return router
 }
