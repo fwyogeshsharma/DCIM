@@ -234,6 +234,12 @@ class DeviceInfo(BaseModel):
     ups_operating_mode: Optional[str] = None
     ups_battery_health: Optional[float] = None
     ups_energy_kwh: Optional[float] = None
+    ups_battery_voltage: Optional[float] = None
+    ups_output_voltage: Optional[float] = None
+    ups_output_current: Optional[float] = None
+    ups_output_power: Optional[float] = None
+    ups_input_current: Optional[float] = None
+    ups_input_power: Optional[float] = None
     # PDU-specific
     pdu_load: Optional[float] = None
     pdu_voltage: Optional[float] = None

@@ -144,6 +144,9 @@ _RARITAN_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1"   # Raritan PX2/DPX2 external se
 _GEIST_SENSOR   = "1.3.6.1.4.1.21239.5.1"           # Vertiv Geist probe tables
 _APC_NETBOTZ    = "1.3.6.1.4.1.318.1.1.10.4.2.2.1"  # APC NetBotz sensor value table
 _CISCO_ENVMON_TEMP = "1.3.6.1.4.1.9.9.13.1.3.1"      # CISCO-ENVMON-MIB ciscoEnvMonTemperatureStatusTable
+_CISCO_CPU_MIB     = "1.3.6.1.4.1.9.9.109.1.1.1.1"   # CISCO-PROCESS-MIB cpmCPUTotalTable
+_CISCO_MEM_MIB     = "1.3.6.1.4.1.9.9.48.1.1.1"       # CISCO-MEMORY-POOL-MIB ciscoMemoryPool
+_BGP4_PEER_TBL     = "1.3.6.1.2.1.15.3.1"             # BGP4-MIB bgpPeerTable
 
 
 def _sort_oids(entries: List[OidEntry]) -> List[OidEntry]:
@@ -228,6 +231,7 @@ class SNMPRecGenerator:
             if device.vendor == Vendor.CISCO_SYSTEMS:
                 entries += generate_cdp_entries(device, prod_tuples)
                 entries += self._cisco_envmon_temp_entries(device)
+                entries += self._cisco_perf_entries(device)
         elif device.device_type == DeviceType.OOB_SWITCH:
             # OOB switch LLDP shows every device connected to its management ports.
             mgmt_tuples = [(n, lp, rp) for n, lp, rp, lyr in neighbor_tuples
@@ -373,6 +377,14 @@ class SNMPRecGenerator:
                 updates[f"{_b}.6.1"] = ("2",  str(2 if device.inlet_temp >= 40 else 1))
                 updates[f"{_b}.6.2"] = ("2",  str(2 if device.cpu_temp   >= 75 else 1))
 
+            # CISCO-PROCESS-MIB CPU + CISCO-MEMORY-POOL-MIB
+            if device.vendor == Vendor.CISCO_SYSTEMS and device.device_type in _CISCO_NET:
+                mem_free = max(0, device.memory_total - device.memory_used)
+                updates[f"{_CISCO_CPU_MIB}.7.1"] = ("2", str(device.cpu_usage))
+                updates[f"{_CISCO_CPU_MIB}.8.1"] = ("2", str(device.cpu_usage))
+                updates[f"{_CISCO_MEM_MIB}.5.1"] = ("2", str(device.memory_used // (1024 * 1024)))
+                updates[f"{_CISCO_MEM_MIB}.6.1"] = ("2", str(mem_free // (1024 * 1024)))
+
             # Sensor environmental readings
             if device.device_type == DeviceType.SENSOR:
                 inlet_t10   = int(round(device.inlet_temp * 10))
@@ -472,6 +484,24 @@ class SNMPRecGenerator:
                 updates[f"{_UPS_ENT}.8.0"]  = ("2", str(batt_health))
                 updates[f"{_UPS_ENT}.9.0"]  = ("2", str(app_power))
                 updates[f"{_UPS_ENT}.10.0"] = ("2", str(energy_kwh))
+                # Live-derived UPS-MIB power/current metrics (previously static)
+                _NOM_VA      = 3000.0   # nominal UPS frame VA
+                _OUT_PF      = 0.9      # typical UPS output power factor
+                _EFFICIENCY  = 0.92     # typical UPS efficiency
+                _OUT_V       = 220
+                out_va        = out_load * _NOM_VA / 100.0
+                out_real_w    = int(round(out_va * _OUT_PF))
+                out_cur_x10   = int(round(out_va / _OUT_V * 10))
+                in_real_w     = int(round(out_real_w / _EFFICIENCY))
+                in_cur_x10    = int(round(in_real_w / max(in_volt, 1) * 10))
+                # Battery voltage sags with discharge: 220V at full, ~180V at empty (×10)
+                batt_volt_x10 = int(round((180.0 + 40.0 * charge / 100.0) * 10))
+                updates[f"{_UPS_MIB}.2.6.0"]     = ("2", str(batt_volt_x10))  # upsBatteryVoltage ×10 V
+                updates[f"{_UPS_MIB}.3.3.1.4.1"] = ("2", str(in_cur_x10))    # upsInputCurrent ×10 A
+                updates[f"{_UPS_MIB}.3.3.1.5.1"] = ("2", str(in_real_w))     # upsInputTruePower W
+                updates[f"{_UPS_MIB}.4.4.1.2.1"] = ("2", str(_OUT_V))        # upsOutputVoltage V
+                updates[f"{_UPS_MIB}.4.4.1.3.1"] = ("2", str(out_cur_x10))  # upsOutputCurrent ×10 A
+                updates[f"{_UPS_MIB}.4.4.1.4.1"] = ("2", str(out_real_w))   # upsOutputPower W
 
             # PDU pollable status OIDs
             if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
@@ -531,6 +561,39 @@ class SNMPRecGenerator:
                             patched.append(f"{oid}|{typ}|{val}")
                             continue
                     patched.append(line)
+
+                # Router/Firewall: strip stale BGP peer entries, inject current sessions
+                if device.device_type in (DeviceType.ROUTER, DeviceType.FIREWALL):
+                    bgp_ext = {}
+                    try:
+                        from core.device_state_store import _get_ext_state
+                        bgp_ext = _get_ext_state(device.name)
+                    except Exception:
+                        pass
+                    _bgp_pfx = _BGP4_PEER_TBL + "."
+                    _bgp_st  = {"established": 6, "idle": 1, "active": 3,
+                                "connect": 2, "opensent": 4, "openconfirm": 5}
+                    patched = [l for l in patched
+                               if not ("|" in l and l[:l.index("|")].startswith(_bgp_pfx))]
+                    new_bgp: list = []
+                    for sess in bgp_ext.get("bgp_sessions", []):
+                        peer = sess.get("peer", "")
+                        if not peer:
+                            continue
+                        sv = _bgp_st.get(sess.get("state", "idle"), 1)
+                        new_bgp += [
+                            f"{_BGP4_PEER_TBL}.2.{peer}|2|{sv}",
+                            f"{_BGP4_PEER_TBL}.3.{peer}|2|2",
+                            f"{_BGP4_PEER_TBL}.7.{peer}|64|{peer}",
+                        ]
+                    if new_bgp:
+                        def _lkey(l: str) -> tuple:
+                            try:
+                                return tuple(int(x) for x in l.split("|")[0].split("."))
+                            except ValueError:
+                                return (999999,)
+                        patched = sorted(patched + new_bgp, key=_lkey)
+
                 new_content = "\n".join(patched)
             except OSError as e:
                 log.warning("[SNMPRecGen] patch_metrics read failed for %s: %s", filepath, e)
@@ -1014,6 +1077,17 @@ class SNMPRecGenerator:
             _oid_entry(f"{b}.4.2", "2",  "75"),
             _oid_entry(f"{b}.5.2", "2",  "0"),
             _oid_entry(f"{b}.6.2", "2",  str(s_cpu)),
+        ]
+
+    def _cisco_perf_entries(self, device: Device) -> List[OidEntry]:
+        """CISCO-PROCESS-MIB (CPU%) + CISCO-MEMORY-POOL-MIB for Cisco network devices."""
+        mem_free = max(0, device.memory_total - device.memory_used)
+        return [
+            _oid_entry(f"{_CISCO_CPU_MIB}.7.1", "2", str(device.cpu_usage)),              # cpmCPUTotal1minRev %
+            _oid_entry(f"{_CISCO_CPU_MIB}.8.1", "2", str(device.cpu_usage)),              # cpmCPUTotal5minRev %
+            _oid_entry(f"{_CISCO_MEM_MIB}.2.1", "4", "Processor"),                        # ciscoMemoryPoolName
+            _oid_entry(f"{_CISCO_MEM_MIB}.5.1", "2", str(device.memory_used // (1024 * 1024))),  # used MB
+            _oid_entry(f"{_CISCO_MEM_MIB}.6.1", "2", str(mem_free // (1024 * 1024))),     # free MB
         ]
 
     def _sensor_entries(self, device: Device) -> List[OidEntry]:

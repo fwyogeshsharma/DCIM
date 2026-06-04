@@ -41,6 +41,12 @@ const METRIC_GROUPS: MetricGroup[] = [
     { key: 'ups_bypass_status',    label: 'Bypass Path Status',      tip: 'off / on — 0.08% to bypass; recovers 12%' },
     { key: 'ups_battery_health',   label: 'Battery Health %',        tip: '% state-of-health; slow decay (faster if battery faulted)' },
     { key: 'ups_energy_kwh',       label: 'Energy Output (kWh)',     tip: 'Derived: cumulative ∫(output_load% × 3kW) dt per tick', derived: true },
+    { key: 'ups_battery_voltage',  label: 'Battery Voltage (V)',     tip: 'Derived: sags with discharge — 220V normal, ~200V on-battery, ~186V low', derived: true },
+    { key: 'ups_output_voltage',   label: 'Output Voltage (V)',      tip: 'Derived: regulated 220V (stable)', derived: true },
+    { key: 'ups_output_current',   label: 'Output Current (A)',      tip: 'Derived: (output_load% × 3000VA) / 220V', derived: true },
+    { key: 'ups_output_power',     label: 'Output Power (W)',        tip: 'Derived: (output_load% × 3000VA) × PF 0.9', derived: true },
+    { key: 'ups_input_current',    label: 'Input Current (A)',       tip: 'Derived: output_power / efficiency(0.92) / input_voltage', derived: true },
+    { key: 'ups_input_power',      label: 'Input Power (W)',         tip: 'Derived: output_power / efficiency(0.92)', derived: true },
   ]},
   { gid: 'pdu', title: 'PDU / Floor PDU', rows: [
     { key: 'pdu_load',            label: 'PDU Load %',              tip: '±3% walk; 0.4% spike >80%' },

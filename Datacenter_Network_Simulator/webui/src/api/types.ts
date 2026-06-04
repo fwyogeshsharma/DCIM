@@ -62,6 +62,12 @@ export interface DeviceInfo {
   ups_operating_mode?: string
   ups_battery_health?: number
   ups_energy_kwh?: number
+  ups_battery_voltage?: number
+  ups_output_voltage?: number
+  ups_output_current?: number
+  ups_output_power?: number
+  ups_input_current?: number
+  ups_input_power?: number
   pdu_load?: number
   pdu_voltage?: number
   pdu_power_factor?: number

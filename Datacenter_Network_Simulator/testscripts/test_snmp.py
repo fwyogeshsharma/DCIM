@@ -26,14 +26,23 @@ Usage examples
   # Also walk the interface table
   python test_snmp.py 10.0.0.1 --interfaces
 
-  # Also walk LLDP neighbours
-  python test_snmp.py 10.0.0.1 --lldp
-
-  # Query all sensor readings (Raritan DPX2-T3H1: inlet/mid/exhaust + humidity)
+  # Query all sensor readings (Raritan DPX2 / Vertiv Geist / APC NetBotz)
   python test_snmp.py 192.168.0.209 --sensor
 
-  # Full test (system + interfaces + LLDP + sensors)
-  python test_snmp.py 10.0.0.1 --full
+  # Query all UPS data (battery, input, output, enterprise status)
+  python test_snmp.py 10.50.0.20 --ups
+
+  # Query all PDU data (power, status, environment)
+  python test_snmp.py 10.50.0.30 --pdu
+
+  # Query all switch data (MAC table, STP, CDP, Cisco CPU/memory)
+  python test_snmp.py 10.50.0.10 --switch
+
+  # Query all router data (BGP peers, CDP, Cisco CPU/memory)
+  python test_snmp.py 10.50.0.5 --router
+
+  # Full auto-detect: probe device type and fetch all relevant data
+  python test_snmp.py 10.50.0.1 --full
 
   # Quiet — only print failures
   python test_snmp.py 10.0.0.1 10.0.0.2 --quiet
@@ -46,10 +55,9 @@ import sys
 import time
 import warnings
 
-# Silence the pysnmp-lextudio → pysnmp rename noise (emitted as RuntimeWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="pysnmp")
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
@@ -79,41 +87,118 @@ SYSTEM_OIDS: List[Tuple[str, str]] = [
     ("1.3.6.1.2.1.1.7.0",  "sysServices"),
 ]
 
-IFACE_TABLE_OID   = "1.3.6.1.2.1.2.2"      # IF-MIB ifTable
-LLDP_REM_OID      = "1.0.8802.1.1.2.1.4.1" # LLDP-MIB remote table
-
+IFACE_TABLE_OID   = "1.3.6.1.2.1.2.2"
+LLDP_REM_OID      = "1.0.8802.1.1.2.1.4.1"
 
 PERF_OIDS: List[Tuple[str, str]] = [
-    # CPU
     ("1.3.6.1.4.1.2021.11.9.0",   "cpuIdle"),
     ("1.3.6.1.4.1.2021.11.10.0",  "cpuSystem"),
     ("1.3.6.1.4.1.2021.11.11.0",  "cpuUser"),
-
-    # Memory
-    ("1.3.6.1.4.1.2021.4.5.0",   "memTotalKB"),
-    ("1.3.6.1.4.1.2021.4.6.0",   "memAvailKB"),
-    ("1.3.6.1.4.1.2021.4.14.0",  "memBufferKB"),
-
-    # Disk (UCD-SNMP-MIB dskTable index 1 = first mount)
-    ("1.3.6.1.4.1.2021.9.1.5.1", "diskPercent"),
-    ("1.3.6.1.4.1.2021.9.1.6.1", "diskTotalKB"),
-    ("1.3.6.1.4.1.2021.9.1.7.1", "diskAvailKB"),
+    ("1.3.6.1.4.1.2021.4.5.0",    "memTotalKB"),
+    ("1.3.6.1.4.1.2021.4.6.0",    "memAvailKB"),
+    ("1.3.6.1.4.1.2021.4.14.0",   "memBufferKB"),
+    ("1.3.6.1.4.1.2021.9.1.5.1",  "diskPercent"),
+    ("1.3.6.1.4.1.2021.9.1.6.1",  "diskTotalKB"),
+    ("1.3.6.1.4.1.2021.9.1.7.1",  "diskAvailKB"),
 ]
 
-# ENTITY-SENSOR-MIB
-# Temperature sensors often appear under:
-# 1.3.6.1.2.1.99.1.1.1.4
+TEMP_SENSOR_OID       = "1.3.6.1.2.1.99.1.1.1.4"
+CISCO_ENVMON_TEMP_OID = "1.3.6.1.4.1.9.9.13.1.3.1.3"
 
-TEMP_SENSOR_OID      = "1.3.6.1.2.1.99.1.1.1.4"
-CISCO_ENVMON_TEMP_OID = "1.3.6.1.4.1.9.9.13.1.3.1.3"  # ciscoEnvMonTemperatureStatusValue
+# Environmental sensor vendor OIDs
+_RARITAN_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1"
+_GEIST_SENSOR   = "1.3.6.1.4.1.21239.5.1"
+_APC_NETBOTZ    = "1.3.6.1.4.1.318.1.1.10.4.2.2.1"
 
-# Vendor sensor OIDs
-_RARITAN_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1"   # Raritan PX2/DPX2 external sensor table
-_GEIST_SENSOR   = "1.3.6.1.4.1.21239.5.1"           # Vertiv Geist probe tables
-_APC_NETBOTZ    = "1.3.6.1.4.1.318.1.1.10.4.2.2.1"  # APC NetBotz sensor value table
+# UPS OIDs
+_UPS_MIB = "1.3.6.1.2.1.33.1"
+_UPS_ENT = "1.3.6.1.4.1.99999.4"
 
-# Raritan sensorType codes
-_RARITAN_TYPES = {"10": "temp", "11": "humidity", "28": "water"}
+UPS_STD_OIDS: List[Tuple[str, str]] = [
+    (f"{_UPS_MIB}.2.1.0",     "batteryStatus"),
+    (f"{_UPS_MIB}.2.4.0",     "runtimeMinutes"),
+    (f"{_UPS_MIB}.2.5.0",     "chargePercent"),
+    (f"{_UPS_MIB}.2.6.0",     "batteryVoltagex10"),
+    (f"{_UPS_MIB}.2.8.0",     "batteryTempC"),
+    (f"{_UPS_MIB}.3.3.1.2.1", "inputFreqx10"),
+    (f"{_UPS_MIB}.3.3.1.3.1", "inputVoltageV"),
+    (f"{_UPS_MIB}.3.3.1.4.1", "inputCurrentx10"),
+    (f"{_UPS_MIB}.3.3.1.5.1", "inputPowerW"),
+    (f"{_UPS_MIB}.4.1.0",     "outputSource"),
+    (f"{_UPS_MIB}.4.2.0",     "outputFreqx10"),
+    (f"{_UPS_MIB}.4.4.1.2.1", "outputVoltageV"),
+    (f"{_UPS_MIB}.4.4.1.3.1", "outputCurrentx10"),
+    (f"{_UPS_MIB}.4.4.1.4.1", "outputPowerW"),
+    (f"{_UPS_MIB}.4.4.1.6.1", "outputLoadPercent"),
+]
+
+UPS_ENT_OIDS: List[Tuple[str, str]] = [
+    (f"{_UPS_ENT}.1.0",   "fanStatus"),
+    (f"{_UPS_ENT}.2.0",   "chargerStatus"),
+    (f"{_UPS_ENT}.3.0",   "rectifierStatus"),
+    (f"{_UPS_ENT}.4.0",   "phaseStatus"),
+    (f"{_UPS_ENT}.5.0",   "batteryStatusEx"),
+    (f"{_UPS_ENT}.6.0",   "operatingMode"),
+    (f"{_UPS_ENT}.7.0",   "bypassStatus"),
+    (f"{_UPS_ENT}.8.0",   "batteryHealthPct"),
+    (f"{_UPS_ENT}.9.0",   "apparentPowerVA"),
+    (f"{_UPS_ENT}.10.0",  "energyKWhx10"),
+]
+
+# PDU OIDs
+_PDU_ENT = "1.3.6.1.4.1.99999.5"
+
+PDU_OIDS: List[Tuple[str, str]] = [
+    (f"{_PDU_ENT}.1.0",   "loadPercent"),
+    (f"{_PDU_ENT}.2.0",   "voltageV"),
+    (f"{_PDU_ENT}.3.0",   "powerFactorx100"),
+    (f"{_PDU_ENT}.4.0",   "phaseImbalancePct"),
+    (f"{_PDU_ENT}.5.0",   "outletStatus"),
+    (f"{_PDU_ENT}.6.0",   "breakerStatus"),
+    (f"{_PDU_ENT}.7.0",   "outletFailure"),
+    (f"{_PDU_ENT}.8.0",   "smokeDetected"),
+    (f"{_PDU_ENT}.9.0",   "outletCurrentx10"),
+    (f"{_PDU_ENT}.10.0",  "groundFault"),
+    (f"{_PDU_ENT}.11.0",  "realPowerW"),
+    (f"{_PDU_ENT}.12.0",  "apparentPowerVA"),
+    (f"{_PDU_ENT}.13.0",  "energyKWhx10"),
+    (f"{_PDU_ENT}.14.0",  "frequencyx10"),
+    (f"{_PDU_ENT}.15.0",  "temperaturex10"),
+    (f"{_PDU_ENT}.16.0",  "humidityx10"),
+    (f"{_PDU_ENT}.17.0",  "outletPowerW"),
+]
+
+# Cisco network device OIDs
+_CISCO_CPU_MIB = "1.3.6.1.4.1.9.9.109.1.1.1.1"   # CISCO-PROCESS-MIB cpmCPUTotalTable
+_CISCO_MEM_MIB = "1.3.6.1.4.1.9.9.48.1.1.1"       # CISCO-MEMORY-POOL-MIB
+
+CISCO_PERF_OIDS: List[Tuple[str, str]] = [
+    (f"{_CISCO_CPU_MIB}.7.1",  "cpuTotal1min"),   # cpmCPUTotal1minRev %
+    (f"{_CISCO_CPU_MIB}.8.1",  "cpuTotal5min"),   # cpmCPUTotal5minRev %
+    (f"{_CISCO_MEM_MIB}.2.1",  "memPoolName"),    # ciscoMemoryPoolName
+    (f"{_CISCO_MEM_MIB}.5.1",  "memPoolUsedMB"),  # ciscoMemoryPoolUsed (simulator: MB)
+    (f"{_CISCO_MEM_MIB}.6.1",  "memPoolFreeMB"),  # ciscoMemoryPoolFree (simulator: MB)
+]
+
+# Switch OIDs (BRIDGE-MIB)
+_DOT1D_TP_FDB  = "1.3.6.1.2.1.17.4.3.1"  # dot1dTpFdbTable
+_DOT1D_STP     = "1.3.6.1.2.1.17.2"       # dot1dStp scalars
+_CDP_BASE      = "1.3.6.1.4.1.9.9.23.1.2.1.1"  # cdpCacheTable
+
+STP_OIDS: List[Tuple[str, str]] = [
+    (f"{_DOT1D_STP}.1.0",  "protocol"),      # dot1dStpProtocolSpecification (3=ieee8021d)
+    (f"{_DOT1D_STP}.2.0",  "priority"),      # dot1dStpPriority
+    (f"{_DOT1D_STP}.3.0",  "topoChangeAge"), # dot1dStpTimeSinceTopologyChange (centiseconds)
+    (f"{_DOT1D_STP}.4.0",  "topoChanges"),   # dot1dStpTopChanges
+    (f"{_DOT1D_STP}.6.0",  "rootCost"),      # dot1dStpRootCost
+    (f"{_DOT1D_STP}.7.0",  "rootPort"),      # dot1dStpRootPort
+    (f"{_DOT1D_STP}.8.0",  "maxAge"),        # dot1dStpMaxAge (centiseconds)
+    (f"{_DOT1D_STP}.9.0",  "helloTime"),     # dot1dStpHelloTime (centiseconds)
+    (f"{_DOT1D_STP}.11.0", "forwardDelay"),  # dot1dStpForwardDelay (centiseconds)
+]
+
+# Router OIDs (BGP4-MIB)
+_BGP4_PEER_TBL = "1.3.6.1.2.1.15.3.1"   # bgpPeerTable
 
 
 # ── Result model ──────────────────────────────────────────────────────────────
@@ -135,15 +220,19 @@ class DeviceResult:
     community:        str
     port:             int
     elapsed_ms:       float           = 0.0
-    # system:           List[OIDResult] = field(default_factory=list)
-    system: List[OIDResult] = field(default_factory=list)
-    performance: List[OIDResult] = field(default_factory=list)
+    system:           List[OIDResult] = field(default_factory=list)
+    performance:      List[OIDResult] = field(default_factory=list)
     interfaces:       List[dict]      = field(default_factory=list)
     lldp_neighbours:  List[dict]      = field(default_factory=list)
     unreachable:      bool            = False
     error:            Optional[str]   = None
-    temperatures: List[dict] = field(default_factory=list)
-    sensor_readings: List[dict] = field(default_factory=list)
+    temperatures:     List[dict]      = field(default_factory=list)
+    sensor_readings:  List[dict]      = field(default_factory=dict)
+    ups_data:         Dict[str, str]  = field(default_factory=dict)
+    pdu_data:         Dict[str, str]  = field(default_factory=dict)
+    cisco_perf:       Dict[str, str]  = field(default_factory=dict)
+    switch_data:      Dict[str, Any]  = field(default_factory=dict)
+    router_data:      Dict[str, Any]  = field(default_factory=dict)
 
     @property
     def passed(self) -> int:
@@ -158,7 +247,6 @@ class DeviceResult:
 
 async def _snmp_get(ip: str, community: str, port: int,
                     oids: List[str], timeout: int) -> Dict[str, str]:
-    """Return {oid_str: value_str} for a list of OIDs via SNMPv2c GET."""
     from pysnmp.entity.engine import SnmpEngine
     from pysnmp.entity import config as snmp_config
     from pysnmp.entity.rfc3413 import cmdgen
@@ -226,7 +314,6 @@ async def _snmp_get(ip: str, community: str, port: int,
 async def _snmp_walk(ip: str, community: str, port: int,
                      base_oid: str, timeout: int,
                      max_rows: int = 200) -> List[Tuple[str, str]]:
-    """Return [(oid_str, value_str)] for a subtree walk."""
     from pysnmp.entity.engine import SnmpEngine
     from pysnmp.entity import config as snmp_config
     from pysnmp.entity.rfc3413 import cmdgen
@@ -262,7 +349,6 @@ async def _snmp_walk(ip: str, community: str, port: int,
         for name, val in varBinds:
             name_str = str(name)
             val_str  = val.prettyPrint()
-            # endOfMibView — snmpsim repeats last OID with this value; stop.
             if "No more variables" in val_str or val_str == "endOfMibView":
                 done.set_result(None)
                 return False
@@ -274,7 +360,6 @@ async def _snmp_walk(ip: str, community: str, port: int,
             if len(rows) >= max_rows:
                 done.set_result(None)
                 return False
-        # NextCommandGenerator does NOT auto-continue — chain manually
         gen.send_varbinds(snmp_engine, 'my-target', None, b'', next_oids, _cb)
         return False
 
@@ -297,25 +382,25 @@ async def _snmp_walk(ip: str, community: str, port: int,
     return rows
 
 
-# ── Sensor data query ────────────────────────────────────────────────────────
+# ── Device-type data queries ───────────────────────────────────────────────────
+
+def _is_valid(val: str) -> bool:
+    return bool(val) and not val.startswith("ERROR:") and val not in (
+        "noSuchInstance", "noSuchObject", "endOfMibView") and not val.lower().startswith("no such")
+
 
 async def _query_sensor_data(agent_ip: str, community: str, port: int,
                               timeout: int) -> List[dict]:
-    """Walk vendor OID trees and return labelled sensor readings.
-
-    Tries Raritan → Vertiv Geist → APC NetBotz in order; returns on first hit.
-    Each reading: {"label": str, "value": float|str, "unit": str, "alarm": bool}
-    """
+    """Walk vendor sensor OID trees. Tries Raritan → Vertiv Geist → APC NetBotz."""
     readings: List[dict] = []
 
-    # ── Raritan DPX2 ─────────────────────────────────────────────────────────
     rows = await _snmp_walk(agent_ip, community, port, _RARITAN_SENSOR, timeout, 60)
     if rows:
         pfx = _RARITAN_SENSOR + "."
         slot_types:  Dict[int, str] = {}
         slot_values: Dict[int, str] = {}
         for oid_str, val in rows:
-            tail = oid_str[len(pfx):].split(".")  # e.g. ["3","1","1"]
+            tail = oid_str[len(pfx):].split(".")
             if len(tail) < 3:
                 continue
             sub, slot_s = tail[0], tail[2]
@@ -327,7 +412,6 @@ async def _query_sensor_data(agent_ip: str, community: str, port: int,
                     slot_values[slot] = val
             except (ValueError, IndexError):
                 pass
-
         if slot_types:
             _TEMP_LABELS = ["Inlet Temp", "Mid-Rack Temp", "Exhaust Temp"]
             temp_count = 0
@@ -337,66 +421,46 @@ async def _query_sensor_data(agent_ip: str, community: str, port: int,
                     v = int(slot_values.get(slot, "0"))
                 except ValueError:
                     continue
-                if stype == "10":   # temperature ×10 °C
+                if stype == "10":
                     label = _TEMP_LABELS[temp_count] if temp_count < 3 else f"Temp {temp_count+1}"
                     readings.append({"label": label, "value": v / 10.0, "unit": "°C", "alarm": False})
                     temp_count += 1
-                elif stype == "11": # humidity ×10 %
+                elif stype == "11":
                     readings.append({"label": "Humidity", "value": v / 10.0, "unit": "%RH", "alarm": False})
-                elif stype == "28": # water detection 0=dry 1=wet
+                elif stype == "28":
                     readings.append({"label": "Leak Sensor", "value": "WET" if v else "dry",
                                      "unit": "", "alarm": bool(v)})
-
     if readings:
         return readings
 
-    # ── Vertiv Geist ─────────────────────────────────────────────────────────
     rows = await _snmp_walk(agent_ip, community, port, _GEIST_SENSOR, timeout, 60)
     if rows:
         row_map = {oid: val for oid, val in rows}
-
         def _g(sub: str, col: str, idx: int) -> Optional[str]:
             return row_map.get(f"{_GEIST_SENSOR}.{sub}.1.{col}.{idx}")
-
         for probe_idx in range(1, 5):
-            t_raw = _g("4", "4", probe_idx)
-            if t_raw:
-                try:
-                    loc = _g("4", "2", probe_idx) or "Inlet"
-                    readings.append({"label": f"{loc} Temp", "value": round(int(t_raw) / 10.0, 1),
-                                     "unit": "°C", "alarm": False})
-                except ValueError:
-                    pass
-            h_raw = _g("5", "4", probe_idx)
-            if h_raw:
-                try:
-                    loc = _g("5", "2", probe_idx) or "Inlet"
-                    readings.append({"label": f"{loc} Humidity", "value": round(int(h_raw) / 10.0, 1),
-                                     "unit": "%RH", "alarm": False})
-                except ValueError:
-                    pass
-            d_raw = _g("6", "4", probe_idx)
-            if d_raw:
-                try:
-                    loc = _g("6", "2", probe_idx) or "Inlet"
-                    readings.append({"label": f"{loc} Dewpoint", "value": round(int(d_raw) / 10.0, 1),
-                                     "unit": "°C", "alarm": False})
-                except ValueError:
-                    pass
-
+            for sub, col_v, col_l, lbl, unit in [("4","4","2","Temp","°C"),
+                                                   ("5","4","2","Humidity","%RH"),
+                                                   ("6","4","2","Dewpoint","°C")]:
+                raw = _g(sub, col_v, probe_idx)
+                if raw:
+                    try:
+                        loc = _g(sub, col_l, probe_idx) or "Inlet"
+                        readings.append({"label": f"{loc} {lbl}", "value": round(int(raw)/10.0,1),
+                                         "unit": unit, "alarm": False})
+                    except ValueError:
+                        pass
     if readings:
         return readings
 
-    # ── APC NetBotz ──────────────────────────────────────────────────────────
     rows = await _snmp_walk(agent_ip, community, port, _APC_NETBOTZ, timeout, 30)
     if rows:
         row_map = {oid: val for oid, val in rows}
-        _NETBOTZ = [
+        for val_oid, lbl_oid, unit, scale in [
             (f"{_APC_NETBOTZ}.10.1", f"{_APC_NETBOTZ}.2.1", "°C",  0.1),
             (f"{_APC_NETBOTZ}.10.2", f"{_APC_NETBOTZ}.2.2", "%RH", 1.0),
             (f"{_APC_NETBOTZ}.10.3", f"{_APC_NETBOTZ}.2.3", "m/s", 0.1),
-        ]
-        for val_oid, lbl_oid, unit, scale in _NETBOTZ:
+        ]:
             raw = row_map.get(val_oid)
             label = row_map.get(lbl_oid) or val_oid.rsplit(".", 1)[-1]
             if raw:
@@ -405,8 +469,141 @@ async def _query_sensor_data(agent_ip: str, community: str, port: int,
                                      "unit": unit, "alarm": False})
                 except (ValueError, TypeError):
                     pass
-
     return readings
+
+
+async def _query_ups_data(agent_ip: str, community: str, port: int,
+                           timeout: int) -> Dict[str, str]:
+    all_oids = UPS_STD_OIDS + UPS_ENT_OIDS
+    oid_list = [oid for oid, _ in all_oids]
+    try:
+        raw = await _snmp_get(agent_ip, community, port, oid_list, timeout)
+    except Exception:
+        return {}
+    return {name: raw[oid] for oid, name in all_oids if _is_valid(raw.get(oid, ""))}
+
+
+async def _query_pdu_data(agent_ip: str, community: str, port: int,
+                           timeout: int) -> Dict[str, str]:
+    oid_list = [oid for oid, _ in PDU_OIDS]
+    try:
+        raw = await _snmp_get(agent_ip, community, port, oid_list, timeout)
+    except Exception:
+        return {}
+    return {name: raw[oid] for oid, name in PDU_OIDS if _is_valid(raw.get(oid, ""))}
+
+
+async def _query_cisco_perf(agent_ip: str, community: str, port: int,
+                              timeout: int) -> Dict[str, str]:
+    """GET Cisco PROCESS-MIB (CPU%) + MEMORY-POOL-MIB."""
+    oid_list = [oid for oid, _ in CISCO_PERF_OIDS]
+    try:
+        raw = await _snmp_get(agent_ip, community, port, oid_list, timeout)
+    except Exception:
+        return {}
+    return {name: raw[oid] for oid, name in CISCO_PERF_OIDS if _is_valid(raw.get(oid, ""))}
+
+
+async def _query_switch_data(agent_ip: str, community: str, port: int,
+                               timeout: int) -> Dict[str, Any]:
+    """Walk BRIDGE-MIB MAC table, STP scalars, CDP neighbours."""
+    result: Dict[str, Any] = {"mac_table": [], "stp": {}, "cdp": []}
+
+    # MAC table (dot1dTpFdbTable)
+    rows = await _snmp_walk(agent_ip, community, port, _DOT1D_TP_FDB, timeout, 2000)
+    mac_map: Dict[str, dict] = {}
+    pfx = _DOT1D_TP_FDB + "."
+    for oid_str, val in rows:
+        if not oid_str.startswith(pfx):
+            continue
+        parts = oid_str[len(pfx):].split(".")
+        if len(parts) < 7:
+            continue
+        col     = parts[0]
+        mac_key = ".".join(parts[1:7])
+        entry   = mac_map.setdefault(mac_key, {})
+        if col == "1":    # dot1dTpFdbAddress — reconstruct MAC from OID octets
+            entry["mac"] = ":".join(f"{int(o):02x}" for o in parts[1:7])
+        elif col == "2":  # dot1dTpFdbPort
+            entry["port"] = val
+        elif col == "3":  # dot1dTpFdbStatus (3=learned, 4=self, 5=mgmt)
+            entry["status"] = {"3": "learned", "4": "self", "5": "mgmt"}.get(val, val)
+    result["mac_table"] = [e for e in mac_map.values() if "mac" in e]
+
+    # STP scalars
+    stp_oid_list = [oid for oid, _ in STP_OIDS]
+    try:
+        stp_raw = await _snmp_get(agent_ip, community, port, stp_oid_list, timeout)
+        result["stp"] = {name: stp_raw[oid] for oid, name in STP_OIDS if _is_valid(stp_raw.get(oid, ""))}
+    except Exception:
+        pass
+
+    # CDP neighbours (Cisco Discover Protocol)
+    rows = await _snmp_walk(agent_ip, community, port, _CDP_BASE, timeout, 500)
+    cdp_map: Dict[str, dict] = {}
+    pfx = _CDP_BASE + "."
+    for oid_str, val in rows:
+        if not oid_str.startswith(pfx):
+            continue
+        parts = oid_str[len(pfx):].split(".")
+        if len(parts) < 3:
+            continue
+        col, lport, idx = parts[0], parts[1], parts[2]
+        key = f"{lport}.{idx}"
+        entry = cdp_map.setdefault(key, {"local_port": lport})
+        if col == "6":    entry["device_id"]   = val
+        elif col == "4":  entry["address"]     = val
+        elif col == "5":  entry["platform"]    = val[:40]
+        elif col == "7":  entry["remote_port"] = val
+        elif col == "8":  entry["vendor"]      = val
+    result["cdp"] = list(cdp_map.values())
+
+    return result
+
+
+async def _query_router_data(agent_ip: str, community: str, port: int,
+                               timeout: int) -> Dict[str, Any]:
+    """Walk BGP4-MIB peer table and CDP neighbours."""
+    result: Dict[str, Any] = {"bgp_peers": [], "cdp": []}
+
+    # BGP peers
+    _BGP_STATE = {"1": "Idle", "2": "Connect", "3": "Active",
+                  "4": "OpenSent", "5": "OpenConfirm", "6": "Established"}
+    rows = await _snmp_walk(agent_ip, community, port, _BGP4_PEER_TBL, timeout, 200)
+    bgp_map: Dict[str, dict] = {}
+    pfx = _BGP4_PEER_TBL + "."
+    for oid_str, val in rows:
+        if not oid_str.startswith(pfx):
+            continue
+        parts = oid_str[len(pfx):].split(".")
+        if len(parts) < 5:
+            continue
+        col     = parts[0]
+        peer_ip = ".".join(parts[1:5])
+        entry   = bgp_map.setdefault(peer_ip, {"peer": peer_ip})
+        if col == "2":   entry["state"] = _BGP_STATE.get(val, val)
+        elif col == "3": entry["admin"] = "up" if val == "2" else "down"
+        elif col == "7": entry["remote_addr"] = val
+    result["bgp_peers"] = list(bgp_map.values())
+
+    # CDP neighbours
+    rows = await _snmp_walk(agent_ip, community, port, _CDP_BASE, timeout, 200)
+    cdp_map: Dict[str, dict] = {}
+    pfx = _CDP_BASE + "."
+    for oid_str, val in rows:
+        if not oid_str.startswith(pfx):
+            continue
+        parts = oid_str[len(pfx):].split(".")
+        if len(parts) < 3:
+            continue
+        col, lport, idx = parts[0], parts[1], parts[2]
+        entry = cdp_map.setdefault(f"{lport}.{idx}", {"local_port": lport})
+        if col == "6":    entry["device_id"]   = val
+        elif col == "4":  entry["address"]     = val
+        elif col == "7":  entry["remote_port"] = val
+    result["cdp"] = list(cdp_map.values())
+
+    return result
 
 
 # ── Per-device test ───────────────────────────────────────────────────────────
@@ -416,7 +613,12 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
                        do_interfaces: bool,
                        do_lldp: bool,
                        do_metrics: bool,
-                       do_sensor: bool = False) -> DeviceResult:
+                       do_sensor: bool = False,
+                       do_ups: bool = False,
+                       do_pdu: bool = False,
+                       do_switch: bool = False,
+                       do_router: bool = False,
+                       do_full: bool = False) -> DeviceResult:
     result = DeviceResult(ip=ip, community=community, port=port)
     t0 = time.perf_counter()
 
@@ -434,14 +636,11 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
         val = raw.get(oid, "")
         if val.startswith("ERROR:"):
             result.system.append(OIDResult(oid=oid, name=name, error=val[7:].strip()))
-        elif (not val or val in ("noSuchInstance", "noSuchObject", "endOfMibView")
-              or val.lower().startswith("no such")):
-            result.system.append(OIDResult(oid=oid, name=name,
-                                            error=val or "no value"))
+        elif not _is_valid(val):
+            result.system.append(OIDResult(oid=oid, name=name, error=val or "no value"))
         else:
             result.system.append(OIDResult(oid=oid, name=name, value=val))
 
-    # Mark unreachable if every system OID failed
     if all(not r.ok for r in result.system):
         result.unreachable = True
         errors = {r.error for r in result.system}
@@ -449,87 +648,71 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
         result.elapsed_ms = (time.perf_counter() - t0) * 1000
         return result
 
-    # ── Performance metrics ────────────────────────────────────────────────
+    # ── Auto-detect device type for --full ────────────────────────────────────
+    if do_full:
+        # Probe signature OIDs in parallel
+        probe_ups    = f"{_UPS_MIB}.2.1.0"
+        probe_pdu    = f"{_PDU_ENT}.1.0"
+        probe_stp    = f"{_DOT1D_STP}.1.0"   # switch-only (STP bridge MIB)
+        probe_cisco  = f"{_CISCO_CPU_MIB}.7.1"
 
+        probes = await _snmp_get(agent_ip, community, port,
+                                 [probe_ups, probe_pdu, probe_stp, probe_cisco], timeout)
+
+        if _is_valid(probes.get(probe_ups, "")):
+            do_ups = True
+        if _is_valid(probes.get(probe_pdu, "")):
+            do_pdu = True
+        if _is_valid(probes.get(probe_stp, "")):
+            do_switch = True
+        if _is_valid(probes.get(probe_cisco, "")):
+            # Cisco network device — check router by trying BGP walk
+            bgp_probe = await _snmp_walk(agent_ip, community, port, _BGP4_PEER_TBL, timeout, 5)
+            if bgp_probe:
+                do_router = True
+            else:
+                # Cisco but no BGP — still a switch, already set above
+                pass
+
+        do_sensor     = True
+        do_metrics    = True
+        do_interfaces = True
+        do_lldp       = True
+
+    # ── Server performance metrics (UCD-SNMP-MIB) ─────────────────────────────
     if do_metrics:
         perf_oids = [oid for oid, _ in PERF_OIDS]
-
         try:
-            perf_raw = await _snmp_get(
-                agent_ip,
-                community,
-                port,
-                perf_oids,
-                timeout,
-            )
-
+            perf_raw = await _snmp_get(agent_ip, community, port, perf_oids, timeout)
             for oid, name in PERF_OIDS:
                 val = perf_raw.get(oid, "")
-
                 if val.startswith("ERROR:"):
-                    result.performance.append(
-                        OIDResult(oid=oid, name=name, error=val[7:].strip())
-                    )
-                elif (
-                    not val
-                    or val in ("noSuchInstance", "noSuchObject", "endOfMibView")
-                    or val.lower().startswith("no such")
-                ):
-                    result.performance.append(
-                        OIDResult(oid=oid, name=name, error=val or "no value")
-                    )
+                    result.performance.append(OIDResult(oid=oid, name=name, error=val[7:].strip()))
+                elif not _is_valid(val):
+                    result.performance.append(OIDResult(oid=oid, name=name, error=val or "no value"))
                 else:
-                    result.performance.append(
-                        OIDResult(oid=oid, name=name, value=val)
-                    )
-
+                    result.performance.append(OIDResult(oid=oid, name=name, value=val))
         except Exception as exc:
-            result.performance.append(
-                OIDResult(
-                    oid="metrics",
-                    name="metrics",
-                    error=str(exc),
-                )
-            )
+            result.performance.append(OIDResult(oid="metrics", name="metrics", error=str(exc)))
 
-    # ── Temperature sensors ────────────────────────────────────────────────
-
+    # ── Temperature sensors ────────────────────────────────────────────────────
     if do_metrics:
         try:
-            rows = await _snmp_walk(
-                agent_ip,
-                community,
-                port,
-                TEMP_SENSOR_OID,
-                timeout,
-                200,
-            )
-
+            rows = await _snmp_walk(agent_ip, community, port, TEMP_SENSOR_OID, timeout, 200)
             for oid_str, val in rows:
                 try:
                     temp_c = int(val) / 10
                 except (ValueError, TypeError):
                     temp_c = val
-
-                result.temperatures.append({
-                    "oid": oid_str,
-                    "value": temp_c,
-                })
-
+                result.temperatures.append({"oid": oid_str, "value": temp_c})
         except (ValueError, TypeError):
             pass
 
-        # CISCO-ENVMON-MIB: walk only when sysObjectID indicates Cisco (1.3.6.1.4.1.9.*)
-        sys_oid = next(
-            (r.value for r in result.system if r.name == "sysObjectID" and r.ok),
-            ""
-        )
+        sys_oid = next((r.value for r in result.system if r.name == "sysObjectID" and r.ok), "")
         if sys_oid.startswith("1.3.6.1.4.1.9."):
             try:
-                cisco_rows = await _snmp_walk(
-                    agent_ip, community, port,
-                    CISCO_ENVMON_TEMP_OID, timeout, 20,
-                )
+                cisco_rows = await _snmp_walk(agent_ip, community, port,
+                                              CISCO_ENVMON_TEMP_OID, timeout, 20)
                 for oid_str, val in cisco_rows:
                     try:
                         temp_c = float(int(val))
@@ -539,9 +722,7 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
             except (ValueError, TypeError):
                 pass
 
-    # ── Interface table walk ───────────────────────────────────────────────────
-    # IF-MIB stores each column for all interfaces before moving to the next
-    # column.  With N interfaces and ~10 useful columns we need up to N*10 rows.
+    # ── Interface table ────────────────────────────────────────────────────────
     if do_interfaces:
         rows = await _snmp_walk(agent_ip, community, port, IFACE_TABLE_OID, timeout, 2000)
         iface_map: Dict[int, dict] = {}
@@ -550,24 +731,22 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
             if len(parts) < 2:
                 continue
             try:
-                col = int(parts[-2])  # column
-                idx = int(parts[-1])  # interface index
+                col = int(parts[-2])
+                idx = int(parts[-1])
             except ValueError:
                 continue
             iface_map.setdefault(idx, {"index": idx})
-            if col == 2:   iface_map[idx]["descr"]       = val
-            elif col == 5: iface_map[idx]["speed"]       = val
-            elif col == 7: iface_map[idx]["admin"]       = "up" if val == "1" else "down"
-            elif col == 8: iface_map[idx]["oper"]        = "up" if val == "1" else "down"
-            elif col == 10:iface_map[idx]["in_octets"]   = val
-            elif col == 16:iface_map[idx]["out_octets"]  = val
+            if col == 2:    iface_map[idx]["descr"]      = val
+            elif col == 5:  iface_map[idx]["speed"]      = val
+            elif col == 7:  iface_map[idx]["admin"]      = "up" if val == "1" else "down"
+            elif col == 8:  iface_map[idx]["oper"]       = "up" if val == "1" else "down"
+            elif col == 10: iface_map[idx]["in_octets"]  = val
+            elif col == 16: iface_map[idx]["out_octets"] = val
         result.interfaces = sorted(iface_map.values(), key=lambda x: x["index"])
 
-    # ── LLDP walk ─────────────────────────────────────────────────────────────
+    # ── LLDP ──────────────────────────────────────────────────────────────────
     if do_lldp:
         rows = await _snmp_walk(agent_ip, community, port, LLDP_REM_OID, timeout, 2000)
-        # LLDP remote table OID: 1.0.8802.1.1.2.1.4.1.1.{col}.{timemark}.{port}.{idx}
-        # parts[-4]=col  parts[-3]=timemark  parts[-2]=port  parts[-1]=idx
         nbr_map: Dict[str, dict] = {}
         for oid_str, val in rows:
             parts = oid_str.split(".")
@@ -586,11 +765,45 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
             elif col == 9: nbr_map[key]["sys_name"]   = val
         result.lldp_neighbours = list(nbr_map.values())
 
-    # ── Vendor sensor readings ────────────────────────────────────────────────
+    # ── Vendor sensor readings ─────────────────────────────────────────────────
     if do_sensor:
         try:
-            result.sensor_readings = await _query_sensor_data(
-                agent_ip, community, port, timeout)
+            result.sensor_readings = await _query_sensor_data(agent_ip, community, port, timeout)
+        except Exception:
+            pass
+
+    # ── UPS data ──────────────────────────────────────────────────────────────
+    if do_ups:
+        try:
+            result.ups_data = await _query_ups_data(agent_ip, community, port, timeout)
+        except Exception:
+            pass
+
+    # ── PDU data ──────────────────────────────────────────────────────────────
+    if do_pdu:
+        try:
+            result.pdu_data = await _query_pdu_data(agent_ip, community, port, timeout)
+        except Exception:
+            pass
+
+    # ── Cisco network device performance ──────────────────────────────────────
+    if do_switch or do_router:
+        try:
+            result.cisco_perf = await _query_cisco_perf(agent_ip, community, port, timeout)
+        except Exception:
+            pass
+
+    # ── Switch-specific data ───────────────────────────────────────────────────
+    if do_switch:
+        try:
+            result.switch_data = await _query_switch_data(agent_ip, community, port, timeout)
+        except Exception:
+            pass
+
+    # ── Router-specific data ──────────────────────────────────────────────────
+    if do_router:
+        try:
+            result.router_data = await _query_router_data(agent_ip, community, port, timeout)
         except Exception:
             pass
 
@@ -599,6 +812,277 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
 
 
 # ── Rendering ─────────────────────────────────────────────────────────────────
+
+def _ups_status_str(name: str, val: str) -> str:
+    maps = {
+        "batteryStatus":   {"1":"Unknown","2":"Normal","3":"Low","4":"Depleted"},
+        "batteryStatusEx": {"1":"Depleted","2":"Normal","3":"Low"},
+        "outputSource":    {"1":"Other","2":"None","3":"Normal","4":"Bypass","5":"Battery","6":"Booster","7":"Reducer"},
+        "operatingMode":   {"1":"Online","2":"Battery","3":"Bypass","4":"Eco","5":"Standby"},
+        "bypassStatus":    {"1":"Not Bypassed","2":"ON BYPASS"},
+        "fanStatus":       {"1":"FAILURE","2":"OK"},
+        "chargerStatus":   {"1":"FAILURE","2":"OK"},
+        "rectifierStatus": {"1":"FAILURE","2":"OK"},
+        "phaseStatus":     {"1":"FAILURE","2":"OK"},
+    }
+    m = maps.get(name)
+    return m.get(val, val) if m else val
+
+def _pdu_status_str(name: str, val: str) -> str:
+    maps = {
+        "outletStatus":  {"1":"ON","2":"OFF"},
+        "breakerStatus": {"1":"OK","2":"TRIPPED"},
+        "outletFailure": {"1":"OK","2":"FAILURE"},
+        "smokeDetected": {"1":"No","2":"YES"},
+        "groundFault":   {"1":"No","2":"YES"},
+    }
+    m = maps.get(name)
+    return m.get(val, val) if m else val
+
+
+def _print_ups_section(ups: Dict[str, str]) -> None:
+    if not ups:
+        return
+    def _get(k: str, default: str = "—") -> str:
+        return ups.get(k, default)
+
+    print(f"\n  {bold('UPS Battery')}:")
+    batt_s = _ups_status_str("batteryStatus", _get("batteryStatus"))
+    print(f"    {'Battery Status':<26} {green(batt_s) if batt_s == 'Normal' else red(batt_s)}")
+    print(f"    {'Runtime Remaining':<26} {_get('runtimeMinutes')} min")
+    print(f"    {'Charge Remaining':<26} {_get('chargePercent')} %")
+    try:
+        print(f"    {'Battery Voltage':<26} {int(ups.get('batteryVoltagex10','0'))/10:.1f} V")
+    except ValueError:
+        pass
+    print(f"    {'Battery Temp':<26} {_get('batteryTempC')} °C")
+
+    print(f"\n  {bold('UPS Input')}:")
+    try:
+        print(f"    {'Input Freq':<26} {int(ups.get('inputFreqx10','0'))/10:.1f} Hz")
+    except ValueError:
+        pass
+    print(f"    {'Input Voltage':<26} {_get('inputVoltageV')} V")
+    try:
+        print(f"    {'Current':<26} {int(ups.get('inputCurrentx10','0'))/10:.1f} A")
+    except ValueError:
+        pass
+    print(f"    {'Power':<26} {_get('inputPowerW')} W")
+
+    print(f"\n  {bold('UPS Output')}:")
+    out_src = _ups_status_str("outputSource", _get("outputSource"))
+    print(f"    {'Output Source':<26} {green(out_src) if out_src == 'Normal' else yellow(out_src)}")
+    try:
+        print(f"    {'Output Freq':<26} {int(ups.get('outputFreqx10','0'))/10:.1f} Hz")
+    except ValueError:
+        pass
+    print(f"    {'Output Voltage':<26} {_get('outputVoltageV')} V")
+    try:
+        print(f"    {'Current':<26} {int(ups.get('outputCurrentx10','0'))/10:.1f} A")
+    except ValueError:
+        pass
+    print(f"    {'Power':<26} {_get('outputPowerW')} W")
+    print(f"    {'Output Load':<26} {_get('outputLoadPercent')} %")
+
+    print(f"\n  {bold('UPS Status')}:")
+    op_mode = _ups_status_str("operatingMode", _get("operatingMode"))
+    print(f"    {'Operating Mode':<26} {green(op_mode) if op_mode == 'Online' else yellow(op_mode)}")
+    bypass = _ups_status_str("bypassStatus", _get("bypassStatus"))
+    print(f"    {'Bypass':<26} {green(bypass) if bypass == 'Not Bypassed' else red(bypass)}")
+    for sn, label in [("fanStatus","Fan"),("chargerStatus","Charger"),
+                      ("rectifierStatus","Rectifier"),("phaseStatus","Phase")]:
+        v = _ups_status_str(sn, _get(sn))
+        print(f"    {label+' Status':<26} {green(v) if v == 'OK' else red(v)}")
+    print(f"    {'Battery Health':<26} {_get('batteryHealthPct')} %")
+    print(f"    {'Apparent Power':<26} {_get('apparentPowerVA')} VA")
+    try:
+        print(f"    {'Energy (kWh)':<26} {int(ups.get('energyKWhx10','0'))/10:.1f} kWh")
+    except ValueError:
+        pass
+
+
+def _print_pdu_section(pdu: Dict[str, str]) -> None:
+    if not pdu:
+        return
+    def _get(k: str, default: str = "—") -> str:
+        return pdu.get(k, default)
+
+    print(f"\n  {bold('PDU Power')}:")
+    print(f"    {'PDU Load':<26} {_get('loadPercent')} %")
+    print(f"    {'Input Voltage':<26} {_get('voltageV')} V")
+    try:
+        print(f"    {'Power Factor':<26} {int(pdu.get('powerFactorx100','0'))/100:.2f}")
+    except ValueError:
+        pass
+    print(f"    {'Real Power (W)':<26} {_get('realPowerW')} W")
+    print(f"    {'Apparent (VA)':<26} {_get('apparentPowerVA')} VA")
+    try:
+        print(f"    {'Outlet Current':<26} {int(pdu.get('outletCurrentx10','0'))/10:.1f} A")
+    except ValueError:
+        pass
+    print(f"    {'Outlet Power (W)':<26} {_get('outletPowerW')} W")
+    try:
+        print(f"    {'Energy (kWh)':<26} {int(pdu.get('energyKWhx10','0'))/10:.1f} kWh")
+    except ValueError:
+        pass
+    try:
+        print(f"    {'Input Freq':<26} {int(pdu.get('frequencyx10','0'))/10:.1f} Hz")
+    except ValueError:
+        pass
+
+    print(f"\n  {bold('PDU Status')}:")
+    for sn, label in [("outletStatus","Outlet Status"),("breakerStatus","Breaker Status"),
+                      ("outletFailure","Outlet Failure"),("smokeDetected","Smoke Detection"),
+                      ("groundFault","Ground Fault")]:
+        v = _pdu_status_str(sn, _get(sn))
+        col = green(v) if v in {"ON","OK","No"} else red(v)
+        print(f"    {label:<26} {col}")
+    print(f"    {'Phase Imbalance':<26} {_get('phaseImbalancePct')} %")
+
+    if "temperaturex10" in pdu or "humidityx10" in pdu:
+        print(f"\n  {bold('PDU Environment')}:")
+        try:
+            print(f"    {'Ambient Temp':<26} {int(pdu.get('temperaturex10','0'))/10:.1f} °C")
+        except ValueError:
+            pass
+        try:
+            print(f"    {'Ambient Humidity':<26} {int(pdu.get('humidityx10','0'))/10:.1f} %")
+        except ValueError:
+            pass
+
+
+def _print_cisco_perf(perf: Dict[str, str]) -> None:
+    if not perf:
+        return
+    print(f"\n  {bold('Cisco Performance')}:")
+    cpu1  = perf.get("cpuTotal1min")
+    cpu5  = perf.get("cpuTotal5min")
+    if cpu1:
+        try:
+            v = int(cpu1)
+            col = red if v >= 90 else (yellow if v >= 70 else green)
+            print(f"    {'CPU (1-min avg)':<26} {col(str(v) + '%')}")
+        except ValueError:
+            print(f"    {'CPU (1-min avg)':<26} {cpu1} %")
+    if cpu5:
+        try:
+            v = int(cpu5)
+            col = red if v >= 90 else (yellow if v >= 70 else green)
+            print(f"    {'CPU (5-min avg)':<26} {col(str(v) + '%')}")
+        except ValueError:
+            print(f"    {'CPU (5-min avg)':<26} {cpu5} %")
+    used = perf.get("memPoolUsedMB")
+    free = perf.get("memPoolFree" + "MB")
+    name = perf.get("memPoolName", "Processor")
+    if used and free:
+        try:
+            u, f = int(used), int(free)
+            total = u + f
+            pct   = int(u * 100 / total) if total else 0
+            col   = red if pct >= 90 else (yellow if pct >= 70 else green)
+            print(f"    {'Memory Pool':<26} {name}")
+            print(f"    {'Memory Usage':<26} {col(str(pct) + '%')}")
+            print(f"    {'Memory Used':<26} {u} MB")
+            print(f"    {'Memory Free':<26} {f} MB")
+            print(f"    {'Memory Total':<26} {total} MB")
+        except ValueError:
+            pass
+
+
+def _print_switch_section(sw: Dict[str, Any]) -> None:
+    if not sw:
+        return
+
+    stp = sw.get("stp", {})
+    if stp:
+        print(f"\n  {bold('STP (Spanning Tree)')}:")
+        proto_map = {"1": "unknown", "2": "dec-lb100", "3": "ieee802.1d"}
+        proto = proto_map.get(stp.get("protocol", ""), stp.get("protocol", "—"))
+        print(f"    {'Protocol':<22} {proto}")
+        print(f"    {'Priority':<22} {stp.get('priority', '—')}")
+        try:
+            cs = int(stp.get("topoChangeAge", "0"))
+            print(f"    {'Last Topology Change':<22} {cs // 100} s ago")
+        except ValueError:
+            pass
+        print(f"    {'Topology Changes':<22} {stp.get('topoChanges', '—')}")
+        print(f"    {'Root Port':<22} {stp.get('rootPort', '—')}")
+        try:
+            print(f"    {'Max Age':<22} {int(stp.get('maxAge','0'))//100} s")
+        except ValueError:
+            pass
+        try:
+            print(f"    {'Hello Time':<22} {int(stp.get('helloTime','0'))//100} s")
+        except ValueError:
+            pass
+
+    cdp = sw.get("cdp", [])
+    if cdp:
+        print(f"\n  {bold('CDP Neighbours')} ({len(cdp)} found):")
+        fmt = "    port={port:<4} {device:<28} addr={addr:<18} port={rport}"
+        print(grey(fmt.format(port="port", device="device-id", addr="address", rport="remote-port")))
+        for n in cdp:
+            print(cyan(fmt.format(
+                port  = n.get("local_port", "?"),
+                device= n.get("device_id",  "—")[:28],
+                addr  = n.get("address",    "—"),
+                rport = n.get("remote_port","—"),
+            )))
+
+    mac = sw.get("mac_table", [])
+    if mac:
+        learned  = [e for e in mac if e.get("status") == "learned"]
+        self_mac = [e for e in mac if e.get("status") == "self"]
+        print(f"\n  {bold('MAC Address Table')} ({len(mac)} total: "
+              f"{len(learned)} learned, {len(self_mac)} self):")
+        shown = learned[:20]
+        fmt = "    {mac:<20} port={port:<6} {status}"
+        print(grey(fmt.format(mac="MAC", port="port", status="status")))
+        for e in shown:
+            print(fmt.format(
+                mac    = e.get("mac", "—"),
+                port   = e.get("port", "?"),
+                status = e.get("status", "—"),
+            ))
+        if len(learned) > 20:
+            print(grey(f"    … {len(learned)-20} more learned entries"))
+
+
+def _print_router_section(rt: Dict[str, Any]) -> None:
+    if not rt:
+        return
+
+    bgp = rt.get("bgp_peers", [])
+    if bgp:
+        _BGP_STATE_COL = {"Established": green, "Idle": red, "Active": yellow,
+                          "Connect": yellow, "OpenSent": yellow, "OpenConfirm": yellow}
+        print(f"\n  {bold('BGP Peers')} ({len(bgp)} found):")
+        fmt = "    {peer:<20} {state:<16} {admin}"
+        print(grey(fmt.format(peer="peer-addr", state="state", admin="admin")))
+        for p in bgp:
+            state = p.get("state", "—")
+            col   = _BGP_STATE_COL.get(state, grey)
+            print(fmt.format(
+                peer  = p.get("peer", "—"),
+                state = col(state),
+                admin = p.get("admin", "—"),
+            ))
+    elif rt.get("cdp") or rt:
+        print(f"\n  {bold('BGP Peers')}: {grey('none found (sessions not yet initialised or not a BGP router)')}")
+
+    cdp = rt.get("cdp", [])
+    if cdp:
+        print(f"\n  {bold('CDP Neighbours')} ({len(cdp)} found):")
+        fmt = "    port={port:<4} {device:<28} addr={addr:<18} port={rport}"
+        print(grey(fmt.format(port="port", device="device-id", addr="address", rport="remote-port")))
+        for n in cdp:
+            print(cyan(fmt.format(
+                port  = n.get("local_port", "?"),
+                device= n.get("device_id",  "—")[:28],
+                addr  = n.get("address",    "—"),
+                rport = n.get("remote_port","—"),
+            )))
+
 
 def _print_device(result: DeviceResult, quiet: bool) -> None:
     status = red("UNREACHABLE") if result.unreachable else (
@@ -613,7 +1097,6 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
         print(f"  {red('✗')}  {result.error}")
         return
 
-    # System OIDs
     col_w = max(len(r.name) for r in result.system) + 2
     for r in result.system:
         if not r.ok:
@@ -626,90 +1109,64 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
             if not quiet:
                 print(f"  {green('✓')}  {r.name:<{col_w}} {val}")
 
-    # Performance metrics
-    if result.performance:
+    # Server performance (UCD-SNMP-MIB)
+    if result.performance and any(r.ok for r in result.performance):
         print(f"\n  {bold('Performance Metrics')}:")
-
-        perf_map = {
-            r.name: r.value
-            for r in result.performance
-            if r.ok
-        }
-
+        perf_map = {r.name: r.value for r in result.performance if r.ok}
         try:
             idle_val = perf_map.get("cpuIdle")
-
-            if idle_val is not None:
-                try:
-                    idle = float(idle_val)
-                    cpu_usage = 100 - idle
-                    print(f"    CPU Usage      : {cpu_usage:.1f}%")
-                except Exception:
-                    print("    CPU Usage      : unavailable")
+            if idle_val:
+                cpu_usage = 100 - float(idle_val)
+                print(f"    {'CPU Usage':<22} {cpu_usage:.1f}%")
             else:
-                print("    CPU Usage      : unavailable")
+                print(f"    {'CPU Usage':<22} unavailable")
         except Exception:
             pass
-
         try:
             total_val = perf_map.get("memTotalKB")
             avail_val = perf_map.get("memAvailKB")
-
             if total_val and avail_val:
-                try:
-                    total = int(total_val)
-                    avail = int(avail_val)
-
-                    if total > 0:
-                        used = total - avail
-                        pct = (used / total) * 100
-
-                        print(f"    Memory Usage   : {pct:.1f}%")
-                        print(f"    Memory Used    : {used // 1024} MB")
-                        print(f"    Memory Total   : {total // 1024} MB")
-                except Exception:
-                    print("    Memory Usage   : unavailable")
+                total = int(total_val)
+                avail = int(avail_val)
+                if total > 0:
+                    pct = ((total - avail) / total) * 100
+                    print(f"    {'Memory Usage':<22} {pct:.1f}%")
+                    print(f"    {'Memory Used':<22} {(total - avail) // 1024} MB")
+                    print(f"    {'Memory Total':<22} {total // 1024} MB")
             else:
-                print("    Memory Usage   : unavailable")
+                print(f"    {'Memory Usage':<22} unavailable")
         except Exception:
             pass
-
         try:
-            dpct_val  = perf_map.get("diskPercent")
-            dtot_val  = perf_map.get("diskTotalKB")
-            davail_val = perf_map.get("diskAvailKB")
-
-            if dpct_val is not None:
-                try:
-                    dpct  = int(dpct_val)
-                    dtot  = int(dtot_val)  if dtot_val  else 0
-                    davail = int(davail_val) if davail_val else 0
-                    print(f"    Disk Usage     : {dpct}%")
-                    if dtot > 0:
-                        print(f"    Disk Used      : {(dtot - davail) // 1024} MB")
-                        print(f"    Disk Total     : {dtot // 1024} MB")
-                except (ValueError, TypeError):
-                    print("    Disk Usage     : unavailable")
-            else:
-                print("    Disk Usage     : unavailable")
+            dpct = perf_map.get("diskPercent")
+            dtot = perf_map.get("diskTotalKB")
+            dav  = perf_map.get("diskAvailKB")
+            if dpct:
+                print(f"    {'Disk Usage':<22} {dpct}%")
+                if dtot and dav:
+                    print(f"    {'Disk Used':<22} {(int(dtot)-int(dav))//1024} MB")
+                    print(f"    {'Disk Total':<22} {int(dtot)//1024} MB")
         except (ValueError, TypeError):
             pass
+    elif result.performance:
+        # All failed — still show section if do_metrics was requested but suppress in full mode
+        # (non-server devices won't have these OIDs)
+        pass
 
     # Temperature sensors
     if result.temperatures:
         print(f"\n  {bold('Temperature Sensors')}:")
-
         _TEMP_LABELS = {
-            "1.3.6.1.2.1.99.1.1.1.4.1":          "Inlet Temperature",
-            "1.3.6.1.2.1.99.1.1.1.4.2":          "CPU Temperature",
-            "1.3.6.1.4.1.9.9.13.1.3.1.3.1":      "Cisco Inlet Temp",
-            "1.3.6.1.4.1.9.9.13.1.3.1.3.2":      "Cisco CPU Temp",
+            "1.3.6.1.2.1.99.1.1.1.4.1":     "Inlet Temperature",
+            "1.3.6.1.2.1.99.1.1.1.4.2":     "CPU Temperature",
+            "1.3.6.1.4.1.9.9.13.1.3.1.3.1": "Cisco Inlet Temp",
+            "1.3.6.1.4.1.9.9.13.1.3.1.3.2": "Cisco CPU Temp",
         }
         for sensor in result.temperatures:
             label = _TEMP_LABELS.get(sensor['oid'], sensor['oid'])
-            print(f"    {label:<22} =  {sensor['value']} °C")
+            print(f"    {label:<26} {sensor['value']} °C")
 
-    # Vendor sensor readings (Raritan / Vertiv Geist / APC NetBotz)
+    # Vendor sensor readings
     if result.sensor_readings:
         print(f"\n  {bold('Sensor Readings')}:")
         col_w = max(len(r["label"]) for r in result.sensor_readings) + 2
@@ -718,10 +1175,23 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
             alarm   = r.get("alarm", False)
             line    = f"    {r['label']:<{col_w}} {val_str}"
             print(red(line) if alarm else line)
-        if not result.temperatures:
-            print()
 
-    # Summary line
+    # UPS
+    _print_ups_section(result.ups_data)
+
+    # PDU
+    _print_pdu_section(result.pdu_data)
+
+    # Cisco performance (network devices)
+    _print_cisco_perf(result.cisco_perf)
+
+    # Switch data
+    _print_switch_section(result.switch_data)
+
+    # Router data
+    _print_router_section(result.router_data)
+
+    # Summary
     total = len(result.system)
     print(f"\n  {green(str(result.passed))}/{total} system OIDs OK", end="")
     if result.failed:
@@ -732,8 +1202,7 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
     if result.interfaces:
         print(f"\n  {bold('Interfaces')} ({len(result.interfaces)} found):")
         fmt = "    {idx:>4}  {descr:<28} {admin:>5}/{oper:<5}  {speed}"
-        print(grey(fmt.format(idx="idx", descr="ifDescr", admin="admin",
-                              oper="oper", speed="speed")))
+        print(grey(fmt.format(idx="idx", descr="ifDescr", admin="admin", oper="oper", speed="speed")))
         for iface in result.interfaces:
             speed_raw = iface.get("speed", "")
             try:
@@ -775,9 +1244,9 @@ def _print_summary(results: List[DeviceResult]) -> None:
     print(bold("  SUMMARY"))
     print(bold(f"{'═'*64}"))
     total = len(results)
-    ok    = sum(1 for r in results if not r.unreachable and r.failed == 0)
-    warn  = sum(1 for r in results if not r.unreachable and r.failed  > 0)
-    fail  = sum(1 for r in results if r.unreachable)
+    ok   = sum(1 for r in results if not r.unreachable and r.failed == 0)
+    warn = sum(1 for r in results if not r.unreachable and r.failed  > 0)
+    fail = sum(1 for r in results if r.unreachable)
     fmt = "  {ip:<20} {status:<20} {elapsed}"
     print(grey(fmt.format(ip="IP", status="Status", elapsed="ms")))
     for r in results:
@@ -787,11 +1256,7 @@ def _print_summary(results: List[DeviceResult]) -> None:
             status = green("OK")
         else:
             status = yellow(f"{r.failed} OID(s) failed")
-        print(fmt.format(
-            ip      = r.ip,
-            status  = status,
-            elapsed = grey(f"{r.elapsed_ms:.0f}"),
-        ))
+        print(fmt.format(ip=r.ip, status=status, elapsed=grey(f"{r.elapsed_ms:.0f}")))
     print()
     print(f"  Devices : {total}   "
           f"{green(str(ok))} OK   "
@@ -812,28 +1277,31 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("ips", nargs="+", metavar="IP",
                    help="One or more device IP addresses to test")
     p.add_argument("--agent", "-a", default="127.0.0.1",
-                   help="Host where snmpsim is listening (default: 127.0.0.1). "
-                        "The simulator binds to 0.0.0.0 and routes by community "
-                        "string, so requests must go to this host not the device IP.")
-    p.add_argument("--port", "-p", type=int, default=161,
-                   help="SNMP UDP port (default: 161)")
+                   help="Host where snmpsim is listening (default: 127.0.0.1)")
+    p.add_argument("--port",      "-p", type=int, default=161)
     p.add_argument("--community", "-c", default=None,
                    help="Community string (default: same as device IP)")
-    p.add_argument("--timeout", "-t", type=int, default=5,
-                   help="Per-OID timeout in seconds (default: 5)")
-    p.add_argument("--interfaces", "-i", action="store_true",
-                   help="Walk the IF-MIB interface table")
-    p.add_argument("--lldp", "-l", action="store_true",
-                   help="Walk the LLDP-MIB remote neighbour table")
-    p.add_argument("--full", "-f", action="store_true",
-                   help="Equivalent to --interfaces --lldp")
-    p.add_argument("--quiet", "-q", action="store_true",
+    p.add_argument("--timeout",   "-t", type=int, default=5)
+    p.add_argument("--interfaces","-i", action="store_true",
+                   help="Walk IF-MIB interface table")
+    p.add_argument("--lldp",      "-l", action="store_true",
+                   help="Walk LLDP-MIB remote neighbour table")
+    p.add_argument("--metrics",   "-m", action="store_true",
+                   help="Collect CPU/memory/disk metrics (servers, UCD-SNMP-MIB)")
+    p.add_argument("--sensor",    "-s", action="store_true",
+                   help="Query vendor sensor OIDs (Raritan/Vertiv/APC): temp, humidity, dewpoint, airflow, leak")
+    p.add_argument("--ups",       "-u", action="store_true",
+                   help="Query all UPS data: battery, input/output, enterprise status")
+    p.add_argument("--pdu",             action="store_true",
+                   help="Query all PDU data: power, status, environment")
+    p.add_argument("--switch",          action="store_true",
+                   help="Query switch data: MAC table (BRIDGE-MIB), STP, CDP, Cisco CPU/memory")
+    p.add_argument("--router",          action="store_true",
+                   help="Query router data: BGP4-MIB peers, CDP, Cisco CPU/memory")
+    p.add_argument("--full",      "-f", action="store_true",
+                   help="Auto-detect device type (UPS/PDU/switch/router/sensor) and fetch all relevant data")
+    p.add_argument("--quiet",     "-q", action="store_true",
                    help="Only print failures and summary")
-    p.add_argument("--metrics", "-m", action="store_true",
-                   help="Collect CPU, memory and temperature metrics")
-    p.add_argument("--sensor", "-s", action="store_true",
-                   help="Query vendor sensor OIDs (Raritan DPX2 / Vertiv Geist / APC NetBotz) "
-                        "and display all readings (temp/humidity/dewpoint/airflow/leak)")
     return p.parse_args()
 
 
@@ -842,23 +1310,41 @@ async def _main(args: argparse.Namespace) -> int:
     do_lldp    = args.lldp or args.full
     do_metrics = args.metrics or args.full
     do_sensor  = args.sensor or args.full
+    do_ups     = args.ups
+    do_pdu     = args.pdu
+    do_switch  = args.switch
+    do_router  = args.router
+    do_full    = args.full
+
+    mode_parts = []
+    if do_full:    mode_parts.append("full-auto")
+    else:
+        for flag, name in [(args.ups,"ups"),(args.pdu,"pdu"),(args.switch,"switch"),
+                           (args.router,"router"),(args.sensor,"sensor"),
+                           (args.metrics,"metrics"),(args.interfaces,"interfaces"),
+                           (args.lldp,"lldp")]:
+            if flag: mode_parts.append(name)
+    mode_str = " ".join(mode_parts) if mode_parts else "system-only"
 
     print(bold(f"\ndataCenter SNMP Tester  —  {len(args.ips)} device(s)"))
-    print(grey(f"agent={args.agent}  port={args.port}  timeout={args.timeout}s  "
-               f"interfaces={'yes' if do_ifaces else 'no'}  "
-               f"lldp={'yes' if do_lldp else 'no'}\n"))
+    print(grey(f"agent={args.agent}  port={args.port}  timeout={args.timeout}s  mode={mode_str}\n"))
 
     tasks = [
         _test_device(
-            ip        = ip,
-            agent_ip  = args.agent,
-            community = args.community if args.community else ip,
-            port      = args.port,
-            timeout   = args.timeout,
+            ip            = ip,
+            agent_ip      = args.agent,
+            community     = args.community if args.community else ip,
+            port          = args.port,
+            timeout       = args.timeout,
             do_interfaces = do_ifaces,
             do_lldp       = do_lldp,
-            do_metrics=do_metrics,
-            do_sensor=do_sensor,
+            do_metrics    = do_metrics,
+            do_sensor     = do_sensor,
+            do_ups        = do_ups,
+            do_pdu        = do_pdu,
+            do_switch     = do_switch,
+            do_router     = do_router,
+            do_full       = do_full,
         )
         for ip in args.ips
     ]
@@ -875,7 +1361,6 @@ async def _main(args: argparse.Namespace) -> int:
 if __name__ == "__main__":
     args = _parse_args()
 
-    # Windows requires ProactorEventLoop for asyncio UDP
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 

@@ -434,7 +434,7 @@ class BulkAddDialog(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Datacenter Network Simulator v3.0")
+        self.setWindowTitle("Datacenter Network Simulator v3.1")
         self.setMinimumSize(1200, 750)
         self._datasets_dir        = DATASETS_DIR
         self._snmp_datasets_dir   = SNMP_DATASETS_DIR
@@ -3860,7 +3860,7 @@ class MainWindow(QMainWindow):
     def _show_about(self):
         QMessageBox.about(
             self, "About Datacenter Network Simulator",
-            "<h3>Datacenter Network Simulator v3.0</h3>"
+            "<h3>Datacenter Network Simulator v3.1</h3>"
             "<p>Visually build network topologies and simulate both SNMP and gNMI "
             "protocols for routers, switches, and servers.</p>"
             "<br>"

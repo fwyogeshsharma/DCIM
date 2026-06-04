@@ -547,10 +547,16 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
       case 'status': return (a.ups_status ?? '').localeCompare(b.ups_status ?? '') * dir
       case 'mode':   return (a.ups_operating_mode ?? '').localeCompare(b.ups_operating_mode ?? '') * dir
       case 'load':   return ((a.ups_output_load ?? 0) - (b.ups_output_load ?? 0)) * dir
-      case 'health': return ((a.ups_battery_health ?? 0) - (b.ups_battery_health ?? 0)) * dir
-      case 'energy': return ((a.ups_energy_kwh ?? 0) - (b.ups_energy_kwh ?? 0)) * dir
-      case 'volt':   return ((a.ups_input_voltage ?? 0) - (b.ups_input_voltage ?? 0)) * dir
-      case 'freq':   return ((a.ups_input_frequency ?? 0) - (b.ups_input_frequency ?? 0)) * dir
+      case 'health':  return ((a.ups_battery_health ?? 0) - (b.ups_battery_health ?? 0)) * dir
+      case 'battvolt':return ((a.ups_battery_voltage ?? 0) - (b.ups_battery_voltage ?? 0)) * dir
+      case 'energy':  return ((a.ups_energy_kwh ?? 0) - (b.ups_energy_kwh ?? 0)) * dir
+      case 'volt':    return ((a.ups_input_voltage ?? 0) - (b.ups_input_voltage ?? 0)) * dir
+      case 'inc':     return ((a.ups_input_current ?? 0) - (b.ups_input_current ?? 0)) * dir
+      case 'inw':     return ((a.ups_input_power ?? 0) - (b.ups_input_power ?? 0)) * dir
+      case 'freq':    return ((a.ups_input_frequency ?? 0) - (b.ups_input_frequency ?? 0)) * dir
+      case 'outv':    return ((a.ups_output_voltage ?? 0) - (b.ups_output_voltage ?? 0)) * dir
+      case 'outc':    return ((a.ups_output_current ?? 0) - (b.ups_output_current ?? 0)) * dir
+      case 'outw':    return ((a.ups_output_power ?? 0) - (b.ups_output_power ?? 0)) * dir
       default: return 0
     }
   }), [rows, sort.col, sort.dir])
@@ -565,10 +571,16 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="Power Status"    id="status" sort={sort} />
           <SortTH label="Operating Mode"  id="mode"   sort={sort} title="Derived: online when normal, battery when on_battery/low_battery, bypass when bypass_status=on" />
           <SortTH label="Battery Status"  id="batt"   sort={sort} />
-          <SortTH label="Battery Health"  id="health" sort={sort} align="right" minW={100} />
-          <SortTH label="Output Load"     id="load"   sort={sort} align="right" minW={90} />
-          <SortTH label="Input Voltage"   id="volt"   sort={sort} align="right" minW={90} />
-          <SortTH label="Input Freq"      id="freq"   sort={sort} align="right" minW={80} />
+          <SortTH label="Battery Health"   id="health"  sort={sort} align="right" minW={100} />
+          <SortTH label="Battery Voltage"  id="battvolt" sort={sort} align="right" minW={100} />
+          <SortTH label="Output Load"      id="load"    sort={sort} align="right" minW={90} />
+          <SortTH label="Output Voltage"   id="outv"    sort={sort} align="right" minW={90} />
+          <SortTH label="Output Current"   id="outc"    sort={sort} align="right" minW={90} />
+          <SortTH label="Output Power"     id="outw"    sort={sort} align="right" minW={90} />
+          <SortTH label="Input Voltage"    id="volt"    sort={sort} align="right" minW={90} />
+          <SortTH label="Input Current"    id="inc"     sort={sort} align="right" minW={90} />
+          <SortTH label="Input Power"      id="inw"     sort={sort} align="right" minW={90} />
+          <SortTH label="Input Freq"       id="freq"    sort={sort} align="right" minW={80} />
           <SortTH label="Fan Status"      id="fan"    sort={sort} />
           <SortTH label="Charger Status"  id="chgr"   sort={sort} />
           <SortTH label="Rectifier Status" id="rect"  sort={sort} />
@@ -585,15 +597,21 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_status}           okStates={['normal']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_operating_mode}   okStates={['online']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_battery_status}   okStates={['normal']} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_battery_health}  unit="%" warn={80} crit={50} invert /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_load}     unit="%" warn={70} crit={90} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_voltage}   unit="V" warn={235} crit={245} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_frequency} unit="Hz" warn={50.3} crit={50.5} decimals={2} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_energy_kwh}      unit=" kWh" decimals={1} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_battery_health}   unit="%" warn={80} crit={50} invert /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_battery_voltage}  unit="V" warn={200} crit={185} invert /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_load}      unit="%" warn={70} crit={90} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_voltage}   unit="V" /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_current}   unit="A" decimals={2} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_power}     unit="W" decimals={0} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_voltage}    unit="V" warn={235} crit={245} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_current}    unit="A" decimals={2} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_power}      unit="W" decimals={0} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_frequency}  unit="Hz" warn={50.3} crit={50.5} decimals={2} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_fan_status}       okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_charger_status}   okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_rectifier_status} okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_phase_status}     okStates={['ok']} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_energy_kwh}      unit=" kWh" decimals={1} /></td>
           </tr>
         ))}
       </tbody>
