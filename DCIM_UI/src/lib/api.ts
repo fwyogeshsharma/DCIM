@@ -14,6 +14,9 @@ import type {
   ServerConfig,
   Ticket,
   TicketActivity,
+  EnergyDevice,
+  EnergyReading,
+  EnergyTimeseriesPoint,
 } from './types'
 
 // Use aggregator service URL if available, otherwise fall back to direct server URL
@@ -151,6 +154,33 @@ class APIClient {
 
   async getLatestMetrics(agentId: string): Promise<Record<string, Metric>> {
     return this.request<Record<string, Metric>>(`/agents/${agentId}/metrics/latest`)
+  }
+
+  // Energy metrics (power meters) — dedicated energy_metrics hypertable.
+  async getEnergyDevices(): Promise<EnergyDevice[]> {
+    return this.request<EnergyDevice[]>(`/energy/devices`)
+  }
+
+  // Latest reading per (device, metric_name, tag). Omit deviceId for all meters.
+  async getEnergySnapshot(deviceId?: string): Promise<EnergyReading[]> {
+    const qs = deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ''
+    return this.request<EnergyReading[]>(`/energy/snapshot${qs}`)
+  }
+
+  async getEnergyTimeseries(filter: {
+    device_id: string
+    metric_name: string
+    tag?: string
+    time_range?: string
+    interval?: string
+  }): Promise<EnergyTimeseriesPoint[]> {
+    const params = new URLSearchParams()
+    params.append('device_id', filter.device_id)
+    params.append('metric_name', filter.metric_name)
+    if (filter.tag) params.append('tag', filter.tag)
+    if (filter.time_range) params.append('time_range', filter.time_range)
+    if (filter.interval) params.append('interval', filter.interval)
+    return this.request<EnergyTimeseriesPoint[]>(`/energy/timeseries?${params.toString()}`)
   }
 
   // Alert endpoints

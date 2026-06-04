@@ -103,6 +103,42 @@ export interface SNMPDevice {
   last_seen: string
 }
 
+// ── Energy metrics (BACnet/IP power meters, e.g. Verdigris EV2) ──────────────
+// From the dedicated energy_metrics hypertable. One reading per
+// (device, metric_name, tag); circuit/phase are first-class breakdowns derived
+// from the tag (CktNN → circuit, PhA/PhB/PhC → phase, '' → panel scalar).
+
+export interface EnergyDevice {
+  device_id: string
+  hostname: string
+  mgmt_ip: string | null
+  network_id: string
+  status: 'online' | 'offline'
+  last_reading: string | null
+  circuit_count: number
+}
+
+export interface EnergyReading {
+  device_id: string
+  hostname: string
+  mgmt_ip: string | null
+  status: 'online' | 'offline'
+  metric_name: string
+  tag: string
+  circuit: string
+  phase: string
+  value: number
+  ts: string
+  attributes: Record<string, unknown> | null
+}
+
+export interface EnergyTimeseriesPoint {
+  bucket: string
+  avg_value: number
+  max_value: number
+  min_value: number
+}
+
 // One directed edge between two discovered SNMP devices, from the
 // topology_links table populated by the walker's LLDP/CDP/ARP correlation
 // and by discovery's deep-scan.

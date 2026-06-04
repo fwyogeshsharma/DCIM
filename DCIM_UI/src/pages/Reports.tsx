@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { usePrediction } from '@/hooks/usePredictions'
 import { getDeviceTypeMeta } from '@/lib/deviceType'
+import { classifyReading, energyMetricMeta, formatEnergyValue } from '@/lib/energyMetrics'
+import type { EnergyReading } from '@/lib/types'
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
@@ -94,6 +96,150 @@ function TabBtn({ active, onClick, icon, label }: TabBtnProps) {
   )
 }
 
+// ── Energy monitor card ──────────────────────────────────────────────────────
+
+interface EnergyCardData {
+  deviceId: string
+  hostname: string
+  mgmtIp: string | null
+  status: 'online' | 'offline'
+  lastTs: string
+  activePower?: number
+  panel: { label: string; unit: string; value: number }[]
+  phases: { phase: string; voltage?: number; current?: number }[]
+  circuits: { circuit: string; current?: number; power?: number; energy?: number }[]
+  harmonics: { tag: string; value: number }[]
+  imbalancePct: number
+}
+
+function EnergyMonitorCard({ card, timeRange }: { card: EnergyCardData; timeRange: string }) {
+  // Active-power trend for this meter (panel total, tag='').
+  const { data: trend } = useQuery({
+    queryKey: ['energy-trend', card.deviceId, timeRange],
+    queryFn: () => api.getEnergyTimeseries({
+      device_id: card.deviceId,
+      metric_name: 'energy.active_power_kw',
+      time_range: timeRange,
+      interval: '15 minutes',
+    }),
+    enabled: card.activePower !== undefined,
+  })
+  const trendData = (trend ?? []).map((p) => ({ v: Number(p.avg_value) }))
+
+  return (
+    <div className="bg-slate-800/50 border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-500/30 transition-all">
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <Gauge className="w-4 h-4 text-cyan-400" />
+          <div>
+            <h3 className="text-base font-semibold text-white">{card.hostname}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{card.mgmtIp || card.deviceId}</p>
+          </div>
+        </div>
+        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${card.status === 'online' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+          {card.status === 'online' ? 'Online' : 'Offline'}
+        </span>
+      </div>
+
+      {/* Panel scalars (active power headline + other panel-level readings) */}
+      {(card.activePower !== undefined || card.panel.length > 0) && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          {card.activePower !== undefined && (
+            <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-slate-500 mb-1">Active Power</p>
+              <p className="text-sm font-bold text-amber-400">{formatEnergyValue(card.activePower, 'kW')}</p>
+            </div>
+          )}
+          {card.panel.map((p) => (
+            <div key={p.label} className="bg-slate-900/50 rounded-lg p-3 text-center">
+              <p className="text-xs text-slate-500 mb-1">{p.label}</p>
+              <p className="text-sm font-bold text-cyan-400">{formatEnergyValue(p.value, p.unit)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Per-phase voltage & current */}
+      {card.phases.length > 0 && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-slate-400">Phases</p>
+            {card.imbalancePct >= 10 && (
+              <span className="flex items-center gap-1 text-xs text-yellow-400">
+                <AlertTriangle className="w-3 h-3" /> {card.imbalancePct.toFixed(0)}% current imbalance
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {card.phases.map((ph) => (
+              <div key={ph.phase} className="bg-slate-900/50 rounded-lg p-2 text-center">
+                <p className="text-xs text-slate-500 mb-0.5">{ph.phase}</p>
+                <p className="text-sm font-bold text-cyan-400">{ph.voltage != null ? formatEnergyValue(ph.voltage, 'V') : '—'}</p>
+                <p className="text-xs text-purple-400">{ph.current != null ? formatEnergyValue(ph.current, 'A') : '—'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Per-circuit (breaker) mapping */}
+      {card.circuits.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-slate-400 mb-2">Circuits ({card.circuits.length})</p>
+          <div className="max-h-56 overflow-y-auto rounded-lg border border-white/5">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-900/60 text-slate-500 sticky top-0">
+                <tr>
+                  <th className="text-left px-3 py-1.5 font-medium">Circuit</th>
+                  <th className="text-right px-3 py-1.5 font-medium">Current</th>
+                  <th className="text-right px-3 py-1.5 font-medium">Power</th>
+                  <th className="text-right px-3 py-1.5 font-medium">Energy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {card.circuits.map((c) => (
+                  <tr key={c.circuit} className="border-t border-white/5">
+                    <td className="px-3 py-1.5 text-slate-300">{c.circuit}</td>
+                    <td className="px-3 py-1.5 text-right text-purple-400">{c.current != null ? formatEnergyValue(c.current, 'A') : '—'}</td>
+                    <td className="px-3 py-1.5 text-right text-amber-400">{c.power != null ? formatEnergyValue(c.power, 'kW') : '—'}</td>
+                    <td className="px-3 py-1.5 text-right text-green-400">{c.energy != null ? formatEnergyValue(c.energy, 'kWh') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Current harmonics */}
+      {card.harmonics.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-slate-400 mb-2">Current Harmonics</p>
+          <div className="flex flex-wrap gap-2">
+            {card.harmonics.map((h) => (
+              <div key={h.tag} className="bg-slate-900/50 rounded px-2 py-1 text-xs">
+                <span className="text-slate-500">{h.tag}</span>{' '}
+                <span className="text-cyan-400 font-medium">{h.value.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active-power trend */}
+      {trendData.length > 1 && (
+        <div className="h-16">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={trendData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+              <Area type="monotone" dataKey="v" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.1} strokeWidth={1.5} dot={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function Reports() {
@@ -122,12 +268,13 @@ export default function Reports() {
     queryFn: () => api.getAgents(),
   })
 
-  // Topology tree — supplies each device's role (keyed by mgmt IP) so we can
-  // surface energy_monitor devices here in circuit mapping. These are hidden
-  // from the network topology views; their power metrics are handled here.
-  const { data: topoTree } = useQuery({
-    queryKey: ['topology-tree'],
-    queryFn: () => api.getTopologyTree(),
+  // Energy meter readings (energy_metrics table) — the per-panel / per-phase /
+  // per-circuit / harmonic telemetry from energy_monitor devices, surfaced here
+  // in circuit mapping. These devices are hidden from the network topology views.
+  const { data: energyReadings } = useQuery({
+    queryKey: ['energy-snapshot'],
+    queryFn: () => api.getEnergySnapshot(),
+    refetchInterval: 30000,
   })
 
   const { data: powerMetrics, isLoading: powerLoading } = useQuery({
@@ -253,20 +400,6 @@ export default function Reports() {
     return (agents ?? []).filter((a) => getDeviceTypeMeta(a.agent_id).category === 'PDU')
   }, [agents])
 
-  // device_role keyed by mgmt IP, from the topology tree.
-  const roleByIp = useMemo(() => {
-    const map = new Map<string, string>()
-    topoTree?.nodes.forEach((n) => {
-      if (n.mgmt_ip && n.device_role) map.set(n.mgmt_ip, n.device_role)
-    })
-    return map
-  }, [topoTree])
-
-  // Energy-monitor agents — correlated to the topology by management IP.
-  const energyAgents = useMemo(() => {
-    return (agents ?? []).filter((a) => roleByIp.get(a.ip_address) === 'energy_monitor')
-  }, [agents, roleByIp])
-
   // Per-UPS metrics
   const upsCards = useMemo(() => {
     return upsAgents.map((ups) => {
@@ -320,26 +453,88 @@ export default function Reports() {
     })
   }, [pduAgents, powerMetrics, voltageMetrics, currentMetrics])
 
-  // Per-energy-monitor metrics (same electrical readings as a PDU circuit)
+  // Energy monitor cards — group the latest readings by device, then carve them
+  // into panel scalars, per-phase, per-circuit and harmonic breakdowns.
   const energyCards = useMemo(() => {
-    return energyAgents.map((em) => {
-      const powerVals = (powerMetrics ?? []).filter((m) => m.agent_id === em.agent_id)
-      const voltVals = (voltageMetrics ?? []).filter((m) => m.agent_id === em.agent_id)
-      const currVals = (currentMetrics ?? []).filter((m) => m.agent_id === em.agent_id)
+    const byDevice = new Map<string, EnergyReading[]>()
+    for (const r of energyReadings ?? []) {
+      const arr = byDevice.get(r.device_id) ?? []
+      arr.push(r)
+      byDevice.set(r.device_id, arr)
+    }
 
-      const avgPower = powerVals.length > 0
-        ? powerVals.reduce((s, m) => s + m.value, 0) / powerVals.length : 0
-      const maxPower = powerVals.length > 0 ? Math.max(...powerVals.map((m) => m.value)) : 0
-      const avgVolt = voltVals.length > 0
-        ? voltVals.reduce((s, m) => s + m.value, 0) / voltVals.length : 0
-      const avgCurr = currVals.length > 0
-        ? currVals.reduce((s, m) => s + m.value, 0) / currVals.length : 0
+    return [...byDevice.entries()].map(([deviceId, readings]) => {
+      const first = readings[0]
+      const lastTs = readings.reduce((m, r) => (r.ts > m ? r.ts : m), readings[0]?.ts ?? '')
 
-      const trend = powerVals.slice(-12).map((m) => ({ v: m.value }))
+      // Panel scalars (tag=''), excluding the active-power headline shown above.
+      const panel = readings
+        .filter((r) => classifyReading(r) === 'panel' && r.metric_name !== 'energy.active_power_kw')
+        .map((r) => ({ ...energyMetricMeta(r.metric_name), value: r.value }))
+        .sort((a, b) => a.label.localeCompare(b.label))
 
-      return { em, avgPower, maxPower, avgVolt, avgCurr, trend }
-    })
-  }, [energyAgents, powerMetrics, voltageMetrics, currentMetrics])
+      // Per-phase voltage & current.
+      const phaseMap = new Map<string, Record<string, number>>()
+      readings.filter((r) => classifyReading(r) === 'phase').forEach((r) => {
+        const row = phaseMap.get(r.phase) ?? {}
+        row[r.metric_name] = r.value
+        phaseMap.set(r.phase, row)
+      })
+      const phases = [...phaseMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([phase, vals]) => ({
+          phase,
+          voltage: vals['energy.voltage_v'],
+          current: vals['energy.current_a'],
+        }))
+
+      // Per-circuit (breaker) current / power / energy.
+      const circuitMap = new Map<string, Record<string, number>>()
+      readings.filter((r) => classifyReading(r) === 'circuit').forEach((r) => {
+        const row = circuitMap.get(r.circuit) ?? {}
+        row[r.metric_name] = r.value
+        circuitMap.set(r.circuit, row)
+      })
+      const circuits = [...circuitMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([circuit, vals]) => ({
+          circuit,
+          current: vals['energy.circuit_current_a'],
+          power: vals['energy.circuit_power_kw'],
+          energy: vals['energy.circuit_energy_kwh'],
+        }))
+
+      // Harmonics (H3, H5, …) sorted by order.
+      const harmonics = readings
+        .filter((r) => classifyReading(r) === 'harmonic')
+        .map((r) => ({ tag: r.tag, value: r.value }))
+        .sort((a, b) => (parseInt(a.tag.slice(1)) || 0) - (parseInt(b.tag.slice(1)) || 0))
+
+      const activePower = readings.find(
+        (r) => r.metric_name === 'energy.active_power_kw' && !r.circuit && !r.phase
+      )?.value
+
+      // Phase current imbalance (max−min)/max — flags an unbalanced load.
+      const phaseCurrents = phases.map((p) => p.current).filter((v): v is number => v != null)
+      const imbalancePct = phaseCurrents.length > 1 && Math.max(...phaseCurrents) > 0
+        ? ((Math.max(...phaseCurrents) - Math.min(...phaseCurrents)) / Math.max(...phaseCurrents)) * 100
+        : 0
+
+      return {
+        deviceId,
+        hostname: first?.hostname ?? deviceId,
+        mgmtIp: first?.mgmt_ip ?? null,
+        status: first?.status ?? 'offline',
+        lastTs,
+        activePower,
+        panel,
+        phases,
+        circuits,
+        harmonics,
+        imbalancePct,
+      }
+    }).sort((a, b) => a.hostname.localeCompare(b.hostname))
+  }, [energyReadings])
 
   // Energy cost
   const energyStats = useMemo(() => {
@@ -845,7 +1040,8 @@ export default function Reports() {
           )}
 
           {/* Energy Monitors — devices with device_role "energy_monitor", hidden
-              from the network topology and surfaced here for circuit mapping. */}
+              from the network topology and surfaced here for circuit mapping.
+              Driven by the energy_metrics table: panel / phase / circuit / harmonics. */}
           {energyCards.length > 0 && (
             <div className="space-y-4 pt-4">
               <div>
@@ -853,54 +1049,8 @@ export default function Reports() {
                 <p className="text-sm text-slate-400 mt-0.5">{energyCards.length} energy monitor{energyCards.length !== 1 ? 's' : ''} detected</p>
               </div>
 
-              {energyCards.map(({ em, avgPower, maxPower, avgVolt, avgCurr, trend }) => (
-                <div key={em.agent_id} className="bg-slate-800/50 border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-500/30 transition-all">
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-2">
-                      <Gauge className="w-4 h-4 text-cyan-400" />
-                      <div>
-                        <h3 className="text-base font-semibold text-white">{em.hostname || em.agent_id}</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">{em.agent_id}</p>
-                      </div>
-                    </div>
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${em.status === 'online' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-                      {em.status === 'online' ? 'Online' : 'Offline'}
-                    </span>
-                  </div>
-
-                  {/* Electrical readings */}
-                  <div className="grid grid-cols-4 gap-3 mb-4">
-                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Avg Power</p>
-                      <p className="text-sm font-bold text-amber-400">{avgPower.toFixed(1)} W</p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Peak Power</p>
-                      <p className="text-sm font-bold text-orange-400">{maxPower.toFixed(1)} W</p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Voltage</p>
-                      <p className="text-sm font-bold text-cyan-400">{avgVolt > 0 ? `${avgVolt.toFixed(0)} V` : '—'}</p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Current</p>
-                      <p className="text-sm font-bold text-purple-400">{avgCurr > 0 ? `${avgCurr.toFixed(2)} A` : '—'}</p>
-                    </div>
-                  </div>
-
-                  {/* Power trend */}
-                  {trend.length > 1 ? (
-                    <div className="h-16">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={trend} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-                          <Area type="monotone" dataKey="v" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.1} strokeWidth={1.5} dot={false} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="h-16 flex items-center justify-center"><p className="text-xs text-slate-600">No trend data</p></div>
-                  )}
-                </div>
+              {energyCards.map((card) => (
+                <EnergyMonitorCard key={card.deviceId} card={card} timeRange={timeRange} />
               ))}
             </div>
           )}

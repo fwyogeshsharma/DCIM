@@ -5,6 +5,7 @@ import { CacheService } from '../../services/CacheService'
 import { createServersRouter } from './servers'
 import { createAgentsRouter } from './agents'
 import { createMetricsRouter } from './metrics'
+import { createEnergyRouter } from './energy'
 import { createAlertsRouter } from './alerts'
 import { createTicketsRouter } from './tickets'
 import { createIngestRouter } from './ingest'
@@ -25,6 +26,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
   app.use('/api/v1/servers',  createServersRouter(dbPool, cacheService))
   app.use('/api/v1/agents',   createAgentsRouter(dbPool))
   app.use('/api/v1/metrics',  createMetricsRouter(dbPool, cacheService))
+  app.use('/api/v1/energy',   createEnergyRouter(dbPool, cacheService))
   app.use('/api/v1/alerts',   createAlertsRouter(dbPool))
   app.use('/api/v1/tickets',  createTicketsRouter(dbPool))
   app.use('/api/v1/ingest',     createIngestRouter(dbPool))
