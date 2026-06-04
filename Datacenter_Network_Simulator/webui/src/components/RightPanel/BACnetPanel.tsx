@@ -143,6 +143,7 @@ export default function BACnetPanel() {
   const [baseInstance, setBaseInstance] = useState(40001)
   const [freqHz,       setFreqHz]       = useState(50.0)
   const [port,         setPort]         = useState(47808)
+  const [error,        setError]        = useState<string | null>(null)
 
   const running      = status?.running ?? false
   const configLoaded = useRef(false)
@@ -169,18 +170,24 @@ export default function BACnetPanel() {
   }, [running])
 
   async function start() {
-    setBusy(true); setOperation('start')
+    setBusy(true); setOperation('start'); setError(null)
     try {
       await api.bacnetStart({ base_instance: baseInstance, frequency_hz: freqHz, port })
       fetchStatus()
-    } catch { /* ignore */ }
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail ?? e?.message ?? 'Failed to start BACnet'
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    }
     finally { setBusy(false); setOperation(null) }
   }
 
   async function stop() {
-    setBusy(true); setOperation('stop')
+    setBusy(true); setOperation('stop'); setError(null)
     try { await api.bacnetStop(); fetchStatus() }
-    catch { /* ignore */ }
+    catch (e: any) {
+      const msg = e?.response?.data?.detail ?? e?.message ?? 'Failed to stop BACnet'
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    }
     finally { setBusy(false); setOperation(null) }
   }
 
@@ -283,6 +290,18 @@ export default function BACnetPanel() {
             <div style={{ overflowX: 'auto' }}>
               <DeviceTable devices={status?.devices ?? []} />
             </div>
+          </div>
+        )}
+
+        {/* ── Error ──────────────────────────────────────────── */}
+        {error && (
+          <div style={{
+            fontSize: 10, color: 'var(--red)', padding: '6px 8px',
+            background: 'color-mix(in srgb, var(--red) 10%, var(--bg-base))',
+            border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)',
+            borderRadius: 4, lineHeight: 1.5,
+          }}>
+            {error}
           </div>
         )}
 
