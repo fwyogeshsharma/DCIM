@@ -110,6 +110,7 @@ function HeatmapGradientOverlay({ nodes, tempMap }: {
       if (n.type === 'server') return
       const temp = (n.agentId ? tempMap.get(n.agentId) : undefined)
         ?? (n.ip ? tempMap.get(n.ip) : undefined)
+        ?? (n.name ? tempMap.get(n.name) : undefined)
       if (temp !== undefined) pts.push({ x: n.position[0], z: n.position[2], temp })
     })
     return pts
@@ -1718,7 +1719,7 @@ function SceneContent({
             agentCount={agentCounts[node.id] || 0}
             onDoubleClick={onDoubleClickServer}
             heatmapMode={heatmapMode}
-            temperature={tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? undefined}
+            temperature={tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? tempMap.get(node.name ?? '') ?? undefined}
             searchMatch={matchIds?.has(node.id) ?? false}
           />
         ))}
@@ -1730,7 +1731,7 @@ function SceneContent({
         return agentNodes.map((node) => {
           const dt = ((node.deviceType ?? '') + ' ' + (node.agentId ?? '') + ' ' + (node.name ?? '')).toUpperCase()
           const isPDU = dt.includes('PDU') || dt.includes('FPDU') || dt.includes('UPS')
-          const nodeTemp = tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? undefined
+          const nodeTemp = tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? tempMap.get(node.name ?? '') ?? undefined
           return isPDU ? (
             <PDUNode
               key={node.id}
@@ -1764,7 +1765,7 @@ function SceneContent({
         .map((node) => {
           const dt = ((node.deviceType ?? '') + ' ' + (node.agentId ?? '') + ' ' + (node.name ?? '')).toUpperCase()
           const isPDU = dt.includes('PDU') || dt.includes('FPDU') || dt.includes('UPS')
-          const nodeTemp = tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? undefined
+          const nodeTemp = tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? tempMap.get(node.name ?? '') ?? undefined
           return isPDU ? (
             <PDUNode
               key={node.id}
@@ -1994,7 +1995,7 @@ export default function Topology3D() {
   // Heatmap temperature data
   const { data: heatTempMetrics } = useQuery({
     queryKey: ['heatmap-temps', heatmapMode],
-    queryFn: () => api.getMetrics({ metric_type: 'temperature', time_range: '1h', limit: 5000 }),
+    queryFn: () => api.getMetrics({ metric_type: 'environment.temperature_c', time_range: '1h', limit: 5000 }),
     enabled: heatmapMode,
     refetchInterval: heatmapMode ? 30000 : false,
     staleTime: 20000,
@@ -2063,14 +2064,29 @@ export default function Topology3D() {
     return counts
   }, [agents])
 
-  // Temperature map for heatmap mode — latest reading per agent_id
+  // Temperature map for heatmap mode — latest environment.temperature_c reading
+  // per device. Environment metrics may identify the device via agent_id, the
+  // server fields, or metadata (device_ip / device_name / hostname), so we index
+  // the latest value under every identifier the metric exposes. Topology nodes
+  // are then matched by agentId, ip, or name (see node lookups below).
   const tempMap = useMemo(() => {
     const map = new Map<string, number>()
     if (!heatTempMetrics) return map
     const sorted = [...heatTempMetrics].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )
-    sorted.forEach(m => { if (!map.has(m.agent_id)) map.set(m.agent_id, m.value) })
+    sorted.forEach(m => {
+      const md: Record<string, any> = (m as any).metadata ?? {}
+      const keys = [
+        m.agent_id,
+        (m as any).server_id,
+        (m as any).server_name,
+        md.device_ip, md.device_host, md.device_name,
+        md.hostname, md.ip, md.name,
+      ]
+      // sorted descending by timestamp → first write per key is the latest value
+      keys.forEach(k => { if (k && !map.has(String(k))) map.set(String(k), m.value) })
+    })
     return map
   }, [heatTempMetrics])
 
