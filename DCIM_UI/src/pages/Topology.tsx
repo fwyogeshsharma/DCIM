@@ -258,7 +258,9 @@ export default function Topology() {
     refetchInterval: 30000,
   })
 
-  const rawTree: TreeNode[] = topoData?.nodes ?? []
+  // Energy-monitor devices are surfaced under Power Management → PDU circuit
+  // mapping, not the network topology — exclude them (and their links) here.
+  const rawTree: TreeNode[] = (topoData?.nodes ?? []).filter(n => n.device_role !== 'energy_monitor')
   const rawLinks: TreeLink[] = topoData?.links ?? []
 
   const { data: activeTraps } = useQuery({

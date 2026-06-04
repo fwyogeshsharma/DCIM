@@ -2094,8 +2094,11 @@ export default function Topology3D() {
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
     const visibleAgents = agents.filter(a => expandedServers.has(`server-${a.server_id}`))
+    // Energy-monitor devices belong to Power Management → PDU circuit mapping,
+    // not the 3D topology — drop them here (role resolved by mgmt IP).
     const visibleDevices = (snmpDevices || []).filter(
-      d => expandedServers.has(`server-${d.server_id}`)
+      d => expandedServers.has(`server-${d.server_id}`) &&
+        roleByIp.get(d.device_ip) !== 'energy_monitor'
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
     return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)

@@ -122,6 +122,14 @@ export default function Reports() {
     queryFn: () => api.getAgents(),
   })
 
+  // Topology tree — supplies each device's role (keyed by mgmt IP) so we can
+  // surface energy_monitor devices here in circuit mapping. These are hidden
+  // from the network topology views; their power metrics are handled here.
+  const { data: topoTree } = useQuery({
+    queryKey: ['topology-tree'],
+    queryFn: () => api.getTopologyTree(),
+  })
+
   const { data: powerMetrics, isLoading: powerLoading } = useQuery({
     queryKey: ['report-power', timeRange],
     queryFn: () => api.getMetrics({ metric_type: 'power_consumption', time_range: timeRange, limit: 10000 }),
@@ -245,6 +253,20 @@ export default function Reports() {
     return (agents ?? []).filter((a) => getDeviceTypeMeta(a.agent_id).category === 'PDU')
   }, [agents])
 
+  // device_role keyed by mgmt IP, from the topology tree.
+  const roleByIp = useMemo(() => {
+    const map = new Map<string, string>()
+    topoTree?.nodes.forEach((n) => {
+      if (n.mgmt_ip && n.device_role) map.set(n.mgmt_ip, n.device_role)
+    })
+    return map
+  }, [topoTree])
+
+  // Energy-monitor agents — correlated to the topology by management IP.
+  const energyAgents = useMemo(() => {
+    return (agents ?? []).filter((a) => roleByIp.get(a.ip_address) === 'energy_monitor')
+  }, [agents, roleByIp])
+
   // Per-UPS metrics
   const upsCards = useMemo(() => {
     return upsAgents.map((ups) => {
@@ -297,6 +319,27 @@ export default function Reports() {
       return { pdu, avgPower, maxPower, avgVolt, avgCurr, loadPct, ratedW, trend }
     })
   }, [pduAgents, powerMetrics, voltageMetrics, currentMetrics])
+
+  // Per-energy-monitor metrics (same electrical readings as a PDU circuit)
+  const energyCards = useMemo(() => {
+    return energyAgents.map((em) => {
+      const powerVals = (powerMetrics ?? []).filter((m) => m.agent_id === em.agent_id)
+      const voltVals = (voltageMetrics ?? []).filter((m) => m.agent_id === em.agent_id)
+      const currVals = (currentMetrics ?? []).filter((m) => m.agent_id === em.agent_id)
+
+      const avgPower = powerVals.length > 0
+        ? powerVals.reduce((s, m) => s + m.value, 0) / powerVals.length : 0
+      const maxPower = powerVals.length > 0 ? Math.max(...powerVals.map((m) => m.value)) : 0
+      const avgVolt = voltVals.length > 0
+        ? voltVals.reduce((s, m) => s + m.value, 0) / voltVals.length : 0
+      const avgCurr = currVals.length > 0
+        ? currVals.reduce((s, m) => s + m.value, 0) / currVals.length : 0
+
+      const trend = powerVals.slice(-12).map((m) => ({ v: m.value }))
+
+      return { em, avgPower, maxPower, avgVolt, avgCurr, trend }
+    })
+  }, [energyAgents, powerMetrics, voltageMetrics, currentMetrics])
 
   // Energy cost
   const energyStats = useMemo(() => {
@@ -790,6 +833,67 @@ export default function Reports() {
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={trend} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                           <Area type="monotone" dataKey="v" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} strokeWidth={1.5} dot={false} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-16 flex items-center justify-center"><p className="text-xs text-slate-600">No trend data</p></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Energy Monitors — devices with device_role "energy_monitor", hidden
+              from the network topology and surfaced here for circuit mapping. */}
+          {energyCards.length > 0 && (
+            <div className="space-y-4 pt-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Energy Monitors</h2>
+                <p className="text-sm text-slate-400 mt-0.5">{energyCards.length} energy monitor{energyCards.length !== 1 ? 's' : ''} detected</p>
+              </div>
+
+              {energyCards.map(({ em, avgPower, maxPower, avgVolt, avgCurr, trend }) => (
+                <div key={em.agent_id} className="bg-slate-800/50 border border-cyan-500/20 rounded-xl p-6 hover:border-cyan-500/30 transition-all">
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="flex items-center gap-2">
+                      <Gauge className="w-4 h-4 text-cyan-400" />
+                      <div>
+                        <h3 className="text-base font-semibold text-white">{em.hostname || em.agent_id}</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{em.agent_id}</p>
+                      </div>
+                    </div>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${em.status === 'online' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                      {em.status === 'online' ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+
+                  {/* Electrical readings */}
+                  <div className="grid grid-cols-4 gap-3 mb-4">
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Avg Power</p>
+                      <p className="text-sm font-bold text-amber-400">{avgPower.toFixed(1)} W</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Peak Power</p>
+                      <p className="text-sm font-bold text-orange-400">{maxPower.toFixed(1)} W</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Voltage</p>
+                      <p className="text-sm font-bold text-cyan-400">{avgVolt > 0 ? `${avgVolt.toFixed(0)} V` : '—'}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Current</p>
+                      <p className="text-sm font-bold text-purple-400">{avgCurr > 0 ? `${avgCurr.toFixed(2)} A` : '—'}</p>
+                    </div>
+                  </div>
+
+                  {/* Power trend */}
+                  {trend.length > 1 ? (
+                    <div className="h-16">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={trend} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+                          <Area type="monotone" dataKey="v" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.1} strokeWidth={1.5} dot={false} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
