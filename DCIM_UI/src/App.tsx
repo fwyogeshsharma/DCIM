@@ -22,6 +22,7 @@ import Reports from './pages/Reports'
 import NetworkOps from './pages/NetworkOps'
 import FireSafety from './pages/FireSafety'
 import Tickets from './pages/Tickets'
+import Inventory from './pages/Inventory'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,7 @@ function App() {
 <Route path="reports" element={<Reports />} />
               <Route path="network-ops" element={<NetworkOps />} />
               <Route path="fire-safety" element={<FireSafety />} />
+              <Route path="inventory" element={<Inventory />} />
             </Route>
           </Routes>
         </div>

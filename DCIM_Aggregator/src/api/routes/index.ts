@@ -8,6 +8,7 @@ import { createMetricsRouter } from './metrics'
 import { createAlertsRouter } from './alerts'
 import { createTicketsRouter } from './tickets'
 import { createIngestRouter } from './ingest'
+import { createInventoryRouter } from './inventory'
 import { addSSEClient, removeSSEClient } from '../../events/sseEmitter'
 
 const HEARTBEAT_TIMEOUT_SECONDS = 300
@@ -26,7 +27,8 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
   app.use('/api/v1/metrics',  createMetricsRouter(dbPool, cacheService))
   app.use('/api/v1/alerts',   createAlertsRouter(dbPool))
   app.use('/api/v1/tickets',  createTicketsRouter(dbPool))
-  app.use('/api/v1/ingest',   createIngestRouter(dbPool))
+  app.use('/api/v1/ingest',     createIngestRouter(dbPool))
+  app.use('/api/v1/inventory',  createInventoryRouter(dbPool))
 
   // ── Dashboard stats ────────────────────────────────────────────────────────
   app.get('/api/v1/dashboard/stats', async (req, res) => {

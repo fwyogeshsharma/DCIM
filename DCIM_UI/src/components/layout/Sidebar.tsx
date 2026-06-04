@@ -14,7 +14,8 @@ import {
   Zap as ZapIcon,
   Radio,
   Flame,
-  Ticket
+  Ticket,
+  Package
 } from 'lucide-react'
 import { useUIStore } from '@/stores/useUIStore'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Power Mgmt', href: '/reports', icon: ZapIcon },
   { name: 'Network Ops', href: '/network-ops', icon: Radio },
   { name: 'Fire & Safety', href: '/fire-safety', icon: Flame },
+  { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Topology', href: '/topology', icon: Network },
   { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit },
   { name: 'NL Query', href: '/nl-query', icon: MessageSquareText },

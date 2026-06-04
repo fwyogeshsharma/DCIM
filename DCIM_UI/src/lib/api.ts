@@ -575,6 +575,130 @@ class APIClient {
   }>> {
     return this.request(`/agents/recent?limit=${limit}`)
   }
+
+  // ── Inventory ──────────────────────────────────────────────────────────────
+
+  async getInventorySummary(): Promise<{
+    devices: {
+      total: number; idle: number; in_use: number; maintenance: number; decommissioned: number
+      total_cpu_cores: number; total_ram_gb: number; total_storage_gb: number
+      available_cpu_cores: number; available_ram_gb: number; available_storage_gb: number
+      storage_remaining_gb: number
+    }
+    links: { total_links: number; active_links: number; disconnected_links: number }
+  }> {
+    return this.request('/inventory/summary')
+  }
+
+  async getInventoryDevices(filter?: {
+    status?: string; device_type?: string; search?: string; datacenter_id?: string
+  }): Promise<InventoryDevice[]> {
+    const params = new URLSearchParams()
+    if (filter?.status)        params.append('status', filter.status)
+    if (filter?.device_type)   params.append('device_type', filter.device_type)
+    if (filter?.search)        params.append('search', filter.search)
+    if (filter?.datacenter_id) params.append('datacenter_id', filter.datacenter_id)
+    const qs = params.toString()
+    return this.request(`/inventory/devices${qs ? `?${qs}` : ''}`)
+  }
+
+  async createInventoryDevice(data: Partial<InventoryDevice>): Promise<InventoryDevice> {
+    return this.request('/inventory/devices', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateInventoryDevice(id: string, data: Partial<InventoryDevice>): Promise<InventoryDevice> {
+    return this.request(`/inventory/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteInventoryDevice(id: string): Promise<void> {
+    return this.request(`/inventory/devices/${id}`, { method: 'DELETE' })
+  }
+
+  async getInventoryDeviceAnalytics(id: string, hours = 24): Promise<{
+    linked: boolean
+    monitoring_device_id?: string
+    metrics: Array<{ bucket: string; metric_name: string; avg_value: number; max_value: number; min_value: number }>
+    latest: Array<{ metric_name: string; value: number; timestamp: string; tag: string }>
+  }> {
+    return this.request(`/inventory/devices/${id}/analytics?hours=${hours}`)
+  }
+
+  async getInventoryLinks(filter?: {
+    device_id?: string; status?: string; datacenter_id?: string
+  }): Promise<InventoryLink[]> {
+    const params = new URLSearchParams()
+    if (filter?.device_id)     params.append('device_id', filter.device_id)
+    if (filter?.status)        params.append('status', filter.status)
+    if (filter?.datacenter_id) params.append('datacenter_id', filter.datacenter_id)
+    const qs = params.toString()
+    return this.request(`/inventory/links${qs ? `?${qs}` : ''}`)
+  }
+
+  async createInventoryLink(data: Partial<InventoryLink>): Promise<InventoryLink> {
+    return this.request('/inventory/links', { method: 'POST', body: JSON.stringify(data) })
+  }
+
+  async updateInventoryLink(id: string, data: Partial<InventoryLink>): Promise<InventoryLink> {
+    return this.request(`/inventory/links/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  }
+
+  async deleteInventoryLink(id: string): Promise<void> {
+    return this.request(`/inventory/links/${id}`, { method: 'DELETE' })
+  }
 }
 
 export const api = new APIClient(API_BASE_URL)
+
+// ── Inventory types ────────────────────────────────────────────────────────
+
+export interface InventoryDevice {
+  id: string
+  org_id: string
+  datacenter_id: string
+  monitoring_device_id?: string
+  hostname: string
+  device_type: string
+  vendor?: string
+  model?: string
+  serial_number?: string
+  datacenter_name?: string
+  room?: string
+  rack?: string
+  rack_unit?: number
+  rack_unit_height?: number
+  status: 'idle' | 'in_use' | 'maintenance' | 'decommissioned'
+  specs: Record<string, string>
+  cpu_cores?: number
+  ram_gb?: number
+  storage_gb?: number
+  power_capacity_w?: number
+  port_count?: number
+  cpu_used_pct?: number
+  ram_used_pct?: number
+  storage_used_gb?: number
+  power_draw_w?: number
+  notes?: string
+  monitoring_status?: 'online' | 'offline' | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InventoryLink {
+  id: string
+  org_id: string
+  datacenter_id: string
+  src_device_id: string
+  dst_device_id: string
+  src_port?: string
+  dst_port?: string
+  link_type: string
+  speed_mbps?: number
+  status: 'active' | 'disconnected'
+  notes?: string
+  src_hostname?: string
+  src_device_type?: string
+  dst_hostname?: string
+  dst_device_type?: string
+  created_at: string
+  updated_at: string
+}
