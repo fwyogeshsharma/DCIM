@@ -36,6 +36,21 @@ interface IngestMetric {
   interface_name?: string
 }
 
+// BACnet/IP energy reading (Verdigris EV2 power meters). Stored in the dedicated
+// energy_metrics hypertable, not the generic metrics table. circuit/phase are
+// first-class columns (derived from tag when not explicitly forwarded).
+interface IngestEnergyMetric {
+  metric_name: string
+  tag?: string
+  circuit?: string
+  phase?: string
+  value: number
+  ts?: string
+  attributes?: Record<string, unknown>
+  collector_protocol?: string
+  collector_agent?: string
+}
+
 interface IngestDevice {
   id?: string
   hostname: string
@@ -71,6 +86,7 @@ interface IngestDevice {
   is_reachable?: boolean
   interfaces?: IngestInterface[]
   metrics?: IngestMetric[]
+  energy_metrics?: IngestEnergyMetric[]
 }
 
 interface IngestTopologyLink {
@@ -365,6 +381,23 @@ export function createIngestRouter(dbPool: Pool): Router {
             }
           }
         }
+
+        // ── 4b. Insert energy metrics → dedicated energy_metrics table ────────
+        for (const e of dev.energy_metrics ?? []) {
+          const tag = e.tag ?? ''
+          const circuit = e.circuit ?? (tag.startsWith('Ckt') ? tag : '')
+          const phase = e.phase ?? (tag === 'PhA' || tag === 'PhB' || tag === 'PhC' ? tag : '')
+          await client.query(`
+            INSERT INTO energy_metrics (device_id, ts, metric_name, tag, circuit, phase, value,
+                                        attributes, collector_agent, collector_protocol)
+            VALUES ($1, $2::timestamptz, $3, $4, $5, $6, $7, $8, $9, $10)
+              ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING
+          `, [
+            deviceId, e.ts ?? 'now()', e.metric_name, tag, circuit, phase, e.value,
+            e.attributes ? JSON.stringify(e.attributes) : null,
+            e.collector_agent ?? 'EDR', e.collector_protocol ?? 'BACNET',
+          ])
+        }
       }
 
       // ── 5. Upsert topology links ───────────────────────────────────────────
@@ -542,6 +575,7 @@ export function createIngestRouter(dbPool: Pool): Router {
           devices:        (body.devices ?? []).length,
           topology_links: (body.topology_links ?? []).length,
           events:         (body.events ?? []).length,
+          energy_metrics: (body.devices ?? []).reduce((n, d) => n + (d.energy_metrics?.length ?? 0), 0),
         },
       })
     } catch (err: any) {
