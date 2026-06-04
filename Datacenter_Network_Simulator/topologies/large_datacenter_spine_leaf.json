@@ -177,7 +177,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -953,7 +955,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -1489,7 +1493,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -2025,7 +2031,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -2561,7 +2569,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -3097,7 +3107,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -3873,7 +3885,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -4649,7 +4663,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -5425,7 +5441,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -6201,7 +6219,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -6977,7 +6997,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -7753,7 +7775,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -8529,7 +8553,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -9305,7 +9331,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -9391,7 +9419,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "23ec2076",
+        "power_source_b": null
       }
     },
     {
@@ -9477,7 +9507,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "23ec2076",
+        "power_source_b": null
       }
     },
     {
@@ -9563,7 +9595,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "23ec2076",
+        "power_source_b": null
       }
     },
     {
@@ -9649,7 +9683,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "23ec2076",
+        "power_source_b": null
       }
     },
     {
@@ -9735,7 +9771,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -9821,7 +9859,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -9907,7 +9947,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -9993,7 +10035,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -10079,7 +10123,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -10165,7 +10211,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -10251,7 +10299,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -10337,7 +10387,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -10423,7 +10475,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "23ec2076",
+        "power_source_b": null
       }
     },
     {
@@ -10509,7 +10563,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "23ec2076",
+        "power_source_b": null
       }
     },
     {
@@ -10595,7 +10651,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -10681,7 +10739,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -10767,7 +10827,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -10853,7 +10915,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -10939,7 +11003,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -11025,7 +11091,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -11111,7 +11179,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -11197,7 +11267,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -11283,7 +11355,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -11369,7 +11443,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -11455,7 +11531,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -11541,7 +11619,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -11627,7 +11707,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -11713,7 +11795,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -11799,7 +11883,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -11885,7 +11971,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -11971,7 +12059,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -12057,7 +12147,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -12143,7 +12235,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -12229,7 +12323,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -12315,7 +12411,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -12401,7 +12499,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -12487,7 +12587,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -12573,7 +12675,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -12659,7 +12763,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -12745,7 +12851,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -12831,7 +12939,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -12917,7 +13027,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -13003,7 +13115,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -13089,7 +13203,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -13175,7 +13291,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -13261,7 +13379,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -13347,7 +13467,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -13433,7 +13555,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -13519,7 +13643,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -13605,7 +13731,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -13691,7 +13819,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -13777,7 +13907,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -13863,7 +13995,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -13949,7 +14083,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -14035,7 +14171,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -14121,7 +14259,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -14207,7 +14347,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -14293,7 +14435,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -14379,7 +14523,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -14465,7 +14611,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -14551,7 +14699,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -14637,7 +14787,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -14723,7 +14875,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -14809,7 +14963,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -14895,7 +15051,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -14981,7 +15139,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -15067,7 +15227,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -15153,7 +15315,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -15239,7 +15403,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -15325,7 +15491,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -15411,7 +15579,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -15497,7 +15667,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -15583,7 +15755,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -15669,7 +15843,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -15755,7 +15931,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -15841,7 +16019,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -15927,7 +16107,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -16013,7 +16195,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -16099,7 +16283,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -16185,7 +16371,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -16271,7 +16459,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -16357,7 +16547,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -16443,7 +16635,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9922f870",
+        "power_source_b": null
       }
     },
     {
@@ -16529,7 +16723,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9922f870",
+        "power_source_b": null
       }
     },
     {
@@ -16615,7 +16811,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -16701,7 +16899,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -16787,7 +16987,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -16873,7 +17075,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -16959,7 +17163,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -17045,7 +17251,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -17131,7 +17339,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -17217,7 +17427,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -17303,7 +17515,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9922f870",
+        "power_source_b": null
       }
     },
     {
@@ -17389,7 +17603,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9922f870",
+        "power_source_b": null
       }
     },
     {
@@ -17475,7 +17691,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9922f870",
+        "power_source_b": null
       }
     },
     {
@@ -17561,7 +17779,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9922f870",
+        "power_source_b": null
       }
     },
     {
@@ -17677,7 +17897,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -17793,7 +18015,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "87e6faca",
+        "power_source_b": null
       }
     },
     {
@@ -17999,7 +18223,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -18805,7 +19031,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "23ec2076",
+        "power_source_b": null
       }
     },
     {
@@ -19611,7 +19839,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "db2a9831",
+        "power_source_b": null
       }
     },
     {
@@ -20417,7 +20647,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9922f870",
+        "power_source_b": null
       }
     },
     {
@@ -20488,7 +20720,9 @@
         "dewpoint": 25.9,
         "airflow": 2.12,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "9662ea1b",
+        "power_source_b": null
       }
     },
     {
@@ -20559,7 +20793,9 @@
         "dewpoint": 17.8,
         "airflow": 2.23,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "8b41afd4",
+        "power_source_b": null
       }
     },
     {
@@ -20630,7 +20866,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": null,
+        "power_source_b": null
       }
     },
     {
@@ -20701,7 +20939,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "ec36b24c",
+        "power_source_b": null
       }
     },
     {
@@ -20772,7 +21012,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "4eb84c7d",
+        "power_source_b": null
       }
     },
     {
@@ -20843,7 +21085,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "ec36b24c",
+        "power_source_b": null
       }
     },
     {
@@ -20914,7 +21158,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "b76832ac",
+        "power_source_b": null
       }
     },
     {
@@ -20985,7 +21231,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "ec36b24c",
+        "power_source_b": null
       }
     },
     {
@@ -21056,7 +21304,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "2a0dabc1",
+        "power_source_b": null
       }
     },
     {
@@ -21127,7 +21377,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "ec36b24c",
+        "power_source_b": null
       }
     },
     {
@@ -21198,7 +21450,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "f3d3c061",
+        "power_source_b": null
       }
     },
     {
@@ -21269,7 +21523,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "ec36b24c",
+        "power_source_b": null
       }
     },
     {
@@ -21340,7 +21596,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "ba439ade",
+        "power_source_b": null
       }
     },
     {
@@ -21411,7 +21669,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "ec36b24c",
+        "power_source_b": null
       }
     },
     {
@@ -21482,7 +21742,9 @@
         "dewpoint": 0.0,
         "airflow": 0.0,
         "sys_contact": "",
-        "sys_location_override": ""
+        "sys_location_override": "",
+        "power_source_a": "df8e9aee",
+        "power_source_b": null
       }
     }
   ],
