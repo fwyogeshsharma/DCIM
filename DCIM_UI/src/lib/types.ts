@@ -115,6 +115,7 @@ export interface EnergyDevice {
   network_id: string
   status: 'online' | 'offline'
   last_reading: string | null
+  scope: string | null
   circuit_count: number
 }
 
@@ -130,6 +131,8 @@ export interface EnergyReading {
   value: number
   ts: string
   attributes: Record<string, unknown> | null
+  // Meter coverage role from attributes.scope: 'facility' | 'it' | 'cooling' | …
+  scope: string | null
 }
 
 export interface EnergyTimeseriesPoint {

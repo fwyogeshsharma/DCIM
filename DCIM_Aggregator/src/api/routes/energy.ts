@@ -44,6 +44,7 @@ export function createEnergyRouter(dbPool: Pool, cacheService: CacheService): Ro
           CASE WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
                THEN 'online' ELSE 'offline' END                          AS status,
           MAX(em.ts)                                                     AS last_reading,
+          MAX(em.attributes->>'scope')                                   AS scope,
           COUNT(DISTINCT em.circuit) FILTER (WHERE em.circuit <> '')::int AS circuit_count
         FROM devices d
         LEFT JOIN energy_metrics em
@@ -82,7 +83,8 @@ export function createEnergyRouter(dbPool: Pool, cacheService: CacheService): Ro
           em.phase,
           em.value,
           em.ts,
-          em.attributes
+          em.attributes,
+          em.attributes->>'scope' AS scope
         FROM energy_metrics em
         JOIN devices d ON d.id = em.device_id
         WHERE em.ts >= NOW() - INTERVAL '24 hours'

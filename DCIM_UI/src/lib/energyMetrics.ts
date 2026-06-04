@@ -1,5 +1,38 @@
 import type { EnergyReading } from './types'
 
+// ── Known metric_name / scope strings ────────────────────────────────────────
+// Centralised so a producer (DCS) naming mismatch is a one-line fix rather than
+// a hunt through components. If the UI shows blanks where data should be, verify
+// these against the actual energy_metrics rows.
+export const ENERGY = {
+  ACTIVE_POWER_KW:     'energy.active_power_kw',     // panel total active power
+  ENERGY_KWH:          'energy.energy_kwh',          // panel cumulative energy
+  CIRCUIT_CURRENT_A:   'energy.circuit_current_a',
+  CIRCUIT_POWER_KW:    'energy.circuit_power_kw',
+  CIRCUIT_ENERGY_KWH:  'energy.circuit_energy_kwh',
+  VOLTAGE_V:           'energy.voltage_v',
+  CURRENT_A:           'energy.current_a',
+  BATTERY_PERCENT:     'energy.battery_percent',     // UPS state of charge
+  RUNTIME_MIN:         'energy.runtime_min',          // UPS estimated runtime
+} as const
+
+// attributes.scope values that classify what a meter covers, for PUE.
+export const SCOPE = {
+  FACILITY: 'facility',  // mains / total facility draw
+  IT:       'it',        // IT load (servers, network)
+  COOLING:  'cooling',   // CRAC / chillers / non-IT
+} as const
+
+// Normalise a raw scope string to a known bucket (case/spacing tolerant).
+export function normalizeScope(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const s = raw.trim().toLowerCase()
+  if (s === SCOPE.FACILITY || s === 'total' || s === 'mains') return SCOPE.FACILITY
+  if (s === SCOPE.IT || s === 'it_load' || s === 'load') return SCOPE.IT
+  if (s === SCOPE.COOLING || s === 'crac' || s === 'hvac' || s === 'chiller') return SCOPE.COOLING
+  return s
+}
+
 // Presentation metadata for energy_metrics. Each metric_name is one physical
 // quantity; we map the known Verdigris/BACnet names to a short label + unit, and
 // fall back to prettifying the raw name (strip "energy." prefix, drop the unit

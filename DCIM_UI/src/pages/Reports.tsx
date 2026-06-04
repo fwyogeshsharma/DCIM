@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { usePrediction } from '@/hooks/usePredictions'
 import { getDeviceTypeMeta } from '@/lib/deviceType'
-import { classifyReading, energyMetricMeta, formatEnergyValue } from '@/lib/energyMetrics'
+import { classifyReading, energyMetricMeta, formatEnergyValue, ENERGY, SCOPE, normalizeScope } from '@/lib/energyMetrics'
 import type { EnergyReading } from '@/lib/types'
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
@@ -12,7 +12,7 @@ import {
 import {
   Zap, Thermometer, Activity, BarChart3, Download,
   BatteryCharging, Battery, DollarSign, Calendar, TrendingUp,
-  Plus, CheckCircle, Clock, AlertTriangle, Gauge, Trash2, X,
+  Plus, CheckCircle, Clock, AlertTriangle, Gauge, Trash2, X, Server,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -418,15 +418,24 @@ export default function Reports() {
         ? currVals.reduce((s, m) => s + m.value, 0) / currVals.length
         : 0
 
-      // Simulate battery % from load (in real system this comes from SNMP OID)
-      const batteryPct = ups.status === 'online' ? Math.max(20, 100 - (avgLoad / 20)) : 0
-      const runtimeMin = Math.round(batteryPct * 2.5) // rough estimate
+      // Prefer real battery / runtime readings from energy_metrics (UPS device_id
+      // == agent_id). Fall back to a load-based estimate, flagged as such.
+      const realBattery = (energyReadings ?? []).find(
+        (r) => r.device_id === ups.agent_id && r.metric_name === ENERGY.BATTERY_PERCENT
+      )?.value
+      const realRuntime = (energyReadings ?? []).find(
+        (r) => r.device_id === ups.agent_id && r.metric_name === ENERGY.RUNTIME_MIN
+      )?.value
+
+      const batteryEstimated = realBattery == null
+      const batteryPct = realBattery ?? (ups.status === 'online' ? Math.max(20, 100 - (avgLoad / 20)) : 0)
+      const runtimeMin = realRuntime != null ? Math.round(realRuntime) : Math.round(batteryPct * 2.5)
 
       const trend = powerVals.slice(-12).map((m) => ({ v: m.value }))
 
-      return { ups, avgLoad, maxLoad, avgVolt, avgCurr, batteryPct, runtimeMin, trend }
+      return { ups, avgLoad, maxLoad, avgVolt, avgCurr, batteryPct, runtimeMin, batteryEstimated, trend }
     })
-  }, [upsAgents, powerMetrics, voltageMetrics, currentMetrics])
+  }, [upsAgents, powerMetrics, voltageMetrics, currentMetrics, energyReadings])
 
   // Per-PDU metrics
   const pduCards = useMemo(() => {
@@ -484,8 +493,8 @@ export default function Reports() {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([phase, vals]) => ({
           phase,
-          voltage: vals['energy.voltage_v'],
-          current: vals['energy.current_a'],
+          voltage: vals[ENERGY.VOLTAGE_V],
+          current: vals[ENERGY.CURRENT_A],
         }))
 
       // Per-circuit (breaker) current / power / energy.
@@ -499,9 +508,9 @@ export default function Reports() {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([circuit, vals]) => ({
           circuit,
-          current: vals['energy.circuit_current_a'],
-          power: vals['energy.circuit_power_kw'],
-          energy: vals['energy.circuit_energy_kwh'],
+          current: vals[ENERGY.CIRCUIT_CURRENT_A],
+          power: vals[ENERGY.CIRCUIT_POWER_KW],
+          energy: vals[ENERGY.CIRCUIT_ENERGY_KWH],
         }))
 
       // Harmonics (H3, H5, …) sorted by order.
@@ -511,8 +520,13 @@ export default function Reports() {
         .sort((a, b) => (parseInt(a.tag.slice(1)) || 0) - (parseInt(b.tag.slice(1)) || 0))
 
       const activePower = readings.find(
-        (r) => r.metric_name === 'energy.active_power_kw' && !r.circuit && !r.phase
+        (r) => r.metric_name === ENERGY.ACTIVE_POWER_KW && !r.circuit && !r.phase
       )?.value
+      const energyKwh = readings.find(
+        (r) => r.metric_name === ENERGY.ENERGY_KWH && !r.circuit && !r.phase
+      )?.value
+      // What this meter covers (facility / it / cooling), for PUE.
+      const scope = normalizeScope(readings.find((r) => r.scope)?.scope ?? null)
 
       // Phase current imbalance (max−min)/max — flags an unbalanced load.
       const phaseCurrents = phases.map((p) => p.current).filter((v): v is number => v != null)
@@ -527,6 +541,8 @@ export default function Reports() {
         status: first?.status ?? 'offline',
         lastTs,
         activePower,
+        energyKwh,
+        scope,
         panel,
         phases,
         circuits,
@@ -536,24 +552,65 @@ export default function Reports() {
     }).sort((a, b) => a.hostname.localeCompare(b.hostname))
   }, [energyReadings])
 
-  // Energy cost
+  // ── PUE / DCiE from scoped meter data ───────────────────────────────────────
+  // PUE = Total Facility Power ÷ IT Power. Meters are classified by their scope
+  // tag. If no explicit 'facility' meter exists, facility = sum of all meters
+  // (IT + cooling + other), which is the standard fallback.
+  const pueStats = useMemo(() => {
+    const sumScope = (s: string) => energyCards
+      .filter((c) => c.scope === s)
+      .reduce((acc, c) => acc + (c.activePower ?? 0), 0)
+
+    const itKw = sumScope(SCOPE.IT)
+    const coolingKw = sumScope(SCOPE.COOLING)
+    const explicitFacilityKw = sumScope(SCOPE.FACILITY)
+    const meteredTotalKw = energyCards.reduce((acc, c) => acc + (c.activePower ?? 0), 0)
+
+    // Prefer an explicit facility/mains meter; otherwise sum everything metered.
+    const facilityKw = explicitFacilityKw > 0 ? explicitFacilityKw : meteredTotalKw
+    const otherKw = Math.max(0, facilityKw - itKw - coolingKw)
+
+    const hasScopedMeters = energyCards.some((c) => c.scope != null)
+    const pue = itKw > 0 ? facilityKw / itKw : null
+    const dcie = pue ? (1 / pue) * 100 : null
+
+    return { itKw, coolingKw, otherKw, facilityKw, pue, dcie, hasScopedMeters, meterCount: energyCards.length }
+  }, [energyCards])
+
+  // Display values: prefer metered PUE; fall back to the manual-input estimate
+  // (server watts) when there are no energy meters at all.
+  const metered = pueStats.meterCount > 0
+  const dispPue = metered ? pueStats.pue : summaryStats.pue
+  const dispDcie = metered ? pueStats.dcie : summaryStats.dcie
+
+  // Energy cost. Prefer measured facility power from meters (kW→W); fall back to
+  // summed server power when no meters exist. Also surface the real cumulative
+  // kWh read straight off the meters' energy accumulators.
   const energyStats = useMemo(() => {
     const rate = parseFloat(costPerKwh) || 0.12
     const hours = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720
-    const totalAvgW = summaryStats.totalPower
+    const measured = pueStats.meterCount > 0 && pueStats.facilityKw > 0
+    const totalAvgW = measured ? pueStats.facilityKw * 1000 : summaryStats.totalPower
     const kwh = kwhFromWatts(totalAvgW, hours)
     const cost = kwh * rate
     const monthlyKwh = kwhFromWatts(totalAvgW, 720)
     const monthlyCost = monthlyKwh * rate
     const annualCost = monthlyCost * 12
 
+    // Cumulative energy read from the meters (energy.energy_kwh accumulators).
+    const meteredKwhTotal = energyCards.reduce((s, c) => s + (c.energyKwh ?? 0), 0)
+
+    // Scale the per-server cost trend up to facility level so its magnitude
+    // matches the metered headline (keeps the chart coherent with the KPIs).
+    const itTotalW = summaryStats.totalPower || 0
+    const facilityScale = measured && itTotalW > 0 ? (pueStats.facilityKw * 1000) / itTotalW : 1
     const costTrend = chartData.map((d) => {
       const totalW = enabledServers.reduce((s, srv) => s + ((d[srv.name] as number) || 0), 0)
-      return { time: d.time as string, cost: parseFloat((kwhFromWatts(totalW, 1) * rate).toFixed(4)) }
+      return { time: d.time as string, cost: parseFloat((kwhFromWatts(totalW * facilityScale, 1) * rate).toFixed(4)) }
     })
 
-    return { kwh, cost, monthlyKwh, monthlyCost, annualCost, costTrend, rate }
-  }, [summaryStats.totalPower, costPerKwh, timeRange, chartData, enabledServers])
+    return { kwh, cost, monthlyKwh, monthlyCost, annualCost, costTrend, rate, measured, meteredKwhTotal }
+  }, [summaryStats.totalPower, costPerKwh, timeRange, chartData, enabledServers, pueStats.meterCount, pueStats.facilityKw, energyCards])
 
   // AI forecast: use first server's power data as representative
   const forecastHistory = useMemo(() => {
@@ -679,35 +736,54 @@ export default function Reports() {
       {/* ── TAB: Overview (PUE / DCiE) ─────────────────────────────────────── */}
       {tab === 'overview' && (
         <div className="space-y-6">
-          {/* PUE input */}
-          <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
-            <p className="text-sm font-medium text-slate-300 mb-3">
-              Facility Total Power Input <span className="text-slate-500 font-normal">(required for live PUE/DCiE)</span>
-            </p>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min={0}
-                placeholder="e.g. 12000"
-                value={facilityPower}
-                onChange={(e) => setFacilityPower(e.target.value)}
-                className="w-48 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-              />
-              <span className="text-slate-400 text-sm">Watts (W)</span>
-              {facilityPower && <span className="text-xs text-slate-500">IT load: {summaryStats.totalPower.toFixed(1)} W</span>}
+          {/* Data source: metered (scoped energy meters) or manual fallback */}
+          {metered ? (
+            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4 flex items-start gap-3 text-sm">
+              <Gauge className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+              {pueStats.hasScopedMeters ? (
+                <span className="text-slate-300">
+                  Live PUE from <span className="font-semibold text-white">{pueStats.meterCount}</span> energy meter{pueStats.meterCount !== 1 ? 's' : ''} —
+                  facility {formatEnergyValue(pueStats.facilityKw, 'kW')}, IT {formatEnergyValue(pueStats.itKw, 'kW')}.
+                </span>
+              ) : (
+                <span className="text-yellow-400">
+                  {pueStats.meterCount} energy meter{pueStats.meterCount !== 1 ? 's' : ''} found, but none are tagged with a scope.
+                  Set <code className="text-yellow-300">attributes.scope</code> to <code className="text-yellow-300">"facility"</code>, <code className="text-yellow-300">"it"</code> or <code className="text-yellow-300">"cooling"</code> on each meter to compute PUE. Showing total metered power as facility.
+                </span>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
+              <p className="text-sm font-medium text-slate-300 mb-3">
+                Facility Total Power Input <span className="text-slate-500 font-normal">(no energy meters detected — enter manually for PUE/DCiE)</span>
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="e.g. 12000"
+                  value={facilityPower}
+                  onChange={(e) => setFacilityPower(e.target.value)}
+                  className="w-48 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                />
+                <span className="text-slate-400 text-sm">Watts (W)</span>
+                {facilityPower && <span className="text-xs text-slate-500">IT load: {summaryStats.totalPower.toFixed(1)} W</span>}
+              </div>
+            </div>
+          )}
 
           {/* Summary KPI cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Total IT Power</p>
+                  <p className="text-sm font-medium text-slate-400">Total Facility Power</p>
                   <p className="text-3xl font-bold mt-2 text-white">
-                    {summaryStats.totalPower.toFixed(1)}<span className="text-lg font-normal text-slate-400 ml-1">W</span>
+                    {metered
+                      ? <>{pueStats.facilityKw.toFixed(2)}<span className="text-lg font-normal text-slate-400 ml-1">kW</span></>
+                      : (facilityPower ? <>{parseFloat(facilityPower).toFixed(0)}<span className="text-lg font-normal text-slate-400 ml-1">W</span></> : '—')}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">across all servers</p>
+                  <p className="text-xs text-slate-500 mt-1">{metered ? 'measured at meters' : 'manual input'}</p>
                 </div>
                 <div className="bg-yellow-500/10 p-3 rounded-lg"><Zap className="h-6 w-6 text-yellow-500" /></div>
               </div>
@@ -716,15 +792,32 @@ export default function Reports() {
             <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="text-sm font-medium text-slate-400">IT Power</p>
+                  <p className="text-3xl font-bold mt-2 text-white">
+                    {metered
+                      ? (pueStats.itKw > 0
+                          ? <>{pueStats.itKw.toFixed(2)}<span className="text-lg font-normal text-slate-400 ml-1">kW</span></>
+                          : '—')
+                      : <>{summaryStats.totalPower.toFixed(0)}<span className="text-lg font-normal text-slate-400 ml-1">W</span></>}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">{metered && pueStats.itKw === 0 ? 'tag a meter scope "it"' : metered ? 'IT-scoped meters' : 'across all servers'}</p>
+                </div>
+                <div className="bg-blue-500/10 p-3 rounded-lg"><Server className="h-6 w-6 text-blue-500" /></div>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-sm font-medium text-slate-400">PUE</p>
                   <p className="text-3xl font-bold mt-2 text-white">
-                    {summaryStats.pue !== null ? summaryStats.pue.toFixed(2) : '—'}
+                    {dispPue !== null ? dispPue.toFixed(2) : '—'}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    {summaryStats.pue === null ? 'enter facility power above' : summaryStats.pue <= 1.2 ? 'excellent' : summaryStats.pue <= 1.5 ? 'average' : 'needs improvement'}
+                    {dispPue === null ? (metered ? 'needs an IT-scoped meter' : 'enter facility power above') : dispPue <= 1.2 ? 'excellent' : dispPue <= 1.5 ? 'average' : 'needs improvement'}
                   </p>
                 </div>
-                <div className="bg-blue-500/10 p-3 rounded-lg"><Gauge className="h-6 w-6 text-blue-500" /></div>
+                <div className="bg-purple-500/10 p-3 rounded-lg"><Gauge className="h-6 w-6 text-purple-500" /></div>
               </div>
             </div>
 
@@ -733,51 +826,83 @@ export default function Reports() {
                 <div>
                   <p className="text-sm font-medium text-slate-400">DCiE</p>
                   <p className="text-3xl font-bold mt-2 text-white">
-                    {summaryStats.dcie !== null ? summaryStats.dcie.toFixed(1) : '—'}
-                    {summaryStats.dcie !== null && <span className="text-lg font-normal text-slate-400 ml-1">%</span>}
+                    {dispDcie !== null ? dispDcie.toFixed(1) : '—'}
+                    {dispDcie !== null && <span className="text-lg font-normal text-slate-400 ml-1">%</span>}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">data centre infrastructure efficiency</p>
+                  <p className="text-xs text-slate-500 mt-1">infrastructure efficiency</p>
                 </div>
                 <div className="bg-green-500/10 p-3 rounded-lg"><Activity className="h-6 w-6 text-green-500" /></div>
               </div>
             </div>
-
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Avg Temperature</p>
-                  <p className="text-3xl font-bold mt-2 text-white">
-                    {summaryStats.avgTemp !== undefined ? summaryStats.avgTemp.toFixed(1) : '—'}
-                    <span className="text-lg font-normal text-slate-400 ml-1">°C</span>
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">fleet average</p>
-                </div>
-                <div className="bg-orange-500/10 p-3 rounded-lg"><Thermometer className="h-6 w-6 text-orange-500" /></div>
-              </div>
-            </div>
           </div>
 
-          {/* PUE rating bar */}
-          {summaryStats.pue !== null && (
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-white">PUE Rating</h3>
-                <span className={`text-sm font-medium ${summaryStats.pue <= 1.2 ? 'text-green-400' : summaryStats.pue <= 1.5 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {summaryStats.pue <= 1.2 ? 'Excellent' : summaryStats.pue <= 1.5 ? 'Average' : 'Poor'}
-                </span>
+          {/* Load breakdown + PUE rating */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Load breakdown (metered) */}
+            {metered && pueStats.facilityKw > 0 && (
+              <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+                <h3 className="text-base font-semibold text-white mb-4">Facility Load Breakdown</h3>
+                {(() => {
+                  const f = pueStats.facilityKw
+                  const seg = (kw: number) => `${Math.max(0, (kw / f) * 100)}%`
+                  return (
+                    <>
+                      <div className="h-5 w-full rounded-full overflow-hidden flex bg-slate-700">
+                        <div className="bg-blue-500 h-full" style={{ width: seg(pueStats.itKw) }} title="IT" />
+                        <div className="bg-cyan-500 h-full" style={{ width: seg(pueStats.coolingKw) }} title="Cooling" />
+                        <div className="bg-slate-500 h-full" style={{ width: seg(pueStats.otherKw) }} title="Other" />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 mt-4">
+                        {[
+                          { label: 'IT', kw: pueStats.itKw, dot: 'bg-blue-500' },
+                          { label: 'Cooling', kw: pueStats.coolingKw, dot: 'bg-cyan-500' },
+                          { label: 'Other', kw: pueStats.otherKw, dot: 'bg-slate-500' },
+                        ].map((s) => (
+                          <div key={s.label}>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className={`w-2 h-2 rounded-full ${s.dot}`} />
+                              <span className="text-xs text-slate-400">{s.label}</span>
+                            </div>
+                            <p className="text-sm font-bold text-white">{s.kw.toFixed(2)} kW</p>
+                            <p className="text-xs text-slate-500">{f > 0 ? ((s.kw / f) * 100).toFixed(0) : 0}%</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )
+                })()}
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5 text-sm">
+                  <span className="text-slate-400 flex items-center gap-2"><Thermometer className="w-4 h-4 text-orange-400" /> Avg Temperature</span>
+                  <span className={`font-bold ${tempColor(summaryStats.avgTemp)}`}>{summaryStats.avgTemp !== undefined ? `${summaryStats.avgTemp.toFixed(1)} °C` : '—'}</span>
+                </div>
               </div>
-              <div className="relative h-4 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full opacity-30" />
-              <div className="relative -mt-4 h-4 flex items-center">
-                <div
-                  className="absolute w-4 h-4 rounded-full bg-white border-2 border-slate-900 shadow-lg"
-                  style={{ left: `${Math.min(100, Math.max(0, ((summaryStats.pue - 1) / 1.5) * 100))}%` }}
-                />
+            )}
+
+            {/* PUE rating bar */}
+            {dispPue !== null && (
+              <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-white">PUE Rating</h3>
+                  <span className={`text-sm font-medium ${dispPue <= 1.2 ? 'text-green-400' : dispPue <= 1.5 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {dispPue <= 1.2 ? 'Excellent' : dispPue <= 1.5 ? 'Average' : 'Poor'}
+                  </span>
+                </div>
+                <div className="relative h-4 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full opacity-30" />
+                <div className="relative -mt-4 h-4 flex items-center">
+                  <div
+                    className="absolute w-4 h-4 rounded-full bg-white border-2 border-slate-900 shadow-lg"
+                    style={{ left: `${Math.min(100, Math.max(0, ((dispPue - 1) / 1.5) * 100))}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-slate-500 mt-2">
+                  <span>1.0 (Perfect)</span><span>1.5</span><span>2.0+</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-3">
+                  PUE = facility ÷ IT power. DCiE = IT ÷ facility. Lower PUE (closer to 1.0) is more efficient.
+                </p>
               </div>
-              <div className="flex justify-between text-xs text-slate-500 mt-2">
-                <span>1.0 (Perfect)</span><span>1.5</span><span>2.0+</span>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Per-server cards */}
           {serverReports.length > 0 && (
@@ -880,7 +1005,7 @@ export default function Reports() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {upsCards.map(({ ups, avgLoad, maxLoad, avgVolt, avgCurr, batteryPct, runtimeMin, trend }) => (
+              {upsCards.map(({ ups, avgLoad, maxLoad, avgVolt, avgCurr, batteryPct, runtimeMin, batteryEstimated, trend }) => (
                 <div key={ups.agent_id} className="bg-slate-800/50 border border-lime-500/20 rounded-xl p-6 hover:border-lime-500/30 transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -897,7 +1022,10 @@ export default function Reports() {
                   {/* Battery meter */}
                   <div className="mb-4">
                     <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-slate-400 flex items-center gap-1.5"><Battery className="w-4 h-4" />Battery</span>
+                      <span className="text-slate-400 flex items-center gap-1.5">
+                        <Battery className="w-4 h-4" />Battery
+                        {batteryEstimated && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400" title="No battery metric reported — estimated from load">est.</span>}
+                      </span>
                       <span className={`font-bold ${batteryColor(batteryPct)}`}>{batteryPct.toFixed(0)}%</span>
                     </div>
                     <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
@@ -906,7 +1034,7 @@ export default function Reports() {
                         style={{ width: `${batteryPct}%` }}
                       />
                     </div>
-                    <p className="text-xs text-slate-500 mt-1.5">Est. runtime: {runtimeMin} min</p>
+                    <p className="text-xs text-slate-500 mt-1.5">{batteryEstimated ? 'Est.' : ''} runtime: {runtimeMin} min</p>
                   </div>
 
                   {/* Metrics */}
@@ -1189,10 +1317,24 @@ export default function Reports() {
       {/* ── TAB: Energy Cost ──────────────────────────────────────────────── */}
       {tab === 'energy' && (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold text-white">Energy Cost Modelling</h2>
-            <p className="text-sm text-slate-400 mt-0.5">Estimate costs from measured power consumption</p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-white">Energy Cost Modelling</h2>
+              <p className="text-sm text-slate-400 mt-0.5">
+                {energyStats.measured ? 'Costs from metered facility power' : 'Estimated from summed server power (no meters detected)'}
+              </p>
+            </div>
+            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${energyStats.measured ? 'bg-green-500/15 text-green-400 border border-green-500/30' : 'bg-slate-500/15 text-slate-400 border border-slate-500/30'}`}>
+              {energyStats.measured ? 'Metered' : 'Estimated'}
+            </span>
           </div>
+
+          {energyStats.meteredKwhTotal > 0 && (
+            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4 flex items-center justify-between text-sm">
+              <span className="text-slate-400 flex items-center gap-2"><Gauge className="w-4 h-4 text-cyan-400" /> Cumulative metered energy (lifetime)</span>
+              <span className="font-bold text-cyan-400">{energyStats.meteredKwhTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} kWh</span>
+            </div>
+          )}
 
           {/* Rate input */}
           <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
