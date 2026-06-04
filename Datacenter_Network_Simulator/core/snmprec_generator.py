@@ -147,6 +147,7 @@ _CISCO_ENVMON_TEMP = "1.3.6.1.4.1.9.9.13.1.3.1"      # CISCO-ENVMON-MIB ciscoEnv
 _CISCO_CPU_MIB     = "1.3.6.1.4.1.9.9.109.1.1.1.1"   # CISCO-PROCESS-MIB cpmCPUTotalTable
 _CISCO_MEM_MIB     = "1.3.6.1.4.1.9.9.48.1.1.1"       # CISCO-MEMORY-POOL-MIB ciscoMemoryPool
 _BGP4_PEER_TBL     = "1.3.6.1.2.1.15.3.1"             # BGP4-MIB bgpPeerTable
+_PDU_OUTLET_ENT    = "1.3.6.1.4.1.99999.5.20.1"       # pduOutletTable (per-outlet: idx/name/status/current/power)
 
 
 def _sort_oids(entries: List[OidEntry]) -> List[OidEntry]:
@@ -261,6 +262,7 @@ class SNMPRecGenerator:
 
         if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
             entries += self._pdu_entries(device)
+            entries += self._pdu_outlet_entries(device, topology)
 
         if device.device_type == DeviceType.GENERATOR:
             entries += self._generator_entries(device)
@@ -307,6 +309,8 @@ class SNMPRecGenerator:
         with lock:
             # Build the set of OIDs whose values change each tick.
             updates: dict = {}
+            _is_pdu     = device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU)
+            _pdu_ol_out = 1    # per-outlet status (1=on, 2=off)
 
             # System uptime (centiseconds)
             updates[f"{SYSTEM_BASE}.3.0"] = ("67", str(device.sys_uptime))
@@ -547,10 +551,21 @@ class SNMPRecGenerator:
                 updates[f"{_PDU_ENT}.15.0"] = ("2", str(pdu_temp_x10))
                 updates[f"{_PDU_ENT}.16.0"] = ("2", str(pdu_hum_x10))
                 updates[f"{_PDU_ENT}.17.0"] = ("2", str(pdu_outlet_w))
+                # Store outlet status for per-outlet table update below
+                _pdu_ol_out = pdu_out
 
             # Read existing file, replace matching OID lines.
             try:
                 lines = filepath.read_text(encoding="utf-8").splitlines()
+
+                # Per-outlet table prefixes.  Status follows the PDU outlet
+                # state; current/power are zeroed when the outlet is off,
+                # otherwise left at their per-device generated values.
+                _ol_stat_pfx = _PDU_OUTLET_ENT + ".3."
+                _ol_cur_pfx  = _PDU_OUTLET_ENT + ".4."
+                _ol_pwr_pfx  = _PDU_OUTLET_ENT + ".5."
+                _ol_off      = _is_pdu and _pdu_ol_out == 2
+
                 patched = []
                 for line in lines:
                     sep = line.find("|")
@@ -560,6 +575,14 @@ class SNMPRecGenerator:
                             typ, val = updates[oid]
                             patched.append(f"{oid}|{typ}|{val}")
                             continue
+                        if _is_pdu:
+                            if oid.startswith(_ol_stat_pfx):
+                                patched.append(f"{oid}|2|{_pdu_ol_out}")
+                                continue
+                            if _ol_off and (oid.startswith(_ol_cur_pfx)
+                                            or oid.startswith(_ol_pwr_pfx)):
+                                patched.append(f"{oid}|2|0")
+                                continue
                     patched.append(line)
 
                 # Router/Firewall: strip stale BGP peer entries, inject current sessions
@@ -1021,6 +1044,54 @@ class SNMPRecGenerator:
             _oid_entry(f"{_PDU_ENT}.16.0", "2",  "450"),  # pduHumidity x10 % (45.0)
             _oid_entry(f"{_PDU_ENT}.17.0", "2",  "2090"), # pduOutletPower W (per-outlet)
         ]
+        return entries
+
+    # ------------------------------------------------------------------ #
+    #  PDU per-outlet table (enterprise 1.3.6.1.4.1.99999.5.20)          #
+    # ------------------------------------------------------------------ #
+
+    def _pdu_outlet_entries(self, device: Device, topology: TopologyEngine) -> List[OidEntry]:
+        """Per-outlet SNMP table for PDU/floor_pdu devices.
+
+        Walks power edges to find downstream devices (servers, switches, etc.)
+        and generates one row per outlet:
+          .20.1.1.{N}  pduOutletIndex   — INTEGER
+          .20.1.2.{N}  pduOutletName    — DisplayString (connected device name)
+          .20.1.3.{N}  pduOutletStatus  — INTEGER 1=on 2=off
+          .20.1.4.{N}  pduOutletCurrentX10 — INTEGER (A × 10)
+          .20.1.5.{N}  pduOutletPowerW  — INTEGER (W from device.power_draw_w)
+        """
+        entries: List[OidEntry] = []
+        _UPSTREAM = {DeviceType.UPS, DeviceType.GENERATOR,
+                     DeviceType.FLOOR_PDU, DeviceType.RPP}
+        # Typical power draw (W) by device type — fallback when power_draw_w unset
+        _DEFAULT_W = {
+            DeviceType.SERVER: 450, DeviceType.SWITCH: 150, DeviceType.ROUTER: 300,
+            DeviceType.FIREWALL: 400, DeviceType.LOAD_BALANCER: 350,
+            DeviceType.OOB_SWITCH: 80, DeviceType.SENSOR: 10,
+        }
+        outlets: list = []
+        try:
+            for neighbor in topology.get_neighbors(device.id):
+                for _key, edge in topology.graph[device.id][neighbor.id].items():
+                    if edge.get("layer") == "power" and neighbor.device_type not in _UPSTREAM:
+                        outlets.append(neighbor)
+        except Exception:
+            pass
+        outlets.sort(key=lambda d: d.name)
+        _pdu_volt = 220.0
+        for i, outlet_dev in enumerate(outlets, start=1):
+            pwr_w = int(getattr(outlet_dev, "power_draw_w", 0) or 0)
+            if pwr_w <= 0:
+                pwr_w = _DEFAULT_W.get(outlet_dev.device_type, 200)
+            cur_x10 = int(round(pwr_w / _pdu_volt * 10)) if _pdu_volt > 0 else 0
+            entries += [
+                _oid_entry(f"{_PDU_OUTLET_ENT}.1.{i}", "2", str(i)),
+                _oid_entry(f"{_PDU_OUTLET_ENT}.2.{i}", "4", outlet_dev.name),
+                _oid_entry(f"{_PDU_OUTLET_ENT}.3.{i}", "2", "1"),           # status=on
+                _oid_entry(f"{_PDU_OUTLET_ENT}.4.{i}", "2", str(cur_x10)),  # current ×10 A
+                _oid_entry(f"{_PDU_OUTLET_ENT}.5.{i}", "2", str(pwr_w)),    # power W
+            ]
         return entries
 
     # ------------------------------------------------------------------ #

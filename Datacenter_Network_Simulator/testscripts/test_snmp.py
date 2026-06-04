@@ -168,6 +168,10 @@ PDU_OIDS: List[Tuple[str, str]] = [
     (f"{_PDU_ENT}.17.0",  "outletPowerW"),
 ]
 
+# PDU per-outlet table (walk): .20.1.{col}.{idx}
+#   col 1=index 2=name 3=status 4=currentX10 5=powerW
+_PDU_OUTLET_TBL = "1.3.6.1.4.1.99999.5.20.1"
+
 # Cisco network device OIDs
 _CISCO_CPU_MIB = "1.3.6.1.4.1.9.9.109.1.1.1.1"   # CISCO-PROCESS-MIB cpmCPUTotalTable
 _CISCO_MEM_MIB = "1.3.6.1.4.1.9.9.48.1.1.1"       # CISCO-MEMORY-POOL-MIB
@@ -230,6 +234,7 @@ class DeviceResult:
     sensor_readings:  List[dict]      = field(default_factory=dict)
     ups_data:         Dict[str, str]  = field(default_factory=dict)
     pdu_data:         Dict[str, str]  = field(default_factory=dict)
+    pdu_outlets:      List[dict]      = field(default_factory=list)
     cisco_perf:       Dict[str, str]  = field(default_factory=dict)
     switch_data:      Dict[str, Any]  = field(default_factory=dict)
     router_data:      Dict[str, Any]  = field(default_factory=dict)
@@ -491,6 +496,33 @@ async def _query_pdu_data(agent_ip: str, community: str, port: int,
     except Exception:
         return {}
     return {name: raw[oid] for oid, name in PDU_OIDS if _is_valid(raw.get(oid, ""))}
+
+
+async def _query_pdu_outlets(agent_ip: str, community: str, port: int,
+                              timeout: int) -> List[dict]:
+    """Walk PDU per-outlet table — which device is plugged into each outlet."""
+    rows = await _snmp_walk(agent_ip, community, port, _PDU_OUTLET_TBL, timeout, 500)
+    pfx = _PDU_OUTLET_TBL + "."
+    outlets: Dict[int, dict] = {}
+    for oid_str, val in rows:
+        if not oid_str.startswith(pfx):
+            continue
+        tail = oid_str[len(pfx):].split(".")
+        if len(tail) < 2:
+            continue
+        try:
+            col = int(tail[0])
+            idx = int(tail[1])
+        except ValueError:
+            continue
+        entry = outlets.setdefault(idx, {"outlet": idx})
+        if col == 2:   entry["device"]  = val
+        elif col == 3: entry["status"]  = "on" if val == "1" else "off"
+        elif col == 4:
+            try:    entry["current"] = int(val) / 10.0
+            except ValueError: entry["current"] = val
+        elif col == 5: entry["power"] = val
+    return [outlets[k] for k in sorted(outlets)]
 
 
 async def _query_cisco_perf(agent_ip: str, community: str, port: int,
@@ -785,6 +817,10 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
             result.pdu_data = await _query_pdu_data(agent_ip, community, port, timeout)
         except Exception:
             pass
+        try:
+            result.pdu_outlets = await _query_pdu_outlets(agent_ip, community, port, timeout)
+        except Exception:
+            pass
 
     # ── Cisco network device performance ──────────────────────────────────────
     if do_switch or do_router:
@@ -901,7 +937,7 @@ def _print_ups_section(ups: Dict[str, str]) -> None:
         pass
 
 
-def _print_pdu_section(pdu: Dict[str, str]) -> None:
+def _print_pdu_section(pdu: Dict[str, str], outlets: Optional[List[dict]] = None) -> None:
     if not pdu:
         return
     def _get(k: str, default: str = "—") -> str:
@@ -949,6 +985,25 @@ def _print_pdu_section(pdu: Dict[str, str]) -> None:
             print(f"    {'Ambient Humidity':<26} {int(pdu.get('humidityx10','0'))/10:.1f} %")
         except ValueError:
             pass
+
+    if outlets:
+        on  = sum(1 for o in outlets if o.get("status") == "on")
+        print(f"\n  {bold('PDU Outlets')} ({len(outlets)} outlets, {on} on):")
+        fmt = "    {outlet:>3}  {device:<28} {status:<5} {current:>8}  {power:>7}"
+        print(grey(fmt.format(outlet="#", device="connected device", status="state",
+                              current="current", power="power")))
+        for o in outlets:
+            cur = o.get("current", "—")
+            cur_s = f"{cur:.1f} A" if isinstance(cur, (int, float)) else str(cur)
+            status = o.get("status", "?")
+            colour = green if status == "on" else grey
+            print(colour(fmt.format(
+                outlet  = o.get("outlet", "?"),
+                device  = (o.get("device", "—") or "—")[:28],
+                status  = status,
+                current = cur_s,
+                power   = f"{o.get('power','—')} W",
+            )))
 
 
 def _print_cisco_perf(perf: Dict[str, str]) -> None:
@@ -1180,7 +1235,7 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
     _print_ups_section(result.ups_data)
 
     # PDU
-    _print_pdu_section(result.pdu_data)
+    _print_pdu_section(result.pdu_data, result.pdu_outlets)
 
     # Cisco performance (network devices)
     _print_cisco_perf(result.cisco_perf)
