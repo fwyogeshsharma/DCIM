@@ -343,6 +343,10 @@ class Device:
     power_source: str = ""  # device ID of rack PDU feeding this device
     ups_backup: str = ""    # device ID of UPS protecting this device
 
+    # Energy metering scope (energy_monitor / EV2 devices) — used for PUE.
+    # "" = unset, "it" = IT load, "cooling" = HVAC load, "facility" = total facility
+    scope: str = ""
+
     # Physical location
     country: str = ""
     datacenter_city: str = ""

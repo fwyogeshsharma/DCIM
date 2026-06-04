@@ -69973,7 +69973,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "a528c3ab"
+        "monitored_panel": "a528c3ab",
+        "scope": "it"
       }
     },
     {
@@ -70045,7 +70046,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "238d0922"
+        "monitored_panel": "238d0922",
+        "scope": "it"
       }
     },
     {
@@ -70117,7 +70119,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "5360689f"
+        "monitored_panel": "5360689f",
+        "scope": "cooling"
       }
     },
     {
@@ -70189,7 +70192,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "61b311bb"
+        "monitored_panel": "61b311bb",
+        "scope": "facility"
       }
     },
     {
@@ -70261,7 +70265,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "b324209b"
+        "monitored_panel": "b324209b",
+        "scope": "it"
       }
     },
     {
@@ -70333,7 +70338,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "a8e3601e"
+        "monitored_panel": "a8e3601e",
+        "scope": "it"
       }
     },
     {
@@ -70405,7 +70411,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "72c0c547"
+        "monitored_panel": "72c0c547",
+        "scope": "cooling"
       }
     },
     {
@@ -70477,7 +70484,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "e48c0c95"
+        "monitored_panel": "e48c0c95",
+        "scope": "facility"
       }
     }
   ],
