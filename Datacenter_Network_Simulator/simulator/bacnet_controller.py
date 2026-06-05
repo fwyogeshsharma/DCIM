@@ -178,10 +178,19 @@ class BACnetController:
             device_name = f"Verdigris_EV2_{instance}"
             _entry = _cmap.get(ip, DEFAULT_CIRCUITS)
             if isinstance(_entry, tuple):
-                circuits, active_circuits = _entry
+                capacity, active_circuits = _entry
             else:
-                circuits = _entry
-                active_circuits = _entry  # legacy: all circuits active
+                capacity = active_circuits = _entry  # legacy: all circuits active
+
+            # Capacity = EV2 model size (e.g. EV2-240). The BACnet object tree and
+            # per-circuit displays are capped at a real panel's breaker count
+            # (NOMINAL_CIRCUITS), but the *electrical* size drives load_scale so a
+            # large facility/main meter reports proportionally higher kW than the
+            # downstream IT sub-meters — making PUE = facility / IT come out > 1.
+            NOMINAL_CIRCUITS = 42
+            circuits         = min(capacity, NOMINAL_CIRCUITS)
+            active_circuits  = min(active_circuits, circuits)
+            load_scale       = capacity / float(NOMINAL_CIRCUITS)
             dev = EV2BACnetDevice(
                 device_ip=ip,
                 device_instance=instance,
@@ -196,6 +205,7 @@ class BACnetController:
                 circuits=circuits,
                 frequency_hz=frequency_hz,
                 active_circuits=active_circuits,
+                load_scale=load_scale,
             )
 
         # Start recv thread

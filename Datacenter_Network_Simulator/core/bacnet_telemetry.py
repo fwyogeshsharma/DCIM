@@ -60,12 +60,22 @@ class EV2TelemetryEngine:
         frequency_hz: float = 50.0,
         nominal_voltage: float = 230.0,
         active_circuits: int = 0,
+        load_scale: float = 1.0,
     ):
         # active_circuits: number of circuits with real downstream loads.
         # Circuits beyond this index output zero — they are spare/unused breakers.
         # 0 means all circuits are active (legacy behaviour).
+        # load_scale: electrical-size multiplier vs a nominal 42-circuit EV2.
+        #   1.0 = standard RPP-class panel (~60 A/phase peak). A facility/main
+        #   meter clamped on the building feed uses a large scale so its kW
+        #   exceeds the sum of the downstream IT sub-meters (real PUE > 1).
         self._circuits       = circuits
         self._active         = active_circuits if active_circuits > 0 else circuits
+        self._load_scale     = max(0.1, load_scale)
+        # Phase-current ceiling and overcurrent trip both follow the panel size
+        # so a large facility meter is not clipped and does not alarm constantly.
+        self._i_clamp            = 200.0 * max(1.0, self._load_scale)
+        self._overcurrent_thresh = self.OVERCURRENT_THRESHOLD * self._load_scale
         self._freq_nominal   = frequency_hz
         self._v_nominal      = nominal_voltage
 
@@ -75,9 +85,9 @@ class EV2TelemetryEngine:
         self._vc = nominal_voltage + random.uniform(-1.0, 1.0)
 
         # ── Panel-level current (A) ───────────────────────────────
-        self._ia  = random.uniform(20.0, 60.0)
-        self._ib  = random.uniform(20.0, 60.0)
-        self._ic  = random.uniform(20.0, 60.0)
+        self._ia  = random.uniform(20.0, 60.0) * self._load_scale
+        self._ib  = random.uniform(20.0, 60.0) * self._load_scale
+        self._ic  = random.uniform(20.0, 60.0) * self._load_scale
 
         # ── Frequency ─────────────────────────────────────────────
         self._freq = frequency_hz + random.uniform(-0.05, 0.05)
@@ -300,18 +310,19 @@ class EV2TelemetryEngine:
         Diurnal load curve maintained. Occasional load spikes still visible.
         COV cadence: every 1–3 minutes at 1.0 A threshold.
         """
-        base = mul * 60.0   # peak ~60 A/phase at full load
+        base = mul * 60.0 * self._load_scale   # peak ~60 A/phase × panel size
+        spike_scale = max(1.0, self._load_scale)
         for attr in ('_ia', '_ib', '_ic'):
             old = getattr(self, attr)
-            target = base + random.uniform(-3.0, 3.0)
-            raw = old + (target - old) * 0.05 + random.uniform(-0.3, 0.3)
+            target = base + random.uniform(-3.0, 3.0) * spike_scale
+            raw = old + (target - old) * 0.05 + random.uniform(-0.3, 0.3) * spike_scale
             # Occasional load spike (0.3% chance) — intentionally not smoothed
             if random.random() < 0.003:
-                raw += random.uniform(10.0, 25.0)
-                setattr(self, attr, max(0.0, min(200.0, raw)))
+                raw += random.uniform(10.0, 25.0) * spike_scale
+                setattr(self, attr, max(0.0, min(self._i_clamp, raw)))
                 continue
             smoothed = self._ema(raw, old, alpha=0.18)
-            setattr(self, attr, max(0.0, min(200.0, smoothed)))
+            setattr(self, attr, max(0.0, min(self._i_clamp, smoothed)))
 
     def _step_circuits(self, dt: float, mul: float):
         """
@@ -367,9 +378,9 @@ class EV2TelemetryEngine:
 
         # Overcurrent: any phase > threshold
         _debounce(
-            self._ia > self.OVERCURRENT_THRESHOLD or
-            self._ib > self.OVERCURRENT_THRESHOLD or
-            self._ic > self.OVERCURRENT_THRESHOLD,
+            self._ia > self._overcurrent_thresh or
+            self._ib > self._overcurrent_thresh or
+            self._ic > self._overcurrent_thresh,
             '_cnt_overcurrent', '_alarm_overcurrent',
         )
 

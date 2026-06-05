@@ -319,7 +319,6 @@ class EV2DeviceSnapshot(BaseModel):
     instance:          int
     name:              str
     circuits:          int
-    scope:             Optional[str] = None   # "it" | "cooling" | "facility" — for PUE
     monitored_pdu_name: Optional[str] = None
     panel:             EV2PanelMetrics
     circuit_list:      List[EV2CircuitMetrics] = []

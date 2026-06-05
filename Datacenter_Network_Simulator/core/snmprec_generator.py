@@ -267,8 +267,9 @@ class SNMPRecGenerator:
         if device.device_type == DeviceType.GENERATOR:
             entries += self._generator_entries(device)
 
-        # RPP is a passive breaker panel -- no SNMP agent, skip file generation
-        if device.device_type == DeviceType.RPP:
+        # RPP (passive breaker panel) and CRAC (cooling load, metered via BACnet)
+        # have no SNMP agent -- skip file generation.
+        if device.device_type in (DeviceType.RPP, DeviceType.CRAC):
             return
 
         # Sort and write

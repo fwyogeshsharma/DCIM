@@ -23,6 +23,7 @@ class DeviceType(str, Enum):
     ENERGY_MONITOR = "energy_monitor"  # BACnet/IP energy intelligence platform
     GENERATOR      = "generator"     # Diesel/gas standby generator
     RPP            = "rpp"           # Remote Power Panel -- passive breaker panel, no SNMP
+    CRAC           = "crac"          # Computer Room A/C unit -- cooling load, metered via BACnet, no SNMP
 
 
 class Vendor(str, Enum):
@@ -342,10 +343,6 @@ class Device:
     power_draw_w: int = 0   # typical power draw in watts
     power_source: str = ""  # device ID of rack PDU feeding this device
     ups_backup: str = ""    # device ID of UPS protecting this device
-
-    # Energy metering scope (energy_monitor / EV2 devices) — used for PUE.
-    # "" = unset, "it" = IT load, "cooling" = HVAC load, "facility" = total facility
-    scope: str = ""
 
     # Physical location
     country: str = ""

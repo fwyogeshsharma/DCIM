@@ -545,6 +545,18 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Eaton RPP 250A", Vendor.EATON, DeviceType.RPP, [], "250A 3-phase RPP, 42 branch circuits, passive -- no SNMP"),
     ],
 
+    # ── CRAC -- Computer Room A/C (cooling load, metered via BACnet, no SNMP) ─
+    (DeviceType.CRAC, Vendor.VERTIV): [
+        DeviceModel("Vertiv Liebert PCW 100kW", Vendor.VERTIV, DeviceType.CRAC, [], "100kW chilled-water CRAH, cooling load -- metered via BACnet, no SNMP"),
+        DeviceModel("Vertiv Liebert DSE 80kW", Vendor.VERTIV, DeviceType.CRAC, [], "80kW pumped-refrigerant CRAC, cooling load -- metered via BACnet, no SNMP"),
+    ],
+    (DeviceType.CRAC, Vendor.APC): [
+        DeviceModel("APC InRow RD 70kW", Vendor.APC, DeviceType.CRAC, [], "70kW in-row chilled-water cooling, cooling load -- metered via BACnet, no SNMP"),
+    ],
+    (DeviceType.CRAC, Vendor.SCHNEIDER): [
+        DeviceModel("Schneider Uniflair 120kW", Vendor.SCHNEIDER, DeviceType.CRAC, [], "120kW perimeter CRAH, cooling load -- metered via BACnet, no SNMP"),
+    ],
+
     # ── Cisco — OOB Management Switches ──────────────────────────────────────
     (DeviceType.OOB_SWITCH, Vendor.CISCO_SYSTEMS): [
         DeviceModel("Cisco Catalyst 1000-48T", Vendor.CISCO_SYSTEMS, DeviceType.OOB_SWITCH,

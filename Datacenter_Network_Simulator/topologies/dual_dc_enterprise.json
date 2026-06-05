@@ -69973,8 +69973,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "a528c3ab",
-        "scope": "it"
+        "monitored_panel": "a528c3ab"
       }
     },
     {
@@ -70046,8 +70045,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "238d0922",
-        "scope": "it"
+        "monitored_panel": "238d0922"
       }
     },
     {
@@ -70119,8 +70117,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "5360689f",
-        "scope": "cooling"
+        "monitored_panel": "5360689f"
       }
     },
     {
@@ -70192,8 +70189,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "61b311bb",
-        "scope": "facility"
+        "monitored_panel": "61b311bb"
       }
     },
     {
@@ -70265,8 +70261,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "b324209b",
-        "scope": "it"
+        "monitored_panel": "b324209b"
       }
     },
     {
@@ -70338,8 +70333,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "a8e3601e",
-        "scope": "it"
+        "monitored_panel": "a8e3601e"
       }
     },
     {
@@ -70411,8 +70405,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "72c0c547",
-        "scope": "cooling"
+        "monitored_panel": "72c0c547"
       }
     },
     {
@@ -70484,8 +70477,1005 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "e48c0c95",
-        "scope": "facility"
+        "monitored_panel": "e48c0c95"
+      }
+    },
+    {
+      "id": "be3c0680",
+      "position": {
+        "x": 1000,
+        "y": 2380
+      },
+      "device": {
+        "name": "MECH-DC1",
+        "device_type": "rpp",
+        "vendor": "APC by Schneider Electric",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "APC Galaxy RPP 160A",
+        "metrics_enabled": true,
+        "id": "be3c0680",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "74:1d:27:98:39:5f",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Cooling Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "43ab2687",
+      "position": {
+        "x": 1140,
+        "y": 2350
+      },
+      "device": {
+        "name": "CRAC-DC1-1",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "43ab2687",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "73:ac:0b:03:b2:b8",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Cooling Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "0e78ea53",
+      "position": {
+        "x": 1140,
+        "y": 2410
+      },
+      "device": {
+        "name": "CRAC-DC1-2",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "0e78ea53",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "d4:71:d8:29:6f:98",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Cooling Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "40b34bda",
+      "position": {
+        "x": 1140,
+        "y": 2470
+      },
+      "device": {
+        "name": "CRAC-DC1-3",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "40b34bda",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "9d:24:50:88:81:82",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Cooling Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "ddc67fa6",
+      "position": {
+        "x": 1140,
+        "y": 2530
+      },
+      "device": {
+        "name": "CRAC-DC1-4",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "ddc67fa6",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a9:7a:1c:ee:bc:2f",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Cooling Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "43d52fb5",
+      "position": {
+        "x": 1000,
+        "y": 2280
+      },
+      "device": {
+        "name": "EV2-COOL-DC1",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.4.196",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "43d52fb5",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "1e:60:63:5a:dc:37",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.4.196",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Cooling Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "be3c0680"
+      }
+    },
+    {
+      "id": "44f2e1dd",
+      "position": {
+        "x": 800,
+        "y": 2470
+      },
+      "device": {
+        "name": "EV2-FAC-DC1",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.4.197",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-240",
+        "metrics_enabled": true,
+        "id": "44f2e1dd",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "c4:5e:00:0d:e4:15",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.4.197",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Generator Room",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "08a89a19"
+      }
+    },
+    {
+      "id": "106516f1",
+      "position": {
+        "x": 2640,
+        "y": 2380
+      },
+      "device": {
+        "name": "MECH-DC2",
+        "device_type": "rpp",
+        "vendor": "APC by Schneider Electric",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "APC Galaxy RPP 160A",
+        "metrics_enabled": true,
+        "id": "106516f1",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "72:64:e9:d8:fb:8e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC2",
+        "room": "Cooling Plant",
+        "floor": "2",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "5a83ce67",
+      "position": {
+        "x": 2780,
+        "y": 2350
+      },
+      "device": {
+        "name": "CRAC-DC2-1",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "5a83ce67",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a2:bc:1c:c4:47:6c",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC2",
+        "room": "Cooling Plant",
+        "floor": "2",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "d75f2a9e",
+      "position": {
+        "x": 2780,
+        "y": 2410
+      },
+      "device": {
+        "name": "CRAC-DC2-2",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "d75f2a9e",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "af:42:d2:d0:db:a0",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC2",
+        "room": "Cooling Plant",
+        "floor": "2",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "281c795b",
+      "position": {
+        "x": 2780,
+        "y": 2470
+      },
+      "device": {
+        "name": "CRAC-DC2-3",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "281c795b",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ee:76:42:aa:38:51",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC2",
+        "room": "Cooling Plant",
+        "floor": "2",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "95dccf22",
+      "position": {
+        "x": 2780,
+        "y": 2530
+      },
+      "device": {
+        "name": "CRAC-DC2-4",
+        "device_type": "crac",
+        "vendor": "Vertiv (Liebert)",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Vertiv Liebert PCW 100kW",
+        "metrics_enabled": true,
+        "id": "95dccf22",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3b:5f:76:53:69:6d",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC2",
+        "room": "Cooling Plant",
+        "floor": "2",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": ""
+      }
+    },
+    {
+      "id": "8491d46b",
+      "position": {
+        "x": 2640,
+        "y": 2280
+      },
+      "device": {
+        "name": "EV2-COOL-DC2",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.4.198",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "8491d46b",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "8e:f0:76:79:0c:0a",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.4.198",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC2",
+        "room": "Cooling Plant",
+        "floor": "2",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "106516f1"
+      }
+    },
+    {
+      "id": "dc12eb64",
+      "position": {
+        "x": 2440,
+        "y": 2470
+      },
+      "device": {
+        "name": "EV2-FAC-DC2",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.4.199",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-240",
+        "metrics_enabled": true,
+        "id": "dc12eb64",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a9:b0:3e:1f:7f:55",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.4.199",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC2",
+        "room": "Generator Room",
+        "floor": "2",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "4b0671f3"
       }
     }
   ],
@@ -82549,6 +83539,132 @@
       "dst": "09e66792",
       "src_iface": 0,
       "dst_iface": 21,
+      "layer": "management"
+    },
+    {
+      "src": "08a89a19",
+      "dst": "be3c0680",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "be3c0680",
+      "dst": "43ab2687",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "be3c0680",
+      "dst": "0e78ea53",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "be3c0680",
+      "dst": "40b34bda",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "be3c0680",
+      "dst": "ddc67fa6",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "43d52fb5",
+      "dst": "be3c0680",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "43d52fb5",
+      "dst": "e69c9a56",
+      "src_iface": 0,
+      "dst_iface": 18,
+      "layer": "management"
+    },
+    {
+      "src": "44f2e1dd",
+      "dst": "08a89a19",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "44f2e1dd",
+      "dst": "e69c9a56",
+      "src_iface": 0,
+      "dst_iface": 19,
+      "layer": "management"
+    },
+    {
+      "src": "4b0671f3",
+      "dst": "106516f1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "106516f1",
+      "dst": "5a83ce67",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "106516f1",
+      "dst": "d75f2a9e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "106516f1",
+      "dst": "281c795b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "106516f1",
+      "dst": "95dccf22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8491d46b",
+      "dst": "106516f1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8491d46b",
+      "dst": "09e66792",
+      "src_iface": 0,
+      "dst_iface": 22,
+      "layer": "management"
+    },
+    {
+      "src": "dc12eb64",
+      "dst": "4b0671f3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "dc12eb64",
+      "dst": "09e66792",
+      "src_iface": 0,
+      "dst_iface": 23,
       "layer": "management"
     }
   ]

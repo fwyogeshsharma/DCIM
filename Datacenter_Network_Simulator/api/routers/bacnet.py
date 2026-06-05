@@ -218,11 +218,8 @@ def ev2_metrics():
         # ── Resolve panel name + ordered circuit→device map ───────────
         pdu_name:          str | None            = None
         circuit_names:     dict[int, str]        = {}
-        meter_scope:       str | None            = None
 
         ev2_dev = _ip_to_ev2.get(snap["ip"])
-        if ev2_dev:
-            meter_scope = getattr(ev2_dev, "scope", "") or None
         if ev2_dev and _power_edges and _dm:
             ev2_id = ev2_dev.id
 
@@ -300,7 +297,6 @@ def ev2_metrics():
             instance=snap["instance"],
             name=snap["name"],
             circuits=snap["circuits"],
-            scope=meter_scope,
             monitored_pdu_name=pdu_name,
             panel=panel,
             circuit_list=circuits,

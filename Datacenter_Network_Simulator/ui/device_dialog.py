@@ -22,6 +22,7 @@ _TYPE_LABELS = {
     DeviceType.PDU:            "Rack PDU",
     DeviceType.FLOOR_PDU:      "Floor PDU / RPP",
     DeviceType.RPP:            "Remote Power Panel (passive)",
+    DeviceType.CRAC:           "CRAC / CRAH (cooling)",
     DeviceType.GENERATOR:      "Generator",
     DeviceType.ENERGY_MONITOR: "Energy Monitor (EV2)",
 }
@@ -78,6 +79,7 @@ VENDORS_BY_TYPE = {
         Vendor.RARITAN,
     ],
     DeviceType.RPP: [Vendor.APC, Vendor.SCHNEIDER, Vendor.EATON],
+    DeviceType.CRAC: [Vendor.VERTIV, Vendor.APC, Vendor.SCHNEIDER],
     DeviceType.GENERATOR: [Vendor.CUMMINS, Vendor.CATERPILLAR, Vendor.KOHLER],
     DeviceType.ENERGY_MONITOR: [
         Vendor.VERDIGRIS,
@@ -309,7 +311,7 @@ class DeviceDialog(QDialog):
         if self.floor_edit.text().strip():
             parts.append(f"Floor {self.floor_edit.text().strip()}")
         dtype = self.type_combo.currentData()
-        if dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.GENERATOR):
+        if dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.CRAC, DeviceType.GENERATOR):
             row = self.rack_row_spin.value()
             if row:
                 parts.append(f"Row {row}")
@@ -349,7 +351,7 @@ class DeviceDialog(QDialog):
         # UPS:       no rack placement, no gNMI, no interfaces
         # Rack PDU:  rack-mounted,      no gNMI, has management interface
         # Floor PDU: no rack placement, no gNMI, has management interface
-        show_rack    = dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.GENERATOR)
+        show_rack    = dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.CRAC, DeviceType.GENERATOR)
         show_gnmi    = dtype in (DeviceType.ROUTER, DeviceType.SWITCH)
         show_prod_ip = dtype in self._PROD_IP_TYPES
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):
