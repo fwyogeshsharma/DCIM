@@ -98,6 +98,7 @@ LAYER_EDGE_STYLE = {
     "production": {"color": QColor("#7f8c8d"), "width": 2,   "style": Qt.SolidLine},
     "management": {"color": QColor("#00b4d8"), "width": 1.5, "style": Qt.DashLine},
     "power":      {"color": QColor("#f59e0b"), "width": 1.5, "style": Qt.DotLine},
+    "cooling":    {"color": QColor("#22d3ee"), "width": 2,   "style": Qt.DashDotLine},
 }
 
 NODE_W = 90
@@ -581,11 +582,23 @@ class TopologyScene(QGraphicsScene):
         _MGMT_TYPES  = frozenset({_DT.OOB_SWITCH, _DT.SENSOR})
         _POWER_TYPES = frozenset({_DT.UPS, _DT.PDU, _DT.FLOOR_PDU, _DT.RPP, _DT.GENERATOR, _DT.ENERGY_MONITOR})
 
+        # Devices that participate in the selected layer's edges — used to hide
+        # everything unrelated when viewing a single infrastructure layer.
+        layer_node_ids = set()
+        if layer not in ("all", "production"):
+            for edge in self._edges.values():
+                if edge._layer == layer:
+                    layer_node_ids.add(edge.src_node.device.id)
+                    layer_node_ids.add(edge.dst_node.device.id)
+
         for node in self._nodes.values():
             dtype = node.device.device_type
             if layer == "production":
                 # Only production-class devices; OOB switches, sensors, UPS, PDU hidden
                 visible = dtype not in _MGMT_TYPES and dtype not in _POWER_TYPES
+            elif layer == "cooling":
+                # Only devices on a cooling (water-loop) edge
+                visible = node.device.id in layer_node_ids
             else:
                 # "all", "management", "power" — every device is reachable via mgmt/power
                 visible = True
@@ -979,13 +992,15 @@ class TopologyView(QGraphicsView):
         self._btn_layer_prod = _layer_btn("Prod",  "Production network only")
         self._btn_layer_mgmt = _layer_btn("Mgmt",  "Management (OOB) network only")
         self._btn_layer_pwr  = _layer_btn("Power", "Power chain only")
+        self._btn_layer_cool = _layer_btn("Cool",  "Cooling water loops only")
         self._btn_layer_all.setChecked(True)
 
         # Mutual exclusion
         self._layer_btns = [self._btn_layer_all, self._btn_layer_prod,
-                            self._btn_layer_mgmt, self._btn_layer_pwr]
+                            self._btn_layer_mgmt, self._btn_layer_pwr,
+                            self._btn_layer_cool]
         _layer_map = {"All": "all", "Prod": "production",
-                      "Mgmt": "management", "Power": "power"}
+                      "Mgmt": "management", "Power": "power", "Cool": "cooling"}
         for btn in self._layer_btns:
             label = btn.text()
             btn.clicked.connect(lambda checked, b=btn, lbl=label: self._on_layer_btn(b, lbl))

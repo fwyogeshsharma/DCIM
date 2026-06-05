@@ -48,9 +48,18 @@ _BGP_STATES = ("established", "idle", "active", "connect")
 # Module-level cache for snmprec_generator to read UPS/PDU states without a reference to DeviceStateStore.
 _ext_state_cache: Dict[str, dict] = {}
 
+# Module-level cache of live chiller-plant BACnet telemetry (device name → {point: value}),
+# published each tick from the BACnet controller so snmprec_generator can patch the plant
+# SNMP OIDs with the SAME live values the BACnet plane serves.
+_plant_state_cache: Dict[str, dict] = {}
+
 
 def _get_ext_state(device_name: str) -> dict:
     return _ext_state_cache.get(device_name, {})
+
+
+def _get_plant_state(device_name: str) -> dict:
+    return _plant_state_cache.get(device_name, {})
 
 
 class DeviceStateStore:
@@ -270,7 +279,19 @@ class DeviceStateStore:
     def disable_bacnet(self):
         """Deregister BACnet controller."""
         self._bacnet_ctrl = None
+        _plant_state_cache.clear()
         self._log("[StateStore] BACnet telemetry sync disabled.", "info")
+
+    def _publish_plant_state(self):
+        """Publish live chiller-plant BACnet present-values to the module cache
+        so snmprec_generator patches the plant SNMP OIDs with the same values —
+        keeping the SNMP and BACnet planes in lock-step."""
+        ctrl = self._bacnet_ctrl
+        if ctrl is None:
+            return
+        for snap in ctrl.get_telemetry_snapshot():
+            if str(snap.get("kind", "")).startswith("plant:"):
+                _plant_state_cache[snap["name"]] = snap["values"]
 
     # ------------------------------------------------------------------ #
     #  Lifecycle                                                           #
@@ -430,10 +451,11 @@ class DeviceStateStore:
         if self._rule_engine_cb:
             self._publish_facts(devices)
 
-        # BACnet telemetry tick — advances EV2 engine and dispatches COV
+        # BACnet telemetry tick — advances EV2 + plant engines and dispatches COV
         if self._bacnet_ctrl:
             try:
                 self._bacnet_ctrl.tick(self._tick_interval)
+                self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
 

@@ -46,6 +46,7 @@ from core.bacnet_object_model import (
 )
 from core.bacnet_ev2_generator import DEFAULT_CIRCUITS
 from core.bacnet_telemetry import EV2TelemetryEngine
+from core.bacnet_plant_generator import build_plant_object_tree, PlantTelemetryEngine
 from simulator.bacnet_device import EV2BACnetDevice
 
 log = logging.getLogger(__name__)
@@ -124,6 +125,8 @@ class BACnetController:
         circuits_map:  Optional[Dict[str, int]] = None,
         frequency_hz:  float = 50.0,
         port:          int   = 47808,
+        rated_kw_map:  Optional[Dict[str, float]] = None,
+        plant_devices: Optional[List[dict]] = None,
     ) -> None:
         """
         Bind sockets and start the recv thread for all device IPs.
@@ -144,6 +147,7 @@ class BACnetController:
             return
 
         _cmap = circuits_map or {}
+        _kwmap = rated_kw_map or {}
 
         # Store config for status endpoint
         self._base_instance = base_instance
@@ -206,7 +210,39 @@ class BACnetController:
                 frequency_hz=frequency_hz,
                 active_circuits=active_circuits,
                 load_scale=load_scale,
+                rated_kw=_kwmap.get(ip),
             )
+
+        # ── Chiller-plant BACnet devices (chiller/pump/cooling_tower/valve) ──
+        # Instances continue after the EV2 block. Each gets its type-specific
+        # object tree + a live PlantTelemetryEngine.
+        next_instance = base_instance + len(device_ips)
+        for spec in (plant_devices or []):
+            ip    = spec["ip"]
+            dtype = spec["device_type"]
+            name  = spec.get("name") or f"{dtype}_{next_instance}"
+            rkw   = float(spec.get("rated_kw", 0.0) or 0.0)
+            try:
+                tree, n2k = build_plant_object_tree(dtype, rkw)
+            except KeyError:
+                self._log(f"[BACnet] Unknown plant device_type '{dtype}' — skipped.", "warning")
+                continue
+            dev = EV2BACnetDevice(
+                device_ip=ip,
+                device_instance=next_instance,
+                device_name=name,
+                log_cb=self._log_cb,
+                port=port,
+                object_tree=tree,
+                name_to_key=n2k,
+                kind=f"plant:{dtype}",
+            )
+            self._devices[next_instance] = dev
+            self._devices_by_ip[ip]      = dev
+            self._telemetry[next_instance] = PlantTelemetryEngine(
+                dtype, rated_kw=rkw, seed=(hash(name) & 0xFFFFFFFF),
+            )
+            next_instance += 1
 
         # Start recv thread
         self._stop_ev.clear()
@@ -527,6 +563,7 @@ class BACnetController:
                 "instance": instance,
                 "name":     dev.device_name,
                 "circuits": dev.circuits,
+                "kind":     getattr(dev, "kind", "ev2"),
                 "values":   dev.get_snapshot(),
             })
         return result

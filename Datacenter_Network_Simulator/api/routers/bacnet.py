@@ -88,13 +88,53 @@ def bacnet_start(cfg: BACnetConfig):
     # Fallback: parse capacity from model_name ("Verdigris EV2-42" → 42).
     _power_edges = s.topology.get_edges_by_layer("power") if s.topology else []
 
-    # Build id→device_type map for upstream-filtering
+    # Build id→device_type and id→power_draw_w maps.
     _id_to_type: dict = {}
+    _id_to_draw: dict = {}
     if s.topology and hasattr(s.topology, 'devices'):
         for dev in s.topology.devices:
             _id_to_type[dev.id] = getattr(dev, 'device_type', None)
+            _id_to_draw[dev.id] = getattr(dev, 'power_draw_w', 0) or 0
+
+    # Power-chain rank orders the distribution hierarchy from source (0) to
+    # leaf load (4). A device's *parents* are its lower-rank power neighbours
+    # (the feeds above it); loads/CRAH default to rank 4.
+    _POWER_RANK = {"generator": 0, "ups": 1, "rpp": 2, "floor_pdu": 2, "pdu": 3}
+
+    def _rank(i):
+        return _POWER_RANK.get(_id_to_type.get(i), 4)
+
+    def _parents(i):
+        out = []
+        for u, v, _w in _power_edges:
+            if i in (u, v):
+                nb = v if u == i else u
+                if _id_to_type.get(nb) == "energy_monitor":
+                    continue            # meters clamp on, they don't feed power
+                if _rank(nb) < _rank(i):
+                    out.append(nb)
+        return out
+
+    # Power-flow with redundant-feed splitting: each device's draw divides
+    # equally among its feeds and propagates up the hierarchy. Dual-corded
+    # servers (2 PDU feeds) put half their load on each side, so an IT meter
+    # reads only the current through its own branch — summing both A/B meters
+    # recovers the full load instead of double-counting it. _through[panel] is
+    # then the real kW a meter clamped on that panel measures.
+    _through: dict = {}
+    if _power_edges and _id_to_draw:
+        _incoming: dict = {}
+        for nid in sorted(_id_to_type, key=_rank, reverse=True):
+            thr = _id_to_draw.get(nid, 0) + _incoming.get(nid, 0)
+            _through[nid] = thr
+            ps = _parents(nid)
+            if ps and thr:
+                share = thr / len(ps)
+                for p in ps:
+                    _incoming[p] = _incoming.get(p, 0) + share
 
     circuits_map: dict = {}
+    rated_kw_map: dict = {}
     device_ips: list = []
     for d in bound_devices:
         ip = d.ip_address or getattr(d, "mgmt_ip", None)
@@ -109,6 +149,12 @@ def bacnet_start(cfg: BACnetConfig):
                 ) if any(d.id in (u, v) for u, v, _ in _power_edges) else None
 
                 if pdu_id:
+                    # Real peak load flowing through the monitored panel
+                    # (redundant feeds already split). Drives the meter's kW.
+                    watts = _through.get(pdu_id, 0)
+                    if watts > 0:
+                        rated_kw_map[ip] = watts / 1000.0
+
                     # Step 2: count DOWNSTREAM power connections only.
                     # Exclude the EV2 itself and any upstream device (UPS/generator)
                     # — CTs only clamp onto output breaker conductors.
@@ -134,6 +180,24 @@ def bacnet_start(cfg: BACnetConfig):
 
     unbound = len(ev2_devices) - len(bound_devices)
 
+    # Chiller-plant BACnet devices (chiller/pump/cooling_tower/valve) on bound
+    # mgmt IPs. rated_kw = nameplate electrical draw, used to size the kW points.
+    _PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
+                    DeviceType.COOLING_TOWER, DeviceType.VALVE, DeviceType.CRAH}
+    plant_devices: list = []
+    for d in s.device_manager.get_all_devices():
+        if d.device_type not in _PLANT_TYPES:
+            continue
+        ip = (d.ip_address if d.ip_address in bound_set else None) \
+            or (d.mgmt_ip if getattr(d, "mgmt_ip", None) in bound_set else None)
+        if ip:
+            plant_devices.append({
+                "ip": ip,
+                "name": d.name,
+                "device_type": d.device_type.value,
+                "rated_kw": (d.power_draw_w or 0) / 1000.0,
+            })
+
     s.start_ticker_if_needed()
 
     if not s.bacnet._log_cb:
@@ -147,6 +211,8 @@ def bacnet_start(cfg: BACnetConfig):
         circuits_map=circuits_map,
         frequency_hz=cfg.frequency_hz,
         port=cfg.port,
+        rated_kw_map=rated_kw_map,
+        plant_devices=plant_devices,
     )
 
     if s.state_store and hasattr(s.state_store, "enable_bacnet"):
@@ -157,7 +223,8 @@ def bacnet_start(cfg: BACnetConfig):
                     f"[BACnet] Warning: {unbound} EV2 device(s) skipped — IPs not bound.",
                     "warning")
     s.notify_ui("console_log",
-                f"[BACnet] Started — {len(device_ips)} EV2 device(s).", "success")
+                f"[BACnet] Started — {len(device_ips)} EV2 device(s), "
+                f"{len(plant_devices)} chiller-plant device(s).", "success")
     s.notify_ui("sync_bacnet")
     return OkResponse(message="BACnet simulator started")
 
@@ -209,6 +276,8 @@ def ev2_metrics():
     result: list[EV2DeviceSnapshot] = []
 
     for snap in snapshots:
+        if snap.get("kind", "ev2") != "ev2":
+            continue   # chiller-plant devices are served by /plant/metrics
         v = snap["values"]
 
         def _f(key: str) -> float | None:
@@ -303,3 +372,25 @@ def ev2_metrics():
         ))
 
     return result
+
+
+@router.get("/plant/metrics")
+def plant_metrics():
+    """Current BACnet present-values for all running chiller-plant devices
+    (chiller / pump / cooling_tower / valve). Empty list when not running."""
+    s = _state()
+    if s.bacnet is None or not s.bacnet.is_running():
+        return []
+    out = []
+    for snap in s.bacnet.get_telemetry_snapshot():
+        kind = snap.get("kind", "ev2")
+        if not kind.startswith("plant:"):
+            continue
+        out.append({
+            "ip":          snap["ip"],
+            "instance":    snap["instance"],
+            "name":        snap["name"],
+            "device_type": kind.split(":", 1)[1],
+            "values":      snap["values"],
+        })
+    return out

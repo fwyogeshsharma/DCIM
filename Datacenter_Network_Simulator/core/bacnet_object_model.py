@@ -76,6 +76,13 @@ UNIT_KILOWATT_HOURS = 19
 UNIT_HERTZ          = 27
 UNIT_PERCENT        = 98
 UNIT_NO_UNITS       = 95
+# Cooling-plant engineering units (BACnet EngineeringUnits enum values)
+UNIT_DEGREES_CELSIUS   = 62
+UNIT_LITERS_PER_SECOND = 87
+UNIT_LITERS_PER_MINUTE = 88
+UNIT_KILOPASCALS       = 54
+UNIT_HOURS             = 71
+UNIT_MILLIMETERS_PER_SECOND = 114
 
 # ─────────────────────────────────────────────────────────────────
 #  BACnet Reliability

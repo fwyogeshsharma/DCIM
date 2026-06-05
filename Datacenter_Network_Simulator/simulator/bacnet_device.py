@@ -130,33 +130,39 @@ class EV2BACnetDevice:
         circuits:        int = DEFAULT_CIRCUITS,
         log_cb:          Optional[Callable[[str, str], None]] = None,
         port:            int = BACNET_PORT,
+        object_tree:     Optional[Dict[Tuple[int, int], BACnetObject]] = None,
+        name_to_key:     Optional[Dict[str, Tuple[int, int]]] = None,
+        kind:            str = "ev2",
     ):
         self.device_ip       = device_ip
         self.device_instance = device_instance
         self.device_name     = device_name
         self.circuits        = circuits
+        self.kind            = kind     # "ev2" | "plant:<device_type>"
         self._log_cb         = log_cb
         self._port           = port
 
-        # Build full object tree
-        self._objects: Dict[Tuple[int, int], BACnetObject] = \
-            build_ev2_object_tree(device_instance, device_name, circuits)
-
-        # Reverse name lookup for telemetry updates
-        _panel_map = get_panel_instance_map()   # name → instance (panel)
-        self._name_to_key: Dict[str, Tuple[int, int]] = {}
-        for name, inst in _panel_map.items():
-            obj = self._objects.get((OBJ_ANALOG_INPUT, inst)) or \
-                  self._objects.get((OBJ_BINARY_INPUT,  inst))
-            if obj:
-                self._name_to_key[name] = (obj.object_type, inst)
-        # Circuit names
-        for ckt in range(1, circuits + 1):
-            label = f"Ckt{ckt:02d}"
-            base  = (ckt + 1) * 1000
-            for offset, suffix in [(1,'Current'),(2,'kW'),(3,'kWh'),(4,'PF'),(5,'THD')]:
-                k = (OBJ_ANALOG_INPUT, base + offset)
-                self._name_to_key[f"{label}_{suffix}"] = k
+        if object_tree is not None:
+            # Generic device (chiller-plant etc.) — caller supplies the tree.
+            self._objects = object_tree
+            self._name_to_key: Dict[str, Tuple[int, int]] = name_to_key or {}
+        else:
+            # Default: Verdigris EV2 energy-meter object tree.
+            self._objects = build_ev2_object_tree(device_instance, device_name, circuits)
+            _panel_map = get_panel_instance_map()   # name → instance (panel)
+            self._name_to_key = {}
+            for name, inst in _panel_map.items():
+                obj = self._objects.get((OBJ_ANALOG_INPUT, inst)) or \
+                      self._objects.get((OBJ_BINARY_INPUT,  inst))
+                if obj:
+                    self._name_to_key[name] = (obj.object_type, inst)
+            # Circuit names
+            for ckt in range(1, circuits + 1):
+                label = f"Ckt{ckt:02d}"
+                base  = (ckt + 1) * 1000
+                for offset, suffix in [(1,'Current'),(2,'kW'),(3,'kWh'),(4,'PF'),(5,'THD')]:
+                    k = (OBJ_ANALOG_INPUT, base + offset)
+                    self._name_to_key[f"{label}_{suffix}"] = k
 
         # COV subscriptions: (obj_type, instance) → list[COVSubscription]
         self._cov_subs: Dict[Tuple[int, int], List[COVSubscription]] = {}

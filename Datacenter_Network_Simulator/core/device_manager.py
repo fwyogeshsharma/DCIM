@@ -23,7 +23,11 @@ class DeviceType(str, Enum):
     ENERGY_MONITOR = "energy_monitor"  # BACnet/IP energy intelligence platform
     GENERATOR      = "generator"     # Diesel/gas standby generator
     RPP            = "rpp"           # Remote Power Panel -- passive breaker panel, no SNMP
-    CRAC           = "crac"          # Computer Room A/C unit -- cooling load, metered via BACnet, no SNMP
+    CRAH           = "crah"          # Computer Room Air Handler (chilled water) -- cooling load, SNMP + BACnet monitored
+    CHILLER        = "chiller"       # Chiller unit (compressors + evaporator + condenser) -- SNMP + BACnet monitored
+    PUMP           = "pump"          # Chilled-/condenser-water pump (VFD) -- SNMP + BACnet monitored
+    COOLING_TOWER  = "cooling_tower" # Cooling tower (fan + basin) -- SNMP + BACnet monitored
+    VALVE          = "valve"         # Control/isolation valve (actuator position) -- SNMP + BACnet monitored
 
 
 class Vendor(str, Enum):
@@ -56,6 +60,16 @@ class Vendor(str, Enum):
     CATERPILLAR = "Caterpillar"
     KOHLER     = "Kohler Power"
     SCHNEIDER  = "Schneider Electric"
+    # Cooling-plant vendors (chillers, pumps, towers, valves)
+    CARRIER          = "Carrier"
+    TRANE            = "Trane"
+    DAIKIN           = "Daikin Applied"
+    GRUNDFOS         = "Grundfos"
+    ARMSTRONG        = "Armstrong Fluid Technology"
+    BAC              = "Baltimore Aircoil Company"
+    MARLEY           = "SPX Cooling (Marley)"
+    BELIMO           = "Belimo"
+    JOHNSON_CONTROLS = "Johnson Controls"
 
 
 class InterfaceType(str, Enum):

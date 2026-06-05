@@ -56,14 +56,20 @@ def get_graph(layer: str = None):
     seen: set = set()
     for src_id, dst_id, edge_data in raw_links:
         link_layer = edge_data.get("layer", "production")
-        key = tuple(sorted([src_id, dst_id])) + (link_layer,)
+        # The graph is an undirected MultiGraph, so (src_id, dst_id) from
+        # iteration is in arbitrary order. The intended flow direction is stored
+        # in the edge attrs src_node→dst_node (set at add_link) — use those so
+        # power/cooling arrows and flow colouring follow the real direction.
+        a = edge_data.get("src_node", src_id)
+        b = edge_data.get("dst_node", dst_id)
+        key = tuple(sorted([a, b])) + (link_layer,)
         if key in seen:
             continue
         seen.add(key)
         links_out.append({
-            "id": f"{src_id}--{dst_id}--{link_layer}",
-            "src_id": src_id,
-            "dst_id": dst_id,
+            "id": f"{a}--{b}--{link_layer}",
+            "src_id": a,
+            "dst_id": b,
             "layer": link_layer,
             "broken": s.topology.is_link_broken(src_id, dst_id, link_layer),
             "src_iface": edge_data.get("src_iface"),

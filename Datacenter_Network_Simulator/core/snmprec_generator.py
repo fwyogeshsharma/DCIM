@@ -164,6 +164,46 @@ def _oid_entry(oid: str, typ: str, val: str) -> OidEntry:
     return (oid, typ, str(val))
 
 
+# Maps a plant device_type → (enterprise base OID, analog points, binary points)
+#   analog: (BACnet point name, OID index, scale, snmp type)  value = round(v*scale)
+#   binary: (BACnet point name, OID index)                    value = 2 if on/alarm else 1
+# Scales mirror the static _chiller_entries/_pump_entries/... layouts so the
+# patched (live) OIDs read identically to the generated ones.
+_PLANT_OID_PATCH = {
+    "chiller": ("1.3.6.1.4.1.99999.20",
+        [("CHW_Supply_Temp", 1, 10, "2"), ("CHW_Return_Temp", 2, 10, "2"),
+         ("CHW_Setpoint", 3, 10, "2"), ("CHW_Flow", 4, 10, "2"),
+         ("Cond_Supply_Temp", 5, 10, "2"), ("Cond_Return_Temp", 6, 10, "2"),
+         ("Compressor_Load", 7, 1, "2"), ("Active_Power", 9, 1, "2"),
+         ("Cooling_Capacity", 10, 1, "2"), ("COP", 11, 10, "2"),
+         ("Evap_Pressure", 12, 1, "2"), ("Cond_Pressure", 13, 1, "2"),
+         ("Run_Hours", 14, 1, "65")],
+        [("Chiller_Running", 8), ("Alarm_HighPressure", 16),
+         ("Alarm_LowEvapTemp", 17), ("Alarm_FlowLoss", 18)]),
+    "pump": ("1.3.6.1.4.1.99999.21",
+        [("Speed", 2, 1, "2"), ("Flow", 3, 10, "2"), ("Discharge_Pressure", 4, 1, "2"),
+         ("Suction_Pressure", 5, 1, "2"), ("Diff_Pressure", 6, 1, "2"),
+         ("Motor_Power", 7, 10, "2"), ("Motor_Temp", 8, 1, "2"),
+         ("VFD_Frequency", 9, 10, "2"), ("Run_Hours", 10, 1, "65")],
+        [("Run_Status", 1), ("Alarm_Fault", 11), ("Alarm_LowFlow", 12)]),
+    "cooling_tower": ("1.3.6.1.4.1.99999.22",
+        [("Fan_Speed", 2, 1, "2"), ("Basin_Temp", 3, 10, "2"), ("Cond_Water_In", 4, 10, "2"),
+         ("Cond_Water_Out", 5, 10, "2"), ("Fan_Power", 6, 10, "2"), ("Basin_Level", 7, 1, "2"),
+         ("Makeup_Flow", 8, 10, "2"), ("Vibration", 9, 10, "2"), ("Run_Hours", 10, 1, "65")],
+        [("Fan_Status", 1), ("Alarm_HighVibration", 11), ("Alarm_LowBasin", 12)]),
+    "valve": ("1.3.6.1.4.1.99999.23",
+        [("Position", 1, 1, "2"), ("Commanded_Position", 2, 1, "2"), ("Actuator_Temp", 4, 1, "2")],
+        [("Status_Modulating", 3), ("Alarm_ActuatorFault", 6)]),
+    "crah": ("1.3.6.1.4.1.99999.24",
+        [("Supply_Air_Temp", 1, 10, "2"), ("Return_Air_Temp", 2, 10, "2"),
+         ("Setpoint", 3, 10, "2"), ("Fan_Speed", 4, 1, "2"), ("CHW_Valve", 5, 1, "2"),
+         ("Cooling_Capacity", 6, 1, "2"), ("Supply_Humidity", 7, 1, "2"),
+         ("Airflow", 8, 1, "2"), ("Fan_Power", 9, 1, "2"), ("Run_Hours", 10, 1, "65")],
+        [("Unit_Running", 11), ("Alarm_HighTemp", 12), ("Alarm_AirflowLoss", 13),
+         ("Filter_Dirty", 14)]),
+}
+
+
 class SNMPRecGenerator:
     def __init__(self, output_dir: str = "datasets/snmp"):
         self.output_dir = Path(output_dir).resolve()
@@ -267,9 +307,25 @@ class SNMPRecGenerator:
         if device.device_type == DeviceType.GENERATOR:
             entries += self._generator_entries(device)
 
-        # RPP (passive breaker panel) and CRAC (cooling load, metered via BACnet)
-        # have no SNMP agent -- skip file generation.
-        if device.device_type in (DeviceType.RPP, DeviceType.CRAC):
+        if device.device_type == DeviceType.CHILLER:
+            entries += self._chiller_entries(device)
+
+        if device.device_type == DeviceType.PUMP:
+            entries += self._pump_entries(device)
+
+        if device.device_type == DeviceType.COOLING_TOWER:
+            entries += self._cooling_tower_entries(device)
+
+        if device.device_type == DeviceType.VALVE:
+            entries += self._valve_entries(device)
+
+        if device.device_type == DeviceType.CRAH:
+            entries += self._crah_entries(device)
+
+        # RPP (passive breaker panel) has no SNMP agent — skip file generation.
+        # All cooling devices (CRAH, chiller, pump, tower, valve) ARE
+        # SNMP-monitored and fall through to normal generation.
+        if device.device_type == DeviceType.RPP:
             return
 
         # Sort and write
@@ -554,6 +610,27 @@ class SNMPRecGenerator:
                 updates[f"{_PDU_ENT}.17.0"] = ("2", str(pdu_outlet_w))
                 # Store outlet status for per-outlet table update below
                 _pdu_ol_out = pdu_out
+
+            # Chiller-plant live telemetry — patched from the shared BACnet
+            # engine (via _plant_state_cache) so SNMP serves the same ticking
+            # values as BACnet. Scales mirror the static _*_entries layouts.
+            if device.device_type in (DeviceType.CHILLER, DeviceType.PUMP,
+                                       DeviceType.COOLING_TOWER, DeviceType.VALVE):
+                pv = {}
+                try:
+                    from core.device_state_store import _get_plant_state
+                    pv = _get_plant_state(device.name)
+                except Exception:
+                    pv = {}
+                _spec = _PLANT_OID_PATCH.get(device.device_type.value) if pv else None
+                if _spec:
+                    _base, _ai, _bi = _spec
+                    for _nm, _idx, _scale, _typ in _ai:
+                        if _nm in pv:
+                            updates[f"{_base}.{_idx}.0"] = (_typ, str(int(round(pv[_nm] * _scale))))
+                    for _nm, _idx in _bi:
+                        if _nm in pv:
+                            updates[f"{_base}.{_idx}.0"] = ("2", "2" if pv[_nm] >= 0.5 else "1")
 
             # Read existing file, replace matching OID lines.
             try:
@@ -1119,6 +1196,126 @@ class SNMPRecGenerator:
             _oid_entry(f"{_GEN_ENT}.13.0", "2",  "0"),    # genStartAttempts (counter)
         ]
         return entries
+
+    # ------------------------------------------------------------------ #
+    #  Chiller-plant OIDs (enterprise 1.3.6.1.4.1.99999.20-23)            #
+    #  Scaled ints: temps/pressures/flows ×10, percents/kW whole.        #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _plant_seed(device: Device) -> int:
+        try:
+            return int(device.id, 16)
+        except (ValueError, TypeError):
+            return abs(hash(device.name))
+
+    def _chiller_entries(self, device: Device) -> List[OidEntry]:
+        """Water-cooled chiller telemetry — CHW/condenser temps, load, kW, alarms."""
+        s = self._plant_seed(device)
+        kw = max(1, int(round((device.power_draw_w or 0) / 1000.0)))
+        load = 55 + s % 35                       # compressor % RLA 55–89
+        chws = 65 + s % 10                        # CHW supply 6.5–7.4 °C ×10
+        chwr = chws + 45 + s % 15                 # CHW return ≈ +4.5–6.0 °C
+        b = "1.3.6.1.4.1.99999.20"
+        return [
+            _oid_entry(f"{b}.1.0",  "2", str(chws)),          # chwSupplyTemp ×10 °C
+            _oid_entry(f"{b}.2.0",  "2", str(chwr)),          # chwReturnTemp ×10 °C
+            _oid_entry(f"{b}.3.0",  "2", "70"),               # chwSetpoint ×10 °C (7.0)
+            _oid_entry(f"{b}.4.0",  "2", str(200 + s % 120)), # chwFlow ×10 L/s
+            _oid_entry(f"{b}.5.0",  "2", str(295 + s % 20)),  # condSupplyTemp ×10 °C (~29.5–31.5)
+            _oid_entry(f"{b}.6.0",  "2", str(345 + s % 20)),  # condReturnTemp ×10 °C (~34.5–36.5)
+            _oid_entry(f"{b}.7.0",  "2", str(load)),          # compressorLoad %
+            _oid_entry(f"{b}.8.0",  "2", "2"),                # chillerStatus 1=off 2=running 3=fault
+            _oid_entry(f"{b}.9.0",  "2", str(kw)),            # activePower kW
+            _oid_entry(f"{b}.10.0", "2", "500"),              # ratedCoolingCapacity kW (nameplate)
+            _oid_entry(f"{b}.11.0", "2", str(50 + s % 15)),   # COP ×10 (5.0–6.4)
+            _oid_entry(f"{b}.12.0", "2", str(340 + s % 40)),  # evapPressure kPa
+            _oid_entry(f"{b}.13.0", "2", str(880 + s % 80)),  # condPressure kPa
+            _oid_entry(f"{b}.14.0", "65", str(10000 + s % 50000)),  # runHours (Counter32)
+            _oid_entry(f"{b}.15.0", "65", str(s % 2000)),     # startCount (Counter32)
+            _oid_entry(f"{b}.16.0", "2", "1"),                # alarmHighPressure 1=ok 2=alarm
+            _oid_entry(f"{b}.17.0", "2", "1"),                # alarmLowEvapTemp
+            _oid_entry(f"{b}.18.0", "2", "1"),                # alarmFlowLoss
+            _oid_entry(f"{b}.19.0", "4", "R-134a"),           # refrigerantType
+        ]
+
+    def _pump_entries(self, device: Device) -> List[OidEntry]:
+        """CHW / condenser-water VFD pump telemetry."""
+        s = self._plant_seed(device)
+        kw10 = max(1, int(round((device.power_draw_w or 0) / 100.0)))  # kW ×10
+        speed = 55 + s % 40
+        b = "1.3.6.1.4.1.99999.21"
+        return [
+            _oid_entry(f"{b}.1.0",  "2", "2"),                # runStatus 1=off 2=run
+            _oid_entry(f"{b}.2.0",  "2", str(speed)),         # speed %
+            _oid_entry(f"{b}.3.0",  "2", str(180 + s % 120)), # flow ×10 L/s
+            _oid_entry(f"{b}.4.0",  "2", str(420 + s % 80)),  # dischargePressure kPa
+            _oid_entry(f"{b}.5.0",  "2", str(120 + s % 40)),  # suctionPressure kPa
+            _oid_entry(f"{b}.6.0",  "2", str(280 + s % 60)),  # diffPressure kPa
+            _oid_entry(f"{b}.7.0",  "2", str(kw10)),          # motorPower kW ×10
+            _oid_entry(f"{b}.8.0",  "2", str(45 + s % 20)),   # motorTemp °C
+            _oid_entry(f"{b}.9.0",  "2", str(int(speed * 0.5)),),  # vfdFrequency ×10 Hz (~speed×0.5)
+            _oid_entry(f"{b}.10.0", "65", str(8000 + s % 40000)),  # runHours
+            _oid_entry(f"{b}.11.0", "2", "1"),                # alarmFault 1=ok 2=fault
+            _oid_entry(f"{b}.12.0", "2", "1"),                # alarmLowFlow
+        ]
+
+    def _cooling_tower_entries(self, device: Device) -> List[OidEntry]:
+        """Cooling-tower telemetry — fan, basin, condenser-water temps."""
+        s = self._plant_seed(device)
+        kw10 = max(1, int(round((device.power_draw_w or 0) / 100.0)))
+        b = "1.3.6.1.4.1.99999.22"
+        return [
+            _oid_entry(f"{b}.1.0",  "2", "2"),                # fanStatus 1=off 2=run
+            _oid_entry(f"{b}.2.0",  "2", str(50 + s % 45)),   # fanSpeed %
+            _oid_entry(f"{b}.3.0",  "2", str(265 + s % 30)),  # basinTemp ×10 °C
+            _oid_entry(f"{b}.4.0",  "2", str(345 + s % 20)),  # condWaterIn ×10 °C (hot return)
+            _oid_entry(f"{b}.5.0",  "2", str(295 + s % 20)),  # condWaterOut ×10 °C (cooled)
+            _oid_entry(f"{b}.6.0",  "2", str(kw10)),          # fanMotorPower kW ×10
+            _oid_entry(f"{b}.7.0",  "2", str(60 + s % 30)),   # basinLevel %
+            _oid_entry(f"{b}.8.0",  "2", str(40 + s % 60)),   # makeupFlow ×10 L/min
+            _oid_entry(f"{b}.9.0",  "2", str(5 + s % 25)),    # vibration ×10 mm/s
+            _oid_entry(f"{b}.10.0", "65", str(9000 + s % 40000)),  # runHours
+            _oid_entry(f"{b}.11.0", "2", "1"),                # alarmHighVibration
+            _oid_entry(f"{b}.12.0", "2", "1"),                # alarmLowBasin
+        ]
+
+    def _valve_entries(self, device: Device) -> List[OidEntry]:
+        """Control / isolation valve actuator telemetry."""
+        s = self._plant_seed(device)
+        pos = 30 + s % 65
+        b = "1.3.6.1.4.1.99999.23"
+        return [
+            _oid_entry(f"{b}.1.0", "2", str(pos)),            # position %
+            _oid_entry(f"{b}.2.0", "2", str(pos)),            # commandedPosition %
+            _oid_entry(f"{b}.3.0", "2", "2"),                 # status 1=closed 2=modulating 3=open 4=fault
+            _oid_entry(f"{b}.4.0", "2", str(35 + s % 15)),    # actuatorTemp °C
+            _oid_entry(f"{b}.5.0", "65", str(s % 100000)),    # strokeCount
+            _oid_entry(f"{b}.6.0", "2", "1"),                 # alarmActuatorFault 1=ok 2=fault
+        ]
+
+    def _crah_entries(self, device: Device) -> List[OidEntry]:
+        """CRAH air-handler telemetry — air temps, fan, CHW valve, alarms."""
+        s = self._plant_seed(device)
+        kw = max(1, int(round((device.power_draw_w or 0) / 1000.0)))
+        fan = 55 + s % 35
+        b = "1.3.6.1.4.1.99999.24"
+        return [
+            _oid_entry(f"{b}.1.0",  "2", str(215 + s % 20)),  # supplyAirTemp ×10 °C (~21.5–23.5)
+            _oid_entry(f"{b}.2.0",  "2", str(310 + s % 25)),  # returnAirTemp ×10 °C (~31–33.5)
+            _oid_entry(f"{b}.3.0",  "2", "220"),              # setpoint ×10 °C (22.0)
+            _oid_entry(f"{b}.4.0",  "2", str(fan)),           # fanSpeed %
+            _oid_entry(f"{b}.5.0",  "2", str(45 + s % 40)),   # chwValve %
+            _oid_entry(f"{b}.6.0",  "2", str(50 + s % 35)),   # coolingCapacity %
+            _oid_entry(f"{b}.7.0",  "2", str(40 + s % 15)),   # supplyHumidity %RH
+            _oid_entry(f"{b}.8.0",  "2", str(70 + s % 25)),   # airflow % of nominal
+            _oid_entry(f"{b}.9.0",  "2", str(kw)),            # fanPower kW
+            _oid_entry(f"{b}.10.0", "65", str(15000 + s % 40000)),  # runHours
+            _oid_entry(f"{b}.11.0", "2", "2"),                # unitStatus 1=off 2=run
+            _oid_entry(f"{b}.12.0", "2", "1"),                # alarmHighTemp 1=ok 2=alarm
+            _oid_entry(f"{b}.13.0", "2", "1"),                # alarmAirflowLoss
+            _oid_entry(f"{b}.14.0", "2", "1"),                # filterDirty 1=clean 2=dirty
+        ]
 
 
     # ------------------------------------------------------------------ #

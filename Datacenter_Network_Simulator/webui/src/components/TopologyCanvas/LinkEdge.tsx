@@ -12,6 +12,22 @@ const LAYER_COLOR: Record<string, string> = {
   production: '#4a9eff',
   management: '#3fb950',
   power:      '#f59e0b',
+  cooling:    '#22d3ee',   // chilled-/condenser-water flow
+}
+
+export const COOL_COLD = '#22d3ee'   // chilled-water supply / cooled condenser return
+export const COOL_HOT  = '#fb923c'   // warm return / hot condenser water
+
+// Classify a cooling edge as hot (warm return / condenser-hot) vs cold
+// (chilled supply / cooled return) from the device names at its endpoints.
+export function isHotFlow(src: string, dst: string): boolean {
+  const s = src.toUpperCase(), t = dst.toUpperCase()
+  if (s.startsWith('CRAH')) return true            // CHW return: hall → chiller
+  if (s.includes('CHWR') || t.includes('CHWR')) return true
+  if (s.includes('CWP') || t.includes('CWP')) return true   // condenser pump (hot side)
+  if (t.startsWith('CT-')) return true             // to cooling tower = hot
+  if (s.endsWith('-CW') || t.endsWith('-CW')) return true   // CW valve branch
+  return false                                     // chilled supply / cooled return
 }
 
 export interface LinkEdgeData {
@@ -24,15 +40,21 @@ export interface LinkEdgeData {
 
 function LinkEdge(props: EdgeProps) {
   const { id, sourceX, sourceY, targetX, targetY,
-          sourcePosition, targetPosition, data, selected, source, target } = props
+          sourcePosition, targetPosition, data, selected, source, target,
+          markerEnd } = props
   const d      = (data ?? {}) as LinkEdgeData
   const broken = Boolean(d.broken)
   const layer  = String(d.layer || 'production')
-  const color  = broken ? '#f85149' : (LAYER_COLOR[layer] || '#4a9eff')
 
   const graphDevices = useStore(s => s.graphDevices)
   const srcName = graphDevices.find(dev => dev.id === source)?.name || source
   const dstName = graphDevices.find(dev => dev.id === target)?.name || target
+
+  const isCool = layer === 'cooling'
+  const hot    = isCool && isHotFlow(srcName, dstName)
+  const color  = broken ? '#f85149'
+               : isCool  ? (hot ? COOL_HOT : COOL_COLD)
+               : (LAYER_COLOR[layer] || '#4a9eff')
 
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null)
   const onEnter = useCallback((e: React.MouseEvent<SVGPathElement>) =>
@@ -54,10 +76,13 @@ function LinkEdge(props: EdgeProps) {
       <BaseEdge
         id={id}
         path={edgePath}
+        markerEnd={markerEnd}
         style={{
           stroke: color,
-          strokeWidth: selected ? 2.5 : 1.5,
-          strokeDasharray: broken ? '5,3' : undefined,
+          strokeWidth: selected ? 2.5 : (isCool ? 2.4 : 1.5),
+          strokeDasharray: broken ? '5,3' : (isCool ? '7,5' : undefined),
+          // Animate dashes along source→target = water flow direction.
+          animation: (isCool && !broken) ? 'flow-dash 0.7s linear infinite' : undefined,
           opacity: broken ? 0.6 : (layer === 'management' ? 0.7 : 1),
         }}
       />

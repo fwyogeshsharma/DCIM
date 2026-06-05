@@ -61,21 +61,34 @@ class EV2TelemetryEngine:
         nominal_voltage: float = 230.0,
         active_circuits: int = 0,
         load_scale: float = 1.0,
+        rated_kw: float | None = None,
     ):
         # active_circuits: number of circuits with real downstream loads.
         # Circuits beyond this index output zero — they are spare/unused breakers.
         # 0 means all circuits are active (legacy behaviour).
-        # load_scale: electrical-size multiplier vs a nominal 42-circuit EV2.
-        #   1.0 = standard RPP-class panel (~60 A/phase peak). A facility/main
-        #   meter clamped on the building feed uses a large scale so its kW
-        #   exceeds the sum of the downstream IT sub-meters (real PUE > 1).
+        #
+        # Panel magnitude (peak phase current at full diurnal load) is sized one
+        # of two ways, in priority order:
+        #   1. rated_kw — the real peak kW this panel carries, summed from the
+        #      power_draw_w of every device downstream of it on the power graph.
+        #      A facility meter on the building feed sums IT + cooling, so its
+        #      reading exceeds the IT sub-meters and PUE = facility/IT > 1 falls
+        #      straight out of the physics.
+        #   2. load_scale — legacy size multiplier vs a nominal 60 A/phase panel,
+        #      used only when no rated_kw is supplied (un-populated topology).
         self._circuits       = circuits
         self._active         = active_circuits if active_circuits > 0 else circuits
         self._load_scale     = max(0.1, load_scale)
+        if rated_kw and rated_kw > 0:
+            # I = P / (V × PF × √3) for a balanced 3-phase load (assume PF≈0.90).
+            self._i_nominal = (rated_kw * 1000.0) / (nominal_voltage * 0.90 * math.sqrt(3))
+        else:
+            self._i_nominal = 60.0 * self._load_scale
         # Phase-current ceiling and overcurrent trip both follow the panel size
         # so a large facility meter is not clipped and does not alarm constantly.
-        self._i_clamp            = 200.0 * max(1.0, self._load_scale)
-        self._overcurrent_thresh = self.OVERCURRENT_THRESHOLD * self._load_scale
+        # 85/60 keeps the legacy trip-to-nominal ratio for standard panels.
+        self._i_clamp            = max(200.0, self._i_nominal * 1.6)
+        self._overcurrent_thresh = self._i_nominal * (self.OVERCURRENT_THRESHOLD / 60.0)
         self._freq_nominal   = frequency_hz
         self._v_nominal      = nominal_voltage
 
@@ -84,10 +97,10 @@ class EV2TelemetryEngine:
         self._vb = nominal_voltage + random.uniform(-1.0, 1.0)
         self._vc = nominal_voltage + random.uniform(-1.0, 1.0)
 
-        # ── Panel-level current (A) ───────────────────────────────
-        self._ia  = random.uniform(20.0, 60.0) * self._load_scale
-        self._ib  = random.uniform(20.0, 60.0) * self._load_scale
-        self._ic  = random.uniform(20.0, 60.0) * self._load_scale
+        # ── Panel-level current (A) — start near nominal, converges in ticks ─
+        self._ia  = random.uniform(0.55, 0.95) * self._i_nominal
+        self._ib  = random.uniform(0.55, 0.95) * self._i_nominal
+        self._ic  = random.uniform(0.55, 0.95) * self._i_nominal
 
         # ── Frequency ─────────────────────────────────────────────
         self._freq = frequency_hz + random.uniform(-0.05, 0.05)
@@ -310,8 +323,8 @@ class EV2TelemetryEngine:
         Diurnal load curve maintained. Occasional load spikes still visible.
         COV cadence: every 1–3 minutes at 1.0 A threshold.
         """
-        base = mul * 60.0 * self._load_scale   # peak ~60 A/phase × panel size
-        spike_scale = max(1.0, self._load_scale)
+        base = mul * self._i_nominal   # diurnal fraction of peak phase current
+        spike_scale = max(1.0, self._i_nominal / 60.0)
         for attr in ('_ia', '_ib', '_ic'):
             old = getattr(self, attr)
             target = base + random.uniform(-3.0, 3.0) * spike_scale

@@ -14,7 +14,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import DeviceNode from './DeviceNode'
-import LinkEdge from './LinkEdge'
+import LinkEdge, { isHotFlow } from './LinkEdge'
 import { useStore } from '../../store/useStore'
 import { api } from '../../api/client'
 import type { GraphDevice, GraphLink } from '../../api/types'
@@ -27,6 +27,7 @@ const LAYER_BTN: { id: string; label: string; color: string }[] = [
   { id: 'production', label: 'Prod',  color: 'var(--layer-prod)' },
   { id: 'management', label: 'Mgmt',  color: 'var(--layer-mgmt)' },
   { id: 'power',      label: 'Power', color: 'var(--layer-power)' },
+  { id: 'cooling',    label: 'Cool',  color: '#22d3ee' },
 ]
 
 const NODE_TYPE_COLOR: Record<string, string> = {
@@ -115,22 +116,27 @@ function devicesToNodes(
   })
 }
 
-function linksToEdges(links: GraphLink[]): Edge[] {
-  return links.map(l => ({
-    id: l.id,
-    source: l.src_id,
-    target: l.dst_id,
-    type: 'link',
-    data: {
-      layer: l.layer,
-      broken: l.broken,
-      src_iface: l.src_iface,
-      dst_iface: l.dst_iface,
-    },
-  }))
+function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edge[] {
+  return links.map(l => {
+    const isCool = l.layer === 'cooling'
+    const hot = isCool && isHotFlow(nameById[l.src_id] || l.src_id, nameById[l.dst_id] || l.dst_id)
+    return {
+      id: l.id,
+      source: l.src_id,
+      target: l.dst_id,
+      type: 'link',
+      data: {
+        layer: l.layer,
+        broken: l.broken,
+        src_iface: l.src_iface,
+        dst_iface: l.dst_iface,
+        flow: isCool ? (hot ? 'hot' : 'cold') : undefined,
+      },
+    }
+  })
 }
 
-const LINK_LAYERS = ['production', 'management', 'power']
+const LINK_LAYERS = ['production', 'management', 'power', 'cooling']
 
 function ToolBtn({ title, onClick, active, children, disabled }: {
   title: string
@@ -191,15 +197,17 @@ function Canvas() {
 
   // Link counts per layer
   const layerCounts = useMemo(() => {
-    const c: Record<string, number> = { all: graphLinks.length, production: 0, management: 0, power: 0 }
+    const c: Record<string, number> = { all: graphLinks.length, production: 0, management: 0, power: 0, cooling: 0 }
     for (const l of graphLinks) if (l.layer in c) c[l.layer]++
     return c
   }, [graphLinks])
 
   // Sync graph data → React Flow nodes/edges
   useEffect(() => {
+    const nameById: Record<string, string> = {}
+    for (const dev of graphDevices) nameById[dev.id] = dev.name
     setNodes(devicesToNodes(graphDevices, positions, linkMode, linkSrc, activeLayer))
-    setEdges(linksToEdges(graphLinks))
+    setEdges(linksToEdges(graphLinks, nameById))
     if (!initialFit.current && graphDevices.length > 0) {
       initialFit.current = true
       setTimeout(() => fitView({ padding: 0.1, duration: 400 }), 100)

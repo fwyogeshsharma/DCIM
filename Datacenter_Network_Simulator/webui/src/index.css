@@ -180,6 +180,12 @@ select option { background: #131f30; color: var(--text); }
   50%       { box-shadow: 0 0 9px var(--green), 0 0 2px #a7f3d0; }
 }
 
+/* Cooling-layer water-flow animation: marching dashes in flow direction.
+   Dash+gap = 7+5 = 12, so offsetting by -12 loops seamlessly toward target. */
+@keyframes flow-dash {
+  to { stroke-dashoffset: -12; }
+}
+
 /* ─── Panel header ─── */
 .panel-header {
   height: 34px;
