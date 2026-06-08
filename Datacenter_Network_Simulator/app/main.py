@@ -230,11 +230,27 @@ def _run_headless():
     log.info("Core ready. Starting REST API on http://0.0.0.0:%d â€¦", port)
     import threading
     from api.main import start_api_server
-    _api_thread = threading.Thread(target=lambda: start_api_server(port=port), daemon=False, name="api-server")
+    # daemon=True so the process (and its bound socket) exits the moment the Qt
+    # loop returns — otherwise a non-daemon uvicorn thread keeps port 8001 held.
+    _api_thread = threading.Thread(target=lambda: start_api_server(port=port), daemon=True, name="api-server")
     _api_thread.start()
     log.info("REST API up â€” http://0.0.0.0:%d/docs", port)
 
-    sys.exit(_app.exec())
+    # Make Ctrl+C / SIGTERM actually stop headless. Qt's C++ event loop swallows
+    # SIGINT, so: (1) route the signals to _app.quit(), and (2) run an idle
+    # QTimer so the interpreter periodically regains control to deliver them.
+    import signal
+    from PySide6.QtCore import QTimer
+    signal.signal(signal.SIGINT,  lambda *_: _app.quit())
+    signal.signal(signal.SIGTERM, lambda *_: _app.quit())
+    _sig_timer = QTimer()
+    _sig_timer.start(200)
+    _sig_timer.timeout.connect(lambda: None)
+
+    log.info("Press Ctrl+C to stop.")
+    rc = _app.exec()
+    log.info("Shutting downâ€¦ releasing port %d.", port)
+    sys.exit(rc)
 
 
 def main():
