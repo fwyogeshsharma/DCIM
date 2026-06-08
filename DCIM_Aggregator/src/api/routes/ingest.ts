@@ -45,6 +45,7 @@ interface IngestEnergyMetric {
   circuit?: string
   phase?: string
   value: number
+  scope?: string            // it|cooling|facility — meter classification for PUE/DCiE
   ts?: string
   attributes?: Record<string, unknown>
   collector_protocol?: string
@@ -389,11 +390,12 @@ export function createIngestRouter(dbPool: Pool): Router {
           const phase = e.phase ?? (tag === 'PhA' || tag === 'PhB' || tag === 'PhC' ? tag : '')
           await client.query(`
             INSERT INTO energy_metrics (device_id, ts, metric_name, tag, circuit, phase, value,
-                                        attributes, collector_agent, collector_protocol)
-            VALUES ($1, $2::timestamptz, $3, $4, $5, $6, $7, $8, $9, $10)
+                                        scope, attributes, collector_agent, collector_protocol)
+            VALUES ($1, $2::timestamptz, $3, $4, $5, $6, $7, $8, $9, $10, $11)
               ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING
           `, [
             deviceId, e.ts ?? 'now()', e.metric_name, tag, circuit, phase, e.value,
+            e.scope ?? '',
             e.attributes ? JSON.stringify(e.attributes) : null,
             e.collector_agent ?? 'EDR', e.collector_protocol ?? 'BACNET',
           ])
