@@ -15,6 +15,7 @@ const DEVICE_SELECT = `
     d.network_id                AS server_id,
     d.last_seen_at              AS last_seen,
     d.device_type,
+    d.device_role,
     d.vendor,
     d.collector_agent,
     d.is_reachable,

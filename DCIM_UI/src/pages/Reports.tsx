@@ -58,6 +58,27 @@ function loadColor(pct: number) {
   return 'bg-red-500'
 }
 
+// metrics table names reported by role. PDU + floor_pdu devices emit pdu.*;
+// UPS devices emit environment.ups_* status codes + temperature.
+const PDU_METRIC_NAMES = [
+  'pdu.load_percent', 'pdu.current_a', 'pdu.apparent_power_va',
+  'pdu.energy_kwh', 'pdu.power_factor', 'pdu.frequency_hz', 'pdu.phase_imbalance_percent',
+]
+const UPS_METRIC_NAMES = [
+  'environment.ups_battery_status_ex', 'environment.ups_charger_status',
+  'environment.ups_rectifier_status', 'environment.ups_fan_status',
+  'environment.ups_phase_status', 'environment.temperature_c',
+]
+
+// SNMP-style UPS status code → label + colour (2 = normal is what these meters report).
+function upsStatusMeta(v?: number): { label: string; color: string; dot: string } {
+  if (v == null) return { label: '—', color: 'text-slate-500', dot: 'bg-slate-600' }
+  if (v === 2) return { label: 'Normal', color: 'text-green-400', dot: 'bg-green-400' }
+  if (v === 1) return { label: 'Unknown', color: 'text-slate-400', dot: 'bg-slate-500' }
+  if (v === 3) return { label: 'Warning', color: 'text-amber-400', dot: 'bg-amber-400' }
+  return { label: 'Critical', color: 'text-red-400', dot: 'bg-red-400' }
+}
+
 function genTests(): GeneratorTest[] {
   try {
     return JSON.parse(localStorage.getItem('dcim_gen_tests') || '[]')
@@ -300,16 +321,6 @@ export default function Reports() {
     queryFn: () => api.getMetrics({ metric_type: 'temperature', time_range: timeRange, limit: 10000 }),
   })
 
-  const { data: voltageMetrics } = useQuery({
-    queryKey: ['report-voltage', timeRange],
-    queryFn: () => api.getMetrics({ metric_type: 'power_voltage', time_range: timeRange, limit: 5000 }),
-  })
-
-  const { data: currentMetrics } = useQuery({
-    queryKey: ['report-current', timeRange],
-    queryFn: () => api.getMetrics({ metric_type: 'power_current', time_range: timeRange, limit: 5000 }),
-  })
-
   const { data: powerAggregated } = useQuery({
     queryKey: ['report-power-agg', timeRange],
     queryFn: () => api.getAggregatedMetrics({ metric_type: 'power_consumption', time_range: timeRange, interval: '1h' }),
@@ -403,77 +414,99 @@ export default function Reports() {
       })
   }, [powerAggregated, enabledServers, agents])
 
-  // UPS agents
+  // Select devices by their device_role (from the devices table), falling back
+  // to the name-based heuristic only when a device has no role set.
   const upsAgents = useMemo(() => {
-    return (agents ?? []).filter((a) => getDeviceTypeMeta(a.agent_id).category === 'UPS')
+    return (agents ?? []).filter((a) =>
+      (a.device_role?.toLowerCase() === 'ups') ||
+      (!a.device_role && getDeviceTypeMeta(a.agent_id).category === 'UPS')
+    )
   }, [agents])
 
-  // PDU agents
   const pduAgents = useMemo(() => {
-    return (agents ?? []).filter((a) => getDeviceTypeMeta(a.agent_id).category === 'PDU')
+    const PDU_ROLES = new Set(['pdu', 'floor_pdu'])
+    return (agents ?? []).filter((a) =>
+      (a.device_role != null && PDU_ROLES.has(a.device_role.toLowerCase())) ||
+      (!a.device_role && getDeviceTypeMeta(a.agent_id).category === 'PDU')
+    )
   }, [agents])
 
-  // Per-UPS metrics
+  // Latest PDU/UPS readings straight from the metrics table (pdu.* / environment.ups_*),
+  // one bulk query per metric_name → { agent_id → { metric_name → latest value } }, plus
+  // a per-PDU load% trend for the sparkline.
+  const { data: roleMetrics } = useQuery({
+    queryKey: ['pdu-ups-metrics', timeRange],
+    queryFn: async () => {
+      const names = [...PDU_METRIC_NAMES, ...UPS_METRIC_NAMES]
+      const results = await Promise.all(
+        names.map((n) => api.getMetrics({ metric_type: n, time_range: timeRange, limit: 5000 }).catch(() => []))
+      )
+      const latest = new Map<string, Record<string, number>>()
+      const loadTrend = new Map<string, { v: number }[]>()
+      names.forEach((n, i) => {
+        const rows = results[i] ?? [] // ts DESC → first per device is most recent
+        for (const r of rows) {
+          const rec = latest.get(r.agent_id) ?? {}
+          if (!(n in rec)) { rec[n] = r.value; latest.set(r.agent_id, rec) }
+        }
+        if (n === 'pdu.load_percent') {
+          const byDev = new Map<string, number[]>()
+          for (const r of rows) { const a = byDev.get(r.agent_id) ?? []; a.push(r.value); byDev.set(r.agent_id, a) }
+          byDev.forEach((vals, dev) => loadTrend.set(dev, vals.slice(0, 12).reverse().map((v) => ({ v }))))
+        }
+      })
+      return { latest, loadTrend }
+    },
+    enabled: tab === 'pdu' || tab === 'ups',
+    refetchInterval: 30000,
+  })
+  const latestRoleMetric = roleMetrics?.latest
+  const pduLoadTrend = roleMetrics?.loadTrend
+
+  // Per-UPS health from environment.ups_* status codes + temperature; battery %
+  // and runtime come from energy_metrics when a UPS meter reports them.
   const upsCards = useMemo(() => {
     return upsAgents.map((ups) => {
-      const powerVals = (powerMetrics ?? []).filter((m) => m.agent_id === ups.agent_id)
-      const voltVals = (voltageMetrics ?? []).filter((m) => m.agent_id === ups.agent_id)
-      const currVals = (currentMetrics ?? []).filter((m) => m.agent_id === ups.agent_id)
-
-      const avgLoad = powerVals.length > 0
-        ? powerVals.reduce((s, m) => s + m.value, 0) / powerVals.length
-        : 0
-      const maxLoad = powerVals.length > 0 ? Math.max(...powerVals.map((m) => m.value)) : 0
-      const avgVolt = voltVals.length > 0
-        ? voltVals.reduce((s, m) => s + m.value, 0) / voltVals.length
-        : 0
-      const avgCurr = currVals.length > 0
-        ? currVals.reduce((s, m) => s + m.value, 0) / currVals.length
-        : 0
-
-      // Prefer real battery / runtime readings from energy_metrics (UPS device_id
-      // == agent_id). Fall back to a load-based estimate, flagged as such.
+      const m = latestRoleMetric?.get(ups.agent_id) ?? {}
       const realBattery = (energyReadings ?? []).find(
         (r) => r.device_id === ups.agent_id && r.metric_name === ENERGY.BATTERY_PERCENT
       )?.value
       const realRuntime = (energyReadings ?? []).find(
         (r) => r.device_id === ups.agent_id && r.metric_name === ENERGY.RUNTIME_MIN
       )?.value
-
-      const batteryEstimated = realBattery == null
-      const batteryPct = realBattery ?? (ups.status === 'online' ? Math.max(20, 100 - (avgLoad / 20)) : 0)
-      const runtimeMin = realRuntime != null ? Math.round(realRuntime) : Math.round(batteryPct * 2.5)
-
-      const trend = powerVals.slice(-12).map((m) => ({ v: m.value }))
-
-      return { ups, avgLoad, maxLoad, avgVolt, avgCurr, batteryPct, runtimeMin, batteryEstimated, trend }
+      return {
+        ups,
+        statuses: {
+          Battery: m['environment.ups_battery_status_ex'],
+          Charger: m['environment.ups_charger_status'],
+          Rectifier: m['environment.ups_rectifier_status'],
+          Fan: m['environment.ups_fan_status'],
+          Phase: m['environment.ups_phase_status'],
+        } as Record<string, number | undefined>,
+        temp: m['environment.temperature_c'],
+        batteryPct: realBattery ?? null,
+        runtimeMin: realRuntime != null ? Math.round(realRuntime) : null,
+      }
     })
-  }, [upsAgents, powerMetrics, voltageMetrics, currentMetrics, energyReadings])
+  }, [upsAgents, latestRoleMetric, energyReadings])
 
-  // Per-PDU metrics
+  // Per-PDU readings from the pdu.* metrics.
   const pduCards = useMemo(() => {
     return pduAgents.map((pdu) => {
-      const powerVals = (powerMetrics ?? []).filter((m) => m.agent_id === pdu.agent_id)
-      const voltVals = (voltageMetrics ?? []).filter((m) => m.agent_id === pdu.agent_id)
-      const currVals = (currentMetrics ?? []).filter((m) => m.agent_id === pdu.agent_id)
-
-      const avgPower = powerVals.length > 0
-        ? powerVals.reduce((s, m) => s + m.value, 0) / powerVals.length : 0
-      const maxPower = powerVals.length > 0 ? Math.max(...powerVals.map((m) => m.value)) : 0
-      const avgVolt = voltVals.length > 0
-        ? voltVals.reduce((s, m) => s + m.value, 0) / voltVals.length : 0
-      const avgCurr = currVals.length > 0
-        ? currVals.reduce((s, m) => s + m.value, 0) / currVals.length : 0
-
-      // Rated capacity in watts (typical PDU 20A @ 240V = 4800W)
-      const ratedW = 4800
-      const loadPct = ratedW > 0 ? Math.min(100, (avgPower / ratedW) * 100) : 0
-
-      const trend = powerVals.slice(-12).map((m) => ({ v: m.value }))
-
-      return { pdu, avgPower, maxPower, avgVolt, avgCurr, loadPct, ratedW, trend }
+      const m = latestRoleMetric?.get(pdu.agent_id) ?? {}
+      return {
+        pdu,
+        loadPct: m['pdu.load_percent'] ?? 0,
+        current: m['pdu.current_a'] ?? null,
+        powerVa: m['pdu.apparent_power_va'] ?? null,
+        energyKwh: m['pdu.energy_kwh'] ?? null,
+        powerFactor: m['pdu.power_factor'] ?? null,
+        freq: m['pdu.frequency_hz'] ?? null,
+        imbalance: m['pdu.phase_imbalance_percent'] ?? null,
+        trend: pduLoadTrend?.get(pdu.agent_id) ?? [],
+      }
     })
-  }, [pduAgents, powerMetrics, voltageMetrics, currentMetrics])
+  }, [pduAgents, latestRoleMetric, pduLoadTrend])
 
   // Energy monitor cards — group the latest readings by device, then carve them
   // into panel scalars, per-phase, per-circuit and harmonic breakdowns.
@@ -1067,11 +1100,11 @@ export default function Reports() {
             <div className="bg-slate-800/50 border border-white/10 rounded-xl p-12 text-center">
               <BatteryCharging className="w-12 h-12 text-slate-600 mx-auto mb-3" />
               <p className="text-slate-400">No UPS devices detected</p>
-              <p className="text-xs text-slate-500 mt-1">UPS agents use agent IDs containing "UPS" (e.g. dc1-rack1-UPS01)</p>
+              <p className="text-xs text-slate-500 mt-1">Devices with <code className="text-slate-400">device_role = "ups"</code> appear here with their UPS metrics.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {upsCards.map(({ ups, avgLoad, maxLoad, avgVolt, avgCurr, batteryPct, runtimeMin, batteryEstimated, trend }) => (
+              {upsCards.map(({ ups, statuses, temp, batteryPct, runtimeMin }) => (
                 <div key={ups.agent_id} className="bg-slate-800/50 border border-lime-500/20 rounded-xl p-6 hover:border-lime-500/30 transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -1085,56 +1118,44 @@ export default function Reports() {
                     </div>
                   </div>
 
-                  {/* Battery meter */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-slate-400 flex items-center gap-1.5">
-                        <Battery className="w-4 h-4" />Battery
-                        {batteryEstimated && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-400" title="No battery metric reported — estimated from load">est.</span>}
-                      </span>
-                      <span className={`font-bold ${batteryColor(batteryPct)}`}>{batteryPct.toFixed(0)}%</span>
+                  {/* Battery meter — only when a UPS meter reports state-of-charge */}
+                  {batteryPct != null && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-slate-400 flex items-center gap-1.5"><Battery className="w-4 h-4" />Battery</span>
+                        <span className={`font-bold ${batteryColor(batteryPct)}`}>{batteryPct.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${batteryPct >= 70 ? 'bg-green-500' : batteryPct >= 30 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                          style={{ width: `${batteryPct}%` }}
+                        />
+                      </div>
+                      {runtimeMin != null && <p className="text-xs text-slate-500 mt-1.5">runtime: {runtimeMin} min</p>}
                     </div>
-                    <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${batteryPct >= 70 ? 'bg-green-500' : batteryPct >= 30 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${batteryPct}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1.5">{batteryEstimated ? 'Est.' : ''} runtime: {runtimeMin} min</p>
-                  </div>
-
-                  {/* Metrics */}
-                  <div className="grid grid-cols-4 gap-3 mb-4">
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 mb-1">Avg Load</p>
-                      <p className="text-sm font-bold text-yellow-400">{avgLoad.toFixed(1)}W</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 mb-1">Peak Load</p>
-                      <p className="text-sm font-bold text-orange-400">{maxLoad.toFixed(1)}W</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 mb-1">Voltage</p>
-                      <p className="text-sm font-bold text-cyan-400">{avgVolt > 0 ? `${avgVolt.toFixed(0)}V` : '—'}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 mb-1">Current</p>
-                      <p className="text-sm font-bold text-purple-400">{avgCurr > 0 ? `${avgCurr.toFixed(1)}A` : '—'}</p>
-                    </div>
-                  </div>
-
-                  {/* Load trend */}
-                  {trend.length > 1 ? (
-                    <div className="h-14">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={trend}>
-                          <Line type="monotone" dataKey="v" stroke="#84cc16" strokeWidth={1.5} dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="h-14 flex items-center justify-center"><p className="text-xs text-slate-600">No load trend</p></div>
                   )}
+
+                  {/* UPS subsystem status (battery / charger / rectifier / fan / phase) */}
+                  <div className="space-y-2 mb-4">
+                    {Object.entries(statuses).map(([label, val]) => {
+                      const meta = upsStatusMeta(val)
+                      return (
+                        <div key={label} className="flex items-center justify-between text-sm bg-slate-900/40 rounded-lg px-3 py-1.5">
+                          <span className="text-slate-400">{label}</span>
+                          <span className={`flex items-center gap-1.5 font-medium ${meta.color}`}>
+                            <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
+                            {meta.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Temperature */}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">Temperature</span>
+                    <span className="font-bold text-cyan-400">{temp != null ? `${temp.toFixed(1)} °C` : '—'}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1154,11 +1175,11 @@ export default function Reports() {
             <div className="bg-slate-800/50 border border-white/10 rounded-xl p-12 text-center">
               <Zap className="w-12 h-12 text-slate-600 mx-auto mb-3" />
               <p className="text-slate-400">No PDU devices detected</p>
-              <p className="text-xs text-slate-500 mt-1">PDU agents use agent IDs containing "PDU" or "FPDU"</p>
+              <p className="text-xs text-slate-500 mt-1">Devices with <code className="text-slate-400">device_role</code> of <code className="text-slate-400">"pdu"</code> or <code className="text-slate-400">"floor_pdu"</code> appear here.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {pduCards.map(({ pdu, avgPower, maxPower, avgVolt, avgCurr, loadPct, ratedW, trend }) => (
+              {pduCards.map(({ pdu, loadPct, current, powerVa, energyKwh, powerFactor, freq, imbalance, trend }) => (
                 <div key={pdu.agent_id} className="bg-slate-800/50 border border-amber-500/20 rounded-xl p-6 hover:border-amber-500/30 transition-all">
                   <div className="flex items-start justify-between mb-5">
                     <div>
@@ -1170,21 +1191,21 @@ export default function Reports() {
                     </span>
                   </div>
 
-                  {/* Circuit load bar */}
+                  {/* Circuit load bar — pdu.load_percent reported directly by the PDU */}
                   <div className="mb-5">
                     <div className="flex items-center justify-between text-sm mb-2">
                       <span className="text-slate-400">Circuit Load</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-slate-300 font-medium">{avgPower.toFixed(1)} W</span>
+                        {powerVa != null && <span className="text-slate-300 font-medium">{powerVa.toFixed(0)} VA</span>}
                         <span className={`font-bold ${loadPct >= 80 ? 'text-red-400' : loadPct >= 60 ? 'text-yellow-400' : 'text-green-400'}`}>{loadPct.toFixed(1)}%</span>
                       </div>
                     </div>
                     <div className="h-4 bg-slate-700 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-500 ${loadColor(loadPct)}`} style={{ width: `${loadPct}%` }} />
+                      <div className={`h-full rounded-full transition-all duration-500 ${loadColor(loadPct)}`} style={{ width: `${Math.min(100, loadPct)}%` }} />
                     </div>
                     <div className="flex justify-between text-xs text-slate-500 mt-1">
-                      <span>0 W</span>
-                      <span>Rated: {ratedW.toLocaleString()} W</span>
+                      <span>0%</span>
+                      <span>100%</span>
                     </div>
                   </div>
 
@@ -1192,31 +1213,39 @@ export default function Reports() {
                   {loadPct >= 80 && (
                     <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-4 text-sm text-red-400">
                       <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                      Circuit exceeds 80% rated capacity — risk of tripping
+                      Circuit exceeds 80% load — risk of tripping
                     </div>
                   )}
 
-                  {/* Electrical readings */}
-                  <div className="grid grid-cols-4 gap-3 mb-4">
-                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Avg Power</p>
-                      <p className="text-sm font-bold text-amber-400">{avgPower.toFixed(1)} W</p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Peak Power</p>
-                      <p className="text-sm font-bold text-orange-400">{maxPower.toFixed(1)} W</p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Voltage</p>
-                      <p className="text-sm font-bold text-cyan-400">{avgVolt > 0 ? `${avgVolt.toFixed(0)} V` : '—'}</p>
-                    </div>
+                  {/* Electrical readings from the pdu.* metrics */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-slate-900/50 rounded-lg p-3 text-center">
                       <p className="text-xs text-slate-500 mb-1">Current</p>
-                      <p className="text-sm font-bold text-purple-400">{avgCurr > 0 ? `${avgCurr.toFixed(2)} A` : '—'}</p>
+                      <p className="text-sm font-bold text-purple-400">{current != null ? `${current.toFixed(2)} A` : '—'}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Apparent Power</p>
+                      <p className="text-sm font-bold text-amber-400">{powerVa != null ? `${powerVa.toFixed(0)} VA` : '—'}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Energy</p>
+                      <p className="text-sm font-bold text-green-400">{energyKwh != null ? `${energyKwh.toFixed(1)} kWh` : '—'}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Power Factor</p>
+                      <p className="text-sm font-bold text-cyan-400">{powerFactor != null ? powerFactor.toFixed(2) : '—'}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Frequency</p>
+                      <p className="text-sm font-bold text-sky-400">{freq != null ? `${freq.toFixed(1)} Hz` : '—'}</p>
+                    </div>
+                    <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                      <p className="text-xs text-slate-500 mb-1">Phase Imbalance</p>
+                      <p className="text-sm font-bold text-orange-400">{imbalance != null ? `${imbalance.toFixed(1)} %` : '—'}</p>
                     </div>
                   </div>
 
-                  {/* Power trend */}
+                  {/* Load % trend */}
                   {trend.length > 1 ? (
                     <div className="h-16">
                       <ResponsiveContainer width="100%" height="100%">

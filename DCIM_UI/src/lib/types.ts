@@ -34,6 +34,8 @@ export interface Agent {
   hostname: string
   ip_address: string
   protocol?: string
+  device_type?: string | null
+  device_role?: string | null
   status: 'online' | 'offline' | 'pending'
   group: string
   last_seen: string
