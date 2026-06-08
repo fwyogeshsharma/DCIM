@@ -258,6 +258,36 @@ function SearchHalo({ size }: { size: [number, number, number] }) {
   )
 }
 
+// ── LOD helpers ──────────────────────────────────────────────────────────────
+// Nodes closer than this (world units) get full geometry; beyond → single box.
+const LOD_THRESHOLD = 120
+
+function useLODLevel(position: [number, number, number]): 'near' | 'far' {
+  const [level, setLevel] = useState<'near' | 'far'>('near')
+  const levelRef = useRef<'near' | 'far'>('near')
+  const posVec = useMemo(
+    () => new THREE.Vector3(position[0], position[1], position[2]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [position[0], position[1], position[2]],
+  )
+  useFrame(({ camera }) => {
+    const next: 'near' | 'far' = camera.position.distanceTo(posVec) < LOD_THRESHOLD ? 'near' : 'far'
+    if (next !== levelRef.current) {
+      levelRef.current = next
+      setLevel(next)
+    }
+  })
+  return level
+}
+
+// Self-sustaining invalidation loop for frameloop="demand".
+// While `active` is true each frame schedules the next; when false rendering pauses.
+function AnimationDriver({ active }: { active: boolean }) {
+  const { invalidate } = useThree()
+  useFrame(() => { if (active) invalidate() })
+  return null
+}
+
 // ── Rack Post (vertical rail) ────────────────────────────────────────────────
 
 function RackPost({ position }: { position: [number, number, number] }) {
@@ -406,6 +436,41 @@ function ServerNode({
   const accentColor = node.status === 'offline' ? '#991b1b' : (node.color || '#8b5cf6')
   const heatColor = heatmapMode && temperature !== undefined ? tempToColor(temperature) : null
   const slotCount = 8
+  const lodLevel = useLODLevel(node.position)
+
+  if (lodLevel === 'far') {
+    const simpleColor = heatColor ?? (node.status === 'offline' ? '#ef4444' : '#7dd3fc')
+    return (
+      <group
+        position={node.position}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
+        <mesh>
+          <boxGeometry args={[6, 12, 4]} />
+          <meshStandardMaterial color={simpleColor} metalness={0.4} roughness={0.4} />
+        </mesh>
+        <mesh position={[0, 5.6, 2.01]}>
+          <boxGeometry args={[5.8, 0.5, 0.02]} />
+          <meshBasicMaterial color={accentColor} />
+        </mesh>
+        {isSelected && (
+          <mesh>
+            <boxGeometry args={[7.5, 13.5, 5.5]} />
+            <meshBasicMaterial color="#3b82f6" wireframe transparent opacity={0.5} />
+          </mesh>
+        )}
+        {searchMatch && <SearchHalo size={[8.2, 14.2, 6]} />}
+        <Billboard position={[0, 8.5, 0]}>
+          <Text fontSize={1.4} color="white" anchorX="center" anchorY="middle" outlineWidth={0.08} outlineColor="#000000" font={undefined}>
+            {node.name}
+          </Text>
+        </Billboard>
+      </group>
+    )
+  }
 
   return (
     <group
@@ -632,6 +697,39 @@ function AgentNode({
   const bodyColor = node.status === 'online' ? '#60a5fa' : '#f87171'
   const faceColor = node.status === 'online' ? '#93c5fd' : '#fca5a5'
   const bodyHeatColor = heatmapMode && temperature !== undefined ? tempToColor(temperature) : undefined
+  const lodLevel = useLODLevel(node.position)
+
+  if (lodLevel === 'far') {
+    const farContent = (
+      <group
+        position={node.position}
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
+        <mesh>
+          <boxGeometry args={[5, 1.2, 2.8]} />
+          <meshStandardMaterial color={bodyHeatColor ?? bodyColor} metalness={0.45} roughness={0.3} />
+        </mesh>
+        {isSelected && (
+          <mesh>
+            <boxGeometry args={[6.5, 2.5, 4.5]} />
+            <meshBasicMaterial color="#3b82f6" wireframe transparent opacity={0.5} />
+          </mesh>
+        )}
+        {searchMatch && <SearchHalo size={[7, 3.2, 5]} />}
+        <Billboard position={[0, 2.5, 0]}>
+          <Text fontSize={0.9} color="white" anchorX="center" anchorY="middle" outlineWidth={0.06} outlineColor="#000000">
+            {node.name}
+          </Text>
+        </Billboard>
+      </group>
+    )
+    if (node.status === 'online' && useFloat) {
+      return <Float speed={2} rotationIntensity={0} floatIntensity={0.3} floatingRange={[-0.2, 0.2]}>{farContent}</Float>
+    }
+    return farContent
+  }
 
   const serverUnit = (
     <group
@@ -875,6 +973,35 @@ function DeviceNode({
   const ledOff       = hasTrap ? '#dc2626' : online ? '#0ea5e9' : '#7f1d1d'
   const labelColor   = hasTrap ? '#fca5a5' : online ? '#93c5fd' : '#fca5a5'
   const portCount = 8
+  const lodLevel = useLODLevel(node.position)
+
+  if (lodLevel === 'far') {
+    return (
+      <group
+        position={node.position}
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
+        <mesh>
+          <boxGeometry args={[3.4, 0.75, 1.7]} />
+          <meshStandardMaterial color={chassisColor} metalness={0.55} roughness={0.35} />
+        </mesh>
+        {isSelected && (
+          <mesh>
+            <boxGeometry args={[3.7, 1.05, 2]} />
+            <meshBasicMaterial color={accentColor} wireframe transparent opacity={0.6} />
+          </mesh>
+        )}
+        {searchMatch && <SearchHalo size={[4.4, 1.6, 2.6]} />}
+        <Billboard position={[0, 1.5, 0]}>
+          <Text fontSize={0.6} color={labelColor} anchorX="center" anchorY="middle" outlineWidth={0.04} outlineColor="#000000">
+            {node.name}
+          </Text>
+        </Billboard>
+      </group>
+    )
+  }
 
   return (
     <group
@@ -1113,6 +1240,39 @@ function PDUNode({
   const outletGlow  = online ? (isUPS ? '#a3e635' : '#fbbf24') : '#1a1a1a'
   const labelColor  = online ? (isUPS ? '#d9f99d' : '#fde68a') : '#6b7280'
   const pduHeatBodyColor = heatmapMode && temperature !== undefined ? tempToColor(temperature) : undefined
+  const lodLevel = useLODLevel(node.position)
+
+  if (lodLevel === 'far') {
+    return (
+      <group
+        position={node.position}
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
+        <mesh>
+          <boxGeometry args={[1.1, 8.0, 0.85]} />
+          <meshStandardMaterial color={pduHeatBodyColor ?? bodyColor} metalness={0.7} roughness={0.25} />
+        </mesh>
+        <mesh position={[-0.52, 0, 0.2]}>
+          <boxGeometry args={[0.06, 7.6, 0.5]} />
+          <meshBasicMaterial color={accentStrip} />
+        </mesh>
+        {isSelected && (
+          <mesh>
+            <boxGeometry args={[2.4, 9.8, 2.2]} />
+            <meshBasicMaterial color={boltColor} wireframe transparent opacity={0.5} />
+          </mesh>
+        )}
+        {searchMatch && <SearchHalo size={[2.8, 10.2, 2.6]} />}
+        <Billboard position={[0, 7.0, 0]}>
+          <Text fontSize={0.7} color={labelColor} anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#000000">
+            {node.name}
+          </Text>
+        </Billboard>
+      </group>
+    )
+  }
 
   return (
     <group
@@ -1653,6 +1813,9 @@ function SceneContent({
 }) {
   return (
     <>
+      {/* Drive the render loop while scene has content */}
+      <AnimationDriver active={nodes.length > 0} />
+
       {/* Lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight position={[20, 40, 20]} intensity={0.8} castShadow />
@@ -1812,6 +1975,7 @@ function SceneContent({
         dampingFactor={0.1}
         minDistance={15}
         maxDistance={2000}
+        regress
       />
     </>
   )
@@ -2284,6 +2448,8 @@ export default function Topology3D() {
           <Canvas
             camera={{ position: [0, 80, 160], fov: 50, near: 0.1, far: 2000 }}
             style={{ background: 'transparent' }}
+            frameloop="demand"
+            dpr={[1, 1.5]}
             onPointerMissed={handleDeselect}
           >
             <SceneContent
