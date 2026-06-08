@@ -72,6 +72,16 @@ interface TopoLink extends d3.SimulationLinkDatum<TopoNode> {
   source: string | TopoNode
   target: string | TopoNode
   online: boolean
+  cooling: boolean   // cooling-loop pipe (chiller/CRAH/pump/tower) — rendered as flowing water
+}
+
+// Cooling-plant device roles. A link between two of these is a chilled/condenser
+// water pipe rather than a network cable, so the topology draws it as flowing water.
+const COOLING_ROLES = new Set(['pump', 'chiller', 'cooling_tower', 'crac', 'crah', 'cdu', 'valve', 'valves'])
+function isCoolingDevice(role: string | null, deviceType: string, name: string): boolean {
+  if (role && COOLING_ROLES.has(role.toLowerCase())) return true
+  const s = `${deviceType || ''} ${name || ''}`.toLowerCase()
+  return /chiller|cooling.?tower|cooling|\bcrac\b|\bcrah\b|\bcdu\b|\bchwp\b|\bcdwp\b|\bcwp\b|\bpump\b|valve/.test(s)
 }
 
 interface TrapAlert {
@@ -115,6 +125,11 @@ const ROLE_LAYERS: Record<string, number> = {
   pump:          12,
   chiller:       13,
   cooling_tower: 14,
+  crah:          15,
+  crac:          15,
+  valve:         16,
+  valves:        16,
+  generator:     17,
 }
 
 const ROLE_TIER_LABELS: Record<number, string> = {
@@ -133,6 +148,9 @@ const ROLE_TIER_LABELS: Record<number, string> = {
   12: 'Pumps',
   13: 'Chillers',
   14: 'Cooling Towers',
+  15: 'CRAH Units',
+  16: 'Valves',
+  17: 'Generators',
 }
 
 const TIER_COLORS: Record<number, string> = {
@@ -151,13 +169,24 @@ const TIER_COLORS: Record<number, string> = {
   12: '#06b6d4',
   13: '#0ea5e9',
   14: '#14b8a6',
+  15: '#5eead4',
+  16: '#d946ef',
+  17: '#fbbf24',
 }
 
-function roleToLayer(role: string | null, fallback: number): number {
+function roleToLayer(role: string | null, name: string, fallback: number): number {
   if (role) {
     const l = ROLE_LAYERS[role.toLowerCase()]
     if (l !== undefined) return l
   }
+  // Facility/plant tiers are often identified by hostname rather than a role.
+  const n = (name || '').toLowerCase()
+  if (/\bgenerator\b|\bgen-?\d|^gen-/.test(n)) return 17
+  if (/\bvalve/.test(n)) return 16
+  if (/\bcrah\b|\bcrac\b|crah-|crac-/.test(n)) return 15
+  if (/cooling.?tower|\bct-?\d/.test(n)) return 14
+  if (/\bchiller\b|chiller-|^chl-/.test(n)) return 13
+  if (/\bpump\b|pump-|\bchwp\b|\bcdwp\b|\bcwp\b/.test(n)) return 12
   return fallback
 }
 
@@ -192,6 +221,12 @@ function deviceVisuals(deviceType: string, deviceRole?: string | null) {
     return { icon: '⚡', fill: '#2d1200', stroke: '#fb923c', radius: 16 }
   if (role === 'pdu' || /pdu|power/.test(dt))
     return { icon: '⚡', fill: '#422006', stroke: '#f59e0b', radius: 18 }
+  if (role === 'generator' || /generator|\bgen-/.test(dt))
+    return { icon: '🛢️', fill: '#451a03', stroke: '#fbbf24', radius: 18 }
+  if (role === 'valve' || role === 'valves' || /valve/.test(dt))
+    return { icon: '🚰', fill: '#3b0764', stroke: '#d946ef', radius: 14 }
+  if (role === 'crah' || role === 'crac' || /\bcrah\b|\bcrac\b/.test(dt))
+    return { icon: '🌬️', fill: '#042f2e', stroke: '#5eead4', radius: 18 }
   if (role === 'cooling_tower' || /cooling.?tower/.test(dt))
     return { icon: '💨', fill: '#042f2e', stroke: '#14b8a6', radius: 18 }
   if (role === 'chiller' || /chiller/.test(dt))
@@ -466,10 +501,16 @@ export default function Topology() {
       const pairKey = [tl.src_device_id, tl.dst_device_id].sort().join('|')
       if (seenPairs.has(pairKey)) continue
       seenPairs.add(pairKey)
+      const s = nodeById.get(tl.src_device_id)
+      const t = nodeById.get(tl.dst_device_id)
+      const cooling = !!s && !!t &&
+        isCoolingDevice(s.deviceRole, s.deviceType, s.name) &&
+        isCoolingDevice(t.deviceRole, t.deviceType, t.name)
       links.push({
         source: tl.src_device_id,
         target: tl.dst_device_id,
         online: tl.src_status === 'online' && tl.dst_status === 'online',
+        cooling,
       })
     }
 
@@ -486,10 +527,14 @@ export default function Topology() {
       seenPairs.add(pairKey)
       const child = nodeById.get(row.device_id)
       const parent = nodeById.get(row.parent_device_id)
+      const cooling = !!child && !!parent &&
+        isCoolingDevice(child.deviceRole, child.deviceType, child.name) &&
+        isCoolingDevice(parent.deviceRole, parent.deviceType, parent.name)
       links.push({
         source: row.device_id,
         target: row.parent_device_id,
         online: child?.status === 'online' && parent?.status === 'online',
+        cooling,
       })
     }
 
@@ -498,7 +543,7 @@ export default function Topology() {
     const LAYER_GAP_Y = 160
     const layeredInput = nodes.map(n => ({
       id: n.id,
-      layer: roleToLayer(n.deviceRole, n.depth),
+      layer: roleToLayer(n.deviceRole, n.name, n.depth),
     }))
     const layeredEdges = links.map(l => ({
       source: typeof l.source === 'string' ? l.source : (l.source as TopoNode).id,
@@ -645,8 +690,34 @@ export default function Topology() {
       })
     }
 
-    // Links (parent–child edges)
-    const linkSel = g.append('g').selectAll('line').data(visLinks).enter().append('line')
+    const lx1 = (l: TopoLink) => (l.source as TopoNode).x ?? 0
+    const ly1 = (l: TopoLink) => (l.source as TopoNode).y ?? 0
+    const lx2 = (l: TopoLink) => (l.target as TopoNode).x ?? 0
+    const ly2 = (l: TopoLink) => (l.target as TopoNode).y ?? 0
+
+    // Cooling-loop pipes (chiller ↔ tower ↔ CRAH ↔ pump). Drawn first, under the
+    // network links: a thick cyan pipe wall with a dashed overlay whose moving
+    // dash-offset animates the chilled water flowing through it.
+    const coolingLinks = visLinks.filter(l => l.cooling)
+    const pipeG = g.append('g').attr('class', 'cooling-pipes')
+    pipeG.selectAll('line.pipe-wall').data(coolingLinks).enter().append('line')
+      .attr('class', 'pipe-wall')
+      .attr('stroke', l => isLinkDownTrap(l) ? '#ef4444' : '#155e75')
+      .attr('stroke-width', 6)
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-opacity', 0.55)
+      .attr('x1', lx1).attr('y1', ly1).attr('x2', lx2).attr('y2', ly2)
+    pipeG.selectAll('line.pipe-flow').data(coolingLinks).enter().append('line')
+      .attr('class', l => `pipe-flow ${l.online && !isLinkDownTrap(l) ? 'pipe-flow--on' : ''}`)
+      .attr('stroke', l => (l.online && !isLinkDownTrap(l)) ? '#67e8f9' : '#94a3b8')
+      .attr('stroke-width', 3)
+      .attr('stroke-linecap', 'round')
+      .attr('stroke-dasharray', '2 14')
+      .attr('stroke-opacity', 0.95)
+      .attr('x1', lx1).attr('y1', ly1).attr('x2', lx2).attr('y2', ly2)
+
+    // Links (parent–child edges) — network cables only; cooling pipes drawn above.
+    const linkSel = g.append('g').selectAll('line').data(visLinks.filter(l => !l.cooling)).enter().append('line')
       .attr('stroke', l => {
         if (isLinkDownTrap(l)) return '#ef4444'
         return l.online ? '#10b981' : '#ef4444'
@@ -657,10 +728,7 @@ export default function Topology() {
         if (isLinkDownTrap(l)) return '6,4'
         return l.online ? 'none' : '8,6'
       })
-      .attr('x1', l => (l.source as TopoNode).x ?? 0)
-      .attr('y1', l => (l.source as TopoNode).y ?? 0)
-      .attr('x2', l => (l.target as TopoNode).x ?? 0)
-      .attr('y2', l => (l.target as TopoNode).y ?? 0)
+      .attr('x1', lx1).attr('y1', ly1).attr('x2', lx2).attr('y2', ly2)
 
     // Tooltip positioning
     const moveTip = (event: MouseEvent) => {

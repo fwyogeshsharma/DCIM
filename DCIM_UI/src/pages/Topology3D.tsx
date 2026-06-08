@@ -1453,9 +1453,12 @@ function ConnectionLine({ link, isLinkDown = false }: { link: LayoutLink; isLink
   const ref = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
 
+  const isCooling = !!link.cooling
+
   useFrame(() => {
-    if (ref.current && (link.linkType === 'device-agent' || !link.connected)) {
-      ref.current.material.dashOffset -= link.linkType === 'device-agent' ? 0.02 : 0.05
+    if (ref.current && (link.linkType === 'device-agent' || !link.connected || isCooling)) {
+      // Cooling pipes always animate (water flow); others only when dashed.
+      ref.current.material.dashOffset -= isCooling ? 0.09 : link.linkType === 'device-agent' ? 0.02 : 0.05
     }
   })
 
@@ -1531,6 +1534,37 @@ function ConnectionLine({ link, isLinkDown = false }: { link: LayoutLink; isLink
           </div>
         </div>
       </Html>
+    )
+  }
+
+  // Cooling-loop pipe: a thick cyan pipe wall with an animated dashed overlay
+  // whose moving dashes read as chilled water flowing through the pipe.
+  if (isCooling) {
+    const flowColor = isLinkDown ? '#ef4444' : link.connected ? '#67e8f9' : '#94a3b8'
+    return (
+      <>
+        <Line
+          points={[link.sourcePos, link.targetPos]}
+          color={isLinkDown ? '#ef4444' : '#155e75'}
+          lineWidth={hovered ? 7 : 5}
+          transparent
+          opacity={0.5}
+          onPointerOver={(e: any) => { e.stopPropagation?.(); setHovered(true) }}
+          onPointerOut={() => setHovered(false)}
+        />
+        <Line
+          ref={ref}
+          points={[link.sourcePos, link.targetPos]}
+          color={flowColor}
+          lineWidth={3}
+          dashed
+          dashSize={0.6}
+          gapSize={1.5}
+          transparent
+          opacity={0.95}
+        />
+        {renderTooltip()}
+      </>
     )
   }
 

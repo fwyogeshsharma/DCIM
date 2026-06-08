@@ -128,7 +128,60 @@ export function createInventoryRouter(dbPool: Pool): Router {
       }
 
       params.push(safeLimit)
+      // Live CPU/RAM utilisation derived from the latest raw metrics, so the
+      // inventory list shows real numbers rather than only the stored snapshot.
+      // Two producers: servers (UCD-SNMP server.*) and network gear (gNMI
+      // system.*). Mirrors the JS derivation in DCIM_UI src/lib/deviceHealth.ts:
+      //   CPU% = system.cpu_utilization_percent
+      //          | (100 − server.cpu_idle_percent)
+      //          | (server.cpu_user_percent + server.cpu_system_percent)
+      //   RAM% = system.memory_utilization_percent
+      //          | system.memory_used_bytes / system.memory_total_bytes
+      //          | (server.memory_total_kb − server.memory_available_kb) / server.memory_total_kb
       const { rows } = await dbPool.query(`
+        WITH latest_health AS (
+          SELECT DISTINCT ON (m.device_id, m.metric_name)
+            m.device_id, m.metric_name, m.value
+          FROM metrics m
+          WHERE m.metric_name IN (
+            'system.cpu_utilization_percent', 'system.memory_utilization_percent',
+            'system.memory_total_bytes',      'system.memory_used_bytes',
+            'server.cpu_idle_percent',        'server.cpu_user_percent', 'server.cpu_system_percent',
+            'server.memory_total_kb',         'server.memory_available_kb'
+          )
+            AND m.ts >= NOW() - INTERVAL '2 hours'
+          ORDER BY m.device_id, m.metric_name, m.ts DESC
+        ),
+        health AS (
+          SELECT
+            device_id,
+            COALESCE(
+              cpu_util,
+              CASE WHEN cpu_idle IS NOT NULL THEN 100 - cpu_idle END,
+              CASE WHEN cpu_user IS NOT NULL OR cpu_sys IS NOT NULL
+                   THEN COALESCE(cpu_user, 0) + COALESCE(cpu_sys, 0) END
+            ) AS cpu_pct,
+            COALESCE(
+              mem_util,
+              CASE WHEN mem_total_b > 0 THEN mem_used_b / mem_total_b * 100 END,
+              CASE WHEN mem_total_kb > 0 THEN (mem_total_kb - mem_avail_kb) / mem_total_kb * 100 END
+            ) AS ram_pct
+          FROM (
+            SELECT
+              device_id,
+              MAX(value) FILTER (WHERE metric_name = 'system.cpu_utilization_percent')    AS cpu_util,
+              MAX(value) FILTER (WHERE metric_name = 'server.cpu_idle_percent')           AS cpu_idle,
+              MAX(value) FILTER (WHERE metric_name = 'server.cpu_user_percent')           AS cpu_user,
+              MAX(value) FILTER (WHERE metric_name = 'server.cpu_system_percent')         AS cpu_sys,
+              MAX(value) FILTER (WHERE metric_name = 'system.memory_utilization_percent') AS mem_util,
+              MAX(value) FILTER (WHERE metric_name = 'system.memory_total_bytes')         AS mem_total_b,
+              MAX(value) FILTER (WHERE metric_name = 'system.memory_used_bytes')          AS mem_used_b,
+              MAX(value) FILTER (WHERE metric_name = 'server.memory_total_kb')            AS mem_total_kb,
+              MAX(value) FILTER (WHERE metric_name = 'server.memory_available_kb')        AS mem_avail_kb
+            FROM latest_health
+            GROUP BY device_id
+          ) agg
+        )
         SELECT
           d.id::text,
           d.org_id,
@@ -151,8 +204,8 @@ export function createInventoryRouter(dbPool: Pool): Router {
           d.storage_gb,
           d.power_capacity_w,
           d.port_count,
-          d.cpu_used_pct,
-          d.ram_used_pct,
+          ROUND(LEAST(100, GREATEST(0, COALESCE(h.cpu_pct, d.cpu_used_pct)))::numeric, 1)::double precision AS cpu_used_pct,
+          ROUND(LEAST(100, GREATEST(0, COALESCE(h.ram_pct, d.ram_used_pct)))::numeric, 1)::double precision AS ram_used_pct,
           d.storage_used_gb,
           d.power_draw_w,
           d.notes,
@@ -167,6 +220,7 @@ export function createInventoryRouter(dbPool: Pool): Router {
           md.hostname AS monitoring_hostname
         FROM dc_inventory_devices d
         LEFT JOIN devices md ON md.id = d.device_id
+        LEFT JOIN health  h  ON h.device_id = d.device_id
         WHERE ${conditions.join(' AND ')}
         ORDER BY d.datacenter_name NULLS LAST, d.rack NULLS LAST, d.rack_unit NULLS LAST, d.hostname
         LIMIT $${i}

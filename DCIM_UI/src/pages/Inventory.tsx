@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, InventoryDevice, InventoryLink } from '@/lib/api'
+import { deriveCpuPct, deriveRamPct } from '@/lib/deviceHealth'
 import {
   Plus, Search, X, Server, Network, HardDrive, Cpu, MemoryStick,
   Zap, Package, Link as LinkIcon, Edit3, Trash2, ChevronDown,
@@ -469,8 +470,10 @@ function AnalyticsPanel({ device, onClose }: { device: InventoryDevice; onClose:
     return m
   }, [data?.latest])
 
-  const cpuPct  = latestMap['cpu_usage']    ?? device.cpu_used_pct    ?? null
-  const ramPct  = latestMap['memory_usage'] ?? device.ram_used_pct    ?? null
+  // CPU/RAM derived from live metrics (UCD-SNMP server.* or gNMI system.*),
+  // falling back to the stored inventory snapshot when no metric is present.
+  const cpuPct  = deriveCpuPct(latestMap) ?? device.cpu_used_pct ?? null
+  const ramPct  = deriveRamPct(latestMap) ?? device.ram_used_pct ?? null
   const diskPct = device.storage_gb ? pct(device.storage_used_gb, device.storage_gb) : null
 
   const sm = STATUS_META[device.status] ?? STATUS_META['idle']
@@ -883,21 +886,21 @@ export default function Inventory() {
                                 </div>
                               </td>
                               <td className="px-3 py-2.5 text-slate-300">
-                                {d.cpu_cores != null ? (
+                                {(d.cpu_cores != null || d.cpu_used_pct != null) ? (
                                   <div>
-                                    <span>{d.cpu_cores}c</span>
+                                    {d.cpu_cores != null && <span>{d.cpu_cores}c</span>}
                                     {d.cpu_used_pct != null && (
-                                      <div className="w-12 mt-0.5"><UsageBar pct={d.cpu_used_pct} color="bg-blue-500" /></div>
+                                      <div className="w-16 mt-0.5"><UsageBar pct={d.cpu_used_pct} color="bg-blue-500" /></div>
                                     )}
                                   </div>
                                 ) : '—'}
                               </td>
                               <td className="px-3 py-2.5 text-slate-300">
-                                {d.ram_gb != null ? (
+                                {(d.ram_gb != null || d.ram_used_pct != null) ? (
                                   <div>
-                                    <span>{fmtGb(d.ram_gb)}</span>
+                                    {d.ram_gb != null && <span>{fmtGb(d.ram_gb)}</span>}
                                     {d.ram_used_pct != null && (
-                                      <div className="w-12 mt-0.5"><UsageBar pct={d.ram_used_pct} color="bg-purple-500" /></div>
+                                      <div className="w-16 mt-0.5"><UsageBar pct={d.ram_used_pct} color="bg-purple-500" /></div>
                                     )}
                                   </div>
                                 ) : '—'}

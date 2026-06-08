@@ -170,7 +170,7 @@ export default function Tickets() {
                     {a.server_name || a.agent_id} · {a.metric_type} · {ago(a.timestamp)}
                   </p>
                 </div>
-                <Button size="sm" onClick={() => setGenAlert(a)} className="shrink-0">
+                <Button size="sm" onClick={() => setGenAlert(a)} className="shrink-0 bg-white text-slate-900 hover:bg-slate-100">
                   <Plus className="w-4 h-4" /> Generate Ticket
                 </Button>
               </div>

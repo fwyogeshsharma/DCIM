@@ -43,7 +43,18 @@ export interface LayoutLink {
   targetPos: [number, number, number]
   connected: boolean
   linkType?: 'agent-server' | 'device-agent' | 'device-device'
+  cooling?: boolean   // cooling-loop pipe — rendered as flowing water
   d2dInfo?: D2DInfo
+}
+
+// Cooling-plant roles/names. A link between two such devices is a chilled/
+// condenser water pipe, not a network cable — drawn as flowing water in 3D.
+const COOLING_ROLES_3D = new Set(['pump', 'chiller', 'cooling_tower', 'crac', 'crah', 'cdu', 'valve', 'valves'])
+function isCoolingNode3D(n: { deviceRole?: string | null; deviceType?: string; name?: string }): boolean {
+  const role = (n.deviceRole || '').toLowerCase()
+  if (COOLING_ROLES_3D.has(role)) return true
+  const s = `${n.deviceType || ''} ${n.name || ''}`.toLowerCase()
+  return /chiller|cooling.?tower|cooling|\bcrac\b|\bcrah\b|\bcdu\b|\bchwp\b|\bcdwp\b|\bcwp\b|\bpump\b|valve/.test(s)
 }
 
 export interface LayoutResult {
@@ -56,6 +67,9 @@ export interface LayoutResult {
 // last index = highest Y plane (edge routers / DCIM servers).
 // Y values match node 3D positions: layer L node → 3D Y = -(L * LAYER_GAP_Y).
 export const FLOORS = [
+  { name: 'Generators',     label: 'T18', y: -476, color: '#fbbf24' },
+  { name: 'Valves',         label: 'T17', y: -448, color: '#d946ef' },
+  { name: 'CRAH Units',     label: 'T16', y: -420, color: '#5eead4' },
   { name: 'Cooling Towers', label: 'T15', y: -392, color: '#14b8a6' },
   { name: 'Chillers',       label: 'T14', y: -364, color: '#0ea5e9' },
   { name: 'Pumps',         label: 'T13', y: -336, color: '#06b6d4' },
@@ -81,8 +95,9 @@ const ROLE_LAYERS_3D: Record<string, number> = {
   oob_switch: 6,
   sensor: 7,
   server: 8, pdu: 9, ups: 10, floor_pdu: 11,
-  // Cooling plant tiers stack below the power tiers, deepest at the bottom.
+  // Cooling plant + facility tiers stack below the power tiers, deepest at the bottom.
   pump: 12, chiller: 13, cooling_tower: 14,
+  crah: 15, crac: 15, valve: 16, valves: 16, generator: 17,
 }
 
 function roleLayerOf(role: string | null | undefined, name: string): number | null {
@@ -99,6 +114,9 @@ function roleLayerOf(role: string | null | undefined, name: string): number | nu
   if (/^tor-|\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
   if (/^oob-/i.test(name)) return 6
   if (/^sensor/i.test(name)) return 7
+  if (/\bgenerator\b|\bgen-?\d|^gen-/i.test(name)) return 17
+  if (/\bvalve/i.test(name)) return 16
+  if (/\bcrah\b|\bcrac\b|^crah-|^crac-/i.test(name)) return 15
   if (/cooling-?tower|\bct-?\d|cooling.?tower/i.test(name)) return 14
   if (/\bchiller\b|^chiller-|^chl-/i.test(name)) return 13
   if (/\bpump\b|^pump-/i.test(name)) return 12
@@ -365,6 +383,7 @@ export function computeHierarchicalLayout(
         targetPos: [0, 0, 0],
         connected,
         linkType: 'device-device',
+        cooling: isCoolingNode3D(srcN) && isCoolingNode3D(tgtN),
         d2dInfo: {
           sourceIp: tl.source_ip,
           sourceName: tl.source_name,
