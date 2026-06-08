@@ -304,12 +304,66 @@ class BACnetController:
     #  Telemetry tick (called by DeviceStateStore)
     # ─────────────────────────────────────────────────────────────
 
-    def tick(self, dt: float) -> None:
+    @staticmethod
+    def _flag_key(kind: str, point: str) -> str:
+        """Map a telemetry point to its Metrics-Tick flag key.
+
+        Plant devices use per-point keys ("<type>:<PointName>"); EV2 panels
+        group many points under a handful of flags.
+        """
+        if kind.startswith("plant:"):
+            return f"{kind.split(':', 1)[1]}:{point}"
+        if point.startswith("Alarm_"):
+            return "ev2_alarms"
+        if point.endswith("_kWh"):
+            return "ev2_energy"
+        if point.startswith("Ckt"):
+            return "ev2_circuits"
+        if "THD" in point or point.startswith("Harmonic_"):
+            return "ev2_power_quality"
+        if point in ("Line_Frequency", "Panel_PF"):
+            return "ev2_freq_pf"
+        return "ev2_power"
+
+    @staticmethod
+    def _limit_key(kind: str, point: str) -> str:
+        """Per-point key for the Limits tab. Plant: "<type>:<Point>"; EV2: "ev2:<Point>"."""
+        if kind.startswith("plant:"):
+            return f"{kind.split(':', 1)[1]}:{point}"
+        return f"ev2:{point}"
+
+    @staticmethod
+    def _apply_limits(kind: str, values: dict, limits: dict) -> dict:
+        """Clamp numeric points / force binary points per enabled limits.
+
+        Numeric limit = {min, max} (clamp). Binary force = {lock, options}
+        where lock "on" → 1.0, anything else → 0.0.
+        """
+        out = {}
+        for k, v in values.items():
+            lim = limits.get(BACnetController._limit_key(kind, k))
+            if lim and lim.get("enabled"):
+                if lim.get("options"):                       # binary force
+                    v = 1.0 if str(lim.get("lock")) == "on" else 0.0
+                else:                                        # numeric clamp
+                    lo, hi = lim.get("min"), lim.get("max")
+                    if lo is not None and v < lo:
+                        v = float(lo)
+                    if hi is not None and v > hi:
+                        v = float(hi)
+            out[k] = v
+        return out
+
+    def tick(self, dt: float, metric_flags: dict | None = None,
+             metric_limits: dict | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
         Applies updated values to BACnet object trees and dispatches
-        any pending COV notifications.
+        any pending COV notifications. When *metric_flags* is given, points
+        whose flag is False are dropped from the update (frozen at last value).
+        When *metric_limits* is given, enabled points are clamped (numeric) or
+        forced (binary) before the update.
         """
         if not self._running:
             return
@@ -319,6 +373,14 @@ class BACnetController:
                 continue
             try:
                 values = engine.tick(dt)
+                kind = getattr(dev, "kind", "ev2")
+                if metric_flags:
+                    values = {
+                        k: v for k, v in values.items()
+                        if metric_flags.get(self._flag_key(kind, k), True)
+                    }
+                if metric_limits:
+                    values = self._apply_limits(kind, values, metric_limits)
                 dev.update_present_values(values)
                 dev.dispatch_cov_notifications(
                     send_sock_fallback=self._recv_sock

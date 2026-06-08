@@ -169,6 +169,19 @@ class DeviceStateStore:
             "bgp_sessions":         True,
         }
 
+        # Verdigris EV2 + chiller-plant BACnet metric flags (Metrics Tick panel).
+        # Plant keys are "<device_type>:<PointName>" (mirrors PLANT_SPEC); EV2
+        # metrics are grouped. bacnet_controller.tick() filters values by these.
+        from core.bacnet_plant_generator import PLANT_SPEC as _PLANT_SPEC
+        for _dt, _spec in _PLANT_SPEC.items():
+            for _nm, *_rest in _spec["ai"]:
+                self.metric_flags[f"{_dt}:{_nm}"] = True
+            for _nm in _spec["bi"]:
+                self.metric_flags[f"{_dt}:{_nm}"] = True
+        for _g in ("ev2_power", "ev2_energy", "ev2_power_quality",
+                   "ev2_freq_pf", "ev2_alarms", "ev2_circuits"):
+            self.metric_flags[_g] = True
+
         # Per-metric limits — toggled and configured by TickPanel (Limits tab)
         # Numeric: {"enabled": bool, "min": float, "max": float}
         # State lock: {"enabled": bool, "lock": str, "options": list[str]}
@@ -210,6 +223,22 @@ class DeviceStateStore:
             "water_detection":      {"enabled": False, "lock": "dry",         "options": ["dry", "wet"]},
             "bgp_sessions":         {"enabled": False, "lock": "established", "options": ["established", "idle"]},
         }
+
+        # Verdigris EV2 + chiller-plant BACnet limits (Metrics Tick — Limits tab).
+        # Plant AI points = numeric clamp; BI points = off/on force (force alarms).
+        # Numeric bounds default None → frontend supplies them on apply.
+        for _dt, _spec in _PLANT_SPEC.items():
+            for _nm, *_rest in _spec["ai"]:
+                self.metric_limits[f"{_dt}:{_nm}"] = {"enabled": False, "min": None, "max": None}
+            for _nm in _spec["bi"]:
+                self.metric_limits[f"{_dt}:{_nm}"] = {"enabled": False, "lock": "off", "options": ["off", "on"]}
+        for _nm in ("Panel_Total_kW", "Voltage_PhA", "Voltage_PhB", "Voltage_PhC",
+                    "Current_PhA", "Current_PhB", "Current_PhC", "Line_Frequency",
+                    "Panel_PF", "Voltage_THD", "Current_THD"):
+            self.metric_limits[f"ev2:{_nm}"] = {"enabled": False, "min": None, "max": None}
+        for _nm in ("Alarm_Overcurrent", "Alarm_VoltageImbalance", "Alarm_HighTHD",
+                    "Alarm_PhaseLoss", "Alarm_SensorFault"):
+            self.metric_limits[f"ev2:{_nm}"] = {"enabled": False, "lock": "off", "options": ["off", "on"]}
 
         # Wall-clock link recovery: device_name → {iface_index: scheduled_time}
         self._pending_recovery: Dict[str, Dict[int, float]] = {}
@@ -454,7 +483,7 @@ class DeviceStateStore:
         # BACnet telemetry tick — advances EV2 + plant engines and dispatches COV
         if self._bacnet_ctrl:
             try:
-                self._bacnet_ctrl.tick(self._tick_interval)
+                self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
