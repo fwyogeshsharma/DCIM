@@ -467,13 +467,36 @@ export function createInventoryRouter(dbPool: Pool): Router {
   })
 
   // ── Sync from monitoring ───────────────────────────────────────────────────
-  // Upserts all rows from `devices` + `topology_links` into the inventory
-  // tables, mirroring the logic in migration 006_inventory_seed.sql.
-  // Returns counts of inserted/updated rows.
+  // Mirrors every row from the monitoring `devices` + `topology_links` tables
+  // into the inventory tables so it shows up in the Inventory UI. Returns counts
+  // of inserted/updated rows.
+  //
+  // Everything is normalised onto the 'default' org/datacenter: the Inventory UI
+  // has no org selector and queries org_id = 'default' exclusively (and manual
+  // inventory devices default to 'default' too). The monitoring `devices` table
+  // carries whatever org_id/datacenter_id the collector ingested under — usually
+  // NOT 'default' — so copying those through stored rows the UI could never see.
   router.post('/sync', async (req, res) => {
+    const client = await dbPool.connect()
     try {
-      // Devices
-      const devResult = await dbPool.query(`
+      await client.query('BEGIN')
+
+      // 0. Drop stale monitoring-synced rows left under a non-default org/dc by
+      //    earlier builds (they're invisible to the UI, and their duplicate
+      //    device_id would make the device/link joins below match twice and trip
+      //    "ON CONFLICT ... cannot affect row a second time"). Links CASCADE on
+      //    device delete. Manually-created rows (device_id IS NULL) are untouched.
+      await client.query(`
+        DELETE FROM dc_inventory_devices
+        WHERE device_id IS NOT NULL
+          AND (org_id <> 'default' OR datacenter_id <> 'default')
+      `)
+
+      // 1. Devices. DISTINCT ON (hostname) collapses any same-hostname devices
+      //    (different network/floor) to one row — the conflict target is
+      //    (org_id, datacenter_id, hostname), so duplicates in a single INSERT
+      //    would otherwise error. The most-recently-seen device wins.
+      const devResult = await client.query(`
         INSERT INTO dc_inventory_devices (
           org_id, datacenter_id,
           device_id,
@@ -485,9 +508,9 @@ export function createInventoryRouter(dbPool: Pool): Router {
           power_capacity_w,
           notes
         )
-        SELECT
-          d.org_id,
-          d.datacenter_id,
+        SELECT DISTINCT ON (d.hostname)
+          'default',
+          'default',
           d.id,
           d.hostname,
           d.device_type,
@@ -501,6 +524,7 @@ export function createInventoryRouter(dbPool: Pool): Router {
           d.power_draw_w,
           d.sys_description
         FROM devices d
+        ORDER BY d.hostname, d.last_seen_at DESC NULLS LAST, d.id
         ON CONFLICT (org_id, datacenter_id, hostname) DO UPDATE SET
           device_id         = EXCLUDED.device_id,
           device_type       = EXCLUDED.device_type,
@@ -518,8 +542,10 @@ export function createInventoryRouter(dbPool: Pool): Router {
           updated_at        = NOW()
       `)
 
-      // Links
-      const linkResult = await dbPool.query(`
+      // 2. Links. DISTINCT ON (tl.id) guarantees one row per topology link even
+      //    if a device_id maps to more than one inventory row, so the ON CONFLICT
+      //    (topology_link_id) never sees the same key twice in one statement.
+      const linkResult = await client.query(`
         INSERT INTO dc_inventory_links (
           org_id, datacenter_id,
           topology_link_id,
@@ -528,7 +554,7 @@ export function createInventoryRouter(dbPool: Pool): Router {
           link_type, speed_mbps,
           status
         )
-        SELECT
+        SELECT DISTINCT ON (tl.id)
           inv_src.org_id,
           inv_src.datacenter_id,
           tl.id,
@@ -542,6 +568,7 @@ export function createInventoryRouter(dbPool: Pool): Router {
         FROM topology_links tl
         JOIN dc_inventory_devices inv_src ON inv_src.device_id = tl.src_device_id
         JOIN dc_inventory_devices inv_dst ON inv_dst.device_id = tl.dst_device_id
+        ORDER BY tl.id
         ON CONFLICT (topology_link_id) WHERE topology_link_id IS NOT NULL
         DO UPDATE SET
           status     = EXCLUDED.status,
@@ -549,6 +576,7 @@ export function createInventoryRouter(dbPool: Pool): Router {
           updated_at = NOW()
       `)
 
+      await client.query('COMMIT')
       res.json({
         success: true,
         data: {
@@ -557,7 +585,10 @@ export function createInventoryRouter(dbPool: Pool): Router {
         },
       })
     } catch (error: any) {
+      await client.query('ROLLBACK').catch(() => {})
       res.status(500).json({ success: false, error: error.message })
+    } finally {
+      client.release()
     }
   })
 
