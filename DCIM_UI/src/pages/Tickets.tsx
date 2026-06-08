@@ -132,7 +132,7 @@ export default function Tickets() {
             Generate tickets from critical alerts and assign them to your team
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="shrink-0">
+        <Button onClick={() => setShowCreate(true)} className="shrink-0 bg-white text-slate-900 hover:bg-slate-100">
           <Plus className="w-4 h-4" /> New Ticket
         </Button>
       </div>
