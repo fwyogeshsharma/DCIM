@@ -16,7 +16,7 @@ export default function LandingSimple() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Server className="w-8 h-8 text-blue-500" />
-            <span className="text-xl font-bold">DCIM Enterprise</span>
+            <span className="text-xl font-bold">FWDCIM Enterprise</span>
           </div>
           <button
             onClick={() => navigate('/app/dashboard')}
@@ -32,7 +32,7 @@ export default function LandingSimple() {
 
       {/* Simple Footer */}
       <footer className="py-8 px-6 text-center text-slate-400 text-sm border-t border-white/10">
-        <p>&copy; 2025 DCIM Enterprise. All rights reserved.</p>
+        <p>&copy; 2025 FWDCIM Enterprise. All rights reserved.</p>
       </footer>
     </div>
   );

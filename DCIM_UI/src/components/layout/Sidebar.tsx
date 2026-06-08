@@ -57,7 +57,7 @@ export default function Sidebar() {
               aria-label="Collapse sidebar"
             >
               <Server className="w-6 h-6 text-blue-500" />
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">DCIM</h1>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">FWDCIM</h1>
             </button>
           )}
           {!sidebarOpen && (
@@ -112,7 +112,7 @@ export default function Sidebar() {
         {sidebarOpen && (
           <div className="border-t border-white/10 p-4">
             <p className="text-xs text-slate-400">
-              DCIM Enterprise
+              FWDCIM Enterprise
             </p>
             <p className="text-xs text-slate-500 mt-1">
               v1.0.0

@@ -62,7 +62,7 @@ function Navigation() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Server className="w-8 h-8 text-blue-500" />
-            <span className="text-xl font-bold">DCIM Enterprise</span>
+            <span className="text-xl font-bold">FWDCIM Enterprise</span>
           </div>
 
           {/* Desktop Menu */}
@@ -509,7 +509,7 @@ function BenefitsSection() {
               Transform Your Data Center Operations
             </h2>
             <p className="text-xl text-slate-400 mb-8 leading-relaxed">
-              DCIM Enterprise delivers measurable ROI through improved efficiency,
+              FWDCIM Enterprise delivers measurable ROI through improved efficiency,
               reduced operational costs, and enhanced reliability.
             </p>
 
@@ -607,7 +607,7 @@ function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Server className="w-6 h-6 text-blue-500" />
-              <span className="text-lg font-bold">DCIM Enterprise</span>
+              <span className="text-lg font-bold">FWDCIM Enterprise</span>
             </div>
             <p className="text-slate-400 text-sm">
               Enterprise-grade data center infrastructure monitoring and management.
@@ -646,7 +646,7 @@ function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-8 text-center text-slate-400 text-sm">
-          <p>&copy; 2025 DCIM Enterprise. All rights reserved.</p>
+          <p>&copy; 2025 FWDCIM Enterprise. All rights reserved.</p>
         </div>
       </div>
     </footer>
