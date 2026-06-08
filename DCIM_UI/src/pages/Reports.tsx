@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { usePrediction } from '@/hooks/usePredictions'
 import { getDeviceTypeMeta } from '@/lib/deviceType'
-import { classifyReading, energyMetricMeta, formatEnergyValue, isAlarmMetric, formatAlarmValue, ENERGY, SCOPE, normalizeScope } from '@/lib/energyMetrics'
+import { classifyReading, energyMetricMeta, formatEnergyValue, isAlarmMetric, formatAlarmValue, ENERGY, SCOPE, normalizeScope, resolveScope } from '@/lib/energyMetrics'
 import type { EnergyReading } from '@/lib/types'
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
@@ -538,8 +538,10 @@ export default function Reports() {
       const energyKwh = readings.find(
         (r) => r.metric_name === ENERGY.ENERGY_KWH && !r.circuit && !r.phase
       )?.value
-      // What this meter covers (facility / it / cooling), for PUE.
-      const scope = normalizeScope(readings.find((r) => r.scope)?.scope ?? null)
+      // What this meter covers (facility / it / cooling), for PUE. Use the
+      // explicit attributes.scope if tagged, else infer from the meter hostname
+      // (e.g. *-RPP* = IT, CHILLER/COOL = cooling, FAC/MAINS = facility).
+      const scope = resolveScope(readings.find((r) => r.scope)?.scope ?? null, first?.hostname)
 
       // Phase current imbalance (max−min)/max — flags an unbalanced load.
       const phaseCurrents = phases.map((p) => p.current).filter((v): v is number => v != null)
@@ -566,9 +568,11 @@ export default function Reports() {
   }, [energyReadings])
 
   // ── PUE / DCiE from scoped meter data ───────────────────────────────────────
-  // PUE = Total Facility Power ÷ IT Power. Meters are classified by their scope
-  // tag. If no explicit 'facility' meter exists, facility = sum of all meters
-  // (IT + cooling + other), which is the standard fallback.
+  // PUE = Total Facility Power ÷ IT Power. Each meter is bucketed by scope
+  // (it / cooling / facility-aux), resolved from attributes.scope or the meter
+  // hostname. Total Facility Power = the sum of ALL meters (IT + cooling +
+  // facility/house aux) — the standard for a sub-metered plant with no single
+  // main-incomer meter. So PUE is always ≥ 1.
   const pueStats = useMemo(() => {
     const sumScope = (s: string) => energyCards
       .filter((c) => c.scope === s)
@@ -576,11 +580,9 @@ export default function Reports() {
 
     const itKw = sumScope(SCOPE.IT)
     const coolingKw = sumScope(SCOPE.COOLING)
-    const explicitFacilityKw = sumScope(SCOPE.FACILITY)
-    const meteredTotalKw = energyCards.reduce((acc, c) => acc + (c.activePower ?? 0), 0)
-
-    // Prefer an explicit facility/mains meter; otherwise sum everything metered.
-    const facilityKw = explicitFacilityKw > 0 ? explicitFacilityKw : meteredTotalKw
+    // Everything metered = total facility power drawn by the datacenter.
+    const facilityKw = energyCards.reduce((acc, c) => acc + (c.activePower ?? 0), 0)
+    // Facility/house aux + anything not tagged IT or cooling.
     const otherKw = Math.max(0, facilityKw - itKw - coolingKw)
 
     const hasScopedMeters = energyCards.some((c) => c.scope != null)
@@ -597,12 +599,12 @@ export default function Reports() {
   const dispDcie = metered ? pueStats.dcie : summaryStats.dcie
 
   // Pivot the per-scope trend rows into chart points { time, facility, it, cooling }.
-  // Facility line = facility-scoped meters if any exist, else the sum of all meters
-  // (mirrors the PUE facility fallback so the chart matches the KPIs).
+  // Facility line = total of all meters per bucket (mirrors the PUE facility =
+  // sum-of-all logic so the chart matches the KPIs); it / cooling are the scoped
+  // sub-loads. Scope is resolved server-side (attributes.scope or hostname).
   const facilityTrend = useMemo(() => {
     const rows = energyTrend ?? []
     if (rows.length === 0) return []
-    const hasFacility = rows.some((r) => normalizeScope(r.scope) === SCOPE.FACILITY)
     const byBucket = new Map<string, { it: number; cooling: number; facility: number; other: number }>()
     for (const r of rows) {
       const b = byBucket.get(r.bucket) ?? { it: 0, cooling: 0, facility: 0, other: 0 }
@@ -623,7 +625,7 @@ export default function Reports() {
           : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
         return {
           time,
-          facility: parseFloat((hasFacility ? v.facility : v.it + v.cooling + v.other).toFixed(2)),
+          facility: parseFloat((v.it + v.cooling + v.facility + v.other).toFixed(2)),
           it: parseFloat(v.it.toFixed(2)),
           cooling: parseFloat(v.cooling.toFixed(2)),
         }

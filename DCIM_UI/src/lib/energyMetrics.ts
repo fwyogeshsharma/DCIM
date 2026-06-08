@@ -33,6 +33,25 @@ export function normalizeScope(raw: string | null | undefined): string | null {
   return s
 }
 
+// Infer a meter's scope from its hostname when no explicit attributes.scope is
+// set. Energy meters are named by what they feed: *-RPP* / PDU = IT racks,
+// CHILLER/COOL/CRAH/tower/pump = cooling plant, FAC/MAINS/MSB = facility/house.
+// Used as a fallback so PUE bifurcation works even before meters are tagged.
+export function scopeFromHostname(hostname: string | null | undefined): string | null {
+  const h = (hostname || '').toLowerCase()
+  if (!h) return null
+  if (/chiller|cooling|\bcool\b|cool-|crah|crac|tower|\bpump\b|cond|hvac|\bchw\b|\bcw\b/.test(h)) return SCOPE.COOLING
+  if (/\brpp\b|rpp\d|-rpp|\bpdu\b|busway|\brack\b|\bit\b|server/.test(h)) return SCOPE.IT
+  if (/\bfac\b|fac-|-fac|facility|\bmains\b|\bmsb\b|utility|incomer|house|\baux\b/.test(h)) return SCOPE.FACILITY
+  return null
+}
+
+// Resolve a meter's scope: explicit attributes.scope wins, else infer from the
+// hostname. Returns a normalised bucket ('facility' | 'it' | 'cooling' | …) or null.
+export function resolveScope(rawScope: string | null | undefined, hostname: string | null | undefined): string | null {
+  return normalizeScope(rawScope) ?? scopeFromHostname(hostname)
+}
+
 // Presentation metadata for energy_metrics. Each metric_name is one physical
 // quantity; we map the known Verdigris/BACnet names to a short label + unit, and
 // fall back to prettifying the raw name (strip "energy." prefix, drop the unit

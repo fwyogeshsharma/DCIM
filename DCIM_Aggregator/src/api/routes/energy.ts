@@ -26,6 +26,19 @@ function validateInterval(input: string): string {
   return /^\d+\s*(m|min|mins|minute|minutes|h|hour|hours|d|day|days)$/.test(input) ? input : '5 minutes'
 }
 
+// PUE scope for a meter, inferred from its hostname when attributes.scope isn't
+// set. Energy meters are named for what they feed: *-RPP*/PDU = IT racks,
+// CHILLER/COOL/CRAH/tower/pump = cooling plant, FAC/MAINS/MSB = facility/house.
+// `host` is the SQL column reference for the hostname (e.g. 'd.hostname').
+function hostScopeExpr(host: string): string {
+  return `CASE
+    WHEN ${host} ~* 'chiller|cool|crah|crac|tower|pump|cond|hvac' THEN 'cooling'
+    WHEN ${host} ~* 'rpp|pdu|busway'                              THEN 'it'
+    WHEN ${host} ~* 'fac|mains|msb|utility|incomer|house'         THEN 'facility'
+    ELSE NULL
+  END`
+}
+
 export function createEnergyRouter(dbPool: Pool, cacheService: CacheService): Router {
   const router = Router()
 
@@ -44,7 +57,7 @@ export function createEnergyRouter(dbPool: Pool, cacheService: CacheService): Ro
           CASE WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
                THEN 'online' ELSE 'offline' END                          AS status,
           MAX(em.ts)                                                     AS last_reading,
-          MAX(em.attributes->>'scope')                                   AS scope,
+          COALESCE(NULLIF(MAX(em.attributes->>'scope'), ''), ${hostScopeExpr('d.hostname')}) AS scope,
           COUNT(DISTINCT em.circuit) FILTER (WHERE em.circuit <> '')::int AS circuit_count
         FROM devices d
         LEFT JOIN energy_metrics em
@@ -84,7 +97,7 @@ export function createEnergyRouter(dbPool: Pool, cacheService: CacheService): Ro
           em.value,
           em.ts,
           em.attributes,
-          em.attributes->>'scope' AS scope
+          COALESCE(NULLIF(em.attributes->>'scope', ''), ${hostScopeExpr('d.hostname')}) AS scope
         FROM energy_metrics em
         JOIN devices d ON d.id = em.device_id
         WHERE em.ts >= NOW() - INTERVAL '24 hours'
@@ -148,15 +161,16 @@ export function createEnergyRouter(dbPool: Pool, cacheService: CacheService): Ro
         SELECT bucket, scope, SUM(meter_avg) AS total_kw
         FROM (
           SELECT
-            time_bucket('${safeInterval}', ts)        AS bucket,
-            device_id,
-            COALESCE(attributes->>'scope', '')         AS scope,
-            AVG(value)                                 AS meter_avg
-          FROM energy_metrics
-          WHERE metric_name = $1
-            AND tag = ''
-            AND ts >= NOW() - $2::interval
-          GROUP BY bucket, device_id, COALESCE(attributes->>'scope', '')
+            time_bucket('${safeInterval}', em.ts)      AS bucket,
+            em.device_id,
+            COALESCE(NULLIF(em.attributes->>'scope', ''), ${hostScopeExpr('d.hostname')}, '') AS scope,
+            AVG(em.value)                              AS meter_avg
+          FROM energy_metrics em
+          JOIN devices d ON d.id = em.device_id
+          WHERE em.metric_name = $1
+            AND em.tag = ''
+            AND em.ts >= NOW() - $2::interval
+          GROUP BY bucket, em.device_id, COALESCE(NULLIF(em.attributes->>'scope', ''), ${hostScopeExpr('d.hostname')}, '')
         ) per_meter
         GROUP BY bucket, scope
         ORDER BY bucket ASC

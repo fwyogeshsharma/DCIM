@@ -182,6 +182,7 @@ export function createIngestRouter(dbPool: Pool): Router {
         trap_oid: string | null
         severity: string
         description: string
+        alarm_state: string | null
         timestamp: string | null
       }> = []
 
@@ -512,7 +513,10 @@ export function createIngestRouter(dbPool: Pool): Router {
           `, [downName, ev.link_id ?? null, ev.hostname ?? null, ev.dst_hostname ?? null])
         }
 
-        if ((ev.kind ?? 'event') === 'trap') {
+        // Emit traps, device-change notifications and alarms live to the topology
+        // (all surface in the SNMP-trap feed / node highlight). trap_oid may be
+        // null for the non-SNMP kinds — that's fine, the UI doesn't require it.
+        if (['trap', 'device_change', 'alarm'].includes(ev.kind ?? 'event')) {
           const msg = ev.payload?.message
           trapsToEmit.push({
             deviceId,
@@ -524,6 +528,7 @@ export function createIngestRouter(dbPool: Pool): Router {
             trap_oid:    ev.trap_oid ?? null,
             severity:    ev.severity ?? 'critical',
             description: typeof msg === 'string' ? msg : ev.event_name,
+            alarm_state: typeof (ev.payload as any)?.alarm_state === 'string' ? (ev.payload as any).alarm_state : null,
             timestamp:   ev.ts ?? null,
           })
         }
@@ -566,6 +571,7 @@ export function createIngestRouter(dbPool: Pool): Router {
             trap_oid:    t.trap_oid ?? '',
             severity:    t.severity,
             description: t.description,
+            alarm_state: t.alarm_state ?? null,
             timestamp:   t.timestamp ?? new Date().toISOString(),
           })
         }

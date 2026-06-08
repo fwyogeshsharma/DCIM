@@ -199,7 +199,10 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
   app.get('/api/v1/traps', async (req, res) => {
     try {
       const { source_ip, device_name, severity, resolved, limit = 200 } = req.query
-      const conditions: string[] = [`e.kind = 'trap'`]
+      // Surface every operational event the topology cares about, not just SNMP
+      // traps: device-change notifications and alarms too. trap_oid is optional
+      // (null for non-SNMP kinds) — the UI keys off event_name/severity, not OID.
+      const conditions: string[] = [`e.kind IN ('trap', 'device_change', 'alarm')`]
       const params: any[] = []
       let i = 1
 
