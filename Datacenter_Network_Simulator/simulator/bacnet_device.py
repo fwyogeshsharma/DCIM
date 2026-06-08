@@ -293,7 +293,7 @@ class EV2BACnetDevice:
                     "instance": self.device_instance,
                     "obj_type": obj.object_type,
                     "obj_inst": obj.instance,
-                    "obj_name": obj.object_name,
+                    "obj_name": obj.name,
                     "value":    obj.present_value,
                     "sent_to":  [s.subscriber_addr for s in active],
                 })
@@ -306,7 +306,7 @@ class EV2BACnetDevice:
         result = []
         for (ot, oi), subs in list(self._cov_subs.items()):
             obj = self._objects.get((ot, oi))
-            obj_name = obj.object_name if obj else f"{ot}:{oi}"
+            obj_name = obj.name if obj else f"{ot}:{oi}"
             for sub in subs:
                 if sub.expiry > 0 and now > sub.expiry:
                     continue

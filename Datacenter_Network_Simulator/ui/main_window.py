@@ -3613,7 +3613,7 @@ class MainWindow(QMainWindow):
                 return
             self._bacnet_panel.refresh_device_table(self.bacnet.get_device_summary())
         except Exception as e:
-            log.warning("[BACnet] panel refresh error: %s", e)
+            self._console_panel.log(f"BACnet panel refresh error: {e}", "error")
 
     def _sync_sflow_ui(self):
         try:
