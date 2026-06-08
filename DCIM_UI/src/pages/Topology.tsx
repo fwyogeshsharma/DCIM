@@ -253,6 +253,12 @@ const isLinkDownType = (s?: string) =>
 const isLinkUpType = (s?: string) =>
   (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKUP')
 
+// Alarm events carry alarm_state ("active" | "closed"), either as a top-level
+// field (SSE) or inside event_payload (DB rows). "closed" means the alarm cleared
+// → remove all alarms from that device; anything else ("active") keeps it shown.
+const isAlarmClosed = (t: any): boolean =>
+  String(t?.alarm_state ?? t?.event_payload?.alarm_state ?? '').toLowerCase() === 'closed'
+
 // A link trap names BOTH endpoints (source + dst). To break only that one edge —
 // not every cable on the source device — we key link-down state by the UNORDERED
 // endpoint pair. pairKey() builds the canonical key for one identifier type;
@@ -326,14 +332,24 @@ export default function Topology() {
     if (!traps.length) return
     setTrapAlerts(prev => {
       const next = new Map(prev)
+      // Traps are ordered ts DESC, so the FIRST event seen per device key is the
+      // latest — it decides the device's current alarm state. A closed alarm (or
+      // a linkUp restore) clears all alarms on that device; an active one shows.
+      const decided = new Set<string>()
       traps.forEach(t => {
+        const keys = [t.source_ip, t.device_name].filter(Boolean) as string[]
+        const cleared = isAlarmClosed(t) || isLinkUpType(t.trap_type) || t.resolved === true
         const alert: TrapAlert = {
           trapType: t.trap_type ?? '', severity: t.severity ?? 'critical',
           description: t.description ?? '', deviceName: t.device_name ?? '',
           timestamp: t.timestamp ?? new Date().toISOString(),
         }
-        if (t.source_ip) next.set(t.source_ip, alert)
-        if (t.device_name) next.set(t.device_name, alert)
+        keys.forEach(k => {
+          if (decided.has(k)) return
+          decided.add(k)
+          if (cleared) next.delete(k)
+          else next.set(k, alert)
+        })
       })
       return next
     })
@@ -385,9 +401,10 @@ export default function Topology() {
       description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
     }, ...prev].slice(0, 30))
 
-    // linkUp = link restored: clear THIS link's down-state (by pair key) and the
-    // red node glow so the cable renders green/normal again immediately.
-    if (isLinkUp) {
+    // linkUp = link restored, or alarm_state "closed" = alarm cleared: remove all
+    // alarms from this device (node glow) and clear this link's down-state so the
+    // node/cable render normal again immediately.
+    if (isLinkUp || isAlarmClosed(data)) {
       if (lKeys.length) setLinkDownAlerts(prev => { const next = new Map(prev); lKeys.forEach(k => next.delete(k)); return next })
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
       return

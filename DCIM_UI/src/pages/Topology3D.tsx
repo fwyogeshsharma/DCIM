@@ -43,6 +43,11 @@ const isLinkDownType = (s?: string) =>
 const isLinkUpType = (s?: string) =>
   (s ?? '').toUpperCase().replace(/[^A-Z]/g, '').includes('LINKUP')
 
+// Alarm events carry alarm_state ("active" | "closed"), top-level (SSE) or in
+// event_payload (DB). "closed" clears all alarms on the device; else it shows.
+const isAlarmClosed = (t: any): boolean =>
+  String(t?.alarm_state ?? t?.event_payload?.alarm_state ?? '').toLowerCase() === 'closed'
+
 // A link trap names BOTH endpoints. Key link-down state by the UNORDERED endpoint
 // pair so only that one edge breaks — not every cable on the source device. 3D
 // node ids are synthetic, so we match on hostname / ip (what both ends expose).
@@ -2140,9 +2145,10 @@ export default function Topology3D() {
       description: data.description ?? '', timestamp: data.timestamp ?? new Date().toISOString(),
     }, ...prev].slice(0, 30))
 
-    // linkUp = link restored: clear THIS link's down-state (by pair key) and the
-    // red node glow so the cable renders green/normal again immediately.
-    if (isLinkUp) {
+    // linkUp = link restored, or alarm_state "closed" = alarm cleared: remove all
+    // alarms from this device (node glow) and clear this link's down-state so the
+    // node/cable render normal again immediately.
+    if (isLinkUp || isAlarmClosed(data)) {
       if (lKeys.length) setLinkDownAlerts(prev => { const next = new Map(prev); lKeys.forEach(k => next.delete(k)); return next })
       setTrapAlerts(prev => { const next = new Map(prev); keys.forEach(k => next.delete(k)); return next })
       return
@@ -2204,10 +2210,19 @@ export default function Topology3D() {
     if (!traps.length) return
     setTrapAlerts(prev => {
       const next = new Map(prev)
+      // Traps are ts DESC, so the first event per device key is the latest and
+      // decides its state. A closed alarm / linkUp / resolved clears the device.
+      const decided = new Set<string>()
       traps.forEach(t => {
+        const keys = [t.source_ip, t.device_name].filter(Boolean) as string[]
+        const cleared = isAlarmClosed(t) || isLinkUpType(t.trap_type) || t.resolved === true
         const a: TrapAlert = { trapType: t.trap_type ?? '', severity: t.severity ?? 'critical', description: t.description ?? '', deviceName: t.device_name ?? '', timestamp: t.timestamp ?? new Date().toISOString() }
-        if (t.source_ip) next.set(t.source_ip, a)
-        if (t.device_name) next.set(t.device_name, a)
+        keys.forEach(k => {
+          if (decided.has(k)) return
+          decided.add(k)
+          if (cleared) next.delete(k)
+          else next.set(k, a)
+        })
       })
       return next
     })
