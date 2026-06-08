@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import type { DeviceInfo, IfaceStats, EV2DeviceSnapshot, EV2CircuitMetrics } from '../api/types'
+import type { DeviceInfo, IfaceStats, EV2DeviceSnapshot, EV2CircuitMetrics, PlantDeviceSnapshot } from '../api/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -987,12 +987,168 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
   )
 }
 
+// ── Chiller-plant tabs (CRAH / Chiller / Pump / Cooling Tower / Valve) ─────────
+// Columns mirror PLANT_SPEC in core/bacnet_plant_generator.py. bin: 'run' =
+// 1 is good (running); bin: 'alarm' = 1 is bad (alarm active).
+
+type PlantCol = {
+  key: string; label: string; unit?: string
+  warn?: number; crit?: number; decimals?: number; bin?: 'run' | 'alarm'
+}
+
+const PLANT_COLUMNS: Record<string, PlantCol[]> = {
+  crah: [
+    { key: 'Supply_Air_Temp', label: 'Supply Air', unit: '°C', warn: 26, crit: 30, decimals: 1 },
+    { key: 'Return_Air_Temp', label: 'Return Air', unit: '°C', decimals: 1 },
+    { key: 'Setpoint',        label: 'Setpoint',   unit: '°C', decimals: 1 },
+    { key: 'Fan_Speed',       label: 'Fan Speed',  unit: '%',  decimals: 0 },
+    { key: 'CHW_Valve',       label: 'CHW Valve',  unit: '%',  decimals: 0 },
+    { key: 'Cooling_Capacity',label: 'Capacity',   unit: '%',  decimals: 0 },
+    { key: 'Supply_Humidity', label: 'Humidity',   unit: '%',  warn: 60, crit: 70, decimals: 0 },
+    { key: 'Airflow',         label: 'Airflow',    unit: '%',  decimals: 0 },
+    { key: 'Fan_Power',       label: 'Fan Power',  unit: ' kW', decimals: 2 },
+    { key: 'Run_Hours',       label: 'Run Hrs',    unit: ' h', decimals: 0 },
+    { key: 'Unit_Running',     label: 'Running',    bin: 'run' },
+    { key: 'Alarm_HighTemp',   label: 'Hi Temp',    bin: 'alarm' },
+    { key: 'Alarm_AirflowLoss',label: 'Airflow Loss', bin: 'alarm' },
+    { key: 'Filter_Dirty',     label: 'Filter',     bin: 'alarm' },
+  ],
+  chiller: [
+    { key: 'CHW_Supply_Temp', label: 'CHW Supply', unit: '°C', warn: 9,  crit: 11, decimals: 1 },
+    { key: 'CHW_Return_Temp', label: 'CHW Return', unit: '°C', decimals: 1 },
+    { key: 'CHW_Setpoint',    label: 'Setpoint',   unit: '°C', decimals: 1 },
+    { key: 'CHW_Flow',        label: 'CHW Flow',   unit: ' L/s', decimals: 1 },
+    { key: 'Cond_Supply_Temp',label: 'Cond Supply',unit: '°C', decimals: 1 },
+    { key: 'Cond_Return_Temp',label: 'Cond Return',unit: '°C', decimals: 1 },
+    { key: 'Compressor_Load', label: 'Compressor', unit: '%',  warn: 85, crit: 95, decimals: 0 },
+    { key: 'Active_Power',    label: 'Power',      unit: ' kW', decimals: 1 },
+    { key: 'Cooling_Capacity',label: 'Capacity',   unit: ' kW', decimals: 0 },
+    { key: 'COP',             label: 'COP',        decimals: 2 },
+    { key: 'Evap_Pressure',   label: 'Evap P',     unit: ' kPa', decimals: 0 },
+    { key: 'Cond_Pressure',   label: 'Cond P',     unit: ' kPa', decimals: 0 },
+    { key: 'Run_Hours',       label: 'Run Hrs',    unit: ' h', decimals: 0 },
+    { key: 'Chiller_Running',   label: 'Running',  bin: 'run' },
+    { key: 'Alarm_HighPressure',label: 'Hi Press', bin: 'alarm' },
+    { key: 'Alarm_LowEvapTemp', label: 'Lo Evap',  bin: 'alarm' },
+    { key: 'Alarm_FlowLoss',    label: 'Flow Loss',bin: 'alarm' },
+  ],
+  pump: [
+    { key: 'Speed',             label: 'Speed',      unit: '%',  decimals: 0 },
+    { key: 'Flow',              label: 'Flow',       unit: ' L/s', decimals: 1 },
+    { key: 'Discharge_Pressure',label: 'Discharge P',unit: ' kPa', decimals: 0 },
+    { key: 'Suction_Pressure',  label: 'Suction P',  unit: ' kPa', decimals: 0 },
+    { key: 'Diff_Pressure',     label: 'Diff P',     unit: ' kPa', decimals: 0 },
+    { key: 'Motor_Power',       label: 'Motor Power',unit: ' kW', decimals: 2 },
+    { key: 'Motor_Temp',        label: 'Motor Temp', unit: '°C', warn: 70, crit: 85, decimals: 1 },
+    { key: 'VFD_Frequency',     label: 'VFD Freq',   unit: ' Hz', decimals: 1 },
+    { key: 'Run_Hours',         label: 'Run Hrs',    unit: ' h', decimals: 0 },
+    { key: 'Run_Status',   label: 'Running',  bin: 'run' },
+    { key: 'Alarm_Fault',  label: 'Fault',    bin: 'alarm' },
+    { key: 'Alarm_LowFlow',label: 'Low Flow', bin: 'alarm' },
+  ],
+  cooling_tower: [
+    { key: 'Fan_Speed',      label: 'Fan Speed',   unit: '%',  decimals: 0 },
+    { key: 'Basin_Temp',     label: 'Basin Temp',  unit: '°C', decimals: 1 },
+    { key: 'Cond_Water_In',  label: 'Water In',    unit: '°C', decimals: 1 },
+    { key: 'Cond_Water_Out', label: 'Water Out',   unit: '°C', decimals: 1 },
+    { key: 'Fan_Power',      label: 'Fan Power',   unit: ' kW', decimals: 2 },
+    { key: 'Basin_Level',    label: 'Basin Level', unit: '%',  warn: 40, crit: 25, decimals: 0, },
+    { key: 'Makeup_Flow',    label: 'Makeup Flow', unit: ' L/min', decimals: 1 },
+    { key: 'Vibration',      label: 'Vibration',   unit: ' mm/s', warn: 4, crit: 6, decimals: 2 },
+    { key: 'Run_Hours',      label: 'Run Hrs',     unit: ' h', decimals: 0 },
+    { key: 'Fan_Status',         label: 'Running',  bin: 'run' },
+    { key: 'Alarm_HighVibration',label: 'Hi Vibration', bin: 'alarm' },
+    { key: 'Alarm_LowBasin',     label: 'Low Basin',bin: 'alarm' },
+  ],
+  valve: [
+    { key: 'Position',          label: 'Position',   unit: '%', decimals: 0 },
+    { key: 'Commanded_Position',label: 'Commanded',  unit: '%', decimals: 0 },
+    { key: 'Actuator_Temp',     label: 'Actuator Temp', unit: '°C', warn: 60, crit: 75, decimals: 1 },
+    { key: 'Status_Modulating',  label: 'Modulating', bin: 'run' },
+    { key: 'Alarm_ActuatorFault',label: 'Fault',      bin: 'alarm' },
+  ],
+}
+
+function PlantBinCell({ val, mode }: { val?: number; mode: 'run' | 'alarm' }) {
+  if (val == null) return <span style={{ color: 'var(--text-dim)' }}>—</span>
+  const on = val >= 0.5
+  // run: on = good (green); alarm: on = bad (red)
+  const good = mode === 'run' ? on : !on
+  const text = mode === 'run' ? (on ? 'ON' : 'OFF') : (on ? 'ALARM' : 'OK')
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
+      fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
+      background: good ? '#3fb95022' : '#f8514922',
+      border: `1px solid ${good ? '#3fb95044' : '#f8514944'}`,
+      color: good ? '#3fb950' : '#f85149',
+    }}>{text}</span>
+  )
+}
+
+function PlantTable({ type, rows }: { type: string; rows: PlantDeviceSnapshot[] }) {
+  const cols = PLANT_COLUMNS[type] ?? []
+  const sort = useSortState('name')
+
+  const sorted = useMemo(() => [...rows].sort((a, b) => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    if (sort.col === 'name')     return a.name.localeCompare(b.name) * dir
+    if (sort.col === 'ip')       return a.ip.localeCompare(b.ip) * dir
+    if (sort.col === 'instance') return (a.instance - b.instance) * dir
+    return ((a.values[sort.col] ?? 0) - (b.values[sort.col] ?? 0)) * dir
+  }), [rows, sort.col, sort.dir])
+
+  if (rows.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
+        BACnet offline — start BACnet simulator to see {type.replace(/_/g, ' ')} metrics
+      </div>
+    )
+  }
+
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+      <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+        <tr>
+          <SortTH label="Name"     id="name"     sort={sort} minW={140} />
+          <SortTH label="IP"       id="ip"       sort={sort} />
+          <SortTH label="Instance" id="instance" sort={sort} align="right" minW={70} />
+          {cols.map(c => (
+            <SortTH key={c.key} label={c.label} id={c.key} sort={sort}
+              align={c.bin ? 'center' : 'right'} minW={c.bin ? 70 : 80} />
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((d, i) => (
+          <tr key={d.instance} style={ROW_STYLE(i)}>
+            <td style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.name}>{d.name}</td>
+            <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 10 }}>{d.ip}</td>
+            <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{d.instance}</td>
+            {cols.map(c => (
+              <td key={c.key} style={{ padding: '6px 10px', textAlign: c.bin ? 'center' : 'right' }}>
+                {c.bin
+                  ? <PlantBinCell val={d.values[c.key]} mode={c.bin} />
+                  : <NumCell val={d.values[c.key]} unit={c.unit} warn={c.warn} crit={c.crit} decimals={c.decimals ?? 1} />}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 // ── tabs ──────────────────────────────────────────────────────────────────────
 
 type Tab = 'all' | 'network' | 'server' | 'ups' | 'pdu' | 'sensor' | 'energy'
+        | 'crah' | 'chiller' | 'pump' | 'cooling_tower' | 'valve'
+
+const PLANT_TABS: Tab[] = ['crah', 'chiller', 'pump', 'cooling_tower', 'valve']
 
 const TAB_LABELS: Record<Tab, string> = {
   all: 'All', network: 'Network', server: 'Server', ups: 'UPS', pdu: 'PDU', sensor: 'Sensor', energy: 'Energy (EV2)',
+  crah: 'CRAH', chiller: 'Chiller', pump: 'Pump', cooling_tower: 'Cooling Tower', valve: 'Valve',
 }
 
 const TAB_TYPES: Record<Tab, string[]> = {
@@ -1003,14 +1159,17 @@ const TAB_TYPES: Record<Tab, string[]> = {
   pdu:     ['pdu', 'floor_pdu'],
   sensor:  ['sensor'],
   energy:  [],   // data comes from ev2Metrics, not devices[]
+  crah:    [], chiller: [], pump: [], cooling_tower: [], valve: [],  // data from plantMetrics
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function LiveMetricsPage() {
-  const { devices, ev2Metrics, setActiveView, fetchEV2Metrics } = useStore()
+  const { devices, ev2Metrics, plantMetrics, setActiveView, fetchEV2Metrics, fetchPlantMetrics } = useStore()
   const [tab,    setTab]    = useState<Tab>('all')
   const [search, setSearch] = useState('')
+
+  const isPlantTab = PLANT_TABS.includes(tab)
 
   // Poll EV2 metrics every 30 s when energy tab is active
   useEffect(() => {
@@ -1020,6 +1179,14 @@ export default function LiveMetricsPage() {
     return () => clearInterval(id)
   }, [tab, fetchEV2Metrics])
 
+  // Poll chiller-plant metrics every 30 s when any plant tab is active
+  useEffect(() => {
+    if (!isPlantTab) return
+    fetchPlantMetrics()
+    const id = setInterval(fetchPlantMetrics, 30_000)
+    return () => clearInterval(id)
+  }, [isPlantTab, fetchPlantMetrics])
+
   const counts = useMemo((): Record<Tab, number> => ({
     all:     devices.length,
     network: devices.filter(d => TAB_TYPES.network.includes(d.device_type)).length,
@@ -1028,10 +1195,15 @@ export default function LiveMetricsPage() {
     pdu:     devices.filter(d => TAB_TYPES.pdu.includes(d.device_type)).length,
     sensor:  devices.filter(d => TAB_TYPES.sensor.includes(d.device_type)).length,
     energy:  ev2Metrics.length,
-  }), [devices, ev2Metrics])
+    crah:          plantMetrics.filter(p => p.device_type === 'crah').length,
+    chiller:       plantMetrics.filter(p => p.device_type === 'chiller').length,
+    pump:          plantMetrics.filter(p => p.device_type === 'pump').length,
+    cooling_tower: plantMetrics.filter(p => p.device_type === 'cooling_tower').length,
+    valve:         plantMetrics.filter(p => p.device_type === 'valve').length,
+  }), [devices, ev2Metrics, plantMetrics])
 
   const filtered = useMemo(() => {
-    if (tab === 'energy') return []   // energy tab uses ev2Metrics directly
+    if (tab === 'energy' || isPlantTab) return []   // these tabs use ev2Metrics/plantMetrics directly
     let list = devices.filter(d => d.device_type !== 'rpp')
     const types = TAB_TYPES[tab]
     if (types.length > 0) list = list.filter(d => types.includes(d.device_type))
@@ -1106,6 +1278,8 @@ export default function LiveMetricsPage() {
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', padding: tab === 'energy' ? 12 : 0 }}>
         {tab === 'energy'
           ? <EV2MetricsTab snapshots={ev2Metrics} />
+          : isPlantTab
+          ? <PlantTable type={tab} rows={plantMetrics.filter(p => p.device_type === tab)} />
           : filtered.length === 0
             ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
                 {devices.length === 0 ? 'No topology loaded' : `No ${TAB_LABELS[tab].toLowerCase()} devices`}

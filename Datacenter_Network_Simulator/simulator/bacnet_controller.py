@@ -544,6 +544,7 @@ class BACnetController:
                 "instance": dev.device_instance,
                 "name":     dev.device_name,
                 "circuits": dev.circuits,
+                "kind":     getattr(dev, "kind", "ev2"),
                 "status":   "Active" if self._running else "Stopped",
             })
         return result

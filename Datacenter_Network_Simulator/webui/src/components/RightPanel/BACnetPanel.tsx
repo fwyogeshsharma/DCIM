@@ -89,45 +89,42 @@ function Select({ label, value, onChange, disabled, options }: {
   )
 }
 
-function DeviceTable({ devices }: { devices: BacnetDevice[] }) {
-  const colStyle = (w?: number): React.CSSProperties => ({
-    fontSize: 10, padding: '3px 6px', color: 'var(--text-muted)',
-    borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap',
-    ...(w ? { width: w } : {}),
-  })
-  const cellStyle = (green?: boolean): React.CSSProperties => ({
-    fontSize: 10, padding: '3px 6px', fontFamily: 'Consolas, monospace',
-    color: green ? 'var(--green)' : 'var(--text)',
-  })
+// Map a device `kind` to a human-friendly type label.
+function typeLabel(kind?: string): string {
+  if (!kind || kind === 'ev2') return 'Verdigris EV2'
+  if (kind.startsWith('plant:')) return kind.slice('plant:'.length)
+  return kind
+}
+
+function DeviceCounts({ devices }: { devices: BacnetDevice[] }) {
+  // Count active devices grouped by type label, preserving first-seen order.
+  const order: string[] = []
+  const counts = new Map<string, number>()
+  let total = 0
+  for (const d of devices) {
+    if (d.status !== 'Active') continue
+    const label = typeLabel(d.kind)
+    if (!counts.has(label)) order.push(label)
+    counts.set(label, (counts.get(label) ?? 0) + 1)
+    total++
+  }
+
+  if (order.length === 0) {
+    return (
+      <div style={{ padding: 10, textAlign: 'center', color: 'var(--text-dim)', fontSize: 10 }}>
+        No active devices
+      </div>
+    )
+  }
 
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
-      <thead>
-        <tr style={{ background: 'var(--bg-base)' }}>
-          <th style={{ ...colStyle(), textAlign: 'left' }}>IP</th>
-          <th style={{ ...colStyle(60), textAlign: 'right' }}>Instance</th>
-          <th style={{ ...colStyle(50), textAlign: 'right' }}>Circuits</th>
-          <th style={{ ...colStyle(50), textAlign: 'center' }}>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {devices.map((d, i) => (
-          <tr key={d.instance} style={{ background: i % 2 === 0 ? 'var(--bg-panel)' : 'var(--bg-base)' }}>
-            <td style={cellStyle()}>{d.ip}</td>
-            <td style={{ ...cellStyle(), textAlign: 'right' }}>{d.instance}</td>
-            <td style={{ ...cellStyle(), textAlign: 'right' }}>{d.circuits}</td>
-            <td style={{ ...cellStyle(d.status === 'Active'), textAlign: 'center' }}>{d.status}</td>
-          </tr>
-        ))}
-        {devices.length === 0 && (
-          <tr>
-            <td colSpan={4} style={{ padding: 10, textAlign: 'center', color: 'var(--text-dim)', fontSize: 10 }}>
-              No active devices
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+    <>
+      {order.map(label => (
+        <StatRow key={label} label={`${label}:`} value={counts.get(label) ?? 0} />
+      ))}
+      <div style={{ height: 4 }} />
+      <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
+    </>
   )
 }
 
@@ -274,12 +271,6 @@ export default function BACnetPanel() {
               value={status.port}
               valueColor="var(--text)"
             />
-            <StatRow
-              label="Active devices:"
-              value={status.active_devices}
-              labelColor="var(--accent)"
-              valueColor="var(--accent)"
-            />
           </div>
         )}
 
@@ -287,9 +278,7 @@ export default function BACnetPanel() {
         {running && (
           <div className="group-box">
             <span className="group-box-label">Active Devices</span>
-            <div style={{ overflowX: 'auto' }}>
-              <DeviceTable devices={status?.devices ?? []} />
-            </div>
+            <DeviceCounts devices={status?.devices ?? []} />
           </div>
         )}
 

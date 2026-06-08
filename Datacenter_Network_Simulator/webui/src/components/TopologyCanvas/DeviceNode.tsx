@@ -42,6 +42,7 @@ export interface DeviceNodeData {
   os_version?: string
   snmp_port?: number
   gnmi_port?: number
+  bacnet_instance?: number
   activeLayer?: string
   cpu_usage?: number
   memory_used?: number
@@ -70,6 +71,8 @@ function DeviceNode({ data, selected, dragging }: NodeProps) {
   rows.push(['SNMP Port', String(d.snmp_port ?? 161)])
   if (['router', 'switch'].includes(d.device_type))
     rows.push(['gNMI Port', String(d.gnmi_port ?? 57400)])
+  if (typeof d.bacnet_instance === 'number')
+    rows.push(['BACnet Instance', String(d.bacnet_instance)])
 
   return (
     <div

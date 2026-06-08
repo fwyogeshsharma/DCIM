@@ -174,6 +174,7 @@ export interface BacnetDevice {
   instance: number
   name: string
   circuits: number
+  kind?: string
   status: string
 }
 
@@ -300,6 +301,16 @@ export interface EV2DeviceSnapshot {
   monitored_pdu_name?: string
   panel:               EV2PanelMetrics
   circuit_list:        EV2CircuitMetrics[]
+}
+
+// Chiller-plant BACnet device (chiller / pump / cooling_tower / valve / crah).
+// `values` maps point name (e.g. "CHW_Supply_Temp") → present-value.
+export interface PlantDeviceSnapshot {
+  ip:          string
+  instance:    number
+  name:        string
+  device_type: string
+  values:      Record<string, number>
 }
 
 export interface LogEntry {

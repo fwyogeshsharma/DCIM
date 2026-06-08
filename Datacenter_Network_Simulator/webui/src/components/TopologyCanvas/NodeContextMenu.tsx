@@ -433,7 +433,7 @@ function ERow({ label, children }: { label: string; children: React.ReactNode })
 // ── DeviceInfoModal ───────────────────────────────────────────────────────────
 
 export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClose: () => void }) {
-  const { graphDevices, graphLinks } = useStore()
+  const { graphDevices, graphLinks, bacnet } = useStore()
   const [info, setInfo] = useState<DeviceInfo | null>(null)
 
   useEffect(() => {
@@ -465,6 +465,10 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
     if (!isPassive) rows.push(['SNMP Port', String(info.snmp_port)])
     if (['router', 'switch'].includes(info.device_type))
       rows.push(['gNMI Port', String(info.gnmi_port)])
+    const bacnetDev = (bacnet?.devices ?? []).find(
+      b => b.ip === info.ip_address || b.ip === info.mgmt_ip)
+    if (bacnetDev)
+      rows.push(['BACnet Instance', String(bacnetDev.instance)])
     if (info.sys_contact)  rows.push(['Contact',  info.sys_contact])
     if (info.sys_location) rows.push(['Location', info.sys_location])
     if (!isPassive) rows.push(['Interfaces', String(info.interface_count)])

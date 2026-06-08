@@ -89,9 +89,11 @@ function devicesToNodes(
   linkMode: boolean,
   linkSrc: string | null,
   activeLayer: string,
+  bacnetInstByIp: Record<string, number>,
 ): Node[] {
   return devices.map(d => {
     const p = positions.get(d.id) || { x: d.x, y: d.y }
+    const bacnetInstance = bacnetInstByIp[d.ip_address] ?? bacnetInstByIp[d.mgmt_ip || '']
     return {
       id: d.id,
       type: 'device',
@@ -106,6 +108,7 @@ function devicesToNodes(
         os_version: d.os_version || '',
         snmp_port: d.snmp_port ?? 161,
         gnmi_port: d.gnmi_port ?? 57400,
+        bacnet_instance: bacnetInstance,
         activeLayer,
         cpu_usage: d.cpu_usage,
         memory_used: d.memory_used,
@@ -175,8 +178,15 @@ function ZoomIndicator() {
 function Canvas() {
   const {
     graphDevices, graphLinks, activeLayer, setLayer, fetchGraph,
-    linkMode, setLinkMode, fitViewTrigger, layoutAlgo, setLayoutAlgo,
+    linkMode, setLinkMode, fitViewTrigger, layoutAlgo, setLayoutAlgo, bacnet,
   } = useStore()
+
+  // Map BACnet device IP → instance number (e.g. 40001) for tooltip display
+  const bacnetInstByIp = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const d of bacnet?.devices ?? []) m[d.ip] = d.instance
+    return m
+  }, [bacnet?.devices])
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -206,13 +216,13 @@ function Canvas() {
   useEffect(() => {
     const nameById: Record<string, string> = {}
     for (const dev of graphDevices) nameById[dev.id] = dev.name
-    setNodes(devicesToNodes(graphDevices, positions, linkMode, linkSrc, activeLayer))
+    setNodes(devicesToNodes(graphDevices, positions, linkMode, linkSrc, activeLayer, bacnetInstByIp))
     setEdges(linksToEdges(graphLinks, nameById))
     if (!initialFit.current && graphDevices.length > 0) {
       initialFit.current = true
       setTimeout(() => fitView({ padding: 0.1, duration: 400 }), 100)
     }
-  }, [graphDevices, graphLinks, linkMode, linkSrc, activeLayer])
+  }, [graphDevices, graphLinks, linkMode, linkSrc, activeLayer, bacnetInstByIp])
 
   useEffect(() => {
     if (fitViewTrigger > 0) fitView({ padding: 0.1, duration: 400 })

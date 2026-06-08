@@ -4,6 +4,7 @@ import type {
   GraphDevice, GraphLink, SnmpStatus, GnmiStatus, SFlowStatus, BacnetStatus,
   BindingStatus, RulesTable, TrapRecord, LogEntry,
   HealthStatus, AdaptersResponse, DeviceInfo, JobStatus, EV2DeviceSnapshot,
+  PlantDeviceSnapshot,
 } from '../api/types'
 
 let _logSeq = 0
@@ -34,7 +35,8 @@ interface Store {
 
   // devices list
   devices:    DeviceInfo[]
-  ev2Metrics: EV2DeviceSnapshot[]
+  ev2Metrics:   EV2DeviceSnapshot[]
+  plantMetrics: PlantDeviceSnapshot[]
 
   // simulator status
   snmp:    SnmpStatus | null
@@ -94,8 +96,9 @@ interface Store {
   fetchSnmp:    () => Promise<void>
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
-  fetchBacnet:     () => Promise<void>
-  fetchEV2Metrics: () => Promise<void>
+  fetchBacnet:       () => Promise<void>
+  fetchEV2Metrics:   () => Promise<void>
+  fetchPlantMetrics: () => Promise<void>
   fetchBinding: () => Promise<void>
   fetchAdapters:() => Promise<void>
   fetchRules:   () => Promise<void>
@@ -113,6 +116,7 @@ export const useStore = create<Store>((set, get) => ({
   activeLayer:  'all',
   devices:      [],
   ev2Metrics:   [],
+  plantMetrics: [],
   snmp:         null,
   gnmi:         null,
   sflow:        null,
@@ -189,6 +193,13 @@ export const useStore = create<Store>((set, get) => ({
     try {
       const data = await api.ev2Metrics() as EV2DeviceSnapshot[]
       set({ ev2Metrics: data })
+    } catch { /* ignore */ }
+  },
+
+  fetchPlantMetrics: async () => {
+    try {
+      const data = await api.plantMetrics() as PlantDeviceSnapshot[]
+      set({ plantMetrics: data })
     } catch { /* ignore */ }
   },
 

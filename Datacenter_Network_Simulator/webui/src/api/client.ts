@@ -105,6 +105,7 @@ export const api = {
     post('/bacnet/start', cfg),
   bacnetStop:   ()                        => post('/bacnet/stop'),
   ev2Metrics:   ()                        => get('/bacnet/ev2/metrics'),
+  plantMetrics: ()                        => get('/bacnet/plant/metrics'),
 
   // rules
   rules:          ()                  => get('/rules'),
