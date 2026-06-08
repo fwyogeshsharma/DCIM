@@ -47,6 +47,7 @@ from core.bacnet_object_model import (
     OBJ_DEVICE, OBJ_ANALOG_INPUT, OBJ_BINARY_INPUT,
     OBJ_ANALOG_OUTPUT, OBJ_BINARY_OUTPUT, OBJ_ANALOG_VALUE, OBJ_BINARY_VALUE,
     PROP_OBJECT_NAME, PROP_OBJECT_LIST, PROP_PRESENT_VALUE, PROP_UNITS,
+    PROP_MAX_PRES_VALUE,
     PDU_CONFIRMED_REQUEST, PDU_UNCONFIRMED_REQUEST,
     PDU_SIMPLE_ACK, PDU_COMPLEX_ACK, PDU_ERROR,
     SVC_READ_PROPERTY, SVC_READ_PROPERTY_MULTIPLE,
@@ -461,7 +462,8 @@ def _poll_objects(sock: socket.socket, host: str, port: int,
 
     for batch_start in range(0, len(targets), _RPM_BATCH):
         batch = targets[batch_start: batch_start + _RPM_BATCH]
-        reqs = [(ot, oi, [PROP_OBJECT_NAME, PROP_PRESENT_VALUE, PROP_UNITS])
+        reqs = [(ot, oi, [PROP_OBJECT_NAME, PROP_PRESENT_VALUE, PROP_UNITS,
+                          PROP_MAX_PRES_VALUE])
                 for ot, oi in batch]
         iid = _next_iid()
         pkt = _build_rpm(iid, reqs)
@@ -485,7 +487,15 @@ def _poll_objects(sock: socket.socket, host: str, port: int,
                         pv = float(u)
             unit_code = _decode_uint_app(unit_raw) if unit_raw else None
             unit = _UNIT_CODES.get(unit_code, "") if unit_code is not None else ""
-            results[(ot, oi)] = {"name": name, "pv": pv, "unit": unit}
+            max_raw = props.get(PROP_MAX_PRES_VALUE)
+            mx = None
+            if max_raw is not None:
+                mx = _decode_real(max_raw)
+                if mx is None:
+                    u = _decode_uint_app(max_raw)
+                    if u is not None:
+                        mx = float(u)
+            results[(ot, oi)] = {"name": name, "pv": pv, "unit": unit, "max": mx}
     return results
 
 
@@ -493,8 +503,8 @@ def _print_poll_table(results: Dict[Tuple[int, int], Dict],
                       targets: List[Tuple[int, int]], ts: str):
     col_w = 30
     print(f"\n{bold(f'  Poll results  {ts}  ({len(targets)} object(s))')}")
-    print(f"  {'Object':<12}  {'Name':<{col_w}}  {'Value':>16}  Unit")
-    print(f"  {'─'*12}  {'─'*col_w}  {'─'*16}  {'─'*6}")
+    print(f"  {'Object':<12}  {'Name':<{col_w}}  {'Value':>16}  {'Max':>10}  Unit")
+    print(f"  {'─'*12}  {'─'*col_w}  {'─'*16}  {'─'*10}  {'─'*6}")
     for ot, oi in targets:
         obj_id = f"{_OBJ_TO_NAME.get(ot, str(ot))}:{oi}"
         d = results.get((ot, oi))
@@ -503,8 +513,10 @@ def _print_poll_table(results: Dict[Tuple[int, int], Dict],
             continue
         is_bin = ot in (OBJ_BINARY_INPUT, OBJ_BINARY_OUTPUT, OBJ_BINARY_VALUE)
         val_s = _fmt_value(d["pv"], d["unit"], is_bin)
+        mx = d.get("max")
+        max_s = dim("—") if (is_bin or mx is None) else f"{mx:>10.2f}"
         name = (d["name"] or "")[:col_w]
-        print(f"  {cyn(obj_id):<21}  {name:<{col_w}}  {val_s:>26}  {dim(d['unit'])}")
+        print(f"  {cyn(obj_id):<21}  {name:<{col_w}}  {val_s:>26}  {max_s:>10}  {dim(d['unit'])}")
 
 
 # ── Subscribe ─────────────────────────────────────────────────────────────────

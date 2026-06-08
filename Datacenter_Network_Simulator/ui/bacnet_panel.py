@@ -163,62 +163,6 @@ class BACnetPanel(QWidget):
         tbl_lay.addWidget(self._table, stretch=1)
         c_lay.addWidget(tbl_grp, stretch=1)
 
-        # ── Subscribers table ─────────────────────────────────────
-        sub_grp = QGroupBox("COV Subscribers")
-        sub_grp.setStyleSheet(_group_style())
-        sub_lay = QVBoxLayout(sub_grp)
-        sub_lay.setContentsMargins(6, 4, 6, 6)
-        sub_lay.setSpacing(4)
-
-        self._sub_table = QTableWidget()
-        self._sub_table.setColumnCount(5)
-        self._sub_table.setHorizontalHeaderLabels(
-            ["Subscriber", "PID", "Object", "Device", "Lifetime (s)"]
-        )
-        sub_hdr = self._sub_table.horizontalHeader()
-        sub_hdr.setSectionResizeMode(0, QHeaderView.Stretch)
-        sub_hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        sub_hdr.setSectionResizeMode(2, QHeaderView.Stretch)
-        sub_hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        sub_hdr.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self._sub_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._sub_table.setSelectionMode(QAbstractItemView.NoSelection)
-        self._sub_table.setAlternatingRowColors(True)
-        self._sub_table.setStyleSheet(_table_style())
-        self._sub_table.verticalHeader().setVisible(False)
-        self._sub_table.setMinimumHeight(80)
-        self._sub_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        sub_lay.addWidget(self._sub_table, stretch=1)
-        c_lay.addWidget(sub_grp, stretch=1)
-
-        # ── COV Events Sent table ─────────────────────────────────
-        evt_grp = QGroupBox("COV Events Sent")
-        evt_grp.setStyleSheet(_group_style())
-        evt_lay = QVBoxLayout(evt_grp)
-        evt_lay.setContentsMargins(6, 4, 6, 6)
-        evt_lay.setSpacing(4)
-
-        self._evt_table = QTableWidget()
-        self._evt_table.setColumnCount(5)
-        self._evt_table.setHorizontalHeaderLabels(
-            ["Time", "Device", "Object", "Value", "Sent To"]
-        )
-        evt_hdr = self._evt_table.horizontalHeader()
-        evt_hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        evt_hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        evt_hdr.setSectionResizeMode(2, QHeaderView.Stretch)
-        evt_hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        evt_hdr.setSectionResizeMode(4, QHeaderView.Stretch)
-        self._evt_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._evt_table.setSelectionMode(QAbstractItemView.NoSelection)
-        self._evt_table.setAlternatingRowColors(True)
-        self._evt_table.setStyleSheet(_table_style())
-        self._evt_table.verticalHeader().setVisible(False)
-        self._evt_table.setMinimumHeight(100)
-        self._evt_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        evt_lay.addWidget(self._evt_table, stretch=1)
-        c_lay.addWidget(evt_grp, stretch=1)
-
         layout.addWidget(content_w)
 
     # ─────────────────────────────────────────────────────────────
@@ -261,32 +205,6 @@ class BACnetPanel(QWidget):
                 Qt.green if d.get("status") == "Active" else Qt.gray
             )
             self._table.setItem(row, 3, status_item)
-
-    def refresh_subscriber_table(self, subs: list):
-        """subs: list of dicts from BACnetController.get_all_subscribers()"""
-        self._sub_table.setRowCount(len(subs))
-        for row, s in enumerate(subs):
-            addr = f"{s['subscriber_ip']}:{s['subscriber_port']}"
-            lt   = f"{s['remaining']}s" if s['lifetime'] else "∞"
-            self._sub_table.setItem(row, 0, QTableWidgetItem(addr))
-            self._sub_table.setItem(row, 1, QTableWidgetItem(str(s['process_id'])))
-            self._sub_table.setItem(row, 2, QTableWidgetItem(s['obj_name']))
-            self._sub_table.setItem(row, 3, QTableWidgetItem(str(s['device_instance'])))
-            self._sub_table.setItem(row, 4, QTableWidgetItem(lt))
-
-    def refresh_cov_events(self, events: list):
-        """events: list of dicts from BACnetController.get_cov_events(), newest last."""
-        rows = list(reversed(events))
-        self._evt_table.setRowCount(len(rows))
-        for row, ev in enumerate(rows):
-            sent = ", ".join(f"{a[0]}:{a[1]}" for a in ev.get("sent_to", []))
-            val  = ev.get("value")
-            val_s = f"{val:.3f}" if isinstance(val, float) else str(val)
-            self._evt_table.setItem(row, 0, QTableWidgetItem(ev.get("ts", "")))
-            self._evt_table.setItem(row, 1, QTableWidgetItem(str(ev.get("instance", ""))))
-            self._evt_table.setItem(row, 2, QTableWidgetItem(ev.get("obj_name", "")))
-            self._evt_table.setItem(row, 3, QTableWidgetItem(val_s))
-            self._evt_table.setItem(row, 4, QTableWidgetItem(sent))
 
     def set_enabled(self, enabled: bool):
         """Disable all controls while IPs are being bound."""

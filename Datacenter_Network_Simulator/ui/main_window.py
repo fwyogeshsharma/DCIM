@@ -3481,8 +3481,6 @@ class MainWindow(QMainWindow):
                 if hasattr(self, "_bacnet_refresh_timer"):
                     self._bacnet_refresh_timer.stop()
                 self._bacnet_panel.refresh_device_table([])
-                self._bacnet_panel.refresh_subscriber_table([])
-                self._bacnet_panel.refresh_cov_events([])
                 self._status_label.setText("BACnet/IP stopped.")
         except Exception as e:
             self._console_panel.log(f"BACnet UI sync error: {e}", "error")
@@ -3595,8 +3593,6 @@ class MainWindow(QMainWindow):
             self._bacnet_refresh_timer.stop()
         self._bacnet_panel.set_running(False)
         self._bacnet_panel.refresh_device_table([])
-        self._bacnet_panel.refresh_subscriber_table([])
-        self._bacnet_panel.refresh_cov_events([])
         self._status_label.setText("BACnet/IP stopped.")
 
     def _on_bacnet_log(self, msg: str, level: str = "info"):
@@ -3615,8 +3611,7 @@ class MainWindow(QMainWindow):
             if not self.bacnet.is_running():
                 self._bacnet_refresh_timer.stop()
                 return
-            self._bacnet_panel.refresh_subscriber_table(self.bacnet.get_all_subscribers())
-            self._bacnet_panel.refresh_cov_events(self.bacnet.get_cov_events())
+            self._bacnet_panel.refresh_device_table(self.bacnet.get_device_summary())
         except Exception as e:
             log.warning("[BACnet] panel refresh error: %s", e)
 

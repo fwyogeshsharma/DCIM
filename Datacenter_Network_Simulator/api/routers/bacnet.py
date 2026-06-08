@@ -185,9 +185,11 @@ def bacnet_start(cfg: BACnetConfig):
     _PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
                     DeviceType.COOLING_TOWER, DeviceType.VALVE, DeviceType.CRAH}
     plant_devices: list = []
+    _plant_total = 0
     for d in s.device_manager.get_all_devices():
         if d.device_type not in _PLANT_TYPES:
             continue
+        _plant_total += 1
         ip = (d.ip_address if d.ip_address in bound_set else None) \
             or (d.mgmt_ip if getattr(d, "mgmt_ip", None) in bound_set else None)
         if ip:
@@ -197,6 +199,13 @@ def bacnet_start(cfg: BACnetConfig):
                 "device_type": d.device_type.value,
                 "rated_kw": (d.power_draw_w or 0) / 1000.0,
             })
+
+    _plant_unbound = _plant_total - len(plant_devices)
+    if _plant_unbound:
+        s.notify_ui("log_bacnet",
+                    f"[BACnet] Warning: {_plant_unbound} of {_plant_total} chiller-plant "
+                    f"device(s) skipped — mgmt IPs not bound. Bind IPs, then restart BACnet.",
+                    "warning")
 
     s.start_ticker_if_needed()
 
