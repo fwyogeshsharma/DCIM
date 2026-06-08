@@ -112,6 +112,7 @@ const ROLE_LAYERS: Record<string, number> = {
   pdu:           9,
   ups:           10,
   floor_pdu:     11,
+  pump:          12,
 }
 
 const ROLE_TIER_LABELS: Record<number, string> = {
@@ -127,6 +128,7 @@ const ROLE_TIER_LABELS: Record<number, string> = {
   9:  'PDUs',
   10: 'UPS',
   11: 'Floor PDUs',
+  12: 'Pumps',
 }
 
 const TIER_COLORS: Record<number, string> = {
@@ -142,6 +144,7 @@ const TIER_COLORS: Record<number, string> = {
   9:  '#f59e0b',
   10: '#84cc16',
   11: '#fb923c',
+  12: '#06b6d4',
 }
 
 function roleToLayer(role: string | null, fallback: number): number {
@@ -183,6 +186,8 @@ function deviceVisuals(deviceType: string, deviceRole?: string | null) {
     return { icon: '⚡', fill: '#2d1200', stroke: '#fb923c', radius: 16 }
   if (role === 'pdu' || /pdu|power/.test(dt))
     return { icon: '⚡', fill: '#422006', stroke: '#f59e0b', radius: 18 }
+  if (role === 'pump' || /pump/.test(dt))
+    return { icon: '💧', fill: '#083344', stroke: '#06b6d4', radius: 16 }
   if (role === 'sensor' || /sensor|thermometer|hygrometer/.test(dt))
     return { icon: '🌡️', fill: '#1f1a2e', stroke: '#f43f5e', radius: 14 }
   if (role === 'oob_switch' || /oob|out.?of.?band/.test(dt))
