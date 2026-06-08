@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { usePrediction } from '@/hooks/usePredictions'
 import { getDeviceTypeMeta } from '@/lib/deviceType'
-import { classifyReading, energyMetricMeta, formatEnergyValue, ENERGY, SCOPE, normalizeScope } from '@/lib/energyMetrics'
+import { classifyReading, energyMetricMeta, formatEnergyValue, isAlarmMetric, formatAlarmValue, ENERGY, SCOPE, normalizeScope } from '@/lib/energyMetrics'
 import type { EnergyReading } from '@/lib/types'
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
@@ -105,7 +105,7 @@ interface EnergyCardData {
   status: 'online' | 'offline'
   lastTs: string
   activePower?: number
-  panel: { label: string; unit: string; value: number }[]
+  panel: { label: string; unit: string; value: number; isAlarm: boolean }[]
   phases: { phase: string; voltage?: number; current?: number }[]
   circuits: { circuit: string; current?: number; power?: number; energy?: number }[]
   harmonics: { tag: string; value: number }[]
@@ -153,7 +153,13 @@ function EnergyMonitorCard({ card, timeRange }: { card: EnergyCardData; timeRang
           {card.panel.map((p) => (
             <div key={p.label} className="bg-slate-900/50 rounded-lg p-3 text-center">
               <p className="text-xs text-slate-500 mb-1">{p.label}</p>
-              <p className="text-sm font-bold text-cyan-400">{formatEnergyValue(p.value, p.unit)}</p>
+              {p.isAlarm ? (
+                <p className={`text-sm font-bold ${p.value > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                  {formatAlarmValue(p.value)}
+                </p>
+              ) : (
+                <p className="text-sm font-bold text-cyan-400">{formatEnergyValue(p.value, p.unit)}</p>
+              )}
             </div>
           ))}
         </div>
@@ -486,7 +492,7 @@ export default function Reports() {
       // Panel scalars (tag=''), excluding the active-power headline shown above.
       const panel = readings
         .filter((r) => classifyReading(r) === 'panel' && r.metric_name !== 'energy.active_power_kw')
-        .map((r) => ({ ...energyMetricMeta(r.metric_name), value: r.value }))
+        .map((r) => ({ ...energyMetricMeta(r.metric_name), value: r.value, isAlarm: isAlarmMetric(r.metric_name) }))
         .sort((a, b) => a.label.localeCompare(b.label))
 
       // Per-phase voltage & current.

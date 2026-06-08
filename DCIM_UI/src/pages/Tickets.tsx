@@ -58,6 +58,7 @@ export default function Tickets() {
   const [search, setSearch] = useState('')
   const [genAlert, setGenAlert] = useState<DeduplicatedAlert | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   const { data: stats } = useQuery({
     queryKey: ['ticket-stats'],
@@ -131,6 +132,9 @@ export default function Tickets() {
             Generate tickets from critical alerts and assign them to your team
           </p>
         </div>
+        <Button onClick={() => setShowCreate(true)} className="shrink-0">
+          <Plus className="w-4 h-4" /> New Ticket
+        </Button>
       </div>
 
       {/* Stats */}
@@ -260,6 +264,13 @@ export default function Tickets() {
         </table>
       </div>
 
+      {showCreate && (
+        <CreateDialog
+          assignees={assignees}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); invalidate() }}
+        />
+      )}
       {genAlert && (
         <GenerateDialog
           alert={genAlert}
@@ -286,6 +297,84 @@ function StatCard({ label, value, accent }: { label: string; value?: number; acc
       <p className="text-xs text-slate-400">{label}</p>
       <p className={`text-3xl font-bold mt-1 ${accent}`}>{value ?? '—'}</p>
     </div>
+  )
+}
+
+// ── Manual create dialog ───────────────────────────────────────────────────
+function CreateDialog({ assignees, onClose, onCreated }: {
+  assignees: string[]; onClose: () => void; onCreated: () => void
+}) {
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [priority, setPriority] = useState<TicketPriority>('P3')
+  const [category, setCategory] = useState<TicketCategory>('other')
+  const [sourceHostname, setSourceHostname] = useState('')
+  const [assignedTo, setAssignedTo] = useState('')
+
+  const mut = useMutation({
+    mutationFn: () => api.createTicket({
+      title: title.trim(),
+      description: description.trim() || undefined,
+      priority, category,
+      source_hostname: sourceHostname.trim() || undefined,
+      assigned_to: assignedTo || undefined,
+      actor: CURRENT_USER,
+    }),
+    onSuccess: (t) => { toast.success(`Ticket ${t.ticket_number} created`); onCreated() },
+    onError: (e: any) => toast.error(e.message || 'Failed to create ticket'),
+  })
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="bg-slate-900 border-white/10 text-white">
+        <DialogHeader><DialogTitle>New Ticket</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <Field label="Title">
+            <input value={title} onChange={e => setTitle(e.target.value)} autoFocus
+              placeholder="Short summary of the issue"
+              className="w-full px-3 py-2 text-sm rounded-lg bg-slate-800 border border-white/10 text-white placeholder:text-slate-500" />
+          </Field>
+          <Field label="Description (optional)">
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+              placeholder="Details, impact, steps already taken…"
+              className="w-full px-3 py-2 text-sm rounded-lg bg-slate-800 border border-white/10 text-white placeholder:text-slate-500 resize-y" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Priority">
+              <select value={priority} onChange={e => setPriority(e.target.value as TicketPriority)}
+                className="w-full px-3 py-2 text-sm rounded-lg bg-slate-800 border border-white/10 text-white">
+                {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </Field>
+            <Field label="Category">
+              <select value={category} onChange={e => setCategory(e.target.value as TicketCategory)}
+                className="w-full px-3 py-2 text-sm rounded-lg bg-slate-800 border border-white/10 text-white capitalize">
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
+          </div>
+          <Field label="Affected host / device (optional)">
+            <input value={sourceHostname} onChange={e => setSourceHostname(e.target.value)}
+              placeholder="e.g. core-sw-01"
+              className="w-full px-3 py-2 text-sm rounded-lg bg-slate-800 border border-white/10 text-white placeholder:text-slate-500" />
+          </Field>
+          <Field label="Assign to (optional)">
+            <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-lg bg-slate-800 border border-white/10 text-white">
+              <option value="">Leave unassigned</option>
+              {assignees.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </Field>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending || !title.trim()}>
+            {mut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Create Ticket
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

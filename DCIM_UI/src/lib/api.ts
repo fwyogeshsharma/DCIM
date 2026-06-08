@@ -36,9 +36,18 @@ class APIClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
 
+    // POST/PUT/PATCH always carry a Content-Type: application/json header (set
+    // below), and the aggregator's express.json() rejects such a request with a
+    // 400 Bad Request when the body is empty. So body-less mutations (e.g.
+    // /inventory/sync, /agents/:id/approve) must still send an empty "{}".
+    const method = (options?.method ?? 'GET').toUpperCase()
+    const mutating = method === 'POST' || method === 'PUT' || method === 'PATCH'
+    const body = options?.body ?? (mutating ? '{}' : undefined)
+
     try {
       const response = await fetch(url, {
         ...options,
+        body,
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',

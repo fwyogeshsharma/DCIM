@@ -91,6 +91,19 @@ export function formatEnergyValue(value: number, unit: string): string {
   return unit ? `${v} ${unit}` : v
 }
 
+// Alarm / status metrics are booleans encoded as a number: 0 = clear (false),
+// anything > 0 = active (true). Detected by an `alarm` token anywhere in the
+// metric name (e.g. energy.alarm_high_thd, energy.alarm_overcurrent,
+// energy.alarm_phase_loss, energy.alarm_sensor_fault, energy.alarm_voltage_imbalance).
+export function isAlarmMetric(metricName: string): boolean {
+  return /(^|[._])alarm([._]|$)/i.test(metricName)
+}
+
+// Render an alarm metric's numeric value as a boolean string.
+export function formatAlarmValue(value: number): 'True' | 'False' {
+  return value > 0 ? 'True' : 'False'
+}
+
 export type EnergyCategory = 'panel' | 'phase' | 'circuit' | 'harmonic'
 
 export function classifyReading(r: EnergyReading): EnergyCategory {
