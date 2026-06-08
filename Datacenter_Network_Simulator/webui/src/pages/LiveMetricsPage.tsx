@@ -1165,27 +1165,23 @@ const TAB_TYPES: Record<Tab, string[]> = {
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function LiveMetricsPage() {
-  const { devices, ev2Metrics, plantMetrics, setActiveView, fetchEV2Metrics, fetchPlantMetrics } = useStore()
+  const { devices, ev2Metrics, plantMetrics, tickSeq, setActiveView, fetchEV2Metrics, fetchPlantMetrics } = useStore()
   const [tab,    setTab]    = useState<Tab>('all')
   const [search, setSearch] = useState('')
 
   const isPlantTab = PLANT_TABS.includes(tab)
 
-  // Poll EV2 metrics every 30 s when energy tab is active
+  // Refresh EV2 metrics on tab open + every simulator tick (matches tick interval)
   useEffect(() => {
     if (tab !== 'energy') return
     fetchEV2Metrics()
-    const id = setInterval(fetchEV2Metrics, 30_000)
-    return () => clearInterval(id)
-  }, [tab, fetchEV2Metrics])
+  }, [tab, tickSeq, fetchEV2Metrics])
 
-  // Poll chiller-plant metrics every 30 s when any plant tab is active
+  // Refresh chiller-plant metrics on tab open + every simulator tick
   useEffect(() => {
     if (!isPlantTab) return
     fetchPlantMetrics()
-    const id = setInterval(fetchPlantMetrics, 30_000)
-    return () => clearInterval(id)
-  }, [isPlantTab, fetchPlantMetrics])
+  }, [isPlantTab, tickSeq, fetchPlantMetrics])
 
   const counts = useMemo((): Record<Tab, number> => ({
     all:     devices.length,

@@ -55,6 +55,9 @@ interface Store {
   // console logs
   logs: LogEntry[]
 
+  // incremented on every simulator tick (SSE sync_devices) — drives live refresh
+  tickSeq: number
+
   // selection
   selectedDeviceId: string | null
 
@@ -128,6 +131,7 @@ export const useStore = create<Store>((set, get) => ({
   health:       null,
   activeJobs:   {},
   logs:             [],
+  tickSeq:          0,
   selectedDeviceId: null,
   linkMode:         false,
   fitViewTrigger:   0,
@@ -282,7 +286,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'bacnet')   s.fetchBacnet()
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()
-            if (t === 'devices')  s.fetchDevices()
+            if (t === 'devices')  { s.fetchDevices(); set(st => ({ tickSeq: st.tickSeq + 1 })) }
             if (t === 'topology') s.fetchGraph()
             if (t === 'traps')    s.fetchTraps()
           } else if (ev.type === 'link_changed') {
