@@ -249,19 +249,14 @@ export default function AgentDetail() {
         <h3 className="text-lg font-semibold text-white mb-4">Latest Metrics</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {latestMetrics &&
-            Object.entries(latestMetrics).map(([key, metric]) => {
-              const isAlarm = /^alarm\b/i.test(key)
-              return (
-                <div key={key} className="border border-white/10 rounded p-3">
-                  <p className="text-xs text-slate-400">{key}</p>
-                  <p className="text-lg font-semibold mt-1 text-white">
-                    {isAlarm
-                      ? (metric.value >= 1 ? 'true' : 'false')
-                      : `${metric.value.toFixed(2)} ${metric.unit}`}
-                  </p>
-                </div>
-              )
-            })}
+            Object.entries(latestMetrics).map(([key, metric]) => (
+              <div key={key} className="border border-white/10 rounded p-3">
+                <p className="text-xs text-slate-400">{key}</p>
+                <p className="text-lg font-semibold mt-1 text-white">
+                  {metric.value.toFixed(2)} {metric.unit}
+                </p>
+              </div>
+            ))}
         </div>
       </div>
 
