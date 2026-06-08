@@ -165,7 +165,13 @@ export function createInventoryRouter(dbPool: Pool): Router {
               mem_util,
               CASE WHEN mem_total_b > 0 THEN mem_used_b / mem_total_b * 100 END,
               CASE WHEN mem_total_kb > 0 THEN (mem_total_kb - mem_avail_kb) / mem_total_kb * 100 END
-            ) AS ram_pct
+            ) AS ram_pct,
+            -- Total installed RAM in GB: system.memory_total_bytes (gNMI) ÷ 1024³,
+            -- else server.memory_total_kb (UCD-SNMP) ÷ 1024².
+            COALESCE(
+              CASE WHEN mem_total_b  > 0 THEN mem_total_b  / 1073741824.0 END,
+              CASE WHEN mem_total_kb > 0 THEN mem_total_kb / 1048576.0 END
+            ) AS ram_gb
           FROM (
             SELECT
               device_id,
@@ -200,7 +206,7 @@ export function createInventoryRouter(dbPool: Pool): Router {
           d.status,
           d.specs,
           d.cpu_cores,
-          d.ram_gb,
+          COALESCE(ROUND(h.ram_gb::numeric, 1)::double precision, d.ram_gb) AS ram_gb,
           d.storage_gb,
           d.power_capacity_w,
           d.port_count,

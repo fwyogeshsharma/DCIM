@@ -40,6 +40,16 @@ export function deriveCpuPct(m: Record<string, number>): number | null {
   return null
 }
 
+// Total installed RAM in GB, or null when no memory-total metric is present.
+// system.memory_total_bytes (gNMI) ÷ 1024³, else server.memory_total_kb ÷ 1024².
+export function deriveRamTotalGb(m: Record<string, number>): number | null {
+  const tb = m['system.memory_total_bytes']
+  if (tb != null && tb > 0) return tb / (1024 ** 3)
+  const tk = m['server.memory_total_kb']
+  if (tk != null && tk > 0) return tk / (1024 ** 2)
+  return null
+}
+
 // RAM utilisation %, or null when no memory metric is present for the device.
 export function deriveRamPct(m: Record<string, number>): number | null {
   // Network devices report utilisation directly.

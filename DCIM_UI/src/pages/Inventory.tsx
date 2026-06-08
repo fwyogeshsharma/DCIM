@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, InventoryDevice, InventoryLink } from '@/lib/api'
-import { deriveCpuPct, deriveRamPct } from '@/lib/deviceHealth'
+import { deriveCpuPct, deriveRamPct, deriveRamTotalGb } from '@/lib/deviceHealth'
 import {
   Plus, Search, X, Server, Network, HardDrive, Cpu, MemoryStick,
   Zap, Package, Link as LinkIcon, Edit3, Trash2, ChevronDown,
@@ -474,6 +474,8 @@ function AnalyticsPanel({ device, onClose }: { device: InventoryDevice; onClose:
   // falling back to the stored inventory snapshot when no metric is present.
   const cpuPct  = deriveCpuPct(latestMap) ?? device.cpu_used_pct ?? null
   const ramPct  = deriveRamPct(latestMap) ?? device.ram_used_pct ?? null
+  // Total installed RAM (GB) from system.memory_total_bytes / server.memory_total_kb.
+  const ramTotalGb = deriveRamTotalGb(latestMap) ?? device.ram_gb ?? null
   const diskPct = device.storage_gb ? pct(device.storage_used_gb, device.storage_gb) : null
 
   const sm = STATUS_META[device.status] ?? STATUS_META['idle']
@@ -531,7 +533,7 @@ function AnalyticsPanel({ device, onClose }: { device: InventoryDevice; onClose:
             <div>
               <div className="flex justify-between text-xs mb-0.5">
                 <span className="text-slate-400 flex items-center gap-1"><MemoryStick className="w-3 h-3" /> RAM</span>
-                <span className="text-slate-300">{fmtGb(device.ram_gb)}</span>
+                <span className="text-slate-300">{fmtGb(ramTotalGb)}</span>
               </div>
               <UsageBar pct={ramPct} color="bg-purple-500" />
             </div>
