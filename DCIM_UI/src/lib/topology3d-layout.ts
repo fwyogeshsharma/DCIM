@@ -56,6 +56,8 @@ export interface LayoutResult {
 // last index = highest Y plane (edge routers / DCIM servers).
 // Y values match node 3D positions: layer L node → 3D Y = -(L * LAYER_GAP_Y).
 export const FLOORS = [
+  { name: 'Cooling Towers', label: 'T15', y: -392, color: '#14b8a6' },
+  { name: 'Chillers',       label: 'T14', y: -364, color: '#0ea5e9' },
   { name: 'Pumps',         label: 'T13', y: -336, color: '#06b6d4' },
   { name: 'Floor PDUs',    label: 'T12', y: -308, color: '#fb923c' },
   { name: 'UPS',           label: 'T11', y: -280, color: '#84cc16' },
@@ -79,7 +81,8 @@ const ROLE_LAYERS_3D: Record<string, number> = {
   oob_switch: 6,
   sensor: 7,
   server: 8, pdu: 9, ups: 10, floor_pdu: 11,
-  pump: 12, // lowest tier — sits at the bottom, below floor PDUs
+  // Cooling plant tiers stack below the power tiers, deepest at the bottom.
+  pump: 12, chiller: 13, cooling_tower: 14,
 }
 
 function roleLayerOf(role: string | null | undefined, name: string): number | null {
@@ -96,6 +99,8 @@ function roleLayerOf(role: string | null | undefined, name: string): number | nu
   if (/^tor-|\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
   if (/^oob-/i.test(name)) return 6
   if (/^sensor/i.test(name)) return 7
+  if (/cooling-?tower|\bct-?\d|cooling.?tower/i.test(name)) return 14
+  if (/\bchiller\b|^chiller-|^chl-/i.test(name)) return 13
   if (/\bpump\b|^pump-/i.test(name)) return 12
   if (/^fpdu|^floor-?pdu/i.test(name)) return 11
   if (/^ups-/i.test(name)) return 10
