@@ -91,6 +91,48 @@ DEVICE_COLORS = {
         "text": QColor("white"),
         "icon": "EV2",
     },
+    DeviceType.GENERATOR: {
+        "fill": QColor("#713f12"),
+        "border": QColor("#422006"),
+        "text": QColor("white"),
+        "icon": "GEN",
+    },
+    DeviceType.RPP: {
+        "fill": QColor("#7c2d6e"),
+        "border": QColor("#4a044e"),
+        "text": QColor("white"),
+        "icon": "RPP",
+    },
+    DeviceType.CRAH: {
+        "fill": QColor("#0e7490"),
+        "border": QColor("#164e63"),
+        "text": QColor("white"),
+        "icon": "CRAH",
+    },
+    DeviceType.CHILLER: {
+        "fill": QColor("#2563eb"),
+        "border": QColor("#1e3a8a"),
+        "text": QColor("white"),
+        "icon": "CHL",
+    },
+    DeviceType.PUMP: {
+        "fill": QColor("#0d9488"),
+        "border": QColor("#115e59"),
+        "text": QColor("white"),
+        "icon": "PMP",
+    },
+    DeviceType.COOLING_TOWER: {
+        "fill": QColor("#06b6d4"),
+        "border": QColor("#155e75"),
+        "text": QColor("white"),
+        "icon": "CT",
+    },
+    DeviceType.VALVE: {
+        "fill": QColor("#4f46e5"),
+        "border": QColor("#312e81"),
+        "text": QColor("white"),
+        "icon": "VLV",
+    },
 }
 
 # Edge color/style by network layer

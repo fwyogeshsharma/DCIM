@@ -131,6 +131,168 @@ _LIMIT_GROUPS = [
 ]
 
 
+# ── Verdigris EV2 + chiller-plant metrics / limits (mirror web TickPanel) ─────
+# Flag/limit keys MUST match those registered in core/device_state_store.py.
+# Plant keys are "<device_type>:<PointName>"; EV2 metrics are grouped.
+
+# Metric flag groups: EV2 grouped, plant per-point.
+_EV2_FLAG_ROWS = [
+    ("ev2_power",         "Power (kW / V / A)",              "Panel total kW, phase voltages & currents"),
+    ("ev2_energy",        "Energy (kWh)",                    "Panel + per-circuit kWh accumulators"),
+    ("ev2_power_quality", "Power Quality (THD / Harmonics)", "Voltage/current THD + harmonics 3/5/7/9"),
+    ("ev2_freq_pf",       "Frequency & Power Factor",        "Mains frequency + panel power factor"),
+    ("ev2_alarms",        "Panel Alarms",                    "Overcurrent, imbalance, high THD, phase loss, sensor fault"),
+    ("ev2_circuits",      "Per-Circuit Metrics",             "Per-circuit current, kW, PF, THD"),
+]
+
+# (gid, title, [(point, label)])
+_PLANT_FLAG_GROUPS = [
+    ("crah", "CRAH", [
+        ("Supply_Air_Temp", "Supply Air Temp"), ("Return_Air_Temp", "Return Air Temp"),
+        ("Setpoint", "Setpoint"), ("Fan_Speed", "Fan Speed"), ("CHW_Valve", "CHW Valve"),
+        ("Cooling_Capacity", "Cooling Capacity"), ("Supply_Humidity", "Supply Humidity"),
+        ("Airflow", "Airflow"), ("Fan_Power", "Fan Power"), ("Run_Hours", "Run Hours"),
+        ("Unit_Running", "Unit Running"), ("Alarm_HighTemp", "Alarm: High Temp"),
+        ("Alarm_AirflowLoss", "Alarm: Airflow Loss"), ("Filter_Dirty", "Filter Dirty"),
+    ]),
+    ("chiller", "Chiller", [
+        ("CHW_Supply_Temp", "CHW Supply Temp"), ("CHW_Return_Temp", "CHW Return Temp"),
+        ("CHW_Setpoint", "CHW Setpoint"), ("CHW_Flow", "CHW Flow"),
+        ("Cond_Supply_Temp", "Cond Supply Temp"), ("Cond_Return_Temp", "Cond Return Temp"),
+        ("Compressor_Load", "Compressor Load"), ("Active_Power", "Active Power"),
+        ("Cooling_Capacity", "Cooling Capacity"), ("COP", "COP"),
+        ("Evap_Pressure", "Evap Pressure"), ("Cond_Pressure", "Cond Pressure"),
+        ("Run_Hours", "Run Hours"), ("Chiller_Running", "Chiller Running"),
+        ("Alarm_HighPressure", "Alarm: High Pressure"), ("Alarm_LowEvapTemp", "Alarm: Low Evap Temp"),
+        ("Alarm_FlowLoss", "Alarm: Flow Loss"),
+    ]),
+    ("pump", "Pump", [
+        ("Speed", "Speed"), ("Flow", "Flow"), ("Discharge_Pressure", "Discharge Pressure"),
+        ("Suction_Pressure", "Suction Pressure"), ("Diff_Pressure", "Diff Pressure"),
+        ("Motor_Power", "Motor Power"), ("Motor_Temp", "Motor Temp"),
+        ("VFD_Frequency", "VFD Frequency"), ("Run_Hours", "Run Hours"),
+        ("Run_Status", "Run Status"), ("Alarm_Fault", "Alarm: Fault"), ("Alarm_LowFlow", "Alarm: Low Flow"),
+    ]),
+    ("cooling_tower", "Cooling Tower", [
+        ("Fan_Speed", "Fan Speed"), ("Basin_Temp", "Basin Temp"),
+        ("Cond_Water_In", "Cond Water In"), ("Cond_Water_Out", "Cond Water Out"),
+        ("Fan_Power", "Fan Power"), ("Basin_Level", "Basin Level"),
+        ("Makeup_Flow", "Makeup Flow"), ("Vibration", "Vibration"), ("Run_Hours", "Run Hours"),
+        ("Fan_Status", "Fan Status"), ("Alarm_HighVibration", "Alarm: High Vibration"),
+        ("Alarm_LowBasin", "Alarm: Low Basin"),
+    ]),
+    ("valve", "Valve", [
+        ("Position", "Position"), ("Commanded_Position", "Commanded Position"),
+        ("Actuator_Temp", "Actuator Temp"), ("Status_Modulating", "Status Modulating"),
+        ("Alarm_ActuatorFault", "Alarm: Actuator Fault"),
+    ]),
+]
+
+_METRIC_GROUPS.append(("Verdigris EV2", _EV2_FLAG_ROWS))
+for _gid, _title, _points in _PLANT_FLAG_GROUPS:
+    _METRIC_GROUPS.append((_title, [
+        (f"{_gid}:{_p}", _lbl, f"{_lbl} — present-value updated each tick")
+        for _p, _lbl in _points
+    ]))
+
+# Limit specs: numeric clamp + binary off/on force.
+# (gid, title, num=[(point,label,suffix,absMin,absMax,step,dec)], bin=[(point,label)])
+_PLANT_LIMIT_SPEC = [
+    ("ev2", "Verdigris EV2", [
+        ("Panel_Total_kW", "Panel Total kW", " kW", 0, 200, 1, 0),
+        ("Voltage_PhA", "Voltage Ph A", " V", 200, 260, 1, 1),
+        ("Voltage_PhB", "Voltage Ph B", " V", 200, 260, 1, 1),
+        ("Voltage_PhC", "Voltage Ph C", " V", 200, 260, 1, 1),
+        ("Current_PhA", "Current Ph A", " A", 0, 200, 1, 1),
+        ("Current_PhB", "Current Ph B", " A", 0, 200, 1, 1),
+        ("Current_PhC", "Current Ph C", " A", 0, 200, 1, 1),
+        ("Line_Frequency", "Line Frequency", " Hz", 45, 65, 0.05, 2),
+        ("Panel_PF", "Power Factor", "", 0, 1, 0.01, 2),
+        ("Voltage_THD", "Voltage THD", " %", 0, 50, 0.5, 1),
+        ("Current_THD", "Current THD", " %", 0, 50, 0.5, 1),
+    ], [
+        ("Alarm_Overcurrent", "Alarm: Overcurrent"), ("Alarm_VoltageImbalance", "Alarm: V Imbalance"),
+        ("Alarm_HighTHD", "Alarm: High THD"), ("Alarm_PhaseLoss", "Alarm: Phase Loss"),
+        ("Alarm_SensorFault", "Alarm: Sensor Fault"),
+    ]),
+    ("crah", "CRAH", [
+        ("Supply_Air_Temp", "Supply Air Temp", " °C", 0, 40, 0.5, 1),
+        ("Return_Air_Temp", "Return Air Temp", " °C", 0, 50, 0.5, 1),
+        ("Setpoint", "Setpoint", " °C", 10, 30, 0.5, 1),
+        ("Fan_Speed", "Fan Speed", " %", 0, 100, 1, 0),
+        ("CHW_Valve", "CHW Valve", " %", 0, 100, 1, 0),
+        ("Cooling_Capacity", "Cooling Capacity", " %", 0, 100, 1, 0),
+        ("Supply_Humidity", "Supply Humidity", " %", 0, 100, 1, 0),
+        ("Airflow", "Airflow", " %", 0, 100, 1, 0),
+        ("Fan_Power", "Fan Power", " kW", 0, 50, 0.1, 2),
+        ("Run_Hours", "Run Hours", " h", 0, 100000, 100, 0),
+    ], [
+        ("Unit_Running", "Unit Running"), ("Alarm_HighTemp", "Alarm: High Temp"),
+        ("Alarm_AirflowLoss", "Alarm: Airflow Loss"), ("Filter_Dirty", "Filter Dirty"),
+    ]),
+    ("chiller", "Chiller", [
+        ("CHW_Supply_Temp", "CHW Supply Temp", " °C", 0, 20, 0.5, 1),
+        ("CHW_Return_Temp", "CHW Return Temp", " °C", 0, 25, 0.5, 1),
+        ("CHW_Setpoint", "CHW Setpoint", " °C", 4, 12, 0.5, 1),
+        ("CHW_Flow", "CHW Flow", " L/s", 0, 50, 0.5, 1),
+        ("Cond_Supply_Temp", "Cond Supply Temp", " °C", 0, 50, 0.5, 1),
+        ("Cond_Return_Temp", "Cond Return Temp", " °C", 0, 50, 0.5, 1),
+        ("Compressor_Load", "Compressor Load", " %", 0, 100, 1, 0),
+        ("Active_Power", "Active Power", " kW", 0, 600, 1, 0),
+        ("Cooling_Capacity", "Cooling Capacity", " kW", 0, 1000, 1, 0),
+        ("COP", "COP", "", 0, 10, 0.1, 2),
+        ("Evap_Pressure", "Evap Pressure", " kPa", 0, 800, 1, 0),
+        ("Cond_Pressure", "Cond Pressure", " kPa", 0, 1500, 1, 0),
+        ("Run_Hours", "Run Hours", " h", 0, 100000, 100, 0),
+    ], [
+        ("Chiller_Running", "Chiller Running"), ("Alarm_HighPressure", "Alarm: High Pressure"),
+        ("Alarm_LowEvapTemp", "Alarm: Low Evap Temp"), ("Alarm_FlowLoss", "Alarm: Flow Loss"),
+    ]),
+    ("pump", "Pump", [
+        ("Speed", "Speed", " %", 0, 100, 1, 0),
+        ("Flow", "Flow", " L/s", 0, 50, 0.5, 1),
+        ("Discharge_Pressure", "Discharge Pressure", " kPa", 0, 800, 1, 0),
+        ("Suction_Pressure", "Suction Pressure", " kPa", 0, 400, 1, 0),
+        ("Diff_Pressure", "Diff Pressure", " kPa", 0, 600, 1, 0),
+        ("Motor_Power", "Motor Power", " kW", 0, 100, 0.1, 2),
+        ("Motor_Temp", "Motor Temp", " °C", 0, 120, 0.5, 1),
+        ("VFD_Frequency", "VFD Frequency", " Hz", 0, 60, 0.5, 1),
+        ("Run_Hours", "Run Hours", " h", 0, 100000, 100, 0),
+    ], [
+        ("Run_Status", "Run Status"), ("Alarm_Fault", "Alarm: Fault"), ("Alarm_LowFlow", "Alarm: Low Flow"),
+    ]),
+    ("cooling_tower", "Cooling Tower", [
+        ("Fan_Speed", "Fan Speed", " %", 0, 100, 1, 0),
+        ("Basin_Temp", "Basin Temp", " °C", 0, 50, 0.5, 1),
+        ("Cond_Water_In", "Cond Water In", " °C", 0, 50, 0.5, 1),
+        ("Cond_Water_Out", "Cond Water Out", " °C", 0, 50, 0.5, 1),
+        ("Fan_Power", "Fan Power", " kW", 0, 50, 0.1, 2),
+        ("Basin_Level", "Basin Level", " %", 0, 100, 1, 0),
+        ("Makeup_Flow", "Makeup Flow", " L/min", 0, 20, 0.5, 1),
+        ("Vibration", "Vibration", " mm/s", 0, 10, 0.1, 2),
+        ("Run_Hours", "Run Hours", " h", 0, 100000, 100, 0),
+    ], [
+        ("Fan_Status", "Fan Status"), ("Alarm_HighVibration", "Alarm: High Vibration"),
+        ("Alarm_LowBasin", "Alarm: Low Basin"),
+    ]),
+    ("valve", "Valve", [
+        ("Position", "Position", " %", 0, 100, 1, 0),
+        ("Commanded_Position", "Commanded Position", " %", 0, 100, 1, 0),
+        ("Actuator_Temp", "Actuator Temp", " °C", 0, 100, 0.5, 1),
+    ], [
+        ("Status_Modulating", "Status Modulating"), ("Alarm_ActuatorFault", "Alarm: Actuator Fault"),
+    ]),
+]
+
+for _gid, _title, _num, _binr in _PLANT_LIMIT_SPEC:
+    _rows = []
+    for _p, _lbl, _suf, _amn, _amx, _stp, _dec in _num:
+        _rows.append((f"{_gid}:{_p}", _lbl, "num", _amn, _amx, _stp, _dec, _suf, _amn, _amx))
+    for _p, _lbl in _binr:
+        _rows.append((f"{_gid}:{_p}", _lbl, "state", ["off", "on"]))
+    _LIMIT_GROUPS.append((_title, _rows))
+
+
 # ── style helpers (match other desktop panels) ────────────────────────────────
 
 def _group_style() -> str:
@@ -561,8 +723,13 @@ class TickPanel(QWidget):
                 enabled = lim.get("enabled", False)
                 self._limit_checks[key].setChecked(enabled)
             if key in self._limit_min:
-                self._limit_min[key].setValue(lim.get("min", 0))
-                self._limit_max[key].setValue(lim.get("max", 100))
+                _mn, _mx = lim.get("min"), lim.get("max")
+                # None → keep the spin's default (def_min/def_max); plant limits
+                # start unset so the configured range stays put until edited.
+                if _mn is not None:
+                    self._limit_min[key].setValue(_mn)
+                if _mx is not None:
+                    self._limit_max[key].setValue(_mx)
                 self._limit_min[key].setEnabled(lim.get("enabled", False))
                 self._limit_max[key].setEnabled(lim.get("enabled", False))
             if key in self._limit_combo:
