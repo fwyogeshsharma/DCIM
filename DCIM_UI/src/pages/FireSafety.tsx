@@ -1,9 +1,12 @@
 import { useState, useMemo, lazy, Suspense } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   Flame, Wind, Droplets, AlertTriangle, CheckCircle, Clock, Plus, X,
   Trash2, FileText, Download, ShieldAlert, Thermometer, Eye, MapPin,
   RefreshCw, ChevronDown, ChevronUp, Bell, Box,
 } from 'lucide-react'
+import { api } from '@/lib/api'
+import { buildFacility, isFacilityEmpty, demoFacility } from '@/lib/fireSafetyFacility'
 
 const FireSafety3DScene = lazy(() => import('@/components/FireSafety3DScene'))
 
@@ -324,6 +327,36 @@ export default function FireSafety() {
   const totalExpected = zoneCounts.reduce((s, z) => s + z.expected, 0)
   const totalAccounted = zoneCounts.reduce((s, z) => s + z.accounted, 0)
   const sortedMaint = useMemo(() => [...maintItems].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()), [maintItems])
+
+  // ── 3D facility (data-driven) ───────────────────────────────────────────────
+  // Environment metrics carry each device's physical placement in metadata
+  // (room + floor); we collapse them into a floor/room facility model. Only
+  // fetched while the 3D tab is open. Falls back to a demo building when no
+  // device reports a room/floor.
+  const { data: envMetrics } = useQuery({
+    queryKey: ['firesafety-env-metrics'],
+    queryFn: () => api.getMetrics({ metric_type: 'environment.temperature_c', time_range: '1h', limit: 10000 }),
+    enabled: tab === '3d',
+    refetchInterval: tab === '3d' ? 30000 : false,
+    staleTime: 20000,
+  })
+
+  const liveFacility = useMemo(() => buildFacility(envMetrics), [envMetrics])
+  const facility = useMemo(
+    () => (isFacilityEmpty(liveFacility) ? demoFacility() : liveFacility),
+    [liveFacility],
+  )
+  const usingDemo = isFacilityEmpty(liveFacility)
+
+  // Manual sensors carry a room hint (their zone's human label) so the scene can
+  // match them into the matching generated room.
+  const sceneSensors = useMemo(
+    () => sensors.map((s) => ({
+      id: s.id, name: s.name, type: s.type, zone: s.zone, status: s.status,
+      room: ZONES.find((z) => z.id === s.zone)?.label ?? s.zone,
+    })),
+    [sensors],
+  )
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -1121,23 +1154,40 @@ export default function FireSafety() {
           <div>
             <h2 className="text-xl font-semibold text-white">3D Facility View</h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              Immersive data-centre warehouse with live sensor overlays, evacuation routes and zone status.
-              Sensor states sync from the Sensor Board tab.
+              Building generated live from device telemetry — each environment metric's
+              <span className="text-slate-300"> room</span> and <span className="text-slate-300">floor</span> place its
+              device inside the matching room. Manual sensors from the Sensor Board are overlaid into their rooms.
             </p>
           </div>
 
-          {/* Quick sensor status bar */}
-          <div className="flex flex-wrap gap-2">
-            {sensors.map((s) => (
-              <div key={s.id} className="flex items-center gap-1.5 bg-slate-800/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor:
-                  s.status === 'alarm' ? '#ef4444' : s.status === 'fault' ? '#f59e0b' :
-                  s.status === 'offline' ? '#475569' : s.status === 'testing' ? '#3b82f6' : '#22c55e'
-                }} />
-                <span className="text-slate-300">{s.name}</span>
-                <span className="text-slate-500 capitalize">{s.status}</span>
+          {/* Facility summary bar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-slate-800/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs">
+              <Box className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-slate-300">{facility.floors.length} floor{facility.floors.length > 1 ? 's' : ''}</span>
+              <span className="text-slate-500">·</span>
+              <span className="text-slate-300">{facility.floors.reduce((s, f) => s + f.rooms.length, 0)} rooms</span>
+              <span className="text-slate-500">·</span>
+              <span className="text-slate-300">{facility.devices.length} devices</span>
+            </div>
+            {(['alarm', 'fault', 'normal', 'offline'] as const).map((st) => {
+              const n = facility.devices.filter((d) => d.status === st).length
+              if (n === 0) return null
+              const c = st === 'alarm' ? '#ef4444' : st === 'fault' ? '#f59e0b' : st === 'offline' ? '#64748b' : '#22c55e'
+              return (
+                <div key={st} className="flex items-center gap-1.5 bg-slate-800/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
+                  <span className="text-slate-300">{n}</span>
+                  <span className="text-slate-500 capitalize">{st}</span>
+                </div>
+              )
+            })}
+            {usingDemo && (
+              <div className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-2.5 py-1.5 text-xs text-yellow-400">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Demo facility — no device is reporting room/floor metadata yet
               </div>
-            ))}
+            )}
           </div>
 
           <Suspense fallback={
@@ -1149,10 +1199,8 @@ export default function FireSafety() {
             </div>
           }>
             <FireSafety3DScene
-              sensors={sensors.map((s) => ({
-                id: s.id, name: s.name, type: s.type as any,
-                zone: s.zone, status: s.status as any,
-              }))}
+              facility={facility}
+              sensors={sceneSensors}
               onSensorClick={(id) => {
                 setSelectedSensor(sensors.find((s) => s.id === id) ?? null)
                 setTab('sensors')
@@ -1163,14 +1211,14 @@ export default function FireSafety() {
           <div className="bg-slate-800/30 border border-white/10 rounded-xl p-4">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Scene Key</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-400">
-              <span>🟢 Green arrows — evacuation routes</span>
-              <span>🟢 Green panels — emergency exits</span>
+              <span>🟩 Floors &amp; rooms — built from device room/floor metadata</span>
+              <span>🟢 Green dot — device temperature normal</span>
+              <span>🟠 Amber dot — temperature elevated (≥30°C)</span>
+              <span>🔴 Red dot / beacon — temperature alarm (≥35°C)</span>
               <span>⬜ White pipes — VESDA sampling lines</span>
-              <span>🔴 Pulsing beacon — active alarm</span>
-              <span>Coloured zones — SRA / SRB / NOC / Hot Aisle</span>
-              <span>Ceiling cones — FM200 suppression nozzles</span>
-              <span>Click sensor dot — inspect &amp; status panel</span>
-              <span>Camera buttons — jump to zone views</span>
+              <span>Ceiling cones — FM-200 suppression nozzles</span>
+              <span>Click a device — inspect floor / room / reading</span>
+              <span>Floor buttons — isolate a single floor</span>
             </div>
           </div>
         </div>
