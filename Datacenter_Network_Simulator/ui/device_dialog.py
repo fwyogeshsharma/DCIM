@@ -27,6 +27,7 @@ _TYPE_LABELS = {
     DeviceType.PUMP:           "Water pump (CHW/CW)",
     DeviceType.COOLING_TOWER:  "Cooling tower",
     DeviceType.VALVE:          "Control valve",
+    DeviceType.CDU:            "CDU (direct-to-chip liquid cooling)",
     DeviceType.GENERATOR:      "Generator",
     DeviceType.ENERGY_MONITOR: "Energy Monitor (EV2)",
 }
@@ -88,6 +89,7 @@ VENDORS_BY_TYPE = {
     DeviceType.PUMP: [Vendor.GRUNDFOS, Vendor.ARMSTRONG],
     DeviceType.COOLING_TOWER: [Vendor.BAC, Vendor.MARLEY],
     DeviceType.VALVE: [Vendor.BELIMO, Vendor.JOHNSON_CONTROLS],
+    DeviceType.CDU: [Vendor.VERTIV, Vendor.COOLIT, Vendor.MOTIVAIR, Vendor.NVENT],
     DeviceType.GENERATOR: [Vendor.CUMMINS, Vendor.CATERPILLAR, Vendor.KOHLER],
     DeviceType.ENERGY_MONITOR: [
         Vendor.VERDIGRIS,
@@ -321,7 +323,7 @@ class DeviceDialog(QDialog):
         dtype = self.type_combo.currentData()
         if dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.CRAH,
                          DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
-                         DeviceType.VALVE, DeviceType.GENERATOR):
+                         DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR):
             row = self.rack_row_spin.value()
             if row:
                 parts.append(f"Row {row}")
@@ -363,7 +365,7 @@ class DeviceDialog(QDialog):
         # Floor PDU: no rack placement, no gNMI, has management interface
         show_rack    = dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.CRAH,
                                      DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
-                                     DeviceType.VALVE, DeviceType.GENERATOR)
+                                     DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR)
         show_gnmi    = dtype in (DeviceType.ROUTER, DeviceType.SWITCH)
         show_prod_ip = dtype in self._PROD_IP_TYPES
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):

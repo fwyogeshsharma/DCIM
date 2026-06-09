@@ -15,17 +15,18 @@ from pathlib import Path
 
 # device_type -> (base watts, jitter span). Final = base + (seed % span).
 LOAD_PROFILE = {
-    "server":        (280, 270),
+    "server":        (460, 300),    # direct-to-chip lets racks run denser (more kW/rack to liquid)
     "switch":        (180,  80),
     "router":        (320, 120),
     "firewall":      (260, 100),
     "load_balancer": (220,  80),
     "oob_switch":    ( 60,  50),
     "sensor":        (  4,   6),
-    "crah":          (3000, 1000),   # air handler = fans + valve only (chiller does the work)
-    "chiller":       (6500, 1000),   # compressors + evaporator/condenser (dominant cooling load)
+    "crah":          (1500,  600),   # air handler — residual air load only (~25%); DtC moved chip heat to liquid
+    "chiller":       (7000, 1000),   # 800kW-class; warm-CHW DtC operation lifts COP, so parasitic draw stays modest
     "pump":          (1100,  800),   # CHW / condenser-water VFD pump motor
     "cooling_tower": ( 650,  300),   # tower fan motor (heat rejection)
+    "cdu":           (2200,  800),   # coolant distribution unit — TCS pump motor (direct-to-chip)
     # valves / plant sensors are instrumentation -> ~0 W, left at default 0
 }
 

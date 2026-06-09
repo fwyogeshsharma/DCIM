@@ -60,6 +60,16 @@ const PLANT_FLAG_GROUPS: { gid: string; title: string; points: [string, string][
     ['Actuator_Temp', 'Actuator Temp'], ['Status_Modulating', 'Status Modulating'],
     ['Alarm_ActuatorFault', 'Alarm: Actuator Fault'],
   ]},
+  { gid: 'cdu', title: 'CDU (Direct-to-Chip)', points: [
+    ['TCS_Supply_Temp', 'TCS Supply Temp'], ['TCS_Return_Temp', 'TCS Return Temp'],
+    ['TCS_Setpoint', 'TCS Setpoint'], ['TCS_Flow', 'TCS Flow'],
+    ['Facility_CHW_Valve', 'Facility CHW Valve'], ['Facility_CHW_Flow', 'Facility CHW Flow'],
+    ['Heat_Load', 'Heat Load'], ['Pump_Power', 'Pump Power'], ['Pump_Speed', 'Pump Speed'],
+    ['Approach_Temp', 'Approach Temp'], ['Filter_DP', 'Filter ΔP'], ['Run_Hours', 'Run Hours'],
+    ['Unit_Running', 'Unit Running'], ['Alarm_Leak', 'Alarm: Leak'],
+    ['Alarm_HighSupplyTemp', 'Alarm: High Supply Temp'], ['Alarm_PumpFault', 'Alarm: Pump Fault'],
+    ['Alarm_LowFlow', 'Alarm: Low Flow'],
+  ]},
 ]
 
 const BACNET_METRIC_GROUPS: MetricGroup[] = [
@@ -233,6 +243,24 @@ const PLANT_LIMIT_SPEC: Record<string, { title: string; num: PNum[]; bin: [strin
     ['Actuator_Temp', 'Actuator Temp', '°C', 0, 100, 0.5, 1],
   ], bin: [
     ['Status_Modulating', 'Status Modulating'], ['Alarm_ActuatorFault', 'Alarm: Actuator Fault'],
+  ]},
+  cdu: { title: 'CDU (Direct-to-Chip)', num: [
+    ['TCS_Supply_Temp', 'TCS Supply Temp', '°C', 0, 60, 0.5, 1],
+    ['TCS_Return_Temp', 'TCS Return Temp', '°C', 0, 70, 0.5, 1],
+    ['TCS_Setpoint', 'TCS Setpoint', '°C', 20, 45, 0.5, 1],
+    ['TCS_Flow', 'TCS Flow', ' L/s', 0, 50, 0.5, 1],
+    ['Facility_CHW_Valve', 'Facility CHW Valve', '%', 0, 100, 1, 0],
+    ['Facility_CHW_Flow', 'Facility CHW Flow', ' L/s', 0, 50, 0.5, 1],
+    ['Heat_Load', 'Heat Load', ' kW', 0, 1200, 1, 0],
+    ['Pump_Power', 'Pump Power', ' kW', 0, 50, 0.1, 2],
+    ['Pump_Speed', 'Pump Speed', '%', 0, 100, 1, 0],
+    ['Approach_Temp', 'Approach Temp', '°C', 0, 15, 0.1, 1],
+    ['Filter_DP', 'Filter ΔP', ' kPa', 0, 120, 1, 0],
+    ['Run_Hours', 'Run Hours', ' h', 0, 100000, 100, 0],
+  ], bin: [
+    ['Unit_Running', 'Unit Running'], ['Alarm_Leak', 'Alarm: Leak'],
+    ['Alarm_HighSupplyTemp', 'Alarm: High Supply Temp'], ['Alarm_PumpFault', 'Alarm: Pump Fault'],
+    ['Alarm_LowFlow', 'Alarm: Low Flow'],
   ]},
 }
 

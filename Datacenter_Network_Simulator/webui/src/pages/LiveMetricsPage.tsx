@@ -1067,6 +1067,25 @@ const PLANT_COLUMNS: Record<string, PlantCol[]> = {
     { key: 'Status_Modulating',  label: 'Modulating', bin: 'run' },
     { key: 'Alarm_ActuatorFault',label: 'Fault',      bin: 'alarm' },
   ],
+  cdu: [
+    { key: 'TCS_Supply_Temp',    label: 'TCS Supply', unit: '°C', warn: 36, crit: 40, decimals: 1 },
+    { key: 'TCS_Return_Temp',    label: 'TCS Return', unit: '°C', decimals: 1 },
+    { key: 'TCS_Setpoint',       label: 'Setpoint',   unit: '°C', decimals: 1 },
+    { key: 'TCS_Flow',           label: 'TCS Flow',   unit: ' L/s', decimals: 1 },
+    { key: 'Facility_CHW_Valve', label: 'CHW Valve',  unit: '%',  decimals: 0 },
+    { key: 'Facility_CHW_Flow',  label: 'CHW Flow',   unit: ' L/s', decimals: 1 },
+    { key: 'Heat_Load',          label: 'Heat Load',  unit: ' kW', decimals: 0 },
+    { key: 'Pump_Power',         label: 'Pump Power', unit: ' kW', decimals: 2 },
+    { key: 'Pump_Speed',         label: 'Pump Speed', unit: '%',  decimals: 0 },
+    { key: 'Approach_Temp',      label: 'Approach',   unit: '°C', warn: 5, crit: 7, decimals: 1 },
+    { key: 'Filter_DP',          label: 'Filter ΔP',  unit: ' kPa', warn: 55, crit: 70, decimals: 0 },
+    { key: 'Run_Hours',          label: 'Run Hrs',    unit: ' h', decimals: 0 },
+    { key: 'Unit_Running',         label: 'Running',    bin: 'run' },
+    { key: 'Alarm_Leak',           label: 'Leak',       bin: 'alarm' },
+    { key: 'Alarm_HighSupplyTemp', label: 'Hi Supply',  bin: 'alarm' },
+    { key: 'Alarm_PumpFault',      label: 'Pump Fault', bin: 'alarm' },
+    { key: 'Alarm_LowFlow',        label: 'Low Flow',   bin: 'alarm' },
+  ],
 }
 
 function PlantBinCell({ val, mode }: { val?: number; mode: 'run' | 'alarm' }) {
@@ -1142,13 +1161,13 @@ function PlantTable({ type, rows }: { type: string; rows: PlantDeviceSnapshot[] 
 // ── tabs ──────────────────────────────────────────────────────────────────────
 
 type Tab = 'all' | 'network' | 'server' | 'ups' | 'pdu' | 'sensor' | 'energy'
-        | 'crah' | 'chiller' | 'pump' | 'cooling_tower' | 'valve'
+        | 'crah' | 'chiller' | 'pump' | 'cooling_tower' | 'valve' | 'cdu'
 
-const PLANT_TABS: Tab[] = ['crah', 'chiller', 'pump', 'cooling_tower', 'valve']
+const PLANT_TABS: Tab[] = ['crah', 'chiller', 'pump', 'cooling_tower', 'valve', 'cdu']
 
 const TAB_LABELS: Record<Tab, string> = {
   all: 'All', network: 'Network', server: 'Server', ups: 'UPS', pdu: 'PDU', sensor: 'Sensor', energy: 'Energy (EV2)',
-  crah: 'CRAH', chiller: 'Chiller', pump: 'Pump', cooling_tower: 'Cooling Tower', valve: 'Valve',
+  crah: 'CRAH', chiller: 'Chiller', pump: 'Pump', cooling_tower: 'Cooling Tower', valve: 'Valve', cdu: 'CDU',
 }
 
 const TAB_TYPES: Record<Tab, string[]> = {
@@ -1159,7 +1178,7 @@ const TAB_TYPES: Record<Tab, string[]> = {
   pdu:     ['pdu', 'floor_pdu'],
   sensor:  ['sensor'],
   energy:  [],   // data comes from ev2Metrics, not devices[]
-  crah:    [], chiller: [], pump: [], cooling_tower: [], valve: [],  // data from plantMetrics
+  crah:    [], chiller: [], pump: [], cooling_tower: [], valve: [], cdu: [],  // data from plantMetrics
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
@@ -1196,6 +1215,7 @@ export default function LiveMetricsPage() {
     pump:          plantMetrics.filter(p => p.device_type === 'pump').length,
     cooling_tower: plantMetrics.filter(p => p.device_type === 'cooling_tower').length,
     valve:         plantMetrics.filter(p => p.device_type === 'valve').length,
+    cdu:           plantMetrics.filter(p => p.device_type === 'cdu').length,
   }), [devices, ev2Metrics, plantMetrics])
 
   const filtered = useMemo(() => {

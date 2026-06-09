@@ -594,6 +594,20 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("JCI VG7000 Series", Vendor.JOHNSON_CONTROLS, DeviceType.VALVE, [_g(_GE, 1)], "Globe control valve actuator, SNMP + BACnet"),
     ],
 
+    # ── CDU -- Coolant Distribution Unit (direct-to-chip liquid cooling, SNMP + BACnet) ─
+    (DeviceType.CDU, Vendor.VERTIV): [
+        DeviceModel("Vertiv Liebert XDU 1350", Vendor.VERTIV, DeviceType.CDU, [_g(_GE, 1)], "1350kW liquid-to-liquid CDU for direct-to-chip cold plates, SNMP + BACnet"),
+    ],
+    (DeviceType.CDU, Vendor.COOLIT): [
+        DeviceModel("CoolIT CHx750", Vendor.COOLIT, DeviceType.CDU, [_g(_GE, 1)], "750kW rack-based CDU for direct-to-chip cold plates, SNMP + BACnet"),
+    ],
+    (DeviceType.CDU, Vendor.MOTIVAIR): [
+        DeviceModel("Motivair CDU 600kW", Vendor.MOTIVAIR, DeviceType.CDU, [_g(_GE, 1)], "600kW liquid-to-liquid CDU for direct-to-chip cold plates, SNMP + BACnet"),
+    ],
+    (DeviceType.CDU, Vendor.NVENT): [
+        DeviceModel("nVent Modular CDU 1MW", Vendor.NVENT, DeviceType.CDU, [_g(_GE, 1)], "1MW liquid-to-liquid CDU for direct-to-chip cold plates, SNMP + BACnet"),
+    ],
+
     # ── Cisco — OOB Management Switches ──────────────────────────────────────
     (DeviceType.OOB_SWITCH, Vendor.CISCO_SYSTEMS): [
         DeviceModel("Cisco Catalyst 1000-48T", Vendor.CISCO_SYSTEMS, DeviceType.OOB_SWITCH,

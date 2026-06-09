@@ -303,7 +303,7 @@ export interface EV2DeviceSnapshot {
   circuit_list:        EV2CircuitMetrics[]
 }
 
-// Chiller-plant BACnet device (chiller / pump / cooling_tower / valve / crah).
+// Chiller-plant BACnet device (chiller / pump / cooling_tower / valve / crah / cdu).
 // `values` maps point name (e.g. "CHW_Supply_Temp") → present-value.
 export interface PlantDeviceSnapshot {
   ip:          string

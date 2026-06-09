@@ -194,6 +194,15 @@ _PLANT_OID_PATCH = {
     "valve": ("1.3.6.1.4.1.99999.23",
         [("Position", 1, 1, "2"), ("Commanded_Position", 2, 1, "2"), ("Actuator_Temp", 4, 1, "2")],
         [("Status_Modulating", 3), ("Alarm_ActuatorFault", 6)]),
+    "cdu": ("1.3.6.1.4.1.99999.25",
+        [("TCS_Supply_Temp", 1, 10, "2"), ("TCS_Return_Temp", 2, 10, "2"),
+         ("TCS_Setpoint", 3, 10, "2"), ("TCS_Flow", 4, 10, "2"),
+         ("Facility_CHW_Valve", 5, 1, "2"), ("Facility_CHW_Flow", 6, 10, "2"),
+         ("Heat_Load", 7, 1, "2"), ("Pump_Power", 8, 10, "2"),
+         ("Pump_Speed", 9, 1, "2"), ("Approach_Temp", 10, 10, "2"),
+         ("Filter_DP", 11, 1, "2"), ("Run_Hours", 12, 1, "65")],
+        [("Unit_Running", 13), ("Alarm_Leak", 14), ("Alarm_HighSupplyTemp", 15),
+         ("Alarm_PumpFault", 16), ("Alarm_LowFlow", 17)]),
     "crah": ("1.3.6.1.4.1.99999.24",
         [("Supply_Air_Temp", 1, 10, "2"), ("Return_Air_Temp", 2, 10, "2"),
          ("Setpoint", 3, 10, "2"), ("Fan_Speed", 4, 1, "2"), ("CHW_Valve", 5, 1, "2"),
@@ -321,6 +330,9 @@ class SNMPRecGenerator:
 
         if device.device_type == DeviceType.CRAH:
             entries += self._crah_entries(device)
+
+        if device.device_type == DeviceType.CDU:
+            entries += self._cdu_entries(device)
 
         # RPP (passive breaker panel) has no SNMP agent — skip file generation.
         # All cooling devices (CRAH, chiller, pump, tower, valve) ARE
@@ -615,7 +627,8 @@ class SNMPRecGenerator:
             # engine (via _plant_state_cache) so SNMP serves the same ticking
             # values as BACnet. Scales mirror the static _*_entries layouts.
             if device.device_type in (DeviceType.CHILLER, DeviceType.PUMP,
-                                       DeviceType.COOLING_TOWER, DeviceType.VALVE):
+                                       DeviceType.COOLING_TOWER, DeviceType.VALVE,
+                                       DeviceType.CDU):
                 pv = {}
                 try:
                     from core.device_state_store import _get_plant_state
@@ -1227,7 +1240,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{b}.7.0",  "2", str(load)),          # compressorLoad %
             _oid_entry(f"{b}.8.0",  "2", "2"),                # chillerStatus 1=off 2=running 3=fault
             _oid_entry(f"{b}.9.0",  "2", str(kw)),            # activePower kW
-            _oid_entry(f"{b}.10.0", "2", "500"),              # ratedCoolingCapacity kW (nameplate)
+            _oid_entry(f"{b}.10.0", "2", "800"),              # ratedCoolingCapacity kW (nameplate, 800kW-class)
             _oid_entry(f"{b}.11.0", "2", str(50 + s % 15)),   # COP ×10 (5.0–6.4)
             _oid_entry(f"{b}.12.0", "2", str(340 + s % 40)),  # evapPressure kPa
             _oid_entry(f"{b}.13.0", "2", str(880 + s % 80)),  # condPressure kPa
@@ -1315,6 +1328,36 @@ class SNMPRecGenerator:
             _oid_entry(f"{b}.12.0", "2", "1"),                # alarmHighTemp 1=ok 2=alarm
             _oid_entry(f"{b}.13.0", "2", "1"),                # alarmAirflowLoss
             _oid_entry(f"{b}.14.0", "2", "1"),                # filterDirty 1=clean 2=dirty
+        ]
+
+    def _cdu_entries(self, device: Device) -> List[OidEntry]:
+        """Coolant Distribution Unit (direct-to-chip) telemetry — TCS loop temps,
+        facility-CHW interface, chip heat load, pump, leak/over-temp alarms."""
+        s = self._plant_seed(device)
+        kw10 = max(1, int(round((device.power_draw_w or 0) / 100.0)))  # pump kW ×10
+        tcss = 315 + s % 20                       # TCS supply 31.5–33.5 °C ×10
+        tcsr = tcss + 110 + s % 30                # TCS return ≈ +11–14 °C ×10
+        heat = 400 + s % 120                      # chip heat removed kW (thermal)
+        speed = 55 + s % 35
+        b = "1.3.6.1.4.1.99999.25"
+        return [
+            _oid_entry(f"{b}.1.0",  "2", str(tcss)),          # tcsSupplyTemp ×10 °C
+            _oid_entry(f"{b}.2.0",  "2", str(tcsr)),          # tcsReturnTemp ×10 °C
+            _oid_entry(f"{b}.3.0",  "2", "320"),              # tcsSetpoint ×10 °C (32.0)
+            _oid_entry(f"{b}.4.0",  "2", str(150 + s % 100)), # tcsFlow ×10 L/s
+            _oid_entry(f"{b}.5.0",  "2", str(45 + s % 40)),   # facilityChwValve %
+            _oid_entry(f"{b}.6.0",  "2", str(130 + s % 90)),  # facilityChwFlow ×10 L/s
+            _oid_entry(f"{b}.7.0",  "2", str(heat)),          # heatLoad kW (thermal removed)
+            _oid_entry(f"{b}.8.0",  "2", str(kw10)),          # pumpPower kW ×10
+            _oid_entry(f"{b}.9.0",  "2", str(speed)),         # pumpSpeed %
+            _oid_entry(f"{b}.10.0", "2", str(25 + s % 20)),   # approachTemp ×10 °C (2.5–4.5)
+            _oid_entry(f"{b}.11.0", "2", str(25 + s % 25)),   # filterDP kPa
+            _oid_entry(f"{b}.12.0", "65", str(8000 + s % 40000)),  # runHours (Counter32)
+            _oid_entry(f"{b}.13.0", "2", "2"),                # unitStatus 1=off 2=run
+            _oid_entry(f"{b}.14.0", "2", "1"),                # alarmLeak 1=ok 2=leak
+            _oid_entry(f"{b}.15.0", "2", "1"),                # alarmHighSupplyTemp 1=ok 2=alarm
+            _oid_entry(f"{b}.16.0", "2", "1"),                # alarmPumpFault 1=ok 2=fault
+            _oid_entry(f"{b}.17.0", "2", "1"),                # alarmLowFlow 1=ok 2=alarm
         ]
 
 

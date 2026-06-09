@@ -28,6 +28,7 @@ class DeviceType(str, Enum):
     PUMP           = "pump"          # Chilled-/condenser-water pump (VFD) -- SNMP + BACnet monitored
     COOLING_TOWER  = "cooling_tower" # Cooling tower (fan + basin) -- SNMP + BACnet monitored
     VALVE          = "valve"         # Control/isolation valve (actuator position) -- SNMP + BACnet monitored
+    CDU            = "cdu"           # Coolant Distribution Unit (direct-to-chip liquid cooling) -- SNMP + BACnet monitored
 
 
 class Vendor(str, Enum):
@@ -70,6 +71,10 @@ class Vendor(str, Enum):
     MARLEY           = "SPX Cooling (Marley)"
     BELIMO           = "Belimo"
     JOHNSON_CONTROLS = "Johnson Controls"
+    # Direct-to-chip CDU vendors
+    COOLIT           = "CoolIT Systems"
+    MOTIVAIR         = "Motivair"
+    NVENT            = "nVent"
 
 
 class InterfaceType(str, Enum):

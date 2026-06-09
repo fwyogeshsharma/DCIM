@@ -41,7 +41,7 @@ PLANT_SPEC: Dict[str, dict] = {
             ("Cond_Return_Temp",  _C,  35.5,  0.8),
             ("Compressor_Load",   _PCT,70.0, 18.0),
             ("Active_Power",      _KW,  None, 0.12),
-            ("Cooling_Capacity",  _KW, 500.0, 0.0),
+            ("Cooling_Capacity",  _KW, 800.0, 0.0),
             ("COP",               _NO,  5.5,  0.4),
             ("Evap_Pressure",     _KPA,350.0,20.0),
             ("Cond_Pressure",     _KPA,900.0,40.0),
@@ -88,6 +88,29 @@ PLANT_SPEC: Dict[str, dict] = {
         ],
         "bi": ["Status_Modulating", "Alarm_ActuatorFault"],
         "on": {"Status_Modulating"},
+    },
+    "cdu": {
+        # Coolant Distribution Unit — isolates the secondary technology-cooling
+        # system (TCS / cold-plate) loop from the facility CHW and rejects chip
+        # heat into that same CHW the CRAH use. Warm TCS supply (~32 °C) is the
+        # point: it lets the chillers run at a higher COP.
+        "ai": [
+            ("TCS_Supply_Temp",    _C,  32.0,  0.8),
+            ("TCS_Return_Temp",    _C,  45.0,  1.2),
+            ("TCS_Setpoint",       _C,  32.0,  0.0),
+            ("TCS_Flow",           _LPS, 18.0, 3.0),
+            ("Facility_CHW_Valve", _PCT, 60.0, 20.0),
+            ("Facility_CHW_Flow",  _LPS, 16.0, 3.0),
+            ("Heat_Load",          _KW, 450.0, 60.0),
+            ("Pump_Power",         _KW,  None, 0.12),
+            ("Pump_Speed",         _PCT, 70.0, 18.0),
+            ("Approach_Temp",      _C,   3.0,  0.5),
+            ("Filter_DP",          _KPA, 35.0,  8.0),
+            ("Run_Hours",          _H, 12000.0, 0.0),
+        ],
+        "bi": ["Unit_Running", "Alarm_Leak", "Alarm_HighSupplyTemp",
+               "Alarm_PumpFault", "Alarm_LowFlow"],
+        "on": {"Unit_Running"},
     },
     "crah": {
         "ai": [

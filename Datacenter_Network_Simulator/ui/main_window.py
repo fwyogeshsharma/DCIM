@@ -3354,8 +3354,13 @@ class MainWindow(QMainWindow):
             x, y = self.topology.get_position(device.id)
             self._topology_view.topology_scene.add_device_node(device, x, y)
         for src_id, dst_id, edge_data in self.topology.get_links():
+            # Pass the stored flow direction (src_node→dst_node), not the
+            # NetworkX (u,v) order, so cooling supply and return render as two
+            # distinct directional edges instead of collapsing into one.
             self._topology_view.topology_scene.add_link_edge(
-                src_id, dst_id, layer=edge_data.get("layer", "production")
+                edge_data.get("src_node", src_id),
+                edge_data.get("dst_node", dst_id),
+                layer=edge_data.get("layer", "production"),
             )
             if self.topology.is_link_broken(src_id, dst_id):
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
@@ -3653,8 +3658,12 @@ class MainWindow(QMainWindow):
                 x, y = self.topology.get_position(device.id)
                 self._topology_view.topology_scene.add_device_node(device, x, y)
             for src_id, dst_id, edge_data in self.topology.get_links():
+                # Pass the stored flow direction (src_node→dst_node) so cooling
+                # supply and return render as two distinct directional edges.
                 self._topology_view.topology_scene.add_link_edge(
-                    src_id, dst_id, layer=edge_data.get("layer", "production")
+                    edge_data.get("src_node", src_id),
+                    edge_data.get("dst_node", dst_id),
+                    layer=edge_data.get("layer", "production"),
                 )
                 if self.topology.is_link_broken(src_id, dst_id):
                     self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)

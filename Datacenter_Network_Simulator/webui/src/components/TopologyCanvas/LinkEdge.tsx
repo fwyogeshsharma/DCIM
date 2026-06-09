@@ -27,6 +27,7 @@ export function isHotFlow(src: string, dst: string): boolean {
   if (s.includes('CWP') || t.includes('CWP')) return true   // condenser pump (hot side)
   if (t.startsWith('CT-')) return true             // to cooling tower = hot
   if (s.endsWith('-CW') || t.endsWith('-CW')) return true   // CW valve branch
+  if (t.startsWith('CDU') && !s.startsWith('SENS')) return true  // cold-plate return → CDU (TCS hot)
   return false                                     // chilled supply / cooled return
 }
 
@@ -63,9 +64,20 @@ function LinkEdge(props: EdgeProps) {
     setTipPos({ x: e.clientX + 14, y: e.clientY + 14 }), [])
   const onLeave = useCallback(() => setTipPos(null), [])
 
+  // Cooling supply & return run between the same node pair — offset each
+  // perpendicular (opposite signs by direction) so both draw as parallel
+  // lines instead of overlapping into one.
+  let sx = sourceX, sy = sourceY, tx = targetX, ty = targetY
+  if (isCool) {
+    const off = source < target ? 8 : -8
+    const dx = targetX - sourceX, dy = targetY - sourceY
+    const len = Math.hypot(dx, dy) || 1
+    const ox = -dy / len * off, oy = dx / len * off
+    sx += ox; sy += oy; tx += ox; ty += oy
+  }
   const [edgePath] = getBezierPath({
-    sourceX, sourceY, sourcePosition,
-    targetX, targetY, targetPosition,
+    sourceX: sx, sourceY: sy, sourcePosition,
+    targetX: tx, targetY: ty, targetPosition,
   })
 
   const statusColor = broken ? '#f85149' : '#3fb950'

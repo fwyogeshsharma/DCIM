@@ -183,7 +183,8 @@ def bacnet_start(cfg: BACnetConfig):
     # Chiller-plant BACnet devices (chiller/pump/cooling_tower/valve) on bound
     # mgmt IPs. rated_kw = nameplate electrical draw, used to size the kW points.
     _PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
-                    DeviceType.COOLING_TOWER, DeviceType.VALVE, DeviceType.CRAH}
+                    DeviceType.COOLING_TOWER, DeviceType.VALVE, DeviceType.CRAH,
+                    DeviceType.CDU}
     plant_devices: list = []
     _plant_total = 0
     for d in s.device_manager.get_all_devices():

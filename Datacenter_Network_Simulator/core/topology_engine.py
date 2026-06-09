@@ -60,6 +60,26 @@ class TopologyEngine:
                 return i
         return len(device.interfaces) - 1  # all occupied — reuse last
 
+    @staticmethod
+    def _edge_key(src_id: str, dst_id: str, layer: str) -> str:
+        """MultiGraph edge key. One edge per (pair, layer) for most layers, but
+        cooling is keyed by direction so supply + return both coexist."""
+        if layer == "cooling":
+            return f"cooling:{src_id}->{dst_id}"
+        return layer
+
+    @staticmethod
+    def _select_edges(edges, layer: Optional[str]) -> dict:
+        """Pick the {key: data} edges matching *layer*. Matches a direct key
+        first (production/management/power), else by the 'layer' attribute
+        (cooling uses directional keys). Returns all edges when layer is None."""
+        if layer is None:
+            return dict(edges)
+        if layer in edges:
+            return {layer: edges[layer]}
+        return {k: d for k, d in edges.items()
+                if d.get("layer", "production") == layer}
+
     def add_link(self, src_id: str, dst_id: str,
                  src_iface: Optional[int] = None,
                  dst_iface: Optional[int] = None,
@@ -68,7 +88,12 @@ class TopologyEngine:
             return False
         # Reject same-layer duplicates only; different layers between the same
         # pair are intentional (e.g. power + management to the same OOB switch).
-        if self.graph.has_edge(src_id, dst_id, key=layer):
+        # Cooling supply & return are distinct DIRECTIONAL flows on one pair
+        # (CDU→server cold-plate supply vs server→CDU warm return), so cooling
+        # edges are keyed by direction — both survive instead of the second
+        # being rejected as a duplicate.
+        edge_key = self._edge_key(src_id, dst_id, layer)
+        if self.graph.has_edge(src_id, dst_id, key=edge_key):
             return False
         if not (self.graph.has_node(src_id) and self.graph.has_node(dst_id)):
             return False
@@ -83,7 +108,7 @@ class TopologyEngine:
             if dst_iface is None:
                 dst_iface = self._next_free_iface(dst_dev) if dst_dev else 0
         self.graph.add_edge(src_id, dst_id,
-                            key=layer,
+                            key=edge_key,
                             src_iface=src_iface,
                             dst_iface=dst_iface,
                             src_node=src_id,
@@ -119,16 +144,12 @@ class TopologyEngine:
                 dst_dev.interfaces[di].connected_to_device = None
                 dst_dev.interfaces[di].connected_to_iface = None
 
-        if layer is not None:
-            if self.graph.has_edge(src_id, dst_id, key=layer):
-                _clear_iface(self.graph[src_id][dst_id][layer])
-                self.graph.remove_edge(src_id, dst_id, key=layer)
-        else:
-            # Copy first — removing edges while iterating mutates the dict
-            all_edges = dict(self.graph[src_id][dst_id])
-            for key, edge_data in all_edges.items():
-                _clear_iface(edge_data)
-                self.graph.remove_edge(src_id, dst_id, key=key)
+        # Copy first — removing edges while iterating mutates the dict
+        sel = (self._select_edges(self.graph[src_id][dst_id], layer)
+               if layer is not None else dict(self.graph[src_id][dst_id]))
+        for key, edge_data in sel.items():
+            _clear_iface(edge_data)
+            self.graph.remove_edge(src_id, dst_id, key=key)
 
     def get_links(self) -> List[Tuple[str, str, dict]]:
         return [(u, v, d) for u, v, d in self.graph.edges(data=True)]
@@ -160,8 +181,10 @@ class TopologyEngine:
         if not self.graph.has_edge(src_id, dst_id):
             return None
         edges = self.graph[src_id][dst_id]
-        if layer is not None and layer in edges:
-            return dict(edges[layer])
+        if layer is not None:
+            sel = self._select_edges(edges, layer)
+            if sel:
+                return dict(next(iter(sel.values())))
         first_key = next(iter(edges))
         return dict(edges[first_key])
 
@@ -170,7 +193,7 @@ class TopologyEngine:
         if not self.graph.has_edge(src_id, dst_id):
             return
         edges = self.graph[src_id][dst_id]
-        targets = {layer: edges[layer]} if (layer and layer in edges) else dict(edges)
+        targets = self._select_edges(edges, layer) if layer else dict(edges)
         for key, edge in targets.items():
             edge["broken"] = True
             if edge.get("layer", "production") == "production":
@@ -181,7 +204,7 @@ class TopologyEngine:
         if not self.graph.has_edge(src_id, dst_id):
             return
         edges = self.graph[src_id][dst_id]
-        targets = {layer: edges[layer]} if (layer and layer in edges) else dict(edges)
+        targets = self._select_edges(edges, layer) if layer else dict(edges)
         for key, edge in targets.items():
             edge["broken"] = False
             if edge.get("layer", "production") == "production":
@@ -192,9 +215,8 @@ class TopologyEngine:
         if not self.graph.has_edge(src_id, dst_id):
             return False
         edges = self.graph[src_id][dst_id]
-        if layer is not None and layer in edges:
-            return bool(edges[layer].get("broken", False))
-        return any(e.get("broken", False) for e in edges.values())
+        sel = self._select_edges(edges, layer) if layer is not None else edges
+        return any(e.get("broken", False) for e in sel.values())
 
     def _set_iface_oper_status(self, src_id: str, dst_id: str, edge: dict, status: int):
         src_dev = self.get_device(src_id)

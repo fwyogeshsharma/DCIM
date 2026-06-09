@@ -1,58 +1,107 @@
 """Add a 'cooling' layer to the topology: directed edges modelling the
-chilled-water (CHW) and condenser-water (CW) loops, so the graph shows how
-coolant flows through the plant and out to the server-hall CRAHs.
+chilled-water (CHW), condenser-water (CW) and direct-to-chip (TCS) loops, so the
+graph shows how coolant flows through the plant and out to the loads.
 
-Representative loops per DC (flow direction = edge direction):
+Loops per DC (flow direction = edge direction), all discovered dynamically by
+name prefix so the layer tracks however many chillers/pumps/CDUs exist:
 
-  CHW loop (cools the hall, crosses buildings to the server hall):
-    CHILLER ─► CHW pump ─► VLV-CHW ─► flow/supply sensors ═╗ (cross-building)
-                                                           ╠═► CRAH ×4
-    CHILLER ◄─ return sensor ◄════════════════════════════╝ (cross-building)
+  CHW loop (cools the hall + the chips, crosses to the server hall):
+    CHILLER ─► CHW pump ─► VLV-CHW ─► FLOW ─► CHWS ═╗ (cross-building)
+                                                    ╠═► CRAH ×N
+                                                    ╠═► CDU  ×M   (direct-to-chip)
+    CHILLER ◄─ CHWR ◄═══════════════════════════════╝ (cross-building)
 
   CW loop (rejects heat, stays in the chiller plant):
     CHILLER ─► CW pump ─► VLV-CW ─► cooling tower ─► CHILLER
 
+  TCS loop (secondary cold-plate loop, isolated by the CDU):
+    CDU ─► server cold plate ─► CDU      (representative sample of servers)
+
 Idempotent: clears existing cooling edges, then rebuilds. Pure topology — no
 power/PUE impact. The cross-building segments are CHILLER-PLANT sensors ↔
-SERVER-HALL CRAHs (the supply/return pipes between the two buildings).
+SERVER-HALL CRAH/CDU (the supply/return pipes between the two buildings).
 """
 import json
+import re
 from pathlib import Path
 
 TOPO = Path(__file__).resolve().parent.parent / "topologies" / "dual_dc_enterprise.json"
 
-def loops(dc):
-    """Return list of (src_name, dst_name) flow edges for one DC."""
+# Representative number of server cold plates wired per CDU (the TCS loop is
+# illustrative — not every server is individually drawn, to keep the graph
+# readable, mirroring how a handful of CRAH represent hall air cooling).
+TCS_SERVERS_PER_CDU = 6
+
+
+def _sorted_names(nodes, pattern):
+    rx = re.compile(pattern)
+    return sorted(n["device"]["name"] for n in nodes if rx.fullmatch(n["device"]["name"]))
+
+
+def loops(dc, nodes):
+    """Return list of (src_name, dst_name) flow edges for one DC, discovered
+    from whatever plant/CDU/server nodes are present."""
     e = []
+    chillers = _sorted_names(nodes, rf"CHILLER-{dc}-\d+")
+    chwp     = _sorted_names(nodes, rf"CHWP-{dc}-\d+")
+    cwp      = _sorted_names(nodes, rf"CWP-{dc}-\d+")
+    towers   = _sorted_names(nodes, rf"CT-{dc}-\d+")
+    crahs    = _sorted_names(nodes, rf"CRAH-{dc}-\d+")
+    cdus     = _sorted_names(nodes, rf"CDU-{dc}-\d+")
+    vchw, vcw = f"VLV-{dc}-CHW", f"VLV-{dc}-CW"
+    s_flow, s_chws, s_chwr = f"SENS-{dc}-FLOW", f"SENS-{dc}-CHWS", f"SENS-{dc}-CHWR"
+
     # ── CHW loop ───────────────────────────────────────────────────
-    # chillers -> CHW pumps
-    e += [(f"CHILLER-{dc}-1", f"CHWP-{dc}-1"),
-          (f"CHILLER-{dc}-2", f"CHWP-{dc}-2"),
-          (f"CHILLER-{dc}-2", f"CHWP-{dc}-3")]
+    # chillers -> CHW pumps (distribute chillers across the available pumps)
+    for i, ch in enumerate(chillers):
+        if chwp:
+            e.append((ch, chwp[i % len(chwp)]))
     # pumps -> supply control valve
-    e += [(f"CHWP-{dc}-1", f"VLV-{dc}-CHW"),
-          (f"CHWP-{dc}-2", f"VLV-{dc}-CHW"),
-          (f"CHWP-{dc}-3", f"VLV-{dc}-CHW")]
+    e += [(p, vchw) for p in chwp]
     # valve -> flow meter -> supply-temp sensor (still in chiller plant)
-    e += [(f"VLV-{dc}-CHW", f"SENS-{dc}-FLOW"),
-          (f"SENS-{dc}-FLOW", f"SENS-{dc}-CHWS")]
-    # supply-temp sensor -> CRAHs  (CROSS-BUILDING: chiller plant -> server hall)
-    e += [(f"SENS-{dc}-CHWS", f"CRAH-{dc}-{k}") for k in range(1, 5)]
-    # CRAHs -> return-temp sensor  (CROSS-BUILDING: server hall -> chiller plant)
-    e += [(f"CRAH-{dc}-{k}", f"SENS-{dc}-CHWR") for k in range(1, 5)]
+    e += [(vchw, s_flow), (s_flow, s_chws)]
+    # supply-temp sensor -> CRAH and CDU (CROSS-BUILDING: plant -> server hall)
+    e += [(s_chws, c) for c in crahs]
+    e += [(s_chws, c) for c in cdus]
+    # CRAH and CDU -> return-temp sensor (CROSS-BUILDING: server hall -> plant)
+    e += [(c, s_chwr) for c in crahs]
+    e += [(c, s_chwr) for c in cdus]
     # return sensor -> chillers
-    e += [(f"SENS-{dc}-CHWR", f"CHILLER-{dc}-1"),
-          (f"SENS-{dc}-CHWR", f"CHILLER-{dc}-2")]
+    e += [(s_chwr, ch) for ch in chillers]
+
     # ── CW loop (condenser, stays in the chiller plant) ────────────
-    e += [(f"CHILLER-{dc}-1", f"CWP-{dc}-1"),
-          (f"CHILLER-{dc}-2", f"CWP-{dc}-2"),
-          (f"CWP-{dc}-1", f"VLV-{dc}-CW"),
-          (f"CWP-{dc}-2", f"VLV-{dc}-CW"),
-          (f"VLV-{dc}-CW", f"CT-{dc}-1"),
-          (f"VLV-{dc}-CW", f"CT-{dc}-2"),
-          (f"CT-{dc}-1", f"CHILLER-{dc}-1"),
-          (f"CT-{dc}-2", f"CHILLER-{dc}-2")]
+    for i, ch in enumerate(chillers):
+        if cwp:
+            e.append((ch, cwp[i % len(cwp)]))
+    e += [(p, vcw) for p in cwp]
+    e += [(vcw, t) for t in towers]
+    for i, t in enumerate(towers):
+        if chillers:
+            e.append((t, chillers[i % len(chillers)]))
+
+    # ── TCS loop (direct-to-chip cold plates) ──────────────────────
+    # Each CDU feeds a representative sample of the DC's servers and returns.
+    dc_servers = sorted(
+        n["device"]["name"] for n in nodes
+        if n["device"]["device_type"] == "server" and n["device"].get("datacenter") == dc
+    )
+    if cdus and dc_servers:
+        # round-robin assign servers to CDUs, capped per CDU
+        per_cdu = {c: [] for c in cdus}
+        ci = 0
+        for srv in dc_servers:
+            cdu = cdus[ci % len(cdus)]
+            if len(per_cdu[cdu]) < TCS_SERVERS_PER_CDU:
+                per_cdu[cdu].append(srv)
+            ci += 1
+            if all(len(v) >= TCS_SERVERS_PER_CDU for v in per_cdu.values()):
+                break
+        for cdu, srvs in per_cdu.items():
+            for srv in srvs:
+                e.append((cdu, srv))     # CDU supply -> cold plate
+                e.append((srv, cdu))     # cold plate -> CDU return
     return e
+
 
 def main():
     d = json.loads(TOPO.read_text())
@@ -62,10 +111,11 @@ def main():
     # idempotent: drop existing cooling edges
     before = len(edges)
     edges[:] = [e for e in edges if e.get("layer") != "cooling"]
+    base = len(edges)
 
     added = missing = 0
     for dc in ("DC1", "DC2"):
-        for a, b in loops(dc):
+        for a, b in loops(dc, nodes):
             ia, ib = byname.get(a), byname.get(b)
             if ia is None or ib is None:
                 missing += 1
@@ -76,8 +126,9 @@ def main():
             added += 1
 
     TOPO.write_text(json.dumps(d, indent=2))
-    print(f"cooling edges: removed {before - (len(edges) - added)} old, added {added}"
+    print(f"cooling edges: removed {before - base} old, added {added}"
           + (f", {missing} missing" if missing else ""))
+
 
 if __name__ == "__main__":
     main()

@@ -62,7 +62,13 @@ def get_graph(layer: str = None):
         # power/cooling arrows and flow colouring follow the real direction.
         a = edge_data.get("src_node", src_id)
         b = edge_data.get("dst_node", dst_id)
-        key = tuple(sorted([a, b])) + (link_layer,)
+        # Cooling supply & return between the same pair are distinct flows
+        # (CDU→server cold plate vs server→CDU warm return) — key by DIRECTION
+        # so both survive. Other layers dedupe undirected (stored once).
+        if link_layer == "cooling":
+            key = (a, b, link_layer)
+        else:
+            key = tuple(sorted([a, b])) + (link_layer,)
         if key in seen:
             continue
         seen.add(key)

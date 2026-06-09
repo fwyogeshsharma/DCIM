@@ -133,6 +133,12 @@ DEVICE_COLORS = {
         "text": QColor("white"),
         "icon": "VLV",
     },
+    DeviceType.CDU: {
+        "fill": QColor("#0891b2"),
+        "border": QColor("#155e75"),
+        "text": QColor("white"),
+        "icon": "CDU",
+    },
 }
 
 # Edge color/style by network layer
@@ -142,6 +148,24 @@ LAYER_EDGE_STYLE = {
     "power":      {"color": QColor("#f59e0b"), "width": 1.5, "style": Qt.DotLine},
     "cooling":    {"color": QColor("#22d3ee"), "width": 2,   "style": Qt.DashDotLine},
 }
+
+# Cooling flow direction colors — chilled/cooled supply vs warm/hot return.
+COOL_COLD = QColor("#22d3ee")   # chilled-water supply / cooled return / cold-plate supply
+COOL_HOT  = QColor("#fb923c")   # warm return / hot condenser water / cold-plate return
+
+
+def _cooling_is_hot(src_name: str, dst_name: str) -> bool:
+    """Classify a cooling edge as warm-return (hot) vs chilled-supply (cold)
+    from its endpoint names. Mirrors webui LinkEdge.isHotFlow."""
+    s, t = src_name.upper(), dst_name.upper()
+    if s.startswith("CRAH"):                    return True   # CHW return: hall → chiller
+    if "CHWR" in s or "CHWR" in t:              return True
+    if "CWP" in s or "CWP" in t:                return True   # condenser pump (hot side)
+    if t.startswith("CT-"):                     return True   # to cooling tower = hot
+    if s.endswith("-CW") or t.endswith("-CW"):  return True   # CW valve branch
+    if t.startswith("CDU") and not s.startswith("SENS"):
+        return True                                           # cold-plate return → CDU (TCS warm)
+    return False
 
 NODE_W = 90
 NODE_H = 70
@@ -322,13 +346,14 @@ class LinkEdge(QGraphicsLineItem):
     _STROKER.setWidth(16)
 
     def __init__(self, src_node: DeviceNode, dst_node: DeviceNode,
-                 layer: str = "production", parent=None):
+                 layer: str = "production", offset: float = 0.0, parent=None):
         super().__init__(parent)
         self.src_node = src_node
         self.dst_node = dst_node
         self._broken = False
         self._faded = False
         self._layer = layer
+        self._offset = offset   # perpendicular shift (px) for anti-parallel flows
         src_node.add_edge(self)
         dst_node.add_edge(self)
         self.setZValue(0)
@@ -389,6 +414,13 @@ class LinkEdge(QGraphicsLineItem):
     def adjust(self):
         src = self.src_node.scenePos()
         dst = self.dst_node.scenePos()
+        if self._offset:
+            dx, dy = dst.x() - src.x(), dst.y() - src.y()
+            length = (dx * dx + dy * dy) ** 0.5 or 1.0
+            # perpendicular unit vector × offset → parallel supply/return lines
+            ox, oy = -dy / length * self._offset, dx / length * self._offset
+            src = QPointF(src.x() + ox, src.y() + oy)
+            dst = QPointF(dst.x() + ox, dst.y() + oy)
         self.setLine(QLineF(src, dst))
 
     def paint(self, painter, option, widget=None):
@@ -408,6 +440,9 @@ class LinkEdge(QGraphicsLineItem):
             color = layer_style["color"]
             width = layer_style["width"]
             style = layer_style["style"]
+            if self._layer == "cooling":
+                color = COOL_HOT if _cooling_is_hot(
+                    self.src_node.device.name, self.dst_node.device.name) else COOL_COLD
 
         painter.setPen(QPen(color, width, style, Qt.RoundCap))
         painter.drawLine(self.line())
@@ -598,16 +633,22 @@ class TopologyScene(QGraphicsScene):
     def add_link_edge(self, src_id: str, dst_id: str,
                       layer: str = "production") -> Optional[LinkEdge]:
         # Key includes layer so power + management edges between the same pair
-        # can both be stored (e.g. PDU↔OOB switch).
-        pair = tuple(sorted([src_id, dst_id]))
-        key = (pair, layer)
+        # can both be stored (e.g. PDU↔OOB switch). Cooling supply & return are
+        # distinct directional flows on one pair, so key cooling by DIRECTION
+        # and offset them to parallel lines instead of collapsing into one.
+        if layer == "cooling":
+            key = ((src_id, dst_id), layer)
+            offset = 8.0 if src_id < dst_id else -8.0
+        else:
+            key = (tuple(sorted([src_id, dst_id])), layer)
+            offset = 0.0
         if key in self._edges:
             return None
         src_node = self._nodes.get(src_id)
         dst_node = self._nodes.get(dst_id)
         if not src_node or not dst_node:
             return None
-        edge = LinkEdge(src_node, dst_node, layer=layer)
+        edge = LinkEdge(src_node, dst_node, layer=layer, offset=offset)
         self.addItem(edge)
         self._edges[key] = edge
         # Apply current layer filter immediately
