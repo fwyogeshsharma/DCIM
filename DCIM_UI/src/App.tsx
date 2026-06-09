@@ -5,6 +5,9 @@ import { useEffect } from 'react'
 import { useUIStore } from './stores/useUIStore'
 import { useAlertNotifications } from './hooks/useAlertNotifications'
 import AppLayout from './components/layout/AppLayout'
+import ProtectedRoute from './components/ProtectedRoute'
+import SignIn from './pages/SignIn'
+import SignUp from './pages/SignUp'
 import LandingOptimized from './pages/LandingOptimized'
 import Dashboard from './pages/Dashboard'
 import Agents from './pages/Agents'
@@ -57,7 +60,9 @@ function App() {
         <div className="min-h-screen bg-background text-foreground">
           <Routes>
             <Route path="/" element={<LandingOptimized />} />
-            <Route path="/app" element={<AppLayout />}>
+            <Route path="/login" element={<SignIn />} />
+            <Route path="/register" element={<SignUp />} />
+            <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/app/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="agents" element={<Agents />} />
