@@ -1,9 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import * as THREE from 'three';
 import {
   Activity,
   Server,
@@ -17,12 +14,18 @@ import {
   X
 } from 'lucide-react';
 
+// Lazy-loaded — GLB + Three.js only download after the hero is painted
+const Model3DSection = lazy(() => import('./Model3DSection'));
+
 export default function LandingOptimized() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <Navigation />
       <HeroSection />
-      <Model3DSection />
+      {/* Model3DSection is below the fold — lazy loaded after first paint */}
+      <Suspense fallback={<div className="h-screen bg-slate-950" />}>
+        <Model3DSection />
+      </Suspense>
       <FeaturesSection />
       <BenefitsSection />
       <CTASection />
@@ -118,134 +121,111 @@ function Navigation() {
 function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [loadProgress, setLoadProgress] = useState(0);
+  const currentFrameRef = useRef(0);
   const frameCount = 240;
   const navigate = useNavigate();
 
-  // Preload images
-  const imagesRef = useRef<HTMLImageElement[]>([]);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-
-  useEffect(() => {
-    const images: HTMLImageElement[] = [];
-    let loadedCount = 0;
-
-    for (let i = 1; i <= frameCount; i++) {
-      const img = new Image();
-      img.src = `/ezgif-3631117e4f262e86-png-split/ezgif-frame-${i.toString().padStart(3, '0')}.png`;
-
-      img.onload = () => {
-        loadedCount++;
-        setLoadProgress(Math.round((loadedCount / frameCount) * 100));
-        if (loadedCount === frameCount) {
-          setImagesLoaded(true);
-        }
-      };
-
-      img.onerror = () => {
-        loadedCount++;
-        setLoadProgress(Math.round((loadedCount / frameCount) * 100));
-        if (loadedCount === frameCount) {
-          setImagesLoaded(true);
-        }
-      };
-
-      images.push(img);
-    }
-
-    imagesRef.current = images;
-  }, []);
+  const imagesRef = useRef<(HTMLImageElement | null)[]>(Array(frameCount).fill(null));
+  const [canvasReady, setCanvasReady] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
 
   const renderFrame = useCallback((frameIndex: number) => {
-    if (!canvasRef.current || !imagesRef.current[frameIndex]) return;
-
     const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
     const img = imagesRef.current[frameIndex];
-    if (!img.complete) return;
-
-    // Clear canvas
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Calculate scale to fit image in canvas while maintaining aspect ratio
-    const scale = Math.min(
-      canvas.width / img.width,
-      canvas.height / img.height
-    );
-
-    // Center the image
+    if (!canvas || !img?.complete || !img.naturalWidth) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
     const x = (canvas.width - img.width * scale) / 2;
     const y = (canvas.height - img.height * scale) / 2;
+    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+  }, []);
 
-    context.drawImage(img, x, y, img.width * scale, img.height * scale);
+  // Resize canvas once on mount
+  const initCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
   }, []);
 
   useEffect(() => {
-    if (!imagesLoaded || !canvasRef.current) return;
+    initCanvas();
+    window.addEventListener('resize', initCanvas);
+    return () => window.removeEventListener('resize', initCanvas);
+  }, [initCanvas]);
 
+  useEffect(() => {
+    let loadedCount = 0;
+    const frameUrl = (i: number) =>
+      `/ezgif-3631117e4f262e86-png-split/ezgif-frame-${String(i).padStart(3, '0')}.png`;
+
+    const onLoad = (i: number) => {
+      loadedCount++;
+      setLoadProgress(Math.round((loadedCount / frameCount) * 100));
+      // Show canvas as soon as frame 1 is ready
+      if (i === 0) {
+        renderFrame(0);
+        setCanvasReady(true);
+      }
+    };
+
+    // Load frame 1 first for immediate display, then load rest in background
+    const first = new Image();
+    first.src = frameUrl(1);
+    first.onload = first.onerror = () => {
+      imagesRef.current[0] = first;
+      onLoad(0);
+      // Load remaining frames silently in batches of 10
+      let i = 1;
+      const loadBatch = () => {
+        const end = Math.min(i + 10, frameCount);
+        for (; i < end; i++) {
+          const img = new Image();
+          const idx = i;
+          img.src = frameUrl(idx + 1);
+          img.onload = img.onerror = () => {
+            imagesRef.current[idx] = img;
+            onLoad(idx);
+          };
+        }
+        if (i < frameCount) requestIdleCallback ? requestIdleCallback(loadBatch) : setTimeout(loadBatch, 50);
+      };
+      loadBatch();
+    };
+  }, [renderFrame]);
+
+  // Scroll → frame
+  useEffect(() => {
     const handleScroll = () => {
-      if (!containerRef.current) return;
-
-      const scrollTop = window.scrollY;
-      const maxScroll = window.innerHeight * 2; // 2 viewport heights for full animation
-      const scrollFraction = Math.min(scrollTop / maxScroll, 1);
-      const frameIndex = Math.min(
-        Math.floor(scrollFraction * (frameCount - 1)),
-        frameCount - 1
-      );
-
-      setCurrentFrame(frameIndex);
-      renderFrame(frameIndex);
+      const scrollFraction = Math.min(window.scrollY / (window.innerHeight * 2), 1);
+      const frameIndex = Math.min(Math.floor(scrollFraction * (frameCount - 1)), frameCount - 1);
+      if (frameIndex !== currentFrameRef.current) {
+        currentFrameRef.current = frameIndex;
+        // Use the closest loaded frame if target isn't ready yet
+        let idx = frameIndex;
+        while (idx > 0 && !imagesRef.current[idx]?.complete) idx--;
+        renderFrame(idx);
+      }
     };
-
-    const handleResize = () => {
-      if (!canvasRef.current) return;
-      const canvas = canvasRef.current;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * window.devicePixelRatio;
-      canvas.height = rect.height * window.devicePixelRatio;
-      renderFrame(currentFrame);
-    };
-
-    handleResize();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleResize);
-
-    // Draw first frame
-    handleScroll();
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [imagesLoaded, currentFrame, renderFrame]);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [renderFrame]);
 
   return (
     <section ref={containerRef} className="relative h-[300vh]">
       <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
-        {/* Canvas for frame animation */}
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 w-full h-full"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain'
-          }}
-        />
-
-        {/* Gradient overlay for better text readability */}
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-transparent to-slate-950/60 pointer-events-none" />
 
-        {/* Overlay content */}
+        {/* Hero text — visible immediately, no loading gate */}
         <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: imagesLoaded ? 1 : 0, y: imagesLoaded ? 0 : 20 }}
-            transition={{ duration: 0.8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
           >
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
               Data Center Infrastructure
@@ -256,7 +236,6 @@ function HeroSection() {
               Real-time monitoring, intelligent analytics, and predictive maintenance
               for enterprise data centers
             </p>
-
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
                 onClick={() => navigate('/app/dashboard')}
@@ -269,127 +248,39 @@ function HeroSection() {
                 Watch Demo
               </button>
             </div>
-
           </motion.div>
         </div>
 
-        {/* Loading indicator */}
-        {!imagesLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-950 z-20">
-            <div className="flex flex-col items-center gap-4 max-w-md w-full px-6">
-              <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-              <p className="text-slate-400 text-lg">Loading experience...</p>
-
-              {/* Progress bar */}
-              <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-500"
-                  initial={{ width: '0%' }}
-                  animate={{ width: `${loadProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-              <p className="text-slate-500 text-sm">{loadProgress}%</p>
-            </div>
+        {/* Subtle progress bar at the bottom — only while frames are loading */}
+        {loadProgress < 100 && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-800 z-20">
+            <motion.div
+              className="h-full bg-gradient-to-r from-blue-500 to-cyan-500"
+              initial={{ width: '0%' }}
+              animate={{ width: `${loadProgress}%` }}
+              transition={{ duration: 0.2 }}
+            />
           </div>
         )}
 
         {/* Scroll indicator */}
-        <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: imagesLoaded ? 1 : 0, y: imagesLoaded ? 0 : -10 }}
-          transition={{ delay: 1, duration: 0.8 }}
-        >
-          <div className="flex flex-col items-center gap-2 text-slate-300">
-            <span className="text-sm">Scroll to explore</span>
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              <div className="w-6 h-10 border-2 border-slate-300 rounded-full flex items-start justify-center p-2">
-                <div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
-
-// 3D Model Component
-function Model3D() {
-  const meshRef = useRef<THREE.Group>(null);
-  const scrollRef = useRef(0);
-
-  // Load the GLB model
-  const gltf = useLoader(GLTFLoader, '/sample_2026-02-09T130052.563.glb');
-
-  // Update scroll position
-  useEffect(() => {
-    const handleScroll = () => {
-      // Calculate scroll position relative to the window height
-      const scrollTop = window.scrollY;
-      // Start rotation after hero section (roughly 300vh from hero)
-      const scrollStart = window.innerHeight * 3; // After hero section
-      const scrollProgress = Math.max(0, scrollTop - scrollStart);
-      scrollRef.current = scrollProgress;
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Animate rotation based on scroll
-  useFrame(() => {
-    if (meshRef.current) {
-      // Rotate on Y axis based on scroll position
-      // Full rotation every 500 pixels of scroll
-      meshRef.current.rotation.y = (scrollRef.current / 500) * Math.PI * 2;
-    }
-  });
-
-  return (
-    <group ref={meshRef}>
-      <primitive object={gltf.scene} scale={5} />
-    </group>
-  );
-}
-
-function Model3DSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <section ref={sectionRef} className="relative h-screen bg-slate-950">
-      <div className="absolute inset-0">
-        <Canvas
-          camera={{ position: [0, 0, 5], fov: 50 }}
-          style={{ background: 'linear-gradient(to bottom, #0f172a, #1e293b, #334155)' }}
-        >
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[10, 10, 5]} intensity={1} />
-          <directionalLight position={[-10, -10, -5]} intensity={0.5} />
-          <Model3D />
-        </Canvas>
-      </div>
-
-      {/* Overlay content */}
-      <div className="relative z-10 h-full flex items-center justify-center px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center max-w-3xl"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            Infrastructure at Scale
-          </h2>
-          <p className="text-xl text-white">
-            Monitor and manage thousands of devices with real-time 3D visualization
-          </p>
-        </motion.div>
+        {canvasReady && (
+          <motion.div
+            className="absolute bottom-8 left-1/2 -translate-x-1/2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            <div className="flex flex-col items-center gap-2 text-slate-300">
+              <span className="text-sm">Scroll to explore</span>
+              <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                <div className="w-6 h-10 border-2 border-slate-300 rounded-full flex items-start justify-center p-2">
+                  <div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
       </div>
     </section>
   );
