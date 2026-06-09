@@ -16,6 +16,7 @@ import {
 
 // Lazy-loaded — GLB + Three.js only download after the hero is painted
 const Model3DSection = lazy(() => import('./Model3DSection'));
+const FeaturesNetworkBg = lazy(() => import('../components/FeaturesNetworkBg'));
 
 export default function LandingOptimized() {
   return (
@@ -336,8 +337,13 @@ function FeaturesSection() {
   };
 
   return (
-    <section id="features" className="py-32 px-6 bg-slate-900">
-      <div className="max-w-7xl mx-auto">
+    <section id="features" className="relative py-32 px-6 bg-slate-900 overflow-hidden">
+      {/* Three.js network — subtle background, lazy loaded */}
+      <Suspense fallback={null}>
+        <FeaturesNetworkBg />
+      </Suspense>
+
+      <div className="relative z-10 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
