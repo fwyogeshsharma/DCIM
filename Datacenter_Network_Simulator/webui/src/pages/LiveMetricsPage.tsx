@@ -1074,6 +1074,7 @@ const PLANT_COLUMNS: Record<string, PlantCol[]> = {
     { key: 'TCS_Flow',           label: 'TCS Flow',   unit: ' L/s', decimals: 1 },
     { key: 'Facility_CHW_Valve', label: 'CHW Valve',  unit: '%',  decimals: 0 },
     { key: 'Facility_CHW_Flow',  label: 'CHW Flow',   unit: ' L/s', decimals: 1 },
+    { key: 'TCS_Loop_Pressure',  label: 'Loop Press', unit: ' kPa', warn: 180, crit: 150, decimals: 0 },
     { key: 'Heat_Load',          label: 'Heat Load',  unit: ' kW', decimals: 0 },
     { key: 'Pump_Power',         label: 'Pump Power', unit: ' kW', decimals: 2 },
     { key: 'Pump_Speed',         label: 'Pump Speed', unit: '%',  decimals: 0 },

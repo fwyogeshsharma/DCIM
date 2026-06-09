@@ -200,7 +200,8 @@ _PLANT_OID_PATCH = {
          ("Facility_CHW_Valve", 5, 1, "2"), ("Facility_CHW_Flow", 6, 10, "2"),
          ("Heat_Load", 7, 1, "2"), ("Pump_Power", 8, 10, "2"),
          ("Pump_Speed", 9, 1, "2"), ("Approach_Temp", 10, 10, "2"),
-         ("Filter_DP", 11, 1, "2"), ("Run_Hours", 12, 1, "65")],
+         ("Filter_DP", 11, 1, "2"), ("Run_Hours", 12, 1, "65"),
+         ("TCS_Loop_Pressure", 18, 1, "2")],
         [("Unit_Running", 13), ("Alarm_Leak", 14), ("Alarm_HighSupplyTemp", 15),
          ("Alarm_PumpFault", 16), ("Alarm_LowFlow", 17)]),
     "crah": ("1.3.6.1.4.1.99999.24",
@@ -1358,6 +1359,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{b}.15.0", "2", "1"),                # alarmHighSupplyTemp 1=ok 2=alarm
             _oid_entry(f"{b}.16.0", "2", "1"),                # alarmPumpFault 1=ok 2=fault
             _oid_entry(f"{b}.17.0", "2", "1"),                # alarmLowFlow 1=ok 2=alarm
+            _oid_entry(f"{b}.18.0", "2", str(240 + s % 25)),  # tcsLoopPressure kPa
         ]
 
 

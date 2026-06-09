@@ -372,8 +372,17 @@ class BACnetController:
             if dev is None:
                 continue
             try:
-                values = engine.tick(dt)
                 kind = getattr(dev, "kind", "ev2")
+                # Manual leak trigger: when the Limits tab locks cdu:Alarm_Leak
+                # "on", drive the CDU engine's full leak physics (pressure/flow
+                # drop, pump ramp, CPU heat) — not just the forced alarm bit.
+                if kind == "plant:cdu" and metric_limits:
+                    _lk = metric_limits.get("cdu:Alarm_Leak")
+                    _force = bool(_lk and _lk.get("enabled")
+                                  and str(_lk.get("lock")) == "on")
+                    values = engine.tick(dt, force_leak=_force)
+                else:
+                    values = engine.tick(dt)
                 if metric_flags:
                     values = {
                         k: v for k, v in values.items()

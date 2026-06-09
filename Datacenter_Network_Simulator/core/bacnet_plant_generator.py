@@ -101,6 +101,7 @@ PLANT_SPEC: Dict[str, dict] = {
             ("TCS_Flow",           _LPS, 18.0, 3.0),
             ("Facility_CHW_Valve", _PCT, 60.0, 20.0),
             ("Facility_CHW_Flow",  _LPS, 16.0, 3.0),
+            ("TCS_Loop_Pressure",  _KPA, 250.0, 12.0),
             ("Heat_Load",          _KW, 450.0, 60.0),
             ("Pump_Power",         _KW,  None, 0.12),
             ("Pump_Speed",         _PCT, 70.0, 18.0),
@@ -189,6 +190,13 @@ class PlantTelemetryEngine:
         for name in spec["bi"]:
             self._binaries[name] = 1.0 if name in spec["on"] else 0.0
         self._start = time.time()
+        # Direct-to-chip leak event state (CDU only). A leak bleeds coolant from
+        # the sealed TCS loop, so loop pressure + flow fall, the pump ramps to
+        # compensate, supply/approach temps rise, and Alarm_Leak / Alarm_LowFlow
+        # latch. The DCIM sees it via COV on those points (no trap needed).
+        self._leak_active = False
+        self._leak_t = 0.0      # seconds elapsed since leak onset
+        self._leak_dur = 0.0    # leak duration before repair
 
     def _diurnal(self) -> float:
         t = time.localtime()
@@ -200,7 +208,7 @@ class PlantTelemetryEngine:
     def _ema(new: float, old: float, a: float) -> float:
         return a * new + (1.0 - a) * old
 
-    def tick(self, dt: float) -> Dict[str, float]:
+    def tick(self, dt: float, force_leak: bool = False) -> Dict[str, float]:
         mul = self._diurnal()
         out: Dict[str, float] = {}
         for name, base, amp, is_load, is_hours in self._points:
@@ -219,4 +227,49 @@ class PlantTelemetryEngine:
             out[name] = round(self._values[name], 2)
         for name, val in self._binaries.items():
             out[name] = val
+        if self._type == "cdu":
+            self._apply_cdu_leak(out, dt, force_leak)
         return out
+
+    def _apply_cdu_leak(self, out: Dict[str, float], dt: float,
+                        force_leak: bool = False) -> None:
+        """Couple a coolant leak to the TCS-loop physics. Onset is either a
+        manual force (Limits tab → cdu:Alarm_Leak locked on, held until cleared)
+        or a rare random event that clears after a repair interval. Severity
+        ramps over the first ~minute either way."""
+        _HELD = float("inf")
+        if force_leak:
+            if not self._leak_active:
+                self._leak_active = True
+                self._leak_t = 0.0
+                self._leak_dur = _HELD          # held until the force is released
+            self._leak_t += dt
+        elif self._leak_active:
+            if self._leak_dur == _HELD:
+                self._leak_active = False        # force released → repaired
+            else:
+                self._leak_t += dt
+                if self._leak_t >= self._leak_dur:
+                    self._leak_active = False
+        elif random.random() < 0.0015:           # ~rare random onset per tick
+            self._leak_active = True
+            self._leak_t = 0.0
+            self._leak_dur = random.uniform(120.0, 480.0)
+        if not self._leak_active:
+            return
+        sev = min(1.0, 0.25 + self._leak_t / 60.0)   # 0.25 → 1.0 over ~45 s
+        out["Alarm_Leak"] = 1.0
+        if "TCS_Loop_Pressure" in out:
+            out["TCS_Loop_Pressure"] = round(out["TCS_Loop_Pressure"] * (1.0 - 0.45 * sev), 2)
+        if "TCS_Flow" in out:
+            out["TCS_Flow"] = round(out["TCS_Flow"] * (1.0 - 0.50 * sev), 2)
+        if "Pump_Speed" in out:
+            out["Pump_Speed"] = round(min(100.0, out["Pump_Speed"] * (1.0 + 0.25 * sev)), 2)
+        if "Pump_Power" in out:
+            out["Pump_Power"] = round(out["Pump_Power"] * (1.0 + 0.18 * sev), 2)
+        if "TCS_Supply_Temp" in out:
+            out["TCS_Supply_Temp"] = round(out["TCS_Supply_Temp"] + 4.0 * sev, 2)
+        if "Approach_Temp" in out:
+            out["Approach_Temp"] = round(out["Approach_Temp"] + 2.0 * sev, 2)
+        if sev > 0.4:                          # flow collapsed → low-flow trip
+            out["Alarm_LowFlow"] = 1.0

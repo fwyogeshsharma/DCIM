@@ -97,6 +97,14 @@ class DeviceStateStore:
         self._tick_interval   = tick_interval
         self._snmp_sync_every = snmp_sync_every
 
+        # Direct-to-chip leak → CPU-temp coupling. A CDU leak starves the cold
+        # plates on the servers it cools, so their CPU temp climbs (and the
+        # HighTemperature rule fires a corroborating SNMP trap). Map is built
+        # lazily from the TCS cooling edges; intensity comes from the leak's
+        # loop-pressure drop, refreshed each tick from the plant-state cache.
+        self._cdu_loop_servers_cache: Optional[Dict[str, set]] = None
+        self._leak_heat: Dict[str, float] = {}   # server name → 0..1 intensity
+
         # Stable boot-time cache: {ip: nanoseconds}.
         # Computed once the first time get_metrics() is called for a device
         # so that boot-time never drifts between gNMI responses.
@@ -466,8 +474,50 @@ class DeviceStateStore:
                 except Exception:
                     log.exception("[StateStore] Recovery publish error")
 
+    def _cdu_loop_servers(self) -> Dict[str, set]:
+        """Map each CDU name → set of server names on its TCS cold-plate loop,
+        built once from the cooling-layer edges. Cached for the run."""
+        if self._cdu_loop_servers_cache is not None:
+            return self._cdu_loop_servers_cache
+        from core.device_manager import DeviceType
+        out: Dict[str, set] = {}
+        try:
+            for u, v, _d in self._topology.get_edges_by_layer("cooling"):
+                du, dv = self._dm.get_device(u), self._dm.get_device(v)
+                if du is None or dv is None:
+                    continue
+                cdu, srv = None, None
+                if du.device_type == DeviceType.CDU and dv.device_type == DeviceType.SERVER:
+                    cdu, srv = du, dv
+                elif dv.device_type == DeviceType.CDU and du.device_type == DeviceType.SERVER:
+                    cdu, srv = dv, du
+                if cdu is not None:
+                    out.setdefault(cdu.name, set()).add(srv.name)
+        except Exception:
+            log.exception("[StateStore] CDU loop map build error")
+        self._cdu_loop_servers_cache = out
+        return out
+
+    def _compute_leak_heat(self) -> None:
+        """Refresh server→intensity heat map from leaking CDUs. Intensity scales
+        with the loop-pressure drop; a forced leak (alarm on, pressure normal)
+        still applies a moderate floor."""
+        heat: Dict[str, float] = {}
+        loop = self._cdu_loop_servers()
+        if loop:
+            for cdu_name, servers in loop.items():
+                pv = _plant_state_cache.get(cdu_name)
+                if not pv or pv.get("Alarm_Leak", 0.0) < 0.5:
+                    continue
+                p = pv.get("TCS_Loop_Pressure", 250.0)
+                inten = max(0.5, min(1.0, (250.0 - p) / 110.0))
+                for s in servers:
+                    heat[s] = max(heat.get(s, 0.0), inten)
+        self._leak_heat = heat
+
     def _tick(self):
         devices = self._dm.get_all_devices()
+        self._compute_leak_heat()
         for device in devices:
             self._step_device(device)
             self._step_ext_state(device)
@@ -627,8 +677,12 @@ class DeviceStateStore:
 
         # CPU/ASIC temperature
         if mf["cpu_temp"]:
-            device.cpu_temp = round(max(20.0, min(95.0,
-                20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0))), 1)
+            _cpu_t = 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0)
+            # Direct-to-chip leak: cold plate starves → chip runs hot (up to
+            # +38 °C at full severity), pushing past the HighTemperature trap.
+            if device.device_type == DeviceType.SERVER and self._leak_heat:
+                _cpu_t += self._leak_heat.get(device.name, 0.0) * 38.0
+            device.cpu_temp = round(max(20.0, min(95.0, _cpu_t)), 1)
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
 
         # Chassis inlet temperature — servers/network gear only (CPU-linked)
