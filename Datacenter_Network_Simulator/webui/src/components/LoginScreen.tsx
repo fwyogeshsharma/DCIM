@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, setToken } from '../api/client'
+import { api, setToken, type ApiError } from '../api/client'
 
 const Logo = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
@@ -28,8 +28,8 @@ export default function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
       setToken(token)
       onSuccess()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setError(msg.includes('401') ? 'Invalid username or password' : 'Login failed — is the server running?')
+      const status = (err as ApiError)?.status
+      setError(status === 401 ? 'Invalid username or password' : 'Login failed — is the server running?')
       setPassword('')
     } finally {
       setBusy(false)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { api } from '../../api/client'
+import { api, errorMessage } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { DeviceInfo } from '../../api/types'
 import { VENDORS, MODELS, deviceTypeLabel } from '../../data/deviceConstants'
@@ -288,7 +288,7 @@ export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onCl
       await api.editDevice(deviceId, form)
       fetchGraph(); fetchDevices()
       onClose()
-    } catch (e) { setErr(String(e)) }
+    } catch (e) { setErr(errorMessage(e)) }
     finally { setBusy(false) }
   }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { api } from '../../api/client'
+import { api, errorMessage } from '../../api/client'
 import type { BacnetStatus, BacnetDevice } from '../../api/types'
 
 const IconPlay = () => (
@@ -171,9 +171,8 @@ export default function BACnetPanel() {
     try {
       await api.bacnetStart({ base_instance: baseInstance, frequency_hz: freqHz, port })
       fetchStatus()
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? 'Failed to start BACnet'
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    } catch (e: unknown) {
+      setError(errorMessage(e))
     }
     finally { setBusy(false); setOperation(null) }
   }
@@ -181,9 +180,8 @@ export default function BACnetPanel() {
   async function stop() {
     setBusy(true); setOperation('stop'); setError(null)
     try { await api.bacnetStop(); fetchStatus() }
-    catch (e: any) {
-      const msg = e?.response?.data?.detail ?? e?.message ?? 'Failed to stop BACnet'
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    catch (e: unknown) {
+      setError(errorMessage(e))
     }
     finally { setBusy(false); setOperation(null) }
   }

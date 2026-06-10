@@ -16,7 +16,7 @@ import '@xyflow/react/dist/style.css'
 import DeviceNode from './DeviceNode'
 import LinkEdge, { isHotFlow } from './LinkEdge'
 import { useStore } from '../../store/useStore'
-import { api } from '../../api/client'
+import { api, errorMessage } from '../../api/client'
 import type { GraphDevice, GraphLink } from '../../api/types'
 
 const nodeTypes = { device: DeviceNode }
@@ -307,7 +307,7 @@ function Canvas() {
       if (linkSrc === node.id) { setLinkSrc(null); setLinkMsg(''); return }
       api.createLink(linkSrc, node.id, linkLayer)
         .then(() => { fetchGraph(); setLinkMsg(`Link created`) })
-        .catch(e => setLinkMsg(`Error: ${String(e)}`))
+        .catch(e => setLinkMsg(errorMessage(e)))
         .finally(() => { setLinkSrc(null) })
     }
   }, [linkMode, linkSrc, linkLayer, fetchGraph])

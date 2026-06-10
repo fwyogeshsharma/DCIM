@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from '../api/client'
+import { api, errorMessage } from '../api/client'
 import { useStore } from '../store/useStore'
 
 interface Props { onClose: () => void }
@@ -60,7 +60,7 @@ export default function BulkAddDeviceDialog({ onClose }: Props) {
         })
         ok.push(r.name)
       } catch (e: unknown) {
-        fail.push(`${r.name}: ${String(e).slice(0, 80)}`)
+        fail.push(`${r.name}: ${errorMessage(e)}`)
       }
     }
     setBusy(false)

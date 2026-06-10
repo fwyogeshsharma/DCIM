@@ -39,13 +39,45 @@ async function request<T>(
   const res = await fetch(`${BASE}${path}`, opts)
   if (res.status === 401 && path !== '/auth/login') {
     onAuthExpired()
-    throw new Error(`${method} ${path} → 401: session expired`)
+    throw apiError(401)
   }
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText)
-    throw new Error(`${method} ${path} → ${res.status}: ${text}`)
+    // Keep the technical detail in the console for developers; never surface
+    // the raw backend body (paths, status codes, stack/validation internals)
+    // to end users. Components display only the friendly message below.
+    const text = await res.text().catch(() => '')
+    console.error(`[api] ${method} ${path} → ${res.status}: ${text}`)
+    throw apiError(res.status)
   }
   return res.json() as Promise<T>
+}
+
+// Error type carrying the HTTP status, so callers can branch (e.g. 401 vs
+// network) without string-parsing. `.message` is always user-safe.
+export interface ApiError extends Error { status: number }
+
+function apiError(status: number): ApiError {
+  const e = new Error(friendlyError(status)) as ApiError
+  e.status = status
+  return e
+}
+
+// Safe extractor for catch blocks — always returns a user-presentable string,
+// never a raw object or technical detail.
+export function errorMessage(e: unknown): string {
+  return e instanceof Error && e.message ? e.message : 'The request could not be completed.'
+}
+
+// Map an HTTP status to a user-safe message. No paths, no codes, no internals.
+function friendlyError(status: number): string {
+  if (status === 401) return 'Your session expired. Please sign in again.'
+  if (status === 403) return 'You do not have permission to do that.'
+  if (status === 404) return 'The requested item was not found.'
+  if (status === 409) return 'That conflicts with the current state. Refresh and try again.'
+  if (status === 422 || status === 400) return 'Some of the information provided is invalid.'
+  if (status === 503) return 'The simulator is not ready yet. Start it and try again.'
+  if (status >= 500) return 'Something went wrong on the server. Please try again.'
+  return 'The request could not be completed.'
 }
 
 const get  = <T>(p: string, signal?: AbortSignal) => request<T>('GET', p, undefined, signal)
@@ -80,8 +112,13 @@ export const api = {
     fd.append('file', file)
     const token = getToken()
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
-    return fetch(`${BASE}/topology/upload`, { method: 'POST', body: fd, headers }).then(r => {
-      if (r.status === 401) { onAuthExpired(); throw new Error('session expired') }
+    return fetch(`${BASE}/topology/upload`, { method: 'POST', body: fd, headers }).then(async r => {
+      if (r.status === 401) { onAuthExpired(); throw apiError(401) }
+      if (!r.ok) {
+        const text = await r.text().catch(() => '')
+        console.error(`[api] POST /topology/upload → ${r.status}: ${text}`)
+        throw apiError(r.status)
+      }
       return r.json()
     })
   },

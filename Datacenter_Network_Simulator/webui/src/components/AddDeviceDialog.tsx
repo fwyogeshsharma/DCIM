@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { api } from '../api/client'
+import { api, errorMessage } from '../api/client'
 import { useStore } from '../store/useStore'
 import { DEVICE_TYPES, VENDORS, MODELS } from '../data/deviceConstants'
 
@@ -267,7 +267,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
       fetchGraph(); fetchDevices()
       onClose()
     } catch (e: unknown) {
-      setErr(String(e))
+      setErr(errorMessage(e))
     } finally { setBusy(false) }
   }
 
