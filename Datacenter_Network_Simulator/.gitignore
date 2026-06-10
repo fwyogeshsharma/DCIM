@@ -27,6 +27,9 @@ dist/
 # ── Generated runtime data ───────────────────────────────────────────────────
 datasets/
 
+# ── Code knowledge graph (regenerate with `graphify update .`) ────────────────
+graphify-out/
+
 # ── IDE / editor ─────────────────────────────────────────────────────────────
 .idea/
 .vscode/
@@ -36,5 +39,4 @@ datasets/
 .DS_Store
 Thumbs.db
 
-# Note: graphify-out/ is intentionally TRACKED — it is the committed code map
-# (see CLAUDE.md). webui/ has its own .gitignore for node_modules/, dist/, etc.
+# Note: webui/ has its own .gitignore for node_modules/, dist/, etc.
