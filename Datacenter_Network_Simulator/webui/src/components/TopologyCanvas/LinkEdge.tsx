@@ -6,7 +6,6 @@ import {
   getBezierPath,
   type EdgeProps,
 } from '@xyflow/react'
-import { useStore } from '../../store/useStore'
 
 const LAYER_COLOR: Record<string, string> = {
   production: '#4a9eff',
@@ -36,6 +35,9 @@ export interface LinkEdgeData {
   broken: boolean
   src_iface?: number
   dst_iface?: number
+  srcName?: string
+  dstName?: string
+  flow?: 'hot' | 'cold'
   [key: string]: unknown
 }
 
@@ -47,12 +49,14 @@ function LinkEdge(props: EdgeProps) {
   const broken = Boolean(d.broken)
   const layer  = String(d.layer || 'production')
 
-  const graphDevices = useStore(s => s.graphDevices)
-  const srcName = graphDevices.find(dev => dev.id === source)?.name || source
-  const dstName = graphDevices.find(dev => dev.id === target)?.name || target
+  // Name + hot/cold classification are precomputed in linksToEdges and carried
+  // in edge data — so this edge does NOT subscribe to the device store and will
+  // not re-render on every metrics tick.
+  const srcName = d.srcName || source
+  const dstName = d.dstName || target
 
   const isCool = layer === 'cooling'
-  const hot    = isCool && isHotFlow(srcName, dstName)
+  const hot    = isCool && d.flow === 'hot'
   const color  = broken ? '#f85149'
                : isCool  ? (hot ? COOL_HOT : COOL_COLD)
                : (LAYER_COLOR[layer] || '#4a9eff')

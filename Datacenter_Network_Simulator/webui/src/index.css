@@ -186,6 +186,12 @@ select option { background: #131f30; color: var(--text); }
   to { stroke-dashoffset: -12; }
 }
 
+/* Pause the per-frame stroke-dashoffset repaint while the user pans/zooms.
+   Stylesheet !important overrides the inline `animation` shorthand on the path. */
+.rf-interacting .react-flow__edge-path {
+  animation-play-state: paused !important;
+}
+
 /* ─── Panel header ─── */
 .panel-header {
   height: 34px;

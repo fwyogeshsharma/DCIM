@@ -133,6 +133,8 @@ function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edg
         broken: l.broken,
         src_iface: l.src_iface,
         dst_iface: l.dst_iface,
+        srcName: nameById[l.src_id] || l.src_id,
+        dstName: nameById[l.dst_id] || l.dst_id,
         flow: isCool ? (hot ? 'hot' : 'cold') : undefined,
       },
     }
@@ -335,8 +337,23 @@ function Canvas() {
     } catch (e) { console.error(e) }
   }, [fetchGraph, linkMode])
 
+  // Pause the cooling flow-dash animation while the user pans/zooms — the
+  // per-frame stroke-dashoffset repaint otherwise fights the viewport transform
+  // and causes jank. Toggle a class directly (no React re-render).
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const moveIdle = useRef<number | undefined>(undefined)
+  const onMoveStart = useCallback(() => {
+    if (moveIdle.current) { clearTimeout(moveIdle.current); moveIdle.current = undefined }
+    wrapperRef.current?.classList.add('rf-interacting')
+  }, [])
+  const onMoveEnd = useCallback(() => {
+    // Debounce: wheel-zoom fires many start/end pairs in quick succession.
+    moveIdle.current = window.setTimeout(
+      () => wrapperRef.current?.classList.remove('rf-interacting'), 150)
+  }, [])
+
   return (
-    <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+    <div ref={wrapperRef} style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
 
       {/* ── Top-left toolbar ─────────────────────────────────── */}
       <div className="canvas-toolbar">
@@ -514,6 +531,9 @@ function Canvas() {
         fitView
         minZoom={0.05}
         maxZoom={2}
+        onlyRenderVisibleElements
+        onMoveStart={onMoveStart}
+        onMoveEnd={onMoveEnd}
         defaultEdgeOptions={{ type: 'link' }}
         style={{
           background: 'radial-gradient(ellipse at center, #0e151f 0%, var(--bg-base) 70%)',
