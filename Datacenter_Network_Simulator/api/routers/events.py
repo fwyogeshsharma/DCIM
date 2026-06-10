@@ -5,13 +5,16 @@ import asyncio
 import json
 import queue as _queue
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+
+from api.auth import require_auth_query
 
 router = APIRouter(prefix="/events", tags=["Events"])
 
 
-@router.get("", summary="SSE stream: log, progress, sync events")
+@router.get("", summary="SSE stream: log, progress, sync events",
+            dependencies=[Depends(require_auth_query)])
 async def event_stream():
     """
     Connect as SSE client.  Each message is newline-terminated JSON:

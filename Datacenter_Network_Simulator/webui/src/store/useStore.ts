@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api, fetchWithAbort } from '../api/client'
+import { api, fetchWithAbort, getToken } from '../api/client'
 import type {
   GraphDevice, GraphLink, SnmpStatus, GnmiStatus, SFlowStatus, BacnetStatus,
   BindingStatus, RulesTable, TrapRecord, LogEntry,
@@ -266,7 +266,10 @@ export const useStore = create<Store>((set, get) => ({
 
   connectSSE: () => {
     const connect = () => {
-      const sseUrl = (import.meta.env.DEV ? 'http://localhost:8000' : '') + '/api/events'
+      const token = getToken()
+      if (!token) { setTimeout(connect, 3000); return }  // not logged in yet
+      const sseUrl = (import.meta.env.DEV ? 'http://localhost:8000' : '')
+        + '/api/events?token=' + encodeURIComponent(token)
       const es = new EventSource(sseUrl)
       es.onmessage = (e) => {
         try {

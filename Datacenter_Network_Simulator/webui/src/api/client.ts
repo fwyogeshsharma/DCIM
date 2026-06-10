@@ -4,19 +4,43 @@
 // CORS is enabled on the API server (allow_origins=["*"]) so direct works.
 const BASE = (import.meta.env.DEV ? 'http://localhost:8000' : '') + '/api'
 
+// ── Auth token (single shared password → JWT) ───────────────────────────────
+const TOKEN_KEY = 'dcim_token'
+export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
+export const setToken = (t: string): void => localStorage.setItem(TOKEN_KEY, t)
+export const clearToken = (): void => localStorage.removeItem(TOKEN_KEY)
+
+export const AUTH_EXPIRED_EVENT = 'dcim-auth-expired'
+
+// Called when the server rejects our token (expired / invalid). Drops the
+// stored token and fires an event so App bounces back to the login screen.
+// No page reload — re-login restarts polling/SSE in place.
+function onAuthExpired() {
+  const had = getToken()
+  clearToken()
+  if (had) window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+}
+
 async function request<T>(
   method: string,
   path: string,
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
+  const headers: Record<string, string> = body ? { 'Content-Type': 'application/json' } : {}
+  const token = getToken()
+  if (token) headers['Authorization'] = `Bearer ${token}`
   const opts: RequestInit = {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    headers,
     body: body ? JSON.stringify(body) : undefined,
     signal,
   }
   const res = await fetch(`${BASE}${path}`, opts)
+  if (res.status === 401 && path !== '/auth/login') {
+    onAuthExpired()
+    throw new Error(`${method} ${path} → 401: session expired`)
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`${method} ${path} → ${res.status}: ${text}`)
@@ -40,6 +64,12 @@ export function fetchWithAbort<T>(path: string): Promise<T> {
 }
 
 export const api = {
+  // auth
+  login: (username: string, password: string) =>
+    post<{ token: string; expires_in: number; username: string; role: string }>(
+      '/auth/login', { username, password }),
+  checkAuth: () => get<{ ok: boolean; username: string; role: string }>('/auth/check'),
+
   // health
   health: ()                          => get('/health'),
 
@@ -48,7 +78,12 @@ export const api = {
   uploadTopology: (file: File)        => {
     const fd = new FormData()
     fd.append('file', file)
-    return fetch(`${BASE}/topology/upload`, { method: 'POST', body: fd }).then(r => r.json())
+    const token = getToken()
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    return fetch(`${BASE}/topology/upload`, { method: 'POST', body: fd, headers }).then(r => {
+      if (r.status === 401) { onAuthExpired(); throw new Error('session expired') }
+      return r.json()
+    })
   },
   exportTopology: ()                  => get('/topology/export'),
   clearTopology:  ()                  => post('/topology/clear'),

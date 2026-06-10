@@ -6,11 +6,13 @@ Start alongside Qt UI via app/main.py, or standalone:
 """
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.auth import require_auth
 from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow, bacnet
 from api.routers import events, jobs, tick
+from api.routers import auth as auth_router
 from api.routers import graph as graph_router
 
 app = FastAPI(
@@ -41,19 +43,25 @@ async def _force_connection_close(request, call_next):
     response.headers["Connection"] = "close"
     return response
 
-app.include_router(topology.router, prefix="/api")
-app.include_router(graph_router.router, prefix="/api")
-app.include_router(binding.router, prefix="/api")
-app.include_router(snmp.router, prefix="/api")
-app.include_router(gnmi.router, prefix="/api")
-app.include_router(rules.router, prefix="/api")
-app.include_router(traps.router, prefix="/api")
-app.include_router(devices.router, prefix="/api")
-app.include_router(sflow.router,   prefix="/api")
-app.include_router(bacnet.router,  prefix="/api")
+# Login is OPEN — it is how clients obtain a token. Everything else below
+# requires a valid bearer token via the require_auth dependency.
+app.include_router(auth_router.router, prefix="/api")
+
+_AUTH = [Depends(require_auth)]
+app.include_router(topology.router, prefix="/api", dependencies=_AUTH)
+app.include_router(graph_router.router, prefix="/api", dependencies=_AUTH)
+app.include_router(binding.router, prefix="/api", dependencies=_AUTH)
+app.include_router(snmp.router, prefix="/api", dependencies=_AUTH)
+app.include_router(gnmi.router, prefix="/api", dependencies=_AUTH)
+app.include_router(rules.router, prefix="/api", dependencies=_AUTH)
+app.include_router(traps.router, prefix="/api", dependencies=_AUTH)
+app.include_router(devices.router, prefix="/api", dependencies=_AUTH)
+app.include_router(sflow.router,   prefix="/api", dependencies=_AUTH)
+app.include_router(bacnet.router,  prefix="/api", dependencies=_AUTH)
+# events router authenticates per-route via query param (EventSource has no headers)
 app.include_router(events.router, prefix="/api")
-app.include_router(jobs.router, prefix="/api")
-app.include_router(tick.router, prefix="/api")
+app.include_router(jobs.router, prefix="/api", dependencies=_AUTH)
+app.include_router(tick.router, prefix="/api", dependencies=_AUTH)
 
 
 import os as _os
@@ -143,6 +151,19 @@ def start_api_server(host: str = "0.0.0.0", port: int = 8000):
     import uvicorn
 
     log = logging.getLogger("api.server")
+
+    # Fail fast: never serve with authentication misconfigured. A missing secret
+    # would make every token invalid (signing/verifying with ""). Refuse to start
+    # the API thread, but leave the Qt GUI running so the desktop app still works.
+    from api.auth import SECRET
+    if not SECRET:
+        log.error(
+            "DCIM_AUTH_SECRET is not set — REST API NOT started. "
+            "Run `python -m api.auth set-password` and export the printed values, "
+            "then restart to enable the API / web UI."
+        )
+        return
+
     try:
         # On Windows, ProactorEventLoop (IOCP) is immune to network-stack
         # disruption caused by mass AddIPAddress calls — SelectorEventLoop's

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { api } from '../api/client'
+import { api, clearToken, AUTH_EXPIRED_EVENT } from '../api/client'
 import { useStore } from '../store/useStore'
 import AddDeviceDialog from './AddDeviceDialog'
 import BulkAddDeviceDialog from './BulkAddDeviceDialog'
@@ -323,8 +323,16 @@ export default function MenuBar() {
     { label: 'SNMP Traps',      action: () => setRightTab('traps') },
     { label: 'Bindings',        action: () => setRightTab('binding') },
   ]
+  function logout() {
+    if (!confirm('Log out of the simulator?')) return
+    clearToken()
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+  }
+
   const helpMenuItems: MenuItem[] = [
     { label: 'About', action: () => setShowAbout(true) },
+    { label: '', divider: true, action: () => {} },
+    { label: 'Log Out', action: logout },
   ]
 
   const menus: { name: string; label: string; items: MenuItem[]; badge?: { text: string; color: string } }[] = [
