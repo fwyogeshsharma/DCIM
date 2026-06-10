@@ -1,0 +1,40 @@
+# ── Secrets — never commit ───────────────────────────────────────────────────
+auth.env
+auth_users.json
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Build / packaging output ─────────────────────────────────────────────────
+build/
+dist/
+*.manifest
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+
+# ── Generated runtime data ───────────────────────────────────────────────────
+datasets/
+
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+
+# ── OS cruft ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# Note: graphify-out/ is intentionally TRACKED — it is the committed code map
+# (see CLAUDE.md). webui/ has its own .gitignore for node_modules/, dist/, etc.
