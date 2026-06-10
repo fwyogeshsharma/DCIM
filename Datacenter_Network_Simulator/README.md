@@ -9,6 +9,7 @@ A desktop application that simulates a full datacenter network — SNMP, gNMI, s
 - [Requirements](#requirements)
 - [Windows Setup](#windows-setup)
 - [Linux Setup](#linux-setup)
+- [Authentication](#authentication)
 - [Running the App](#running-the-app)
 - [Web UI (Development Mode)](#web-ui-development-mode)
 - [Building a Standalone Executable](#building-a-standalone-executable)
@@ -114,6 +115,80 @@ sudo .venv/bin/python app/main.py
 
 ---
 
+## Authentication
+
+The REST API and Web UI require **username + password** login. The server issues a
+short-lived **JWT** (HS256); the browser sends it as a bearer token, and the live
+event stream (SSE) passes it as a query param. The implementation is pure standard
+library — no extra dependencies.
+
+Two environment variables gate the API:
+
+| Variable | Purpose |
+|----------|---------|
+| `DCIM_AUTH_SECRET` | JWT signing secret. **Required** — the API will not start without it. |
+| `DCIM_AUTH_PASSWORD_HASH` | PBKDF2 hash of the password (single-user mode). |
+
+Optional: `DCIM_AUTH_USERNAME` (default `admin`), `DCIM_AUTH_TTL_HOURS` (default 12),
+`DCIM_AUTH_USERS_FILE` (default `auth_users.json`).
+
+> Without `DCIM_AUTH_SECRET` the API thread logs an error and does **not** start.
+> On the desktop app, the Qt GUI still runs — only the API / Web UI are disabled.
+
+### Generate credentials
+
+```bash
+python -m api.auth set-password
+```
+
+Prompts for username + password, then prints `DCIM_AUTH_SECRET` and
+`DCIM_AUTH_PASSWORD_HASH`. Reuse the **same** secret across restarts, or existing
+logins are invalidated.
+
+### Set the variables — Windows
+
+Persist them at User scope (so every launch inherits them):
+
+```powershell
+[Environment]::SetEnvironmentVariable('DCIM_AUTH_SECRET', '<secret>', 'User')
+[Environment]::SetEnvironmentVariable('DCIM_AUTH_PASSWORD_HASH', '<hash>', 'User')
+```
+
+### Set the variables — Linux
+
+`run.sh` auto-loads an `auth.env` file from the project root (the values survive
+`sudo`, which otherwise strips the caller's environment):
+
+```bash
+cp auth.env.example auth.env
+python -m api.auth set-password     # paste the printed values into auth.env
+chmod 600 auth.env
+```
+
+> **Use single quotes in `auth.env`.** The PBKDF2 hash contains `$` characters that
+> double quotes would let the shell mangle. `run.sh` parses the file literally, but
+> single quotes are safe everywhere. `auth.env` and `auth_users.json` are gitignored.
+
+### Multiple users
+
+```bash
+python -m api.auth add-user         # prompts username / password / role
+```
+
+Writes `auth_users.json`. Once that file exists it **fully replaces** the
+env-defined user — so add `admin` to it too when switching to multi-user. The token
+carries each user's `role`, ready for future per-route authorization.
+
+### Get a token (CLI / scripting)
+
+```bash
+curl -s -X POST http://localhost:8000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"YOUR_PASSWORD"}'
+```
+
+---
+
 ## Running the App
 
 When the app starts it:
@@ -122,9 +197,22 @@ When the app starts it:
 2. Starts the REST API server at `http://localhost:8000`
 3. Serves the built web UI at `http://localhost:8000/web`
 
-Open your browser at **http://localhost:8000/web** to use the web interface.
+Open your browser at **http://localhost:8000/web** and **log in** with your username
+and password (see [Authentication](#authentication)).
 
-The REST API docs (Swagger) are available at **http://localhost:8000/docs**.
+The REST API docs (Swagger) are available at **http://localhost:8000/docs** — click
+**Authorize** and paste a token to call protected endpoints. `GET /api/health` is
+open (no auth).
+
+### Headless mode (Linux server — no GUI)
+
+Run the API + Web UI without a display, on a chosen port:
+
+```bash
+sudo ./run.sh --headless --port 8001
+```
+
+`--port` selects the API/Web port (default 8000). `run.sh` loads `auth.env` first.
 
 ---
 
@@ -216,3 +304,21 @@ sudo dist/Datacenter-Network-Simulator
 
 **Port 57400 already in use on Windows**
 — Apply the WinNAT port exclusion fix above.
+
+**Web UI login fails with "Invalid username or password" (Linux)**
+— The `$` in `DCIM_AUTH_PASSWORD_HASH` was mangled by the shell. In `auth.env`, wrap
+the hash in **single** quotes (`'pbkdf2_sha256$...'`), then restart. Verify the hash
+matches the password you set with `python -m api.auth set-password`. Default username
+is `admin` unless `DCIM_AUTH_USERNAME` is set.
+
+**REST API / Web UI never starts (no error in the GUI)**
+— `DCIM_AUTH_SECRET` is not set. Generate it with `python -m api.auth set-password`
+and export it (Windows User env) or put it in `auth.env` (Linux). The API refuses to
+serve without a signing secret.
+
+**`./run.sh: command not found` on Linux**
+— Missing exec bit or Windows line endings. Fix with:
+> ```bash
+> chmod +x run.sh
+> sed -i 's/\r$//' run.sh
+> ```

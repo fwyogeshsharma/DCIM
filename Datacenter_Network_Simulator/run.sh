@@ -12,10 +12,25 @@ fi
 # Load authentication credentials (DCIM_AUTH_SECRET, DCIM_AUTH_PASSWORD_HASH).
 # sudo strips the caller's environment, so the secret must be loaded here —
 # inside the script — rather than relying on the parent shell's exports.
+#
+# Parse literally instead of `source`-ing: the PBKDF2 hash contains '$'
+# characters that a sourced double-quoted value would expand and corrupt.
+# `read` performs no expansion, so any quoting style works.
 if [ -f "auth.env" ]; then
-    set -a
-    . ./auth.env
-    set +a
+    while IFS='=' read -r _key _val; do
+        _key="${_key%%[[:space:]]}"
+        case "$_key" in
+            ''|\#*) continue ;;            # skip blanks and comments
+        esac
+        _val="${_val%$'\r'}"              # strip trailing CR (CRLF files)
+        # strip one layer of surrounding single or double quotes
+        case "$_val" in
+            \"*\") _val="${_val#\"}"; _val="${_val%\"}" ;;
+            \'*\') _val="${_val#\'}"; _val="${_val%\'}" ;;
+        esac
+        export "$_key=$_val"
+    done < auth.env
+    unset _key _val
 fi
 
 if [ -z "$DCIM_AUTH_SECRET" ]; then
