@@ -192,6 +192,7 @@ function Canvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const { fitView, setNodes: rfSetNodes, zoomIn, zoomOut } = useReactFlow()
   const initialFit = useRef(false)
+  const repositionPending = useRef(false)
   const [linkSrc,    setLinkSrc]    = useState<string | null>(null)
   const [linkLayer,  setLinkLayer]  = useState('production')
   const [linkMsg,    setLinkMsg]    = useState('')
@@ -212,11 +213,26 @@ function Canvas() {
     return c
   }, [graphLinks])
 
-  // Sync graph data → React Flow nodes/edges
+  // Sync graph data → React Flow nodes/edges.
+  // Preserve user-dragged positions across data refreshes (e.g. periodic SSE
+  // topology sync) so a node doesn't snap back. Reset Layout sets
+  // repositionPending to force a rebuild from server positions.
   useEffect(() => {
     const nameById: Record<string, string> = {}
     for (const dev of graphDevices) nameById[dev.id] = dev.name
-    setNodes(devicesToNodes(graphDevices, positions, linkMode, linkSrc, activeLayer, bacnetInstByIp))
+    const built = devicesToNodes(graphDevices, positions, linkMode, linkSrc, activeLayer, bacnetInstByIp)
+    if (repositionPending.current) {
+      repositionPending.current = false
+      setNodes(built)
+    } else {
+      setNodes(prev => {
+        const prevPos = new Map(prev.map(n => [n.id, n.position]))
+        return built.map(n => {
+          const p = prevPos.get(n.id)
+          return p ? { ...n, position: p } : n
+        })
+      })
+    }
     setEdges(linksToEdges(graphLinks, nameById))
     if (!initialFit.current && graphDevices.length > 0) {
       initialFit.current = true
@@ -233,6 +249,7 @@ function Canvas() {
     setLayoutAlgo(null)
     if (layoutAlgo === 'default') {
       initialFit.current = false
+      repositionPending.current = true
       fetchGraph()
       return
     }
@@ -330,7 +347,7 @@ function Canvas() {
         <ToolBtn title="Zoom Out" onClick={() => zoomOut({ duration: 200 })}><I.zoomOut /></ToolBtn>
         <ToolBtn title="Fit to View  (Ctrl+Shift+F)" onClick={() => fitView({ padding: 0.1, duration: 400 })}><I.fit /></ToolBtn>
         <div className="canvas-tool-divider" />
-        <ToolBtn title="Reset Layout" onClick={() => { initialFit.current = false; fetchGraph() }}><I.reset /></ToolBtn>
+        <ToolBtn title="Reset Layout" onClick={() => { initialFit.current = false; repositionPending.current = true; fetchGraph() }}><I.reset /></ToolBtn>
 
       </div>
 
