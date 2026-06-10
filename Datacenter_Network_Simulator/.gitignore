@@ -27,8 +27,15 @@ dist/
 # ── Generated runtime data ───────────────────────────────────────────────────
 datasets/
 
-# ── Code knowledge graph (regenerate with `graphify update .`) ────────────────
+# ── Claude Code traces ───────────────────────────────────────────────────────
+.claude/
+.claude.json
+CLAUDE.md
+CLAUDE.local.md
+
+# ── graphify traces (regenerate with `graphify update .`) ─────────────────────
 graphify-out/
+.graphify*
 
 # ── IDE / editor ─────────────────────────────────────────────────────────────
 .idea/
