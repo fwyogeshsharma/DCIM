@@ -53,10 +53,23 @@ def is_admin() -> bool:
 def get_interfaces() -> List[Tuple[str, str]]:
     """
     Return a list of (adapter_name, display_label) for every network adapter.
+
+    If the DCIM_ADAPTER_FILTER env var is set (comma-separated adapter names),
+    only those adapters are returned — useful in headless deployments where the
+    simulator binds to a single dedicated dummy NIC (e.g. dcim0) and the host's
+    real NICs should never appear in the binding dropdown.
     """
     if sys.platform == "win32":
-        return _get_interfaces_windows()
-    return _get_interfaces_linux()
+        ifaces = _get_interfaces_windows()
+    else:
+        ifaces = _get_interfaces_linux()
+
+    allow = os.environ.get("DCIM_ADAPTER_FILTER", "").strip()
+    if allow:
+        wanted = {n.strip() for n in allow.split(",") if n.strip()}
+        ifaces = [(name, label) for name, label in ifaces if name in wanted]
+
+    return ifaces
 
 
 def _get_interfaces_windows() -> List[Tuple[str, str]]:
