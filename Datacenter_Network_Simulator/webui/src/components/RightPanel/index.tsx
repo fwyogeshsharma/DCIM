@@ -5,6 +5,7 @@ import SNMPPanel    from './SNMPPanel'
 import GNMIPanel    from './GNMIPanel'
 import SFlowPanel   from './SFlowPanel'
 import BACnetPanel  from './BACnetPanel'
+import RedfishPanel from './RedfishPanel'
 import TrapsPanel   from './TrapsPanel'
 import RulesPanel   from './RulesPanel'
 import ConsolePanel from './ConsolePanel'
@@ -33,6 +34,7 @@ const TABS: Tab[] = [
   { id: 'gnmi',    icon: '📡',  iconSrc: '/assets/icons/gnmi.svg', label: 'gNMI', component: <GNMIPanel /> },
   { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
   { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
+  { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
@@ -114,7 +116,7 @@ function TabButton({
 }
 
 export default function RightPanel() {
-  const { rightTab, setRightTab, snmp, gnmi, sflow, bacnet, traps, binding } = useStore()
+  const { rightTab, setRightTab, snmp, gnmi, sflow, bacnet, redfish, traps, binding } = useStore()
   const [panelOpen, setPanelOpen] = useState(true)
   const [width, setWidth] = useState<number>(() => {
     const saved = parseInt(localStorage.getItem(STORAGE_KEY) || '', 10)
@@ -171,6 +173,7 @@ export default function RightPanel() {
     gnmi:    gnmi?.running   ? 'gNMI running'   : undefined,
     sflow:   sflow?.running  ? 'sFlow running'  : undefined,
     bacnet:  bacnet?.running ? 'BACnet running' : undefined,
+    redfish: redfish?.running ? 'Redfish running' : undefined,
     traps:   snmp?.rule_engine_enabled ? 'Trap simulation running' : undefined,
   }
 
@@ -222,7 +225,7 @@ export default function RightPanel() {
         padding: '10px 0',
         gap: 4,
       }}>
-        {TABS.slice(0, 5).map(t => (
+        {TABS.slice(0, 6).map(t => (
           <TabButton
             key={t.id}
             tab={t}
@@ -239,7 +242,7 @@ export default function RightPanel() {
           margin: '6px 0',
         }} />
 
-        {TABS.slice(5).map(t => (
+        {TABS.slice(6).map(t => (
           <TabButton
             key={t.id}
             tab={t}

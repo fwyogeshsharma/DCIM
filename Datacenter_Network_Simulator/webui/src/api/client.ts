@@ -179,6 +179,13 @@ export const api = {
   ev2Metrics:   ()                        => get('/bacnet/ev2/metrics'),
   plantMetrics: ()                        => get('/bacnet/plant/metrics'),
 
+  // redfish
+  redfishStatus:   ()                     => get('/redfish/status'),
+  redfishStart:    (cfg: { port: number; username: string; password: string }) =>
+    post('/redfish/start', cfg),
+  redfishStop:     ()                     => post('/redfish/stop'),
+  redfishSessions: ()                     => get('/redfish/sessions'),
+
   // rules
   rules:          ()                  => get('/rules'),
   enableEngine:   ()                  => post('/rules/enable'),

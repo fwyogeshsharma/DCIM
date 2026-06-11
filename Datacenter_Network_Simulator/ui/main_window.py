@@ -38,6 +38,7 @@ from simulator.snmpsim_controller import SNMPSimController
 from simulator.gnmi_controller import GNMIController
 from simulator.sflow_controller import SFlowController
 from simulator.bacnet_controller import BACnetController
+from simulator.redfish_controller import RedfishController
 from core.trap_definitions import TrapType, TRAP_DEFINITIONS, get_applicable_traps
 from core.trap_engine import TrapEngine
 from core.rule_engine import RuleEngine
@@ -51,6 +52,7 @@ from ui.trap_panel import TrapPanel
 from ui.gnmi_panel import GNMIPanel
 from ui.sflow_panel import SFlowPanel
 from ui.bacnet_panel import BACnetPanel
+from ui.redfish_panel import RedfishPanel
 from ui.console_panel import ConsolePanel
 from ui.binding_panel import BindingPanel
 from ui.discovery_dialog import DiscoveryDialog
@@ -453,6 +455,7 @@ class MainWindow(QMainWindow):
         self.gnmi    = GNMIController(self._gnmi_datasets_dir)
         self.sflow   = SFlowController()
         self.bacnet  = BACnetController(self._bacnet_datasets_dir)
+        self.redfish = RedfishController()
         self.state_store = DeviceStateStore(
             self.device_manager, self.topology, self._snmp_datasets_dir,
             tick_interval=30.0, snmp_sync_every=1,
@@ -464,6 +467,9 @@ class MainWindow(QMainWindow):
         # BACnet callbacks (log forwarded to console BACnet tab)
         self.bacnet.set_log_callback(self._on_bacnet_log)
         self.bacnet.set_ready_callback(self._on_bacnet_ready)
+        # Redfish callbacks (log forwarded to console)
+        self.redfish.set_log_callback(self._on_redfish_log)
+        self.redfish.set_ready_callback(self._on_redfish_ready)
         self._trap_engine = TrapEngine(self)
 
         # Rule engine — loaded with default rules; disabled until user enables it
@@ -566,6 +572,7 @@ class MainWindow(QMainWindow):
                 gnmi=self.gnmi,
                 sflow=self.sflow,
                 bacnet=self.bacnet,
+                redfish=self.redfish,
                 state_store=self.state_store,
                 rule_engine=self._rule_engine,
                 trap_engine=self._trap_engine,
@@ -728,24 +735,29 @@ class MainWindow(QMainWindow):
         self._bacnet_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._bacnet_panel)
 
-        # Panel 7 — Console
+        # Panel 7 — Redfish Simulator
+        self._redfish_panel = RedfishPanel()
+        self._redfish_panel.setMinimumWidth(260)
+        self._right_splitter.addWidget(self._redfish_panel)
+
+        # Panel 8 — Console
         self._console_panel = ConsolePanel()
         self._console_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._console_panel)
 
-        # Panel 8 — Rule Engine
+        # Panel 9 — Rule Engine
         self._rules_panel = RulesPanel()
         self._rules_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._rules_panel)
 
-        # Panel 9 — Metrics Tick
+        # Panel 10 — Metrics Tick
         self._tick_panel = TickSidePanel()
         self._tick_panel.setMinimumWidth(260)
         self._right_splitter.addWidget(self._tick_panel)
 
-        for i in range(9):
+        for i in range(10):
             self._right_splitter.setStretchFactor(i, 1)
-        self._right_splitter.setSizes([250, 250, 300, 250, 250, 260, 250, 250, 300])
+        self._right_splitter.setSizes([250, 250, 300, 250, 250, 260, 260, 250, 250, 300])
 
         # Only the IP Binder panel visible on startup
         self._sim_panel.setVisible(False)
@@ -753,6 +765,7 @@ class MainWindow(QMainWindow):
         self._gnmi_panel.setVisible(False)
         self._sflow_panel.setVisible(False)
         self._bacnet_panel.setVisible(False)
+        self._redfish_panel.setVisible(False)
         self._console_panel.setVisible(False)
         self._rules_panel.setVisible(False)
         self._tick_panel.setVisible(False)
@@ -939,6 +952,25 @@ class MainWindow(QMainWindow):
         self._act_panel_bacnet.toggled.connect(self._on_toggle_bacnet_panel)
         tb.addAction(self._act_panel_bacnet)
 
+        tb.addSeparator()
+
+        # Redfish Simulator (server BMCs) — DMTF Redfish logo
+        _redfish_icon_path = str(
+            Path(__file__).parent.parent / "assets" / "icons" / "redfish.png"
+        )
+        _redfish_phy = int(24 * _dpr2)
+        _redfish_pix = QPixmap(_redfish_icon_path).scaled(
+            _redfish_phy, _redfish_phy, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+        _redfish_pix.setDevicePixelRatio(_dpr2)
+        _redfish_icon = QIcon(_redfish_pix)
+        self._act_panel_redfish = QAction(_redfish_icon, "", self)
+        self._act_panel_redfish.setCheckable(True)
+        self._act_panel_redfish.setChecked(False)
+        self._act_panel_redfish.setToolTip("Redfish Simulator (server BMCs)")
+        self._act_panel_redfish.toggled.connect(self._on_toggle_redfish_panel)
+        tb.addAction(self._act_panel_redfish)
+
         # ── Spacer — pushes bottom group to the foot of the toolbar ───────
         _spacer = QWidget()
         _spacer.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
@@ -1053,6 +1085,7 @@ class MainWindow(QMainWindow):
             self._act_panel_gnmi.isChecked(),
             self._act_panel_sflow.isChecked(),
             self._act_panel_bacnet.isChecked(),
+            self._act_panel_redfish.isChecked(),
             self._act_panel_console.isChecked(),
             self._act_panel_rules.isChecked(),
             self._act_panel_tick.isChecked(),
@@ -1119,6 +1152,15 @@ class MainWindow(QMainWindow):
         else:
             self._resize_right_dock()
 
+    def _on_toggle_redfish_panel(self, visible: bool):
+        if visible:
+            self._right_dock.show()
+        self._redfish_panel.setVisible(visible)
+        if self._visible_panel_count() == 0:
+            self._right_dock.hide()
+        else:
+            self._resize_right_dock()
+
     def _on_toggle_console_panel(self, visible: bool):
         if visible:
             self._right_dock.show()
@@ -1156,6 +1198,7 @@ class MainWindow(QMainWindow):
             for btn in (self._act_panel_binding, self._act_panel_sim,
                         self._act_panel_traps, self._act_panel_gnmi,
                         self._act_panel_sflow, self._act_panel_bacnet,
+                        self._act_panel_redfish,
                         self._act_panel_console, self._act_panel_rules,
                         self._act_panel_tick):
                 btn.blockSignals(True)
@@ -1311,6 +1354,10 @@ class MainWindow(QMainWindow):
         # BACnet panel signals
         self._bacnet_panel.sig_start.connect(self._start_bacnet)
         self._bacnet_panel.sig_stop.connect(self._stop_bacnet)
+
+        # Redfish panel signals
+        self._redfish_panel.sig_start.connect(self._start_redfish)
+        self._redfish_panel.sig_stop.connect(self._stop_redfish)
 
         # sFlow controller callbacks
         self.sflow.set_log_callback(self._on_sflow_log)
@@ -3620,6 +3667,100 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self._console_panel.log(f"BACnet panel refresh error: {e}", "error")
 
+    # ------------------------------------------------------------------ #
+    #  Redfish Simulator                                                   #
+    # ------------------------------------------------------------------ #
+
+    def _start_redfish(self):
+        if self.redfish.is_running():
+            return
+        from core.device_manager import DeviceType
+
+        servers = [
+            d for d in self.device_manager.get_all_devices()
+            if d.device_type == DeviceType.SERVER
+        ]
+        if not servers:
+            QMessageBox.warning(
+                self, "Redfish",
+                "No server devices in topology.\n\n"
+                "Add servers (Device Type → server) and bind their IPs first."
+            )
+            return
+
+        # BMC lives on the OOB mgmt net when present, else the production IP.
+        # Only start on IPs actually bound to a network interface.
+        bound_set = set(self._bound_ips) | set(self._gnmi_bound_ips)
+        def _bmc_ip(d):
+            return (d.mgmt_ip or d.ip_address)
+        bound_servers = [d for d in servers if _bmc_ip(d) in bound_set]
+        if not bound_servers:
+            QMessageBox.warning(
+                self, "Redfish — IPs Not Bound",
+                f"Found {len(servers)} server(s) but none of their IPs are bound "
+                f"to a network interface.\n\n"
+                f"Bind IPs first (Binding panel → Bind IPs), then start Redfish."
+            )
+            return
+
+        unbound = len(servers) - len(bound_servers)
+        if unbound:
+            self._console_panel.log(
+                f"[Redfish] Warning: {unbound} server(s) skipped — IPs not bound.",
+                "warning"
+            )
+
+        # Live telemetry comes from the ticker mutating Device fields.
+        if not self.state_store.is_running():
+            self.state_store.start()
+
+        cfg = self._redfish_panel.get_config()
+        ok = self.redfish.start(
+            devices=bound_servers,
+            port=cfg["port"],
+            username=cfg["username"],
+            password=cfg["password"],
+            ip_for=_bmc_ip,
+        )
+        if ok:
+            self._redfish_panel.set_running(True)
+            self._redfish_panel.set_status("Running")
+            self._redfish_panel.refresh_device_table(self.redfish.get_device_summary())
+            self._status_label.setText(
+                f"Redfish running — {self.redfish.device_count()} BMC(s) on "
+                f"port {cfg['port']}"
+            )
+
+    def _stop_redfish(self):
+        if not self.redfish.is_running():
+            return
+        self.redfish.stop()
+        self._redfish_panel.set_running(False)
+        self._redfish_panel.set_status("Stopped")
+        self._redfish_panel.refresh_device_table([])
+        self._status_label.setText("Redfish stopped.")
+
+    def _on_redfish_log(self, msg: str, level: str = "info"):
+        self._log_queue.put(("console_log", msg, level))
+
+    def _on_redfish_ready(self):
+        # Called from a Redfish background thread — no Qt here, just post to queue.
+        try:
+            from api.state import AppState
+            AppState.get().notify_ui("sync_redfish")
+        except Exception:
+            pass
+
+    def _sync_redfish_ui(self):
+        try:
+            running = self.redfish.is_running()
+            self._redfish_panel.set_running(running)
+            self._redfish_panel.set_status("Running" if running else "Stopped")
+            self._redfish_panel.refresh_device_table(
+                self.redfish.get_device_summary() if running else [])
+        except Exception as e:
+            self._console_panel.log(f"Redfish UI sync error: {e}", "error")
+
     def _sync_sflow_ui(self):
         try:
             running = self.sflow.is_running()
@@ -3816,6 +3957,8 @@ class MainWindow(QMainWindow):
                     self._sync_gnmi_ui()
                 elif item[0] == "sync_bacnet":
                     self._sync_bacnet_ui()
+                elif item[0] == "sync_redfish":
+                    self._sync_redfish_ui()
                 elif item[0] == "sync_rules":
                     self._sync_rules_ui()
                 elif item[0] == "sync_devices":
@@ -3933,5 +4076,8 @@ class MainWindow(QMainWindow):
         if self.bacnet.is_running():
             self.state_store.disable_bacnet()
             self.bacnet.stop()
+        # Stop Redfish servers if running
+        if self.redfish.is_running():
+            self.redfish.stop()
         self._trap_engine.stop()
         event.accept()

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { api, fetchWithAbort, getToken } from '../api/client'
 import type {
   GraphDevice, GraphLink, SnmpStatus, GnmiStatus, SFlowStatus, BacnetStatus,
+  RedfishStatus,
   BindingStatus, RulesTable, TrapRecord, LogEntry,
   HealthStatus, AdaptersResponse, DeviceInfo, JobStatus, EV2DeviceSnapshot,
   PlantDeviceSnapshot,
@@ -43,6 +44,7 @@ interface Store {
   gnmi:    GnmiStatus | null
   sflow:   SFlowStatus | null
   bacnet:  BacnetStatus | null
+  redfish: RedfishStatus | null
   binding: BindingStatus | null
   adapters: AdaptersResponse | null
   rules:   RulesTable | null
@@ -100,6 +102,7 @@ interface Store {
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
   fetchBacnet:       () => Promise<void>
+  fetchRedfish:      () => Promise<void>
   fetchEV2Metrics:   () => Promise<void>
   fetchPlantMetrics: () => Promise<void>
   fetchBinding: () => Promise<void>
@@ -124,6 +127,7 @@ export const useStore = create<Store>((set, get) => ({
   gnmi:         null,
   sflow:        null,
   bacnet:       null,
+  redfish:      null,
   binding:      null,
   adapters:     null,
   rules:        null,
@@ -193,6 +197,10 @@ export const useStore = create<Store>((set, get) => ({
     try { set({ bacnet: await fetchWithAbort<BacnetStatus>('/bacnet/status') }) } catch { /* ignore */ }
   },
 
+  fetchRedfish: async () => {
+    try { set({ redfish: await fetchWithAbort<RedfishStatus>('/redfish/status') }) } catch { /* ignore */ }
+  },
+
   fetchEV2Metrics: async () => {
     try {
       const data = await api.ev2Metrics() as EV2DeviceSnapshot[]
@@ -245,6 +253,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchGnmi()
     s.fetchSflow()
     s.fetchBacnet()
+    s.fetchRedfish()
     s.fetchBinding()
     s.fetchRules()
     s.fetchHealth()
@@ -257,6 +266,7 @@ export const useStore = create<Store>((set, get) => ({
       st.fetchGnmi()
       st.fetchSflow()
       st.fetchBacnet()
+      st.fetchRedfish()
       st.fetchBinding()
       st.fetchHealth()
       st.fetchTraps()
@@ -287,6 +297,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'gnmi')     s.fetchGnmi()
             if (t === 'sflow')    s.fetchSflow()
             if (t === 'bacnet')   s.fetchBacnet()
+            if (t === 'redfish')  s.fetchRedfish()
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()
             if (t === 'devices')  { s.fetchDevices(); set(st => ({ tickSeq: st.tickSeq + 1 })) }

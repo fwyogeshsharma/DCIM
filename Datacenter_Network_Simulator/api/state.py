@@ -50,6 +50,7 @@ class AppState:
         self.gnmi: Optional["GNMIController"] = None
         self.sflow:   Optional[Any] = None  # SFlowController (set by MainWindow)
         self.bacnet:  Optional[Any] = None  # BACnetController (set by MainWindow)
+        self.redfish: Optional[Any] = None  # RedfishController (set by MainWindow)
         self.state_store: Optional["DeviceStateStore"] = None
         self.rule_engine: Optional["RuleEngine"] = None
         self.trap_engine: Optional["TrapEngine"] = None
@@ -108,6 +109,7 @@ class AppState:
         gnmi=None,
         sflow=None,
         bacnet=None,
+        redfish=None,
         state_store=None,
         rule_engine=None,
         trap_engine=None,
@@ -121,6 +123,7 @@ class AppState:
         self.gnmi = gnmi
         self.sflow = sflow
         self.bacnet = bacnet
+        self.redfish = redfish
         self.state_store = state_store
         self.rule_engine = rule_engine
         self.trap_engine = trap_engine

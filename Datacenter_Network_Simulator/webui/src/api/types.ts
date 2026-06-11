@@ -187,6 +187,25 @@ export interface BacnetStatus {
   devices: BacnetDevice[]
 }
 
+export interface RedfishDevice {
+  name:     string
+  ip:       string
+  port:     number
+  vendor:   string
+  model:    string
+  url:      string
+  sessions: number
+  status:   string
+}
+
+export interface RedfishStatus {
+  running: boolean
+  port: number
+  active_devices: number
+  sessions: number
+  devices?: RedfishDevice[]
+}
+
 export interface BindingStatus {
   selected_adapter: string
   subnet_mask: string
