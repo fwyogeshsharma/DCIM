@@ -72,6 +72,10 @@ def redfish_start(cfg: RedfishConfig):
             detail=f"Found {len(servers)} server(s) but none have a bound IP. "
                    f"Bind server IPs first, then start Redfish.")
 
+    # Start the metrics ticker so Device fields (cpu/mem/disk/temps/octets)
+    # advance every tick — Redfish reads them live each request.
+    s.start_ticker_if_needed()
+
     if not s.redfish._log_cb:
         s.redfish.set_log_callback(
             lambda msg, lvl="info": s.notify_ui("log_redfish", msg, lvl))
@@ -101,6 +105,7 @@ def redfish_stop():
     if not s.redfish.is_running():
         return OkResponse(message="Redfish was not running")
     s.redfish.stop()
+    s.stop_ticker_if_idle()
     s.notify_ui("console_log", "[Redfish] Stopped.", "info")
     s.notify_ui("sync_redfish")
     return OkResponse(message="Redfish stopped")
@@ -112,3 +117,43 @@ def redfish_sessions():
     if s.redfish is None or not s.redfish.is_running():
         return {"sessions": []}
     return {"sessions": s.redfish.get_sessions()}
+
+
+_ACTIONS = {"power_on", "power_off", "reboot", "power_cycle",
+            "led_on", "led_off", "refresh", "clear_log"}
+
+
+class RedfishAction(BaseModel):
+    ip: str
+    action: str
+
+
+@router.post("/action")
+def redfish_action(req: RedfishAction):
+    """Run a Server Operation (power/LED/refresh/clear-log) on one BMC."""
+    s = _state()
+    if s.redfish is None or not s.redfish.is_running():
+        raise HTTPException(status_code=503, detail="Redfish not running")
+    if req.action not in _ACTIONS:
+        raise HTTPException(status_code=400,
+                            detail=f"Unknown action '{req.action}'")
+    res = s.redfish.perform_action(req.ip, req.action)
+    if res is None:
+        raise HTTPException(status_code=404, detail=f"No BMC at {req.ip}")
+    s.notify_ui("console_log",
+                f"[Redfish] {res['device']} ← {req.action}: {res['message']}",
+                "success" if res["ok"] else "warning")
+    s.notify_ui("sync_redfish")
+    return res
+
+
+@router.get("/log")
+def redfish_log(ip: str):
+    """Return the System Event Log (SEL) entries for one BMC."""
+    s = _state()
+    if s.redfish is None or not s.redfish.is_running():
+        raise HTTPException(status_code=503, detail="Redfish not running")
+    entries = s.redfish.get_sel(ip)
+    if entries is None:
+        raise HTTPException(status_code=404, detail=f"No BMC at {ip}")
+    return {"ip": ip, "entries": entries}

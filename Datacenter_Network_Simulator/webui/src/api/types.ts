@@ -196,6 +196,17 @@ export interface RedfishDevice {
   url:      string
   sessions: number
   status:   string
+  power_state?:   string
+  indicator_led?: string
+  sel_count?:     number
+}
+
+export interface RedfishLogEntry {
+  Id:       number
+  Name?:    string
+  Severity: string
+  Message:  string
+  Created:  string
 }
 
 export interface RedfishStatus {

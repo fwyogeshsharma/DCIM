@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
-import type { RedfishStatus } from '../../api/types'
+import type { RedfishStatus, RedfishDevice, RedfishLogEntry } from '../../api/types'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -69,6 +69,79 @@ function Field({ label, type, value, onChange, disabled, rightSlot }: {
         />
         {rightSlot}
       </div>
+    </div>
+  )
+}
+
+function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [logOpen, setLogOpen] = useState(false)
+  const [log, setLog] = useState<RedfishLogEntry[]>([])
+
+  async function act(action: string) {
+    setBusy(action)
+    try { await api.redfishAction(d.ip, action); onChanged() } catch { /* ignore */ }
+    finally { setBusy(null) }
+  }
+  async function toggleLog() {
+    if (logOpen) { setLogOpen(false); return }
+    try {
+      const r = await api.redfishLog(d.ip) as { entries: RedfishLogEntry[] }
+      setLog(r.entries || []); setLogOpen(true)
+    } catch { /* ignore */ }
+  }
+
+  const on = d.power_state === 'On'
+  const led = !!d.indicator_led && d.indicator_led !== 'Off'
+  const btn = (danger?: boolean): React.CSSProperties => ({
+    fontSize: 9, padding: '2px 6px', borderRadius: 3, cursor: 'pointer',
+    border: '1px solid var(--border)', background: 'var(--bg-card)',
+    color: danger ? 'var(--red)' : 'var(--text)',
+  })
+  const B = ({ a, label, danger }: { a: string; label: string; danger?: boolean }) => (
+    <button onClick={() => act(a)} disabled={!!busy} title={label}
+            style={{ ...btn(danger), opacity: busy === a ? 0.4 : 1 }}>{label}</button>
+  )
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '5px 6px', marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+          background: on ? 'var(--green)' : 'var(--text-muted)',
+          boxShadow: on ? '0 0 4px var(--green)' : 'none' }} />
+        <span style={{ fontSize: 10, color: 'var(--text)', fontWeight: 600 }}>{d.name}</span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'Consolas, monospace' }}>{d.ip}:{d.port}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 9, color: led ? '#f0c000' : 'var(--text-muted)' }}>
+          {led ? '◉ LED' : '○ LED'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+        <B a="power_on" label="On" />
+        <B a="power_off" label="Off" />
+        <B a="reboot" label="Reboot" />
+        <B a="power_cycle" label="Cycle" />
+        <B a={led ? 'led_off' : 'led_on'} label={led ? 'LED Off' : 'LED On'} />
+        <B a="refresh" label="Refresh" />
+        <button onClick={toggleLog} style={btn()}>
+          Log{typeof d.sel_count === 'number' ? ` (${d.sel_count})` : ''}
+        </button>
+        <B a="clear_log" label="Clear" danger />
+      </div>
+      {logOpen && (
+        <div style={{ marginTop: 4, maxHeight: 120, overflowY: 'auto', background: 'var(--bg-base)',
+          border: '1px solid var(--border)', borderRadius: 3, padding: '4px 6px' }}>
+          {log.length === 0
+            ? <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>(empty)</div>
+            : log.map(e => (
+              <div key={e.Id} style={{ fontSize: 9, fontFamily: 'Consolas, monospace',
+                color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ color: e.Severity === 'Critical' ? 'var(--red)'
+                  : e.Severity === 'Warning' ? '#f0c000' : 'var(--green)' }}>{e.Severity}</span>{' '}
+                <span style={{ color: 'var(--text)' }}>{e.Message}</span>
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -196,20 +269,13 @@ export default function RedfishPanel() {
             <span className="group-box-label">Active BMCs</span>
             <StatRow label="Endpoints:" value={status?.active_devices ?? 0} labelColor="#a371f7" valueColor="#a371f7" />
             <StatRow label="Sessions:"  value={status?.sessions ?? 0} />
-            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {bmcs.slice(0, 12).map(d => (
-                <div key={d.ip} style={{
-                  fontSize: 9.5, fontFamily: 'Consolas, monospace',
-                  color: 'var(--text-muted)', whiteSpace: 'nowrap',
-                  overflow: 'hidden', textOverflow: 'ellipsis',
-                }} title={d.url}>
-                  <span style={{ color: 'var(--text)' }}>{d.name}</span>
-                  {' · '}{d.ip}:{d.port}
-                </div>
+            <div style={{ marginTop: 6 }}>
+              {bmcs.slice(0, 24).map(d => (
+                <ServerOps key={d.ip} d={d} onChanged={() => fetchStatus(false)} />
               ))}
-              {bmcs.length > 12 && (
+              {bmcs.length > 24 && (
                 <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                  +{bmcs.length - 12} more…
+                  +{bmcs.length - 24} more…
                 </div>
               )}
             </div>

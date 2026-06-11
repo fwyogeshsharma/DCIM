@@ -69,6 +69,7 @@ def main():
     )
     dev.cpu_temp = 61.5
     dev.inlet_temp = 24.0
+    dev.cpu_usage = 100   # full load → live power equals the configured nominal (465 W)
 
     ctrl = RedfishController()
     ctrl.set_log_callback(lambda m, l: print(f"  [ctrl/{l}] {m}"))

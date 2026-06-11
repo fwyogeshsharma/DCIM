@@ -48,13 +48,14 @@ class Client:
         self._auth = "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode()
         self._ctx = ssl._create_unverified_context() if insecure else None
 
-    def get(self, path: str):
-        """GET an absolute-or-relative Redfish path. Returns (status, obj|None)."""
+    def _send(self, method: str, path: str, body=None):
         url = path if path.startswith("http") else self.base + path
-        req = urllib.request.Request(url, headers={
-            "Authorization": self._auth,
-            "Accept": "application/json",
-        })
+        headers = {"Authorization": self._auth, "Accept": "application/json"}
+        data = None
+        if body is not None:
+            data = json.dumps(body).encode()
+            headers["Content-Type"] = "application/json"
+        req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=8, context=self._ctx) as r:
                 raw = r.read()
@@ -67,6 +68,15 @@ class Client:
                 return e.code, None
         except Exception as exc:
             return 0, {"_error": str(exc)}
+
+    def get(self, path: str):
+        return self._send("GET", path)
+
+    def post(self, path: str, body=None):
+        return self._send("POST", path, body)
+
+    def patch(self, path: str, body):
+        return self._send("PATCH", path, body)
 
 
 def kv(label: str, value, width: int = 22):
@@ -103,6 +113,9 @@ def show_system(sys_obj: dict):
     kv("BIOS Version",  sys_obj.get("BiosVersion"))
     ps = sys_obj.get("PowerState")
     kv("Power State",   green(ps) if ps == "On" else yellow(ps))
+    led = sys_obj.get("IndicatorLED")
+    if led is not None:
+        kv("Indicator LED", cyan(led) if led != "Off" else grey(led))
     status = sys_obj.get("Status", {})
     kv("Health",        status.get("Health"))
 
@@ -115,11 +128,20 @@ def show_system(sys_obj: dict):
     if oem:
         cpu = oem.get("CpuUtilizationPercent")
         kv("CPU Utilization", f"{cpu}%" if cpu is not None else None)
+        mp, dp = oem.get("MemoryUtilizationPercent"), oem.get("DiskUtilizationPercent")
+        kv("Memory Utilization", f"{mp}%" if mp is not None else None)
+        kv("Disk Utilization", f"{dp}%" if dp is not None else None)
         mu, dt, du = oem.get("MemoryUsedBytes"), oem.get("DiskTotalBytes"), oem.get("DiskUsedBytes")
         if mu is not None:
             kv("Memory Used", f"{mu / 1024**3:.1f} GiB")
         if dt:
             kv("Disk", f"{du / 1024**3:.0f} / {dt / 1024**3:.0f} GiB used")
+        rx, tx = oem.get("NetworkRxMbps"), oem.get("NetworkTxMbps")
+        if rx is not None:
+            kv("Network Rx / Tx", f"{rx} / {tx} Mbps")
+        ac = oem.get("AlarmCount")
+        if ac is not None:
+            kv("Alarm Count", red(str(ac)) if ac else green("0"))
 
 
 def show_chassis(client: Client, ch: dict):
@@ -145,6 +167,15 @@ def show_chassis(client: Client, ch: dict):
                     val = red(val) if hot else green(val)
                     crit_s = grey(f"(crit {crit} °C)") if crit is not None else ""
                     print(f"    {str(t.get('Name', '?')).ljust(18)} {val}  {crit_s}")
+            fans = thermal.get("Fans", [])
+            if fans:
+                print(grey("  Fans:"))
+                for f in fans:
+                    rpm = f.get("Reading")
+                    hh = (f.get("Status") or {}).get("Health", "OK")
+                    rpm_s = f"{rpm} RPM" if rpm is not None else "—"
+                    rpm_s = green(rpm_s) if hh == "OK" else yellow(rpm_s)
+                    print(f"    {str(f.get('Name', '?')).ljust(18)} {rpm_s}")
 
     # Power
     p_ref = (ch.get("Power") or {}).get("@odata.id")
@@ -160,6 +191,78 @@ def show_chassis(client: Client, ch: dict):
                        f"{pm.get('AverageConsumedWatts','?')} / "
                        f"{pm.get('MinConsumedWatts','?')} / "
                        f"{pm.get('MaxConsumedWatts','?')} W")
+            psus = power.get("PowerSupplies", [])
+            if psus:
+                print(grey("  Power Supplies:"))
+                for ps in psus:
+                    out_w = ps.get("LastPowerOutputWatts")
+                    hh = (ps.get("Status") or {}).get("Health", "OK")
+                    s = f"{out_w} W" if out_w is not None else "—"
+                    s = green(s) if hh == "OK" else yellow(s)
+                    cap = ps.get("PowerCapacityWatts")
+                    cap_s = grey(f"(cap {cap} W)") if cap else ""
+                    print(f"    {str(ps.get('Name', '?')).ljust(18)} {s}  {grey(hh)} {cap_s}")
+
+
+def show_network(client: Client, sys_obj: dict):
+    ref = (sys_obj.get("EthernetInterfaces") or {}).get("@odata.id")
+    if not ref:
+        return
+    _, coll = client.get(ref)
+    nics = members(client, coll)
+    if not nics:
+        return
+    section(f"Network Interfaces: {sys_obj.get('Name', '?')}")
+    for nic in nics:
+        oem = (nic.get("Oem") or {}).get("Simulator") or {}
+        rx, tx = oem.get("RxMbps"), oem.get("TxMbps")
+        link = nic.get("LinkStatus", "?")
+        spd = nic.get("SpeedMbps")
+        link_s = green(link) if link == "LinkUp" else red(link)
+        print(f"  {str(nic.get('Name', '?')).ljust(20)} "
+              f"{link_s}  {grey(str(spd) + ' Mbps')}  "
+              f"Rx {cyan(str(rx))} / Tx {cyan(str(tx))} Mbps")
+
+
+def show_storage(client: Client, sys_obj: dict):
+    ref = (sys_obj.get("Storage") or {}).get("@odata.id")
+    if not ref:
+        return
+    _, coll = client.get(ref)
+    for st_obj in members(client, coll):
+        section(f"Storage / RAID: {sys_obj.get('Name', '?')}")
+        for ctrl in st_obj.get("StorageControllers", []):
+            kv("Controller", ctrl.get("Name"))
+            kv("RAID Types", ", ".join(ctrl.get("SupportedRAIDTypes", [])))
+        oem = (st_obj.get("Oem") or {}).get("Simulator") or {}
+        kv("RAID Type",   oem.get("RaidType"))
+        rs = oem.get("RaidStatus")
+        kv("RAID Status", green(rs) if rs == "Optimal" else yellow(rs))
+        cap, usep = oem.get("VolumeCapacityGiB"), oem.get("VolumeUsedPercent")
+        if cap is not None:
+            kv("Volume", f"{cap} GiB  ({usep}% used)")
+        kv("Health", (st_obj.get("Status") or {}).get("Health"))
+
+
+def show_logs(client: Client, sys_obj: dict):
+    ref = (sys_obj.get("LogServices") or {}).get("@odata.id")
+    if not ref:
+        return
+    _, coll = client.get(ref)
+    for svc in members(client, coll):
+        if svc.get("Id") != "SEL":
+            continue
+        section(f"Event Log (SEL): {sys_obj.get('Name', '?')}")
+        count = ((svc.get("Oem") or {}).get("Simulator") or {}).get("AlarmCount", 0)
+        kv("Alarm Count", red(str(count)) if count else green("0"))
+        eref = (svc.get("Entries") or {}).get("@odata.id")
+        if eref:
+            _, ents = client.get(eref)
+            for e in (ents or {}).get("Members", []):
+                sev = e.get("Severity", "?")
+                msg = e.get("Message", "")
+                col = red if sev == "Critical" else yellow
+                print(f"    {col(sev.ljust(9))} {msg}")
 
 
 def show_manager(mgr: dict):
@@ -172,6 +275,61 @@ def show_manager(mgr: dict):
     kv("Health",           (mgr.get("Status") or {}).get("Health"))
 
 
+def _first_system_path(client: Client, root: dict):
+    sref = (root.get("Systems") or {}).get("@odata.id")
+    if not sref:
+        return None
+    _, coll = client.get(sref)
+    mem = (coll or {}).get("Members", [])
+    return mem[0]["@odata.id"] if mem else None
+
+
+def _report(st: int, obj, label: str):
+    if st in (200, 204):
+        print(green(f"  ✓ {label}"))
+    else:
+        msg = ""
+        if isinstance(obj, dict):
+            msg = (obj.get("error") or {}).get("message", "") or obj.get("_error", "")
+        print(red(f"  ✗ {label} — HTTP {st} {msg}"))
+
+
+def run_action(client: Client, root: dict, args):
+    spath = _first_system_path(client, root)
+    if not spath:
+        print(red("  No ComputerSystem found (check auth/--port)."))
+        sys.exit(1)
+    print(bold(f"Server operations on {spath}"))
+
+    def reset(rt):
+        st, obj = client.post(spath + "/Actions/ComputerSystem.Reset", {"ResetType": rt})
+        _report(st, obj, f"Reset {rt}")
+
+    if args.power_on:    reset("On")
+    if args.power_off:   reset("ForceOff")
+    if args.reboot:      reset("GracefulRestart")
+    if args.power_cycle: reset("PowerCycle")
+    if args.led:
+        st, obj = client.patch(spath, {"IndicatorLED": "Lit" if args.led == "on" else "Off"})
+        _report(st, obj, f"Indicator LED {args.led}")
+    if args.refresh:
+        st, obj = client.post(spath + "/Actions/Oem/Simulator.RefreshInventory")
+        _report(st, obj, "Refresh inventory")
+    if args.clear_log:
+        st, obj = client.post(spath + "/LogServices/SEL/Actions/LogService.ClearLog")
+        _report(st, obj, "Clear event log")
+    if args.view_log:
+        _, ents = client.get(spath + "/LogServices/SEL/Entries")
+        section("Event Log (SEL)")
+        rows = (ents or {}).get("Members", [])
+        if not rows:
+            print(grey("  (empty)"))
+        for e in rows:
+            sev = e.get("Severity", "?")
+            col = red if sev == "Critical" else (yellow if sev == "Warning" else green)
+            print(f"  {grey(e.get('Created', ''))}  {col(sev.ljust(9))} {e.get('Message', '')}")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Fetch and display all Redfish info for a server BMC.")
     ap.add_argument("ip", help="server BMC IP address")
@@ -181,6 +339,16 @@ def main():
     ap.add_argument("--scheme", choices=["http", "https"], default="http",
                     help="http (MVP default) or https")
     ap.add_argument("--insecure", action="store_true", help="skip TLS verify (https self-signed)")
+    # ── Server Operations ──
+    g = ap.add_argument_group("server operations (perform an action, then exit)")
+    g.add_argument("--power-on",    action="store_true", help="ComputerSystem.Reset On")
+    g.add_argument("--power-off",   action="store_true", help="Reset ForceOff")
+    g.add_argument("--reboot",      action="store_true", help="Reset GracefulRestart")
+    g.add_argument("--power-cycle", action="store_true", help="Reset PowerCycle")
+    g.add_argument("--led",         choices=["on", "off"], help="set indicator LED")
+    g.add_argument("--refresh",     action="store_true", help="refresh inventory")
+    g.add_argument("--clear-log",   action="store_true", help="clear the event log (SEL)")
+    g.add_argument("--view-log",    action="store_true", help="print the event log (SEL) and exit")
     args = ap.parse_args()
 
     base = f"{args.scheme}://{args.ip}:{args.port}"
@@ -196,6 +364,12 @@ def main():
                    "or check --port."))
         sys.exit(1)
 
+    # If any Server Operation was requested, run it and exit.
+    if any([args.power_on, args.power_off, args.reboot, args.power_cycle,
+            args.led, args.refresh, args.clear_log, args.view_log]):
+        run_action(client, root, args)
+        return
+
     kv("Redfish Version", root.get("RedfishVersion"))
 
     # Systems
@@ -207,6 +381,9 @@ def main():
             sys.exit(1)
         for s in members(client, coll):
             show_system(s)
+            show_network(client, s)
+            show_storage(client, s)
+            show_logs(client, s)
 
     # Chassis
     cref = (root.get("Chassis") or {}).get("@odata.id")

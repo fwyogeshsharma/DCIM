@@ -1358,6 +1358,8 @@ class MainWindow(QMainWindow):
         # Redfish panel signals
         self._redfish_panel.sig_start.connect(self._start_redfish)
         self._redfish_panel.sig_stop.connect(self._stop_redfish)
+        self._redfish_panel.sig_action.connect(self._redfish_action)
+        self._redfish_panel.sig_view_log.connect(self._redfish_view_log)
 
         # sFlow controller callbacks
         self.sflow.set_log_callback(self._on_sflow_log)
@@ -3739,6 +3741,29 @@ class MainWindow(QMainWindow):
         self._redfish_panel.set_status("Stopped")
         self._redfish_panel.refresh_device_table([])
         self._status_label.setText("Redfish stopped.")
+
+    def _redfish_action(self, ip: str, action: str):
+        """Run a Server Operation on one BMC and refresh the panel."""
+        if not self.redfish.is_running():
+            return
+        res = self.redfish.perform_action(ip, action)
+        if res:
+            lvl = "success" if res.get("ok") else "warning"
+            self._console_panel.log(
+                f"[Redfish] {res['device']} ← {action}: {res['message']}", lvl)
+            self._redfish_panel.refresh_device_table(self.redfish.get_device_summary())
+        else:
+            self._console_panel.log(f"[Redfish] No BMC at {ip}", "error")
+
+    def _redfish_view_log(self, ip: str):
+        sel = self.redfish.get_sel(ip) or []
+        if sel:
+            text = "\n".join(
+                f"{e.get('Created','')}  {e.get('Severity',''):8}  {e.get('Message','')}"
+                for e in sel)
+        else:
+            text = "(event log empty)"
+        QMessageBox.information(self, f"Event Log (SEL) — {ip}", text)
 
     def _on_redfish_log(self, msg: str, level: str = "info"):
         self._log_queue.put(("console_log", msg, level))

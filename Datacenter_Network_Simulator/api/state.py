@@ -187,11 +187,12 @@ class AppState:
         """Stop the metrics ticker only when ALL simulators are stopped."""
         if self.state_store is None or not self.state_store.is_running():
             return
-        snmp_on   = bool(self.snmpsim and self.snmpsim.is_running())
-        gnmi_on   = bool(self.gnmi    and self.gnmi.is_running())
-        sflow_on  = bool(self.sflow   and self.sflow.is_running())
-        bacnet_on = bool(self.bacnet  and self.bacnet.is_running())
-        if not snmp_on and not gnmi_on and not sflow_on and not bacnet_on:
+        snmp_on    = bool(self.snmpsim and self.snmpsim.is_running())
+        gnmi_on    = bool(self.gnmi    and self.gnmi.is_running())
+        sflow_on   = bool(self.sflow   and self.sflow.is_running())
+        bacnet_on  = bool(self.bacnet  and self.bacnet.is_running())
+        redfish_on = bool(self.redfish and self.redfish.is_running())
+        if not (snmp_on or gnmi_on or sflow_on or bacnet_on or redfish_on):
             self.state_store.stop()
 
     def get_all_bind_ips(self) -> List[str]:

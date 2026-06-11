@@ -185,6 +185,8 @@ export const api = {
     post('/redfish/start', cfg),
   redfishStop:     ()                     => post('/redfish/stop'),
   redfishSessions: ()                     => get('/redfish/sessions'),
+  redfishAction:   (ip: string, action: string) => post('/redfish/action', { ip, action }),
+  redfishLog:      (ip: string)           => get('/redfish/log?ip=' + encodeURIComponent(ip)),
 
   // rules
   rules:          ()                  => get('/rules'),

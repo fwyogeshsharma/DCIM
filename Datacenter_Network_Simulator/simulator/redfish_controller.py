@@ -241,6 +241,9 @@ class RedfishController:
                 "model":   d.model_name or d.vendor.value,
                 "url":     f"http://{ip}:{self._port}/redfish/v1/",
                 "sessions": len(rdev.session_list()),
+                "power_state":   rdev.power_state,
+                "indicator_led": rdev.indicator_led,
+                "sel_count":     len(rdev.sel),
                 "status":  "Active" if self._running else "Stopped",
             })
         return rows
@@ -252,3 +255,29 @@ class RedfishController:
             for s in rdev.session_list():
                 out.append({"ip": ip, "device": rdev.device.name, **s})
         return out
+
+    # ── server operations (driven by the panels / REST control) ─────────────
+    def _find(self, ip: str):
+        entry = self._servers.get(ip)
+        return entry[2] if entry else None     # RedfishDevice
+
+    def perform_action(self, ip: str, action: str) -> Optional[dict]:
+        """Run a server operation on the BMC at *ip*. Returns result or None."""
+        rdev = self._find(ip)
+        if rdev is None:
+            return None
+        ok, msg = rdev.perform(action)
+        return {
+            "ok": ok,
+            "message": msg,
+            "ip": ip,
+            "device": rdev.device.name,
+            "power_state": rdev.power_state,
+            "indicator_led": rdev.indicator_led,
+            "sel_count": len(rdev.sel),
+        }
+
+    def get_sel(self, ip: str) -> Optional[List[dict]]:
+        """Return the System Event Log entries for the BMC at *ip*."""
+        rdev = self._find(ip)
+        return list(rdev.sel) if rdev else None
