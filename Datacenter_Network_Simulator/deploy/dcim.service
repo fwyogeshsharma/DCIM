@@ -1,0 +1,19 @@
+[Unit]
+Description=Datacenter Network Simulator (headless API + Web UI)
+After=network-online.target dcim-dummy.service
+Wants=network-online.target
+Requires=dcim-dummy.service
+
+[Service]
+# Runs as root for IP binding (ip addr add) and raw UDP (SNMP 161 etc).
+# Listens on 0.0.0.0:8001 but the GCP firewall exposes only 80/443 — Caddy
+# (localhost) is the only thing that reaches 8001.
+WorkingDirectory=__INSTALL_DIR__
+EnvironmentFile=__INSTALL_DIR__/auth.env
+ExecStart=__INSTALL_DIR__/.venv/bin/python app/main.py --headless --port 8001
+User=root
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

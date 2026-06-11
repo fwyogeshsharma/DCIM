@@ -1,0 +1,19 @@
+[Unit]
+# Host-local dummy NIC that holds every simulated device IP. Because the IPs
+# live on a dummy interface they are reachable only from inside this VM — the
+# same-box poller (openDCIM / NMS) can poll them, but they never leave the host
+# and require no GCP routing or firewall rules.
+Description=Dummy NIC for Datacenter Network Simulator device IPs
+Before=dcim.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# `-` on ExecStartPre ignores "does not exist" so re-runs stay idempotent.
+ExecStartPre=-__IP__ link del __DUMMY_IF__
+ExecStart=__IP__ link add __DUMMY_IF__ type dummy
+ExecStart=__IP__ link set __DUMMY_IF__ up
+ExecStop=__IP__ link del __DUMMY_IF__
+
+[Install]
+WantedBy=multi-user.target

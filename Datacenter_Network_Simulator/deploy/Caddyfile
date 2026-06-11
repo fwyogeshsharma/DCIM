@@ -1,0 +1,23 @@
+# Caddy reverse proxy — terminates HTTPS and forwards to the simulator's
+# headless API/Web UI on localhost:8001. Caddy fetches and renews a Let's
+# Encrypt certificate automatically.
+#
+# 1. Replace sim.example.com with your domain.
+# 2. Point that domain's A record at the VM's static external IP.
+# 3. Copy to /etc/caddy/Caddyfile and `sudo systemctl reload caddy`.
+#
+# No-domain alternative (self-signed, browser warning):
+#     https://<VM-IP> { tls internal; reverse_proxy localhost:8001 }
+
+sim.example.com {
+    encode zstd gzip
+
+    # Server-Sent Events stream — disable buffering / no flush timeout so the
+    # live log/metrics events reach the browser immediately.
+    @sse path /api/events
+    reverse_proxy @sse localhost:8001 {
+        flush_interval -1
+    }
+
+    reverse_proxy localhost:8001
+}
