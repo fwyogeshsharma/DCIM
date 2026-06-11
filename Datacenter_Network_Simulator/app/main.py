@@ -168,6 +168,7 @@ def _run_headless():
     from simulator.gnmi_controller import GNMIController
     from simulator.sflow_controller import SFlowController
     from simulator.bacnet_controller import BACnetController
+    from simulator.redfish_controller import RedfishController
     from core.device_state_store import DeviceStateStore
     from core.trap_engine import TrapEngine
     from core.rule_engine import RuleEngine
@@ -186,6 +187,7 @@ def _run_headless():
     gnmi           = GNMIController(gnmi_dir)
     sflow          = SFlowController()
     bacnet         = BACnetController("datasets/bacnet")
+    redfish        = RedfishController()
     state_store    = DeviceStateStore(
         device_manager, topology, snmp_dir, tick_interval=30.0, snmp_sync_every=1,
     )
@@ -211,6 +213,7 @@ def _run_headless():
         gnmi=gnmi,
         sflow=sflow,
         bacnet=bacnet,
+        redfish=redfish,
         state_store=state_store,
         rule_engine=rule_engine,
         trap_engine=trap_engine,
