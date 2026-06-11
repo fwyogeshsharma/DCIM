@@ -10,6 +10,21 @@ Usage:
     python testscripts/redfish_info.py 10.1.0.20 --port 443 --user admin --pass password
     python testscripts/redfish_info.py 10.1.0.20 --scheme https --insecure
 
+    # power
+    python testscripts/redfish_info.py <ip> --power-on
+    python testscripts/redfish_info.py <ip> --power-off
+    python testscripts/redfish_info.py <ip> --reboot
+    python testscripts/redfish_info.py <ip> --power-cycle
+
+    # identify LED
+    python testscripts/redfish_info.py <ip> --led on
+    python testscripts/redfish_info.py <ip> --led off
+
+    # inventory + event log
+    python testscripts/redfish_info.py <ip> --refresh
+    python testscripts/redfish_info.py <ip> --view-log
+    python testscripts/redfish_info.py <ip> --clear-log
+
 Defaults match the simulator MVP: plain HTTP, port 443, admin/password.
 Pure stdlib — no external dependencies.
 """
