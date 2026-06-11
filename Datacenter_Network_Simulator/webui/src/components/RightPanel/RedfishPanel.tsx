@@ -227,10 +227,11 @@ export default function RedfishPanel() {
         </span>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '12px 10px 0',
+                    display: 'flex', flexDirection: 'column', gap: 12 }}>
 
         {/* ── BMC Service ────────────────────────────────────── */}
-        <div className="group-box" style={{ marginTop: 6 }}>
+        <div className="group-box" style={{ marginTop: 6, flexShrink: 0 }}>
           <span className="group-box-label">BMC Service</span>
           <Field label="HTTP Port" type="number" value={port}
                  onChange={v => setPort(parseInt(v) || 443)} disabled={running || busy} />
@@ -257,27 +258,22 @@ export default function RedfishPanel() {
 
         {/* ── Targets (idle/ready) ───────────────────────────── */}
         {!running && (
-          <div className="group-box" style={{ marginTop: 6 }}>
+          <div className="group-box" style={{ marginTop: 6, flexShrink: 0 }}>
             <span className="group-box-label">Targets</span>
             <StatRow label="Servers:" value={serverCount} labelColor="#a371f7" valueColor="#a371f7" />
           </div>
         )}
 
-        {/* ── Active BMCs (when running) ─────────────────────── */}
+        {/* ── Active BMCs (when running) — only this list scrolls ── */}
         {running && (
-          <div className="group-box">
+          <div className="group-box" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <span className="group-box-label">Active BMCs</span>
             <StatRow label="Endpoints:" value={status?.active_devices ?? 0} labelColor="#a371f7" valueColor="#a371f7" />
             <StatRow label="Sessions:"  value={status?.sessions ?? 0} />
-            <div style={{ marginTop: 6 }}>
-              {bmcs.slice(0, 24).map(d => (
+            <div style={{ marginTop: 6, flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
+              {bmcs.map(d => (
                 <ServerOps key={d.ip} d={d} onChanged={() => fetchStatus(false)} />
               ))}
-              {bmcs.length > 24 && (
-                <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>
-                  +{bmcs.length - 24} more…
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -285,7 +281,7 @@ export default function RedfishPanel() {
         {/* ── Endpoint hint ──────────────────────────────────── */}
         {running && (
           <div style={{
-            fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6,
+            fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6, flexShrink: 0,
             padding: '6px 8px', background: 'var(--bg-base)',
             border: '1px solid var(--border)', borderRadius: 4,
             fontFamily: 'Consolas, monospace',
@@ -295,7 +291,11 @@ export default function RedfishPanel() {
           </div>
         )}
 
-        {/* ── Actions ────────────────────────────────────────── */}
+      </div>
+
+      {/* ── Pinned footer: Start/Stop always visible ─────────── */}
+      <div style={{ flexShrink: 0, padding: '8px 10px 12px',
+                    borderTop: '1px solid var(--border)' }}>
         <div className="snmp-actions">
           {running ? (
             <button className="btn-action btn-stop" onClick={stop} disabled={busy} title="Stop Redfish">
@@ -309,7 +309,6 @@ export default function RedfishPanel() {
             </button>
           )}
         </div>
-
       </div>
     </div>
   )
