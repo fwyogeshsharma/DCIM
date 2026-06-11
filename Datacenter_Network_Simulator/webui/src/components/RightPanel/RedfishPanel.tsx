@@ -13,6 +13,20 @@ const IconStop = () => (
     <rect x="6" y="6" width="12" height="12" rx="1" />
   </svg>
 )
+const IconEye = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+)
+const IconEyeOff = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+)
 
 function StatRow({ label, value, labelColor, valueColor }: {
   label: string; value: number | string
@@ -26,11 +40,12 @@ function StatRow({ label, value, labelColor, valueColor }: {
   )
 }
 
-function Field({ label, type, value, onChange, disabled }: {
+function Field({ label, type, value, onChange, disabled, rightSlot }: {
   label: string; type: 'text' | 'number' | 'password'
   value: string | number
   onChange: (v: string) => void
   disabled: boolean
+  rightSlot?: React.ReactNode
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -52,6 +67,7 @@ function Field({ label, type, value, onChange, disabled }: {
             fontFamily: 'Consolas, monospace', padding: '4px 0',
           }}
         />
+        {rightSlot}
       </div>
     </div>
   )
@@ -65,6 +81,7 @@ export default function RedfishPanel() {
   const [port,      setPort]      = useState(443)
   const [username,  setUsername]  = useState('admin')
   const [password,  setPassword]  = useState('password')
+  const [showPass,  setShowPass]  = useState(false)
 
   const running = status?.running ?? false
   const configLoaded = useRef(false)
@@ -146,8 +163,23 @@ export default function RedfishPanel() {
                  onChange={v => setPort(parseInt(v) || 443)} disabled={running || busy} />
           <Field label="Username" type="text" value={username}
                  onChange={setUsername} disabled={running || busy} />
-          <Field label="Password" type="password" value={password}
-                 onChange={setPassword} disabled={running || busy} />
+          <Field label="Password" type={showPass ? 'text' : 'password'} value={password}
+                 onChange={setPassword} disabled={running || busy}
+                 rightSlot={
+                   <button
+                     type="button"
+                     onClick={() => setShowPass(v => !v)}
+                     title={showPass ? 'Hide password' : 'Show password'}
+                     style={{
+                       display: 'flex', alignItems: 'center', justifyContent: 'center',
+                       background: 'transparent', border: 'none', cursor: 'pointer',
+                       padding: 0, color: showPass ? 'var(--accent)' : 'var(--text-muted)',
+                       flexShrink: 0,
+                     }}
+                   >
+                     {showPass ? <IconEyeOff /> : <IconEye />}
+                   </button>
+                 } />
         </div>
 
         {/* ── Targets (idle/ready) ───────────────────────────── */}

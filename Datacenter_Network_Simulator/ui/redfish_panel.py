@@ -11,10 +11,33 @@ from PySide6.QtWidgets import (
     QLabel, QGroupBox, QLineEdit, QSpinBox, QFormLayout,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal, QRectF
+from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QPen, QColor, QAction
 
 from ui.snmp_panel import StatusBadge
+
+
+def _eye_icon(open_eye: bool, color: str = "#8b949e") -> QIcon:
+    """Draw a small eye icon (open or struck-through) for the password toggle."""
+    px = QPixmap(16, 16)
+    px.fill(Qt.transparent)
+    p = QPainter(px)
+    p.setRenderHint(QPainter.Antialiasing, True)
+    pen = QPen(QColor(color))
+    pen.setWidthF(1.4)
+    p.setPen(pen)
+    p.setBrush(Qt.NoBrush)
+    # almond outline
+    p.drawArc(QRectF(1.5, 3.5, 13, 9), 20 * 16, 140 * 16)
+    p.drawArc(QRectF(1.5, 3.5, 13, 9), 200 * 16, 140 * 16)
+    # pupil
+    p.setBrush(QColor(color))
+    p.drawEllipse(QRectF(6.0, 5.6, 4.0, 4.0))
+    if not open_eye:
+        p.setBrush(Qt.NoBrush)
+        p.drawLine(3, 13, 13, 3)   # strike-through = hidden
+    p.end()
+    return QIcon(px)
 
 _BTN_BASE = (
     "QPushButton {"
@@ -101,6 +124,13 @@ class RedfishPanel(QWidget):
 
         self._pass_edit = QLineEdit("password")
         self._pass_edit.setStyleSheet("QLineEdit {" + _field_style() + "}")
+        self._pass_edit.setEchoMode(QLineEdit.Password)
+        self._eye_open   = _eye_icon(True)
+        self._eye_closed = _eye_icon(False)
+        self._pass_action = self._pass_edit.addAction(
+            self._eye_closed, QLineEdit.TrailingPosition)
+        self._pass_action.setToolTip("Show password")
+        self._pass_action.triggered.connect(self._toggle_password)
         cfg.addRow("Password:", self._pass_edit)
         layout.addWidget(cfg_group)
 
@@ -146,6 +176,12 @@ class RedfishPanel(QWidget):
     def _on_stop(self):
         if self._running:
             self.sig_stop.emit()
+
+    def _toggle_password(self):
+        show = self._pass_edit.echoMode() == QLineEdit.Password
+        self._pass_edit.setEchoMode(QLineEdit.Normal if show else QLineEdit.Password)
+        self._pass_action.setIcon(self._eye_open if show else self._eye_closed)
+        self._pass_action.setToolTip("Hide password" if show else "Show password")
 
     # ------------------------------------------------------------------ #
     def get_config(self) -> dict:
