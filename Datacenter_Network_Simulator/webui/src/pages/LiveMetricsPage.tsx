@@ -100,6 +100,11 @@ function NumCell({ val, unit, warn, crit, decimals = 1, invert = false }: {
   )
 }
 
+// OS-level metric with no reading (e.g. server chassis powered off)
+function DashCell() {
+  return <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>—</td>
+}
+
 function PctCell({ used, total, warn, crit }: { used: number; total: number; warn: number; crit: number }) {
   if (!total) return <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-dim)' }}>—</td>
   const p = pct(used, total)
@@ -292,6 +297,7 @@ function AllTable({ rows }: { rows: DeviceInfo[] }) {
       </thead>
       <tbody>
         {sorted.map((d, i) => {
+          const off    = d.power_state === 'Off'
           const cpuPct = Math.round(d.cpu_usage)
           return (
             <tr key={d.id} style={ROW_STYLE(i)}>
@@ -299,14 +305,16 @@ function AllTable({ rows }: { rows: DeviceInfo[] }) {
               <NameCell d={d} />
               <td style={{ padding: '6px 10px' }}><TypeBadge dt={d.device_type} /></td>
               <IpCell d={d} />
-              <td style={{ padding: '6px 10px', textAlign: 'right' }}>
-                <span style={{ color: metricColor(cpuPct, 50, 80), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{cpuPct}%</span>
-                <MiniBar p={cpuPct} color={metricColor(cpuPct, 50, 80)} />
-              </td>
-              <PctCell used={d.memory_used} total={d.memory_total} warn={60} crit={85} />
-              <PctCell used={d.disk_used}   total={d.disk_total}   warn={70} crit={90} />
+              {off ? <DashCell /> : (
+                <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                  <span style={{ color: metricColor(cpuPct, 50, 80), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{cpuPct}%</span>
+                  <MiniBar p={cpuPct} color={metricColor(cpuPct, 50, 80)} />
+                </td>
+              )}
+              {off ? <DashCell /> : <PctCell used={d.memory_used} total={d.memory_total} warn={60} crit={85} />}
+              {off ? <DashCell /> : <PctCell used={d.disk_used}   total={d.disk_total}   warn={70} crit={90} />}
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.cpu_temp} unit="°C" warn={75} crit={85} /></td>
-              <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtUptime(d.uptime)}</td>
+              <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{off ? '—' : fmtUptime(d.uptime)}</td>
             </tr>
           )
         })}
@@ -496,6 +504,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
       </thead>
       <tbody>
         {sorted.map((d, i) => {
+          const off      = d.power_state === 'Off'
           const cpuPct   = Math.round(d.cpu_usage)
           const ifUp     = d.interfaces_up ?? 0
           const ifTot    = d.interfaces_total ?? 0
@@ -513,12 +522,16 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
               <NameCell d={d} />
               <IpCell d={d} />
               <td style={{ padding: '6px 10px' }}><StatePill val={d.power_state} okStates={['On']} /></td>
-              <td style={{ padding: '6px 10px', textAlign: 'right' }}>
-                <span style={{ color: metricColor(cpuPct, 50, 80), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{cpuPct}%</span>
-                <MiniBar p={cpuPct} color={metricColor(cpuPct, 50, 80)} />
-              </td>
-              <PctCell used={d.memory_used} total={d.memory_total} warn={60} crit={85} />
-              <PctCell used={d.disk_used}   total={d.disk_total}   warn={70} crit={90} />
+              {/* OS-level metrics have no reading while the chassis is off;
+                  temps stay live — the BMC reads sensors on standby power. */}
+              {off ? <DashCell /> : (
+                <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                  <span style={{ color: metricColor(cpuPct, 50, 80), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{cpuPct}%</span>
+                  <MiniBar p={cpuPct} color={metricColor(cpuPct, 50, 80)} />
+                </td>
+              )}
+              {off ? <DashCell /> : <PctCell used={d.memory_used} total={d.memory_total} warn={60} crit={85} />}
+              {off ? <DashCell /> : <PctCell used={d.disk_used}   total={d.disk_total}   warn={70} crit={90} />}
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.cpu_temp}   unit="°C" warn={75} crit={85} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.inlet_temp} unit="°C" warn={35} crit={45} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.power_watts} unit=" W" decimals={0} /></td>
@@ -529,7 +542,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
               </td>
               <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(d.total_rx_bytes)}</td>
               <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(d.total_tx_bytes)}</td>
-              <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtUptime(d.uptime)}</td>
+              <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{off ? '—' : fmtUptime(d.uptime)}</td>
             </tr>
             {isExpanded && d.iface_stats && d.iface_stats.length > 0 && (
               <IfaceSubTable ifaces={d.iface_stats} colSpan={SRV_COLS} />
