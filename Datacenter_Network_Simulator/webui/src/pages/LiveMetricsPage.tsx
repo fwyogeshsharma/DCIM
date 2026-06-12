@@ -440,7 +440,7 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
 
 // ── Server table (expandable) ─────────────────────────────────────────────────
 
-const SRV_COLS = 11
+const SRV_COLS = 13
 
 function ServerTable({ rows }: { rows: DeviceInfo[] }) {
   const sort = useSortState('name')
@@ -464,6 +464,8 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
       case 'disk':   return (pct(a.disk_used, a.disk_total) - pct(b.disk_used, b.disk_total)) * dir
       case 'ctemp':  return ((a.cpu_temp ?? 0) - (b.cpu_temp ?? 0)) * dir
       case 'itemp':  return ((a.inlet_temp ?? 0) - (b.inlet_temp ?? 0)) * dir
+      case 'watts':  return ((a.power_watts ?? 0) - (b.power_watts ?? 0)) * dir
+      case 'pstate': return (a.power_state ?? '').localeCompare(b.power_state ?? '') * dir
       case 'ifaces': return ((a.interfaces_up ?? 0) - (b.interfaces_up ?? 0)) * dir
       case 'rx':     return ((a.total_rx_bytes ?? 0) - (b.total_rx_bytes ?? 0)) * dir
       case 'tx':     return ((a.total_tx_bytes ?? 0) - (b.total_tx_bytes ?? 0)) * dir
@@ -479,11 +481,13 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
           <th style={{ width: 18, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }} />
           <SortTH label="Name"       id="name"   sort={sort} minW={140} />
           <SortTH label="IP"         id="ip"     sort={sort} />
+          <SortTH label="Power State" id="pstate" sort={sort} minW={80} title="Live BMC power state — populated while the Redfish simulator runs" />
           <SortTH label="CPU"        id="cpu"    sort={sort} align="right" minW={80} />
           <SortTH label="Memory"     id="mem"    sort={sort} align="right" minW={100} />
           <SortTH label="Disk"       id="disk"   sort={sort} align="right" minW={100} />
           <SortTH label="CPU Temp"    id="ctemp"  sort={sort} align="right" minW={80} />
           <SortTH label="Inlet Temp" id="itemp"  sort={sort} align="right" minW={80} />
+          <SortTH label="Power"      id="watts"  sort={sort} align="right" minW={80} title="Derived: nominal power_draw_w × (0.55 + 0.45 × CPU load) — matches Redfish PowerConsumedWatts" />
           <SortTH label="Interfaces" id="ifaces" sort={sort} align="right" minW={80} />
           <SortTH label="RX Total"   id="rx"     sort={sort} align="right" minW={90} />
           <SortTH label="TX Total"   id="tx"     sort={sort} align="right" minW={90} />
@@ -508,6 +512,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
               <ExpandCell expanded={isExpanded} hasIfaces={hasIfaces} />
               <NameCell d={d} />
               <IpCell d={d} />
+              <td style={{ padding: '6px 10px' }}><StatePill val={d.power_state} okStates={['On']} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}>
                 <span style={{ color: metricColor(cpuPct, 50, 80), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{cpuPct}%</span>
                 <MiniBar p={cpuPct} color={metricColor(cpuPct, 50, 80)} />
@@ -516,6 +521,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
               <PctCell used={d.disk_used}   total={d.disk_total}   warn={70} crit={90} />
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.cpu_temp}   unit="°C" warn={75} crit={85} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.inlet_temp} unit="°C" warn={35} crit={45} /></td>
+              <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.power_watts} unit=" W" decimals={0} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}>
                 {ifTot === 0
                   ? <span style={{ color: 'var(--text-dim)' }}>—</span>

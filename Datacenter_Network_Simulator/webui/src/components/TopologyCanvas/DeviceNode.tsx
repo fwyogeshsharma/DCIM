@@ -46,6 +46,7 @@ export interface DeviceNodeData {
   activeLayer?: string
   cpu_usage?: number
   memory_used?: number
+  power_state?: string
   [key: string]: unknown
 }
 
@@ -53,6 +54,7 @@ function DeviceNode({ data, selected, dragging }: NodeProps) {
   const d = data as DeviceNodeData
   const col  = TYPE_COLOR[d.device_type] || '#555'
   const icon = TYPE_ICON[d.device_type]  || '□'
+  const poweredOff = d.power_state === 'Off'
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null)
 
   const onEnter   = useCallback((e: React.MouseEvent) => setTipPos({ x: e.clientX + 14, y: e.clientY + 14 }), [])
@@ -64,6 +66,7 @@ function DeviceNode({ data, selected, dragging }: NodeProps) {
     ['Type',   d.device_type.replace(/_/g, ' ')],
     ['Vendor', d.vendor],
   ]
+  if (poweredOff) rows.push(['Power', 'Off (Redfish)'])
   if (d.os_name)    rows.push(['OS',      d.os_name])
   if (d.os_version) rows.push(['Version', d.os_version])
   if (d.ip_address) rows.push(['Prod IP', d.ip_address])
@@ -85,8 +88,10 @@ function DeviceNode({ data, selected, dragging }: NodeProps) {
         textAlign: 'center',
         cursor: 'pointer',
         boxShadow: selected ? `0 0 0 2px #fff4` : `0 2px 6px rgba(0,0,0,0.5)`,
-        transition: 'box-shadow 0.15s',
+        transition: 'box-shadow 0.15s, opacity 0.3s, filter 0.3s',
         position: 'relative',
+        opacity: poweredOff ? 0.35 : 1,
+        filter: poweredOff ? 'grayscale(0.7)' : undefined,
       }}
       onMouseEnter={onEnter}
       onMouseMove={onMove}

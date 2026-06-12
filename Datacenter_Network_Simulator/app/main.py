@@ -222,6 +222,8 @@ def _run_headless():
     )
     trap_engine.trap_sent.connect(api_state.record_trap)
     state_store.set_tick_callback(lambda: api_state.notify_ui("sync_devices"))
+    state_store.set_link_callback(
+        lambda src, dst, broken: api_state.notify_ui("link_changed", src, dst, broken))
 
     port = 8000
     for i, arg in enumerate(sys.argv):

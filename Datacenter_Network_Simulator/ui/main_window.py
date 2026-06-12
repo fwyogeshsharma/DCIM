@@ -582,6 +582,8 @@ class MainWindow(QMainWindow):
             api_state._ui_queue = self._log_queue
             self._trap_engine.trap_sent.connect(api_state.record_trap)
             self.state_store.set_tick_callback(lambda: api_state.notify_ui("sync_devices"))
+            self.state_store.set_link_callback(
+                lambda src, dst, broken: api_state.notify_ui("link_changed", src, dst, broken))
         except Exception:
             pass  # API integration is non-critical — UI must not fail if it errors
 
@@ -3752,6 +3754,7 @@ class MainWindow(QMainWindow):
             self._console_panel.log(
                 f"[Redfish] {res['device']} ← {action}: {res['message']}", lvl)
             self._redfish_panel.refresh_device_table(self.redfish.get_device_summary())
+            self._topology_view.topology_scene.sync_power_states()
         else:
             self._console_panel.log(f"[Redfish] No BMC at {ip}", "error")
 
@@ -3783,6 +3786,7 @@ class MainWindow(QMainWindow):
             self._redfish_panel.set_status("Running" if running else "Stopped")
             self._redfish_panel.refresh_device_table(
                 self.redfish.get_device_summary() if running else [])
+            self._topology_view.topology_scene.sync_power_states()
         except Exception as e:
             self._console_panel.log(f"Redfish UI sync error: {e}", "error")
 

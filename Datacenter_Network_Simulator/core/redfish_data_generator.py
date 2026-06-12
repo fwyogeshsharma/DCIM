@@ -261,6 +261,8 @@ def _live_watts(device: "Device") -> int:
     anchor it as the full-load nominal and scale with cpu_usage so the reading
     moves every tick. At 100% CPU it equals the configured nominal.
     """
+    if getattr(device, "power_state", "On") == "Off":
+        return 0
     nominal = int(device.power_draw_w or 0)
     if nominal <= 0:
         return 0

@@ -112,6 +112,7 @@ function devicesToNodes(
         activeLayer,
         cpu_usage: d.cpu_usage,
         memory_used: d.memory_used,
+        power_state: d.power_state || 'On',
         linkMode,
         isLinkSrc: d.id === linkSrc,
       },

@@ -45,6 +45,8 @@ export interface DeviceInfo {
   metrics_enabled?: boolean
   cpu_temp?: number
   inlet_temp?: number
+  power_watts?: number
+  power_state?: string
   mid_temp?: number
   outlet_temp?: number
   humidity?: number
@@ -114,6 +116,7 @@ export interface GraphDevice {
   snmp_port?: number
   gnmi_port?: number
   model_name?: string
+  power_state?: string
 }
 
 export interface GraphLink {

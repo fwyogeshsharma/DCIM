@@ -362,6 +362,7 @@ class Device:
     power_draw_w: int = 0   # typical power draw in watts
     power_source: str = ""  # device ID of rack PDU feeding this device
     ups_backup: str = ""    # device ID of UPS protecting this device
+    power_state: str = "On"  # chassis power ("On"/"Off") — driven by Redfish ops
 
     # Physical location
     country: str = ""

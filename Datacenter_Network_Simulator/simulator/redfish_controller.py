@@ -308,3 +308,8 @@ class RedfishController:
         """Return the System Event Log entries for the BMC at *ip*."""
         rdev = self._find(ip)
         return list(rdev.sel) if rdev else None
+
+    def get_power_state(self, ip: str) -> Optional[str]:
+        """Power state ("On"/"Off") of the BMC at *ip*, or None if no BMC."""
+        rdev = self._find(ip)
+        return rdev.power_state if rdev else None

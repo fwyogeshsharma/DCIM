@@ -43,7 +43,9 @@ class RedfishDevice:
         self._sessions: dict[str, dict] = {}
 
         # ── mutable server state (driven by Server Operations / actions) ──
-        self.power_state = "On"        # On | Off
+        # Adopt the Device's chassis state so a Redfish restart doesn't
+        # silently "power on" servers that were left Off.
+        self.power_state = getattr(device, "power_state", "On") or "On"  # On | Off
         self.indicator_led = "Off"     # Off | Lit | Blinking
         self.sel: list[dict] = []      # stored System Event Log entries
         self._sel_seq = 0
@@ -89,6 +91,8 @@ class RedfishDevice:
             self.log_event("OK", f"Power button — now {self.power_state}")
         else:
             return False, f"Unsupported ResetType '{rt}'"
+        # Mirror onto the Device so the ticker and REST API see chassis state.
+        self.device.power_state = self.power_state
         return True, f"power_state={self.power_state}"
 
     def set_led(self, state: str):

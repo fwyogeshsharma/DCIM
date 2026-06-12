@@ -215,6 +215,9 @@ class DeviceInfo(BaseModel):
     # All-device environmental
     cpu_temp: Optional[float] = None
     inlet_temp: Optional[float] = None
+    # Server-specific (mirrors the Redfish Power resource)
+    power_watts: Optional[float] = None
+    power_state: Optional[str] = None
     # Sensor-specific
     mid_temp: Optional[float] = None
     outlet_temp: Optional[float] = None

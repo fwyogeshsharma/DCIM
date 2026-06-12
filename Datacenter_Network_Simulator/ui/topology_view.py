@@ -195,6 +195,7 @@ class DeviceNode(QGraphicsItem):
         self.setAcceptHoverEvents(True)
         self._edges: list = []
         self._faded: bool = False
+        self._powered_off: bool = False   # Redfish chassis Off → render dimmed
         # Cache each node's rendered output as a device-pixel pixmap.
         # On a 1 300-node canvas, Qt normally calls paint() on every visible
         # node for each scene repaint (drag, panel resize, timer-induced redraws).
@@ -222,6 +223,10 @@ class DeviceNode(QGraphicsItem):
         # pixmap in the cache — nodes never visually unfade during discovery.
         self.update()
 
+    def set_powered_off(self, off: bool):
+        self._powered_off = off
+        self.update()   # invalidate the cached pixmap (see set_faded)
+
     def type(self):
         return DeviceNode.Type
 
@@ -241,7 +246,7 @@ class DeviceNode(QGraphicsItem):
         return path
 
     def paint(self, painter: QPainter, option, widget=None):
-        if self._faded:
+        if self._faded or self._powered_off:
             painter.setOpacity(0.20)
         colors = self._color_scheme
         selected = self.isSelected()
@@ -733,6 +738,16 @@ class TopologyScene(QGraphicsScene):
         for key, edge in self._edges.items():
             if key[0] == pair:
                 edge.set_faded(faded, repaint=repaint)
+
+    def sync_power_states(self):
+        """Dim servers whose Redfish chassis power is Off; restore the rest."""
+        from core.device_manager import DeviceType as _DT
+        for node in self._nodes.values():
+            if node.device.device_type != _DT.SERVER:
+                continue
+            off = getattr(node.device, "power_state", "On") == "Off"
+            if off != node._powered_off:
+                node.set_powered_off(off)
 
     def set_all_faded(self, faded: bool):
         # Set flags on every item without triggering individual repaints,

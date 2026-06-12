@@ -353,7 +353,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'gnmi')     s.fetchGnmi()
             if (t === 'sflow')    s.fetchSflow()
             if (t === 'bacnet')   s.fetchBacnet()
-            if (t === 'redfish')  s.fetchRedfish()
+            if (t === 'redfish')  { s.fetchRedfish(); s.fetchGraph() }  // power ops fade/unfade nodes
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()
             if (t === 'devices')  { s.fetchDevices(); set(st => ({ tickSeq: st.tickSeq + 1 })) }

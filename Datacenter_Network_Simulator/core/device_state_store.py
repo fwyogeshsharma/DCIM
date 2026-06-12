@@ -254,6 +254,7 @@ class DeviceStateStore:
 
         self._log_cb: Optional[Callable[[str, str], None]] = None
         self._tick_cb: Optional[Callable[[], None]] = None
+        self._link_cb: Optional[Callable[[str, str, bool], None]] = None
 
         # Rule engine integration
         self._rule_engine_cb: Optional[Callable] = None
@@ -273,6 +274,11 @@ class DeviceStateStore:
     def set_tick_callback(self, cb: Callable[[], None]):
         """cb() is called after every successful tick — use to push SSE/UI sync."""
         self._tick_cb = cb
+
+    def set_link_callback(self, cb: Callable[[str, str, bool], None]):
+        """cb(src_id, dst_id, broken) — fired when the ticker breaks/restores
+        a link (e.g. server powered off via Redfish takes its uplinks down)."""
+        self._link_cb = cb
 
     def set_rule_engine_callback(self, cb: Callable):
         """
@@ -556,6 +562,29 @@ class DeviceStateStore:
             return lim["lock"]
         return value
 
+    def _break_server_links(self, device: "Device") -> list:
+        """Break production links from a powered-off server to its peers.
+
+        Returns the peer ids of links actually broken here (links already
+        broken — e.g. by the user — are skipped so restore won't touch them).
+        """
+        broke = []
+        topo = self._topology
+        if topo is None or not topo.graph.has_node(device.id):
+            return broke
+        for peer_id, edges in list(topo.graph.adj[device.id].items()):
+            prod = [e for e in edges.values()
+                    if e.get("layer", "production") == "production"]
+            if prod and not any(e.get("broken") for e in prod):
+                topo.break_link(device.id, peer_id, "production")
+                broke.append(peer_id)
+                if self._link_cb:
+                    try:
+                        self._link_cb(device.id, peer_id, True)
+                    except Exception:
+                        pass
+        return broke
+
     def _step_device(self, device: "Device"):
         """Apply one random-walk step to a single device's metrics.
 
@@ -603,6 +632,43 @@ class DeviceStateStore:
         })
 
         mf = self.metric_flags
+
+        # Powered-off server (Redfish chassis state): no OS, no load, no
+        # traffic — metrics go dark instead of random-walking.
+        if (device.device_type == DeviceType.SERVER
+                and getattr(device, "power_state", "On") == "Off"):
+            if not ext.get("srv_was_off"):
+                ext["srv_was_off"] = True
+                # Link loss is bidirectional: take down the production links
+                # to this server's peers (switch-side port + canvas edge).
+                # Record only links WE broke so restore skips user-broken ones.
+                ext["srv_off_links"] = self._break_server_links(device)
+            device.cpu_usage = 0
+            device.memory_used = 0
+            device.sys_uptime = 0
+            # CPU cools toward chassis inlet; inlet settles to room ambient.
+            if mf["inlet_temp"]:
+                device.inlet_temp = round(max(15.0, min(55.0,
+                    18.0 + random.uniform(-0.5, 0.5))), 1)
+            if mf["cpu_temp"]:
+                ambient = device.inlet_temp or 20.0
+                device.cpu_temp = round(
+                    max(ambient, device.cpu_temp - random.uniform(1.5, 3.5)), 1)
+            for iface in device.interfaces:
+                iface.oper_status = 2
+            return
+        if ext.pop("srv_was_off", False):
+            # Power restored — uplinks and NICs come back up; uptime restarts
+            # from zero via the normal walk below.
+            for peer_id in ext.pop("srv_off_links", []):
+                self._topology.restore_link(device.id, peer_id, "production")
+                if self._link_cb:
+                    try:
+                        self._link_cb(device.id, peer_id, False)
+                    except Exception:
+                        pass
+            for iface in device.interfaces:
+                iface.oper_status = 1
 
         # CPU — brief vs sustained spike recovery
         if mf["cpu_usage"]:

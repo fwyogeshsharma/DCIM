@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from api.state import AppState
 from core.device_state_store import _get_ext_state
+from core.redfish_data_generator import _live_watts
 from api.models.schemas import (
     DeviceInfo,
     IfaceStats,
@@ -22,6 +23,14 @@ def _state() -> AppState:
 
 
 _NO_IFACE_TYPES = {"ups", "pdu", "floor_pdu", "rpp", "sensor", "generator"}
+
+
+def _server_power_state(device) -> str | None:
+    """Live BMC power state — only available while the Redfish sim runs."""
+    rf = _state().redfish
+    if rf is None or not rf.is_running():
+        return None
+    return rf.get_power_state(getattr(device, "mgmt_ip", "") or device.ip_address)
 
 
 def _iface_aggregates(device, dt: str) -> dict:
@@ -98,6 +107,8 @@ def _device_to_info(device) -> DeviceInfo:
         metrics_enabled=getattr(device, "metrics_enabled", True),
         cpu_temp=getattr(device, "cpu_temp", None),
         inlet_temp=getattr(device, "inlet_temp", None),
+        power_watts=(float(_live_watts(device)) or None) if dt == "server" else None,
+        power_state=_server_power_state(device) if dt == "server" else None,
         mid_temp=getattr(device, "mid_temp", None)       if dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1" else None,
         outlet_temp=getattr(device, "outlet_temp", None) if dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1" else None,
         humidity=getattr(device, "humidity", None) if dt == "sensor" else None,
