@@ -73,14 +73,134 @@ function Field({ label, type, value, onChange, disabled, rightSlot }: {
   )
 }
 
-function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void }) {
+// ── Server Operations control cluster ──────────────────────────────────
+// 4×2 grid of fixed-position, tone-coded buttons. Power verbs disable when
+// they would be a no-op for the current chassis state, the busy action gets
+// an inline spinner, and the LED/Log buttons reflect their toggled state.
+
+const _ico = { width: 11, height: 11, viewBox: '0 0 24 24', fill: 'none' as const,
+  stroke: 'currentColor', strokeWidth: 2.2, strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const, style: { flexShrink: 0 } }
+
+const IconPwr = () => (
+  <svg {..._ico}>
+    <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+    <line x1="12" y1="2" x2="12" y2="11" />
+  </svg>
+)
+const IconCycleArrow = ({ ccw }: { ccw?: boolean }) => (
+  <svg {..._ico} style={{ ..._ico.style, transform: ccw ? 'scaleX(-1)' : undefined }}>
+    <polyline points="23 4 23 10 17 10" />
+    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </svg>
+)
+const IconBulb = ({ lit }: { lit?: boolean }) => (
+  <svg {..._ico} style={{ ..._ico.style,
+    filter: lit ? 'drop-shadow(0 0 2px currentColor)' : undefined }}>
+    {/* light rays — only when lit */}
+    {lit && <>
+      <line x1="4.2" y1="4.2" x2="2.4" y2="2.4" />
+      <line x1="19.8" y1="4.2" x2="21.6" y2="2.4" />
+    </>}
+    <path d="M9 18h6M10 22h4" />
+    <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"
+          fill={lit ? 'currentColor' : 'none'} />
+  </svg>
+)
+const IconSync = () => (
+  <svg {..._ico}>
+    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+    <path d="M16 16h5v5" />
+  </svg>
+)
+const IconLines = () => (
+  <svg {..._ico}>
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <line x1="4" y1="18" x2="14" y2="18" />
+  </svg>
+)
+const IconBin = () => (
+  <svg {..._ico}>
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6M14 11v6" />
+  </svg>
+)
+
+type OpTone = 'ok' | 'danger' | 'warn' | 'neutral'
+
+const OP_TONE: Record<OpTone, { fg: string; bg: string; border: string }> = {
+  ok:      { fg: 'var(--green)', bg: 'rgba(63,185,80,0.10)',  border: 'rgba(63,185,80,0.45)' },
+  danger:  { fg: 'var(--red)',   bg: 'rgba(248,81,73,0.10)',  border: 'rgba(248,81,73,0.45)' },
+  warn:    { fg: '#d29922',      bg: 'rgba(210,153,34,0.10)', border: 'rgba(210,153,34,0.45)' },
+  neutral: { fg: 'var(--text)',  bg: 'rgba(255,255,255,0.05)', border: 'var(--text-muted)' },
+}
+
+function OpBtn({ icon, label, tone = 'neutral', onClick, disabled, busy, active, title }: {
+  icon: React.ReactNode
+  label: string
+  tone?: OpTone
+  onClick: () => void
+  disabled?: boolean
+  busy?: boolean
+  active?: boolean
+  title?: string
+}) {
+  const [hov, setHov] = useState(false)
+  const t = OP_TONE[tone]
+  const dim = !!disabled && !busy
+  const lit = active || (hov && !dim)
+  return (
+    <button
+      onClick={onClick} disabled={disabled} title={title ?? label}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+        height: 26, minWidth: 0, padding: '0 3px',
+        borderRadius: 4,
+        cursor: dim ? 'default' : 'pointer',
+        border: `1px solid ${lit ? t.border : 'var(--border)'}`,
+        background: lit ? t.bg : 'var(--bg-card)',
+        color: dim ? 'var(--text-dim)' : t.fg,
+        opacity: dim ? 0.45 : 1,
+        fontSize: 9, fontWeight: 600, letterSpacing: '0.2px',
+        transition: 'background 0.12s, border-color 0.12s, color 0.12s',
+        boxShadow: active ? `inset 0 0 6px ${t.bg}` : 'none',
+      }}
+    >
+      {busy
+        ? <span style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+            border: '2px solid currentColor', borderTopColor: 'transparent',
+            animation: 'spin 0.7s linear infinite' }} />
+        : icon}
+      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+    </button>
+  )
+}
+
+function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void | Promise<void> }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [logOpen, setLogOpen] = useState(false)
   const [log, setLog] = useState<RedfishLogEntry[]>([])
+  // Authoritative state from the last action RESPONSE — the action endpoint
+  // returns fresh power/LED/SEL values, so the icon flips the instant the
+  // spinner stops instead of waiting for the next status poll. Cleared once
+  // the store row catches up (any update from poll/SSE drops the override).
+  const [ov, setOv] = useState<Partial<RedfishDevice> | null>(null)
+  useEffect(() => { setOv(null) },
+    [d.power_state, d.indicator_led, d.sel_count])
 
   async function act(action: string) {
     setBusy(action)
-    try { await api.redfishAction(d.ip, action); onChanged() } catch { /* ignore */ }
+    try {
+      const res = await api.redfishAction(d.ip, action) as Partial<RedfishDevice>
+      setOv({ power_state: res.power_state, indicator_led: res.indicator_led,
+              sel_count: res.sel_count })
+      onChanged()   // background store refresh; rendering no longer waits on it
+    } catch { /* ignore */ }
     finally { setBusy(null) }
   }
   async function toggleLog() {
@@ -91,41 +211,56 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void }
     } catch { /* ignore */ }
   }
 
-  const on = d.power_state === 'On'
-  const led = !!d.indicator_led && d.indicator_led !== 'Off'
-  const btn = (danger?: boolean): React.CSSProperties => ({
-    fontSize: 9, padding: '2px 6px', borderRadius: 3, cursor: 'pointer',
-    border: '1px solid var(--border)', background: 'var(--bg-card)',
-    color: danger ? 'var(--red)' : 'var(--text)',
-  })
-  const B = ({ a, label, danger }: { a: string; label: string; danger?: boolean }) => (
-    <button onClick={() => act(a)} disabled={!!busy} title={label}
-            style={{ ...btn(danger), opacity: busy === a ? 0.4 : 1 }}>{label}</button>
-  )
+  const eff = ov ? { ...d, ...ov } : d
+  const on = eff.power_state === 'On'
+  const led = !!eff.indicator_led && eff.indicator_led !== 'Off'
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '5px 6px', marginBottom: 4 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
           background: on ? 'var(--green)' : 'var(--text-muted)',
           boxShadow: on ? '0 0 4px var(--green)' : 'none' }} />
         <span style={{ fontSize: 10, color: 'var(--text)', fontWeight: 600 }}>{d.name}</span>
         <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'Consolas, monospace' }}>{d.ip}:{d.port}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 9, color: led ? '#f0c000' : 'var(--text-muted)' }}>
-          {led ? '◉ LED' : '○ LED'}
+        <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 600,
+          color: on ? 'var(--green)' : 'var(--text-muted)', letterSpacing: '0.4px' }}>
+          {on ? 'ON' : 'OFF'}
         </span>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-        <B a="power_on" label="On" />
-        <B a="power_off" label="Off" />
-        <B a="reboot" label="Reboot" />
-        <B a="power_cycle" label="Cycle" />
-        <B a={led ? 'led_off' : 'led_on'} label={led ? 'LED Off' : 'LED On'} />
-        <B a="refresh" label="Refresh" />
-        <button onClick={toggleLog} style={btn()}>
-          Log{typeof d.sel_count === 'number' ? ` (${d.sel_count})` : ''}
-        </button>
-        <B a="clear_log" label="Clear" danger />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 3 }}>
+        <OpBtn icon={<IconPwr />} label="On" tone="ok"
+               disabled={!!busy || on} busy={busy === 'power_on'}
+               onClick={() => act('power_on')}
+               title={on ? 'Chassis is already on' : 'Power on'} />
+        <OpBtn icon={<IconPwr />} label="Off" tone="danger"
+               disabled={!!busy || !on} busy={busy === 'power_off'}
+               onClick={() => act('power_off')}
+               title={!on ? 'Chassis is already off' : 'Graceful shutdown'} />
+        <OpBtn icon={<IconCycleArrow />} label="Reboot" tone="warn"
+               disabled={!!busy || !on} busy={busy === 'reboot'}
+               onClick={() => act('reboot')}
+               title={!on ? 'Power on first' : 'Graceful restart'} />
+        <OpBtn icon={<IconCycleArrow ccw />} label="Cycle" tone="warn"
+               disabled={!!busy || !on} busy={busy === 'power_cycle'}
+               onClick={() => act('power_cycle')}
+               title={!on ? 'Power on first' : 'Hard power cycle'} />
+        <OpBtn icon={<IconBulb lit={led} />} label="LED" tone="warn" active={led}
+               disabled={!!busy} busy={busy === 'led_on' || busy === 'led_off'}
+               onClick={() => act(led ? 'led_off' : 'led_on')}
+               title={led ? 'Turn identify LED off' : 'Light identify LED'} />
+        <OpBtn icon={<IconSync />} label="Sync"
+               disabled={!!busy} busy={busy === 'refresh'}
+               onClick={() => act('refresh')}
+               title="Refresh BMC inventory" />
+        <OpBtn icon={<IconLines />} active={logOpen}
+               label={typeof eff.sel_count === 'number' ? `Log·${eff.sel_count}` : 'Log'}
+               onClick={toggleLog}
+               title={logOpen ? 'Hide event log' : 'Show event log (SEL)'} />
+        <OpBtn icon={<IconBin />} label="Clear" tone="danger"
+               disabled={!!busy} busy={busy === 'clear_log'}
+               onClick={() => act('clear_log')}
+               title="Clear the event log" />
       </div>
       {logOpen && (
         <div style={{ marginTop: 4, maxHeight: 120, overflowY: 'auto', background: 'var(--bg-base)',
