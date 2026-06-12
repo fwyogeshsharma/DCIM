@@ -18,7 +18,7 @@ from typing import Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal
 
-from core.device_manager import Device
+from core.device_manager import Device, DeviceType
 from core.trap_definitions import (
     TrapType, TrapDefinition, TRAP_DEFINITIONS, OID_TO_TRAP_TYPE,
     # sensor trap types imported explicitly for varbind dispatch
@@ -35,6 +35,21 @@ if TYPE_CHECKING:
 
 # ── Value object emitted on every sent trap ───────────────────────────────────
 
+def _trap_source_ip(device: Device, trap_type: Optional[TrapType] = None) -> str:
+    """IP of the agent that conceptually sent this trap.
+
+    BMC platform events come from the server's BMC (mgmt IP). Server OS-agent
+    traps come from the production IP — the OS owns the prod NIC. Everything
+    else (NOS, UPS, PDU, sensors) answers on its mgmt IP when it has one.
+    """
+    mgmt = getattr(device, "mgmt_ip", "") or ""
+    if trap_type in (TrapType.SERVER_POWER_OFF, TrapType.SERVER_POWER_ON):
+        return mgmt or device.ip_address
+    if device.device_type == DeviceType.SERVER:
+        return device.ip_address or mgmt
+    return mgmt or device.ip_address
+
+
 class TrapEvent:
     def __init__(self, device: Device, trap_type: TrapType, details: str = "",
                  rule_name: str = "", iface_index: Optional[int] = None):
@@ -45,6 +60,7 @@ class TrapEvent:
         self.details     = details
         self.rule_name   = rule_name   # "" = manual one-shot trap
         self.iface_index = iface_index
+        self.source_ip   = _trap_source_ip(device, trap_type)
 
     def __repr__(self):
         return (f"<TrapEvent {self.timestamp:%H:%M:%S} "
@@ -237,7 +253,11 @@ class TrapEngine(QObject):
                 snmp_engine, udp_mod.DOMAIN_NAME,
                 udp_mod.UdpAsyncioTransport().open_client_mode(),
             )
-            snmp_config.add_v1_system(snmp_engine, 'trap-comm', device.snmp_community)
+            # Community mirrors the firing agent's IP (server OS → prod IP,
+            # BMC → mgmt IP) — same convention as the poll side.
+            snmp_config.add_v1_system(
+                snmp_engine, 'trap-comm',
+                _trap_source_ip(device, trap_type) or device.snmp_community)
             snmp_config.add_target_parameters(
                 snmp_engine, 'trap-params', 'trap-comm', 'noAuthNoPriv', 1,
             )
@@ -308,7 +328,10 @@ class TrapEngine(QObject):
                 snmp_engine, udp_mod.DOMAIN_NAME,
                 udp_mod.UdpAsyncioTransport().open_client_mode(),
             )
-            snmp_config.add_v1_system(snmp_engine, 'trap-comm', device.snmp_community)
+            # Raw OIDs are rule-driven → always the OS/NOS agent, never BMC.
+            snmp_config.add_v1_system(
+                snmp_engine, 'trap-comm',
+                _trap_source_ip(device, None) or device.snmp_community)
             snmp_config.add_target_parameters(
                 snmp_engine, 'trap-params', 'trap-comm', 'noAuthNoPriv', 1,
             )

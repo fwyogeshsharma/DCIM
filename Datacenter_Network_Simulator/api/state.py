@@ -159,7 +159,12 @@ class AppState:
             "timestamp": event.timestamp.isoformat() if hasattr(event.timestamp, "isoformat") else str(event.timestamp),
             "device_id": event.device.id if event.device else None,
             "device_name": event.device.name if event.device else None,
-            "device_ip": (getattr(event.device, "mgmt_ip", None) or None) if event.device else None,
+            # IP of the agent that fired the trap: server OS traps → prod IP,
+            # BMC platform events → mgmt IP, NOS/UPS/PDU/sensor → mgmt IP.
+            "device_ip": getattr(event, "source_ip", None)
+                         or ((getattr(event.device, "mgmt_ip", None)
+                              or getattr(event.device, "ip_address", None))
+                             if event.device else None),
             "trap_type": event.trap_type.name if event.trap_type else None,
             "display_name": defn.display_name if defn else None,
             "severity": defn.severity if defn else None,

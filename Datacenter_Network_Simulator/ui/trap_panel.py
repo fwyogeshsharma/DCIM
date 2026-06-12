@@ -170,7 +170,9 @@ class TrapPanel(QWidget):
         for col, text in enumerate([
             event.timestamp.strftime("%H:%M:%S"),
             event.device.name,
-            event.device.ip_address,
+            # Agent that fired the trap: server OS → prod IP, BMC → mgmt IP,
+            # NOS/UPS/PDU/sensor → mgmt IP.
+            getattr(event, "source_ip", "") or event.device.ip_address,
             defn.display_name,
             event.details,
         ]):
