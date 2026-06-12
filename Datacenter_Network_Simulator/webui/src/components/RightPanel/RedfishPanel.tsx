@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
-import type { RedfishStatus, RedfishDevice, RedfishLogEntry } from '../../api/types'
+import type { RedfishDevice, RedfishLogEntry } from '../../api/types'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -146,53 +146,45 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void }
   )
 }
 
+// Sync the port field from a running server once per page load (not per mount).
+let _portSyncedFromServer = false
+
 export default function RedfishPanel() {
-  const { devices } = useStore()
-  const [status,    setStatus]    = useState<RedfishStatus | null>(null)
+  const {
+    devices, redfish: status, fetchRedfish,
+    redfishPort: port, redfishUsername: username, redfishPassword: password,
+    setRedfishPort: setPort, setRedfishUsername: setUsername,
+    setRedfishPassword: setPassword,
+  } = useStore()
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'start' | 'stop' | null>(null)
-  const [port,      setPort]      = useState(443)
-  const [username,  setUsername]  = useState('admin')
-  const [password,  setPassword]  = useState('password')
   const [showPass,  setShowPass]  = useState(false)
 
   const running = status?.running ?? false
-  const configLoaded = useRef(false)
 
   // Redfish runs on server BMCs only
   const serverCount = devices.filter(d => d.device_type === 'server').length
 
-  function fetchStatus(syncForm = false) {
-    api.redfishStatus()
-      .then(d => {
-        const s = d as RedfishStatus
-        setStatus(s)
-        if (syncForm) {
-          setPort(s.port)
-          configLoaded.current = true
-        }
-      })
-      .catch(() => {})
-  }
-
-  useEffect(() => { fetchStatus(!configLoaded.current) }, [])
+  useEffect(() => { fetchRedfish() }, [])
   useEffect(() => {
-    const t = window.setInterval(() => fetchStatus(false), 4000)
-    return () => window.clearInterval(t)
-  }, [running])
+    if (!_portSyncedFromServer && status?.running) {
+      setPort(status.port)
+      _portSyncedFromServer = true
+    }
+  }, [status])
 
   async function start() {
     setBusy(true); setOperation('start')
     try {
       await api.redfishStart({ port, username, password })
-      fetchStatus()
+      await fetchRedfish()
     } catch { /* ignore */ }
     finally { setBusy(false); setOperation(null) }
   }
 
   async function stop() {
     setBusy(true); setOperation('stop')
-    try { await api.redfishStop(); fetchStatus() }
+    try { await api.redfishStop(); await fetchRedfish() }
     catch { /* ignore */ }
     finally { setBusy(false); setOperation(null) }
   }
@@ -272,7 +264,7 @@ export default function RedfishPanel() {
             <StatRow label="Sessions:"  value={status?.sessions ?? 0} />
             <div style={{ marginTop: 6, flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
               {bmcs.map(d => (
-                <ServerOps key={d.ip} d={d} onChanged={() => fetchStatus(false)} />
+                <ServerOps key={d.ip} d={d} onChanged={() => fetchRedfish()} />
               ))}
             </div>
           </div>

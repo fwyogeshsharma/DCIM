@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { api, errorMessage } from '../../api/client'
-import type { BacnetStatus, BacnetDevice } from '../../api/types'
+import { useStore } from '../../store/useStore'
+import type { BacnetDevice } from '../../api/types'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -133,44 +134,37 @@ const FREQ_OPTIONS = [
   { label: '60 Hz (US/CA)',   value: 60.0 },
 ]
 
+// Sync the form from a running simulator once per page load (not per mount).
+let _configSyncedFromServer = false
+
 export default function BACnetPanel() {
-  const [status,       setStatus]       = useState<BacnetStatus | null>(null)
-  const [busy,         setBusy]         = useState(false)
-  const [operation,    setOperation]    = useState<'start' | 'stop' | null>(null)
-  const [baseInstance, setBaseInstance] = useState(40001)
-  const [freqHz,       setFreqHz]       = useState(50.0)
-  const [port,         setPort]         = useState(47808)
-  const [error,        setError]        = useState<string | null>(null)
+  const {
+    bacnet: status, fetchBacnet,
+    bacnetBaseInstance: baseInstance, bacnetFreqHz: freqHz, bacnetPort: port,
+    setBacnetBaseInstance: setBaseInstance, setBacnetFreqHz: setFreqHz,
+    setBacnetPort: setPort,
+  } = useStore()
+  const [busy,      setBusy]      = useState(false)
+  const [operation, setOperation] = useState<'start' | 'stop' | null>(null)
+  const [error,     setError]     = useState<string | null>(null)
 
-  const running      = status?.running ?? false
-  const configLoaded = useRef(false)
+  const running = status?.running ?? false
 
-  function fetchStatus(syncForm = false) {
-    api.bacnetStatus()
-      .then(d => {
-        const s = d as BacnetStatus
-        setStatus(s)
-        if (syncForm && !configLoaded.current) {
-          setBaseInstance(s.base_instance)
-          setFreqHz(s.frequency_hz)
-          setPort(s.port)
-          configLoaded.current = true
-        }
-      })
-      .catch(() => {})
-  }
-
-  useEffect(() => { fetchStatus(!configLoaded.current) }, [])
+  useEffect(() => { fetchBacnet() }, [])
   useEffect(() => {
-    const t = window.setInterval(() => fetchStatus(false), 4000)
-    return () => window.clearInterval(t)
-  }, [running])
+    if (!_configSyncedFromServer && status?.running) {
+      setBaseInstance(status.base_instance)
+      setFreqHz(status.frequency_hz)
+      setPort(status.port)
+      _configSyncedFromServer = true
+    }
+  }, [status])
 
   async function start() {
     setBusy(true); setOperation('start'); setError(null)
     try {
       await api.bacnetStart({ base_instance: baseInstance, frequency_hz: freqHz, port })
-      fetchStatus()
+      await fetchBacnet()
     } catch (e: unknown) {
       setError(errorMessage(e))
     }
@@ -179,7 +173,7 @@ export default function BACnetPanel() {
 
   async function stop() {
     setBusy(true); setOperation('stop'); setError(null)
-    try { await api.bacnetStop(); fetchStatus() }
+    try { await api.bacnetStop(); await fetchBacnet() }
     catch (e: unknown) {
       setError(errorMessage(e))
     }

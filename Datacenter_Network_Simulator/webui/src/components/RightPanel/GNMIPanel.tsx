@@ -75,11 +75,10 @@ function StatRow({ label, value, labelColor, valueColor }: {
 }
 
 export default function GNMIPanel() {
-  const { gnmi, fetchGnmi, devices } = useStore()
+  const { gnmi, fetchGnmi, devices, gnmiPort, setGnmiPort } = useStore()
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | 'proxy' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
-  const [gnmiPort,  setGnmiPort]  = useState(50051)
   const [portFocused, setPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 

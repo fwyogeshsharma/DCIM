@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import socketserver
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
@@ -39,6 +40,23 @@ if TYPE_CHECKING:
     from core.device_manager import Device
 
 log = logging.getLogger(__name__)
+
+
+class _FastBindHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer minus the reverse-DNS lookup.
+
+    Stock HTTPServer.server_bind() calls socket.getfqdn() on the bind
+    address, which does a reverse-DNS query per server — ~1.5 s each on
+    Windows for unresolvable simulator IPs. We bind hundreds of BMCs, so
+    use the IP string directly.
+    """
+
+    def server_bind(self):
+        # Skip HTTPServer.server_bind (the getfqdn caller); do the real bind.
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
 
 
 class _RedfishHandler(BaseHTTPRequestHandler):
@@ -180,7 +198,7 @@ class RedfishController:
                 continue
             rdev = RedfishDevice(dev, username=username, password=password)
             try:
-                httpd = ThreadingHTTPServer((ip, port), _RedfishHandler)
+                httpd = _FastBindHTTPServer((ip, port), _RedfishHandler)
             except OSError as exc:
                 failed += 1
                 self._log(f"[Redfish] {ip}:{port} bind failed — {exc}", "warning")
@@ -216,13 +234,22 @@ class RedfishController:
     def stop(self):
         if not self._running:
             return
-        for ip, (httpd, t, _rdev) in list(self._servers.items()):
+        entries = list(self._servers.items())
+        # shutdown() blocks until the serve loop notices (up to poll_interval),
+        # so signal every server concurrently instead of one at a time.
+        shutdown_threads = []
+        for _ip, (httpd, _t, _rdev) in entries:
+            st = threading.Thread(target=httpd.shutdown, daemon=True)
+            st.start()
+            shutdown_threads.append(st)
+        for st in shutdown_threads:
+            st.join(timeout=2.0)
+        for _ip, (httpd, t, _rdev) in entries:
             try:
-                httpd.shutdown()
                 httpd.server_close()
             except Exception:
                 pass
-            t.join(timeout=2.0)
+            t.join(timeout=0.5)
         self._servers.clear()
         self._running = False
         self._log("[Redfish] Stopped.", "info")

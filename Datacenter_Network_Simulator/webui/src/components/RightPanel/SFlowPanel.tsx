@@ -1,15 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
-
-interface SFlowStatus {
-  running: boolean
-  collector_ip: string
-  collector_port: number
-  interval: number
-  sample_rate: number
-  active_devices: number
-}
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -67,58 +58,50 @@ function Field({ label, suffix, prefix, type, value, onChange, disabled }: {
   )
 }
 
+// Sync the form from a running agent once per page load (not per mount).
+let _configSyncedFromServer = false
+
 export default function SFlowPanel() {
-  const { devices } = useStore()
-  const [status,       setStatus]       = useState<SFlowStatus | null>(null)
-  const [busy,         setBusy]         = useState(false)
-  const [operation,    setOperation]    = useState<'start' | 'stop' | null>(null)
-  const [ip,           setIp]           = useState('127.0.0.1')
-  const [port,         setPort]         = useState(6343)
-  const [pollInterval, setPollInterval] = useState(30)
-  const [rate,         setRate]         = useState(1000)
+  const {
+    devices, sflow: status, fetchSflow,
+    sflowCollectorIp: ip, sflowPort: port,
+    sflowInterval: pollInterval, sflowRate: rate,
+    setSflowCollectorIp: setIp, setSflowPort: setPort,
+    setSflowInterval: setPollInterval, setSflowRate: setRate,
+  } = useStore()
+  const [busy,      setBusy]      = useState(false)
+  const [operation, setOperation] = useState<'start' | 'stop' | null>(null)
 
   const running = status?.running ?? false
-  const configLoaded = useRef(false)
 
   // sFlow runs only on network devices (switches + routers)
   const tc: Record<string, number> = {}
   for (const d of devices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
   const total = (tc['switch'] ?? 0) + (tc['router'] ?? 0)
 
-  function fetchStatus(syncForm = false) {
-    api.sflowStatus()
-      .then(d => {
-        const s = d as SFlowStatus
-        setStatus(s)
-        if (syncForm) {
-          setIp(s.collector_ip)
-          setPort(s.collector_port)
-          setPollInterval(s.interval)
-          setRate(s.sample_rate)
-          configLoaded.current = true
-        }
-      })
-      .catch(() => {})
-  }
-
-  useEffect(() => { fetchStatus(!configLoaded.current) }, [])
+  useEffect(() => { fetchSflow() }, [])
   useEffect(() => {
-    const t = window.setInterval(() => fetchStatus(false), 4000)
-    return () => window.clearInterval(t)
-  }, [running])
+    if (!_configSyncedFromServer && status?.running) {
+      setIp(status.collector_ip)
+      setPort(status.collector_port)
+      setPollInterval(status.interval)
+      setRate(status.sample_rate)
+      _configSyncedFromServer = true
+    }
+  }, [status])
 
   async function start() {
     setBusy(true); setOperation('start')
     try {
       await api.sflowStart({ collector_ip: ip, collector_port: port, interval: pollInterval, sample_rate: rate })
-      fetchStatus()
+      await fetchSflow()
     } catch { /* ignore */ }
     finally { setBusy(false); setOperation(null) }
   }
 
   async function stop() {
     setBusy(true); setOperation('stop')
-    try { await api.sflowStop(); fetchStatus() }
+    try { await api.sflowStop(); await fetchSflow() }
     catch { /* ignore */ }
     finally { setBusy(false); setOperation(null) }
   }

@@ -87,6 +87,36 @@ interface Store {
   setSnmpPort: (p: number) => void
   setMgmtPort: (p: number) => void
 
+  // Redfish panel config (survives tab switches)
+  redfishPort:     number
+  redfishUsername: string
+  redfishPassword: string
+  setRedfishPort:     (p: number) => void
+  setRedfishUsername: (u: string) => void
+  setRedfishPassword: (p: string) => void
+
+  // gNMI panel config (survives tab switches)
+  gnmiPort: number
+  setGnmiPort: (p: number) => void
+
+  // sFlow panel config (survives tab switches)
+  sflowCollectorIp: string
+  sflowPort:        number
+  sflowInterval:    number
+  sflowRate:        number
+  setSflowCollectorIp: (ip: string) => void
+  setSflowPort:        (p: number) => void
+  setSflowInterval:    (i: number) => void
+  setSflowRate:        (r: number) => void
+
+  // BACnet panel config (survives tab switches)
+  bacnetBaseInstance: number
+  bacnetFreqHz:       number
+  bacnetPort:         number
+  setBacnetBaseInstance: (i: number) => void
+  setBacnetFreqHz:       (f: number) => void
+  setBacnetPort:         (p: number) => void
+
   // actions
   setLayer:          (l: string) => void
   setRightTab:       (t: string) => void
@@ -152,6 +182,32 @@ export const useStore = create<Store>((set, get) => ({
   mgmtPort: 1161,
   setSnmpPort: (p) => set({ snmpPort: p }),
   setMgmtPort: (p) => set({ mgmtPort: p }),
+
+  redfishPort:     443,
+  redfishUsername: 'admin',
+  redfishPassword: 'password',
+  setRedfishPort:     (p) => set({ redfishPort: p }),
+  setRedfishUsername: (u) => set({ redfishUsername: u }),
+  setRedfishPassword: (p) => set({ redfishPassword: p }),
+
+  gnmiPort: 50051,
+  setGnmiPort: (p) => set({ gnmiPort: p }),
+
+  sflowCollectorIp: '127.0.0.1',
+  sflowPort:        6343,
+  sflowInterval:    30,
+  sflowRate:        1000,
+  setSflowCollectorIp: (ip) => set({ sflowCollectorIp: ip }),
+  setSflowPort:        (p) => set({ sflowPort: p }),
+  setSflowInterval:    (i) => set({ sflowInterval: i }),
+  setSflowRate:        (r) => set({ sflowRate: r }),
+
+  bacnetBaseInstance: 40001,
+  bacnetFreqHz:       50.0,
+  bacnetPort:         47808,
+  setBacnetBaseInstance: (i) => set({ bacnetBaseInstance: i }),
+  setBacnetFreqHz:       (f) => set({ bacnetFreqHz: f }),
+  setBacnetPort:         (p) => set({ bacnetPort: p }),
 
   setLayer:          (l) => { set({ activeLayer: l }); get().fetchGraph() },
   setRightTab:       (t) => set({ rightTab: t }),
