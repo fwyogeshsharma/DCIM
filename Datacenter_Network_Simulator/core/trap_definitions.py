@@ -81,6 +81,10 @@ class TrapType(str, Enum):
     SENSOR_OUTLET_TEMP_HIGH   = "sensorOutletTempHigh"
     SENSOR_MID_TEMP_NORMAL    = "sensorMidTempNormal"
     SENSOR_OUTLET_TEMP_NORMAL = "sensorOutletTempNormal"
+    # Server BMC platform-event traps (1.3.6.1.4.1.99999.20.0.x) — sent by
+    # the BMC on the mgmt IP; fire even while the chassis is powered off.
+    SERVER_POWER_OFF      = "serverPowerOff"
+    SERVER_POWER_ON       = "serverPowerOn"
     # Generator enterprise traps (1.3.6.1.4.1.99999.3.x)
     GEN_RUNNING           = "generatorRunning"
     GEN_STOPPED           = "generatorStopped"
@@ -365,6 +369,14 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
     TrapType.GEN_OVERCRANK: TrapDefinition(
         TrapType.GEN_OVERCRANK, "1.3.6.1.4.1.99999.3.7",
         "Overcrank", "Generator failed to start after maximum crank attempts", "critical"),
+    TrapType.SERVER_POWER_OFF: TrapDefinition(
+        TrapType.SERVER_POWER_OFF, "1.3.6.1.4.1.99999.20.0.1",
+        "Server Powered Off",
+        "Server chassis power turned off (BMC platform event)", "major"),
+    TrapType.SERVER_POWER_ON: TrapDefinition(
+        TrapType.SERVER_POWER_ON, "1.3.6.1.4.1.99999.20.0.2",
+        "Server Powered On",
+        "Server chassis power turned on (BMC platform event)", "informational"),
 }
 
 # Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)

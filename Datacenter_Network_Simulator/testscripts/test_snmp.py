@@ -9,6 +9,12 @@ each request to the correct device dataset via the SNMP community string,
 which is set to the device IP address.  Use --agent to tell the tester where
 snmpsim is actually running (default: 127.0.0.1).
 
+Server IP semantics (two SNMP agents per server):
+  - PRODUCTION IP → OS agent: ifTable, LLDP, CPU/mem/disk. Dead while the
+    chassis is powered off (values read zero).
+  - MGMT IP → BMC agent: power state, temps, fans, PSUs (--bmc section).
+    Answers even while the chassis is Off — same IP Redfish uses.
+
 Usage examples
 --------------
   # Test a single device (community = IP by default, agent = 127.0.0.1)
@@ -238,6 +244,7 @@ class DeviceResult:
     cisco_perf:       Dict[str, str]  = field(default_factory=dict)
     switch_data:      Dict[str, Any]  = field(default_factory=dict)
     router_data:      Dict[str, Any]  = field(default_factory=dict)
+    bmc_data:         Dict[str, str]  = field(default_factory=dict)
 
     @property
     def passed(self) -> int:
@@ -477,6 +484,39 @@ async def _query_sensor_data(agent_ip: str, community: str, port: int,
     return readings
 
 
+# ── Server BMC agent (mgmt IP) — hardware health, enterprise .20 subtree ─────
+# The BMC SNMP agent answers on the server's MGMT IP (community = mgmt IP) and
+# stays up while the chassis is powered off. The OS agent answers on the
+# production IP. See core/snmprec_generator.py (_bmc_entries).
+_BMC_ENT = "1.3.6.1.4.1.99999.20"
+BMC_OIDS = [
+    (f"{_BMC_ENT}.1.1.0", "powerState"),       # 1=On 2=Off
+    (f"{_BMC_ENT}.2.1.0", "inletTempx10"),
+    (f"{_BMC_ENT}.2.2.0", "cpuTempx10"),
+    (f"{_BMC_ENT}.3.1.1", "fan1Rpm"),
+    (f"{_BMC_ENT}.3.1.2", "fan2Rpm"),
+    (f"{_BMC_ENT}.3.1.3", "fan3Rpm"),
+    (f"{_BMC_ENT}.3.1.4", "fan4Rpm"),
+    (f"{_BMC_ENT}.4.1.1", "psu1Status"),
+    (f"{_BMC_ENT}.4.1.2", "psu2Status"),
+    (f"{_BMC_ENT}.4.2.1", "psu1OutputW"),
+    (f"{_BMC_ENT}.4.2.2", "psu2OutputW"),
+    (f"{_BMC_ENT}.5.1.0", "totalPowerW"),
+    (f"{_BMC_ENT}.6.1.0", "model"),
+    (f"{_BMC_ENT}.6.2.0", "vendor"),
+]
+
+
+async def _query_bmc_data(agent_ip: str, community: str, port: int,
+                           timeout: int) -> Dict[str, str]:
+    oid_list = [oid for oid, _ in BMC_OIDS]
+    try:
+        raw = await _snmp_get(agent_ip, community, port, oid_list, timeout)
+    except Exception:
+        return {}
+    return {name: raw[oid] for oid, name in BMC_OIDS if _is_valid(raw.get(oid, ""))}
+
+
 async def _query_ups_data(agent_ip: str, community: str, port: int,
                            timeout: int) -> Dict[str, str]:
     all_oids = UPS_STD_OIDS + UPS_ENT_OIDS
@@ -650,6 +690,7 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
                        do_pdu: bool = False,
                        do_switch: bool = False,
                        do_router: bool = False,
+                       do_bmc: bool = False,
                        do_full: bool = False) -> DeviceResult:
     result = DeviceResult(ip=ip, community=community, port=port)
     t0 = time.perf_counter()
@@ -687,9 +728,11 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
         probe_pdu    = f"{_PDU_ENT}.1.0"
         probe_stp    = f"{_DOT1D_STP}.1.0"   # switch-only (STP bridge MIB)
         probe_cisco  = f"{_CISCO_CPU_MIB}.7.1"
+        probe_bmc    = f"{_BMC_ENT}.1.1.0"   # server BMC (mgmt IP only)
 
         probes = await _snmp_get(agent_ip, community, port,
-                                 [probe_ups, probe_pdu, probe_stp, probe_cisco], timeout)
+                                 [probe_ups, probe_pdu, probe_stp, probe_cisco,
+                                  probe_bmc], timeout)
 
         if _is_valid(probes.get(probe_ups, "")):
             do_ups = True
@@ -697,6 +740,8 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
             do_pdu = True
         if _is_valid(probes.get(probe_stp, "")):
             do_switch = True
+        if _is_valid(probes.get(probe_bmc, "")):
+            do_bmc = True
         if _is_valid(probes.get(probe_cisco, "")):
             # Cisco network device — check router by trying BGP walk
             bgp_probe = await _snmp_walk(agent_ip, community, port, _BGP4_PEER_TBL, timeout, 5)
@@ -804,6 +849,13 @@ async def _test_device(ip: str, agent_ip: str, community: str, port: int,
         except Exception:
             pass
 
+    # ── Server BMC hardware health (mgmt IP) ──────────────────────────────────
+    if do_bmc:
+        try:
+            result.bmc_data = await _query_bmc_data(agent_ip, community, port, timeout)
+        except Exception:
+            pass
+
     # ── UPS data ──────────────────────────────────────────────────────────────
     if do_ups:
         try:
@@ -874,6 +926,32 @@ def _pdu_status_str(name: str, val: str) -> str:
     }
     m = maps.get(name)
     return m.get(val, val) if m else val
+
+
+def _print_bmc_section(bmc: Dict[str, str]) -> None:
+    if not bmc:
+        return
+    on = bmc.get("powerState") == "1"
+    print(f"\n  {bold('Server BMC')}:")
+    state = "On" if on else "Off"
+    print(f"    {'Chassis Power':<26} {green(state) if on else red(state)}")
+    print(f"    {'Model':<26} {bmc.get('vendor', '—')} {bmc.get('model', '')}")
+    for key, label in (("inletTempx10", "Inlet Temp"), ("cpuTempx10", "CPU Temp")):
+        try:
+            print(f"    {label:<26} {int(bmc[key]) / 10:.1f} °C")
+        except (KeyError, ValueError):
+            pass
+    fans = [bmc.get(f"fan{i}Rpm") for i in range(1, 5)]
+    if any(fans):
+        print(f"    {'Fans (RPM)':<26} {' / '.join(f or '—' for f in fans)}")
+    for i in (1, 2):
+        st = bmc.get(f"psu{i}Status")
+        w  = bmc.get(f"psu{i}OutputW", "—")
+        if st is not None:
+            ok = st == "1"
+            print(f"    {f'PSU {i}':<26} {green('OK') if ok else red('FAIL')}  {w} W")
+    if "totalPowerW" in bmc:
+        print(f"    {'Total Power Draw':<26} {bmc['totalPowerW']} W")
 
 
 def _print_ups_section(ups: Dict[str, str]) -> None:
@@ -1232,6 +1310,7 @@ def _print_device(result: DeviceResult, quiet: bool) -> None:
             print(red(line) if alarm else line)
 
     # UPS
+    _print_bmc_section(result.bmc_data)
     _print_ups_section(result.ups_data)
 
     # PDU
@@ -1351,6 +1430,8 @@ def _parse_args() -> argparse.Namespace:
                    help="Query all PDU data: power, status, environment")
     p.add_argument("--switch",          action="store_true",
                    help="Query switch data: MAC table (BRIDGE-MIB), STP, CDP, Cisco CPU/memory")
+    p.add_argument("--bmc",             action="store_true",
+                   help="query server BMC hardware health (poll the server's MGMT IP — answers even when powered off)")
     p.add_argument("--router",          action="store_true",
                    help="Query router data: BGP4-MIB peers, CDP, Cisco CPU/memory")
     p.add_argument("--full",      "-f", action="store_true",
@@ -1369,13 +1450,14 @@ async def _main(args: argparse.Namespace) -> int:
     do_pdu     = args.pdu
     do_switch  = args.switch
     do_router  = args.router
+    do_bmc     = args.bmc
     do_full    = args.full
 
     mode_parts = []
     if do_full:    mode_parts.append("full-auto")
     else:
         for flag, name in [(args.ups,"ups"),(args.pdu,"pdu"),(args.switch,"switch"),
-                           (args.router,"router"),(args.sensor,"sensor"),
+                           (args.router,"router"),(args.bmc,"bmc"),(args.sensor,"sensor"),
                            (args.metrics,"metrics"),(args.interfaces,"interfaces"),
                            (args.lldp,"lldp")]:
             if flag: mode_parts.append(name)
@@ -1399,6 +1481,7 @@ async def _main(args: argparse.Namespace) -> int:
             do_pdu        = do_pdu,
             do_switch     = do_switch,
             do_router     = do_router,
+            do_bmc        = do_bmc,
             do_full       = do_full,
         )
         for ip in args.ips

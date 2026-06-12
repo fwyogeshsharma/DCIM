@@ -412,6 +412,15 @@ class TrapEngine(QObject):
                 (_oid('1.3.6.1.4.1.99999.2.10'), rfc1902.Integer32(count)),
             ]
 
+        if trap_type in (TrapType.SERVER_POWER_OFF, TrapType.SERVER_POWER_ON):
+            state = 2 if trap_type == TrapType.SERVER_POWER_OFF else 1
+            return [
+                # BMC chassis power state (matches the BMC SNMP dataset OID)
+                (_oid('1.3.6.1.4.1.99999.20.1.1.0'), rfc1902.Integer32(state)),
+                (_oid('1.3.6.1.4.1.99999.20.0.10'),
+                 rfc1902.OctetString(str(kwargs.get("reset_type", "")))),
+            ]
+
         if trap_type == TrapType.UPS_ON_BATTERY:
             return [(_oid('1.3.6.1.2.1.33.1.2.1.0'), rfc1902.Integer32(2))]
 
@@ -483,6 +492,12 @@ class TrapEngine(QObject):
         if trap_type == TrapType.RACK_FAILURE:
             return (f"Rack {kwargs.get('rack_id', '?')}: "
                     f"{kwargs.get('down_count', 3)} devices impaired")
+        if trap_type == TrapType.SERVER_POWER_OFF:
+            rt = kwargs.get("reset_type", "")
+            return f"Chassis powered OFF{f' ({rt})' if rt else ''} — BMC platform event"
+        if trap_type == TrapType.SERVER_POWER_ON:
+            rt = kwargs.get("reset_type", "")
+            return f"Chassis powered ON{f' ({rt})' if rt else ''} — BMC platform event"
         if trap_type == TrapType.UPS_ON_BATTERY:
             return "UPS switched to battery power"
         if trap_type == TrapType.UPS_LOW_BATTERY:

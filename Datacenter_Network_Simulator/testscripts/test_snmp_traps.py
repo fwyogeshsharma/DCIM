@@ -108,6 +108,9 @@ except ImportError:
         "1.3.6.1.4.1.99999.6.17": "PDU Temperature Normal",
         "1.3.6.1.4.1.99999.6.18": "PDU Humidity High",
         "1.3.6.1.4.1.99999.6.19": "PDU Humidity Normal",
+        # Server BMC platform events (.20.0.x)
+        "1.3.6.1.4.1.99999.20.0.1": "Server Powered Off",
+        "1.3.6.1.4.1.99999.20.0.2": "Server Powered On",
     }
     _TRAP_OID_SEVERITY = {
         "1.3.6.1.6.3.1.1.5.3":   "major",
@@ -143,6 +146,7 @@ except ImportError:
         "1.3.6.1.4.1.99999.3.5": "critical",
         "1.3.6.1.4.1.99999.3.6": "critical",
         "1.3.6.1.4.1.99999.3.7": "critical",
+        "1.3.6.1.4.1.99999.20.0.1": "major",
         "1.3.6.1.4.1.99999.6.3": "critical",
         "1.3.6.1.4.1.99999.6.4": "major",
         "1.3.6.1.4.1.99999.6.5": "critical",

@@ -1122,6 +1122,12 @@ class DeviceStateStore:
             from core.fact_model import DeviceFact, InterfaceFact, BGPSessionFact
             now = time.time()
             for device in devices:
+                # A powered-off server has no OS/NOS agent — publish nothing,
+                # so rules can't fire phantom traps (recovery, linkDown) from
+                # a dead host. The BMC power trap uses the direct send path.
+                if (device.device_type == DeviceType.SERVER
+                        and getattr(device, "power_state", "On") == "Off"):
+                    continue
                 ext = self._ext_states.get(device.name, {})
                 mem_pct = (device.memory_used / max(1, device.memory_total)) * 100.0
                 disk_pct = (device.disk_used / max(1, device.disk_total)) * 100.0
@@ -1253,6 +1259,10 @@ class DeviceStateStore:
                     except Exception:
                         pass
                 snmp_gen.patch_metrics(device)
+                # Server BMC SNMP agent (mgmt IP) — refresh even while the
+                # chassis is Off; the BMC runs on standby power.
+                if device.device_type == DeviceType.SERVER:
+                    snmp_gen.patch_bmc_metrics(device)
 
             with ThreadPoolExecutor(max_workers=2) as pool:
                 list(pool.map(_patch_below_normal, batch))

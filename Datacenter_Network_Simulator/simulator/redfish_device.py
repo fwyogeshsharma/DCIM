@@ -35,10 +35,14 @@ class RedfishDevice:
     """Routes Redfish requests for a single server and manages its sessions."""
 
     def __init__(self, device: "Device",
-                 username: str = "admin", password: str = "password"):
+                 username: str = "admin", password: str = "password",
+                 power_trap_cb=None):
         self.device = device
         self._user = username
         self._pass = password
+        # cb(device, is_on: bool, reset_type: str) — fired on every chassis
+        # power transition (the BMC's platform-event trap).
+        self._power_trap_cb = power_trap_cb
         # token -> {"id": str, "user": str}
         self._sessions: dict[str, dict] = {}
 
@@ -80,6 +84,7 @@ class RedfishDevice:
     # ── server operations (shared by HTTP actions and REST control) ─────────
     def reset(self, reset_type: str):
         rt = reset_type or ""
+        prev = self.power_state
         if rt in ("On", "ForceOn"):
             self.power_state = "On"; self.log_event("OK", f"Power On ({rt})")
         elif rt in ("ForceOff", "GracefulShutdown"):
@@ -93,6 +98,12 @@ class RedfishDevice:
             return False, f"Unsupported ResetType '{rt}'"
         # Mirror onto the Device so the ticker and REST API see chassis state.
         self.device.power_state = self.power_state
+        # BMC platform-event trap on actual transitions (not reboots).
+        if self.power_state != prev and self._power_trap_cb:
+            try:
+                self._power_trap_cb(self.device, self.power_state == "On", rt)
+            except Exception:
+                pass
         return True, f"power_state={self.power_state}"
 
     def set_led(self, state: str):

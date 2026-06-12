@@ -122,6 +122,8 @@ class RedfishController:
     def __init__(self):
         self._log_cb:   Optional[Callable[[str, str], None]] = None
         self._ready_cb: Optional[Callable[[], None]]         = None
+        # cb(device, is_on, reset_type) — BMC power-transition trap hook.
+        self._trap_cb = None
 
         # ip -> (HTTPServer, thread, RedfishDevice)
         self._servers: Dict[str, tuple] = {}
@@ -139,6 +141,14 @@ class RedfishController:
 
     def set_ready_callback(self, cb: Callable[[], None]):
         self._ready_cb = cb
+
+    def set_trap_callback(self, cb):
+        """cb(device, is_on: bool, reset_type: str) — fired by each BMC on a
+        chassis power transition (wire to TrapEngine for SNMP platform traps)."""
+        self._trap_cb = cb
+        # Propagate to BMCs that are already running.
+        for _ip, (_httpd, _t, rdev) in self._servers.items():
+            rdev._power_trap_cb = cb
 
     def _log(self, msg: str, level: str = "info"):
         log.info(msg)
@@ -196,7 +206,8 @@ class RedfishController:
             ip = ip_for(dev)
             if not ip:
                 continue
-            rdev = RedfishDevice(dev, username=username, password=password)
+            rdev = RedfishDevice(dev, username=username, password=password,
+                                 power_trap_cb=self._trap_cb)
             try:
                 httpd = _FastBindHTTPServer((ip, port), _RedfishHandler)
             except OSError as exc:

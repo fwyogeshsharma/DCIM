@@ -154,8 +154,16 @@ def start_snmp_simulator(req: SnmpStartRequest = None):
                 s.bound_ips = bound
                 s.nte_contexts = contexts
 
-            device_ips = [d.mgmt_ip or d.ip_address for d in s.topology.get_all_devices()
-                          if d.mgmt_ip or d.ip_address]
+            # One endpoint per agent: NOS/OS agent IP plus, for servers, the
+            # BMC SNMP agent on the mgmt IP (same address Redfish binds).
+            from core.snmprec_generator import SNMPRecGenerator as _Gen
+            seen: set = set()
+            device_ips = []
+            for d in s.topology.get_all_devices():
+                for ip in _Gen.snmp_bind_ips(d):
+                    if ip not in seen:
+                        seen.add(ip)
+                        device_ips.append(ip)
 
             s.update_job(job_id, message="Starting SNMP simulator...")
             snmp_port = (req.port if req else None) or 161

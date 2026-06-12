@@ -479,6 +479,13 @@ class MainWindow(QMainWindow):
         self._trap_engine.set_rule_engine(self._rule_engine, self.device_manager)
         self.state_store.set_rule_engine_callback(self._rule_engine.evaluate_fact)
 
+        # BMC platform-event traps: chassis power transitions → SNMP trap.
+        from core.trap_definitions import TrapType as _TT
+        self.redfish.set_trap_callback(
+            lambda dev, is_on, rt: self._trap_engine.send_trap(
+                dev, _TT.SERVER_POWER_ON if is_on else _TT.SERVER_POWER_OFF,
+                reset_type=rt))
+
         # SNMP SET agent — listens on port 1161 for threshold configuration SETs
         self._snmp_set_agent = SnmpSetAgent(
             self._rule_engine,

@@ -146,6 +146,14 @@ function IpCell({ d }: { d: DeviceInfo }) {
   )
 }
 
+function IpVal({ ip }: { ip?: string }) {
+  return (
+    <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 10 }}>
+      {ip || <span style={{ color: 'var(--text-dim)' }}>—</span>}
+    </td>
+  )
+}
+
 // ── sort hook ─────────────────────────────────────────────────────────────────
 
 type SortDir = 'asc' | 'desc'
@@ -325,7 +333,7 @@ function AllTable({ rows }: { rows: DeviceInfo[] }) {
 
 // ── Network table (expandable) ────────────────────────────────────────────────
 
-const NET_COLS = 16
+const NET_COLS = 17
 
 function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
   const sort = useSortState('name')
@@ -344,7 +352,8 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
     switch (sort.col) {
       case 'name':     return a.name.localeCompare(b.name) * dir
       case 'type':     return a.device_type.localeCompare(b.device_type) * dir
-      case 'ip':       return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
+      case 'pip':      return (a.ip_address || '').localeCompare(b.ip_address || '') * dir
+      case 'mip':      return (a.mgmt_ip || '').localeCompare(b.mgmt_ip || '') * dir
       case 'cpu':      return (a.cpu_usage - b.cpu_usage) * dir
       case 'mem':      return (pct(a.memory_used, a.memory_total) - pct(b.memory_used, b.memory_total)) * dir
       case 'disk':     return (pct(a.disk_used, a.disk_total) - pct(b.disk_used, b.disk_total)) * dir
@@ -369,7 +378,8 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
           <th style={{ width: 18, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }} />
           <SortTH label="Name"       id="name"     sort={sort} minW={140} />
           <SortTH label="Type"       id="type"     sort={sort} />
-          <SortTH label="IP"         id="ip"       sort={sort} />
+          <SortTH label="Prod IP"    id="pip"      sort={sort} minW={95} />
+          <SortTH label="Mgmt IP"    id="mip"      sort={sort} minW={95} />
           <SortTH label="CPU"        id="cpu"      sort={sort} align="right" minW={75} />
           <SortTH label="Memory"     id="mem"      sort={sort} align="right" minW={95} />
           <SortTH label="Disk"       id="disk"     sort={sort} align="right" minW={95} />
@@ -407,7 +417,8 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
               <ExpandCell expanded={isExpanded} hasIfaces={hasIfaces} />
               <NameCell d={d} />
               <td style={{ padding: '6px 8px' }}><TypeBadge dt={d.device_type} /></td>
-              <IpCell d={d} />
+              <IpVal ip={d.ip_address} />
+              <IpVal ip={d.mgmt_ip} />
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                 <span style={{ color: metricColor(cpuPct, 50, 80), fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{cpuPct}%</span>
                 <MiniBar p={cpuPct} color={metricColor(cpuPct, 50, 80)} />
@@ -448,7 +459,7 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
 
 // ── Server table (expandable) ─────────────────────────────────────────────────
 
-const SRV_COLS = 13
+const SRV_COLS = 14
 
 function ServerTable({ rows }: { rows: DeviceInfo[] }) {
   const sort = useSortState('name')
@@ -466,7 +477,8 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
     const dir = sort.dir === 'asc' ? 1 : -1
     switch (sort.col) {
       case 'name':   return a.name.localeCompare(b.name) * dir
-      case 'ip':     return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
+      case 'pip':    return (a.ip_address || '').localeCompare(b.ip_address || '') * dir
+      case 'mip':    return (a.mgmt_ip || '').localeCompare(b.mgmt_ip || '') * dir
       case 'cpu':    return (a.cpu_usage - b.cpu_usage) * dir
       case 'mem':    return (pct(a.memory_used, a.memory_total) - pct(b.memory_used, b.memory_total)) * dir
       case 'disk':   return (pct(a.disk_used, a.disk_total) - pct(b.disk_used, b.disk_total)) * dir
@@ -488,7 +500,8 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
         <tr>
           <th style={{ width: 18, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }} />
           <SortTH label="Name"       id="name"   sort={sort} minW={140} />
-          <SortTH label="IP"         id="ip"     sort={sort} />
+          <SortTH label="Prod IP"    id="pip"    sort={sort} minW={95} title="Production NIC — OS SNMP agent answers here" />
+          <SortTH label="Mgmt IP"    id="mip"    sort={sort} minW={95} title="BMC address — Redfish + BMC SNMP, alive even when powered off" />
           <SortTH label="Power State" id="pstate" sort={sort} minW={80} title="Live BMC power state — populated while the Redfish simulator runs" />
           <SortTH label="CPU"        id="cpu"    sort={sort} align="right" minW={80} />
           <SortTH label="Memory"     id="mem"    sort={sort} align="right" minW={100} />
@@ -520,7 +533,8 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
             >
               <ExpandCell expanded={isExpanded} hasIfaces={hasIfaces} />
               <NameCell d={d} />
-              <IpCell d={d} />
+              <IpVal ip={d.ip_address} />
+              <IpVal ip={d.mgmt_ip} />
               <td style={{ padding: '6px 10px' }}><StatePill val={d.power_state} okStates={['On']} /></td>
               {/* OS-level metrics have no reading while the chassis is off;
                   temps stay live — the BMC reads sensors on standby power. */}

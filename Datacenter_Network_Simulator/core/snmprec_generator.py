@@ -120,6 +120,13 @@ from core.topology_engine import TopologyEngine
 
 OidEntry = Tuple[str, str, str]
 
+# Server BMC SNMP agent — enterprise subtree (project base 99999, .20 = BMC)
+BMC_BASE = "1.3.6.1.4.1.99999.20"
+# BMC boot anchors {device name: epoch} — BMC uptime is independent of the
+# host: it keeps counting while the chassis is Off, resets on app restart
+# (equivalent to a BMC reboot).
+_BMC_BOOT: dict = {}
+
 # RFC1213 / SNMPv2-MIB
 SYSTEM_BASE = "1.3.6.1.2.1.1"
 IF_BASE     = "1.3.6.1.2.1.2"
@@ -228,13 +235,36 @@ class SNMPRecGenerator:
     def snmp_address(device: Device) -> str:
         """Return the IP address used to reach this device via SNMP.
 
-        In topologies with an OOB management network, SNMP travels through
-        the management network (mgmt_ip, 192.168.x.x) not the production
-        network.  Devices with no mgmt_ip have no OOB connection and are
-        unreachable via SNMP from a DCIM.
-        Falls back to ip_address for topologies without a management layer.
+        Switches/routers/etc.: the NOS SNMP agent answers on the OOB mgmt
+        network (mgmt_ip) when present, otherwise on ip_address.
+
+        Servers: the OS SNMP agent (net-snmp style) binds the production
+        NIC — the mgmt IP belongs to the BMC, a separate controller (see
+        bmc_address / generate_server_bmc for the BMC SNMP agent).
         """
+        if device.device_type == DeviceType.SERVER:
+            return device.ip_address or device.mgmt_ip
         return device.mgmt_ip if device.mgmt_ip else device.ip_address
+
+    @staticmethod
+    def bmc_address(device: Device) -> str:
+        """Mgmt IP served by a server's BMC SNMP agent ('' if not a server
+        or no OOB connection). Same IP the Redfish BMC binds."""
+        if device.device_type == DeviceType.SERVER and device.mgmt_ip:
+            return device.mgmt_ip
+        return ""
+
+    @classmethod
+    def snmp_bind_ips(cls, device: Device) -> List[str]:
+        """All IPs snmpsim should listen on for this device (OS + BMC)."""
+        ips = []
+        a = cls.snmp_address(device)
+        if a:
+            ips.append(a)
+        b = cls.bmc_address(device)
+        if b and b != a:
+            ips.append(b)
+        return ips
 
     def generate_all(self, topology: TopologyEngine) -> List[str]:
         """Generate .snmprec file for every device reachable via SNMP.
@@ -249,7 +279,10 @@ class SNMPRecGenerator:
         generated = []
         skipped = 0
         for device in all_devices:
-            if has_mgmt_layer and not device.mgmt_ip:
+            # Servers always get an OS-agent dataset on the production IP;
+            # other types with no OOB connection are unreachable via SNMP.
+            if (has_mgmt_layer and not device.mgmt_ip
+                    and device.device_type != DeviceType.SERVER):
                 skipped += 1
                 continue   # no OOB connection → unreachable via SNMP
             filepath = self.generate_device(device, topology)
@@ -351,7 +384,112 @@ class SNMPRecGenerator:
         snmp_addr = self.snmp_address(device)
         filepath = str(self.output_dir / f"{snmp_addr}.snmprec")
         self._atomic_write(filepath, entries)
+
+        # Servers with an OOB connection also expose a BMC SNMP agent on the
+        # mgmt IP (the same address Redfish binds) — hardware health only.
+        if self.bmc_address(device):
+            self.generate_server_bmc(device)
+
         return filepath
+
+    # ------------------------------------------------------------------ #
+    #  Server BMC SNMP agent (mgmt IP)                                     #
+    # ------------------------------------------------------------------ #
+    # A real BMC (iDRAC/iLO/XCC) runs its own SNMP agent on the OOB mgmt
+    # IP, powered by standby power — it answers even while the chassis is
+    # Off, serving hardware health only (temps, fans, PSUs, power state),
+    # never OS metrics. The OS agent lives on the production IP instead.
+
+    def _bmc_entries(self, device: Device) -> List[OidEntry]:
+        import time as _time
+        from core.redfish_data_generator import _bmc_branding, _live_watts
+        bmc_name, _short, fw = _bmc_branding(device.vendor.value)
+        boot = _BMC_BOOT.setdefault(device.name, _time.time())
+        uptime_cs = int((_time.time() - boot) * 100)   # BMC uptime ≠ host uptime
+        off = getattr(device, "power_state", "On") == "Off"
+        watts = _live_watts(device)                    # 0 while chassis Off
+
+        entries = [
+            _oid_entry(f"{SYSTEM_BASE}.1.0", "4",
+                       f"{bmc_name} {fw} — {device.vendor.value} "
+                       f"{device.model_name or 'Server'} BMC"),
+            _oid_entry(f"{SYSTEM_BASE}.2.0", "6", BMC_BASE),
+            _oid_entry(f"{SYSTEM_BASE}.3.0", "67", str(uptime_cs)),
+            _oid_entry(f"{SYSTEM_BASE}.4.0", "4",
+                       device.sys_contact or f"admin@{device.name.lower()}.example.com"),
+            _oid_entry(f"{SYSTEM_BASE}.5.0", "4", f"{device.name}-bmc"),
+            _oid_entry(f"{SYSTEM_BASE}.6.0", "4", device.sys_location or ""),
+            _oid_entry(f"{SYSTEM_BASE}.7.0", "2", "72"),
+            # Chassis power state: 1=On 2=Off
+            _oid_entry(f"{BMC_BASE}.1.1.0", "2", "2" if off else "1"),
+            # Thermal sensors (tenths of °C) — readable on standby power
+            _oid_entry(f"{BMC_BASE}.2.1.0", "2", str(int(round((device.inlet_temp or 0.0) * 10)))),
+            _oid_entry(f"{BMC_BASE}.2.2.0", "2", str(int(round((device.cpu_temp or 0.0) * 10)))),
+        ]
+        # Fans ×4 (RPM, gauge) — stopped while the chassis is Off
+        base_rpm = 3000.0 + max(0.0, (device.cpu_temp or 20.0) - 40.0) * 95.0
+        for i in range(1, 5):
+            rpm = 0 if off else max(0, int(base_rpm + (i - 2.5) * 110))
+            entries.append(_oid_entry(f"{BMC_BASE}.3.1.{i}", "42", str(rpm)))
+        # PSUs ×2 — status (1=ok) + output watts (chassis load split)
+        for i in range(1, 3):
+            entries.append(_oid_entry(f"{BMC_BASE}.4.1.{i}", "2", "1"))
+            entries.append(_oid_entry(f"{BMC_BASE}.4.2.{i}", "42", str(int(watts / 2))))
+        entries += [
+            _oid_entry(f"{BMC_BASE}.5.1.0", "42", str(int(watts))),   # total draw W
+            _oid_entry(f"{BMC_BASE}.6.1.0", "4", device.model_name or device.vendor.value),
+            _oid_entry(f"{BMC_BASE}.6.2.0", "4", device.vendor.value),
+        ]
+        return _sort_oids(entries)
+
+    def generate_server_bmc(self, device: Device) -> Optional[str]:
+        """Write the BMC hardware-health dataset at <mgmt_ip>.snmprec."""
+        ip = self.bmc_address(device)
+        if not ip:
+            return None
+        filepath = str(self.output_dir / f"{ip}.snmprec")
+        self._atomic_write(filepath, self._bmc_entries(device))
+        return filepath
+
+    def patch_bmc_metrics(self, device: Device) -> Optional[str]:
+        """Per-tick refresh of the BMC dataset (every value is dynamic).
+
+        Runs regardless of chassis power state — the BMC lives on standby
+        power, so temps/fans/power-state keep reporting while the host is
+        Off. Uses the same tmp → pre-built index → replace dance as
+        patch_metrics so SNMPSim never sees a partial file.
+        """
+        ip = self.bmc_address(device)
+        if not ip:
+            return None
+        filepath = self.output_dir / f"{ip}.snmprec"
+        if not filepath.exists():
+            return str(filepath)
+
+        new_content = "\n".join("|".join(e) for e in self._bmc_entries(device))
+        lock = _get_write_lock(str(filepath.resolve()))
+        with lock:
+            import tempfile as _tempfile
+            tmp = None
+            try:
+                with _tempfile.NamedTemporaryFile(
+                        "w", dir=str(self.output_dir), suffix=".snmprec.tmp",
+                        encoding="utf-8", newline="\n", delete=False) as f:
+                    f.write(new_content)
+                    tmp = f.name
+                mtime = int(os.stat(tmp).st_mtime)
+                self._reindex(tmp, canonical_path=str(filepath.resolve()),
+                              target_mtime=mtime + 1)
+                _replace_with_retry(tmp, str(filepath))
+            except OSError as e:
+                log.warning("[SNMPRecGen] patch_bmc_metrics failed for %s: %s",
+                            filepath, e)
+                if tmp:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
+        return str(filepath)
 
     def patch_metrics(self, device: Device) -> str:
         """

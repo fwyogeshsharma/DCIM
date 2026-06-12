@@ -203,6 +203,13 @@ def _run_headless():
     trap_engine.set_rule_engine(rule_engine, device_manager)
     state_store.set_rule_engine_callback(rule_engine.evaluate_fact)
 
+    # BMC platform-event traps: chassis power transitions → SNMP trap.
+    from core.trap_definitions import TrapType as _TT
+    redfish.set_trap_callback(
+        lambda dev, is_on, rt: trap_engine.send_trap(
+            dev, _TT.SERVER_POWER_ON if is_on else _TT.SERVER_POWER_OFF,
+            reset_type=rt))
+
     from api.state import AppState
     api_state = AppState.get()
     api_state.register(
