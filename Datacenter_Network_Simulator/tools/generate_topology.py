@@ -415,12 +415,14 @@ class TopologyBuilder:
                 continue
             row_cx = x_min + (row_racks[0] + len(row_racks) / 2) * rack_width - 100
 
+            # Class prefix (IT vs MECH) distinguishes critical-power panels
+            # feeding IT racks from mechanical-power panels feeding plant.
             rpp_a = self.add(
-                f"RPP-DC{dc_id}-A{row+1}", DeviceType.RPP, rpp_vendor,
+                f"RPP-IT-DC{dc_id}-A{row+1}", DeviceType.RPP, rpp_vendor,
                 1, row_cx - 80, rpp_y, mgmt_only=True,
             )
             rpp_b = self.add(
-                f"RPP-DC{dc_id}-B{row+1}", DeviceType.RPP, rpp_vendor,
+                f"RPP-IT-DC{dc_id}-B{row+1}", DeviceType.RPP, rpp_vendor,
                 1, row_cx + 80, rpp_y, mgmt_only=True,
             )
             for node in self.nodes:

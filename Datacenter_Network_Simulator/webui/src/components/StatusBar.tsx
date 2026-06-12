@@ -13,6 +13,13 @@ const DEVICE_TYPE_COLOR: Record<string, string> = {
   generator:     '#713f12',
   ups:           'var(--node-ups)',
   sensor:        'var(--node-sensor)',
+  energy_monitor:'#0e7490',
+  crah:          '#0891b2',
+  chiller:       '#155e75',
+  pump:          '#1e6ec8',
+  cooling_tower: '#164e63',
+  valve:         '#4a044e',
+  cdu:           '#2563eb',
 }
 
 const DEVICE_TYPE_SHORT: Record<string, string> = {
@@ -28,46 +35,20 @@ const DEVICE_TYPE_SHORT: Record<string, string> = {
   generator:     'GEN',
   ups:           'UPS',
   sensor:        'SNS',
-}
-
-function Divider() {
-  return <span style={{ width: 1, height: 12, background: 'var(--border)' }} />
-}
-
-function Cell({ dot, dotGlow, label, value, valueColor }: {
-  dot?: string; dotGlow?: boolean
-  label: string; value?: string | number
-  valueColor?: string
-}) {
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-      {dot && (
-        <span style={{
-          width: 6, height: 6, borderRadius: '50%',
-          background: dot,
-          boxShadow: dotGlow ? `0 0 5px ${dot}` : undefined,
-          flexShrink: 0,
-        }} />
-      )}
-      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      {value !== undefined && (
-        <span style={{
-          color: valueColor ?? 'var(--text)', fontWeight: 600,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{value}</span>
-      )}
-    </span>
-  )
+  energy_monitor:'EV2',
+  crah:          'CRAH',
+  chiller:       'CHLR',
+  pump:          'PMP',
+  cooling_tower: 'CT',
+  valve:         'VLV',
+  cdu:           'CDU',
 }
 
 export default function StatusBar() {
-  const { devices, health, binding, snmp } = useStore()
+  const { devices } = useStore()
 
   const typeCounts: Record<string, number> = {}
   for (const d of devices) typeCounts[d.device_type] = (typeCounts[d.device_type] || 0) + 1
-
-  const apiOk    = health?.status === 'ok'
-  const boundCt  = binding?.bound_count ?? 0
 
   return (
     <div style={{
@@ -82,29 +63,6 @@ export default function StatusBar() {
       fontSize: 10,
       color: 'var(--text-muted)',
     }}>
-      {/* ── Connection health ─────────────────────────────── */}
-      <Cell
-        dot={apiOk ? 'var(--green)' : 'var(--red)'}
-        dotGlow
-        label="API"
-        value={apiOk ? 'connected' : 'offline'}
-        valueColor={apiOk ? 'var(--green)' : 'var(--red)'}
-      />
-
-      {boundCt > 0 && (
-        <>
-          <Divider />
-          <Cell label="Bound IPs" value={boundCt} valueColor="var(--green)" />
-        </>
-      )}
-
-      {snmp?.running && snmp.pid && (
-        <>
-          <Divider />
-          <Cell label="SNMP PID" value={snmp.pid} />
-        </>
-      )}
-
       {/* ── Right: type counts ────────────────────────────── */}
       <span style={{ flex: 1 }} />
       {Object.entries(typeCounts).map(([t, n]) => (

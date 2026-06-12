@@ -31,7 +31,7 @@ export default function BindingPanel() {
   const {
     binding, adapters, fetchBinding, fetchAdapters,
     bindingBusy, bindingProgress, setBindingBusy, setBindingProgress,
-    bacnet, snmp, gnmi,
+    bacnet, snmp, gnmi, devices,
   } = useStore()
   const [selectedAdapter, setSelectedAdapter] = useState('')
   const [mask, setMask] = useState('255.255.255.0')
@@ -90,6 +90,12 @@ export default function BindingPanel() {
   const allAdapters = adapters?.adapters || []
   const labels      = adapters?.adapter_labels || {}
   const boundCount  = binding?.bound_count ?? 0
+
+  // Breakdown of bound IPs: production vs OOB management addresses.
+  // An IP shared by both networks (OOB switches, sensors) counts as prod.
+  const prodSet = new Set(devices.map(d => d.ip_address).filter(Boolean))
+  const boundProd = (binding?.bound_ips ?? []).filter(ip => prodSet.has(ip)).length
+  const boundMgmt = Math.max(0, boundCount - boundProd)
 
   // Header badge
   type BadgeCfg = { cls: string; dot: string; text: string }
@@ -172,6 +178,19 @@ export default function BindingPanel() {
               fontVariantNumeric: 'tabular-nums',
             }}>{boundCount}</span>
           </div>
+
+          {boundCount > 0 && (
+            <div style={{ marginTop: 2, paddingLeft: 10 }}>
+              <div className="field-row-split">
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Production IPs</span>
+                <span style={{ fontSize: 10, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{boundProd}</span>
+              </div>
+              <div className="field-row-split">
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Management IPs</span>
+                <span style={{ fontSize: 10, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{boundMgmt}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {bindingBusy && (

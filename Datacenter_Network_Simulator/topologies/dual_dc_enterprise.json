@@ -66148,7 +66148,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC1-A1",
+        "name": "RPP-IT-DC1-A1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66219,7 +66219,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC1-B1",
+        "name": "RPP-IT-DC1-B1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66290,7 +66290,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC1-A2",
+        "name": "RPP-IT-DC1-A2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66361,7 +66361,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC1-B2",
+        "name": "RPP-IT-DC1-B2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -68349,7 +68349,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC2-A1",
+        "name": "RPP-IT-DC2-A1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -68420,7 +68420,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC2-B1",
+        "name": "RPP-IT-DC2-B1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -68491,7 +68491,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC2-A2",
+        "name": "RPP-IT-DC2-A2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -68562,7 +68562,7 @@
         "y": 2140
       },
       "device": {
-        "name": "RPP-DC2-B2",
+        "name": "RPP-IT-DC2-B2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -70487,7 +70487,7 @@
         "y": 2380
       },
       "device": {
-        "name": "MECH-DC1",
+        "name": "RPP-MECH-DC1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -70986,7 +70986,7 @@
         "y": 2380
       },
       "device": {
-        "name": "MECH-DC2",
+        "name": "RPP-MECH-DC2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -71485,7 +71485,7 @@
         "y": 2600
       },
       "device": {
-        "name": "PLANT-DC1",
+        "name": "RPP-PLANT-DC1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -71628,7 +71628,7 @@
         "y": 2600
       },
       "device": {
-        "name": "PLANT-DC2",
+        "name": "RPP-PLANT-DC2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
