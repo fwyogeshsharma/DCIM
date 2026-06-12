@@ -120,8 +120,19 @@ from core.topology_engine import TopologyEngine
 
 OidEntry = Tuple[str, str, str]
 
-# Server BMC SNMP agent — enterprise subtree (project base 99999, .20 = BMC)
-BMC_BASE = "1.3.6.1.4.1.99999.20"
+# Device types with NO SNMP agent. RPP is a passive panel; chiller, pump,
+# cooling tower and valve are BACnet/Modbus-native plant equipment — real
+# units carry no SNMP card (the BMS gateways their points). CRAH and CDU
+# stay SNMP-capable: real ones ship native network/comm cards.
+_NO_SNMP_TYPES = frozenset({
+    DeviceType.RPP, DeviceType.CHILLER, DeviceType.PUMP,
+    DeviceType.COOLING_TOWER, DeviceType.VALVE,
+})
+
+# Server BMC SNMP agent — enterprise subtree (project base 99999, .26 = BMC;
+# .20–.25 belong to the chiller-plant devices: chiller, pump, cooling tower,
+# valve, CRAH, CDU)
+BMC_BASE = "1.3.6.1.4.1.99999.26"
 # BMC boot anchors {device name: epoch} — BMC uptime is independent of the
 # host: it keeps counting while the chassis is Off, resets on app restart
 # (equivalent to a BMC reboot).
@@ -257,6 +268,8 @@ class SNMPRecGenerator:
     @classmethod
     def snmp_bind_ips(cls, device: Device) -> List[str]:
         """All IPs snmpsim should listen on for this device (OS + BMC)."""
+        if device.device_type in _NO_SNMP_TYPES:
+            return []
         ips = []
         a = cls.snmp_address(device)
         if a:
@@ -279,6 +292,8 @@ class SNMPRecGenerator:
         generated = []
         skipped = 0
         for device in all_devices:
+            if device.device_type in _NO_SNMP_TYPES:
+                continue   # BACnet-only plant gear / passive panel — no agent
             # Servers always get an OS-agent dataset on the production IP;
             # other types with no OOB connection are unreachable via SNMP.
             if (has_mgmt_layer and not device.mgmt_ip
@@ -350,28 +365,19 @@ class SNMPRecGenerator:
         if device.device_type == DeviceType.GENERATOR:
             entries += self._generator_entries(device)
 
-        if device.device_type == DeviceType.CHILLER:
-            entries += self._chiller_entries(device)
-
-        if device.device_type == DeviceType.PUMP:
-            entries += self._pump_entries(device)
-
-        if device.device_type == DeviceType.COOLING_TOWER:
-            entries += self._cooling_tower_entries(device)
-
-        if device.device_type == DeviceType.VALVE:
-            entries += self._valve_entries(device)
-
         if device.device_type == DeviceType.CRAH:
             entries += self._crah_entries(device)
 
         if device.device_type == DeviceType.CDU:
             entries += self._cdu_entries(device)
 
-        # RPP (passive breaker panel) has no SNMP agent — skip file generation.
-        # All cooling devices (CRAH, chiller, pump, tower, valve) ARE
-        # SNMP-monitored and fall through to normal generation.
-        if device.device_type == DeviceType.RPP:
+        # No SNMP agent → skip file generation entirely:
+        #   RPP — passive breaker panel.
+        #   Chiller / pump / cooling tower / valve — BACnet/Modbus-native
+        #   plant equipment; real units have no SNMP card (telemetry reaches
+        #   IT through the BMS). CRAH and CDU keep SNMP — they ship native
+        #   network cards (Liebert IntelliSlot / CoolIT-style) in real DCs.
+        if device.device_type in _NO_SNMP_TYPES:
             return
 
         # Sort and write
@@ -762,12 +768,11 @@ class SNMPRecGenerator:
                 # Store outlet status for per-outlet table update below
                 _pdu_ol_out = pdu_out
 
-            # Chiller-plant live telemetry — patched from the shared BACnet
-            # engine (via _plant_state_cache) so SNMP serves the same ticking
-            # values as BACnet. Scales mirror the static _*_entries layouts.
-            if device.device_type in (DeviceType.CHILLER, DeviceType.PUMP,
-                                       DeviceType.COOLING_TOWER, DeviceType.VALVE,
-                                       DeviceType.CDU):
+            # Plant live telemetry — patched from the shared BACnet engine
+            # (via _plant_state_cache) so SNMP serves the same ticking values
+            # as BACnet. Only CDU/CRAH have SNMP agents (native comm cards);
+            # chiller/pump/tower/valve are BACnet-only (_NO_SNMP_TYPES).
+            if device.device_type in (DeviceType.CDU, DeviceType.CRAH):
                 pv = {}
                 try:
                     from core.device_state_store import _get_plant_state

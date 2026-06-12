@@ -91,7 +91,7 @@ The two SNMP agents serve **disjoint metric sets**:
 | CPU/memory/disk *usage* | ✔ | ✘ (BMC can't see inside the OS) |
 | Interface traffic counters, LLDP | ✔ | ✘ |
 | Temps, fan RPM, PSU health/watts | ✘ | ✔ |
-| Chassis power state | ✘ | ✔ (`…99999.20.1.1.0`, 1=On 2=Off) |
+| Chassis power state | ✘ | ✔ (`…99999.26.1.1.0`, 1=On 2=Off) |
 
 OS-resident monitoring agents (node_exporter, Datadog, fwAgent) live in the
 same box as the OS SNMP agent — richer data, push-capable, but equally dead
@@ -102,6 +102,8 @@ when the chassis is off.
 | Devices | Protocol | Notes |
 |---|---|---|
 | EV2 energy monitors, chillers, CRAHs, pumps, cooling towers, valves, CDUs | **BACnet/IP** (UDP 47808) | Who-Is/I-Am discovery, ReadProperty, COV subscriptions |
+| CRAH, CDU | **also SNMP** (mgmt IP) | Real units ship native network/comm cards (Liebert IntelliSlot-style); SNMP serves the same ticking values as BACnet |
+| Chiller, pump, cooling tower, valve | **BACnet only — no SNMP** | Real units have no SNMP card; their points reach IT via the BMS. The simulator deliberately does not answer SNMP for these |
 | UPS, rack/floor PDUs, environmental sensors, generators | **SNMP** (mgmt IP) | Vendor MIBs (UPS-MIB, Raritan, Vertiv, APC…), enterprise traps |
 
 ---
@@ -117,7 +119,7 @@ every layer, exactly as on real hardware:
 | BMC SNMP (mgmt IP) | **Alive.** Power-state OID reads 2; temps decay to ambient; fans 0 RPM; PSU output 0 W |
 | OS SNMP (prod IP) | Dead host: CPU/mem/uptime 0, interfaces down, counters frozen. *(Sim approximation: the agent still answers with these values; a real one would time out)* |
 | Production links | Broken **both ends** — server NICs and switch ports go oper-down; topology shows the link broken |
-| Traps | BMC sends `serverPowerOff` / `serverPowerOn` platform events (`1.3.6.1.4.1.99999.20.0.1/.2`). The rule engine publishes **no facts** for an Off server — no phantom OS-agent traps |
+| Traps | BMC sends `serverPowerOff` / `serverPowerOn` platform events (`1.3.6.1.4.1.99999.26.0.1/.2`). The rule engine publishes **no facts** for an Off server — no phantom OS-agent traps |
 | gNMI / sFlow | n/a — servers never run these |
 | UI | Node dimmed on both canvases; Live Metrics shows "—" for OS metrics, live temps, red OFF pill |
 

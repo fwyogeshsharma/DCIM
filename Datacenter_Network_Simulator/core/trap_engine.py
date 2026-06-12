@@ -439,8 +439,8 @@ class TrapEngine(QObject):
             state = 2 if trap_type == TrapType.SERVER_POWER_OFF else 1
             return [
                 # BMC chassis power state (matches the BMC SNMP dataset OID)
-                (_oid('1.3.6.1.4.1.99999.20.1.1.0'), rfc1902.Integer32(state)),
-                (_oid('1.3.6.1.4.1.99999.20.0.10'),
+                (_oid('1.3.6.1.4.1.99999.26.1.1.0'), rfc1902.Integer32(state)),
+                (_oid('1.3.6.1.4.1.99999.26.0.10'),
                  rfc1902.OctetString(str(kwargs.get("reset_type", "")))),
             ]
 

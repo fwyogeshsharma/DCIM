@@ -484,11 +484,11 @@ async def _query_sensor_data(agent_ip: str, community: str, port: int,
     return readings
 
 
-# ── Server BMC agent (mgmt IP) — hardware health, enterprise .20 subtree ─────
+# ── Server BMC agent (mgmt IP) — hardware health, enterprise .26 subtree ─────
 # The BMC SNMP agent answers on the server's MGMT IP (community = mgmt IP) and
 # stays up while the chassis is powered off. The OS agent answers on the
 # production IP. See core/snmprec_generator.py (_bmc_entries).
-_BMC_ENT = "1.3.6.1.4.1.99999.20"
+_BMC_ENT = "1.3.6.1.4.1.99999.26"
 BMC_OIDS = [
     (f"{_BMC_ENT}.1.1.0", "powerState"),       # 1=On 2=Off
     (f"{_BMC_ENT}.2.1.0", "inletTempx10"),

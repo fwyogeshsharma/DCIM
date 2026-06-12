@@ -101,8 +101,10 @@ export default function SNMPPanel() {
     }).catch(() => {})
   }, [running])
 
+  // CRAH/CDU are the only cooling devices with SNMP agents (native comm
+  // cards); chiller/pump/cooling_tower/valve are BACnet-only.
   const SNMP_TYPES = new Set(['switch','router','server','firewall','load_balancer',
-    'oob_switch','sensor','ups','pdu','floor_pdu','generator'])
+    'oob_switch','sensor','ups','pdu','floor_pdu','generator','crah','cdu'])
   const snmpDevices = devices.filter(d => SNMP_TYPES.has(d.device_type))
   const tc: Record<string, number> = {}
   for (const d of snmpDevices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
@@ -223,6 +225,8 @@ export default function SNMPPanel() {
             {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
             {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
             {(tc['generator']     ?? 0) > 0 && <StatRow label="Generators:"     value={tc['generator']     ?? 0} />}
+            {(tc['crah']          ?? 0) > 0 && <StatRow label="CRAHs:"          value={tc['crah']          ?? 0} />}
+            {(tc['cdu']           ?? 0) > 0 && <StatRow label="CDUs:"           value={tc['cdu']           ?? 0} />}
             <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
             <div style={{ height: 4 }} />
             <StatRow
@@ -242,13 +246,15 @@ export default function SNMPPanel() {
             {(tc['server']        ?? 0) > 0 && <StatRow label="Servers:"        value={tc['server']        ?? 0} />}
             {(tc['firewall']      ?? 0) > 0 && <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />}
             {(tc['load_balancer'] ?? 0) > 0 && <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />}
-            {(['oob_switch','sensor','ups','pdu','floor_pdu','generator'].some(t => (tc[t] ?? 0) > 0)) && <div style={{ height: 4 }} />}
+            {(['oob_switch','sensor','ups','pdu','floor_pdu','generator','crah','cdu'].some(t => (tc[t] ?? 0) > 0)) && <div style={{ height: 4 }} />}
             {(tc['oob_switch']    ?? 0) > 0 && <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />}
             {(tc['sensor']        ?? 0) > 0 && <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />}
             {(tc['ups']           ?? 0) > 0 && <StatRow label="UPS:"            value={tc['ups']           ?? 0} />}
             {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
             {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
             {(tc['generator']     ?? 0) > 0 && <StatRow label="Generators:"     value={tc['generator']     ?? 0} />}
+            {(tc['crah']          ?? 0) > 0 && <StatRow label="CRAHs:"          value={tc['crah']          ?? 0} />}
+            {(tc['cdu']           ?? 0) > 0 && <StatRow label="CDUs:"           value={tc['cdu']           ?? 0} />}
             <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
           </div>
         )}

@@ -2209,6 +2209,8 @@ class MainWindow(QMainWindow):
             oob_switches=len(dm.get_devices_by_type(DeviceType.OOB_SWITCH)),
             sensors=len(dm.get_devices_by_type(DeviceType.SENSOR)),
             generators=len(dm.get_devices_by_type(DeviceType.GENERATOR)),
+            crahs=len(dm.get_devices_by_type(DeviceType.CRAH)),
+            cdus=len(dm.get_devices_by_type(DeviceType.CDU)),
         )
         self._sim_panel.set_link_counts(
             prod=len(self.topology.get_edges_by_layer("production")),
