@@ -60,7 +60,7 @@ function StatRow({ label, value, labelColor, valueColor }: {
 }
 
 export default function SNMPPanel() {
-  const { snmp, fetchSnmp, devices, snmpPort, mgmtPort, setSnmpPort, setMgmtPort } = useStore()
+  const { snmp, fetchSnmp, devices, binding, snmpPort, mgmtPort, setSnmpPort, setMgmtPort } = useStore()
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
@@ -167,9 +167,12 @@ export default function SNMPPanel() {
     : hasData
       ? 'Rebuild SNMP datasets from current topology'
       : 'Build per-device SNMP datasets from current topology'
+  const ipsBound = (binding?.bound_count ?? 0) > 0
   const startTip = !hasData
     ? 'Generate datasets first'
-    : 'Start SNMP agents on all devices'
+    : !ipsBound
+      ? 'Bind IPs first (Binding panel → Bind IPs)'
+      : 'Start SNMP agents on all devices'
   const clearTip = running
     ? 'Stop simulator before clearing'
     : !hasData
@@ -356,7 +359,7 @@ export default function SNMPPanel() {
             <button
               className="btn-action btn-start"
               onClick={start}
-              disabled={busy || !hasData}
+              disabled={busy || !hasData || !ipsBound}
               title={startTip}
             >
               <IconPlay />

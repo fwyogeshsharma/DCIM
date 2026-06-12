@@ -151,7 +151,7 @@ let _portSyncedFromServer = false
 
 export default function RedfishPanel() {
   const {
-    devices, redfish: status, fetchRedfish,
+    devices, binding, redfish: status, fetchRedfish,
     redfishPort: port, redfishUsername: username, redfishPassword: password,
     setRedfishPort: setPort, setRedfishUsername: setUsername,
     setRedfishPassword: setPassword,
@@ -199,9 +199,11 @@ export default function RedfishPanel() {
   const validPort = port >= 1 && port <= 65535
   const validUser = username.trim().length > 0
   const validPass = password.length > 0
-  const canStart  = !busy && !running && validPort && validUser && validPass && serverCount > 0
+  const ipsBound  = (binding?.bound_count ?? 0) > 0
+  const canStart  = !busy && !running && validPort && validUser && validPass && serverCount > 0 && ipsBound
 
   const startTip = serverCount === 0 ? 'No servers in topology'
+                 : !ipsBound         ? 'Bind IPs first (Binding panel → Bind IPs)'
                  : !validPort        ? 'Port out of range (1-65535)'
                  : !validUser        ? 'Username required'
                  : !validPass        ? 'Password required'

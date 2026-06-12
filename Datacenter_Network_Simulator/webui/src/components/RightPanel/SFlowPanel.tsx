@@ -63,7 +63,7 @@ let _configSyncedFromServer = false
 
 export default function SFlowPanel() {
   const {
-    devices, sflow: status, fetchSflow,
+    devices, binding, sflow: status, fetchSflow,
     sflowCollectorIp: ip, sflowPort: port,
     sflowInterval: pollInterval, sflowRate: rate,
     setSflowCollectorIp: setIp, setSflowPort: setPort,
@@ -119,9 +119,11 @@ export default function SFlowPanel() {
   const validPort = port >= 1 && port <= 65535
   const validInt  = pollInterval >= 5 && pollInterval <= 3600
   const validRate = rate >= 1 && rate <= 65535
-  const canStart  = !busy && !running && validIp && validPort && validInt && validRate
+  const ipsBound  = (binding?.bound_count ?? 0) > 0
+  const canStart  = !busy && !running && validIp && validPort && validInt && validRate && ipsBound
 
-  const startTip = !validIp   ? 'Collector IP invalid'
+  const startTip = !ipsBound  ? 'Bind IPs first (Binding panel → Bind IPs)'
+                 : !validIp   ? 'Collector IP invalid'
                  : !validPort ? 'UDP port out of range (1-65535)'
                  : !validInt  ? 'Interval must be 5-3600 seconds'
                  : !validRate ? 'Sample rate must be 1-65535'

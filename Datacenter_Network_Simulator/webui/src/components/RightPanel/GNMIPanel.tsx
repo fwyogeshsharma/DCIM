@@ -75,7 +75,7 @@ function StatRow({ label, value, labelColor, valueColor }: {
 }
 
 export default function GNMIPanel() {
-  const { gnmi, fetchGnmi, devices, gnmiPort, setGnmiPort } = useStore()
+  const { gnmi, fetchGnmi, devices, binding, gnmiPort, setGnmiPort } = useStore()
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | 'proxy' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
@@ -184,7 +184,12 @@ export default function GNMIPanel() {
       : hasData
         ? 'Rebuild OpenConfig datasets for switches and routers'
         : 'Build OpenConfig datasets for switches and routers'
-  const startTip = !hasData ? 'Generate datasets first' : 'Start gNMI server on all devices'
+  const ipsBound = (binding?.bound_count ?? 0) > 0
+  const startTip = !hasData
+    ? 'Generate datasets first'
+    : !ipsBound
+      ? 'Bind IPs first (Binding panel → Bind IPs)'
+      : 'Start gNMI server on all devices'
   const clearTip = running
     ? 'Stop simulator before clearing'
     : !hasData
@@ -317,7 +322,7 @@ export default function GNMIPanel() {
             <button
               className="btn-action btn-start"
               onClick={start}
-              disabled={busy || !hasData}
+              disabled={busy || !hasData || !ipsBound}
               title={startTip}
             >
               <IconPlay />

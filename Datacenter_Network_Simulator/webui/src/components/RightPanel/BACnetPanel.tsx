@@ -139,7 +139,7 @@ let _configSyncedFromServer = false
 
 export default function BACnetPanel() {
   const {
-    bacnet: status, fetchBacnet,
+    binding, bacnet: status, fetchBacnet,
     bacnetBaseInstance: baseInstance, bacnetFreqHz: freqHz, bacnetPort: port,
     setBacnetBaseInstance: setBaseInstance, setBacnetFreqHz: setFreqHz,
     setBacnetPort: setPort,
@@ -190,9 +190,11 @@ export default function BACnetPanel() {
 
   const validInstance = baseInstance >= 1 && baseInstance <= 4194302
   const validPort     = port >= 1024 && port <= 65535
-  const canStart      = !busy && !running && validInstance && validPort
+  const ipsBound      = (binding?.bound_count ?? 0) > 0
+  const canStart      = !busy && !running && validInstance && validPort && ipsBound
 
-  const startTip = !validInstance ? 'Instance must be 1–4194302'
+  const startTip = !ipsBound      ? 'Bind IPs first (Binding panel → Bind IPs)'
+                 : !validInstance ? 'Instance must be 1–4194302'
                  : !validPort     ? 'Port must be 1024–65535'
                  : 'Start BACnet/IP simulator'
 
