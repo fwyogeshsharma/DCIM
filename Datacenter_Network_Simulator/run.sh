@@ -38,4 +38,17 @@ if [ -z "$DCIM_AUTH_SECRET" ]; then
     echo "         Create ./auth.env (see auth.env.example) and try again." >&2
 fi
 
+# Build the web UI (served from webui/dist by the REST API).
+# Skip with SKIP_WEBUI_BUILD=1.
+if [ "$SKIP_WEBUI_BUILD" != "1" ] && [ -d "webui" ]; then
+    if command -v npm >/dev/null 2>&1; then
+        echo "Building web UI..."
+        ( cd webui && \
+          { [ -d node_modules ] || npm install; } && \
+          npm run build )
+    else
+        echo "WARNING: npm not found — skipping web UI build (serving existing webui/dist)." >&2
+    fi
+fi
+
 exec "$PYTHON" app/main.py "$@"
