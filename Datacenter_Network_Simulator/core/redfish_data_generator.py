@@ -237,9 +237,13 @@ def thermal(device: "Device") -> dict:
 
 
 def _fans(device: "Device") -> list:
-    """Synthesize fan RPMs that rise with CPU temperature."""
+    """Per-fan RPMs spread around the chassis fan speed. Reads the ticker-driven
+    ``fan_rpm`` (single source of truth); falls back to a temp-derived value if
+    the ticker hasn't run yet."""
     cid = member_id(device)
-    base = 3000 + max(0.0, device.cpu_temp - 40.0) * 95.0
+    base = float(getattr(device, "fan_rpm", 0) or 0)
+    if base <= 0:
+        base = 3000 + max(0.0, device.cpu_temp - 40.0) * 95.0
     fans = []
     for i in range(4):
         rpm = int(base + (i - 1.5) * 110 + (device.cpu_usage % 7) * 18)

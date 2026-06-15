@@ -133,6 +133,7 @@ class DeviceStateStore:
             "sys_uptime":           True,
             "cpu_temp":             True,
             "inlet_temp":           True,
+            "fan_rpm":              True,
             "iface_octets":         True,
             "iface_errors":         True,
             "iface_discards":       True,
@@ -200,6 +201,7 @@ class DeviceStateStore:
             "disk_pct":            {"enabled": False, "min": 0.0,   "max": 100.0},
             "cpu_temp":            {"enabled": False, "min": 20.0,  "max": 95.0},
             "inlet_temp":          {"enabled": False, "min": 15.0,  "max": 55.0},
+            "fan_rpm":             {"enabled": False, "min": 0.0,   "max": 20000.0},
             "sensor_ambient_temp":  {"enabled": False, "min": 15.0,  "max": 35.0},
             "humidity":            {"enabled": False, "min": 10.0,  "max": 90.0},
             "airflow":             {"enabled": False, "min": 0.2,   "max": 4.0},
@@ -412,6 +414,7 @@ class DeviceStateStore:
             "boot_time_ns": self._boot_times[ip],
             "cpu_temp":     device.cpu_temp,
             "inlet_temp":   device.inlet_temp,
+            "fan_rpm":      device.fan_rpm,
             "humidity":     device.humidity,
             "dewpoint":     device.dewpoint,
             "airflow":      device.airflow,
@@ -751,6 +754,12 @@ class DeviceStateStore:
                 _cpu_t += self._leak_heat.get(device.name, 0.0) * 38.0
             device.cpu_temp = round(max(20.0, min(95.0, _cpu_t)), 1)
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
+
+        # Chassis fan speed — servers only; rises with CPU temperature so it
+        # tracks load. Single source of truth: Redfish _fans() reads this.
+        if mf["fan_rpm"] and device.device_type == DeviceType.SERVER:
+            _fan = 3000.0 + max(0.0, device.cpu_temp - 40.0) * 95.0 + random.uniform(-60, 60)
+            device.fan_rpm = int(max(0.0, self._num_limit("fan_rpm", _fan)))
 
         # Chassis inlet temperature — servers/network gear only (CPU-linked)
         if mf["inlet_temp"] and device.device_type not in (DeviceType.SENSOR, DeviceType.RPP):

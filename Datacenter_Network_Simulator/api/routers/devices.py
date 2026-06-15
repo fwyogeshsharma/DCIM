@@ -123,6 +123,7 @@ def _device_to_info(device) -> DeviceInfo:
         cpu_temp=getattr(device, "cpu_temp", None),
         inlet_temp=getattr(device, "inlet_temp", None),
         power_watts=(float(_live_watts(device)) or None) if dt == "server" else None,
+        fan_rpm=getattr(device, "fan_rpm", None) if dt == "server" else None,
         power_state=_server_power_state(device) if dt == "server" else None,
         mid_temp=getattr(device, "mid_temp", None)       if dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1" else None,
         outlet_temp=getattr(device, "outlet_temp", None) if dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1" else None,

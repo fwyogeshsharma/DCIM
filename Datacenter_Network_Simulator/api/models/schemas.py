@@ -218,6 +218,7 @@ class DeviceInfo(BaseModel):
     # Server-specific (mirrors the Redfish Power resource)
     power_watts: Optional[float] = None
     power_state: Optional[str] = None
+    fan_rpm: Optional[int] = None   # chassis fan speed (mirrors Redfish Thermal Fans)
     # Sensor-specific
     mid_temp: Optional[float] = None
     outlet_temp: Optional[float] = None

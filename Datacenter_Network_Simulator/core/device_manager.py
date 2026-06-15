@@ -384,6 +384,7 @@ class Device:
     # Temperatures in °C — CPU/ASIC and chassis inlet
     cpu_temp: float = field(default_factory=lambda: round(random.uniform(38.0, 62.0), 1))
     inlet_temp: float = field(default_factory=lambda: round(random.uniform(22.0, 38.0), 1))
+    fan_rpm: int = 0   # server chassis fan speed (RPM); advanced by the ticker, read by Redfish
     mid_temp:    float = 0.0   # mid-rack temp °C (Raritan DPX2-T3H1 probe 2)
     outlet_temp: float = 0.0   # exhaust temp °C (Raritan DPX2-T3H1 probe 3)
     # Environmental sensor readings (populated for DeviceType.SENSOR; 0.0 on other devices)
@@ -619,6 +620,8 @@ class Device:
         self.sys_uptime += random.randint(100, 1000)
         self.cpu_temp    = round(40.0 + self.cpu_usage * 0.35 + random.uniform(-3, 3), 1)
         self.inlet_temp  = round(22.0 + self.cpu_usage * 0.12 + random.uniform(-1, 1), 1)
+        if self.device_type == DeviceType.SERVER:
+            self.fan_rpm = int(3000.0 + max(0.0, self.cpu_temp - 40.0) * 95.0)
         if self.device_type == DeviceType.SENSOR:
             self.humidity = round(random.uniform(30.0, 70.0), 1)
             self.dewpoint = round(self.inlet_temp - ((100.0 - self.humidity) / 5.0), 1)

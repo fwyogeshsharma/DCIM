@@ -485,6 +485,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
       case 'ctemp':  return ((a.cpu_temp ?? 0) - (b.cpu_temp ?? 0)) * dir
       case 'itemp':  return ((a.inlet_temp ?? 0) - (b.inlet_temp ?? 0)) * dir
       case 'watts':  return ((a.power_watts ?? 0) - (b.power_watts ?? 0)) * dir
+      case 'fan':    return ((a.fan_rpm ?? 0) - (b.fan_rpm ?? 0)) * dir
       case 'pstate': return (a.power_state ?? '').localeCompare(b.power_state ?? '') * dir
       case 'ifaces': return ((a.interfaces_up ?? 0) - (b.interfaces_up ?? 0)) * dir
       case 'rx':     return ((a.total_rx_bytes ?? 0) - (b.total_rx_bytes ?? 0)) * dir
@@ -509,6 +510,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="CPU Temp"    id="ctemp"  sort={sort} align="right" minW={80} />
           <SortTH label="Inlet Temp" id="itemp"  sort={sort} align="right" minW={80} />
           <SortTH label="Power"      id="watts"  sort={sort} align="right" minW={80} title="Derived: nominal power_draw_w × (0.55 + 0.45 × CPU load) — matches Redfish PowerConsumedWatts" />
+          <SortTH label="Fan"        id="fan"    sort={sort} align="right" minW={80} title="Chassis fan speed (RPM) — rises with CPU temperature; matches Redfish Thermal Fans" />
           <SortTH label="Interfaces" id="ifaces" sort={sort} align="right" minW={80} />
           <SortTH label="RX Total"   id="rx"     sort={sort} align="right" minW={90} />
           <SortTH label="TX Total"   id="tx"     sort={sort} align="right" minW={90} />
@@ -549,6 +551,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.cpu_temp}   unit="°C" warn={75} crit={85} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.inlet_temp} unit="°C" warn={35} crit={45} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.power_watts} unit=" W" decimals={0} /></td>
+              {off ? <DashCell /> : <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.fan_rpm} unit=" RPM" decimals={0} warn={12000} crit={14000} /></td>}
               <td style={{ padding: '6px 10px', textAlign: 'right' }}>
                 {ifTot === 0
                   ? <span style={{ color: 'var(--text-dim)' }}>—</span>

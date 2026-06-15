@@ -30,6 +30,8 @@ _METRIC_GROUPS = [
          "20 + 0.42×cpu ± 1 °C, clamped 20–95 °C"),
         ("inlet_temp",     "Chassis Inlet Temp",
          "18 + 0.12×cpu ± 0.5 °C, clamped 15–55 °C (servers only)"),
+        ("fan_rpm",        "Chassis Fan Speed",
+         "3000 + 95×(cpu_temp−40) ± 60 RPM (servers only)"),
         ("iface_octets",   "Interface Byte Counters",
          "in/out_octets +5K–150K per tick on every UP interface"),
         ("iface_errors",   "Interface Error Counters",
@@ -90,6 +92,7 @@ _LIMIT_GROUPS = [
         ("disk_pct",   "Disk Used %",             "num",  0,   100,  1,   0, " %",    0,   100),
         ("cpu_temp",   "CPU Temperature",         "num", 20,    95,  0.5, 1, " °C",  20,    95),
         ("inlet_temp", "Chassis Inlet Temp (servers)", "num", 15, 55, 0.5, 1, " °C", 15, 55),
+        ("fan_rpm",    "Chassis Fan Speed (servers)",  "num",  0, 20000, 100, 0, " RPM", 0, 12000),
     ]),
     ("Sensor Devices", [
         ("sensor_ambient_temp", "Inlet / Ambient Temp",      "num", 15, 35, 0.5, 1, " °C", 15, 35),
