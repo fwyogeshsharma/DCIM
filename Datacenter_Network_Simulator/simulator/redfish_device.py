@@ -65,6 +65,9 @@ class RedfishDevice:
         self._subs: dict[str, dict] = {}
         self._sub_seq = 0
         self._event_seq = 0            # monotonic id for delivered Events
+        # Fault-alarm conditions currently asserted (edge-triggered push).
+        # Key = condition label (message text before the ':').
+        self._active_alarms: set[str] = set()
         self.log_event("OK", "BMC initialized")
         self.log_event("OK", "System powered on")
 
@@ -249,6 +252,50 @@ class RedfishDevice:
         self.log_event("OK", "Event log cleared")
         return True, f"cleared {n} entr{'y' if n == 1 else 'ies'}"
 
+    def reset_bmc(self, reset_type: str):
+        """Reset the management controller itself (Manager.Reset).
+
+        Models real hardware: the BMC's in-RAM state is volatile, so event
+        subscriptions and live alarm tracking are LOST across a BMC reboot. The
+        SEL is persistent (NVRAM) and survives. A collector must reconcile —
+        re-list/re-create its subscriptions after a BMC reset. Host reboots
+        (ComputerSystem.Reset) do NOT clear subscriptions.
+        """
+        rt = reset_type or "GracefulRestart"
+        if rt not in ("GracefulRestart", "ForceRestart"):
+            return False, f"Unsupported BMC ResetType '{rt}'"
+        lost = len(self._subs)
+        # Silent loss — clear BEFORE logging so the drop pushes to no one;
+        # subscribers only discover it by reconciliation, like real BMCs.
+        self._subs.clear()
+        self._active_alarms.clear()    # re-detected on the next monitor sweep
+        self.log_event("OK", f"BMC reset ({rt}) — {lost} subscription(s) dropped")
+        return True, f"bmc reset; {lost} subscription(s) lost"
+
+    # ── fault-alarm evaluation (drives Warning/Critical push events) ─────────
+    def evaluate_alerts(self) -> None:
+        """Compare live telemetry against thresholds; emit a push event on each
+        alarm transition (assert → Warning/Critical, clear → OK). Edge-triggered
+        off a stable per-condition key so a sustained fault fires exactly once.
+        Called periodically by the controller's monitor thread.
+        """
+        # Powered-off chassis has no live sensors to alarm on; just clear.
+        current: dict[str, tuple[str, str]] = {}
+        if getattr(self.device, "power_state", "On") != "Off":
+            for severity, message in rf._alarms(self.device):
+                label = message.split(":", 1)[0].strip()
+                current[label] = (severity, message)
+        # Newly asserted conditions.
+        for label, (severity, message) in current.items():
+            if label not in self._active_alarms:
+                self._active_alarms.add(label)
+                self.log_event(severity, message)
+        # Conditions that have cleared.
+        for label in list(self._active_alarms):
+            if label not in current:
+                self._active_alarms.discard(label)
+                self.log_event("OK", f"{label} cleared")
+
     def perform(self, action: str):
         """High-level action dispatch used by the REST control endpoint."""
         fn = {
@@ -260,6 +307,7 @@ class RedfishDevice:
             "led_off":     lambda: self.set_led("Off"),
             "refresh":     self.refresh_inventory,
             "clear_log":   self.clear_log,
+            "reboot_bmc":  lambda: self.reset_bmc("GracefulRestart"),
         }.get(action)
         if fn is None:
             return False, f"unknown action '{action}'"
@@ -397,6 +445,12 @@ class RedfishDevice:
             reset_path   = f"/redfish/v1/Systems/{sid}/Actions/ComputerSystem.Reset"
             refresh_path = f"/redfish/v1/Systems/{sid}/Actions/Oem/Simulator.RefreshInventory"
             clear_path   = f"/redfish/v1/Systems/{sid}/LogServices/SEL/Actions/LogService.ClearLog"
+            bmc_reset_path = f"/redfish/v1/Managers/{rf.MANAGER_ID}/Actions/Manager.Reset"
+            if path == bmc_reset_path:
+                ok, msg = self.reset_bmc((body or {}).get("ResetType"))
+                if not ok:
+                    return self._error(400, "Base.1.0.ActionParameterValueNotInList", msg)
+                return (204, {}, None)
             if path == reset_path:
                 ok, msg = self.reset((body or {}).get("ResetType"))
                 if not ok:

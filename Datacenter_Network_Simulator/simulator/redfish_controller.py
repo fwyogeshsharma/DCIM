@@ -119,6 +119,9 @@ class _RedfishHandler(BaseHTTPRequestHandler):
 class RedfishController:
     """Start, stop, and report all simulated server Redfish/BMC endpoints."""
 
+    # Seconds between health-monitor sweeps (fault-alarm push evaluation).
+    MONITOR_INTERVAL = 5.0
+
     def __init__(self):
         self._log_cb:   Optional[Callable[[str, str], None]] = None
         self._ready_cb: Optional[Callable[[], None]]         = None
@@ -128,6 +131,11 @@ class RedfishController:
         # ip -> (HTTPServer, thread, RedfishDevice)
         self._servers: Dict[str, tuple] = {}
         self._running = False
+
+        # Background health monitor: polls every BMC's telemetry against
+        # thresholds and pushes Warning/Critical events on alarm transitions.
+        self._monitor_thread: Optional[threading.Thread] = None
+        self._monitor_stop = threading.Event()
 
         # Config snapshot for the status endpoint.
         self._port = 443
@@ -232,6 +240,7 @@ class RedfishController:
             return False
 
         self._running = True
+        self._start_monitor()
         msg = (f"[Redfish] Started — {started} BMC endpoint(s) on port {port}"
                + (f" ({failed} bind failure(s))" if failed else "") + ".")
         self._log(msg, "success")
@@ -242,9 +251,29 @@ class RedfishController:
                 pass
         return True
 
+    # ── health monitor ──────────────────────────────────────────────────────
+    def _start_monitor(self):
+        self._monitor_stop.clear()
+        self._monitor_thread = threading.Thread(
+            target=self._monitor_loop, daemon=True, name="Redfish-Monitor")
+        self._monitor_thread.start()
+
+    def _monitor_loop(self):
+        # wait() returns True when signalled to stop → exit promptly.
+        while not self._monitor_stop.wait(self.MONITOR_INTERVAL):
+            for _ip, (_httpd, _t, rdev) in list(self._servers.items()):
+                try:
+                    rdev.evaluate_alerts()
+                except Exception:
+                    log.exception("[Redfish] alarm eval failed for %s", _ip)
+
     def stop(self):
         if not self._running:
             return
+        self._monitor_stop.set()
+        if self._monitor_thread is not None:
+            self._monitor_thread.join(timeout=2.0)
+            self._monitor_thread = None
         entries = list(self._servers.items())
         # shutdown() blocks until the serve loop notices (up to poll_interval),
         # so signal every server concurrently instead of one at a time.

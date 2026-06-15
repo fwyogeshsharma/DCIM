@@ -335,6 +335,12 @@ def manager(device: "Device") -> dict:
             "ManagerForServers": [{"@odata.id": f"/redfish/v1/Systems/{member_id(device)}"}],
             "ManagerForChassis": [{"@odata.id": f"/redfish/v1/Chassis/{member_id(device)}"}],
         },
+        "Actions": {
+            "#Manager.Reset": {
+                "target": f"/redfish/v1/Managers/{MANAGER_ID}/Actions/Manager.Reset",
+                "ResetType@Redfish.AllowableValues": ["GracefulRestart", "ForceRestart"],
+            },
+        },
     }
 
 
@@ -501,6 +507,10 @@ def _alarms(device: "Device") -> list[tuple[str, str]]:
         al.append(("Warning", f"Memory utilization high: {_mem_pct(device):.0f}%"))
     if _disk_pct(device) >= 90.0:
         al.append(("Warning", f"Disk utilization high: {_disk_pct(device):.0f}%"))
+    for f in _fans(device):
+        if (f.get("Status") or {}).get("Health") != "OK":
+            al.append(("Warning", f"Fan over-speed: {f['Name']} {f['Reading']} RPM"))
+            break
     return al
 
 

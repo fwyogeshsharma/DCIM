@@ -215,6 +215,7 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
       const res = await api.redfishAction(d.ip, action) as Partial<RedfishDevice>
       setOv({ power_state: res.power_state, indicator_led: res.indicator_led,
               sel_count: res.sel_count })
+      if (action === 'reboot_bmc' && subsOpen) await loadSubs()  // subs dropped
       onChanged()   // background store refresh; rendering no longer waits on it
     } catch { /* ignore */ }
     finally { setBusy(null) }
@@ -322,6 +323,10 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
                label={d.subscriptions ? `Subs·${d.subscriptions}` : 'Subs'}
                onClick={toggleSubs}
                title={subsOpen ? 'Hide subscriptions' : 'Manage push subscriptions'} />
+        <OpBtn icon={<IconCycleArrow ccw />} label="BMC" tone="danger"
+               disabled={!!busy} busy={busy === 'reboot_bmc'}
+               onClick={() => act('reboot_bmc')}
+               title="Manager.Reset — reboots the BMC; subscriptions are LOST (collector must reconcile)" />
       </div>
       {subsOpen && (
         <div style={{ marginTop: 4, background: 'var(--bg-base)',

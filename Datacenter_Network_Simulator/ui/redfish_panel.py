@@ -203,6 +203,10 @@ class RedfishPanel(QWidget):
         _test.setToolTip("Fire a Redfish push event to this BMC's subscribers")
         _test.clicked.connect(self._emit_test_event)
         row4.addWidget(_test)
+        _rbmc = _op_btn("Reboot BMC", "reboot_bmc", danger=True)
+        _rbmc.setToolTip("Manager.Reset — reboots the BMC; subscriptions are LOST "
+                         "(collector must reconcile)")
+        row4.addWidget(_rbmc)
         og.addLayout(row4)
         layout.addWidget(self._ops_group)
 

@@ -3767,6 +3767,7 @@ class MainWindow(QMainWindow):
             self._console_panel.log(
                 f"[Redfish] {res['device']} ← {action}: {res['message']}", lvl)
             self._redfish_panel.refresh_device_table(self.redfish.get_device_summary())
+            self._redfish_refresh_subs(ip)   # reboot_bmc drops subs → resync list
             self._topology_view.topology_scene.sync_power_states()
         else:
             self._console_panel.log(f"[Redfish] No BMC at {ip}", "error")

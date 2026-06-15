@@ -120,7 +120,7 @@ def redfish_sessions():
 
 
 _ACTIONS = {"power_on", "power_off", "reboot", "power_cycle",
-            "led_on", "led_off", "refresh", "clear_log"}
+            "led_on", "led_off", "refresh", "clear_log", "reboot_bmc"}
 
 
 class RedfishAction(BaseModel):
