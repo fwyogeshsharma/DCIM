@@ -290,9 +290,8 @@ export default function RedfishPanel() {
     redfishPort: port, redfishUsername: username, redfishPassword: password,
     setRedfishPort: setPort, setRedfishUsername: setUsername,
     setRedfishPassword: setPassword,
+    redfishBusy: busy, redfishOp: operation, startRedfish: start, stopRedfish: stop,
   } = useStore()
-  const [busy,      setBusy]      = useState(false)
-  const [operation, setOperation] = useState<'start' | 'stop' | null>(null)
   const [showPass,  setShowPass]  = useState(false)
 
   const running = status?.running ?? false
@@ -307,22 +306,6 @@ export default function RedfishPanel() {
       _portSyncedFromServer = true
     }
   }, [status])
-
-  async function start() {
-    setBusy(true); setOperation('start')
-    try {
-      await api.redfishStart({ port, username, password })
-      await fetchRedfish()
-    } catch { /* ignore */ }
-    finally { setBusy(false); setOperation(null) }
-  }
-
-  async function stop() {
-    setBusy(true); setOperation('stop')
-    try { await api.redfishStop(); await fetchRedfish() }
-    catch { /* ignore */ }
-    finally { setBusy(false); setOperation(null) }
-  }
 
   type BadgeCfg = { cls: string; dot: string; text: string }
   let badge: BadgeCfg

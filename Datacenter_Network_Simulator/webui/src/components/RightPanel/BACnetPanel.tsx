@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { api, errorMessage } from '../../api/client'
+import { useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import type { BacnetDevice } from '../../api/types'
 
@@ -143,10 +142,9 @@ export default function BACnetPanel() {
     bacnetBaseInstance: baseInstance, bacnetFreqHz: freqHz, bacnetPort: port,
     setBacnetBaseInstance: setBaseInstance, setBacnetFreqHz: setFreqHz,
     setBacnetPort: setPort,
+    bacnetBusy: busy, bacnetOp: operation, bacnetError: error,
+    startBacnet: start, stopBacnet: stop,
   } = useStore()
-  const [busy,      setBusy]      = useState(false)
-  const [operation, setOperation] = useState<'start' | 'stop' | null>(null)
-  const [error,     setError]     = useState<string | null>(null)
 
   const running = status?.running ?? false
 
@@ -159,26 +157,6 @@ export default function BACnetPanel() {
       _configSyncedFromServer = true
     }
   }, [status])
-
-  async function start() {
-    setBusy(true); setOperation('start'); setError(null)
-    try {
-      await api.bacnetStart({ base_instance: baseInstance, frequency_hz: freqHz, port })
-      await fetchBacnet()
-    } catch (e: unknown) {
-      setError(errorMessage(e))
-    }
-    finally { setBusy(false); setOperation(null) }
-  }
-
-  async function stop() {
-    setBusy(true); setOperation('stop'); setError(null)
-    try { await api.bacnetStop(); await fetchBacnet() }
-    catch (e: unknown) {
-      setError(errorMessage(e))
-    }
-    finally { setBusy(false); setOperation(null) }
-  }
 
   // Header badge
   type BadgeCfg = { cls: string; dot: string; text: string }

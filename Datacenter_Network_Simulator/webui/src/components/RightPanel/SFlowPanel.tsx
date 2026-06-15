@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { api } from '../../api/client'
+import { useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 
 const IconPlay = () => (
@@ -68,9 +67,8 @@ export default function SFlowPanel() {
     sflowInterval: pollInterval, sflowRate: rate,
     setSflowCollectorIp: setIp, setSflowPort: setPort,
     setSflowInterval: setPollInterval, setSflowRate: setRate,
+    sflowBusy: busy, sflowOp: operation, startSflow: start, stopSflow: stop,
   } = useStore()
-  const [busy,      setBusy]      = useState(false)
-  const [operation, setOperation] = useState<'start' | 'stop' | null>(null)
 
   const running = status?.running ?? false
 
@@ -89,22 +87,6 @@ export default function SFlowPanel() {
       _configSyncedFromServer = true
     }
   }, [status])
-
-  async function start() {
-    setBusy(true); setOperation('start')
-    try {
-      await api.sflowStart({ collector_ip: ip, collector_port: port, interval: pollInterval, sample_rate: rate })
-      await fetchSflow()
-    } catch { /* ignore */ }
-    finally { setBusy(false); setOperation(null) }
-  }
-
-  async function stop() {
-    setBusy(true); setOperation('stop')
-    try { await api.sflowStop(); await fetchSflow() }
-    catch { /* ignore */ }
-    finally { setBusy(false); setOperation(null) }
-  }
 
   // Header badge
   type BadgeCfg = { cls: string; dot: string; text: string }

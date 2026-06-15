@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api, fetchWithAbort, getToken } from '../api/client'
+import { api, fetchWithAbort, getToken, errorMessage } from '../api/client'
 import type {
   GraphDevice, GraphLink, SnmpStatus, GnmiStatus, SFlowStatus, BacnetStatus,
   RedfishStatus,
@@ -94,6 +94,11 @@ interface Store {
   setRedfishPort:     (p: number) => void
   setRedfishUsername: (u: string) => void
   setRedfishPassword: (p: string) => void
+  // Start/stop in-flight state — kept here so it survives panel close/reopen
+  redfishBusy: boolean
+  redfishOp:   'start' | 'stop' | null
+  startRedfish: () => Promise<void>
+  stopRedfish:  () => Promise<void>
 
   // gNMI panel config (survives tab switches)
   gnmiPort: number
@@ -108,6 +113,10 @@ interface Store {
   setSflowPort:        (p: number) => void
   setSflowInterval:    (i: number) => void
   setSflowRate:        (r: number) => void
+  sflowBusy: boolean
+  sflowOp:   'start' | 'stop' | null
+  startSflow: () => Promise<void>
+  stopSflow:  () => Promise<void>
 
   // BACnet panel config (survives tab switches)
   bacnetBaseInstance: number
@@ -116,6 +125,11 @@ interface Store {
   setBacnetBaseInstance: (i: number) => void
   setBacnetFreqHz:       (f: number) => void
   setBacnetPort:         (p: number) => void
+  bacnetBusy:  boolean
+  bacnetOp:    'start' | 'stop' | null
+  bacnetError: string | null
+  startBacnet: () => Promise<void>
+  stopBacnet:  () => Promise<void>
 
   // actions
   setLayer:          (l: string) => void
@@ -190,6 +204,26 @@ export const useStore = create<Store>((set, get) => ({
   setRedfishUsername: (u) => set({ redfishUsername: u }),
   setRedfishPassword: (p) => set({ redfishPassword: p }),
 
+  redfishBusy: false,
+  redfishOp:   null,
+  startRedfish: async () => {
+    if (get().redfishBusy) return
+    const { redfishPort, redfishUsername, redfishPassword } = get()
+    set({ redfishBusy: true, redfishOp: 'start' })
+    try {
+      await api.redfishStart({ port: redfishPort, username: redfishUsername, password: redfishPassword })
+      await get().fetchRedfish()
+    } catch { /* ignore */ }
+    finally { set({ redfishBusy: false, redfishOp: null }) }
+  },
+  stopRedfish: async () => {
+    if (get().redfishBusy) return
+    set({ redfishBusy: true, redfishOp: 'stop' })
+    try { await api.redfishStop(); await get().fetchRedfish() }
+    catch { /* ignore */ }
+    finally { set({ redfishBusy: false, redfishOp: null }) }
+  },
+
   gnmiPort: 50051,
   setGnmiPort: (p) => set({ gnmiPort: p }),
 
@@ -202,12 +236,58 @@ export const useStore = create<Store>((set, get) => ({
   setSflowInterval:    (i) => set({ sflowInterval: i }),
   setSflowRate:        (r) => set({ sflowRate: r }),
 
+  sflowBusy: false,
+  sflowOp:   null,
+  startSflow: async () => {
+    if (get().sflowBusy) return
+    const { sflowCollectorIp, sflowPort, sflowInterval, sflowRate } = get()
+    set({ sflowBusy: true, sflowOp: 'start' })
+    try {
+      await api.sflowStart({ collector_ip: sflowCollectorIp, collector_port: sflowPort,
+                             interval: sflowInterval, sample_rate: sflowRate })
+      await get().fetchSflow()
+    } catch { /* ignore */ }
+    finally { set({ sflowBusy: false, sflowOp: null }) }
+  },
+  stopSflow: async () => {
+    if (get().sflowBusy) return
+    set({ sflowBusy: true, sflowOp: 'stop' })
+    try { await api.sflowStop(); await get().fetchSflow() }
+    catch { /* ignore */ }
+    finally { set({ sflowBusy: false, sflowOp: null }) }
+  },
+
   bacnetBaseInstance: 40001,
   bacnetFreqHz:       50.0,
   bacnetPort:         47808,
   setBacnetBaseInstance: (i) => set({ bacnetBaseInstance: i }),
   setBacnetFreqHz:       (f) => set({ bacnetFreqHz: f }),
   setBacnetPort:         (p) => set({ bacnetPort: p }),
+
+  bacnetBusy:  false,
+  bacnetOp:    null,
+  bacnetError: null,
+  startBacnet: async () => {
+    if (get().bacnetBusy) return
+    const { bacnetBaseInstance, bacnetFreqHz, bacnetPort } = get()
+    set({ bacnetBusy: true, bacnetOp: 'start', bacnetError: null })
+    try {
+      await api.bacnetStart({ base_instance: bacnetBaseInstance, frequency_hz: bacnetFreqHz, port: bacnetPort })
+      await get().fetchBacnet()
+    } catch (e: unknown) {
+      set({ bacnetError: errorMessage(e) })
+    }
+    finally { set({ bacnetBusy: false, bacnetOp: null }) }
+  },
+  stopBacnet: async () => {
+    if (get().bacnetBusy) return
+    set({ bacnetBusy: true, bacnetOp: 'stop', bacnetError: null })
+    try { await api.bacnetStop(); await get().fetchBacnet() }
+    catch (e: unknown) {
+      set({ bacnetError: errorMessage(e) })
+    }
+    finally { set({ bacnetBusy: false, bacnetOp: null }) }
+  },
 
   setLayer:          (l) => { set({ activeLayer: l }); get().fetchGraph() },
   setRightTab:       (t) => set({ rightTab: t }),
