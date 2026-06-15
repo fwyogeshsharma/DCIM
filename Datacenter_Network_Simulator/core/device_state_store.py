@@ -650,10 +650,11 @@ class DeviceStateStore:
             if mf["inlet_temp"]:
                 device.inlet_temp = round(max(15.0, min(55.0,
                     18.0 + random.uniform(-0.5, 0.5))), 1)
+            # CPU temp decays gradually toward 0 — chip stops dissipating once
+            # powered off (sensor reads no heat).
             if mf["cpu_temp"]:
-                ambient = device.inlet_temp or 20.0
                 device.cpu_temp = round(
-                    max(ambient, device.cpu_temp - random.uniform(1.5, 3.5)), 1)
+                    max(0.0, device.cpu_temp - random.uniform(1.5, 3.5)), 1)
             for iface in device.interfaces:
                 iface.oper_status = 2
             return
