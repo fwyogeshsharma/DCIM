@@ -9,6 +9,7 @@ Usage:
     python testscripts/test_redfish.py <server-ip>
     python testscripts/test_redfish.py 10.1.0.20 --port 443 --user admin --pass password
     python testscripts/test_redfish.py 10.1.0.20 --scheme https --insecure
+    python testscripts/test_redfish.py 10.1.0.20 --session     # session token auth (default: HTTP Basic)
 
     # power
     python testscripts/test_redfish.py <ip> --power-on
@@ -37,6 +38,7 @@ Pure stdlib — no external dependencies.
 from __future__ import annotations
 
 import argparse
+import atexit
 import base64
 import json
 import ssl
@@ -66,12 +68,49 @@ def yellow(s):return _c("33", s)
 class Client:
     def __init__(self, base: str, user: str, pw: str, insecure: bool):
         self.base = base.rstrip("/")
+        self._user, self._pw = user, pw
         self._auth = "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode()
         self._ctx = ssl._create_unverified_context() if insecure else None
+        # Session-auth state (used instead of Basic once login() succeeds).
+        self._token = None
+        self._session_url = None
+
+    # ── session auth (opt-in via --session) ──────────────────────────────────
+    def login(self) -> bool:
+        """Create a Redfish session; switch all later requests to X-Auth-Token.
+        Returns True on success. Session creation itself is unauthenticated —
+        credentials travel in the body, the token comes back in a header."""
+        url = self.base + "/redfish/v1/SessionService/Sessions"
+        data = json.dumps({"UserName": self._user, "Password": self._pw}).encode()
+        req = urllib.request.Request(
+            url, data=data, method="POST",
+            headers={"Content-Type": "application/json", "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=8, context=self._ctx) as r:
+                self._token = r.headers.get("X-Auth-Token")
+                self._session_url = r.headers.get("Location")
+                return self._token is not None
+        except Exception:
+            return False
+
+    def logout(self) -> None:
+        """Delete the session token (best-effort, on exit). The DELETE itself
+        is authenticated with the token, which _send still has set."""
+        if self._token and self._session_url:
+            try:
+                self._send("DELETE", self._session_url)
+            except Exception:
+                pass
+            self._token = None
+            self._session_url = None
 
     def _send(self, method: str, path: str, body=None):
         url = path if path.startswith("http") else self.base + path
-        headers = {"Authorization": self._auth, "Accept": "application/json"}
+        # Token auth once logged in; otherwise HTTP Basic (the default).
+        if self._token:
+            headers = {"X-Auth-Token": self._token, "Accept": "application/json"}
+        else:
+            headers = {"Authorization": self._auth, "Accept": "application/json"}
         data = None
         if body is not None:
             data = json.dumps(body).encode()
@@ -469,6 +508,9 @@ def main():
     ap.add_argument("--scheme", choices=["http", "https"], default="http",
                     help="http (MVP default) or https")
     ap.add_argument("--insecure", action="store_true", help="skip TLS verify (https self-signed)")
+    ap.add_argument("--session", action="store_true",
+                    help="authenticate via a Redfish session (X-Auth-Token) instead of HTTP Basic; "
+                         "default is Basic (--user/--pass on every request)")
     # ── Server Operations ──
     g = ap.add_argument_group("server operations (perform an action, then exit)")
     g.add_argument("--power-on",    action="store_true", help="ComputerSystem.Reset On")
@@ -501,6 +543,14 @@ def main():
         print(grey("  Is Redfish running and is this IP bound? Try --scheme https / --insecure, "
                    "or check --port."))
         sys.exit(1)
+
+    # Opt-in session auth: log in once, use the token, log out on exit.
+    if args.session:
+        if client.login():
+            atexit.register(client.logout)
+            print(green("  ✓ Logged in — using session token (X-Auth-Token)"))
+        else:
+            print(yellow("  ! Session login failed — falling back to HTTP Basic."))
 
     # If any Server Operation was requested, run it and exit.
     if any([args.power_on, args.power_off, args.reboot, args.power_cycle,
