@@ -168,6 +168,51 @@ def redfish_subscriptions():
     return {"subscriptions": s.redfish.get_subscriptions()}
 
 
+class RedfishSubscribe(BaseModel):
+    ip:          str
+    destination: str
+    context:     str = ""
+    event_types: list[str] | None = None
+
+
+@router.post("/subscribe")
+def redfish_subscribe(req: RedfishSubscribe):
+    """Register a push subscriber (EventDestination) on one BMC."""
+    s = _state()
+    if s.redfish is None or not s.redfish.is_running():
+        raise HTTPException(status_code=503, detail="Redfish not running")
+    res = s.redfish.add_subscription(
+        req.ip, req.destination, context=req.context, event_types=req.event_types)
+    if res is None:
+        raise HTTPException(status_code=404, detail=f"No BMC at {req.ip}")
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Subscribe failed"))
+    s.notify_ui("console_log",
+                f"[Redfish] subscription added → {req.destination}", "success")
+    s.notify_ui("sync_redfish")
+    return res
+
+
+class RedfishUnsubscribe(BaseModel):
+    ip: str
+    id: str
+
+
+@router.post("/unsubscribe")
+def redfish_unsubscribe(req: RedfishUnsubscribe):
+    """Delete a push subscription by id from one BMC."""
+    s = _state()
+    if s.redfish is None or not s.redfish.is_running():
+        raise HTTPException(status_code=503, detail="Redfish not running")
+    res = s.redfish.remove_subscription(req.ip, req.id)
+    if res is None:
+        raise HTTPException(status_code=404, detail=f"No BMC at {req.ip}")
+    if not res.get("ok"):
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    s.notify_ui("sync_redfish")
+    return res
+
+
 class RedfishTestEvent(BaseModel):
     ip:         str
     message:    str = "Test event"

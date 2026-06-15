@@ -1370,6 +1370,9 @@ class MainWindow(QMainWindow):
         self._redfish_panel.sig_action.connect(self._redfish_action)
         self._redfish_panel.sig_view_log.connect(self._redfish_view_log)
         self._redfish_panel.sig_test_event.connect(self._redfish_test_event)
+        self._redfish_panel.sig_subscribe.connect(self._redfish_subscribe)
+        self._redfish_panel.sig_unsubscribe.connect(self._redfish_unsubscribe)
+        self._redfish_panel.sig_request_subs.connect(self._redfish_refresh_subs)
 
         # sFlow controller callbacks
         self.sflow.set_log_callback(self._on_sflow_log)
@@ -3767,6 +3770,39 @@ class MainWindow(QMainWindow):
             self._topology_view.topology_scene.sync_power_states()
         else:
             self._console_panel.log(f"[Redfish] No BMC at {ip}", "error")
+
+    def _redfish_refresh_subs(self, ip: str):
+        """Refill the panel's subscription list for the selected BMC."""
+        if not self.redfish.is_running():
+            self._redfish_panel.set_subscriptions([])
+            return
+        subs = [s for s in self.redfish.get_subscriptions() if s.get("ip") == ip]
+        self._redfish_panel.set_subscriptions(subs)
+
+    def _redfish_subscribe(self, ip: str, destination: str):
+        """Register a push subscriber on one BMC."""
+        if not self.redfish.is_running():
+            return
+        res = self.redfish.add_subscription(ip, destination)
+        if res is None:
+            self._console_panel.log(f"[Redfish] No BMC at {ip}", "error")
+        elif res.get("ok"):
+            self._console_panel.log(
+                f"[Redfish] subscription added → {destination}", "success")
+        else:
+            self._console_panel.log(
+                f"[Redfish] subscribe failed: {res.get('error')}", "warning")
+        self._redfish_refresh_subs(ip)
+        self._redfish_panel.refresh_device_table(self.redfish.get_device_summary())
+
+    def _redfish_unsubscribe(self, ip: str, sub_id: str):
+        """Delete a push subscription from one BMC."""
+        if not self.redfish.is_running():
+            return
+        self.redfish.remove_subscription(ip, sub_id)
+        self._console_panel.log("[Redfish] subscription removed", "info")
+        self._redfish_refresh_subs(ip)
+        self._redfish_panel.refresh_device_table(self.redfish.get_device_summary())
 
     def _redfish_test_event(self, ip: str):
         """Fire a Redfish push event from one BMC to its subscribers."""

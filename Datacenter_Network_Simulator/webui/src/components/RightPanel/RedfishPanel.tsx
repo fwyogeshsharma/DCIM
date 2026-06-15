@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
-import type { RedfishDevice, RedfishLogEntry } from '../../api/types'
+import type { RedfishDevice, RedfishLogEntry, RedfishSubscription } from '../../api/types'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -135,6 +135,13 @@ const IconBell = () => (
     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
   </svg>
 )
+const IconFeed = () => (
+  <svg {..._ico}>
+    <path d="M4 11a9 9 0 0 1 9 9" />
+    <path d="M4 4a16 16 0 0 1 16 16" />
+    <circle cx="5" cy="19" r="1" />
+  </svg>
+)
 
 type OpTone = 'ok' | 'danger' | 'warn' | 'neutral'
 
@@ -191,6 +198,9 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
   const [busy, setBusy] = useState<string | null>(null)
   const [logOpen, setLogOpen] = useState(false)
   const [log, setLog] = useState<RedfishLogEntry[]>([])
+  const [subsOpen, setSubsOpen] = useState(false)
+  const [subs, setSubs] = useState<RedfishSubscription[]>([])
+  const [dest, setDest] = useState('')
   // Authoritative state from the last action RESPONSE — the action endpoint
   // returns fresh power/LED/SEL values, so the icon flips the instant the
   // spinner stops instead of waiting for the next status poll. Cleared once
@@ -223,6 +233,32 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
       onChanged()   // SEL grows by one (subscription/test logged) → refresh
     } catch { /* ignore */ }
     finally { setBusy(null) }
+  }
+  async function loadSubs() {
+    try {
+      const r = await api.redfishSubscriptions() as { subscriptions: RedfishSubscription[] }
+      setSubs((r.subscriptions || []).filter(s => s.ip === d.ip))
+    } catch { /* ignore */ }
+  }
+  async function toggleSubs() {
+    if (subsOpen) { setSubsOpen(false); return }
+    await loadSubs(); setSubsOpen(true)
+  }
+  async function addSub() {
+    const url = dest.trim()
+    if (!url) return
+    setBusy('subscribe')
+    try {
+      await api.redfishSubscribe(d.ip, url)
+      setDest(''); await loadSubs(); onChanged()
+    } catch { /* ignore */ }
+    finally { setBusy(null) }
+  }
+  async function removeSub(id: string) {
+    try {
+      await api.redfishUnsubscribe(d.ip, id)
+      await loadSubs(); onChanged()
+    } catch { /* ignore */ }
   }
 
   const eff = ov ? { ...d, ...ov } : d
@@ -275,14 +311,57 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
                disabled={!!busy} busy={busy === 'clear_log'}
                onClick={() => act('clear_log')}
                title="Clear the event log" />
-        <OpBtn icon={<IconBell />} tone="ok" active={!!d.subscriptions}
-               label={d.subscriptions ? `Event·${d.subscriptions}` : 'Event'}
+        <OpBtn icon={<IconBell />} tone="ok"
+               label="Event"
                disabled={!!busy} busy={busy === 'test_event'}
                onClick={testEvent}
                title={d.subscriptions
                  ? `Push a test event to ${d.subscriptions} subscriber(s)`
                  : 'Push a test event (no subscribers registered yet)'} />
+        <OpBtn icon={<IconFeed />} active={subsOpen || !!d.subscriptions}
+               label={d.subscriptions ? `Subs·${d.subscriptions}` : 'Subs'}
+               onClick={toggleSubs}
+               title={subsOpen ? 'Hide subscriptions' : 'Manage push subscriptions'} />
       </div>
+      {subsOpen && (
+        <div style={{ marginTop: 4, background: 'var(--bg-base)',
+          border: '1px solid var(--border)', borderRadius: 3, padding: '5px 6px' }}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
+            <input
+              value={dest}
+              onChange={e => setDest(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addSub() }}
+              placeholder="http://host:port/events"
+              style={{ flex: 1, minWidth: 0, background: 'var(--bg-card)',
+                border: '1px solid var(--border)', borderRadius: 3,
+                color: 'var(--text)', fontSize: 9, fontFamily: 'Consolas, monospace',
+                padding: '3px 6px', outline: 'none' }} />
+            <button onClick={addSub} disabled={!!busy || !dest.trim()}
+              title="Register subscriber (POST EventDestination)"
+              style={{ flexShrink: 0, fontSize: 9, fontWeight: 600,
+                padding: '0 8px', borderRadius: 3, cursor: 'pointer',
+                border: '1px solid rgba(63,185,80,0.45)', color: 'var(--green)',
+                background: 'rgba(63,185,80,0.10)',
+                opacity: (!!busy || !dest.trim()) ? 0.45 : 1 }}>
+              {busy === 'subscribe' ? '…' : 'Add'}
+            </button>
+          </div>
+          {subs.length === 0
+            ? <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>(no subscribers)</div>
+            : subs.map(s => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 9, fontFamily: 'Consolas, monospace', lineHeight: 1.9 }}>
+                <span style={{ flex: 1, minWidth: 0, color: 'var(--text)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  title={s.destination}>{s.destination}</span>
+                <button onClick={() => removeSub(s.id)} title="Unsubscribe"
+                  style={{ flexShrink: 0, background: 'transparent', border: 'none',
+                    color: 'var(--red)', cursor: 'pointer', fontSize: 12,
+                    lineHeight: 1, padding: 0 }}>×</button>
+              </div>
+            ))}
+        </div>
+      )}
       {logOpen && (
         <div style={{ marginTop: 4, maxHeight: 120, overflowY: 'auto', background: 'var(--bg-base)',
           border: '1px solid var(--border)', borderRadius: 3, padding: '4px 6px' }}>

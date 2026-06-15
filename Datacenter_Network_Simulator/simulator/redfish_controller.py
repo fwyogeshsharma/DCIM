@@ -342,6 +342,36 @@ class RedfishController:
                 })
         return out
 
+    def add_subscription(self, ip: str, destination: str,
+                         context: str = "", event_types=None) -> Optional[dict]:
+        """Register a push subscriber on the BMC at *ip*.
+
+        Returns {"ok", "id"/"error", ...}, or None if no BMC at *ip*.
+        """
+        rdev = self._find(ip)
+        if rdev is None:
+            return None
+        try:
+            sub = rdev.register_subscription(
+                destination, context=context, event_types=event_types)
+        except rdev.SubscriptionError as e:
+            return {"ok": False, "error": e.msg, "ip": ip}
+        return {
+            "ok": True,
+            "ip": ip,
+            "device": rdev.device.name,
+            "id": sub["id"],
+            "destination": sub["Destination"],
+        }
+
+    def remove_subscription(self, ip: str, sub_id: str) -> Optional[dict]:
+        """Delete a subscription by id from the BMC at *ip*."""
+        rdev = self._find(ip)
+        if rdev is None:
+            return None
+        ok = rdev.unregister_subscription(sub_id)
+        return {"ok": ok, "ip": ip, "id": sub_id}
+
     def submit_test_event(self, ip: str,
                           message: str = "Test event",
                           severity: str = "OK",

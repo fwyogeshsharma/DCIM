@@ -189,6 +189,10 @@ export const api = {
   redfishLog:      (ip: string)           => get('/redfish/log?ip=' + encodeURIComponent(ip)),
   redfishSubscriptions: ()                => get('/redfish/subscriptions'),
   redfishTestEvent:     (ip: string)      => post('/redfish/test-event', { ip }),
+  redfishSubscribe:     (ip: string, destination: string, context?: string) =>
+    post('/redfish/subscribe', { ip, destination, context: context ?? '' }),
+  redfishUnsubscribe:   (ip: string, id: string) =>
+    post('/redfish/unsubscribe', { ip, id }),
 
   // rules
   rules:          ()                  => get('/rules'),

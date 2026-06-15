@@ -65,11 +65,14 @@ def _field_style() -> str:
 
 
 class RedfishPanel(QWidget):
-    sig_start      = Signal()
-    sig_stop       = Signal()
-    sig_action     = Signal(str, str)   # (ip, action)
-    sig_view_log   = Signal(str)        # (ip)
-    sig_test_event = Signal(str)        # (ip)
+    sig_start        = Signal()
+    sig_stop         = Signal()
+    sig_action       = Signal(str, str)   # (ip, action)
+    sig_view_log     = Signal(str)        # (ip)
+    sig_test_event   = Signal(str)        # (ip)
+    sig_subscribe    = Signal(str, str)   # (ip, destination)
+    sig_unsubscribe  = Signal(str, str)   # (ip, sub_id)
+    sig_request_subs = Signal(str)        # (ip) — ask host to refill the subs list
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -151,6 +154,7 @@ class RedfishPanel(QWidget):
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSelectionMode(QAbstractItemView.SingleSelection)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._table.itemSelectionChanged.connect(self._on_selection_changed)
         self._table.setStyleSheet(
             "QTableWidget { background: #0d1117; color: #e6edf3; border: none;"
             " font-size: 8pt; gridline-color: #21262d; }"
@@ -201,6 +205,32 @@ class RedfishPanel(QWidget):
         row4.addWidget(_test)
         og.addLayout(row4)
         layout.addWidget(self._ops_group)
+
+        # Push subscriptions (EventDestination) for the selected server.
+        self._subs_group = QGroupBox("Push Subscriptions")
+        self._subs_group.setStyleSheet(_group_style())
+        self._subs_group.hide()
+        sg = QVBoxLayout(self._subs_group)
+        sg.setContentsMargins(6, 4, 6, 6)
+        sg.setSpacing(4)
+        add_row = QHBoxLayout(); add_row.setSpacing(3)
+        self._sub_dest = QLineEdit()
+        self._sub_dest.setPlaceholderText("http://host:port/events")
+        self._sub_dest.setStyleSheet("QLineEdit {" + _field_style() + "}")
+        self._sub_dest.returnPressed.connect(self._emit_subscribe)
+        add_row.addWidget(self._sub_dest, stretch=1)
+        _add = QPushButton("Subscribe"); _add.setStyleSheet(_BTN_GREEN)
+        _add.setToolTip("Register a push subscriber (POST EventDestination)")
+        _add.clicked.connect(self._emit_subscribe)
+        add_row.addWidget(_add)
+        sg.addLayout(add_row)
+        # Container the host refills via set_subscriptions().
+        self._subs_list = QVBoxLayout(); self._subs_list.setSpacing(2)
+        sg.addLayout(self._subs_list)
+        self._subs_empty = QLabel("(no subscribers)")
+        self._subs_empty.setStyleSheet("color: #6e7681; font-size: 8pt;")
+        sg.addWidget(self._subs_empty)
+        layout.addWidget(self._subs_group)
 
         layout.addStretch()
 
@@ -254,6 +284,7 @@ class RedfishPanel(QWidget):
         for w in (self._port_spin, self._user_edit, self._pass_edit):
             w.setEnabled(not running)
         self._ops_group.setVisible(running)
+        self._subs_group.setVisible(running)
 
     def refresh_device_table(self, rows: list[dict]):
         """rows from RedfishController.get_device_summary() — includes power_state,
@@ -283,6 +314,7 @@ class RedfishPanel(QWidget):
                 sel_row = r
         self._dev_group.setVisible(bool(rows))
         self._ops_group.setVisible(self._running and bool(rows))
+        self._subs_group.setVisible(self._running and bool(rows))
         if sel_row >= 0:
             self._table.selectRow(sel_row)
 
@@ -314,3 +346,49 @@ class RedfishPanel(QWidget):
             self._sel_label.setText("Select a server above first")
             return
         self.sig_test_event.emit(ip)
+
+    # ── Push subscriptions ───────────────────────────────────────────────
+    def _on_selection_changed(self):
+        ip = self._selected_ip()
+        if ip:
+            self.sig_request_subs.emit(ip)
+
+    def _emit_subscribe(self):
+        ip = self._selected_ip()
+        if not ip:
+            self._sel_label.setText("Select a server above first")
+            return
+        dest = self._sub_dest.text().strip()
+        if not dest:
+            return
+        self.sig_subscribe.emit(ip, dest)
+        self._sub_dest.clear()
+
+    def set_subscriptions(self, rows: list[dict]):
+        """rows: [{id, destination, ...}] for the selected BMC. Rebuilds the list."""
+        while self._subs_list.count():
+            item = self._subs_list.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
+        ip = self._selected_ip()
+        for row in rows:
+            line = QWidget()
+            h = QHBoxLayout(line)
+            h.setContentsMargins(0, 0, 0, 0); h.setSpacing(4)
+            lbl = QLabel(row.get("destination", ""))
+            lbl.setStyleSheet("color: #e6edf3; font-size: 8pt;")
+            lbl.setToolTip(f"id {row.get('id','')}  ctx={row.get('context','')}")
+            h.addWidget(lbl, stretch=1)
+            x = QPushButton("✕")
+            x.setFixedSize(18, 18)
+            x.setStyleSheet(
+                "QPushButton { color: #f85149; background: transparent;"
+                " border: none; font-size: 10pt; }"
+                "QPushButton:hover { color: #ff7b72; }")
+            x.setToolTip("Unsubscribe")
+            sub_id = row.get("id", "")
+            x.clicked.connect(lambda _=False, i=ip, s=sub_id: self.sig_unsubscribe.emit(i, s))
+            h.addWidget(x)
+            self._subs_list.addWidget(line)
+        self._subs_empty.setVisible(not rows)

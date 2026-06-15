@@ -136,39 +136,72 @@ class RedfishDevice:
 
         threading.Thread(target=_send, daemon=True, name="RedfishEvent").start()
 
-    def _create_subscription(self, body: Optional[dict]) -> Result:
-        body = body or {}
-        dest = body.get("Destination")
-        if not dest or not isinstance(dest, str):
-            return self._error(400, "Base.1.0.PropertyMissing",
-                               "Destination is required.")
-        proto = body.get("Protocol", "Redfish")
-        if proto != "Redfish":
-            return self._error(400, "Base.1.0.PropertyValueNotInList",
-                               f"Unsupported Protocol '{proto}'.")
+    # Raised by register_subscription so HTTP and programmatic callers can each
+    # map the failure to their own error shape.
+    class SubscriptionError(Exception):
+        def __init__(self, code: int, ecode: str, msg: str):
+            super().__init__(msg)
+            self.code, self.ecode, self.msg = code, ecode, msg
+
+    def register_subscription(self, destination, context: str = "",
+                              event_types=None, registry_prefixes=None,
+                              http_headers=None, name=None) -> dict:
+        """Validate + store one push subscription. Returns the stored sub dict.
+
+        Raises SubscriptionError on bad input or when the per-BMC cap is hit.
+        Shared by the Redfish HTTP path and the controller/REST control path.
+        """
+        if not destination or not isinstance(destination, str):
+            raise self.SubscriptionError(400, "Base.1.0.PropertyMissing",
+                                         "Destination is required.")
         if len(self._subs) >= self.MAX_SUBS:
-            return self._error(503, "Base.1.0.CreateLimitReachedForResource",
-                               f"Subscription limit ({self.MAX_SUBS}) reached.")
+            raise self.SubscriptionError(
+                503, "Base.1.0.CreateLimitReachedForResource",
+                f"Subscription limit ({self.MAX_SUBS}) reached.")
         self._sub_seq += 1
         sid = uuid.uuid4().hex[:12]
         sub = {
             "id": sid,
-            "Destination": dest,
-            "Context": body.get("Context", ""),
-            "EventTypes": body.get("EventTypes") or None,
-            "RegistryPrefixes": body.get("RegistryPrefixes") or None,
-            "HttpHeaders": body.get("HttpHeaders") or None,
-            "Name": body.get("Name"),
+            "Destination": destination,
+            "Context": context or "",
+            "EventTypes": event_types or None,
+            "RegistryPrefixes": registry_prefixes or None,
+            "HttpHeaders": http_headers or None,
+            "Name": name,
         }
         self._subs[sid] = sub
-        loc = f"/redfish/v1/EventService/Subscriptions/{sid}"
-        self.log_event("OK", f"Event subscription created -> {dest}")
-        return (201, {"Location": loc}, rf.subscription_member(sub))
+        self.log_event("OK", f"Event subscription created -> {destination}")
+        return sub
 
-    def _delete_subscription(self, sid: str) -> Result:
+    def unregister_subscription(self, sid: str) -> bool:
+        """Remove a subscription by id. Returns True if it existed."""
         if sid in self._subs:
             self._subs.pop(sid)
             self.log_event("OK", "Event subscription deleted")
+            return True
+        return False
+
+    def _create_subscription(self, body: Optional[dict]) -> Result:
+        body = body or {}
+        proto = body.get("Protocol", "Redfish")
+        if proto != "Redfish":
+            return self._error(400, "Base.1.0.PropertyValueNotInList",
+                               f"Unsupported Protocol '{proto}'.")
+        try:
+            sub = self.register_subscription(
+                body.get("Destination"),
+                context=body.get("Context", ""),
+                event_types=body.get("EventTypes"),
+                registry_prefixes=body.get("RegistryPrefixes"),
+                http_headers=body.get("HttpHeaders"),
+                name=body.get("Name"))
+        except self.SubscriptionError as e:
+            return self._error(e.code, e.ecode, e.msg)
+        loc = f"/redfish/v1/EventService/Subscriptions/{sub['id']}"
+        return (201, {"Location": loc}, rf.subscription_member(sub))
+
+    def _delete_subscription(self, sid: str) -> Result:
+        if self.unregister_subscription(sid):
             return (204, {}, None)
         return self._error(404, "Base.1.0.ResourceMissingAtURI",
                            "Subscription not found.")
