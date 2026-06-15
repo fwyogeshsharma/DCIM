@@ -129,6 +129,12 @@ const IconBin = () => (
     <path d="M10 11v6M14 11v6" />
   </svg>
 )
+const IconBell = () => (
+  <svg {..._ico}>
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+)
 
 type OpTone = 'ok' | 'danger' | 'warn' | 'neutral'
 
@@ -210,6 +216,14 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
       setLog(r.entries || []); setLogOpen(true)
     } catch { /* ignore */ }
   }
+  async function testEvent() {
+    setBusy('test_event')
+    try {
+      await api.redfishTestEvent(d.ip)
+      onChanged()   // SEL grows by one (subscription/test logged) → refresh
+    } catch { /* ignore */ }
+    finally { setBusy(null) }
+  }
 
   const eff = ov ? { ...d, ...ov } : d
   const on = eff.power_state === 'On'
@@ -261,6 +275,13 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
                disabled={!!busy} busy={busy === 'clear_log'}
                onClick={() => act('clear_log')}
                title="Clear the event log" />
+        <OpBtn icon={<IconBell />} tone="ok" active={!!d.subscriptions}
+               label={d.subscriptions ? `Event·${d.subscriptions}` : 'Event'}
+               disabled={!!busy} busy={busy === 'test_event'}
+               onClick={testEvent}
+               title={d.subscriptions
+                 ? `Push a test event to ${d.subscriptions} subscriber(s)`
+                 : 'Push a test event (no subscribers registered yet)'} />
       </div>
       {logOpen && (
         <div style={{ marginTop: 4, maxHeight: 120, overflowY: 'auto', background: 'var(--bg-base)',

@@ -157,3 +157,36 @@ def redfish_log(ip: str):
     if entries is None:
         raise HTTPException(status_code=404, detail=f"No BMC at {ip}")
     return {"ip": ip, "entries": entries}
+
+
+@router.get("/subscriptions")
+def redfish_subscriptions():
+    """List push-model event subscriptions (EventDestination) across all BMCs."""
+    s = _state()
+    if s.redfish is None or not s.redfish.is_running():
+        return {"subscriptions": []}
+    return {"subscriptions": s.redfish.get_subscriptions()}
+
+
+class RedfishTestEvent(BaseModel):
+    ip:         str
+    message:    str = "Test event"
+    severity:   str = "OK"
+    event_type: str = "Alert"
+
+
+@router.post("/test-event")
+def redfish_test_event(req: RedfishTestEvent):
+    """Fire a test Event from one BMC to all its push subscribers."""
+    s = _state()
+    if s.redfish is None or not s.redfish.is_running():
+        raise HTTPException(status_code=503, detail="Redfish not running")
+    res = s.redfish.submit_test_event(
+        req.ip, message=req.message, severity=req.severity,
+        event_type=req.event_type)
+    if res is None:
+        raise HTTPException(status_code=404, detail=f"No BMC at {req.ip}")
+    s.notify_ui("console_log",
+                f"[Redfish] {res['device']} → test event to "
+                f"{res['subscribers']} subscriber(s)", "info")
+    return res

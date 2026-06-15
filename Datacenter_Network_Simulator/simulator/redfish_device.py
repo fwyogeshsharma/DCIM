@@ -19,6 +19,9 @@ the live Device object, so telemetry reflects the latest ticker values.
 from __future__ import annotations
 
 import base64
+import json
+import threading
+import urllib.request
 import uuid
 from typing import Optional, Tuple, TYPE_CHECKING
 
@@ -33,6 +36,9 @@ Result = Tuple[int, dict, Optional[dict]]
 
 class RedfishDevice:
     """Routes Redfish requests for a single server and manages its sessions."""
+
+    # Cap concurrent push subscribers per BMC (DoS / runaway-fanout guard).
+    MAX_SUBS = 20
 
     def __init__(self, device: "Device",
                  username: str = "admin", password: str = "password",
@@ -53,6 +59,12 @@ class RedfishDevice:
         self.indicator_led = "Off"     # Off | Lit | Blinking
         self.sel: list[dict] = []      # stored System Event Log entries
         self._sel_seq = 0
+        # ── push-model event subscriptions (EventDestination) ──
+        # id -> {id, Destination, Context, EventTypes, RegistryPrefixes,
+        #        HttpHeaders, Name}
+        self._subs: dict[str, dict] = {}
+        self._sub_seq = 0
+        self._event_seq = 0            # monotonic id for delivered Events
         self.log_event("OK", "BMC initialized")
         self.log_event("OK", "System powered on")
 
@@ -80,6 +92,86 @@ class RedfishDevice:
             "Message": message,
             "Created": self._now(),
         })
+        # Fan out to push subscribers (no-op when none registered).
+        if self._subs:
+            etype = "Alert" if severity in ("Warning", "Critical") else "StatusChange"
+            self._deliver(severity, message, etype,
+                          f"Simulator.1.0.{etype}",
+                          f"/redfish/v1/Systems/{self.member_id}")
+
+    # ── push-model event delivery ───────────────────────────────────────────
+    def _deliver(self, severity: str, message: str, event_type: str,
+                 message_id: str, origin: Optional[str] = None) -> None:
+        """Build an Event and POST it to every matching subscriber (async)."""
+        if not self._subs:
+            return
+        self._event_seq += 1
+        seq = self._event_seq
+        for sub in list(self._subs.values()):
+            types = sub.get("EventTypes")
+            if types and event_type not in types:
+                continue
+            doc = rf.event_record(seq, severity, message, event_type,
+                                  message_id, origin, sub.get("Context", ""))
+            self._post_async(sub, doc)
+
+    @staticmethod
+    def _post_async(sub: dict, doc: dict) -> None:
+        dest = sub.get("Destination")
+        if not dest:
+            return
+        headers = {"Content-Type": "application/json"}
+        for h in sub.get("HttpHeaders") or []:
+            if isinstance(h, dict):
+                headers.update({str(k): str(v) for k, v in h.items()})
+        data = json.dumps(doc).encode("utf-8")
+
+        def _send():
+            try:
+                req = urllib.request.Request(dest, data=data,
+                                             headers=headers, method="POST")
+                urllib.request.urlopen(req, timeout=3)  # noqa: S310 (sim)
+            except Exception:
+                pass  # best-effort delivery; real BMCs would retry per policy
+
+        threading.Thread(target=_send, daemon=True, name="RedfishEvent").start()
+
+    def _create_subscription(self, body: Optional[dict]) -> Result:
+        body = body or {}
+        dest = body.get("Destination")
+        if not dest or not isinstance(dest, str):
+            return self._error(400, "Base.1.0.PropertyMissing",
+                               "Destination is required.")
+        proto = body.get("Protocol", "Redfish")
+        if proto != "Redfish":
+            return self._error(400, "Base.1.0.PropertyValueNotInList",
+                               f"Unsupported Protocol '{proto}'.")
+        if len(self._subs) >= self.MAX_SUBS:
+            return self._error(503, "Base.1.0.CreateLimitReachedForResource",
+                               f"Subscription limit ({self.MAX_SUBS}) reached.")
+        self._sub_seq += 1
+        sid = uuid.uuid4().hex[:12]
+        sub = {
+            "id": sid,
+            "Destination": dest,
+            "Context": body.get("Context", ""),
+            "EventTypes": body.get("EventTypes") or None,
+            "RegistryPrefixes": body.get("RegistryPrefixes") or None,
+            "HttpHeaders": body.get("HttpHeaders") or None,
+            "Name": body.get("Name"),
+        }
+        self._subs[sid] = sub
+        loc = f"/redfish/v1/EventService/Subscriptions/{sid}"
+        self.log_event("OK", f"Event subscription created -> {dest}")
+        return (201, {"Location": loc}, rf.subscription_member(sub))
+
+    def _delete_subscription(self, sid: str) -> Result:
+        if sid in self._subs:
+            self._subs.pop(sid)
+            self.log_event("OK", "Event subscription deleted")
+            return (204, {}, None)
+        return self._error(404, "Base.1.0.ResourceMissingAtURI",
+                           "Subscription not found.")
 
     # ── server operations (shared by HTTP actions and REST control) ─────────
     def reset(self, reset_type: str):
@@ -238,6 +330,10 @@ class RedfishDevice:
                 "/redfish/v1/SessionService":                   lambda: rf.session_service(),
                 sessions_url:                                   lambda: rf.sessions_collection(
                     [s["id"] for s in self._sessions.values()]),
+                "/redfish/v1/EventService":                     lambda: rf.event_service(
+                    list(self._subs.keys())),
+                "/redfish/v1/EventService/Subscriptions":       lambda: rf.subscriptions_collection(
+                    list(self._subs.keys())),
             }
             builder = routes.get(path)
             if builder is not None:
@@ -254,6 +350,12 @@ class RedfishDevice:
                 for s in self._sessions.values():
                     if s["id"] == want:
                         return (200, {}, rf.session_member(s["id"], s["user"]))
+            # Individual event subscription member
+            sub_prefix = "/redfish/v1/EventService/Subscriptions/"
+            if path.startswith(sub_prefix):
+                sub = self._subs.get(path[len(sub_prefix):])
+                if sub is not None:
+                    return (200, {}, rf.subscription_member(sub))
             return self._error(404, "Base.1.0.ResourceMissingAtURI",
                                f"Resource {path} not found.")
 
@@ -273,6 +375,19 @@ class RedfishDevice:
             if path == clear_path:
                 self.clear_log()
                 return (204, {}, None)
+            # Create a push subscription.
+            if path == "/redfish/v1/EventService/Subscriptions":
+                return self._create_subscription(body)
+            # Fire a test event to all subscribers.
+            if path == "/redfish/v1/EventService/Actions/EventService.SubmitTestEvent":
+                b = body or {}
+                self._deliver(
+                    b.get("Severity", "OK"),
+                    b.get("Message", "Test event"),
+                    b.get("EventType", "Alert"),
+                    b.get("MessageId", "Simulator.1.0.TestEvent"),
+                    f"/redfish/v1/Systems/{sid}")
+                return (204, {}, None)
             return self._error(404, "Base.1.0.ResourceMissingAtURI",
                                f"No action at {path}.")
 
@@ -291,8 +406,12 @@ class RedfishDevice:
             return self._error(404, "Base.1.0.ResourceMissingAtURI",
                                f"Resource {path} not patchable.")
 
-        if method == "DELETE" and path.startswith(sessions_url + "/"):
-            return self._delete_session(path.rsplit("/", 1)[-1])
+        if method == "DELETE":
+            if path.startswith(sessions_url + "/"):
+                return self._delete_session(path.rsplit("/", 1)[-1])
+            sub_prefix = "/redfish/v1/EventService/Subscriptions/"
+            if path.startswith(sub_prefix):
+                return self._delete_subscription(path[len(sub_prefix):])
 
         return self._error(405, "Base.1.0.ActionNotSupported",
                            f"Method {method} not allowed on {path}.")

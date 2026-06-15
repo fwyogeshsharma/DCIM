@@ -65,10 +65,11 @@ def _field_style() -> str:
 
 
 class RedfishPanel(QWidget):
-    sig_start    = Signal()
-    sig_stop     = Signal()
-    sig_action   = Signal(str, str)   # (ip, action)
-    sig_view_log = Signal(str)        # (ip)
+    sig_start      = Signal()
+    sig_stop       = Signal()
+    sig_action     = Signal(str, str)   # (ip, action)
+    sig_view_log   = Signal(str)        # (ip)
+    sig_test_event = Signal(str)        # (ip)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -143,8 +144,8 @@ class RedfishPanel(QWidget):
         self._dev_group.hide()
         dl = QVBoxLayout(self._dev_group)
         dl.setContentsMargins(6, 4, 6, 6)
-        self._table = QTableWidget(0, 4)
-        self._table.setHorizontalHeaderLabels(["Server", "Power", "LED", "IP"])
+        self._table = QTableWidget(0, 5)
+        self._table.setHorizontalHeaderLabels(["Server", "Power", "LED", "Subs", "IP"])
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._table.verticalHeader().setVisible(False)
         self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -193,6 +194,12 @@ class RedfishPanel(QWidget):
         row3.addWidget(_view)
         row3.addWidget(_op_btn("Clear Log", "clear_log", danger=True))
         og.addLayout(row3)
+        row4 = QHBoxLayout(); row4.setSpacing(3)
+        _test = QPushButton("Send Test Event"); _test.setStyleSheet(_BTN_GREY)
+        _test.setToolTip("Fire a Redfish push event to this BMC's subscribers")
+        _test.clicked.connect(self._emit_test_event)
+        row4.addWidget(_test)
+        og.addLayout(row4)
         layout.addWidget(self._ops_group)
 
         layout.addStretch()
@@ -267,7 +274,11 @@ class RedfishPanel(QWidget):
             led_item = QTableWidgetItem("ON" if led != "Off" else "off")
             led_item.setForeground(QColor("#e3b341") if led != "Off" else QColor("#6e7681"))
             self._table.setItem(r, 2, led_item)
-            self._table.setItem(r, 3, QTableWidgetItem(ip))
+            subs = row.get("subscriptions", 0)
+            subs_item = QTableWidgetItem(str(subs))
+            subs_item.setForeground(QColor("#58a6ff") if subs else QColor("#6e7681"))
+            self._table.setItem(r, 3, subs_item)
+            self._table.setItem(r, 4, QTableWidgetItem(ip))
             if ip and ip == sel_ip:
                 sel_row = r
         self._dev_group.setVisible(bool(rows))
@@ -296,3 +307,10 @@ class RedfishPanel(QWidget):
             self._sel_label.setText("Select a server above first")
             return
         self.sig_view_log.emit(ip)
+
+    def _emit_test_event(self):
+        ip = self._selected_ip()
+        if not ip:
+            self._sel_label.setText("Select a server above first")
+            return
+        self.sig_test_event.emit(ip)

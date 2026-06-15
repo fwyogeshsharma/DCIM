@@ -202,6 +202,16 @@ export interface RedfishDevice {
   power_state?:   string
   indicator_led?: string
   sel_count?:     number
+  subscriptions?: number
+}
+
+export interface RedfishSubscription {
+  ip:          string
+  device:      string
+  id:          string
+  destination: string
+  context:     string
+  event_types: string[] | string
 }
 
 export interface RedfishLogEntry {

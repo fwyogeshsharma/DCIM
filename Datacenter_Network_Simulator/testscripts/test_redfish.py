@@ -25,6 +25,12 @@ Usage:
     python testscripts/test_redfish.py <ip> --view-log
     python testscripts/test_redfish.py <ip> --clear-log
 
+    # push-model event subscriptions (EventService / EventDestination)
+    python testscripts/test_redfish.py <ip> --list-subs
+    python testscripts/test_redfish.py <ip> --subscribe http://10.1.0.5:9000/events
+    python testscripts/test_redfish.py <ip> --unsubscribe <sub-id>
+    python testscripts/test_redfish.py <ip> --listen        # end-to-end push demo
+
 Defaults match the simulator MVP: plain HTTP, port 443, admin/password.
 Pure stdlib — no external dependencies.
 """
@@ -92,6 +98,9 @@ class Client:
 
     def patch(self, path: str, body):
         return self._send("PATCH", path, body)
+
+    def delete(self, path: str):
+        return self._send("DELETE", path)
 
 
 def kv(label: str, value, width: int = 22):
@@ -345,6 +354,133 @@ def run_action(client: Client, root: dict, args):
             print(f"  {grey(e.get('Created', ''))}  {col(sev.ljust(9))} {e.get('Message', '')}")
 
 
+def _subs_url(client: Client, root: dict):
+    """Resolve the EventService Subscriptions collection @odata.id."""
+    es_ref = (root.get("EventService") or {}).get("@odata.id")
+    if not es_ref:
+        return None
+    st, es = client.get(es_ref)
+    if st != 200 or not es:
+        return None
+    return (es.get("Subscriptions") or {}).get("@odata.id")
+
+
+def run_events(client: Client, root: dict, args) -> None:
+    """Handle the push-model subscription flags, then exit."""
+    subs_path = _subs_url(client, root)
+    if not subs_path:
+        print(red("  EventService not advertised by this BMC."))
+        sys.exit(1)
+
+    if args.list_subs:
+        section("Event Subscriptions (push model)")
+        st, coll = client.get(subs_path)
+        rows = (coll or {}).get("Members", []) if st == 200 else []
+        if not rows:
+            print(grey("  (no subscriptions)"))
+        for m in rows:
+            _, sub = client.get(m["@odata.id"])
+            if sub:
+                kv(sub.get("Id", "?"), f"{sub.get('Destination')}  "
+                   f"{grey('ctx=' + (sub.get('Context') or '—'))}")
+        return
+
+    if args.subscribe:
+        st, obj = client.post(subs_path, {
+            "Destination": args.subscribe,
+            "Protocol": "Redfish",
+            "Context": args.context or "test_redfish.py",
+        })
+        if st == 201:
+            print(green(f"  ✓ Subscribed → {args.subscribe}  (id {obj.get('Id')})"))
+        else:
+            _report(st, obj, f"Subscribe {args.subscribe}")
+        return
+
+    if args.unsubscribe:
+        st, obj = client.delete(f"{subs_path}/{args.unsubscribe}")
+        _report(st, obj, f"Unsubscribe {args.unsubscribe}")
+        return
+
+    if args.listen:
+        _listen_demo(client, root, subs_path, args)
+
+
+def _listen_demo(client: Client, root: dict, subs_path: str, args) -> None:
+    """End-to-end push demo: start a receiver, subscribe to it, fire a test
+    event, print what arrives, then clean up the subscription."""
+    import http.server
+    import socketserver
+    import threading
+    import time
+
+    received: list = []
+
+    class _Receiver(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(n) if n else b""
+            try:
+                received.append(json.loads(raw))
+            except Exception:
+                received.append({"_raw": raw.decode("utf-8", "replace")})
+            self.send_response(204)
+            self.end_headers()
+
+        def log_message(self, *a):
+            return
+
+    host, port = args.listen_host, args.listen_port
+    httpd = socketserver.TCPServer((host, port), _Receiver)
+    httpd.allow_reuse_address = True
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    dest = f"http://{host}:{port}/events"
+    section("Push-model listen demo")
+    print(grey(f"  Receiver listening on {dest}"))
+
+    st, obj = client.post(subs_path, {
+        "Destination": dest, "Protocol": "Redfish", "Context": "listen-demo"})
+    if st != 201:
+        _report(st, obj, "Subscribe")
+        httpd.shutdown()
+        return
+    sub_id = obj.get("Id")
+    print(green(f"  ✓ Subscribed (id {sub_id})"))
+
+    # Fire a test event via the EventService action.
+    es_ref = (root.get("EventService") or {}).get("@odata.id")
+    st, _ = client.post(es_ref + "/Actions/EventService.SubmitTestEvent",
+                        {"Message": "Hello from test_redfish.py",
+                         "Severity": "OK", "EventType": "Alert"})
+    _report(st, None, "SubmitTestEvent")
+
+    # Also drive a real state-change event (power cycle) to show live fan-out.
+    spath = _first_system_path(client, root)
+    if spath:
+        client.post(spath + "/Actions/ComputerSystem.Reset",
+                    {"ResetType": "PowerCycle"})
+
+    # Wait for async delivery.
+    deadline = time.time() + 3.0
+    while time.time() < deadline and len(received) < 1:
+        time.sleep(0.1)
+
+    if received:
+        print(green(f"  ✓ Received {len(received)} push event(s):"))
+        for doc in received:
+            for ev in doc.get("Events", []):
+                print(f"    {yellow(ev.get('Severity', '?').ljust(9))} "
+                      f"{ev.get('EventType', '?'):14} {ev.get('Message', '')}  "
+                      f"{grey('ctx=' + doc.get('Context', ''))}")
+    else:
+        print(red("  ✗ No push events received — is the BMC able to reach "
+                  f"{dest}? (firewall / wrong --listen-host)"))
+
+    client.delete(f"{subs_path}/{sub_id}")
+    print(grey(f"  Cleaned up subscription {sub_id}"))
+    httpd.shutdown()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Fetch and display all Redfish info for a server BMC.")
     ap.add_argument("ip", help="server BMC IP address")
@@ -364,6 +500,16 @@ def main():
     g.add_argument("--refresh",     action="store_true", help="refresh inventory")
     g.add_argument("--clear-log",   action="store_true", help="clear the event log (SEL)")
     g.add_argument("--view-log",    action="store_true", help="print the event log (SEL) and exit")
+    # ── Push-model Event Subscriptions ──
+    e = ap.add_argument_group("event subscriptions (push model — EventDestination)")
+    e.add_argument("--list-subs",   action="store_true", help="list active push subscriptions")
+    e.add_argument("--subscribe",   metavar="DEST", help="create a subscription POSTing events to DEST URL")
+    e.add_argument("--unsubscribe", metavar="ID", help="delete the subscription with this Id")
+    e.add_argument("--context",     help="Context string echoed back in events (with --subscribe)")
+    e.add_argument("--listen",      action="store_true",
+                   help="end-to-end demo: start a local receiver, subscribe, fire a test event, print it")
+    e.add_argument("--listen-host", default="127.0.0.1", help="receiver bind/Destination host (default 127.0.0.1)")
+    e.add_argument("--listen-port", type=int, default=9000, help="receiver port (default 9000)")
     args = ap.parse_args()
 
     base = f"{args.scheme}://{args.ip}:{args.port}"
@@ -383,6 +529,11 @@ def main():
     if any([args.power_on, args.power_off, args.reboot, args.power_cycle,
             args.led, args.refresh, args.clear_log, args.view_log]):
         run_action(client, root, args)
+        return
+
+    # If any event-subscription flag was requested, run it and exit.
+    if any([args.list_subs, args.subscribe, args.unsubscribe, args.listen]):
+        run_events(client, root, args)
         return
 
     kv("Redfish Version", root.get("RedfishVersion"))

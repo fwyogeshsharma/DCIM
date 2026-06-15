@@ -282,6 +282,7 @@ class RedfishController:
                 "power_state":   rdev.power_state,
                 "indicator_led": rdev.indicator_led,
                 "sel_count":     len(rdev.sel),
+                "subscriptions": len(rdev._subs),
                 "status":  "Active" if self._running else "Stopped",
             })
         return rows
@@ -324,3 +325,38 @@ class RedfishController:
         """Power state ("On"/"Off") of the BMC at *ip*, or None if no BMC."""
         rdev = self._find(ip)
         return rdev.power_state if rdev else None
+
+    # ── push-model event subscriptions ──────────────────────────────────────
+    def get_subscriptions(self) -> List[dict]:
+        """All push subscriptions across every BMC (for the REST/UI status)."""
+        out = []
+        for ip, (_httpd, _t, rdev) in self._servers.items():
+            for sub in rdev._subs.values():
+                out.append({
+                    "ip": ip,
+                    "device": rdev.device.name,
+                    "id": sub["id"],
+                    "destination": sub["Destination"],
+                    "context": sub.get("Context", ""),
+                    "event_types": sub.get("EventTypes") or "all",
+                })
+        return out
+
+    def submit_test_event(self, ip: str,
+                          message: str = "Test event",
+                          severity: str = "OK",
+                          event_type: str = "Alert") -> Optional[dict]:
+        """Fire a test event from the BMC at *ip* to all its subscribers."""
+        rdev = self._find(ip)
+        if rdev is None:
+            return None
+        sid = rdev.member_id
+        rdev._deliver(severity, message, event_type,
+                      "Simulator.1.0.TestEvent",
+                      f"/redfish/v1/Systems/{sid}")
+        return {
+            "ok": True,
+            "ip": ip,
+            "device": rdev.device.name,
+            "subscribers": len(rdev._subs),
+        }

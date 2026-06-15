@@ -78,6 +78,7 @@ def service_root() -> dict:
         "Chassis": {"@odata.id": "/redfish/v1/Chassis"},
         "Managers": {"@odata.id": "/redfish/v1/Managers"},
         "SessionService": {"@odata.id": "/redfish/v1/SessionService"},
+        "EventService": {"@odata.id": "/redfish/v1/EventService"},
         "Links": {
             "Sessions": {"@odata.id": "/redfish/v1/SessionService/Sessions"},
         },
@@ -363,6 +364,89 @@ def session_member(session_id: str, username: str) -> dict:
         "Id": session_id,
         "Name": f"User Session {session_id}",
         "UserName": username,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  EventService — push-model subscriptions (EventDestination)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# EventTypes the simulated BMC raises (legacy EventType enum, still widely used).
+EVENT_TYPES = ["Alert", "ResourceUpdated", "StatusChange"]
+# RegistryPrefixes events are tagged with (used for subscription filtering).
+REGISTRY_PREFIXES = ["Base", "ResourceEvent"]
+
+
+def event_service(sub_ids: list[str]) -> dict:
+    return {
+        "@odata.type": "#EventService.v1_5_0.EventService",
+        "@odata.id": "/redfish/v1/EventService",
+        "Id": "EventService",
+        "Name": "Event Service",
+        "ServiceEnabled": True,
+        "DeliveryRetryAttempts": 3,
+        "DeliveryRetryIntervalSeconds": 5,
+        "EventFormatTypes": ["Event"],
+        "RegistryPrefixes": REGISTRY_PREFIXES,
+        "ResourceTypes": ["ComputerSystem", "Chassis", "Manager"],
+        "EventTypesForSubscription": EVENT_TYPES,
+        "Subscriptions": {"@odata.id": "/redfish/v1/EventService/Subscriptions"},
+        "Actions": {
+            "#EventService.SubmitTestEvent": {
+                "target": "/redfish/v1/EventService/Actions/EventService.SubmitTestEvent",
+            },
+        },
+    }
+
+
+def subscriptions_collection(sub_ids: list[str]) -> dict:
+    return _collection(
+        "/redfish/v1/EventService/Subscriptions", "Event Subscription Collection",
+        [f"/redfish/v1/EventService/Subscriptions/{s}" for s in sub_ids],
+    )
+
+
+def subscription_member(sub: dict) -> dict:
+    """sub: stored subscription dict (see RedfishDevice._create_subscription)."""
+    sid = sub["id"]
+    body = {
+        "@odata.type": "#EventDestination.v1_10_0.EventDestination",
+        "@odata.id": f"/redfish/v1/EventService/Subscriptions/{sid}",
+        "Id": sid,
+        "Name": sub.get("Name") or f"Event Subscription {sid}",
+        "Destination": sub["Destination"],
+        "Protocol": "Redfish",
+        "SubscriptionType": "RedfishEvent",
+        "Context": sub.get("Context", ""),
+        "EventTypes": sub.get("EventTypes") or list(EVENT_TYPES),
+    }
+    if sub.get("RegistryPrefixes"):
+        body["RegistryPrefixes"] = sub["RegistryPrefixes"]
+    return body
+
+
+def event_record(seq: int, severity: str, message: str,
+                 event_type: str, message_id: str,
+                 origin: Optional[str] = None,
+                 context: str = "") -> dict:
+    """One Redfish Event document — the body POSTed to a subscriber."""
+    ev = {
+        "EventType": event_type,
+        "EventId": str(seq),
+        "Severity": severity,
+        "Message": message,
+        "MessageId": message_id,
+        "MemberId": str(seq),
+    }
+    if origin:
+        ev["OriginOfCondition"] = {"@odata.id": origin}
+    return {
+        "@odata.type": "#Event.v1_7_0.Event",
+        "Id": str(seq),
+        "Name": "Simulator Event",
+        "Context": context,
+        "Events": [ev],
+        "Events@odata.count": 1,
     }
 
 

@@ -1369,6 +1369,7 @@ class MainWindow(QMainWindow):
         self._redfish_panel.sig_stop.connect(self._stop_redfish)
         self._redfish_panel.sig_action.connect(self._redfish_action)
         self._redfish_panel.sig_view_log.connect(self._redfish_view_log)
+        self._redfish_panel.sig_test_event.connect(self._redfish_test_event)
 
         # sFlow controller callbacks
         self.sflow.set_log_callback(self._on_sflow_log)
@@ -3764,6 +3765,18 @@ class MainWindow(QMainWindow):
                 f"[Redfish] {res['device']} ← {action}: {res['message']}", lvl)
             self._redfish_panel.refresh_device_table(self.redfish.get_device_summary())
             self._topology_view.topology_scene.sync_power_states()
+        else:
+            self._console_panel.log(f"[Redfish] No BMC at {ip}", "error")
+
+    def _redfish_test_event(self, ip: str):
+        """Fire a Redfish push event from one BMC to its subscribers."""
+        if not self.redfish.is_running():
+            return
+        res = self.redfish.submit_test_event(ip, message="Manual test event")
+        if res:
+            self._console_panel.log(
+                f"[Redfish] {res['device']} → test event to "
+                f"{res['subscribers']} subscriber(s)", "info")
         else:
             self._console_panel.log(f"[Redfish] No BMC at {ip}", "error")
 
