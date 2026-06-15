@@ -37,14 +37,15 @@ const TYPE_LABEL: Record<string, string> = {
   sensor:        'Sensor',
 }
 
-type SortKey = 'name' | 'device_type' | 'vendor' | 'ip_address' | 'interface_count' | 'snmp_port' | 'sys_location'
+type SortKey = 'name' | 'device_type' | 'vendor' | 'mgmt_ip' | 'ip_address' | 'interface_count' | 'snmp_port' | 'sys_location'
 type SortDir = 'asc' | 'desc'
 
 const COLUMNS: { key: SortKey; label: string; width?: number; align?: 'right' }[] = [
   { key: 'name',            label: 'Name',       width: 110 },
   { key: 'device_type',     label: 'Type',       width: 70  },
   { key: 'vendor',          label: 'Vendor',     width: 60  },
-  { key: 'ip_address',      label: 'IP Address', width: 95  },
+  { key: 'mgmt_ip',         label: 'Mgmt IP',    width: 95  },
+  { key: 'ip_address',      label: 'Prod IP',    width: 95  },
   { key: 'interface_count', label: 'Iface',      width: 44, align: 'right' },
   { key: 'snmp_port',       label: 'SNMP',       width: 50, align: 'right' },
   { key: 'sys_location',    label: 'Location',   width: 180 },
@@ -132,6 +133,7 @@ export default function DeviceList() {
       list = list.filter(d =>
         d.name.toLowerCase().includes(query) ||
         d.ip_address.includes(query) ||
+        (d.mgmt_ip || '').includes(query) ||
         d.device_type.includes(query) ||
         (d.vendor || '').toLowerCase().includes(query) ||
         (d.sys_location || '').toLowerCase().includes(query) ||
@@ -267,6 +269,7 @@ export default function DeviceList() {
                     </span>
                   </td>
                   <td className="muted" title={d.vendor}>{d.vendor || '—'}</td>
+                  <td className="mono" title={d.mgmt_ip || ''}>{d.mgmt_ip || '—'}</td>
                   <td className="mono" title={d.ip_address}>{d.ip_address}</td>
                   <td className="mono right">{d.interface_count}</td>
                   <td className="mono right">{d.snmp_port}</td>

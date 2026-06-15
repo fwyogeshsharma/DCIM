@@ -647,16 +647,16 @@ class MainWindow(QMainWindow):
 
         # ── Table ────────────────────────────────────────────────────────
         self._device_table = QTableWidget()
-        self._device_table.setColumnCount(7)
+        self._device_table.setColumnCount(8)
         self._device_table.setHorizontalHeaderLabels(
-            ["Name", "Type", "Vendor", "IP Address", "Interfaces", "SNMP Port", "Location"]
+            ["Name", "Type", "Vendor", "Mgmt IP", "Prod IP", "Interfaces", "SNMP Port", "Location"]
         )
 
         hdr = self._device_table.horizontalHeader()
         hdr.setSectionResizeMode(QHeaderView.Interactive)
         hdr.setDefaultSectionSize(90)
         hdr.setMinimumSectionSize(50)
-        hdr.setSectionResizeMode(6, QHeaderView.Stretch)
+        hdr.setSectionResizeMode(7, QHeaderView.Stretch)
         hdr.setStretchLastSection(True)
 
         self._device_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -3891,6 +3891,8 @@ class MainWindow(QMainWindow):
                 type_item = QTableWidgetItem(device.device_type.value.capitalize())
                 type_item.setForeground(type_colors.get(device.device_type, QColor("white")))
                 vendor_item = QTableWidgetItem(device.vendor.value)
+                mgmt_ip_item = QTableWidgetItem(device.mgmt_ip or "—")
+                mgmt_ip_item.setFont(_consolas)
                 ip_item = QTableWidgetItem(device.ip_address)
                 ip_item.setFont(_consolas)
                 iface_item = QTableWidgetItem(str(device.interface_count))
@@ -3901,10 +3903,11 @@ class MainWindow(QMainWindow):
                 t.setItem(row, 0, name_item)
                 t.setItem(row, 1, type_item)
                 t.setItem(row, 2, vendor_item)
-                t.setItem(row, 3, ip_item)
-                t.setItem(row, 4, iface_item)
-                t.setItem(row, 5, port_item)
-                t.setItem(row, 6, loc_item)
+                t.setItem(row, 3, mgmt_ip_item)
+                t.setItem(row, 4, ip_item)
+                t.setItem(row, 5, iface_item)
+                t.setItem(row, 6, port_item)
+                t.setItem(row, 7, loc_item)
         finally:
             t.blockSignals(False)
             t.setUpdatesEnabled(True)
