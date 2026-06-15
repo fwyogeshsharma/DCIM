@@ -437,6 +437,9 @@ def ethernet_interface(device: "Device", nic_id: str):
     sid = member_id(device)
     for idx, iface, rx, tx in _iface_rates(device):
         if _nic_id(idx) == nic_id:
+            # Unconnected ports are down regardless of raw oper_status (defaults
+            # to 1), matching the SNMP agent so Redfish reports only real links up.
+            up = iface.connected_to_device is not None and iface.oper_status == 1
             return {
                 "@odata.type": "#EthernetInterface.v1_6_0.EthernetInterface",
                 "@odata.id": f"/redfish/v1/Systems/{sid}/EthernetInterfaces/{nic_id}",
@@ -446,10 +449,10 @@ def ethernet_interface(device: "Device", nic_id: str):
                 "MACAddress": iface.mac_address,
                 "SpeedMbps": int(iface.speed / 1_000_000),
                 "FullDuplex": True,
-                "LinkStatus": "LinkUp" if iface.oper_status == 1 else "LinkDown",
-                "InterfaceEnabled": iface.oper_status == 1,
-                "Status": {"State": "Enabled" if iface.oper_status == 1 else "Disabled",
-                           "Health": "OK" if iface.oper_status == 1 else "Critical"},
+                "LinkStatus": "LinkUp" if up else "LinkDown",
+                "InterfaceEnabled": up,
+                "Status": {"State": "Enabled" if up else "Disabled",
+                           "Health": "OK" if up else "Critical"},
                 "Oem": {"Simulator": {"RxMbps": rx, "TxMbps": tx}},
             }
     return None

@@ -42,11 +42,17 @@ def _iface_aggregates(device, dt: str) -> dict:
             "interfaces_total": None, "iface_stats": [],
         }
     ifaces = device.interfaces
+    # Effective oper-status: an interface with no neighbor is down regardless of
+    # its raw oper_status (which defaults to 1). This mirrors the SNMP agent
+    # (snmprec_generator) so the live-metrics up-count matches CDP/LLDP links
+    # instead of reporting every unconnected port as up.
+    def _eff_oper(i) -> int:
+        return 2 if i.connected_to_device is None else i.oper_status
     stats = [
         IfaceStats(
             index=i.index,
             name=i.name,
-            oper_status=i.oper_status,
+            oper_status=_eff_oper(i),
             speed=i.speed,
             in_octets=i.in_octets,
             out_octets=i.out_octets,
@@ -64,8 +70,8 @@ def _iface_aggregates(device, dt: str) -> dict:
         "total_tx_bytes":   sum(i.out_octets for i in ifaces),
         "total_errors":     sum(i.in_errors  + i.out_errors   for i in ifaces),
         "total_discards":   sum(i.in_discards + i.out_discards for i in ifaces),
-        "flapping_count":   sum(1 for i in ifaces if i.oper_status != 1),
-        "interfaces_up":    sum(1 for i in ifaces if i.oper_status == 1),
+        "flapping_count":   sum(1 for i in ifaces if _eff_oper(i) != 1),
+        "interfaces_up":    sum(1 for i in ifaces if _eff_oper(i) == 1),
         "interfaces_total": len(ifaces),
         "iface_stats":      stats,
     }

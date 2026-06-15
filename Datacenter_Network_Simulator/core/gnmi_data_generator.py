@@ -115,7 +115,10 @@ class GNMIDataGenerator:
     def _build_interfaces(self, device: "Device", topology: "TopologyEngine") -> dict:
         iface_list = []
         for iface in device.interfaces:
-            oper = "UP" if iface.oper_status == 1 else "DOWN"
+            # Unconnected ports are down regardless of raw oper_status (defaults
+            # to 1), matching the SNMP agent so gNMI reports only real links up.
+            eff_oper = 2 if iface.connected_to_device is None else iface.oper_status
+            oper = "UP" if eff_oper == 1 else "DOWN"
             speed_str = _SPEED_MAP.get(iface.speed, "SPEED_1GB")
             in_pkts  = iface.in_octets  // 1500
             out_pkts = iface.out_octets // 1500
