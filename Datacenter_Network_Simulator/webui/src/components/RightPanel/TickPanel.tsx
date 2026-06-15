@@ -97,6 +97,9 @@ const METRIC_GROUPS: MetricGroup[] = [
     { key: 'iface_discards', label: 'Interface Discard Counters', tip: 'Scale with CPU congestion (>70: heavy, >50: light)' },
     { key: 'interface_flap', label: 'Interface Flapping',       tip: '0.2% per connected interface → DOWN; auto-recovers in 5s' },
   ]},
+  { gid: 'server', title: 'Server Devices', rows: [
+    { key: 'fan_rpm',        label: 'Chassis Fan Speed',        tip: '3000 + 95×(cpu_temp−40) ± 60 RPM' },
+  ]},
   { gid: 'sensor', title: 'Sensor Devices', rows: [
     { key: 'sensor_ambient_temp', label: 'Inlet / Ambient Temp', tip: '±0.3 °C walk, clamped 15–35 °C (independent of CPU load)' },
     { key: 'humidity',            label: 'Ambient Humidity',     tip: '±1.5 %RH walk, clamped 10–90 %' },
@@ -286,6 +289,9 @@ const LIMIT_GROUPS: LimitGroup[] = [
     { key: 'disk_pct',   label: 'Disk Used %',             kind: 'num', absMin: 0,   absMax: 100, step: 1,   decimals: 0, suffix: '%',   defMin: 0,   defMax: 100 },
     { key: 'cpu_temp',   label: 'CPU Temperature',         kind: 'num', absMin: 20,  absMax: 95,  step: 0.5, decimals: 1, suffix: '°C',  defMin: 20,  defMax: 95  },
     { key: 'inlet_temp', label: 'Chassis Inlet Temp (servers)', kind: 'num', absMin: 15, absMax: 55, step: 0.5, decimals: 1, suffix: '°C', defMin: 15, defMax: 55 },
+  ]},
+  { gid: 'server', title: 'Server Devices', rows: [
+    { key: 'fan_rpm',    label: 'Chassis Fan Speed',       kind: 'num', absMin: 0,  absMax: 20000, step: 100, decimals: 0, suffix: 'RPM', defMin: 0, defMax: 12000 },
   ]},
   { gid: 'sensor', title: 'Sensor Devices', rows: [
     { key: 'sensor_ambient_temp', label: 'Inlet / Ambient Temp',    kind: 'num',   absMin: 15, absMax: 35, step: 0.5, decimals: 1, suffix: '°C', defMin: 15,  defMax: 35  },
