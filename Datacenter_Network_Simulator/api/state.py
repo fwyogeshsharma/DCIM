@@ -251,7 +251,7 @@ class AppState:
 
     @staticmethod
     def _sse_event(event: str, *args) -> dict:
-        if event in ("log", "log_sflow", "log_gnmi", "log_bacnet", "console_log") and len(args) >= 1:
+        if event in ("log", "log_sflow", "log_gnmi", "log_bacnet", "log_redfish", "console_log") and len(args) >= 1:
             msg = args[0]
             level = args[1] if len(args) > 1 else "info"
             if event == "log_sflow":
@@ -260,6 +260,8 @@ class AppState:
                 tab = "gnmi"
             elif event == "log_bacnet":
                 tab = "bacnet"
+            elif event == "log_redfish":
+                tab = "redfish"
             else:
                 tab = "snmp"
                 if isinstance(msg, str) and "[gNMI]" in msg:
@@ -268,6 +270,8 @@ class AppState:
                     tab = "sflow"
                 elif isinstance(msg, str) and "[BACnet]" in msg:
                     tab = "bacnet"
+                elif isinstance(msg, str) and "[Redfish]" in msg:
+                    tab = "redfish"
             return {"type": "log", "tab": tab, "msg": str(msg), "level": str(level)}
         if event in ("snmp_progress", "gnmi_progress", "binding_progress"):
             done = args[0] if len(args) > 0 else 0

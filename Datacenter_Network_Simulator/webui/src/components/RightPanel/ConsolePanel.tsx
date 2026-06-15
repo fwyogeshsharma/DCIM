@@ -14,6 +14,7 @@ const TABS: { id: LogEntry['tab']; label: string }[] = [
   { id: 'gnmi',   label: 'gNMI Simulation' },
   { id: 'sflow',  label: 'sFlow' },
   { id: 'bacnet', label: 'BACnet/IP' },
+  { id: 'redfish', label: 'Redfish' },
 ]
 
 function LogLine({ entry }: { entry: LogEntry }) {

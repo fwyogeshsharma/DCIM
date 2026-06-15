@@ -348,7 +348,7 @@ export interface PlantDeviceSnapshot {
 
 export interface LogEntry {
   id: number
-  tab: 'snmp' | 'gnmi' | 'sflow' | 'bacnet'
+  tab: 'snmp' | 'gnmi' | 'sflow' | 'bacnet' | 'redfish'
   msg: string
   level: string
   ts: number
