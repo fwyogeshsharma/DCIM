@@ -388,6 +388,10 @@ def _iface_rates(device: "Device") -> list:
     load = max(0.0, min(1.0, device.cpu_usage / 100.0))
     out = []
     for iface in device.interfaces:
+        # Unconnected ports carry no traffic — report zero throughput.
+        if iface.connected_to_device is None:
+            out.append((iface.index, iface, 0.0, 0.0))
+            continue
         speed_mbps = iface.speed / 1_000_000.0
         seed = ((device.cpu_usage + iface.index * 7) % 100) / 100.0
         rx_u = max(0.01, min(0.95, load * (0.50 + 0.50 * seed)))

@@ -48,28 +48,37 @@ def _iface_aggregates(device, dt: str) -> dict:
     # instead of reporting every unconnected port as up.
     def _eff_oper(i) -> int:
         return 2 if i.connected_to_device is None else i.oper_status
+
+    # Counter reporting rules:
+    #   - unconnected port  → no traffic ever, report zeros
+    #   - connected but down (manually broken / flapping) → freeze last value
+    #     (the tick loop already stops incrementing it)
+    #   - connected and up  → live values
+    def _val(i, attr) -> int:
+        return 0 if i.connected_to_device is None else getattr(i, attr)
+
     stats = [
         IfaceStats(
             index=i.index,
             name=i.name,
             oper_status=_eff_oper(i),
             speed=i.speed,
-            in_octets=i.in_octets,
-            out_octets=i.out_octets,
-            in_errors=i.in_errors,
-            out_errors=i.out_errors,
-            in_discards=i.in_discards,
-            out_discards=i.out_discards,
-            in_unicast_pkts=i.in_octets // 1500,
-            out_unicast_pkts=i.out_octets // 1500,
+            in_octets=_val(i, "in_octets"),
+            out_octets=_val(i, "out_octets"),
+            in_errors=_val(i, "in_errors"),
+            out_errors=_val(i, "out_errors"),
+            in_discards=_val(i, "in_discards"),
+            out_discards=_val(i, "out_discards"),
+            in_unicast_pkts=_val(i, "in_octets") // 1500,
+            out_unicast_pkts=_val(i, "out_octets") // 1500,
         )
         for i in ifaces
     ]
     return {
-        "total_rx_bytes":   sum(i.in_octets  for i in ifaces),
-        "total_tx_bytes":   sum(i.out_octets for i in ifaces),
-        "total_errors":     sum(i.in_errors  + i.out_errors   for i in ifaces),
-        "total_discards":   sum(i.in_discards + i.out_discards for i in ifaces),
+        "total_rx_bytes":   sum(_val(i, "in_octets")  for i in ifaces),
+        "total_tx_bytes":   sum(_val(i, "out_octets") for i in ifaces),
+        "total_errors":     sum(_val(i, "in_errors")  + _val(i, "out_errors")   for i in ifaces),
+        "total_discards":   sum(_val(i, "in_discards") + _val(i, "out_discards") for i in ifaces),
         "flapping_count":   sum(1 for i in ifaces if _eff_oper(i) != 1),
         "interfaces_up":    sum(1 for i in ifaces if _eff_oper(i) == 1),
         "interfaces_total": len(ifaces),

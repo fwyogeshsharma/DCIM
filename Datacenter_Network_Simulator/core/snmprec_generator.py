@@ -539,20 +539,26 @@ class SNMPRecGenerator:
             ifx_base = "1.3.6.1.2.1.31.1.1.1"
             for iface in device.interfaces:
                 i = iface.index
-                in_pkts  = iface.in_octets  // 1500
-                out_pkts = iface.out_octets // 1500
-                oper = 2 if iface.connected_to_device is None else iface.oper_status
+                # Unconnected ports carry no traffic — report zero counters.
+                unconnected = iface.connected_to_device is None
+                in_oct   = 0 if unconnected else iface.in_octets
+                out_oct  = 0 if unconnected else iface.out_octets
+                in_err   = 0 if unconnected else iface.in_errors
+                out_err  = 0 if unconnected else iface.out_errors
+                in_pkts  = in_oct  // 1500
+                out_pkts = out_oct // 1500
+                oper = 2 if unconnected else iface.oper_status
                 updates[f"{IF_TABLE}.8.{i}"]  = ("2",  str(oper))
-                updates[f"{IF_TABLE}.10.{i}"] = ("41", str(iface.in_octets))
+                updates[f"{IF_TABLE}.10.{i}"] = ("41", str(in_oct))
                 updates[f"{IF_TABLE}.11.{i}"] = ("41", str(in_pkts))
-                updates[f"{IF_TABLE}.13.{i}"] = ("41", str(iface.in_errors // 10))
-                updates[f"{IF_TABLE}.14.{i}"] = ("41", str(iface.in_errors))
-                updates[f"{IF_TABLE}.16.{i}"] = ("41", str(iface.out_octets))
+                updates[f"{IF_TABLE}.13.{i}"] = ("41", str(in_err // 10))
+                updates[f"{IF_TABLE}.14.{i}"] = ("41", str(in_err))
+                updates[f"{IF_TABLE}.16.{i}"] = ("41", str(out_oct))
                 updates[f"{IF_TABLE}.17.{i}"] = ("41", str(out_pkts))
-                updates[f"{IF_TABLE}.19.{i}"] = ("41", str(iface.out_errors // 10))
-                updates[f"{IF_TABLE}.20.{i}"] = ("41", str(iface.out_errors))
-                updates[f"{ifx_base}.6.{i}"]  = ("44", str(iface.in_octets  * 4))
-                updates[f"{ifx_base}.10.{i}"] = ("44", str(iface.out_octets * 4))
+                updates[f"{IF_TABLE}.19.{i}"] = ("41", str(out_err // 10))
+                updates[f"{IF_TABLE}.20.{i}"] = ("41", str(out_err))
+                updates[f"{ifx_base}.6.{i}"]  = ("44", str(in_oct  * 4))
+                updates[f"{ifx_base}.10.{i}"] = ("44", str(out_oct * 4))
 
             # Server-only: HR-MIB storage + processor load, UCD CPU/MEM/disk
             if device.device_type == DeviceType.SERVER:
@@ -1009,6 +1015,12 @@ class SNMPRecGenerator:
 
         for iface in device.interfaces:
             i = iface.index
+            # Unconnected ports carry no traffic — report zero counters.
+            unconnected = iface.connected_to_device is None
+            in_oct  = 0 if unconnected else iface.in_octets
+            out_oct = 0 if unconnected else iface.out_octets
+            in_err  = 0 if unconnected else iface.in_errors
+            out_err = 0 if unconnected else iface.out_errors
             entries += [
                 _oid_entry(f"{IF_TABLE}.1.{i}",  "2",  str(i)),            # ifIndex
                 _oid_entry(f"{IF_TABLE}.2.{i}",  "4",  iface.name),         # ifDescr
@@ -1017,19 +1029,19 @@ class SNMPRecGenerator:
                 _oid_entry(f"{IF_TABLE}.5.{i}",  "66", str(min(iface.speed, 4294967295))),   # ifSpeed (Gauge32, capped per RFC 2863)
                 _oid_entry(f"{IF_TABLE}.6.{i}",  "4x", iface.mac_address.replace(":", "")),  # ifPhysAddress
                 _oid_entry(f"{IF_TABLE}.7.{i}",  "2",  "1"),                # ifAdminStatus (1=up)
-                _oid_entry(f"{IF_TABLE}.8.{i}",  "2",  str(2 if iface.connected_to_device is None else iface.oper_status)), # ifOperStatus
+                _oid_entry(f"{IF_TABLE}.8.{i}",  "2",  str(2 if unconnected else iface.oper_status)), # ifOperStatus
                 _oid_entry(f"{IF_TABLE}.9.{i}",  "67", str(device.sys_uptime)), # ifLastChange
-                _oid_entry(f"{IF_TABLE}.10.{i}", "41", str(iface.in_octets)),   # ifInOctets Counter32
-                _oid_entry(f"{IF_TABLE}.11.{i}", "41", str(random.randint(0,9999))),  # ifInUcastPkts
+                _oid_entry(f"{IF_TABLE}.10.{i}", "41", str(in_oct)),   # ifInOctets Counter32
+                _oid_entry(f"{IF_TABLE}.11.{i}", "41", str(0 if unconnected else random.randint(0,9999))),  # ifInUcastPkts
                 _oid_entry(f"{IF_TABLE}.12.{i}", "41", "0"),                # ifInNUcastPkts
-                _oid_entry(f"{IF_TABLE}.13.{i}", "41", str(iface.in_errors // 10)), # ifInDiscards
-                _oid_entry(f"{IF_TABLE}.14.{i}", "41", str(iface.in_errors)),       # ifInErrors
+                _oid_entry(f"{IF_TABLE}.13.{i}", "41", str(in_err // 10)), # ifInDiscards
+                _oid_entry(f"{IF_TABLE}.14.{i}", "41", str(in_err)),       # ifInErrors
                 _oid_entry(f"{IF_TABLE}.15.{i}", "41", "0"),                # ifInUnknownProtos
-                _oid_entry(f"{IF_TABLE}.16.{i}", "41", str(iface.out_octets)),      # ifOutOctets
-                _oid_entry(f"{IF_TABLE}.17.{i}", "41", str(random.randint(0,9999))), # ifOutUcastPkts
+                _oid_entry(f"{IF_TABLE}.16.{i}", "41", str(out_oct)),      # ifOutOctets
+                _oid_entry(f"{IF_TABLE}.17.{i}", "41", str(0 if unconnected else random.randint(0,9999))), # ifOutUcastPkts
                 _oid_entry(f"{IF_TABLE}.18.{i}", "41", "0"),                # ifOutNUcastPkts
-                _oid_entry(f"{IF_TABLE}.19.{i}", "41", str(iface.out_errors // 10)), # ifOutDiscards
-                _oid_entry(f"{IF_TABLE}.20.{i}", "41", str(iface.out_errors)),       # ifOutErrors
+                _oid_entry(f"{IF_TABLE}.19.{i}", "41", str(out_err // 10)), # ifOutDiscards
+                _oid_entry(f"{IF_TABLE}.20.{i}", "41", str(out_err)),       # ifOutErrors
                 _oid_entry(f"{IF_TABLE}.21.{i}", "66", "0"),                  # ifOutQLen (Gauge32)
                 _oid_entry(f"{IF_TABLE}.22.{i}", "6",  "0.0"),              # ifSpecific
             ]
@@ -1038,10 +1050,13 @@ class SNMPRecGenerator:
         ifx_base = "1.3.6.1.2.1.31.1.1.1"
         for iface in device.interfaces:
             i = iface.index
+            unconnected = iface.connected_to_device is None
+            in_oct  = 0 if unconnected else iface.in_octets
+            out_oct = 0 if unconnected else iface.out_octets
             entries += [
                 _oid_entry(f"{ifx_base}.1.{i}",  "4",  iface.name),          # ifName
-                _oid_entry(f"{ifx_base}.6.{i}",  "44", str(iface.in_octets * 4)),  # ifHCInOctets
-                _oid_entry(f"{ifx_base}.10.{i}", "44", str(iface.out_octets * 4)), # ifHCOutOctets
+                _oid_entry(f"{ifx_base}.6.{i}",  "44", str(in_oct * 4)),  # ifHCInOctets
+                _oid_entry(f"{ifx_base}.10.{i}", "44", str(out_oct * 4)), # ifHCOutOctets
                 _oid_entry(f"{ifx_base}.15.{i}", "66", "1000"),               # ifHighSpeed (Mbps)
                 _oid_entry(f"{ifx_base}.18.{i}", "4",  iface.name),           # ifAlias
             ]

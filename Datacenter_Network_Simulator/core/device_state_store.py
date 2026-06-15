@@ -799,7 +799,8 @@ class DeviceStateStore:
             congested = device.cpu_usage > 70
             moderate  = device.cpu_usage > 50
             for iface in device.interfaces:
-                if iface.oper_status != 1:
+                # Skip down ports and unconnected ports — neither carries traffic.
+                if iface.oper_status != 1 or iface.connected_to_device is None:
                     continue
                 if _do_oct:
                     iface.in_octets  += random.randint(5_000, 150_000)

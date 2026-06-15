@@ -117,11 +117,19 @@ class GNMIDataGenerator:
         for iface in device.interfaces:
             # Unconnected ports are down regardless of raw oper_status (defaults
             # to 1), matching the SNMP agent so gNMI reports only real links up.
-            eff_oper = 2 if iface.connected_to_device is None else iface.oper_status
+            unconnected = iface.connected_to_device is None
+            eff_oper = 2 if unconnected else iface.oper_status
             oper = "UP" if eff_oper == 1 else "DOWN"
             speed_str = _SPEED_MAP.get(iface.speed, "SPEED_1GB")
-            in_pkts  = iface.in_octets  // 1500
-            out_pkts = iface.out_octets // 1500
+            # Unconnected ports carry no traffic — report zero counters.
+            in_oct  = 0 if unconnected else iface.in_octets
+            out_oct = 0 if unconnected else iface.out_octets
+            in_err  = 0 if unconnected else iface.in_errors
+            out_err = 0 if unconnected else iface.out_errors
+            in_disc  = 0 if unconnected else iface.in_discards
+            out_disc = 0 if unconnected else iface.out_discards
+            in_pkts  = in_oct  // 1500
+            out_pkts = out_oct // 1500
 
             entry = {
                 "name": iface.name,
@@ -138,14 +146,14 @@ class GNMIDataGenerator:
                     "admin-status": "UP",
                     "oper-status":  oper,
                     "counters": {
-                        "in-octets":        str(iface.in_octets),
-                        "out-octets":       str(iface.out_octets),
+                        "in-octets":        str(in_oct),
+                        "out-octets":       str(out_oct),
                         "in-unicast-pkts":  str(in_pkts),
                         "out-unicast-pkts": str(out_pkts),
-                        "in-errors":        str(iface.in_errors),
-                        "out-errors":       str(iface.out_errors),
-                        "in-discards":      str(iface.in_discards),
-                        "out-discards":     str(iface.out_discards),
+                        "in-errors":        str(in_err),
+                        "out-errors":       str(out_err),
+                        "in-discards":      str(in_disc),
+                        "out-discards":     str(out_disc),
                         "last-clear":       "1970-01-01T00:00:00Z",
                     },
                 },
