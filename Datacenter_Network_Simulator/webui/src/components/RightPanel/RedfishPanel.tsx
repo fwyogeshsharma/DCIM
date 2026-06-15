@@ -393,6 +393,16 @@ export default function RedfishPanel() {
           </div>
         )}
 
+        {/* ── Start button sits just below Targets while idle ──── */}
+        {!running && (
+          <div className="snmp-actions" style={{ flexShrink: 0 }}>
+            <button className="btn-action btn-start" onClick={start} disabled={!canStart} title={startTip}>
+              <IconPlay />
+              <span>Start Redfish</span>
+            </button>
+          </div>
+        )}
+
         {/* ── Active BMCs (when running) — only this list scrolls ── */}
         {running && (
           <div className="group-box" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -422,23 +432,18 @@ export default function RedfishPanel() {
 
       </div>
 
-      {/* ── Pinned footer: Start/Stop always visible ─────────── */}
-      <div style={{ flexShrink: 0, padding: '8px 10px 12px',
-                    borderTop: '1px solid var(--border)' }}>
-        <div className="snmp-actions">
-          {running ? (
+      {/* ── Pinned footer: Stop sticks to the bottom while running ── */}
+      {running && (
+        <div style={{ flexShrink: 0, padding: '8px 10px 12px',
+                      borderTop: '1px solid var(--border)' }}>
+          <div className="snmp-actions">
             <button className="btn-action btn-stop" onClick={stop} disabled={busy} title="Stop Redfish">
               <IconStop />
               <span>Stop Redfish</span>
             </button>
-          ) : (
-            <button className="btn-action btn-start" onClick={start} disabled={!canStart} title={startTip}>
-              <IconPlay />
-              <span>Start Redfish</span>
-            </button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

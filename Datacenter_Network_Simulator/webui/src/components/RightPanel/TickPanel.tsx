@@ -618,6 +618,11 @@ export default function TickPanel() {
           ))}
         </>}
 
+      </div>
+
+      {/* Pinned footer: Apply sticks to the bottom */}
+      <div style={{ flexShrink: 0, padding: '8px 10px 12px',
+                    borderTop: '1px solid var(--border)' }}>
         <div className="snmp-actions">
           <button
             className={`btn-action ${flash ? 'btn-stop' : 'btn-start'}`}
@@ -629,7 +634,6 @@ export default function TickPanel() {
             <span>{busy ? 'Applying…' : flash ? 'Applied' : 'Apply'}</span>
           </button>
         </div>
-
       </div>
 
     </div>
