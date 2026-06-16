@@ -77,10 +77,10 @@ function Navigation() {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <button onClick={() => navigate('/app/dashboard')} className="text-slate-300 hover:text-white transition-colors cursor-pointer">
+            <button onClick={() => navigate('/login')} className="text-slate-300 hover:text-white transition-colors cursor-pointer">
               Sign In
             </button>
-            <button onClick={() => navigate('/app/dashboard')} className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg transition-colors cursor-pointer">
+            <button onClick={() => navigate('/register')} className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg transition-colors cursor-pointer">
               Get Started
             </button>
           </div>
@@ -107,8 +107,8 @@ function Navigation() {
               <button onClick={() => scrollToSection('benefits')} className="text-slate-300 hover:text-white transition-colors cursor-pointer text-left">Benefits</button>
               <button onClick={() => scrollToSection('pricing')} className="text-slate-300 hover:text-white transition-colors cursor-pointer text-left">Pricing</button>
               <div className="h-px bg-white/10 my-2" />
-              <button onClick={() => navigate('/app/dashboard')} className="text-slate-300 hover:text-white transition-colors cursor-pointer text-left">Sign In</button>
-              <button onClick={() => navigate('/app/dashboard')} className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg transition-colors cursor-pointer">
+              <button onClick={() => navigate('/login')} className="text-slate-300 hover:text-white transition-colors cursor-pointer text-left">Sign In</button>
+              <button onClick={() => navigate('/register')} className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg transition-colors cursor-pointer">
                 Get Started
               </button>
             </div>
@@ -239,7 +239,7 @@ function HeroSection() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={() => navigate('/app/dashboard')}
+                onClick={() => navigate('/register')}
                 className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-lg text-lg font-semibold transition-colors cursor-pointer flex items-center gap-2 group w-full sm:w-auto justify-center"
               >
                 Start Free Trial
@@ -477,7 +477,7 @@ function CTASection() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={() => navigate('/app/dashboard')}
+              onClick={() => navigate('/register')}
               className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 rounded-lg text-lg font-semibold transition-colors cursor-pointer flex items-center gap-2 group w-full sm:w-auto justify-center"
             >
               Get Started Free
