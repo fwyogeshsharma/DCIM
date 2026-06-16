@@ -248,36 +248,31 @@ export default function Alerts() {
 
       {/* Alerts Table */}
       <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl shadow-lg overflow-x-auto">
-        <table className="w-full min-w-[900px]">
-          <thead className="bg-slate-900/50">
-            <tr>
-              <th className="text-left p-4 font-medium text-slate-300">Severity</th>
-              <th className="text-left p-4 font-medium text-slate-300">Server</th>
-              <th className="text-left p-4 font-medium text-slate-300">Agent</th>
-              <th className="text-left p-4 font-medium text-slate-300">Metric</th>
-              <th className="text-left p-4 font-medium text-slate-300">Message</th>
-              <th className="text-left p-4 font-medium text-slate-300">Value</th>
-              <th className="text-left p-4 font-medium text-slate-300">Last Seen</th>
-              <th className="text-left p-4 font-medium text-slate-300">Occurrences</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
+        {/* Header — uses the same flex column widths as the body rows so the
+            columns always stay aligned and never shift when data changes. */}
+        <div className="min-w-[900px]">
+          <div className="flex bg-slate-900/50 font-medium text-slate-300">
+            <div className="p-4 w-[110px] shrink-0">Severity</div>
+            <div className="p-4 flex-1 min-w-[100px]">Server</div>
+            <div className="p-4 flex-1 min-w-[120px]">Agent</div>
+            <div className="p-4 flex-1 min-w-[100px]">Metric</div>
+            <div className="p-4 flex-[2] min-w-[150px]">Message</div>
+            <div className="p-4 flex-1 min-w-[100px]">Value</div>
+            <div className="p-4 flex-1 min-w-[110px]">Last Seen</div>
+            <div className="p-4 flex-1 min-w-[120px]">Occurrences</div>
+          </div>
+          <div className="divide-y divide-white/5">
             {loading ? (
-              <tr>
-                <td colSpan={8} className="p-8 text-center">
-                  <div className="flex items-center justify-center gap-3 text-slate-400">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Loading alerts...
-                  </div>
-                </td>
-              </tr>
+              <div className="p-8 flex items-center justify-center gap-3 text-slate-400">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Loading alerts...
+              </div>
             ) : (
               alerts.map((alert) => {
                 const serverColor = servers?.find((s) => s.name === alert.server_name)?.metadata?.color || '#3b82f6'
                 const isExpanded = expandedAlertId === alert.id
                 return (
-                  <tr key={alert.id} className="group">
-                    <td colSpan={8} className="p-0">
+                  <div key={alert.id} className="group">
                       {/* Main row */}
                       <div className="flex items-center hover:bg-white/5 transition-colors">
                         <div className="p-4 w-[110px] shrink-0">
@@ -369,13 +364,12 @@ export default function Alerts() {
                           </div>
                         </div>
                       )}
-                    </td>
-                  </tr>
+                  </div>
                 )
               })
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
 
         {/* Load more / infinite scroll trigger */}
         <div ref={tableEndRef}>
