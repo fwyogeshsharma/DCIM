@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '@/lib/api'
@@ -101,9 +101,12 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 
+const DEVICE_PAGE_SIZE = 50
+
 export default function NetworkOps() {
   const [tab, setTab] = useState<Tab>('inventory')
   const [search, setSearch] = useState('')
+  const [deviceVisibleCount, setDeviceVisibleCount] = useState(DEVICE_PAGE_SIZE)
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
@@ -140,6 +143,34 @@ export default function NetworkOps() {
     if (!q) return snmpDevices
     return snmpDevices.filter((d) => d.device_name.toLowerCase().includes(q) || d.device_ip.includes(q))
   }, [snmpDevices, search])
+
+  // Device Inventory pagination: render 50 at a time, loading the next 50 when
+  // the sentinel row scrolls into view (infinite scroll).
+  useEffect(() => {
+    setDeviceVisibleCount(DEVICE_PAGE_SIZE)
+  }, [search, snmpDevices])
+
+  const visibleDevices = useMemo(
+    () => filteredDevices.slice(0, deviceVisibleCount),
+    [filteredDevices, deviceVisibleCount],
+  )
+  const hasMoreDevices = deviceVisibleCount < filteredDevices.length
+
+  const deviceSentinelRef = useRef<HTMLTableRowElement | null>(null)
+  useEffect(() => {
+    const el = deviceSentinelRef.current
+    if (!el || !hasMoreDevices) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setDeviceVisibleCount((c) => Math.min(c + DEVICE_PAGE_SIZE, filteredDevices.length))
+        }
+      },
+      { rootMargin: '300px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMoreDevices, filteredDevices.length])
 
   // Port utilisation: group SNMPMetrics by device then interface
   const portData = useMemo(() => {
@@ -406,7 +437,9 @@ export default function NetworkOps() {
             <Card className="overflow-hidden">
               <div className="p-5 border-b border-white/10 flex items-center justify-between">
                 <h3 className="font-semibold text-white">Device Inventory</h3>
-                <span className="text-xs text-slate-500">{filteredDevices.length} devices</span>
+                <span className="text-xs text-slate-500">
+                  Showing {visibleDevices.length} of {filteredDevices.length} devices
+                </span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -416,7 +449,7 @@ export default function NetworkOps() {
                     ))}
                   </tr></thead>
                   <tbody className="divide-y divide-white/5">
-                    {filteredDevices.map((d, i) => {
+                    {visibleDevices.map((d, i) => {
                       const meta = getDeviceTypeMeta(d.agent_id || d.device_name, d.device_type, d.device_role)
                       const age = Date.now() - new Date(d.last_seen).getTime()
                       const isOnline = age < 5 * 60 * 1000
@@ -437,6 +470,16 @@ export default function NetworkOps() {
                         </tr>
                       )
                     })}
+                    {hasMoreDevices && (
+                      <tr ref={deviceSentinelRef}>
+                        <td colSpan={5} className="px-5 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2 text-slate-400 text-xs">
+                            <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                            Loading more devices…
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

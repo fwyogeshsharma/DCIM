@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, InventoryDevice, InventoryLink } from '@/lib/api'
 import { deriveCpuPct, deriveRamPct, deriveRamTotalGb } from '@/lib/deviceHealth'
@@ -617,6 +617,8 @@ function AnalyticsPanel({ device, onClose }: { device: InventoryDevice; onClose:
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
+const DEVICE_PAGE_SIZE = 50
+
 export default function Inventory() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<'devices' | 'links'>('devices')
@@ -629,6 +631,7 @@ export default function Inventory() {
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [editLink, setEditLink] = useState<InventoryLink | undefined>()
   const [syncing, setSyncing] = useState(false)
+  const [visibleCount, setVisibleCount] = useState(DEVICE_PAGE_SIZE)
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['inventory'] })
 
@@ -690,6 +693,36 @@ export default function Inventory() {
       return true
     })
   }, [devices, search, filterStatus, filterType])
+
+  // Device table pagination: render 50 at a time, loading the next 50 when the
+  // sentinel row scrolls into view inside the scrollable table container.
+  const tableScrollRef = useRef<HTMLDivElement | null>(null)
+  const deviceSentinelRef = useRef<HTMLTableRowElement | null>(null)
+
+  useEffect(() => {
+    setVisibleCount(DEVICE_PAGE_SIZE)
+  }, [search, filterStatus, filterType, devices])
+
+  const visibleDevices = useMemo(
+    () => filteredDevices.slice(0, visibleCount),
+    [filteredDevices, visibleCount],
+  )
+  const hasMoreDevices = visibleCount < filteredDevices.length
+
+  useEffect(() => {
+    const el = deviceSentinelRef.current
+    if (!el || !hasMoreDevices) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((c) => Math.min(c + DEVICE_PAGE_SIZE, filteredDevices.length))
+        }
+      },
+      { root: tableScrollRef.current, rootMargin: '300px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMoreDevices, filteredDevices.length])
 
   const devStats = summary?.devices
   const linkStats = summary?.links
@@ -825,7 +858,7 @@ export default function Inventory() {
                 </div>
 
                 {/* Device table */}
-                <div className="flex-1 overflow-auto">
+                <div ref={tableScrollRef} className="flex-1 overflow-auto">
                   {devLoading ? (
                     <div className="flex items-center justify-center h-32 text-slate-500 text-sm">Loading inventory…</div>
                   ) : filteredDevices.length === 0 ? (
@@ -852,7 +885,7 @@ export default function Inventory() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredDevices.map(d => {
+                        {visibleDevices.map(d => {
                           const sm = STATUS_META[d.status] ?? STATUS_META['idle']
                           const storageAvail = d.storage_gb != null && d.storage_used_gb != null
                             ? d.storage_gb - d.storage_used_gb : null
@@ -938,6 +971,16 @@ export default function Inventory() {
                             </tr>
                           )
                         })}
+                        {hasMoreDevices && (
+                          <tr ref={deviceSentinelRef}>
+                            <td colSpan={9} className="px-4 py-4 text-center">
+                              <div className="flex items-center justify-center gap-2 text-slate-500 text-[11px]">
+                                <div className="w-3.5 h-3.5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                                Loading more devices…
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   )}
