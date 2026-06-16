@@ -258,7 +258,7 @@ export default function AgentDetail() {
     return <div className="text-slate-400">Agent not found</div>
   }
 
-  const deviceMeta = getDeviceTypeMeta(agent.agent_id)
+  const deviceMeta = getDeviceTypeMeta(agent.agent_id, agent.device_type, agent.device_role)
   const DeviceIcon = ICON_MAP[deviceMeta.icon] ?? HelpCircle
   const powerDesc = POWER_DEVICE_DESCRIPTIONS[deviceMeta.category]
 

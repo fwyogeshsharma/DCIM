@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -13,8 +13,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle,
 }
 
-function DeviceTypeBadge({ agentId }: { agentId: string }) {
-  const meta = getDeviceTypeMeta(agentId)
+function DeviceTypeBadge({ meta }: { meta: ReturnType<typeof getDeviceTypeMeta> }) {
   const Icon = ICON_MAP[meta.icon] ?? HelpCircle
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${meta.badgeClass}`}>
@@ -25,6 +24,8 @@ function DeviceTypeBadge({ agentId }: { agentId: string }) {
 }
 
 type TypeFilter = 'all' | 'power' | DeviceCategory
+
+const PAGE_SIZE = 50
 
 export default function Agents() {
   const { data: agents, isLoading } = useAgents()
@@ -38,25 +39,57 @@ export default function Agents() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  const filteredAgents = agents?.filter((agent) => {
-    if (serverFilter !== 'all' && agent.server_name !== serverFilter) return false
-    if (statusFilter !== 'all' && agent.status !== statusFilter) return false
-    if (typeFilter !== 'all') {
-      const meta = getDeviceTypeMeta(agent.agent_id)
-      if (typeFilter === 'power' && !meta.isPowerDevice) return false
-      else if (typeFilter !== 'power' && meta.category !== typeFilter) return false
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      return (
-        agent.agent_id.toLowerCase().includes(q) ||
-        agent.hostname.toLowerCase().includes(q) ||
-        agent.ip_address.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
+  const filteredAgents = useMemo(() => {
+    return agents?.filter((agent) => {
+      if (serverFilter !== 'all' && agent.server_name !== serverFilter) return false
+      if (statusFilter !== 'all' && agent.status !== statusFilter) return false
+      if (typeFilter !== 'all') {
+        const meta = getDeviceTypeMeta(agent.agent_id, agent.device_type, agent.device_role)
+        if (typeFilter === 'power' && !meta.isPowerDevice) return false
+        else if (typeFilter !== 'power' && meta.category !== typeFilter) return false
+      }
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        return (
+          agent.agent_id.toLowerCase().includes(q) ||
+          agent.hostname.toLowerCase().includes(q) ||
+          agent.ip_address.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+  }, [agents, serverFilter, statusFilter, typeFilter, searchQuery])
+
+  // Reset to the first page whenever the filters/search change.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [serverFilter, statusFilter, typeFilter, searchQuery])
+
+  const totalFiltered = filteredAgents?.length ?? 0
+  const visibleAgents = useMemo(
+    () => filteredAgents?.slice(0, visibleCount),
+    [filteredAgents, visibleCount],
+  )
+  const hasMore = visibleCount < totalFiltered
+
+  // Infinite scroll: load the next 50 when the sentinel row scrolls into view.
+  const sentinelRef = useRef<HTMLTableRowElement | null>(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !hasMore) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, totalFiltered))
+        }
+      },
+      { rootMargin: '300px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, totalFiltered])
 
   const serverNames = [...new Set(agents?.map((a) => a.server_name).filter(Boolean) as string[])]
 
@@ -136,7 +169,7 @@ export default function Agents() {
           </button>
         )}
         <span className="text-xs text-slate-500 ml-auto">
-          {filteredAgents?.length || 0} of {agents?.length || 0} agents
+          Showing {Math.min(visibleCount, totalFiltered)} of {totalFiltered} ({agents?.length || 0} total)
         </span>
       </div>
 
@@ -157,11 +190,11 @@ export default function Agents() {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {filteredAgents?.map((agent) => {
+            {visibleAgents?.map((agent) => {
               const server = servers?.find((s) => s.name === agent.server_name)
               const serverColor = server?.metadata?.color || '#3b82f6'
               const serverDown = server ? server.health?.status !== 'healthy' : false
-              const meta = getDeviceTypeMeta(agent.agent_id)
+              const meta = getDeviceTypeMeta(agent.agent_id, agent.device_type, agent.device_role)
 
               const rowBg = serverDown
                 ? 'bg-red-500/5 hover:bg-red-500/10 border-l-2 border-l-red-500'
@@ -206,7 +239,7 @@ export default function Agents() {
                   </td>
                   <td className="p-4 font-medium text-white">{agent.hostname}</td>
                   <td className="p-4">
-                    <DeviceTypeBadge agentId={agent.agent_id} />
+                    <DeviceTypeBadge meta={meta} />
                   </td>
                   <td className="p-4 font-mono text-sm text-slate-300">{agent.ip_address}</td>
                   <td className="p-4">
@@ -262,6 +295,16 @@ export default function Agents() {
                 </tr>
               )
             })}
+            {hasMore && (
+              <tr ref={sentinelRef}>
+                <td colSpan={10} className="p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 text-slate-400 text-sm">
+                    <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    Loading more agents…
+                  </div>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
         {(!filteredAgents || filteredAgents.length === 0) && (

@@ -103,7 +103,51 @@ const META: Record<DeviceCategory, DeviceTypeMeta> = {
   },
 }
 
-export function getDeviceTypeMeta(agentId: string): DeviceTypeMeta {
+/** Normalize a backend device_type / device_role string for matching.
+ *  Handles values like "DeviceType.TOR_SWITCH", "floor_pdu", "Edge Router". */
+function normalizeTypeString(raw?: string | null): string {
+  return (raw || '')
+    .toLowerCase()
+    .replace('devicetype.', '')
+    .replace(/[\s.\-]+/g, '_')
+    .trim()
+}
+
+/** Resolve a DeviceCategory from the canonical backend device_type / device_role
+ *  fields. Returns null when the value doesn't map to a known category. */
+function categoryFromTypeString(raw?: string | null): DeviceCategory | null {
+  const s = normalizeTypeString(raw)
+  if (!s) return null
+  if (s.includes('pdu')) return 'PDU' // pdu, floor_pdu, fpdu
+  if (s.includes('ups')) return 'UPS'
+  if (
+    s.includes('sensor') || s.includes('crah') || s.includes('crac') ||
+    s.includes('chiller') || s.includes('cooling') || s.includes('pump') ||
+    s.includes('valve') || s.includes('environment')
+  ) return 'SENSOR'
+  if (s.includes('oob')) return 'OOB_SWITCH'
+  if (s === 'tor' || s.includes('tor_switch') || s === 'leaf' || s === 'access' || s.includes('top_of_rack'))
+    return 'TOR_SWITCH'
+  if (s.includes('agg') || s === 'spine' || s === 'super_spine' || s === 'distribution' || s === 'fabric')
+    return 'AGG_SWITCH'
+  if (s.includes('router') || s.includes('rtr') || s === 'core' || s.includes('edge') || s.includes('firewall') || s.includes('load_balancer'))
+    return 'ROUTER'
+  if (s.includes('server') || s.includes('compute') || s.includes('host') || s.includes('gpu') || s.includes('storage') || s.includes('nas') || s.includes('san'))
+    return 'SERVER'
+  return null
+}
+
+/** Resolve display metadata for a device. Prefers the authoritative backend
+ *  `device_role` / `device_type` fields, falling back to parsing the agent_id
+ *  only when the device has no role/type set. */
+export function getDeviceTypeMeta(
+  agentId: string,
+  deviceType?: string | null,
+  deviceRole?: string | null,
+): DeviceTypeMeta {
+  const fromBackend = categoryFromTypeString(deviceRole) ?? categoryFromTypeString(deviceType)
+  if (fromBackend) return META[fromBackend]
+
   const parts = agentId.split('-')
   const device = parts.length >= 3 ? parts.slice(2).join('-').toUpperCase() : agentId.toUpperCase()
 
