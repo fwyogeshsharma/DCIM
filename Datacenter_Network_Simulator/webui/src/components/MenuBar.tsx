@@ -488,8 +488,8 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
           </div>
 
           <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-            Visually build network topologies and simulate both SNMP and gNMI protocols
-            for routers, switches, and servers.
+            Visually build network topologies and simulate SNMP, gNMI, sFlow, BACnet, and
+            Redfish protocols for routers, switches, servers, and facility devices.
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11 }}>
@@ -500,6 +500,8 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
               ['gNMI',          'OpenConfig — Interfaces, LLDP, BGP, OSPF, AFT, System'],
               ['Telemetry',     'gNMI Subscribe STREAM / ONCE / POLL'],
               ['sFlow',         'v5 UDP datagrams — counter + flow samples'],
+              ['BACnet',        'BACnet/IP — building automation objects'],
+              ['Redfish',       'REST API — server health, power, thermal, events'],
               ['Web UI',        'React 18, TypeScript, Vite, Zustand, React Flow'],
             ].map(([label, value]) => (
               <div key={label} style={{ display: 'flex', gap: 8 }}>

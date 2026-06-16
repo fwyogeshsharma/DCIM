@@ -4099,14 +4099,19 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self, "About Datacenter Network Simulator",
             "<h3>Datacenter Network Simulator v4.0</h3>"
-            "<p>Visually build network topologies and simulate both SNMP and gNMI "
-            "protocols for routers, switches, and servers.</p>"
+            "<p>Visually build network topologies and simulate SNMP, gNMI, sFlow, "
+            "BACnet, and Redfish protocols for routers, switches, servers, and "
+            "facility devices.</p>"
             "<br>"
             "<b>Tech Stack:</b> Python 3.11+, PySide6, NetworkX, SNMPSim, gRPC<br>"
-            "<b>Supports:</b> Routers, Switches, Servers<br>"
+            "<b>Supports:</b> Routers, Switches, Servers, Firewalls, PDUs, UPS, Sensors<br>"
             "<b>SNMP Versions:</b> v1, v2c<br>"
             "<b>gNMI:</b> OpenConfig — Interfaces, LLDP, BGP, OSPF, AFT, System<br>"
             "<b>Telemetry:</b> gNMI Subscribe STREAM / ONCE / POLL<br>"
+            "<b>sFlow:</b> v5 UDP datagrams — counter + flow samples<br>"
+            "<b>BACnet:</b> BACnet/IP — building automation objects<br>"
+            "<b>Redfish:</b> REST API — server health, power, thermal, events<br>"
+            "<b>Web UI:</b> React 18, TypeScript, Vite, Zustand, React Flow<br>"
         )
 
     def _show_snmpwalk(self):
