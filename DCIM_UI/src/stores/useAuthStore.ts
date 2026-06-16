@@ -1,53 +1,52 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
-interface StoredUser {
-  username: string
-  email: string
-  password: string
-}
+import { api, type AuthUser } from '@/lib/api'
 
 interface AuthState {
-  currentUser: { username: string; email: string } | null
-  users: StoredUser[]
-  login: (username: string, password: string) => boolean
-  register: (username: string, email: string, password: string) => { success: boolean; error?: string }
+  currentUser: AuthUser | null
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
+  register: (
+    username: string,
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; error?: string }>
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       currentUser: null,
-      users: [],
 
-      login: (username, password) => {
-        const user = get().users.find(
-          (u) => u.username === username && u.password === password
-        )
-        if (user) {
-          set({ currentUser: { username: user.username, email: user.email } })
-          return true
+      // Authenticate against the database (users table) via the aggregator API.
+      login: async (username, password) => {
+        try {
+          const user = await api.login(username, password)
+          set({ currentUser: user })
+          return { success: true }
+        } catch (error: any) {
+          return { success: false, error: error?.message || 'Invalid username or password' }
         }
-        return false
       },
 
-      register: (username, email, password) => {
-        const existing = get().users.find(
-          (u) => u.username === username || u.email === email
-        )
-        if (existing) {
-          return { success: false, error: 'Username or email already taken' }
+      // Persist the new account to the database so it can be reused to log in
+      // again later, from any browser or device.
+      register: async (username, email, password) => {
+        try {
+          const user = await api.register(username, email, password)
+          set({ currentUser: user })
+          return { success: true }
+        } catch (error: any) {
+          return { success: false, error: error?.message || 'Registration failed' }
         }
-        set((state) => ({
-          users: [...state.users, { username, email, password }],
-          currentUser: { username, email },
-        }))
-        return { success: true }
       },
 
       logout: () => set({ currentUser: null }),
     }),
-    { name: 'dcim-auth' }
-  )
+    {
+      name: 'dcim-auth',
+      // Only keep the current session locally; the account itself lives in the DB.
+      partialize: (state) => ({ currentUser: state.currentUser }),
+    },
+  ),
 )

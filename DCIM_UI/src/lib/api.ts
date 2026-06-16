@@ -74,6 +74,22 @@ class APIClient {
     }
   }
 
+  // Auth endpoints — credentials are stored/verified against the database
+  // (users table) so an account works across browsers, devices and deployments.
+  async register(username: string, email: string, password: string): Promise<AuthUser> {
+    return this.request<AuthUser>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password }),
+    })
+  }
+
+  async login(username: string, password: string): Promise<AuthUser> {
+    return this.request<AuthUser>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    })
+  }
+
   // Agent endpoints
   async getAgents(filter?: AgentFilter): Promise<Agent[]> {
     const params = new URLSearchParams()
@@ -701,6 +717,14 @@ class APIClient {
 }
 
 export const api = new APIClient(API_BASE_URL)
+
+// ── Auth types ─────────────────────────────────────────────────────────────
+
+export interface AuthUser {
+  id: number
+  username: string
+  email: string
+}
 
 // ── Inventory types ────────────────────────────────────────────────────────
 

@@ -184,13 +184,12 @@ export default function SignIn() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-    const ok = login(username, password)
+    const result = await login(username, password)
     setLoading(false)
-    if (ok) {
+    if (result.success) {
       navigate('/app/dashboard', { replace: true })
     } else {
-      setError('Invalid username or password')
+      setError(result.error ?? 'Invalid username or password')
     }
   }
 

@@ -156,8 +156,7 @@ export default function SignUp() {
     if (password.length < 6) { setError('Password must be at least 6 characters'); return }
 
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-    const result = register(username, email, password)
+    const result = await register(username, email, password)
     setLoading(false)
 
     if (result.success) {
