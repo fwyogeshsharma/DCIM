@@ -411,7 +411,7 @@ export default function NetworkOps() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-white/5">
-                    {['Device Name', 'IP Address', 'Type', 'Agent ID', 'Last Seen'].map((h) => (
+                    {['Device Name', 'IP Address', 'Type', 'Unique ID', 'Last Seen'].map((h) => (
                       <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr></thead>

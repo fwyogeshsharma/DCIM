@@ -303,7 +303,7 @@ export default function AgentDetail() {
               {deviceMeta.label}
             </span>
           </div>
-          <p className="text-slate-400 mt-2">Agent ID: {agent.agent_id}</p>
+          <p className="text-slate-400 mt-2">Unique ID: {agent.agent_id}</p>
         </div>
         <Link to={`/app/agents/${agentId}/analytics`}>
           <Button className="gap-2 bg-blue-600 hover:bg-blue-700">

@@ -178,7 +178,7 @@ export default function Agents() {
           <thead className="bg-slate-900/50">
             <tr>
               <th className="text-left p-4 font-medium text-slate-300">Server</th>
-              <th className="text-left p-4 font-medium text-slate-300">Agent ID</th>
+              <th className="text-left p-4 font-medium text-slate-300">Unique ID</th>
               <th className="text-left p-4 font-medium text-slate-300">Hostname</th>
               <th className="text-left p-4 font-medium text-slate-300">Type</th>
               <th className="text-left p-4 font-medium text-slate-300">IP Address</th>
