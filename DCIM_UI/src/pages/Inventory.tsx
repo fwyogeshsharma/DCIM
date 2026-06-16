@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, InventoryDevice, InventoryLink } from '@/lib/api'
 import { deriveCpuPct, deriveRamPct, deriveRamTotalGb } from '@/lib/deviceHealth'
+import { getReadablePath } from '@/lib/openconfigLabels'
 import {
   Plus, Search, X, Server, Network, HardDrive, Cpu, MemoryStick,
   Zap, Package, Link as LinkIcon, Edit3, Trash2, ChevronDown,
@@ -580,9 +581,9 @@ function AnalyticsPanel({ device, onClose }: { device: InventoryDevice; onClose:
             <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Live Metrics (latest)</p>
             <div className="bg-slate-800/50 rounded-lg p-3 space-y-1.5">
               {data.latest.map(m => (
-                <div key={m.metric_name} className="flex justify-between text-xs">
-                  <span className="text-slate-400">{m.metric_name.replace(/_/g, ' ')}</span>
-                  <span className="text-slate-200 font-mono">{m.value.toFixed(2)}</span>
+                <div key={m.metric_name} className="flex justify-between text-xs gap-3">
+                  <span className="text-slate-400 truncate" title={m.metric_name}>{getReadablePath(m.metric_name)}</span>
+                  <span className="text-slate-200 font-mono shrink-0">{m.value.toFixed(2)}</span>
                 </div>
               ))}
             </div>

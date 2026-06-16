@@ -4,6 +4,7 @@ import { useAgent, useLatestMetrics } from '@/hooks/useAgents'
 import { BarChart3, ArrowLeft, Radio, Waves, RefreshCw, Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getDeviceTypeMeta, POWER_DEVICE_DESCRIPTIONS } from '@/lib/deviceType'
+import { getReadablePath } from '@/lib/openconfigLabels'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle,
@@ -129,7 +130,9 @@ function CombinedTelemetryTable({
               <td className="py-1.5 pr-3 font-mono text-blue-300 truncate max-w-[160px]" title={row.path}>
                 {row.path}
               </td>
-              <td className="py-1.5 pr-3 text-slate-300">{row.key}</td>
+              <td className="py-1.5 pr-3 text-slate-300" title={`${row.path}/${row.key}`}>
+                {getReadablePath(row.path, row.key)}
+              </td>
               <td className="py-1.5 pr-3 text-right font-mono text-white">
                 {row.value} <span className="text-slate-500">{row.unit}</span>
               </td>
@@ -185,7 +188,7 @@ function GnmiTable({ events }: { events: GnmiEvent[] }) {
               <td className="py-1.5 pr-4">{e.metrics_count}</td>
               <td className="py-1.5 text-slate-400">
                 {Object.entries(e.values ?? {}).slice(0, 3).map(([k, v]) =>
-                  <span key={k} className="mr-2">{k}: {v.value}{v.unit}</span>
+                  <span key={k} className="mr-2" title={`${e.path}/${k}`}>{getReadablePath(e.path, k)}: {v.value}{v.unit}</span>
                 )}
               </td>
             </tr>
