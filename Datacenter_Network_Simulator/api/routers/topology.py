@@ -151,14 +151,22 @@ def _send_link_traps(s, src_id: str, dst_id: str, layer: str, is_down: bool):
         return
     from core.trap_definitions import TrapType
     trap_type = TrapType.LINK_DOWN if is_down else TrapType.LINK_UP
-    src_iface = edge.get("src_iface", 1)
-    dst_iface = edge.get("dst_iface", 1)
     src_dev = s.device_manager.get_device(src_id)
     dst_dev = s.device_manager.get_device(dst_id)
-    if src_dev:
-        s.trap_engine.send_trap(src_dev, trap_type, iface_index=src_iface)
-    if dst_dev:
-        s.trap_engine.send_trap(dst_dev, trap_type, iface_index=dst_iface)
+    # Resolve each endpoint's interface by which one actually faces the peer
+    # (connected_to_device) — NOT edge["src_iface"]/["dst_iface"], which can hold
+    # a stale/wrong index that points at a NEIGHBOUR link's port. The desktop UI
+    # resolves this way; using the edge indices made the consumer correlate the
+    # trap to the wrong link, producing a spurious second link-down event.
+    for dev, peer_id in ((src_dev, dst_id), (dst_dev, src_id)):
+        if not dev:
+            continue
+        iface = next(
+            (i for i in dev.interfaces if i.connected_to_device == peer_id),
+            dev.interfaces[0] if dev.interfaces else None,
+        )
+        kwargs = {"iface_index": iface.index} if iface else {}
+        s.trap_engine.send_trap(dev, trap_type, **kwargs)
 
 
 @router.get("/export")
