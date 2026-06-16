@@ -102,6 +102,8 @@ export interface SNMPDevice {
   agent_id: string
   server_id: string
   server_name: string
+  device_type?: string | null
+  device_role?: string | null
   last_seen: string
 }
 

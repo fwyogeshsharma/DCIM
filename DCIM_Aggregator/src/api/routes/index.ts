@@ -181,6 +181,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
           d.network_id     AS server_id,
           d.network_id     AS server_name,
           d.device_type,
+          d.device_role,
           d.last_seen_at   AS last_seen
         FROM devices d
         WHERE d.snmp_enabled = true

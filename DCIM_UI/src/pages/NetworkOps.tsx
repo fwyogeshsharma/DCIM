@@ -128,7 +128,7 @@ export default function NetworkOps() {
   const devicesByType = useMemo(() => {
     const map: Record<string, SNMPDevice[]> = {}
     for (const d of snmpDevices) {
-      const cat = getDeviceTypeMeta(d.agent_id || d.device_name).category
+      const cat = getDeviceTypeMeta(d.agent_id || d.device_name, d.device_type, d.device_role).category
       if (!map[cat]) map[cat] = []
       map[cat].push(d)
     }
@@ -384,7 +384,7 @@ export default function NetworkOps() {
           {/* Device type summary */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {Object.entries(devicesByType).map(([cat, devs]) => {
-              const meta = getDeviceTypeMeta(devs[0]?.agent_id || cat)
+              const meta = getDeviceTypeMeta(devs[0]?.agent_id || cat, devs[0]?.device_type, devs[0]?.device_role)
               return (
                 <Card key={cat} className="p-4 text-center hover:border-white/20 transition-all">
                   <p className="text-2xl font-bold text-white">{devs.length}</p>
@@ -417,7 +417,7 @@ export default function NetworkOps() {
                   </tr></thead>
                   <tbody className="divide-y divide-white/5">
                     {filteredDevices.map((d, i) => {
-                      const meta = getDeviceTypeMeta(d.agent_id || d.device_name)
+                      const meta = getDeviceTypeMeta(d.agent_id || d.device_name, d.device_type, d.device_role)
                       const age = Date.now() - new Date(d.last_seen).getTime()
                       const isOnline = age < 5 * 60 * 1000
                       return (
