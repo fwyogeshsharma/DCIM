@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Bell, LogOut, ChevronDown, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAlerts } from '@/hooks/useAlerts'
@@ -13,6 +14,15 @@ const SEVERITY_DOT: Record<string, string> = {
   INFO: 'bg-blue-500',
 }
 
+// Position a dropdown panel just below a trigger element, right-aligned to it.
+// The panel is portalled to <body> so it escapes the header's backdrop-blur
+// stacking context and can never be overlapped by page content.
+function panelPosition(ref: React.RefObject<HTMLElement>): React.CSSProperties {
+  const rect = ref.current?.getBoundingClientRect()
+  if (!rect) return { top: 64, right: 16 }
+  return { top: rect.bottom + 8, right: Math.max(8, window.innerWidth - rect.right) }
+}
+
 export default function Header() {
   const { data: alerts } = useAlerts({ resolved: false })
   const currentUser = useAuthStore((s) => s.currentUser)
@@ -21,19 +31,30 @@ export default function Header() {
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
-  const notifRef = useRef<HTMLDivElement>(null)
-  const userRef = useRef<HTMLDivElement>(null)
 
-  // Close either dropdown when clicking outside of it.
+  const notifWrapRef = useRef<HTMLDivElement>(null)
+  const userWrapRef = useRef<HTMLDivElement>(null)
+  const notifPanelRef = useRef<HTMLDivElement>(null)
+  const userPanelRef = useRef<HTMLDivElement>(null)
+
+  // Close a dropdown when clicking outside both its trigger and its panel.
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
-      const target = e.target as Node
-      if (notifRef.current && !notifRef.current.contains(target)) setNotifOpen(false)
-      if (userRef.current && !userRef.current.contains(target)) setUserOpen(false)
+      const t = e.target as Node
+      if (!notifWrapRef.current?.contains(t) && !notifPanelRef.current?.contains(t)) setNotifOpen(false)
+      if (!userWrapRef.current?.contains(t) && !userPanelRef.current?.contains(t)) setUserOpen(false)
     }
     document.addEventListener('mousedown', onPointerDown)
     return () => document.removeEventListener('mousedown', onPointerDown)
   }, [])
+
+  // Keep the dropdowns anchored if the window is resized.
+  useEffect(() => {
+    if (!notifOpen && !userOpen) return
+    function close() { setNotifOpen(false); setUserOpen(false) }
+    window.addEventListener('resize', close)
+    return () => window.removeEventListener('resize', close)
+  }, [notifOpen, userOpen])
 
   const unresolvedAlerts = (alerts?.filter((a) => !a.resolved) || [])
     .slice()
@@ -71,7 +92,7 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <div className="relative" ref={notifRef}>
+          <div className="relative" ref={notifWrapRef}>
             <Button
               variant="ghost"
               size="icon"
@@ -91,60 +112,63 @@ export default function Header() {
                 </span>
               )}
             </Button>
-
-            {notifOpen && (
-              <div className="absolute right-0 mt-2 w-80 rounded-xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/50 z-50 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                  <span className="text-sm font-semibold text-white">Notifications</span>
-                  {unresolvedAlerts.length > 0 && (
-                    <span className="text-xs text-slate-400">
-                      {unresolvedAlerts.length} unresolved
-                      {criticalAlerts.length > 0 && (
-                        <span className="ml-1 text-red-400">· {criticalAlerts.length} critical</span>
-                      )}
-                    </span>
-                  )}
-                </div>
-
-                <div className="max-h-80 overflow-y-auto">
-                  {recentAlerts.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-2 py-8 text-slate-500">
-                      <CheckCircle2 className="h-7 w-7 text-green-500/70" />
-                      <p className="text-sm">No unresolved alerts</p>
-                    </div>
-                  ) : (
-                    recentAlerts.map((alert) => (
-                      <button
-                        key={alert.id}
-                        onClick={goToAlerts}
-                        className="w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors flex gap-3"
-                      >
-                        <span className={cn('mt-1.5 h-2 w-2 rounded-full shrink-0', SEVERITY_DOT[alert.severity] ?? 'bg-slate-500')} />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-white truncate">{alert.message || alert.metric_type}</p>
-                          <p className="text-xs text-slate-500 truncate">
-                            {alert.server_name || alert.agent_id}
-                          </p>
-                          <p className="text-[11px] text-slate-600 mt-0.5">{relativeTime(alert.timestamp)}</p>
-                        </div>
-                      </button>
-                    ))
-                  )}
-                </div>
-
-                <button
-                  onClick={goToAlerts}
-                  className="w-full px-4 py-2.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors flex items-center justify-center gap-1.5 border-t border-white/10"
-                >
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  View all alerts
-                </button>
-              </div>
-            )}
           </div>
 
+          {notifOpen && createPortal(
+            <div
+              ref={notifPanelRef}
+              style={{ position: 'fixed', ...panelPosition(notifWrapRef) }}
+              className="w-80 rounded-xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/50 z-[100] overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                <span className="text-sm font-semibold text-white">Notifications</span>
+                {unresolvedAlerts.length > 0 && (
+                  <span className="text-xs text-slate-400">
+                    {unresolvedAlerts.length} unresolved
+                    {criticalAlerts.length > 0 && (
+                      <span className="ml-1 text-red-400">· {criticalAlerts.length} critical</span>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              <div className="max-h-80 overflow-y-auto">
+                {recentAlerts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-2 py-8 text-slate-500">
+                    <CheckCircle2 className="h-7 w-7 text-green-500/70" />
+                    <p className="text-sm">No unresolved alerts</p>
+                  </div>
+                ) : (
+                  recentAlerts.map((alert) => (
+                    <button
+                      key={alert.id}
+                      onClick={goToAlerts}
+                      className="w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors flex gap-3"
+                    >
+                      <span className={cn('mt-1.5 h-2 w-2 rounded-full shrink-0', SEVERITY_DOT[alert.severity] ?? 'bg-slate-500')} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-white truncate">{alert.message || alert.metric_type}</p>
+                        <p className="text-xs text-slate-500 truncate">{alert.server_name || alert.agent_id}</p>
+                        <p className="text-[11px] text-slate-600 mt-0.5">{relativeTime(alert.timestamp)}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <button
+                onClick={goToAlerts}
+                className="w-full px-4 py-2.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors flex items-center justify-center gap-1.5 border-t border-white/10"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                View all alerts
+              </button>
+            </div>,
+            document.body
+          )}
+
           {/* User menu */}
-          <div className="relative ml-2" ref={userRef}>
+          <div className="relative ml-2" ref={userWrapRef}>
             <button
               onClick={() => { setUserOpen((o) => !o); setNotifOpen(false) }}
               className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-white/10 transition-colors"
@@ -158,25 +182,30 @@ export default function Header() {
               </span>
               <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', userOpen && 'rotate-180')} />
             </button>
-
-            {userOpen && (
-              <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/50 z-50 overflow-hidden">
-                <div className="px-4 py-3 border-b border-white/10">
-                  <p className="text-sm font-semibold text-white truncate">{currentUser?.username ?? 'User'}</p>
-                  {currentUser?.email && (
-                    <p className="text-xs text-slate-400 truncate">{currentUser.email}</p>
-                  )}
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
-              </div>
-            )}
           </div>
+
+          {userOpen && createPortal(
+            <div
+              ref={userPanelRef}
+              style={{ position: 'fixed', ...panelPosition(userWrapRef) }}
+              className="w-56 rounded-xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/50 z-[100] overflow-hidden"
+            >
+              <div className="px-4 py-3 border-b border-white/10">
+                <p className="text-sm font-semibold text-white truncate">{currentUser?.username ?? 'User'}</p>
+                {currentUser?.email && (
+                  <p className="text-xs text-slate-400 truncate">{currentUser.email}</p>
+                )}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            </div>,
+            document.body
+          )}
         </div>
       </div>
     </header>
