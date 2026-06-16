@@ -107,9 +107,9 @@ export default function Agents() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-4xl font-bold text-white">Agents</h1>
+        <h1 className="text-4xl font-bold text-white">Devices</h1>
         <p className="text-slate-400 mt-2 text-lg">
-          Manage and monitor all registered agents across servers
+          Manage and monitor all registered devices across DataCenters
         </p>
       </div>
 

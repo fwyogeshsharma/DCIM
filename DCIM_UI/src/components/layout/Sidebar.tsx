@@ -5,8 +5,8 @@ import {
   Server,
   AlertTriangle,
   Network,
-  BrainCircuit,
-  MessageSquareText,
+  // BrainCircuit,      // AI Analytics — hidden from sidebar
+  // MessageSquareText, // NL Query — hidden from sidebar
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Agents', href: '/agents', icon: Server },
+  { name: 'Devices', href: '/agents', icon: Server },
   { name: 'Alerts', href: '/alerts', icon: AlertTriangle },
   { name: 'Tickets', href: '/tickets', icon: Ticket },
   { name: 'Power Mgmt', href: '/reports', icon: ZapIcon },
@@ -30,8 +30,8 @@ const navigation = [
   { name: 'Fire & Safety', href: '/fire-safety', icon: Flame },
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Topology', href: '/topology', icon: Network },
-  { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit },
-  { name: 'NL Query', href: '/nl-query', icon: MessageSquareText },
+  // { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit },
+  // { name: 'NL Query', href: '/nl-query', icon: MessageSquareText },
   { name: 'Servers', href: '/servers', icon: ServerCog },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
