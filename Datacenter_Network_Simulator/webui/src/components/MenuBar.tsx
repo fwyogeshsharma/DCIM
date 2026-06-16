@@ -187,7 +187,7 @@ export default function MenuBar() {
   const [showAbout, setShowAbout] = useState(false)
 
   const {
-    snmp, gnmi, sflow, bacnet, devices,
+    snmp, gnmi, sflow, bacnet, redfish, devices,
     fetchGraph, fetchDevices, fetchSnmp, selectedDeviceId,
     linkMode, setLinkMode, triggerFitView, setLayoutAlgo, setRightTab, setActiveView,
   } = useStore()
@@ -426,6 +426,12 @@ export default function MenuBar() {
           dot={bacnet?.running ? 'var(--green)' : 'var(--text-dim)'}
           value={bacnet?.running ? 'running' : 'idle'}
           color={bacnet?.running ? 'var(--green)' : undefined}
+        />
+        <StatusChip
+          label="Redfish"
+          dot={redfish?.running ? 'var(--green)' : 'var(--text-dim)'}
+          value={redfish?.running ? 'running' : 'idle'}
+          color={redfish?.running ? 'var(--green)' : undefined}
         />
       </div>
 
