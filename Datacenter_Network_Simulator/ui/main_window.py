@@ -1879,6 +1879,11 @@ class MainWindow(QMainWindow):
                 self._topology_view.topology_scene.set_edge_broken(src_id, dst_id, True)
                 self._console_panel.log(f"Link broken: {src.name} <-> {dst.name}", "error")
                 trap_type = TrapType.LINK_DOWN
+            # Resync the rule engine's iface snapshot BEFORE the explicit trap so
+            # the ticker doesn't re-fire a duplicate LinkDown/LinkUp on the
+            # up<->down transition break_link/restore_link just caused.
+            for dev in (src, dst):
+                self._rule_engine.sync_iface_history(dev)
             if self._sim_panel._running:
                 for dev, peer_id in ((src, dst_id), (dst, src_id)):
                     iface = next(

@@ -129,6 +129,18 @@ def _patch_link_endpoints(s, src_id: str, dst_id: str):
             pass
 
 
+def _sync_iface_history(s, *device_ids: str):
+    """Resync the rule engine's iface snapshot for these devices so the ticker
+    does NOT re-fire a duplicate LinkDown/LinkUp on top of the explicit trap
+    sent by _send_link_traps. No-op when the rule engine is absent."""
+    if s.rule_engine is None or s.device_manager is None:
+        return
+    for did in device_ids:
+        dev = s.device_manager.get_device(did)
+        if dev:
+            s.rule_engine.sync_iface_history(dev)
+
+
 def _send_link_traps(s, src_id: str, dst_id: str, layer: str, is_down: bool):
     """Send LINK_DOWN or LINK_UP traps on both endpoints of a production link.
     Management links carry no SNMP interface OIDs so traps are skipped."""
@@ -183,6 +195,7 @@ def break_link(req: LinkActionRequest):
     try:
         s.topology.break_link(req.src_id, req.dst_id, req.layer)
         s.notify_ui("link_changed", req.src_id, req.dst_id, True)
+        _sync_iface_history(s, req.src_id, req.dst_id)
         _send_link_traps(s, req.src_id, req.dst_id, req.layer, is_down=True)
         threading.Thread(
             target=_patch_link_endpoints,
@@ -203,6 +216,7 @@ def restore_link(req: LinkActionRequest):
     try:
         s.topology.restore_link(req.src_id, req.dst_id, req.layer)
         s.notify_ui("link_changed", req.src_id, req.dst_id, False)
+        _sync_iface_history(s, req.src_id, req.dst_id)
         _send_link_traps(s, req.src_id, req.dst_id, req.layer, is_down=False)
         threading.Thread(
             target=_patch_link_endpoints,

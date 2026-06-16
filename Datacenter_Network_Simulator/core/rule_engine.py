@@ -231,6 +231,26 @@ class RuleEngine:
     def set_action_callback(self, cb: Callable[[TrapAction], None]):
         self._action_cb = cb
 
+    def sync_iface_history(self, device) -> None:
+        """Resync a device's interface oper_status snapshot to its CURRENT values
+        so the next tick detects NO transition.
+
+        Call right after a user-initiated link break/restore that already sent an
+        explicit LINK_DOWN/LINK_UP trap. Without this, the ticker sees the
+        up<->down transition that break_link()/restore_link() caused and the
+        interface rule fires a DUPLICATE LinkDown/LinkUp (plus LinkFlap if
+        toggled repeatedly). Mirrors _update_iface_history.
+
+        Thread-safe against the ticker: a single dict assignment under the GIL.
+        device_id is device.name to match the DeviceFact key.
+        """
+        try:
+            self._prev_iface[device.name] = {
+                i.index: i.oper_status for i in device.interfaces
+            }
+        except Exception:
+            pass
+
     def add_rule(self, rule: Rule):
         with self._rules_lock:
             self._rules[rule.rule_name] = rule
