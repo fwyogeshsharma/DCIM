@@ -71,6 +71,97 @@ function useTelemetry(hostname: string | undefined) {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
+function CombinedTelemetryTable({
+  gnmiEvents,
+  sflowEvents,
+}: {
+  gnmiEvents: GnmiEvent[]
+  sflowEvents: SflowEvent[]
+}) {
+  // Flatten latest-per-path::metric from gNMI events (newest-first already sorted)
+  const gnmiRows: { path: string; key: string; value: number; unit: string; time: string }[] = []
+  const seenGnmi = new Set<string>()
+  for (const e of gnmiEvents) {
+    for (const [k, v] of Object.entries(e.values ?? {})) {
+      const uid = `${e.path}::${k}`
+      if (!seenGnmi.has(uid)) {
+        seenGnmi.add(uid)
+        gnmiRows.push({ path: e.path, key: k, value: v.value, unit: v.unit, time: e.timestamp })
+      }
+    }
+  }
+
+  // Latest reading per sFlow interface
+  const sflowByIface: Record<string, SflowEvent> = {}
+  for (const e of sflowEvents) {
+    if (!sflowByIface[e.interface]) sflowByIface[e.interface] = e
+  }
+  const sflowRows = Object.values(sflowByIface)
+
+  if (!gnmiRows.length && !sflowRows.length) {
+    return (
+      <p className="text-slate-500 text-sm py-3">
+        No telemetry data yet — gNMI posts every 30 s, sFlow appears when interfaces carry traffic.
+      </p>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs text-slate-300">
+        <thead>
+          <tr className="text-slate-500 border-b border-white/10">
+            <th className="text-left py-2 pr-3 font-medium">Protocol</th>
+            <th className="text-left py-2 pr-3 font-medium">Path / Interface</th>
+            <th className="text-left py-2 pr-3 font-medium">Metric</th>
+            <th className="text-right py-2 pr-3 font-medium">Value</th>
+            <th className="text-left py-2 font-medium">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {gnmiRows.map((row, i) => (
+            <tr key={`gnmi-${i}`} className="border-b border-white/5 hover:bg-white/5">
+              <td className="py-1.5 pr-3">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  gNMI
+                </span>
+              </td>
+              <td className="py-1.5 pr-3 font-mono text-blue-300 truncate max-w-[160px]" title={row.path}>
+                {row.path}
+              </td>
+              <td className="py-1.5 pr-3 text-slate-300">{row.key}</td>
+              <td className="py-1.5 pr-3 text-right font-mono text-white">
+                {row.value} <span className="text-slate-500">{row.unit}</span>
+              </td>
+              <td className="py-1.5 font-mono text-slate-500">{fmtTs(row.time)}</td>
+            </tr>
+          ))}
+          {sflowRows.map((e, i) => (
+            <tr key={`sflow-${i}`} className="border-b border-white/5 hover:bg-white/5">
+              <td className="py-1.5 pr-3">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  sFlow
+                </span>
+              </td>
+              <td className="py-1.5 pr-3 font-mono text-cyan-300">{e.interface}</td>
+              <td className="py-1.5 pr-3 text-slate-300">
+                Traffic &nbsp;{statusBadge(e.oper_status)}
+              </td>
+              <td className="py-1.5 pr-3 text-right font-mono text-white">
+                <span className="text-green-300">↓{e.in_mbps.toFixed(2)}</span>
+                {' / '}
+                <span className="text-blue-300">↑{e.out_mbps.toFixed(2)}</span>
+                <span className="text-slate-500"> Mbps</span>
+              </td>
+              <td className="py-1.5 font-mono text-slate-500">{fmtTs(e.timestamp)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function GnmiTable({ events }: { events: GnmiEvent[] }) {
   if (!events.length)
     return <p className="text-slate-500 text-sm py-3">No gNMI events yet — metrics post every 30 s.</p>
@@ -244,12 +335,27 @@ export default function AgentDetail() {
         </div>
       </div>
 
-      {/* Latest metrics */}
+      {/* Combined telemetry metrics */}
       <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Latest Metrics</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {latestMetrics &&
-            Object.entries(latestMetrics).map(([key, metric]) => (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            Latest Metrics
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">gNMI</span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">sFlow</span>
+          </h3>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => refetchTel()}
+            disabled={telFetching}
+            className="text-slate-400 hover:text-white"
+          >
+            <RefreshCw className={`w-4 h-4 ${telFetching ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+        {/* SNMP/standard metrics summary row */}
+        {latestMetrics && Object.keys(latestMetrics).length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 pb-5 border-b border-white/10">
+            {Object.entries(latestMetrics).map(([key, metric]) => (
               <div key={key} className="border border-white/10 rounded p-3">
                 <p className="text-xs text-slate-400">{key}</p>
                 <p className="text-lg font-semibold mt-1 text-white">
@@ -257,7 +363,9 @@ export default function AgentDetail() {
                 </p>
               </div>
             ))}
-        </div>
+          </div>
+        )}
+        <CombinedTelemetryTable gnmiEvents={gnmiEvents} sflowEvents={sflowEvents} />
       </div>
 
       {/* gNMI telemetry */}
