@@ -51,14 +51,14 @@ export default function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-white/10">
           {sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+            <Link
+              to="/"
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-              aria-label="Collapse sidebar"
+              aria-label="Go to home"
             >
               <Server className="w-6 h-6 text-blue-500" />
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">FWDCIM</h1>
-            </button>
+            </Link>
           )}
           {!sidebarOpen && (
             <button

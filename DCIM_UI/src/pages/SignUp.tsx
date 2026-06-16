@@ -187,12 +187,12 @@ export default function SignUp() {
       >
         <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl shadow-black/50">
           {/* Logo */}
-          <div className="flex items-center gap-2.5 mb-7">
+          <Link to="/" className="flex items-center gap-2.5 mb-7 cursor-pointer hover:opacity-80 transition-opacity w-fit">
             <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
               <Server className="w-5 h-5 text-white" />
             </div>
             <span className="text-lg font-bold text-white">FWDCIM Enterprise</span>
-          </div>
+          </Link>
 
           <h1 className="text-xl font-bold text-white mb-1">Create your account</h1>
           <p className="text-slate-400 text-sm mb-6">Join the DCIM monitoring platform</p>

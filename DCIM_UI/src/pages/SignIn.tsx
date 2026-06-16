@@ -215,12 +215,12 @@ export default function SignIn() {
         {/* Content on top */}
         <div className="relative z-10 p-12 flex flex-col justify-between h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity w-fit">
             <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
               <Server className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-white">FWDCIM Enterprise</span>
-          </div>
+          </Link>
 
           {/* Tagline + stats */}
           <div>
@@ -272,12 +272,12 @@ export default function SignIn() {
           className="w-full max-w-sm"
         >
           {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
+          <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden cursor-pointer hover:opacity-80 transition-opacity w-fit">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <Server className="w-4 h-4 text-white" />
             </div>
             <span className="text-lg font-bold text-white">FWDCIM</span>
-          </div>
+          </Link>
 
           <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
           <p className="text-slate-400 text-sm mb-8">Sign in to your account to continue</p>
