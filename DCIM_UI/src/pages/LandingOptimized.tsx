@@ -245,9 +245,6 @@ function HeroSection() {
                 Start Free Trial
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
-              <button className="border border-white/30 hover:border-white/50 hover:bg-white/5 px-8 py-4 rounded-lg text-lg font-semibold transition-colors cursor-pointer backdrop-blur-sm w-full sm:w-auto">
-                Watch Demo
-              </button>
             </div>
           </motion.div>
         </div>
@@ -485,9 +482,6 @@ function CTASection() {
             >
               Get Started Free
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button className="border-2 border-white text-white hover:bg-white/10 px-8 py-4 rounded-lg text-lg font-semibold transition-colors cursor-pointer w-full sm:w-auto">
-              Schedule Demo
             </button>
           </div>
         </motion.div>
