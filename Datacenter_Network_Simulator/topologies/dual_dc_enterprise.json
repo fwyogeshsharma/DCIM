@@ -31283,7 +31283,7 @@
     {
       "id": "f141cf08",
       "position": {
-        "x": 2320,
+        "x": 3420,
         "y": 0
       },
       "device": {
@@ -31432,7 +31432,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -31461,7 +31461,7 @@
     {
       "id": "bd2953cc",
       "position": {
-        "x": 2560,
+        "x": 3660,
         "y": 0
       },
       "device": {
@@ -31610,7 +31610,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -31639,7 +31639,7 @@
     {
       "id": "ebdcd4f9",
       "position": {
-        "x": 2320,
+        "x": 3420,
         "y": 180
       },
       "device": {
@@ -31848,7 +31848,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -31877,7 +31877,7 @@
     {
       "id": "b2177ffd",
       "position": {
-        "x": 2560,
+        "x": 3660,
         "y": 180
       },
       "device": {
@@ -32086,7 +32086,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -32115,7 +32115,7 @@
     {
       "id": "195ed21e",
       "position": {
-        "x": 2320,
+        "x": 3420,
         "y": 360
       },
       "device": {
@@ -32294,7 +32294,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -32323,7 +32323,7 @@
     {
       "id": "621eeb8d",
       "position": {
-        "x": 2560,
+        "x": 3660,
         "y": 360
       },
       "device": {
@@ -32502,7 +32502,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -32531,7 +32531,7 @@
     {
       "id": "12aaf0b8",
       "position": {
-        "x": 2320,
+        "x": 3420,
         "y": 540
       },
       "device": {
@@ -33520,7 +33520,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -33549,7 +33549,7 @@
     {
       "id": "63fd0813",
       "position": {
-        "x": 2560,
+        "x": 3660,
         "y": 540
       },
       "device": {
@@ -34538,7 +34538,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -34567,7 +34567,7 @@
     {
       "id": "96cb21c4",
       "position": {
-        "x": 2013,
+        "x": 3113,
         "y": 720
       },
       "device": {
@@ -35406,7 +35406,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -35435,7 +35435,7 @@
     {
       "id": "0ac7cb5c",
       "position": {
-        "x": 2440,
+        "x": 3540,
         "y": 720
       },
       "device": {
@@ -36274,7 +36274,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -36303,7 +36303,7 @@
     {
       "id": "24f0fd21",
       "position": {
-        "x": 2866,
+        "x": 3966,
         "y": 720
       },
       "device": {
@@ -37142,7 +37142,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -37171,7 +37171,7 @@
     {
       "id": "27ae20e5",
       "position": {
-        "x": 1880,
+        "x": 2980,
         "y": 900
       },
       "device": {
@@ -38010,7 +38010,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -38039,7 +38039,7 @@
     {
       "id": "899f7b26",
       "position": {
-        "x": 2040,
+        "x": 3140,
         "y": 900
       },
       "device": {
@@ -38878,7 +38878,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -38907,7 +38907,7 @@
     {
       "id": "88c18748",
       "position": {
-        "x": 2200,
+        "x": 3300,
         "y": 900
       },
       "device": {
@@ -39746,7 +39746,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -39775,7 +39775,7 @@
     {
       "id": "54673419",
       "position": {
-        "x": 2360,
+        "x": 3460,
         "y": 900
       },
       "device": {
@@ -40614,7 +40614,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -40643,7 +40643,7 @@
     {
       "id": "4ff8c02f",
       "position": {
-        "x": 2520,
+        "x": 3620,
         "y": 900
       },
       "device": {
@@ -41482,7 +41482,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -41511,7 +41511,7 @@
     {
       "id": "12a6cf07",
       "position": {
-        "x": 2680,
+        "x": 3780,
         "y": 900
       },
       "device": {
@@ -42350,7 +42350,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -42379,7 +42379,7 @@
     {
       "id": "4838c308",
       "position": {
-        "x": 2840,
+        "x": 3940,
         "y": 900
       },
       "device": {
@@ -43218,7 +43218,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -43247,7 +43247,7 @@
     {
       "id": "de759d37",
       "position": {
-        "x": 3000,
+        "x": 4100,
         "y": 900
       },
       "device": {
@@ -44086,7 +44086,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -44115,7 +44115,7 @@
     {
       "id": "e8026ef2",
       "position": {
-        "x": 1460,
+        "x": 2560,
         "y": 1080
       },
       "device": {
@@ -44174,7 +44174,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44203,7 +44203,7 @@
     {
       "id": "2c2625ca",
       "position": {
-        "x": 1520,
+        "x": 2620,
         "y": 1080
       },
       "device": {
@@ -44262,7 +44262,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44291,7 +44291,7 @@
     {
       "id": "a3443a39",
       "position": {
-        "x": 1580,
+        "x": 2680,
         "y": 1080
       },
       "device": {
@@ -44350,7 +44350,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44379,7 +44379,7 @@
     {
       "id": "620e2e0b",
       "position": {
-        "x": 1640,
+        "x": 2740,
         "y": 1080
       },
       "device": {
@@ -44438,7 +44438,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44467,7 +44467,7 @@
     {
       "id": "acdb545c",
       "position": {
-        "x": 1700,
+        "x": 2800,
         "y": 1080
       },
       "device": {
@@ -44526,7 +44526,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44555,7 +44555,7 @@
     {
       "id": "bc7d373d",
       "position": {
-        "x": 1760,
+        "x": 2860,
         "y": 1080
       },
       "device": {
@@ -44614,7 +44614,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44643,7 +44643,7 @@
     {
       "id": "fe77700e",
       "position": {
-        "x": 1820,
+        "x": 2920,
         "y": 1080
       },
       "device": {
@@ -44702,7 +44702,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44731,7 +44731,7 @@
     {
       "id": "42ce579d",
       "position": {
-        "x": 1880,
+        "x": 2980,
         "y": 1080
       },
       "device": {
@@ -44790,7 +44790,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44819,7 +44819,7 @@
     {
       "id": "19084277",
       "position": {
-        "x": 1940,
+        "x": 3040,
         "y": 1080
       },
       "device": {
@@ -44878,7 +44878,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44907,7 +44907,7 @@
     {
       "id": "7527db7e",
       "position": {
-        "x": 2000,
+        "x": 3100,
         "y": 1080
       },
       "device": {
@@ -44966,7 +44966,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -44995,7 +44995,7 @@
     {
       "id": "120bb470",
       "position": {
-        "x": 2060,
+        "x": 3160,
         "y": 1080
       },
       "device": {
@@ -45054,7 +45054,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45083,7 +45083,7 @@
     {
       "id": "e323c743",
       "position": {
-        "x": 2120,
+        "x": 3220,
         "y": 1080
       },
       "device": {
@@ -45142,7 +45142,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45171,7 +45171,7 @@
     {
       "id": "5a11efec",
       "position": {
-        "x": 2180,
+        "x": 3280,
         "y": 1080
       },
       "device": {
@@ -45230,7 +45230,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45259,7 +45259,7 @@
     {
       "id": "1defd435",
       "position": {
-        "x": 2240,
+        "x": 3340,
         "y": 1080
       },
       "device": {
@@ -45318,7 +45318,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45347,7 +45347,7 @@
     {
       "id": "40f2235b",
       "position": {
-        "x": 2300,
+        "x": 3400,
         "y": 1080
       },
       "device": {
@@ -45406,7 +45406,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45435,7 +45435,7 @@
     {
       "id": "285e682b",
       "position": {
-        "x": 1620,
+        "x": 2720,
         "y": 1080
       },
       "device": {
@@ -45494,7 +45494,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45523,7 +45523,7 @@
     {
       "id": "6075b380",
       "position": {
-        "x": 1680,
+        "x": 2780,
         "y": 1080
       },
       "device": {
@@ -45582,7 +45582,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45611,7 +45611,7 @@
     {
       "id": "432bd47c",
       "position": {
-        "x": 1740,
+        "x": 2840,
         "y": 1080
       },
       "device": {
@@ -45670,7 +45670,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45699,7 +45699,7 @@
     {
       "id": "c3a50a9e",
       "position": {
-        "x": 1800,
+        "x": 2900,
         "y": 1080
       },
       "device": {
@@ -45758,7 +45758,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45787,7 +45787,7 @@
     {
       "id": "f359fd51",
       "position": {
-        "x": 1860,
+        "x": 2960,
         "y": 1080
       },
       "device": {
@@ -45846,7 +45846,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45875,7 +45875,7 @@
     {
       "id": "8607de17",
       "position": {
-        "x": 1920,
+        "x": 3020,
         "y": 1080
       },
       "device": {
@@ -45934,7 +45934,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -45963,7 +45963,7 @@
     {
       "id": "1a40bd5c",
       "position": {
-        "x": 1980,
+        "x": 3080,
         "y": 1080
       },
       "device": {
@@ -46022,7 +46022,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46051,7 +46051,7 @@
     {
       "id": "cdf0cd29",
       "position": {
-        "x": 2040,
+        "x": 3140,
         "y": 1080
       },
       "device": {
@@ -46110,7 +46110,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46139,7 +46139,7 @@
     {
       "id": "abf756a4",
       "position": {
-        "x": 2100,
+        "x": 3200,
         "y": 1080
       },
       "device": {
@@ -46198,7 +46198,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46227,7 +46227,7 @@
     {
       "id": "3e46719a",
       "position": {
-        "x": 2160,
+        "x": 3260,
         "y": 1080
       },
       "device": {
@@ -46286,7 +46286,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46315,7 +46315,7 @@
     {
       "id": "60ab37f8",
       "position": {
-        "x": 2220,
+        "x": 3320,
         "y": 1080
       },
       "device": {
@@ -46374,7 +46374,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46403,7 +46403,7 @@
     {
       "id": "b45c08fb",
       "position": {
-        "x": 2280,
+        "x": 3380,
         "y": 1080
       },
       "device": {
@@ -46462,7 +46462,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46491,7 +46491,7 @@
     {
       "id": "cd87c3e2",
       "position": {
-        "x": 2340,
+        "x": 3440,
         "y": 1080
       },
       "device": {
@@ -46550,7 +46550,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46579,7 +46579,7 @@
     {
       "id": "0f5d441a",
       "position": {
-        "x": 2400,
+        "x": 3500,
         "y": 1080
       },
       "device": {
@@ -46638,7 +46638,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46667,7 +46667,7 @@
     {
       "id": "b23f84a6",
       "position": {
-        "x": 2460,
+        "x": 3560,
         "y": 1080
       },
       "device": {
@@ -46726,7 +46726,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46755,7 +46755,7 @@
     {
       "id": "39bce271",
       "position": {
-        "x": 1780,
+        "x": 2880,
         "y": 1080
       },
       "device": {
@@ -46814,7 +46814,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46843,7 +46843,7 @@
     {
       "id": "f38e8e91",
       "position": {
-        "x": 1840,
+        "x": 2940,
         "y": 1080
       },
       "device": {
@@ -46902,7 +46902,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -46931,7 +46931,7 @@
     {
       "id": "05169b42",
       "position": {
-        "x": 1900,
+        "x": 3000,
         "y": 1080
       },
       "device": {
@@ -46990,7 +46990,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47019,7 +47019,7 @@
     {
       "id": "ffec80e1",
       "position": {
-        "x": 1960,
+        "x": 3060,
         "y": 1080
       },
       "device": {
@@ -47078,7 +47078,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47107,7 +47107,7 @@
     {
       "id": "9a092c67",
       "position": {
-        "x": 2020,
+        "x": 3120,
         "y": 1080
       },
       "device": {
@@ -47166,7 +47166,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47195,7 +47195,7 @@
     {
       "id": "e7255df8",
       "position": {
-        "x": 2080,
+        "x": 3180,
         "y": 1080
       },
       "device": {
@@ -47254,7 +47254,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47283,7 +47283,7 @@
     {
       "id": "11c49b22",
       "position": {
-        "x": 2140,
+        "x": 3240,
         "y": 1080
       },
       "device": {
@@ -47342,7 +47342,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47371,7 +47371,7 @@
     {
       "id": "e1de098b",
       "position": {
-        "x": 2200,
+        "x": 3300,
         "y": 1080
       },
       "device": {
@@ -47430,7 +47430,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47459,7 +47459,7 @@
     {
       "id": "50e6e66d",
       "position": {
-        "x": 2260,
+        "x": 3360,
         "y": 1080
       },
       "device": {
@@ -47518,7 +47518,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47547,7 +47547,7 @@
     {
       "id": "25ff05cf",
       "position": {
-        "x": 2320,
+        "x": 3420,
         "y": 1080
       },
       "device": {
@@ -47606,7 +47606,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47635,7 +47635,7 @@
     {
       "id": "952ad7c1",
       "position": {
-        "x": 2380,
+        "x": 3480,
         "y": 1080
       },
       "device": {
@@ -47694,7 +47694,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47723,7 +47723,7 @@
     {
       "id": "e91967cc",
       "position": {
-        "x": 2440,
+        "x": 3540,
         "y": 1080
       },
       "device": {
@@ -47782,7 +47782,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47811,7 +47811,7 @@
     {
       "id": "f281af1e",
       "position": {
-        "x": 2500,
+        "x": 3600,
         "y": 1080
       },
       "device": {
@@ -47870,7 +47870,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47899,7 +47899,7 @@
     {
       "id": "49a9f5c8",
       "position": {
-        "x": 2560,
+        "x": 3660,
         "y": 1080
       },
       "device": {
@@ -47958,7 +47958,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -47987,7 +47987,7 @@
     {
       "id": "f366d1f2",
       "position": {
-        "x": 2620,
+        "x": 3720,
         "y": 1080
       },
       "device": {
@@ -48046,7 +48046,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48075,7 +48075,7 @@
     {
       "id": "f4a07bf2",
       "position": {
-        "x": 1940,
+        "x": 3040,
         "y": 1080
       },
       "device": {
@@ -48134,7 +48134,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48163,7 +48163,7 @@
     {
       "id": "0b2e040b",
       "position": {
-        "x": 2000,
+        "x": 3100,
         "y": 1080
       },
       "device": {
@@ -48222,7 +48222,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48251,7 +48251,7 @@
     {
       "id": "cd148b49",
       "position": {
-        "x": 2060,
+        "x": 3160,
         "y": 1080
       },
       "device": {
@@ -48310,7 +48310,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48339,7 +48339,7 @@
     {
       "id": "02cb86d7",
       "position": {
-        "x": 2120,
+        "x": 3220,
         "y": 1080
       },
       "device": {
@@ -48398,7 +48398,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48427,7 +48427,7 @@
     {
       "id": "702e950a",
       "position": {
-        "x": 2180,
+        "x": 3280,
         "y": 1080
       },
       "device": {
@@ -48486,7 +48486,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48515,7 +48515,7 @@
     {
       "id": "8cab6e8f",
       "position": {
-        "x": 2240,
+        "x": 3340,
         "y": 1080
       },
       "device": {
@@ -48574,7 +48574,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48603,7 +48603,7 @@
     {
       "id": "99e14688",
       "position": {
-        "x": 2300,
+        "x": 3400,
         "y": 1080
       },
       "device": {
@@ -48662,7 +48662,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48691,7 +48691,7 @@
     {
       "id": "0514484a",
       "position": {
-        "x": 2360,
+        "x": 3460,
         "y": 1080
       },
       "device": {
@@ -48750,7 +48750,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48779,7 +48779,7 @@
     {
       "id": "060ac7d2",
       "position": {
-        "x": 2420,
+        "x": 3520,
         "y": 1080
       },
       "device": {
@@ -48838,7 +48838,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48867,7 +48867,7 @@
     {
       "id": "a1df2d8c",
       "position": {
-        "x": 2480,
+        "x": 3580,
         "y": 1080
       },
       "device": {
@@ -48926,7 +48926,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -48955,7 +48955,7 @@
     {
       "id": "196840a1",
       "position": {
-        "x": 2540,
+        "x": 3640,
         "y": 1080
       },
       "device": {
@@ -49014,7 +49014,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -49043,7 +49043,7 @@
     {
       "id": "cca7cee4",
       "position": {
-        "x": 2600,
+        "x": 3700,
         "y": 1080
       },
       "device": {
@@ -49102,7 +49102,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -49131,7 +49131,7 @@
     {
       "id": "6c53ada7",
       "position": {
-        "x": 2660,
+        "x": 3760,
         "y": 1080
       },
       "device": {
@@ -49190,7 +49190,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -49219,7 +49219,7 @@
     {
       "id": "36096ff3",
       "position": {
-        "x": 2720,
+        "x": 3820,
         "y": 1080
       },
       "device": {
@@ -49278,7 +49278,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -49307,7 +49307,7 @@
     {
       "id": "5999a07a",
       "position": {
-        "x": 2780,
+        "x": 3880,
         "y": 1080
       },
       "device": {
@@ -49366,7 +49366,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -49395,7 +49395,7 @@
     {
       "id": "56eceacc",
       "position": {
-        "x": 2100,
+        "x": 3200,
         "y": 1080
       },
       "device": {
@@ -49454,7 +49454,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -49483,7 +49483,7 @@
     {
       "id": "06b47fce",
       "position": {
-        "x": 2160,
+        "x": 3260,
         "y": 1080
       },
       "device": {
@@ -49542,7 +49542,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -49571,7 +49571,7 @@
     {
       "id": "6b045824",
       "position": {
-        "x": 2220,
+        "x": 3320,
         "y": 1080
       },
       "device": {
@@ -49630,7 +49630,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -49659,7 +49659,7 @@
     {
       "id": "be20df04",
       "position": {
-        "x": 2280,
+        "x": 3380,
         "y": 1080
       },
       "device": {
@@ -49718,7 +49718,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -49747,7 +49747,7 @@
     {
       "id": "42b82ca8",
       "position": {
-        "x": 2340,
+        "x": 3440,
         "y": 1080
       },
       "device": {
@@ -49806,7 +49806,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -49835,7 +49835,7 @@
     {
       "id": "6dcaa8fe",
       "position": {
-        "x": 2400,
+        "x": 3500,
         "y": 1080
       },
       "device": {
@@ -49894,7 +49894,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -49923,7 +49923,7 @@
     {
       "id": "5a5630a7",
       "position": {
-        "x": 2460,
+        "x": 3560,
         "y": 1080
       },
       "device": {
@@ -49982,7 +49982,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50011,7 +50011,7 @@
     {
       "id": "01fcb97e",
       "position": {
-        "x": 2520,
+        "x": 3620,
         "y": 1080
       },
       "device": {
@@ -50070,7 +50070,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50099,7 +50099,7 @@
     {
       "id": "5eac480b",
       "position": {
-        "x": 2580,
+        "x": 3680,
         "y": 1080
       },
       "device": {
@@ -50158,7 +50158,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50187,7 +50187,7 @@
     {
       "id": "e1520fb5",
       "position": {
-        "x": 2640,
+        "x": 3740,
         "y": 1080
       },
       "device": {
@@ -50246,7 +50246,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50275,7 +50275,7 @@
     {
       "id": "7861887a",
       "position": {
-        "x": 2700,
+        "x": 3800,
         "y": 1080
       },
       "device": {
@@ -50334,7 +50334,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50363,7 +50363,7 @@
     {
       "id": "58cd0208",
       "position": {
-        "x": 2760,
+        "x": 3860,
         "y": 1080
       },
       "device": {
@@ -50422,7 +50422,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50451,7 +50451,7 @@
     {
       "id": "16953bc9",
       "position": {
-        "x": 2820,
+        "x": 3920,
         "y": 1080
       },
       "device": {
@@ -50510,7 +50510,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50539,7 +50539,7 @@
     {
       "id": "c66b1a6e",
       "position": {
-        "x": 2880,
+        "x": 3980,
         "y": 1080
       },
       "device": {
@@ -50598,7 +50598,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50627,7 +50627,7 @@
     {
       "id": "05ec25db",
       "position": {
-        "x": 2940,
+        "x": 4040,
         "y": 1080
       },
       "device": {
@@ -50686,7 +50686,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50715,7 +50715,7 @@
     {
       "id": "8c766a43",
       "position": {
-        "x": 2260,
+        "x": 3360,
         "y": 1080
       },
       "device": {
@@ -50774,7 +50774,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50803,7 +50803,7 @@
     {
       "id": "1591a04b",
       "position": {
-        "x": 2320,
+        "x": 3420,
         "y": 1080
       },
       "device": {
@@ -50862,7 +50862,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50891,7 +50891,7 @@
     {
       "id": "ff698dfd",
       "position": {
-        "x": 2380,
+        "x": 3480,
         "y": 1080
       },
       "device": {
@@ -50950,7 +50950,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -50979,7 +50979,7 @@
     {
       "id": "03101de4",
       "position": {
-        "x": 2440,
+        "x": 3540,
         "y": 1080
       },
       "device": {
@@ -51038,7 +51038,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51067,7 +51067,7 @@
     {
       "id": "266c363d",
       "position": {
-        "x": 2500,
+        "x": 3600,
         "y": 1080
       },
       "device": {
@@ -51126,7 +51126,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51155,7 +51155,7 @@
     {
       "id": "a6014530",
       "position": {
-        "x": 2560,
+        "x": 3660,
         "y": 1080
       },
       "device": {
@@ -51214,7 +51214,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51243,7 +51243,7 @@
     {
       "id": "81cf8ff8",
       "position": {
-        "x": 2620,
+        "x": 3720,
         "y": 1080
       },
       "device": {
@@ -51302,7 +51302,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51331,7 +51331,7 @@
     {
       "id": "a270ef89",
       "position": {
-        "x": 2680,
+        "x": 3780,
         "y": 1080
       },
       "device": {
@@ -51390,7 +51390,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51419,7 +51419,7 @@
     {
       "id": "eadc68e1",
       "position": {
-        "x": 2740,
+        "x": 3840,
         "y": 1080
       },
       "device": {
@@ -51478,7 +51478,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51507,7 +51507,7 @@
     {
       "id": "bb64b8f0",
       "position": {
-        "x": 2800,
+        "x": 3900,
         "y": 1080
       },
       "device": {
@@ -51566,7 +51566,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51595,7 +51595,7 @@
     {
       "id": "a3f644bb",
       "position": {
-        "x": 2860,
+        "x": 3960,
         "y": 1080
       },
       "device": {
@@ -51654,7 +51654,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51683,7 +51683,7 @@
     {
       "id": "d08dac04",
       "position": {
-        "x": 2920,
+        "x": 4020,
         "y": 1080
       },
       "device": {
@@ -51742,7 +51742,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51771,7 +51771,7 @@
     {
       "id": "558b2029",
       "position": {
-        "x": 2980,
+        "x": 4080,
         "y": 1080
       },
       "device": {
@@ -51830,7 +51830,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51859,7 +51859,7 @@
     {
       "id": "d4adc1bc",
       "position": {
-        "x": 3040,
+        "x": 4140,
         "y": 1080
       },
       "device": {
@@ -51918,7 +51918,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -51947,7 +51947,7 @@
     {
       "id": "f14d7a51",
       "position": {
-        "x": 3100,
+        "x": 4200,
         "y": 1080
       },
       "device": {
@@ -52006,7 +52006,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52035,7 +52035,7 @@
     {
       "id": "a5eee128",
       "position": {
-        "x": 2420,
+        "x": 3520,
         "y": 1080
       },
       "device": {
@@ -52094,7 +52094,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52123,7 +52123,7 @@
     {
       "id": "526c4793",
       "position": {
-        "x": 2480,
+        "x": 3580,
         "y": 1080
       },
       "device": {
@@ -52182,7 +52182,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52211,7 +52211,7 @@
     {
       "id": "04756996",
       "position": {
-        "x": 2540,
+        "x": 3640,
         "y": 1080
       },
       "device": {
@@ -52270,7 +52270,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52299,7 +52299,7 @@
     {
       "id": "59f2da4a",
       "position": {
-        "x": 2600,
+        "x": 3700,
         "y": 1080
       },
       "device": {
@@ -52358,7 +52358,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52387,7 +52387,7 @@
     {
       "id": "b61f88a5",
       "position": {
-        "x": 2660,
+        "x": 3760,
         "y": 1080
       },
       "device": {
@@ -52446,7 +52446,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52475,7 +52475,7 @@
     {
       "id": "d53ad494",
       "position": {
-        "x": 2720,
+        "x": 3820,
         "y": 1080
       },
       "device": {
@@ -52534,7 +52534,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52563,7 +52563,7 @@
     {
       "id": "5666ba55",
       "position": {
-        "x": 2780,
+        "x": 3880,
         "y": 1080
       },
       "device": {
@@ -52622,7 +52622,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52651,7 +52651,7 @@
     {
       "id": "e112b707",
       "position": {
-        "x": 2840,
+        "x": 3940,
         "y": 1080
       },
       "device": {
@@ -52710,7 +52710,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52739,7 +52739,7 @@
     {
       "id": "5bd993c7",
       "position": {
-        "x": 2900,
+        "x": 4000,
         "y": 1080
       },
       "device": {
@@ -52798,7 +52798,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52827,7 +52827,7 @@
     {
       "id": "98386d9f",
       "position": {
-        "x": 2960,
+        "x": 4060,
         "y": 1080
       },
       "device": {
@@ -52886,7 +52886,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -52915,7 +52915,7 @@
     {
       "id": "d2320d92",
       "position": {
-        "x": 3020,
+        "x": 4120,
         "y": 1080
       },
       "device": {
@@ -52974,7 +52974,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53003,7 +53003,7 @@
     {
       "id": "ba5b1d64",
       "position": {
-        "x": 3080,
+        "x": 4180,
         "y": 1080
       },
       "device": {
@@ -53062,7 +53062,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53091,7 +53091,7 @@
     {
       "id": "58395aa2",
       "position": {
-        "x": 3140,
+        "x": 4240,
         "y": 1080
       },
       "device": {
@@ -53150,7 +53150,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53179,7 +53179,7 @@
     {
       "id": "7ba2c3e8",
       "position": {
-        "x": 3200,
+        "x": 4300,
         "y": 1080
       },
       "device": {
@@ -53238,7 +53238,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53267,7 +53267,7 @@
     {
       "id": "c1d5d4a5",
       "position": {
-        "x": 3260,
+        "x": 4360,
         "y": 1080
       },
       "device": {
@@ -53326,7 +53326,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53355,7 +53355,7 @@
     {
       "id": "3babcd3d",
       "position": {
-        "x": 2580,
+        "x": 3680,
         "y": 1080
       },
       "device": {
@@ -53414,7 +53414,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53443,7 +53443,7 @@
     {
       "id": "fe4fa31e",
       "position": {
-        "x": 2640,
+        "x": 3740,
         "y": 1080
       },
       "device": {
@@ -53502,7 +53502,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53531,7 +53531,7 @@
     {
       "id": "d314dd78",
       "position": {
-        "x": 2700,
+        "x": 3800,
         "y": 1080
       },
       "device": {
@@ -53590,7 +53590,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53619,7 +53619,7 @@
     {
       "id": "1faed5ac",
       "position": {
-        "x": 2760,
+        "x": 3860,
         "y": 1080
       },
       "device": {
@@ -53678,7 +53678,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53707,7 +53707,7 @@
     {
       "id": "1949b6a8",
       "position": {
-        "x": 2820,
+        "x": 3920,
         "y": 1080
       },
       "device": {
@@ -53766,7 +53766,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53795,7 +53795,7 @@
     {
       "id": "7aa55eb4",
       "position": {
-        "x": 2880,
+        "x": 3980,
         "y": 1080
       },
       "device": {
@@ -53854,7 +53854,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53883,7 +53883,7 @@
     {
       "id": "ba5de063",
       "position": {
-        "x": 2940,
+        "x": 4040,
         "y": 1080
       },
       "device": {
@@ -53942,7 +53942,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -53971,7 +53971,7 @@
     {
       "id": "d786a004",
       "position": {
-        "x": 3000,
+        "x": 4100,
         "y": 1080
       },
       "device": {
@@ -54030,7 +54030,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54059,7 +54059,7 @@
     {
       "id": "33f27698",
       "position": {
-        "x": 3060,
+        "x": 4160,
         "y": 1080
       },
       "device": {
@@ -54118,7 +54118,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54147,7 +54147,7 @@
     {
       "id": "b2c4bd29",
       "position": {
-        "x": 3120,
+        "x": 4220,
         "y": 1080
       },
       "device": {
@@ -54206,7 +54206,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54235,7 +54235,7 @@
     {
       "id": "a7bb14dc",
       "position": {
-        "x": 3180,
+        "x": 4280,
         "y": 1080
       },
       "device": {
@@ -54294,7 +54294,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54323,7 +54323,7 @@
     {
       "id": "89233779",
       "position": {
-        "x": 3240,
+        "x": 4340,
         "y": 1080
       },
       "device": {
@@ -54382,7 +54382,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54411,7 +54411,7 @@
     {
       "id": "82d6addd",
       "position": {
-        "x": 3300,
+        "x": 4400,
         "y": 1080
       },
       "device": {
@@ -54470,7 +54470,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54499,7 +54499,7 @@
     {
       "id": "74c92961",
       "position": {
-        "x": 3360,
+        "x": 4460,
         "y": 1080
       },
       "device": {
@@ -54558,7 +54558,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54587,7 +54587,7 @@
     {
       "id": "9b55a3ec",
       "position": {
-        "x": 3420,
+        "x": 4520,
         "y": 1080
       },
       "device": {
@@ -54646,7 +54646,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -54675,7 +54675,7 @@
     {
       "id": "59639ab5",
       "position": {
-        "x": 1970,
+        "x": 3070,
         "y": 1220
       },
       "device": {
@@ -54734,7 +54734,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -54763,7 +54763,7 @@
     {
       "id": "10ca468f",
       "position": {
-        "x": 2130,
+        "x": 3230,
         "y": 1220
       },
       "device": {
@@ -54822,7 +54822,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -54851,7 +54851,7 @@
     {
       "id": "49dbe1af",
       "position": {
-        "x": 2290,
+        "x": 3390,
         "y": 1220
       },
       "device": {
@@ -54910,7 +54910,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -54939,7 +54939,7 @@
     {
       "id": "29424174",
       "position": {
-        "x": 2450,
+        "x": 3550,
         "y": 1220
       },
       "device": {
@@ -54998,7 +54998,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -55027,7 +55027,7 @@
     {
       "id": "d897d9ee",
       "position": {
-        "x": 2610,
+        "x": 3710,
         "y": 1220
       },
       "device": {
@@ -55086,7 +55086,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -55115,7 +55115,7 @@
     {
       "id": "72e30bfb",
       "position": {
-        "x": 2770,
+        "x": 3870,
         "y": 1220
       },
       "device": {
@@ -55174,7 +55174,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -55203,7 +55203,7 @@
     {
       "id": "b410e1d0",
       "position": {
-        "x": 2930,
+        "x": 4030,
         "y": 1220
       },
       "device": {
@@ -55262,7 +55262,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -55291,7 +55291,7 @@
     {
       "id": "64685735",
       "position": {
-        "x": 3090,
+        "x": 4190,
         "y": 1220
       },
       "device": {
@@ -55350,7 +55350,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -61147,7 +61147,7 @@
     {
       "id": "431a7dbd",
       "position": {
-        "x": 2440,
+        "x": 3540,
         "y": 1700
       },
       "device": {
@@ -61356,7 +61356,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -61385,7 +61385,7 @@
     {
       "id": "efbee6c2",
       "position": {
-        "x": 1460,
+        "x": 2560,
         "y": 1480
       },
       "device": {
@@ -62164,7 +62164,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -62193,7 +62193,7 @@
     {
       "id": "2067c82f",
       "position": {
-        "x": 2113,
+        "x": 3213,
         "y": 1480
       },
       "device": {
@@ -62972,7 +62972,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -63001,7 +63001,7 @@
     {
       "id": "e14eb712",
       "position": {
-        "x": 2767,
+        "x": 3867,
         "y": 1480
       },
       "device": {
@@ -63780,7 +63780,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -63809,7 +63809,7 @@
     {
       "id": "09e66792",
       "position": {
-        "x": 3420,
+        "x": 4520,
         "y": 1480
       },
       "device": {
@@ -64588,7 +64588,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -64617,7 +64617,7 @@
     {
       "id": "d8f9fde3",
       "position": {
-        "x": 1467,
+        "x": 2567,
         "y": 1640
       },
       "device": {
@@ -64661,7 +64661,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -64690,7 +64690,7 @@
     {
       "id": "5eddb0f7",
       "position": {
-        "x": 1582,
+        "x": 2682,
         "y": 1640
       },
       "device": {
@@ -64734,7 +64734,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -64763,7 +64763,7 @@
     {
       "id": "7320c74e",
       "position": {
-        "x": 1696,
+        "x": 2796,
         "y": 1640
       },
       "device": {
@@ -64807,7 +64807,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -64836,7 +64836,7 @@
     {
       "id": "3c003fd5",
       "position": {
-        "x": 1811,
+        "x": 2911,
         "y": 1640
       },
       "device": {
@@ -64880,7 +64880,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -64909,7 +64909,7 @@
     {
       "id": "e26a32c8",
       "position": {
-        "x": 1925,
+        "x": 3025,
         "y": 1640
       },
       "device": {
@@ -64953,7 +64953,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Under Floor",
         "floor": "1",
@@ -64982,7 +64982,7 @@
     {
       "id": "365e09d2",
       "position": {
-        "x": 2039,
+        "x": 3139,
         "y": 1640
       },
       "device": {
@@ -65026,7 +65026,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65055,7 +65055,7 @@
     {
       "id": "3d57bdfe",
       "position": {
-        "x": 2154,
+        "x": 3254,
         "y": 1640
       },
       "device": {
@@ -65099,7 +65099,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65128,7 +65128,7 @@
     {
       "id": "df3ecded",
       "position": {
-        "x": 2268,
+        "x": 3368,
         "y": 1640
       },
       "device": {
@@ -65172,7 +65172,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65201,7 +65201,7 @@
     {
       "id": "caf32f58",
       "position": {
-        "x": 2383,
+        "x": 3483,
         "y": 1640
       },
       "device": {
@@ -65245,7 +65245,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65274,7 +65274,7 @@
     {
       "id": "075de7ee",
       "position": {
-        "x": 2497,
+        "x": 3597,
         "y": 1640
       },
       "device": {
@@ -65318,7 +65318,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Under Floor",
         "floor": "2",
@@ -65347,7 +65347,7 @@
     {
       "id": "82e73be1",
       "position": {
-        "x": 2612,
+        "x": 3712,
         "y": 1640
       },
       "device": {
@@ -65391,7 +65391,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65420,7 +65420,7 @@
     {
       "id": "914b09e4",
       "position": {
-        "x": 2726,
+        "x": 3826,
         "y": 1640
       },
       "device": {
@@ -65464,7 +65464,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65493,7 +65493,7 @@
     {
       "id": "bbc84072",
       "position": {
-        "x": 2841,
+        "x": 3941,
         "y": 1640
       },
       "device": {
@@ -65537,7 +65537,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65566,7 +65566,7 @@
     {
       "id": "c2eb1559",
       "position": {
-        "x": 2955,
+        "x": 4055,
         "y": 1640
       },
       "device": {
@@ -65610,7 +65610,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65639,7 +65639,7 @@
     {
       "id": "cd67c3be",
       "position": {
-        "x": 3069,
+        "x": 4169,
         "y": 1640
       },
       "device": {
@@ -65683,7 +65683,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Under Floor",
         "floor": "1",
@@ -65712,7 +65712,7 @@
     {
       "id": "46f0a2ee",
       "position": {
-        "x": 3184,
+        "x": 4284,
         "y": 1640
       },
       "device": {
@@ -65756,7 +65756,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65785,7 +65785,7 @@
     {
       "id": "447c6f9f",
       "position": {
-        "x": 3298,
+        "x": 4398,
         "y": 1640
       },
       "device": {
@@ -65829,7 +65829,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -65858,7 +65858,7 @@
     {
       "id": "96ba93af",
       "position": {
-        "x": 3413,
+        "x": 4513,
         "y": 1640
       },
       "device": {
@@ -65902,7 +65902,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -68132,7 +68132,7 @@
     {
       "id": "4b0671f3",
       "position": {
-        "x": 2440,
+        "x": 3540,
         "y": 2380
       },
       "device": {
@@ -68176,7 +68176,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Generator Room",
         "floor": "G",
@@ -68203,7 +68203,7 @@
     {
       "id": "f336f4af",
       "position": {
-        "x": 2280,
+        "x": 3380,
         "y": 2260
       },
       "device": {
@@ -68247,7 +68247,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "UPS Room",
         "floor": "G",
@@ -68274,7 +68274,7 @@
     {
       "id": "1a03cc9e",
       "position": {
-        "x": 2600,
+        "x": 3700,
         "y": 2260
       },
       "device": {
@@ -68318,7 +68318,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "UPS Room",
         "floor": "G",
@@ -68345,7 +68345,7 @@
     {
       "id": "b324209b",
       "position": {
-        "x": 2000,
+        "x": 3100,
         "y": 2140
       },
       "device": {
@@ -68389,7 +68389,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -68416,7 +68416,7 @@
     {
       "id": "72c0c547",
       "position": {
-        "x": 2160,
+        "x": 3260,
         "y": 2140
       },
       "device": {
@@ -68460,7 +68460,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -68487,7 +68487,7 @@
     {
       "id": "a8e3601e",
       "position": {
-        "x": 3080,
+        "x": 4180,
         "y": 2140
       },
       "device": {
@@ -68531,7 +68531,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -68558,7 +68558,7 @@
     {
       "id": "e48c0c95",
       "position": {
-        "x": 3240,
+        "x": 4340,
         "y": 2140
       },
       "device": {
@@ -68602,7 +68602,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -68629,7 +68629,7 @@
     {
       "id": "6080da98",
       "position": {
-        "x": 1440,
+        "x": 2540,
         "y": 2020
       },
       "device": {
@@ -68673,7 +68673,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -68700,7 +68700,7 @@
     {
       "id": "321195c1",
       "position": {
-        "x": 1520,
+        "x": 2620,
         "y": 2020
       },
       "device": {
@@ -68744,7 +68744,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -68771,7 +68771,7 @@
     {
       "id": "2a75d5bd",
       "position": {
-        "x": 1680,
+        "x": 2780,
         "y": 2020
       },
       "device": {
@@ -68815,7 +68815,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -68842,7 +68842,7 @@
     {
       "id": "11f81c24",
       "position": {
-        "x": 1760,
+        "x": 2860,
         "y": 2020
       },
       "device": {
@@ -68886,7 +68886,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -68913,7 +68913,7 @@
     {
       "id": "86d3a27d",
       "position": {
-        "x": 1920,
+        "x": 3020,
         "y": 2020
       },
       "device": {
@@ -68957,7 +68957,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -68984,7 +68984,7 @@
     {
       "id": "2e9e062d",
       "position": {
-        "x": 2000,
+        "x": 3100,
         "y": 2020
       },
       "device": {
@@ -69028,7 +69028,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -69055,7 +69055,7 @@
     {
       "id": "7adc2d3a",
       "position": {
-        "x": 2160,
+        "x": 3260,
         "y": 2020
       },
       "device": {
@@ -69099,7 +69099,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -69126,7 +69126,7 @@
     {
       "id": "34311676",
       "position": {
-        "x": 2240,
+        "x": 3340,
         "y": 2020
       },
       "device": {
@@ -69170,7 +69170,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -69197,7 +69197,7 @@
     {
       "id": "3202ba9c",
       "position": {
-        "x": 2400,
+        "x": 3500,
         "y": 2020
       },
       "device": {
@@ -69241,7 +69241,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -69268,7 +69268,7 @@
     {
       "id": "bad97a77",
       "position": {
-        "x": 2480,
+        "x": 3580,
         "y": 2020
       },
       "device": {
@@ -69312,7 +69312,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -69339,7 +69339,7 @@
     {
       "id": "25be0e65",
       "position": {
-        "x": 2640,
+        "x": 3740,
         "y": 2020
       },
       "device": {
@@ -69383,7 +69383,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -69410,7 +69410,7 @@
     {
       "id": "6c0c7479",
       "position": {
-        "x": 2720,
+        "x": 3820,
         "y": 2020
       },
       "device": {
@@ -69454,7 +69454,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -69481,7 +69481,7 @@
     {
       "id": "14ca3ac5",
       "position": {
-        "x": 2880,
+        "x": 3980,
         "y": 2020
       },
       "device": {
@@ -69525,7 +69525,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -69552,7 +69552,7 @@
     {
       "id": "6f42c105",
       "position": {
-        "x": 2960,
+        "x": 4060,
         "y": 2020
       },
       "device": {
@@ -69596,7 +69596,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -69623,7 +69623,7 @@
     {
       "id": "e524bb5a",
       "position": {
-        "x": 3120,
+        "x": 4220,
         "y": 2020
       },
       "device": {
@@ -69667,7 +69667,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -69694,7 +69694,7 @@
     {
       "id": "50052b8c",
       "position": {
-        "x": 3200,
+        "x": 4300,
         "y": 2020
       },
       "device": {
@@ -69738,7 +69738,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -69765,7 +69765,7 @@
     {
       "id": "31f863cd",
       "position": {
-        "x": 3360,
+        "x": 4460,
         "y": 2020
       },
       "device": {
@@ -69809,7 +69809,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -69836,7 +69836,7 @@
     {
       "id": "298425fa",
       "position": {
-        "x": 3440,
+        "x": 4540,
         "y": 2020
       },
       "device": {
@@ -69880,7 +69880,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
@@ -70195,7 +70195,7 @@
     {
       "id": "06af8df8",
       "position": {
-        "x": 2080,
+        "x": 3180,
         "y": 2140
       },
       "device": {
@@ -70239,7 +70239,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -70267,7 +70267,7 @@
     {
       "id": "d09bc056",
       "position": {
-        "x": 3160,
+        "x": 4260,
         "y": 2140
       },
       "device": {
@@ -70311,7 +70311,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -70339,7 +70339,7 @@
     {
       "id": "8be4852f",
       "position": {
-        "x": 2240,
+        "x": 3340,
         "y": 2140
       },
       "device": {
@@ -70383,7 +70383,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -70411,7 +70411,7 @@
     {
       "id": "70d1d9b2",
       "position": {
-        "x": 3320,
+        "x": 4420,
         "y": 2140
       },
       "device": {
@@ -70455,7 +70455,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Power Room",
         "floor": "G",
@@ -70982,7 +70982,7 @@
     {
       "id": "106516f1",
       "position": {
-        "x": 2640,
+        "x": 3740,
         "y": 2380
       },
       "device": {
@@ -71026,7 +71026,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Mechanical Room",
         "floor": "G",
@@ -71053,7 +71053,7 @@
     {
       "id": "5a83ce67",
       "position": {
-        "x": 2780,
+        "x": 3880,
         "y": 2350
       },
       "device": {
@@ -71097,7 +71097,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -71124,7 +71124,7 @@
     {
       "id": "d75f2a9e",
       "position": {
-        "x": 2780,
+        "x": 3880,
         "y": 2410
       },
       "device": {
@@ -71168,7 +71168,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -71195,7 +71195,7 @@
     {
       "id": "281c795b",
       "position": {
-        "x": 2780,
+        "x": 3880,
         "y": 2470
       },
       "device": {
@@ -71239,7 +71239,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -71266,7 +71266,7 @@
     {
       "id": "95dccf22",
       "position": {
-        "x": 2780,
+        "x": 3880,
         "y": 2530
       },
       "device": {
@@ -71310,7 +71310,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -71337,7 +71337,7 @@
     {
       "id": "8491d46b",
       "position": {
-        "x": 2640,
+        "x": 3740,
         "y": 2280
       },
       "device": {
@@ -71381,7 +71381,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Mechanical Room",
         "floor": "G",
@@ -71409,7 +71409,7 @@
     {
       "id": "dc12eb64",
       "position": {
-        "x": 2440,
+        "x": 3540,
         "y": 2470
       },
       "device": {
@@ -71453,7 +71453,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Generator Room",
         "floor": "G",
@@ -71624,7 +71624,7 @@
     {
       "id": "3dcdcb2a",
       "position": {
-        "x": 2640,
+        "x": 3740,
         "y": 2600
       },
       "device": {
@@ -71668,7 +71668,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -71695,7 +71695,7 @@
     {
       "id": "6500dabe",
       "position": {
-        "x": 2460,
+        "x": 3560,
         "y": 2680
       },
       "device": {
@@ -71739,7 +71739,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73057,7 +73057,7 @@
     {
       "id": "f8b995ba",
       "position": {
-        "x": 2860,
+        "x": 3960,
         "y": 2480
       },
       "device": {
@@ -73296,7 +73296,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73325,7 +73325,7 @@
     {
       "id": "7fbc8b57",
       "position": {
-        "x": 2940,
+        "x": 4040,
         "y": 2560
       },
       "device": {
@@ -73369,7 +73369,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73398,7 +73398,7 @@
     {
       "id": "d0558940",
       "position": {
-        "x": 3000,
+        "x": 4100,
         "y": 2560
       },
       "device": {
@@ -73442,7 +73442,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73471,7 +73471,7 @@
     {
       "id": "f8eb42ae",
       "position": {
-        "x": 3060,
+        "x": 4160,
         "y": 2560
       },
       "device": {
@@ -73515,7 +73515,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73544,7 +73544,7 @@
     {
       "id": "cc17f464",
       "position": {
-        "x": 3120,
+        "x": 4220,
         "y": 2560
       },
       "device": {
@@ -73588,7 +73588,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73617,7 +73617,7 @@
     {
       "id": "53f15d15",
       "position": {
-        "x": 2940,
+        "x": 4040,
         "y": 2630
       },
       "device": {
@@ -73661,7 +73661,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73690,7 +73690,7 @@
     {
       "id": "fa708342",
       "position": {
-        "x": 3000,
+        "x": 4100,
         "y": 2630
       },
       "device": {
@@ -73734,7 +73734,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73763,7 +73763,7 @@
     {
       "id": "96796119",
       "position": {
-        "x": 3060,
+        "x": 4160,
         "y": 2630
       },
       "device": {
@@ -73807,7 +73807,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73836,7 +73836,7 @@
     {
       "id": "02407220",
       "position": {
-        "x": 3120,
+        "x": 4220,
         "y": 2630
       },
       "device": {
@@ -73880,7 +73880,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73909,7 +73909,7 @@
     {
       "id": "7b33144e",
       "position": {
-        "x": 2940,
+        "x": 4040,
         "y": 2700
       },
       "device": {
@@ -73953,7 +73953,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -73982,7 +73982,7 @@
     {
       "id": "e13dfcba",
       "position": {
-        "x": 3000,
+        "x": 4100,
         "y": 2700
       },
       "device": {
@@ -74026,7 +74026,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -74055,7 +74055,7 @@
     {
       "id": "774f3d06",
       "position": {
-        "x": 3060,
+        "x": 4160,
         "y": 2700
       },
       "device": {
@@ -74099,7 +74099,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -74128,7 +74128,7 @@
     {
       "id": "77a2c912",
       "position": {
-        "x": 3120,
+        "x": 4220,
         "y": 2700
       },
       "device": {
@@ -74172,7 +74172,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -74201,7 +74201,7 @@
     {
       "id": "fa7bff58",
       "position": {
-        "x": 2940,
+        "x": 4040,
         "y": 2770
       },
       "device": {
@@ -74245,7 +74245,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -74274,7 +74274,7 @@
     {
       "id": "85377da7",
       "position": {
-        "x": 3000,
+        "x": 4100,
         "y": 2770
       },
       "device": {
@@ -74318,7 +74318,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -74493,7 +74493,7 @@
     {
       "id": "1ff1caaf",
       "position": {
-        "x": 2940,
+        "x": 4040,
         "y": 2720
       },
       "device": {
@@ -74537,7 +74537,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -74566,7 +74566,7 @@
     {
       "id": "97d819aa",
       "position": {
-        "x": 3120,
+        "x": 4220,
         "y": 2700
       },
       "device": {
@@ -74610,7 +74610,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2-Plant",
         "room": "Chiller Plant",
         "floor": "1",
@@ -74858,7 +74858,7 @@
     {
       "id": "94ccacef",
       "position": {
-        "x": 2960,
+        "x": 4060,
         "y": 2330
       },
       "device": {
@@ -74902,7 +74902,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -74931,7 +74931,7 @@
     {
       "id": "c0b19b3a",
       "position": {
-        "x": 2960,
+        "x": 4060,
         "y": 2400
       },
       "device": {
@@ -74975,7 +74975,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -75004,7 +75004,7 @@
     {
       "id": "bb9206e3",
       "position": {
-        "x": 2960,
+        "x": 4060,
         "y": 2470
       },
       "device": {
@@ -75048,7 +75048,7 @@
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
-        "datacenter_city": "Chicago",
+        "datacenter_city": "New York",
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
@@ -77947,20 +77947,6 @@
       "layer": "production"
     },
     {
-      "src": "ec012c83",
-      "dst": "f141cf08",
-      "src_iface": 2,
-      "dst_iface": 2,
-      "layer": "production"
-    },
-    {
-      "src": "98993beb",
-      "dst": "bd2953cc",
-      "src_iface": 2,
-      "dst_iface": 2,
-      "layer": "production"
-    },
-    {
       "src": "94f1c5b0",
       "dst": "64d55984",
       "src_iface": 0,
@@ -80730,13 +80716,6 @@
       "dst": "09e66792",
       "src_iface": 0,
       "dst_iface": 13,
-      "layer": "management"
-    },
-    {
-      "src": "64d55984",
-      "dst": "431a7dbd",
-      "src_iface": 5,
-      "dst_iface": 4,
       "layer": "management"
     },
     {
