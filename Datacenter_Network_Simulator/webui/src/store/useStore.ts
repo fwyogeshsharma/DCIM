@@ -199,7 +199,7 @@ export const useStore = create<Store>((set, get) => ({
   setSnmpPort: (p) => set({ snmpPort: p }),
   setMgmtPort: (p) => set({ mgmtPort: p }),
 
-  redfishPort:     443,
+  redfishPort:     8443,
   redfishUsername: 'admin',
   redfishPassword: 'password',
   setRedfishPort:     (p) => set({ redfishPort: p }),

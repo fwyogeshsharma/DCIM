@@ -121,7 +121,7 @@ class RedfishPanel(QWidget):
 
         self._port_spin = QSpinBox()
         self._port_spin.setRange(1, 65535)
-        self._port_spin.setValue(443)
+        self._port_spin.setValue(8443)
         self._port_spin.setStyleSheet("QSpinBox {" + _field_style() + "}")
         cfg.addRow("HTTP Port:", self._port_spin)
 

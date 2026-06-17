@@ -15,7 +15,7 @@ def _state() -> AppState:
 
 
 class RedfishConfig(BaseModel):
-    port:     int = 443
+    port:     int = 8443
     username: str = "admin"
     password: str = "password"
 
@@ -32,7 +32,7 @@ def redfish_status():
     if rf is None or not rf.is_running():
         return {
             "running": False,
-            "port": getattr(rf, "_port", 443),
+            "port": getattr(rf, "_port", 8443),
             "active_devices": 0,
             "sessions": 0,
         }

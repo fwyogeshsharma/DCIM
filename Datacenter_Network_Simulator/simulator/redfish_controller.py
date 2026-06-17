@@ -138,7 +138,7 @@ class RedfishController:
         self._monitor_stop = threading.Event()
 
         # Config snapshot for the status endpoint.
-        self._port = 443
+        self._port = 8443
         self._username = "admin"
         self._password = "password"
 
@@ -183,7 +183,7 @@ class RedfishController:
     def start(
         self,
         devices: List["Device"],
-        port: int = 443,
+        port: int = 8443,
         username: str = "admin",
         password: str = "password",
         ip_for: Optional[Callable[["Device"], str]] = None,
