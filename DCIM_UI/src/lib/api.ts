@@ -526,6 +526,7 @@ class APIClient {
       mgmt_ip: string | null
       network_id: string
       group_id: string
+      datacenter_id: string
       parent_device_id: string | null
       parent_hostname: string | null
       depth: number
@@ -559,6 +560,9 @@ class APIClient {
     offline: number
     device_types: number
     last_seen: string | null
+    datacenter: string | null
+    datacenter_city: string | null
+    country: string | null
     active_alerts: number
     critical_alerts: number
   }>> {

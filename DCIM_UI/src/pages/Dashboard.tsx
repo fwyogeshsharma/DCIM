@@ -10,6 +10,7 @@ import {
   Clock,
   Wifi,
   WifiOff,
+  MapPin,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Link } from 'react-router-dom'
@@ -18,6 +19,17 @@ function formatNetworkLabel(id: string): string {
   return id
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// Datacenter location line: "DC1 · Dallas, USA" — skips any missing parts.
+function formatLocation(net: {
+  datacenter?: string | null
+  datacenter_city?: string | null
+  country?: string | null
+}): string | null {
+  const place = [net.datacenter_city, net.country].filter(Boolean).join(', ')
+  const parts = [net.datacenter, place].filter(Boolean)
+  return parts.length ? parts.join(' · ') : null
 }
 
 // Consistent color per network position
@@ -131,12 +143,12 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Network Health + Recent Alerts */}
+      {/* Datacenter Health + Recent Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Network Health */}
+        {/* Datacenter Health */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-white">Network Health</h3>
+            <h3 className="text-xl font-semibold text-white">Datacenter Health</h3>
             <Link to="/app/agents" className="text-sm text-blue-400 hover:text-blue-300">View Devices</Link>
           </div>
 
@@ -152,9 +164,17 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-sm font-medium text-white truncate">
-                          {formatNetworkLabel(net.network_id)}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium text-white truncate block">
+                            {formatNetworkLabel(net.network_id)}
+                          </span>
+                          {formatLocation(net) && (
+                            <span className="text-xs text-slate-400 flex items-center gap-1 truncate">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              {formatLocation(net)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3 text-xs flex-shrink-0 ml-2">
                         {hasAlerts && (

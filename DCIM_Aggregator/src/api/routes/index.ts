@@ -294,6 +294,11 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
                       OR d.last_seen_at IS NULL THEN 1 END)::int                                                    AS offline,
           COUNT(DISTINCT d.device_type)::int                                                                        AS device_types,
           MAX(d.last_seen_at)                                                                                       AS last_seen,
+          -- Datacenter location for this network (representative value; a network
+          -- normally maps to a single datacenter, so MAX picks its name/city/country).
+          MAX(d.datacenter)                                                                                        AS datacenter,
+          MAX(d.datacenter_city)                                                                                   AS datacenter_city,
+          MAX(d.country)                                                                                           AS country,
           COALESCE(SUM(ac.active_alerts), 0)::int                                                                   AS active_alerts,
           COALESCE(SUM(ac.critical_alerts), 0)::int                                                                 AS critical_alerts
         FROM devices d
@@ -383,6 +388,7 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
             d.mgmt_ip::text                                                                        AS mgmt_ip,
             d.network_id,
             d.group_id,
+            d.datacenter_id,
             t.parent_id::text                                                                      AS parent_device_id,
             p.hostname                                                                             AS parent_hostname,
             t.depth,

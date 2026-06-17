@@ -29,6 +29,7 @@ interface TreeNode {
   mgmt_ip: string | null
   network_id: string
   group_id: string
+  datacenter_id: string
   parent_device_id: string | null
   parent_hostname: string | null
   depth: number
@@ -297,6 +298,7 @@ export default function Topology() {
   const [showTrapFeed, setShowTrapFeed] = useState(true)
   const [showTierBands, setShowTierBands] = useState(true)
   const [networkFilter, setNetworkFilter] = useState<string>('all')
+  const [datacenterFilter, setDatacenterFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   // The query that has been *applied* via the Apply button. When set, the graph
   // is filtered down to the matching device(s) plus every device reachable from
@@ -441,10 +443,18 @@ export default function Topology() {
     return [...new Set(rawTree.map(n => n.network_id))].sort()
   }, [rawTree])
 
-  // Devices visible after the Network dropdown filter (before any device focus).
+  const datacenters = useMemo(() => {
+    return [...new Set(rawTree.map(n => n.datacenter_id).filter(Boolean))].sort()
+  }, [rawTree])
+
+  // Devices visible after the Datacenter + Network dropdown filters
+  // (before any device focus).
   const baseTree = useMemo(() => {
-    return networkFilter === 'all' ? rawTree : rawTree.filter(n => n.network_id === networkFilter)
-  }, [rawTree, networkFilter])
+    return rawTree.filter(n =>
+      (datacenterFilter === 'all' || n.datacenter_id === datacenterFilter) &&
+      (networkFilter === 'all' || n.network_id === networkFilter)
+    )
+  }, [rawTree, datacenterFilter, networkFilter])
 
   // Apply the device focus: when a query has been applied, keep only the matching
   // seed device(s) and everything connected to them (directly or transitively)
@@ -1099,6 +1109,20 @@ export default function Topology() {
               </button>
             )}
           </div>
+          {/* Datacenter filter */}
+          {datacenters.length > 0 && (
+            <select
+              value={datacenterFilter}
+              onChange={e => setDatacenterFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+              title="Filter by datacenter"
+            >
+              <option value="all">All Datacenters</option>
+              {datacenters.map(dc => (
+                <option key={dc} value={dc}>{dc}</option>
+              ))}
+            </select>
+          )}
           {/* Network filter */}
           {networks.length > 1 && (
             <select
