@@ -76,11 +76,13 @@ function StatRow({ label, value, labelColor, valueColor }: {
 }
 
 export default function GNMIPanel() {
-  const { gnmi, fetchGnmi, devices, binding, gnmiPort, setGnmiPort } = useStore()
+  const { gnmi, fetchGnmi, devices, binding, gnmiPort, setGnmiPort,
+          gnmiProxyPort, setGnmiProxyPort } = useStore()
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | 'proxy' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
   const [portFocused, setPortFocused] = useState(false)
+  const [proxyPortFocused, setProxyPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 
   const running       = gnmi?.running            ?? false
@@ -168,7 +170,7 @@ export default function GNMIPanel() {
     setBusy(true); setOperation('proxy')
     try {
       if (proxyOn) await api.stopProxy()
-      else         await api.startProxy(gnmiPort)
+      else         await api.startProxy(gnmiProxyPort)
       fetchGnmi()
     } catch { /* ignore */ }
     finally { setBusy(false); setOperation(null) }
@@ -357,11 +359,37 @@ export default function GNMIPanel() {
 
           <div className="field-row-split" style={{ marginBottom: 8 }}>
             <span className="label">Proxy Port</span>
-            <span style={{
-              fontSize: 11, fontFamily: 'Consolas, monospace',
-              color: proxyOn ? 'var(--green)' : 'var(--text-muted)',
-              fontVariantNumeric: 'tabular-nums',
-            }}>{proxyOn ? port : gnmiPort}</span>
+            {proxyOn ? (
+              <span style={{
+                fontSize: 11, fontFamily: 'Consolas, monospace',
+                color: 'var(--green)', fontVariantNumeric: 'tabular-nums',
+              }}>{port}</span>
+            ) : (
+              <input
+                type="number"
+                min={1} max={65535}
+                value={gnmiProxyPort}
+                onChange={e => setGnmiProxyPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 50051)))}
+                onFocus={() => setProxyPortFocused(true)}
+                onBlur={() => setProxyPortFocused(false)}
+                disabled={busy || !running}
+                style={{
+                  width: 90,
+                  background: '#0d1117',
+                  border: `1px solid ${proxyPortFocused ? '#58a6ff' : 'var(--border)'}`,
+                  borderRadius: 4,
+                  color: proxyPortFocused ? '#58a6ff' : 'var(--text)',
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  padding: '4px 8px',
+                  outline: 'none',
+                  opacity: (busy || !running) ? 0.4 : 1,
+                  transition: 'border-color 0.15s, color 0.15s',
+                }}
+                title="Proxy gRPC port — clients connect here and use target= to address a device. Keep it distinct from the per-device gNMI port (default 50051)."
+              />
+            )}
           </div>
 
           <button

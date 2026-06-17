@@ -103,6 +103,8 @@ interface Store {
   // gNMI panel config (survives tab switches)
   gnmiPort: number
   setGnmiPort: (p: number) => void
+  gnmiProxyPort: number
+  setGnmiProxyPort: (p: number) => void
 
   // sFlow panel config (survives tab switches)
   sflowCollectorIp: string
@@ -226,6 +228,8 @@ export const useStore = create<Store>((set, get) => ({
 
   gnmiPort: 50051,
   setGnmiPort: (p) => set({ gnmiPort: p }),
+  gnmiProxyPort: 50051,
+  setGnmiProxyPort: (p) => set({ gnmiProxyPort: p }),
 
   sflowCollectorIp: '127.0.0.1',
   sflowPort:        6343,
