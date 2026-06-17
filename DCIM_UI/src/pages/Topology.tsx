@@ -298,6 +298,10 @@ export default function Topology() {
   const [showTierBands, setShowTierBands] = useState(true)
   const [networkFilter, setNetworkFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  // The query that has been *applied* via the Apply button. When set, the graph
+  // is filtered down to the matching device(s) plus every device reachable from
+  // them through the link graph (their connected sub-network).
+  const [appliedFocus, setAppliedFocus] = useState('')
   const prevSearchRef = useRef('')
 
   const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
@@ -437,9 +441,49 @@ export default function Topology() {
     return [...new Set(rawTree.map(n => n.network_id))].sort()
   }, [rawTree])
 
-  const tree = useMemo(() => {
+  // Devices visible after the Network dropdown filter (before any device focus).
+  const baseTree = useMemo(() => {
     return networkFilter === 'all' ? rawTree : rawTree.filter(n => n.network_id === networkFilter)
   }, [rawTree, networkFilter])
+
+  // Apply the device focus: when a query has been applied, keep only the matching
+  // seed device(s) and everything connected to them (directly or transitively)
+  // through the link graph — i.e. the whole sub-network around that device.
+  const tree = useMemo(() => {
+    const f = appliedFocus.trim().toLowerCase()
+    if (!f) return baseTree
+
+    const seeds = baseTree.filter(n =>
+      n.hostname.toLowerCase().includes(f) || (n.mgmt_ip ?? '').toLowerCase().includes(f)
+    )
+    if (seeds.length === 0) return baseTree   // no match → leave the full graph as-is
+
+    // Build an undirected adjacency over the visible devices from both the
+    // physical links and the hierarchy parent→child relationships (matching the
+    // edges the graph actually draws).
+    const idSet = new Set(baseTree.map(n => n.device_id))
+    const adj = new Map<string, Set<string>>()
+    const addEdge = (a: string, b: string) => {
+      if (a === b || !idSet.has(a) || !idSet.has(b)) return
+      if (!adj.has(a)) adj.set(a, new Set())
+      if (!adj.has(b)) adj.set(b, new Set())
+      adj.get(a)!.add(b)
+      adj.get(b)!.add(a)
+    }
+    rawLinks.forEach(l => addEdge(l.src_device_id, l.dst_device_id))
+    baseTree.forEach(n => { if (n.parent_device_id) addEdge(n.device_id, n.parent_device_id) })
+
+    // BFS outward from every seed to collect the entire connected component.
+    const keep = new Set<string>(seeds.map(s => s.device_id))
+    const queue = [...keep]
+    while (queue.length) {
+      const cur = queue.shift()!
+      for (const nb of adj.get(cur) ?? []) {
+        if (!keep.has(nb)) { keep.add(nb); queue.push(nb) }
+      }
+    }
+    return baseTree.filter(n => keep.has(n.device_id))
+  }, [baseTree, rawLinks, appliedFocus])
 
   // Filter links to only those whose both endpoints are in the current tree view
   const treeLinks = useMemo(() => {
@@ -459,10 +503,10 @@ export default function Topology() {
   const matchCount = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return 0
-    return tree.filter(n =>
+    return baseTree.filter(n =>
       n.hostname.toLowerCase().includes(q) || (n.mgmt_ip ?? '').toLowerCase().includes(q)
     ).length
-  }, [tree, searchQuery])
+  }, [baseTree, searchQuery])
 
   // ── D3 rendering ───────────────────────────────────────────────────────────
 
@@ -922,24 +966,33 @@ export default function Topology() {
   // management IP contains the query, dims the rest, and pans to fit the matches.
   useEffect(() => {
     if (!svgRef.current) return
+    const focus = appliedFocus.trim().toLowerCase()
     const q = searchQuery.trim().toLowerCase()
     const groups = d3.select(svgRef.current).selectAll<SVGGElement, TopoNode>('g.topo-node-group')
     if (groups.empty()) return
 
+    // Once a focus is applied the graph is already filtered to the connected
+    // sub-network, so every node stays fully visible and we only ring the seed
+    // device(s). While the user is just typing (no focus yet), preview the match
+    // by dimming the non-matching nodes.
+    const highlightTerm = focus || q
+    const dimOthers = !focus && q !== ''
+
     const matched: TopoNode[] = []
     groups.each(function (d) {
-      const isMatch = q !== '' &&
-        (d.name.toLowerCase().includes(q) || (d.ip ?? '').toLowerCase().includes(q))
+      const isMatch = highlightTerm !== '' &&
+        (d.name.toLowerCase().includes(highlightTerm) || (d.ip ?? '').toLowerCase().includes(highlightTerm))
       if (isMatch) matched.push(d)
       const sel = d3.select(this)
-      sel.style('opacity', q === '' ? 1 : isMatch ? 1 : 0.15)
+      sel.style('opacity', dimOthers ? (isMatch ? 1 : 0.15) : 1)
       sel.select('.search-ring').attr('opacity', isMatch ? 1 : 0)
     })
 
-    // Pan/zoom to the matches only when the query itself changes (not on trap refreshes)
+    // Pan/zoom to the live-preview matches when the query changes. When a focus is
+    // applied the render effect's auto-fit already frames the whole sub-network.
     const queryChanged = prevSearchRef.current !== searchQuery
     prevSearchRef.current = searchQuery
-    if (queryChanged && q !== '' && matched.length > 0 && zoomRef.current) {
+    if (!focus && queryChanged && q !== '' && matched.length > 0 && zoomRef.current) {
       const xs = matched.map(d => d.x!).filter(isFinite)
       const ys = matched.map(d => d.y!).filter(isFinite)
       if (xs.length) {
@@ -957,7 +1010,7 @@ export default function Topology() {
         )
       }
     }
-  }, [searchQuery, tree, treeLinks, trapAlerts, linkDownAlerts, showTierBands])
+  }, [searchQuery, appliedFocus, tree, treeLinks, trapAlerts, linkDownAlerts, showTierBands])
 
   // ── Zoom controls ──────────────────────────────────────────────────────────
 
@@ -1000,29 +1053,50 @@ export default function Topology() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Device search */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search name or IP…"
-              className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
-            />
-            {searchQuery.trim() !== '' && (
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                <span className={`text-[11px] font-medium ${matchCount > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
-                  {matchCount}
-                </span>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="text-slate-400 hover:text-white transition-colors"
-                  title="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {/* Device search — type a name/IP, then Apply to focus on that device
+              and its entire connected sub-network */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') setAppliedFocus(searchQuery) }}
+                placeholder="Search name or IP…"
+                className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+              />
+              {searchQuery.trim() !== '' && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                  <span className={`text-[11px] font-medium ${matchCount > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
+                    {matchCount}
+                  </span>
+                  <button
+                    onClick={() => { setSearchQuery(''); setAppliedFocus('') }}
+                    className="text-slate-400 hover:text-white transition-colors"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setAppliedFocus(searchQuery)}
+              disabled={searchQuery.trim() === ''}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+              title="Show this device and everything connected to it"
+            >
+              Apply
+            </button>
+            {appliedFocus.trim() !== '' && (
+              <button
+                onClick={() => setAppliedFocus('')}
+                className="px-3 py-2 bg-slate-800/60 hover:bg-slate-700 border border-white/10 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+                title="Show the full topology again"
+              >
+                Reset focus
+              </button>
             )}
           </div>
           {/* Network filter */}

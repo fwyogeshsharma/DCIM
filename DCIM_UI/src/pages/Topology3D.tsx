@@ -2090,6 +2090,10 @@ export default function Topology3D() {
   const [heatmapMode, setHeatmapMode] = useState(false)
   const [showTierBands, setShowTierBands] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  // The query applied via the Apply button. When set, the scene is filtered to
+  // the matching device(s) plus every device reachable from them through the
+  // network links (their connected sub-network).
+  const [appliedFocus, setAppliedFocus] = useState('')
 
   // Expand/collapse state
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
@@ -2098,7 +2102,8 @@ export default function Topology3D() {
   // device is present in the layout (collapsed servers omit their children, and
   // a search hit on a hidden device would otherwise have nothing to highlight).
   const searchActive = searchQuery.trim() !== ''
-  const forceExpandAll = heatmapMode || searchActive
+  const focusActive = appliedFocus.trim() !== ''
+  const forceExpandAll = heatmapMode || searchActive || focusActive
   const preForceExpandRef = useRef<Set<string>>(new Set())
   const wasForcedRef = useRef(false)
   useEffect(() => {
@@ -2330,6 +2335,45 @@ export default function Topology3D() {
     return ids
   }, [layout.nodes, searchQuery])
 
+  // When a focus is applied, restrict the scene to the matching seed device(s)
+  // plus everything connected to them (directly or transitively) through the
+  // device↔device network links — i.e. the whole sub-network around that device.
+  const displayLayout = useMemo(() => {
+    const f = appliedFocus.trim().toLowerCase()
+    if (!f) return layout
+
+    const seedIds = layout.nodes
+      .filter(n => n.name?.toLowerCase().includes(f) || (n.ip ?? '').toLowerCase().includes(f))
+      .map(n => n.id)
+    if (seedIds.length === 0) return layout   // no match → leave the full scene
+
+    // Undirected adjacency over the network (device↔device) links.
+    const adj = new Map<string, Set<string>>()
+    const addEdge = (a: string, b: string) => {
+      if (a === b) return
+      if (!adj.has(a)) adj.set(a, new Set())
+      if (!adj.has(b)) adj.set(b, new Set())
+      adj.get(a)!.add(b)
+      adj.get(b)!.add(a)
+    }
+    layout.links.forEach(l => { if (l.linkType === 'device-device') addEdge(l.sourceId, l.targetId) })
+
+    // BFS outward from every seed to collect the connected component.
+    const keep = new Set<string>(seedIds)
+    const queue = [...keep]
+    while (queue.length) {
+      const cur = queue.shift()!
+      for (const nb of adj.get(cur) ?? []) {
+        if (!keep.has(nb)) { keep.add(nb); queue.push(nb) }
+      }
+    }
+
+    return {
+      nodes: layout.nodes.filter(n => keep.has(n.id)),
+      links: layout.links.filter(l => keep.has(l.sourceId) && keep.has(l.targetId)),
+    }
+  }, [layout, appliedFocus])
+
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
   const [panX, setPanX] = useState(0)
@@ -2409,13 +2453,15 @@ export default function Topology3D() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Device search */}
+          {/* Device search — type a name/IP, then Apply to focus on that device
+              and its entire connected sub-network */}
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') setAppliedFocus(searchQuery) }}
               placeholder="Search name or IP…"
               className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
             />
@@ -2425,7 +2471,7 @@ export default function Topology3D() {
                   {searchMatchIds?.size ?? 0}
                 </span>
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => { setSearchQuery(''); setAppliedFocus('') }}
                   className="text-slate-400 hover:text-white transition-colors"
                   title="Clear search"
                 >
@@ -2434,6 +2480,23 @@ export default function Topology3D() {
               </div>
             )}
           </div>
+          <button
+            onClick={() => setAppliedFocus(searchQuery)}
+            disabled={!searchActive}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            title="Show this device and everything connected to it"
+          >
+            Apply
+          </button>
+          {focusActive && (
+            <button
+              onClick={() => setAppliedFocus('')}
+              className="px-3 py-2 bg-slate-800/60 hover:bg-slate-700 border border-white/10 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+              title="Show the full topology again"
+            >
+              Reset focus
+            </button>
+          )}
           <button
             onClick={hasExpanded ? collapseAll : expandAll}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
@@ -2502,8 +2565,8 @@ export default function Topology3D() {
             onPointerMissed={handleDeselect}
           >
             <SceneContent
-              nodes={layout.nodes}
-              links={layout.links}
+              nodes={displayLayout.nodes}
+              links={displayLayout.links}
               selectedNode={selectedNode}
               onSelectNode={handleSelectNode}
               onHover={handleHover}
