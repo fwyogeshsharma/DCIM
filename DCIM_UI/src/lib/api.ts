@@ -260,6 +260,7 @@ class APIClient {
     critical: number
     warning: number
     info: number
+    last_ts?: string | null
   }[]> {
     return this.request(`/alerts/counts`)
   }

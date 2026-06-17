@@ -67,6 +67,7 @@ export interface LayoutResult {
 // last index = highest Y plane (edge routers / DCIM servers).
 // Y values match node 3D positions: layer L node → 3D Y = -(L * LAYER_GAP_Y).
 export const FLOORS = [
+  { name: 'CDUs',           label: 'T19', y: -504, color: '#8b5cf6' },
   { name: 'Generators',     label: 'T18', y: -476, color: '#fbbf24' },
   { name: 'Valves',         label: 'T17', y: -448, color: '#d946ef' },
   { name: 'CRAH Units',     label: 'T16', y: -420, color: '#5eead4' },
@@ -98,6 +99,7 @@ const ROLE_LAYERS_3D: Record<string, number> = {
   // Cooling plant + facility tiers stack below the power tiers, deepest at the bottom.
   pump: 12, chiller: 13, cooling_tower: 14,
   crah: 15, crac: 15, valve: 16, valves: 16, generator: 17,
+  cdu: 18,   // Coolant Distribution Units — bottom-most tier
 }
 
 function roleLayerOf(role: string | null | undefined, name: string): number | null {
@@ -114,6 +116,7 @@ function roleLayerOf(role: string | null | undefined, name: string): number | nu
   if (/^tor-|\btor\b|top-?of-?rack|\bleaf\b/i.test(name)) return 5
   if (/^oob-/i.test(name)) return 6
   if (/^sensor/i.test(name)) return 7
+  if (/\bcdu\b|^cdu-/i.test(name)) return 18
   if (/\bgenerator\b|\bgen-?\d|^gen-/i.test(name)) return 17
   if (/\bvalve/i.test(name)) return 16
   if (/\bcrah\b|\bcrac\b|^crah-|^crac-/i.test(name)) return 15

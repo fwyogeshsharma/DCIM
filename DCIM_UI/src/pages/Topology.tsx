@@ -131,6 +131,7 @@ const ROLE_LAYERS: Record<string, number> = {
   valve:         16,
   valves:        16,
   generator:     17,
+  cdu:           18,   // Coolant Distribution Units — bottom-most tier
 }
 
 const ROLE_TIER_LABELS: Record<number, string> = {
@@ -152,6 +153,7 @@ const ROLE_TIER_LABELS: Record<number, string> = {
   15: 'CRAH Units',
   16: 'Valves',
   17: 'Generators',
+  18: 'CDUs',
 }
 
 const TIER_COLORS: Record<number, string> = {
@@ -173,6 +175,7 @@ const TIER_COLORS: Record<number, string> = {
   15: '#5eead4',
   16: '#d946ef',
   17: '#fbbf24',
+  18: '#8b5cf6',
 }
 
 function roleToLayer(role: string | null, name: string, fallback: number): number {
@@ -182,6 +185,7 @@ function roleToLayer(role: string | null, name: string, fallback: number): numbe
   }
   // Facility/plant tiers are often identified by hostname rather than a role.
   const n = (name || '').toLowerCase()
+  if (/\bcdu\b|cdu-|^cdu/.test(n)) return 18
   if (/\bgenerator\b|\bgen-?\d|^gen-/.test(n)) return 17
   if (/\bvalve/.test(n)) return 16
   if (/\bcrah\b|\bcrac\b|crah-|crac-/.test(n)) return 15
@@ -949,8 +953,9 @@ export default function Topology() {
       clickTimerRef.current = setTimeout(() => { setSelectedNode(d); clickTimerRef.current = null }, 180)
     })
 
-    // Drag support
-    nodeG.call(
+    // Drag support — cooling-plant devices (those joined by water pipes) are
+    // pinned to their layout position and excluded, so only network devices move.
+    nodeG.filter(d => !isCoolingDevice(d.deviceRole, d.deviceType, d.name)).call(
       d3.drag<SVGGElement, TopoNode>()
         .on('start', function (event) { d3.select(this).raise(); event.sourceEvent.stopPropagation() })
         .on('drag', function (event, d) {

@@ -160,10 +160,13 @@ export default function Alerts() {
         </div>
       </div>
 
-      {/* Alert Counts per Agent */}
+      {/* Alert Counts per Agent — only the 5 most recently-alerting devices */}
       {alertCounts && alertCounts.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {alertCounts.map((ac) => {
+          {[...alertCounts]
+            .sort((a, b) => new Date(b.last_ts ?? 0).getTime() - new Date(a.last_ts ?? 0).getTime())
+            .slice(0, 5)
+            .map((ac) => {
             const serverColor = servers?.find(s => s.name === ac.server_name)?.metadata?.color || '#3b82f6'
             const isSelected = agentFilter === ac.agent_id
             return (

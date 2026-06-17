@@ -86,11 +86,12 @@ export function createAlertsRouter(dbPool: Pool): Router {
           COUNT(CASE WHEN COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END)   AS active,
           COUNT(CASE WHEN LOWER(e.severity) = 'critical' AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS critical,
           COUNT(CASE WHEN LOWER(e.severity) IN ('major','warning') AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS warning,
-          COUNT(CASE WHEN LOWER(e.severity) IN ('minor','info','informational') AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS info
+          COUNT(CASE WHEN LOWER(e.severity) IN ('minor','info','informational') AND COALESCE((e.event_payload->>'resolved')::boolean, false) = false THEN 1 END) AS info,
+          MAX(e.ts) AS last_ts
         FROM events e
         LEFT JOIN devices d ON d.id = e.device_id
         GROUP BY e.device_id, d.hostname, d.network_id
-        ORDER BY active DESC, e.device_id
+        ORDER BY last_ts DESC NULLS LAST
       `)
       res.json({ success: true, data: rows })
     } catch (error: any) {
