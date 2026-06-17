@@ -24,6 +24,15 @@ _FREQ_OPTIONS    = [
 ]
 
 
+def _kind_label(kind: str | None) -> str:
+    """Map a BACnet device ``kind`` to a human-friendly type label."""
+    if not kind or kind == "ev2":
+        return "Verdigris EV2"
+    if kind.startswith("plant:"):
+        return kind[len("plant:"):].replace("_", " ").title()
+    return kind
+
+
 class BACnetPanel(QWidget):
     sig_start          = Signal()   # user pressed Start
     sig_stop           = Signal()   # user pressed Stop
@@ -122,6 +131,17 @@ class BACnetPanel(QWidget):
 
         c_lay.addWidget(cfg)
 
+        # ── Targets group ─────────────────────────────────────────
+        # Per-type device count breakdown (mirrors gNMI / SNMP panels).
+        # Built dynamically because BACnet kinds (ev2 + plant:*) vary.
+        self._tgt_group = QGroupBox("Targets")
+        self._tgt_group.setStyleSheet(_group_style())
+        self._tgt_group.hide()
+        self._tgt_layout = QVBoxLayout(self._tgt_group)
+        self._tgt_layout.setContentsMargins(6, 4, 6, 6)
+        self._tgt_layout.setSpacing(3)
+        c_lay.addWidget(self._tgt_group)
+
         # ── Start / Stop buttons ──────────────────────────────────
         btn_row = QHBoxLayout()
         btn_row.setContentsMargins(0, 0, 0, 0)
@@ -188,6 +208,46 @@ class BACnetPanel(QWidget):
             self._badge.set_status("Running")
         else:
             self._badge.set_status("Stopped")
+
+    def set_bacnet_targets(self, devices: list):
+        """
+        Rebuild the Targets group from a device summary list.
+
+        *devices*: list of dicts each carrying a ``kind`` (``ev2`` or
+        ``plant:<type>``). Counts are aggregated by display label.
+        Hidden when empty (e.g. simulator stopped).
+        """
+        # Drop existing rows.
+        while self._tgt_layout.count():
+            w = self._tgt_layout.takeAt(0).widget()
+            if w is not None:
+                w.deleteLater()
+
+        agg: dict[str, int] = {}
+        order: list[str] = []
+        total = 0
+        for d in devices:
+            label = _kind_label(d.get("kind", "ev2"))
+            if label not in agg:
+                agg[label] = 0
+                order.append(label)
+            agg[label] += 1
+            total += 1
+
+        if total == 0:
+            self._tgt_group.hide()
+            return
+
+        for label in order:
+            lbl = QLabel(f"{label}: {agg[label]}")
+            lbl.setFont(QFont("Consolas", 9))
+            lbl.setStyleSheet("color: #e6edf3;")
+            self._tgt_layout.addWidget(lbl)
+        tot = QLabel(f"Total: {total}")
+        tot.setFont(QFont("Consolas", 9))
+        tot.setStyleSheet("color: #8b949e;")
+        self._tgt_layout.addWidget(tot)
+        self._tgt_group.show()
 
     def refresh_device_table(self, devices: list):
         """

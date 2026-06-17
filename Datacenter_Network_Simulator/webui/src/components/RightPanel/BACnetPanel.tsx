@@ -133,6 +133,19 @@ const FREQ_OPTIONS = [
   { label: '60 Hz (US/CA)',   value: 60.0 },
 ]
 
+// BACnet-capable topology device types, in display order. Mirrors the
+// SNMP panel's pre-start Targets box. energy_monitor = Verdigris EV2;
+// the rest are chiller-plant devices.
+const BACNET_TYPES: { key: string; label: string }[] = [
+  { key: 'energy_monitor', label: 'Verdigris EV2' },
+  { key: 'crah',           label: 'CRAHs' },
+  { key: 'chiller',        label: 'Chillers' },
+  { key: 'pump',           label: 'Pumps' },
+  { key: 'cooling_tower',  label: 'Cooling Towers' },
+  { key: 'valve',          label: 'Valves' },
+  { key: 'cdu',            label: 'CDUs' },
+]
+
 // Sync the form from a running simulator once per page load (not per mount).
 let _configSyncedFromServer = false
 
@@ -144,9 +157,15 @@ export default function BACnetPanel() {
     setBacnetPort: setPort,
     bacnetBusy: busy, bacnetOp: operation, bacnetError: error,
     startBacnet: start, stopBacnet: stop,
+    devices,
   } = useStore()
 
   const running = status?.running ?? false
+
+  // Pre-start target counts, derived from the topology device store.
+  const tc: Record<string, number> = {}
+  for (const d of devices) tc[d.device_type] = (tc[d.device_type] || 0) + 1
+  const targetTotal = BACNET_TYPES.reduce((s, t) => s + (tc[t.key] ?? 0), 0)
 
   useEffect(() => { fetchBacnet() }, [])
   useEffect(() => {
@@ -219,6 +238,17 @@ export default function BACnetPanel() {
             suffix="0xBAC0"
           />
         </div>
+
+        {/* ── Targets — idle/pre-start state ──────────────────── */}
+        {!running && targetTotal > 0 && (
+          <div className="group-box" style={{ marginTop: 6 }}>
+            <span className="group-box-label">Targets</span>
+            {BACNET_TYPES.map(t => (tc[t.key] ?? 0) > 0 && (
+              <StatRow key={t.key} label={`${t.label}:`} value={tc[t.key]} />
+            ))}
+            <StatRow label="Total:" value={targetTotal} labelColor="#06b6d4" valueColor="#06b6d4" />
+          </div>
+        )}
 
         {/* ── Running summary ────────────────────────────────── */}
         {running && status && (
