@@ -20,8 +20,8 @@ standard replacing IPMI. It is served by `simulator/redfish_controller.py`
 
 | Concern | Detail |
 |---|---|
-| Transport | **Plain HTTP** (no TLS in this MVP) — `http://<ip>:443/redfish/v1/` |
-| Port | **443** (configurable) |
+| Transport | **Plain HTTP** (no TLS in this MVP) — `http://<ip>:8443/redfish/v1/` |
+| Port | **8443** (configurable) |
 | Server | one stdlib `ThreadingHTTPServer` **per server**, bound to that server's own IP (not `0.0.0.0`) — each BMC answers only on its own address, like real hardware |
 | Bind IP | `device.mgmt_ip or device.ip_address` — the OOB management network (same IP the BMC SNMP agent uses) |
 | Redfish version | `1.6.0` (ServiceRoot `RedfishVersion`) |
@@ -327,7 +327,7 @@ client drive identical state.
 
 ```bash
 # Walk a BMC: System, Chassis (Thermal+Power), Manager
-python testscripts/test_redfish.py 10.1.0.20 --port 443 --user admin --pass password
+python testscripts/test_redfish.py 10.1.0.20 --port 8443 --user admin --pass password
 # Power control
 python testscripts/test_redfish.py 10.1.0.20 --power-off
 python testscripts/test_redfish.py 10.1.0.20 --power-on

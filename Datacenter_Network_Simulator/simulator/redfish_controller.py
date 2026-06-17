@@ -7,21 +7,21 @@ REST API treat Redfish like every other protocol.
 Architecture
 ------------
 • One stdlib ThreadingHTTPServer per server, bound to that server's IP on the
-  configured port (default 443).  Binding per-IP (not 0.0.0.0) means each BMC
+  configured port (default 8443).  Binding per-IP (not 0.0.0.0) means each BMC
   answers only on its own address, exactly like real hardware.
 • Each server serves the Redfish tree for ONE Device via a RedfishDevice
   attached to the HTTPServer instance (``server.redfish_device``).
 • Resource bodies are built on demand from the live Device object, so values
   track the DeviceStateStore ticker — no per-tick push needed for MVP.
 
-Plain HTTP only in this MVP (no TLS).  Clients hit ``http://<ip>:443/redfish/v1/``.
+Plain HTTP only in this MVP (no TLS).  Clients hit ``http://<ip>:8443/redfish/v1/``.
 
 Usage::
 
     ctrl = RedfishController()
     ctrl.set_log_callback(lambda msg, lvl: console.log(msg, lvl))
     ctrl.set_ready_callback(lambda: panel.on_ready())
-    ctrl.start(devices=[srv1, srv2], port=443)
+    ctrl.start(devices=[srv1, srv2], port=8443)
     ...
     ctrl.stop()
 """
@@ -192,7 +192,7 @@ class RedfishController:
         Bind one HTTP server per server device and begin serving Redfish.
 
         devices:  list of Device objects (DeviceType.SERVER).
-        port:     TCP port for every BMC (default 443).
+        port:     TCP port for every BMC (default 8443).
         ip_for:   optional fn mapping a Device → bind IP. Defaults to
                   ``device.mgmt_ip or device.ip_address`` (BMC on OOB net).
         """

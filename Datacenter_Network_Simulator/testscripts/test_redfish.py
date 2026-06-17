@@ -7,7 +7,7 @@ Manager details for that machine.
 
 Usage:
     python testscripts/test_redfish.py <server-ip>
-    python testscripts/test_redfish.py 10.1.0.20 --port 443 --user admin --pass password
+    python testscripts/test_redfish.py 10.1.0.20 --port 8443 --user admin --pass password
     python testscripts/test_redfish.py 10.1.0.20 --scheme https --insecure
     python testscripts/test_redfish.py 10.1.0.20 --session     # session token auth (default: HTTP Basic)
 
@@ -32,7 +32,7 @@ Usage:
     python testscripts/test_redfish.py <ip> --subscribe --listen-host 10.1.0.5 --listen-port 9000
     python testscripts/test_redfish.py <ip> --unsubscribe <sub-id>
 
-Defaults match the simulator MVP: plain HTTP, port 443, admin/password.
+Defaults match the simulator MVP: plain HTTP, port 8443, admin/password.
 Pure stdlib — no external dependencies.
 """
 from __future__ import annotations
@@ -502,7 +502,7 @@ def _serve_receiver(client: Client, root: dict, subs_path: str, args) -> None:
 def main():
     ap = argparse.ArgumentParser(description="Fetch and display all Redfish info for a server BMC.")
     ap.add_argument("ip", help="server BMC IP address")
-    ap.add_argument("--port", type=int, default=443, help="BMC port (default 443)")
+    ap.add_argument("--port", type=int, default=8443, help="BMC port (default 8443)")
     ap.add_argument("--user", default="admin", help="username (default admin)")
     ap.add_argument("--pass", dest="pw", default="password", help="password (default password)")
     ap.add_argument("--scheme", choices=["http", "https"], default="http",
