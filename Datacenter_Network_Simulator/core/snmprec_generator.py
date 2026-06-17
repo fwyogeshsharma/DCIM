@@ -33,6 +33,12 @@ log.setLevel(logging.INFO)   # needed so INFO-level direct-write diagnostics app
 _write_locks: dict = {}
 _write_locks_guard = threading.Lock()
 
+# On Windows SNMPSim holds every .snmprec open, so the atomic rename ALWAYS
+# fails and we fall back to direct writes on every tick. Log that fallback
+# once at INFO (so it's discoverable) and stay quiet (DEBUG) thereafter —
+# otherwise each tick spams two INFO lines per device forever.
+_logged_rename_fallback = False
+
 
 def _get_write_lock(path: str) -> threading.Lock:
     with _write_locks_guard:
@@ -71,8 +77,16 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
                 break
             time.sleep(0.005)
 
-    log.info("[SNMPRecGen] rename blocked (%s); trying direct write to %s",
-             last_rename_exc, os.path.basename(dst))
+    global _logged_rename_fallback
+    if not _logged_rename_fallback:
+        _logged_rename_fallback = True
+        log.info("[SNMPRecGen] rename blocked (%s) — SNMPSim holds the file open; "
+                 "switching to in-place writes for the rest of this run (further "
+                 "occurrences logged at DEBUG). First file: %s",
+                 last_rename_exc, os.path.basename(dst))
+    else:
+        log.debug("[SNMPRecGen] rename blocked (%s); direct write to %s",
+                  last_rename_exc, os.path.basename(dst))
 
     try:
         # Capture src mtime BEFORE reading so we can stamp dst with the same
@@ -97,7 +111,7 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
                 os.utime(dst, (src_mtime, src_mtime))
             except OSError:
                 pass
-            log.info("[SNMPRecGen] direct write (mode=%s) succeeded to %s", mode, os.path.basename(dst))
+            log.debug("[SNMPRecGen] direct write (mode=%s) succeeded to %s", mode, os.path.basename(dst))
             try:
                 os.unlink(src)
             except OSError:
