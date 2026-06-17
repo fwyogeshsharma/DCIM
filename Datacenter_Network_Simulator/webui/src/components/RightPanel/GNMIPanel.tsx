@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
+import TargetsBox from './TargetsBox'
 
 function formatUptime(connectedAt: number): string {
   if (!connectedAt) return '—'
@@ -246,20 +247,24 @@ export default function GNMIPanel() {
           </div>
         )}
 
-        {/* ── Dataset summary (idle/ready) ────────────────────── */}
-        {!showStats && (
-          <div className="group-box" style={{ marginTop: 6 }}>
-            <span className="group-box-label">Targets</span>
-            <StatRow label="Switches:" value={tc['switch'] ?? 0} />
-            <StatRow label="Routers:"  value={tc['router'] ?? 0} />
-            <StatRow label="Total:" value={gnmiCapable} labelColor="#06b6d4" valueColor="#06b6d4" />
-            <div style={{ height: 4 }} />
-            <StatRow
-              label="Datasets:"
-              value={datasetCount > 0 ? `${datasetCount} ready` : '—'}
-              valueColor={datasetCount > 0 ? 'var(--green)' : 'var(--text-muted)'}
-            />
-          </div>
+        {/* ── Dataset summary (idle/ready) — only with a topology loaded ── */}
+        {!showStats && devices.length > 0 && (
+          <TargetsBox
+            rows={([['switch', 'Switches:'], ['router', 'Routers:']] as [string, string][])
+              .filter(([k]) => (tc[k] ?? 0) > 0)
+              .map(([k, label]) => ({ label, value: tc[k] ?? 0 }))}
+            total={gnmiCapable}
+            footer={
+              <>
+                <div style={{ height: 4 }} />
+                <StatRow
+                  label="Datasets:"
+                  value={datasetCount > 0 ? `${datasetCount} ready` : '—'}
+                  valueColor={datasetCount > 0 ? 'var(--green)' : 'var(--text-muted)'}
+                />
+              </>
+            }
+          />
         )}
 
         {/* ── gNMI port ──────────────────────────────────────── */}

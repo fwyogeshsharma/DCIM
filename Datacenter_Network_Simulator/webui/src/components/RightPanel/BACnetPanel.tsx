@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import type { BacnetDevice } from '../../api/types'
+import TargetsBox from './TargetsBox'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -239,15 +240,14 @@ export default function BACnetPanel() {
           />
         </div>
 
-        {/* ── Targets — idle/pre-start state ──────────────────── */}
-        {!running && targetTotal > 0 && (
-          <div className="group-box" style={{ marginTop: 6 }}>
-            <span className="group-box-label">Targets</span>
-            {BACNET_TYPES.map(t => (tc[t.key] ?? 0) > 0 && (
-              <StatRow key={t.key} label={`${t.label}:`} value={tc[t.key]} />
-            ))}
-            <StatRow label="Total:" value={targetTotal} labelColor="#06b6d4" valueColor="#06b6d4" />
-          </div>
+        {/* ── Targets — idle/pre-start state, only with a topology loaded ── */}
+        {!running && devices.length > 0 && (
+          <TargetsBox
+            rows={BACNET_TYPES
+              .filter(t => (tc[t.key] ?? 0) > 0)
+              .map(t => ({ label: `${t.label}:`, value: tc[t.key] }))}
+            total={targetTotal}
+          />
         )}
 
         {/* ── Running summary ────────────────────────────────── */}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from '../../store/useStore'
+import TargetsBox from './TargetsBox'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -159,14 +160,14 @@ export default function SFlowPanel() {
           />
         </div>
 
-        {/* ── Targets (idle/ready) ───────────────────────────── */}
-        {!running && total > 0 && (
-          <div className="group-box" style={{ marginTop: 6 }}>
-            <span className="group-box-label">Targets</span>
-            {(tc['switch'] ?? 0) > 0 && <StatRow label="Switches:" value={tc['switch'] ?? 0} />}
-            {(tc['router'] ?? 0) > 0 && <StatRow label="Routers:"  value={tc['router'] ?? 0} />}
-            <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
-          </div>
+        {/* ── Targets (idle/ready) — only with a topology loaded ── */}
+        {!running && devices.length > 0 && (
+          <TargetsBox
+            rows={([['switch', 'Switches:'], ['router', 'Routers:']] as [string, string][])
+              .filter(([k]) => (tc[k] ?? 0) > 0)
+              .map(([k, label]) => ({ label, value: tc[k] ?? 0 }))}
+            total={total}
+          />
         )}
 
         {/* ── Active Devices (when running) ──────────────────── */}

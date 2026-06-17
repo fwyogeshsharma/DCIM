@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
+import TargetsBox from './TargetsBox'
+
+// Per-type rows for the Targets box, in display order.
+const SNMP_TARGET_ORDER: [string, string][] = [
+  ['switch', 'Switches:'], ['router', 'Routers:'], ['server', 'Servers:'],
+  ['firewall', 'Firewalls:'], ['load_balancer', 'Load Balancers:'],
+  ['oob_switch', 'OOB Switches:'], ['sensor', 'Sensors:'], ['ups', 'UPS:'],
+  ['pdu', 'Rack PDUs:'], ['floor_pdu', 'Floor PDUs:'], ['generator', 'Generators:'],
+  ['crah', 'CRAHs:'], ['cdu', 'CDUs:'],
+]
 
 async function pollJob(
   id: string,
@@ -210,31 +220,24 @@ export default function SNMPPanel() {
           </div>
         )}
 
-        {/* Targets — idle/ready state */}
-        {!showStats && total > 0 && (
-          <div className="group-box" style={{ marginTop: 6 }}>
-            <span className="group-box-label">Targets</span>
-            {(tc['switch']        ?? 0) > 0 && <StatRow label="Switches:"       value={tc['switch']        ?? 0} />}
-            {(tc['router']        ?? 0) > 0 && <StatRow label="Routers:"        value={tc['router']        ?? 0} />}
-            {(tc['server']        ?? 0) > 0 && <StatRow label="Servers:"        value={tc['server']        ?? 0} />}
-            {(tc['firewall']      ?? 0) > 0 && <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />}
-            {(tc['load_balancer'] ?? 0) > 0 && <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />}
-            {(tc['oob_switch']    ?? 0) > 0 && <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />}
-            {(tc['sensor']        ?? 0) > 0 && <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />}
-            {(tc['ups']           ?? 0) > 0 && <StatRow label="UPS:"            value={tc['ups']           ?? 0} />}
-            {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
-            {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
-            {(tc['generator']     ?? 0) > 0 && <StatRow label="Generators:"     value={tc['generator']     ?? 0} />}
-            {(tc['crah']          ?? 0) > 0 && <StatRow label="CRAHs:"          value={tc['crah']          ?? 0} />}
-            {(tc['cdu']           ?? 0) > 0 && <StatRow label="CDUs:"           value={tc['cdu']           ?? 0} />}
-            <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
-            <div style={{ height: 4 }} />
-            <StatRow
-              label="Datasets:"
-              value={hasData ? `${snmp?.dataset_count ?? '?'} ready` : '—'}
-              valueColor={hasData ? 'var(--green)' : 'var(--text-muted)'}
-            />
-          </div>
+        {/* Targets — idle/ready state, only with a topology loaded */}
+        {!showStats && devices.length > 0 && (
+          <TargetsBox
+            rows={SNMP_TARGET_ORDER
+              .filter(([k]) => (tc[k] ?? 0) > 0)
+              .map(([k, label]) => ({ label, value: tc[k] }))}
+            total={total}
+            footer={
+              <>
+                <div style={{ height: 4 }} />
+                <StatRow
+                  label="Datasets:"
+                  value={hasData ? `${snmp?.dataset_count ?? '?'} ready` : '—'}
+                  valueColor={hasData ? 'var(--green)' : 'var(--text-muted)'}
+                />
+              </>
+            }
+          />
         )}
 
         {/* Active Devices */}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { RedfishDevice, RedfishLogEntry, RedfishSubscription } from '../../api/types'
+import TargetsBox from './TargetsBox'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -473,12 +474,12 @@ export default function RedfishPanel() {
                  } />
         </div>
 
-        {/* ── Targets (idle/ready) ───────────────────────────── */}
-        {!running && (
-          <div className="group-box" style={{ marginTop: 6, flexShrink: 0 }}>
-            <span className="group-box-label">Targets</span>
-            <StatRow label="Servers:" value={serverCount} labelColor="#a371f7" valueColor="#a371f7" />
-          </div>
+        {/* ── Targets (idle/ready) — only with a topology loaded ── */}
+        {!running && devices.length > 0 && (
+          <TargetsBox
+            rows={serverCount > 0 ? [{ label: 'Servers:', value: serverCount }] : []}
+            total={serverCount}
+          />
         )}
 
         {/* ── Start button sits just below Targets while idle ──── */}
