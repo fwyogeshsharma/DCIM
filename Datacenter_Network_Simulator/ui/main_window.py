@@ -3546,7 +3546,7 @@ class MainWindow(QMainWindow):
                 self._bacnet_panel.refresh_device_table(summary)
                 self._bacnet_panel.set_bacnet_targets(summary)
                 self._status_label.setText(
-                    f"BACnet/IP running — {len(summary)} EV2 device(s) on UDP :47808"
+                    f"BACnet/IP running — {len(summary)} BACnet device(s) on UDP :47808"
                 )
                 if not hasattr(self, "_bacnet_refresh_timer"):
                     self._bacnet_refresh_timer = QTimer(self)
@@ -3652,12 +3652,44 @@ class MainWindow(QMainWindow):
 
             circuits_map[ip] = (max(capacity, active), active) if active > 0 else (capacity, capacity)
 
+        # ── Chiller-plant BACnet devices ─────────────────────────────────
+        # chiller/pump/cooling_tower/valve/crah/cdu on bound mgmt IPs.
+        # Mirrors api/routers/bacnet.py — keep both start paths in sync.
+        _PLANT_TYPES = {
+            DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
+            DeviceType.VALVE, DeviceType.CRAH, DeviceType.CDU,
+        }
+        plant_devices: list = []
+        _plant_total = 0
+        for d in self.device_manager.get_all_devices():
+            if d.device_type not in _PLANT_TYPES:
+                continue
+            _plant_total += 1
+            ip = (d.ip_address if d.ip_address in bound_set else None) \
+                or (d.mgmt_ip if getattr(d, "mgmt_ip", None) in bound_set else None)
+            if ip:
+                plant_devices.append({
+                    "ip":          ip,
+                    "name":        d.name,
+                    "device_type": d.device_type.value,
+                    "rated_kw":    (d.power_draw_w or 0) / 1000.0,
+                })
+
+        _plant_unbound = _plant_total - len(plant_devices)
+        if _plant_unbound:
+            self._console_panel.log_bacnet(
+                f"[BACnet] Warning: {_plant_unbound} of {_plant_total} chiller-plant "
+                f"device(s) skipped — mgmt IPs not bound. Bind IPs, then restart BACnet.",
+                "warning"
+            )
+
         self.bacnet.start(
             device_ips    = device_ips,
             base_instance = cfg["base_instance"],
             circuits_map  = circuits_map,
             frequency_hz  = cfg["frequency_hz"],
             port          = cfg.get("port", 47808),
+            plant_devices = plant_devices,
         )
         self.state_store.enable_bacnet(self.bacnet)
 
