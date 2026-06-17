@@ -1,1 +1,1 @@
-# auto-generated
+# Auto-generated gNMI proto stubs.

@@ -189,26 +189,35 @@ class TopologyEngine:
         return dict(edges[first_key])
 
     def break_link(self, src_id: str, dst_id: str, layer: Optional[str] = None):
-        """Mark link(s) as broken; sets oper_status=2 on production interfaces."""
+        """Mark the production link as broken; sets oper_status=2 on its interfaces.
+
+        Only production links are breakable. Management, power and cooling/water
+        links stay up regardless of the requested layer.
+        """
         if not self.graph.has_edge(src_id, dst_id):
             return
+        if layer not in (None, "production"):
+            return
         edges = self.graph[src_id][dst_id]
-        targets = self._select_edges(edges, layer) if layer else dict(edges)
+        targets = self._select_edges(edges, "production")
         for key, edge in targets.items():
             edge["broken"] = True
-            if edge.get("layer", "production") == "production":
-                self._set_iface_oper_status(src_id, dst_id, edge, 2)
+            self._set_iface_oper_status(src_id, dst_id, edge, 2)
 
     def restore_link(self, src_id: str, dst_id: str, layer: Optional[str] = None):
-        """Restore broken link(s); sets oper_status=1 on production interfaces."""
+        """Restore the broken production link; sets oper_status=1 on its interfaces.
+
+        Mirrors break_link — only production links are affected.
+        """
         if not self.graph.has_edge(src_id, dst_id):
             return
+        if layer not in (None, "production"):
+            return
         edges = self.graph[src_id][dst_id]
-        targets = self._select_edges(edges, layer) if layer else dict(edges)
+        targets = self._select_edges(edges, "production")
         for key, edge in targets.items():
             edge["broken"] = False
-            if edge.get("layer", "production") == "production":
-                self._set_iface_oper_status(src_id, dst_id, edge, 1)
+            self._set_iface_oper_status(src_id, dst_id, edge, 1)
 
     def is_link_broken(self, src_id: str, dst_id: str,
                        layer: Optional[str] = None) -> bool:

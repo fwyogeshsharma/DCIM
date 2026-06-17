@@ -594,7 +594,7 @@ class TopologyScene(QGraphicsScene):
     link_created = Signal(str, str)      # (src_device_id, dst_device_id)
     device_moved = Signal(str, float, float)
     node_right_clicked = Signal(str, object)  # (device_id, QPoint)
-    edge_right_clicked = Signal(str, str, object)
+    edge_right_clicked = Signal(str, str, str, object)   # src_id, dst_id, layer, screen_pos
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -840,13 +840,13 @@ class TopologyScene(QGraphicsScene):
                 continue
             src_id, dst_id = pair
             if edge.isVisible():
-                hit_visible = (src_id, dst_id)
+                hit_visible = (src_id, dst_id, _layer)
                 break
             elif hit_hidden is None:
-                hit_hidden = (src_id, dst_id)
+                hit_hidden = (src_id, dst_id, _layer)
         hit = hit_visible or hit_hidden
         if hit:
-            self.edge_right_clicked.emit(hit[0], hit[1], event.screenPos())
+            self.edge_right_clicked.emit(hit[0], hit[1], hit[2], event.screenPos())
             return
 
         super().contextMenuEvent(event)

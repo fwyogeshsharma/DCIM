@@ -200,6 +200,9 @@ def break_link(req: LinkActionRequest):
     s = _state()
     if s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
+    if req.layer != "production":
+        raise HTTPException(status_code=400,
+                            detail="Only production links are breakable")
     try:
         s.topology.break_link(req.src_id, req.dst_id, req.layer)
         s.notify_ui("link_changed", req.src_id, req.dst_id, True)
@@ -221,6 +224,9 @@ def restore_link(req: LinkActionRequest):
     s = _state()
     if s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
+    if req.layer != "production":
+        raise HTTPException(status_code=400,
+                            detail="Only production links are breakable")
     try:
         s.topology.restore_link(req.src_id, req.dst_id, req.layer)
         s.notify_ui("link_changed", req.src_id, req.dst_id, False)

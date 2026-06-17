@@ -81,7 +81,9 @@ from typing import List, Optional
 # ── Add compiled proto stubs to path ─────────────────────────────────────────
 
 _HERE = Path(__file__).parent
-_COMPILED = _HERE / "proto" / "compiled"
+# Stubs live at the project-root proto/compiled; fall back to a local copy.
+_CANDIDATES = [_HERE.parent / "proto" / "compiled", _HERE / "proto" / "compiled"]
+_COMPILED = next((p for p in _CANDIDATES if (p / "gnmi_pb2.py").exists()), _CANDIDATES[0])
 if str(_COMPILED) not in sys.path:
     sys.path.insert(0, str(_COMPILED))
 

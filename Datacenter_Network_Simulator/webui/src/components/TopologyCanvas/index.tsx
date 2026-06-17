@@ -331,9 +331,11 @@ function Canvas() {
   const onEdgeDoubleClick = useCallback(async (_: React.MouseEvent, edge: Edge) => {
     if (linkMode) return
     const data = edge.data as { layer: string; broken: boolean }
+    // Only production links are breakable — ignore mgmt/power/cooling edges.
+    if ((data?.layer ?? 'production') !== 'production') return
     try {
-      if (data?.broken) await api.restoreLink(edge.source, edge.target, data?.layer || 'production')
-      else              await api.breakLink(edge.source, edge.target, data?.layer || 'production')
+      if (data?.broken) await api.restoreLink(edge.source, edge.target, 'production')
+      else              await api.breakLink(edge.source, edge.target, 'production')
       fetchGraph()
     } catch (e) { console.error(e) }
   }, [fetchGraph, linkMode])
@@ -515,7 +517,7 @@ function Canvas() {
           display: 'flex', alignItems: 'center', gap: 5,
         }}>
           <I.info />
-          Double-click a link to break / restore it
+          Double-click a production link to break / restore it
         </div>
       )}
 

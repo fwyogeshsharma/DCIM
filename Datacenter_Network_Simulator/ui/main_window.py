@@ -1849,18 +1849,27 @@ class MainWindow(QMainWindow):
         menu.triggered.connect(_dispatch)
         menu.popup(screen_pos)
 
-    def _on_edge_right_click(self, src_id: str, dst_id: str, screen_pos):
+    def _on_edge_right_click(self, src_id: str, dst_id: str, layer: str, screen_pos):
         src = self.device_manager.get_device(src_id)
         dst = self.device_manager.get_device(dst_id)
         if not src or not dst:
             return
-        broken = self.topology.is_link_broken(src_id, dst_id)
         menu = QMenu(self)
         menu.setStyleSheet("""
             QMenu { background: #161b22; color: #e6edf3; border: 1px solid #30363d; }
             QMenu::item:selected { background: #1f6feb; }
+            QMenu::item:disabled { color: #6e7681; }
         """)
         menu.addSection(f"{src.name} — {dst.name}")
+
+        # Only production links are breakable — mgmt/power/cooling stay up.
+        if layer != "production":
+            info = menu.addAction("Only production links are breakable")
+            info.setEnabled(False)
+            menu.popup(screen_pos)
+            return
+
+        broken = self.topology.is_link_broken(src_id, dst_id, "production")
         if broken:
             toggle_act = menu.addAction("Restore Link")
         else:
