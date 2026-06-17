@@ -214,7 +214,15 @@ function EnergyMonitorCard({ card, timeRange }: { card: EnergyCardData; timeRang
         <div className="mb-4">
           <p className="text-xs font-medium text-slate-400 mb-2">Circuits ({card.circuits.length})</p>
           <div className="max-h-56 overflow-y-auto rounded-lg border border-white/5">
-            <table className="w-full text-xs">
+            {/* table-fixed + colgroup keeps column (and header) widths constant
+                regardless of the cell values, so headers don't jump as data changes. */}
+            <table className="w-full text-xs table-fixed">
+              <colgroup>
+                <col />
+                <col className="w-20" />
+                <col className="w-20" />
+                <col className="w-20" />
+              </colgroup>
               <thead className="bg-slate-900/60 text-slate-500 sticky top-0">
                 <tr>
                   <th className="text-left px-3 py-1.5 font-medium">Circuit</th>
@@ -226,7 +234,7 @@ function EnergyMonitorCard({ card, timeRange }: { card: EnergyCardData; timeRang
               <tbody>
                 {card.circuits.map((c) => (
                   <tr key={c.circuit} className="border-t border-white/5">
-                    <td className="px-3 py-1.5 text-slate-300">{c.circuit}</td>
+                    <td className="px-3 py-1.5 text-slate-300 truncate" title={c.circuit}>{c.circuit}</td>
                     <td className="px-3 py-1.5 text-right text-purple-400">{c.current != null ? formatEnergyValue(c.current, 'A') : '—'}</td>
                     <td className="px-3 py-1.5 text-right text-amber-400">{c.power != null ? formatEnergyValue(c.power, 'kW') : '—'}</td>
                     <td className="px-3 py-1.5 text-right text-green-400">{c.energy != null ? formatEnergyValue(c.energy, 'kWh') : '—'}</td>
@@ -298,7 +306,7 @@ export default function Reports() {
   // Energy meter readings (energy_metrics table) — the per-panel / per-phase /
   // per-circuit / harmonic telemetry from energy_monitor devices, surfaced here
   // in circuit mapping. These devices are hidden from the network topology views.
-  const { data: energyReadings } = useQuery({
+  const { data: energyReadings, isLoading: energyLoading } = useQuery({
     queryKey: ['energy-snapshot'],
     queryFn: () => api.getEnergySnapshot(),
     refetchInterval: 30000,
@@ -760,7 +768,7 @@ export default function Reports() {
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
-  if (powerLoading) {
+  if (powerLoading || energyLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-4">

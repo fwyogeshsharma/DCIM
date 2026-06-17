@@ -1117,7 +1117,7 @@ export default function Topology() {
               className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
               title="Filter by datacenter"
             >
-              <option value="all">All Datacenters</option>
+              <option value="all">All Components</option>
               {datacenters.map(dc => (
                 <option key={dc} value={dc}>{dc}</option>
               ))}
@@ -1130,7 +1130,7 @@ export default function Topology() {
               onChange={e => setNetworkFilter(e.target.value)}
               className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
             >
-              <option value="all">All Networks</option>
+              <option value="all">All Datacenters</option>
               {networks.map(n => (
                 <option key={n} value={n}>{n.replace(/_/g, ' ')}</option>
               ))}

@@ -6,6 +6,7 @@ import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Cartesia
 import { Activity, Cpu, HardDrive, Wifi, TrendingUp, Clock, AlertTriangle, CheckCircle, XCircle, Gauge, Radio } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { Link } from 'react-router-dom'
+import { getReadablePath } from '@/lib/openconfigLabels'
 
 export default function AgentAnalytics() {
   const { agentId } = useParams<{ agentId: string }>()
@@ -217,7 +218,7 @@ export default function AgentAnalytics() {
             </text>
           </RadialBarChart>
         </ResponsiveContainer>
-        <p className="text-sm text-slate-400 mt-2 capitalize">{label.replace(/_/g, ' ')}</p>
+        <p className="text-sm text-slate-400 mt-2" title={label}>{getReadablePath(label)}</p>
       </div>
     )
   }
@@ -370,7 +371,7 @@ export default function AgentAnalytics() {
               return (
                 <div key={type} className="bg-slate-900/50 border border-white/5 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white capitalize">{type.replace(/_/g, ' ')}</h3>
+                    <h3 className="text-lg font-semibold text-white" title={type}>{getReadablePath(type)}</h3>
                     {stats && (
                       <div className="text-right">
                         <div className="text-2xl font-bold text-white">
@@ -437,7 +438,7 @@ export default function AgentAnalytics() {
           <div className="grid grid-cols-1 gap-6">
             {Object.entries(groupedMetrics24h).slice(0, 4).map(([type, data]) => (
               <div key={type} className="bg-slate-900/50 border border-white/5 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-white capitalize mb-4">{type}</h3>
+                <h3 className="text-lg font-semibold text-white mb-4" title={type}>{getReadablePath(type)}</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <LineChart data={data}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
@@ -546,7 +547,7 @@ export default function AgentAnalytics() {
             return (
               <div key={type} className="bg-slate-900/50 border border-white/5 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-slate-400 capitalize">{type}</h3>
+                  <h3 className="text-sm font-medium text-slate-400" title={type}>{getReadablePath(type)}</h3>
                   <span className="text-xs text-slate-500">{data.length} samples</span>
                 </div>
                 {stats && (
