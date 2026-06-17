@@ -3139,6 +3139,7 @@ class MainWindow(QMainWindow):
                     f"gNMI running — proxy:{port}, {n_direct} direct server(s), "
                     f"{counts.get('switch', 0)} switches, {counts.get('router', 0)} routers"
                 )
+                self._notify_gnmi_proxy_change()
             else:
                 self._console_panel.log_gnmi("[gNMI] Proxy failed to start.", "error")
                 self._gnmi_panel.set_proxy_running(False)
@@ -3146,6 +3147,15 @@ class MainWindow(QMainWindow):
             self.gnmi.stop_proxy()
             self._console_panel.log_gnmi("[gNMI] Proxy stopped.", "info")
             self._gnmi_panel.set_proxy_running(False)
+            self._notify_gnmi_proxy_change()
+
+    def _notify_gnmi_proxy_change(self):
+        """Mirror a desktop-initiated proxy start/stop onto the web UI (SSE)."""
+        try:
+            from api.state import AppState
+            AppState.get().notify_ui("sync_gnmi")
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------ #
     #  gNMI IP unbinding (called by clear, not by stop)                  #
@@ -3526,14 +3536,20 @@ class MainWindow(QMainWindow):
             self._gnmi_panel.set_generating(False)
             self._gnmi_panel.set_gnmi_running(running)
             self._gnmi_panel.set_datasets_ready(datasets_ready)
-            if running:
-                self._gnmi_panel.set_gnmi_status("Running")
-                self._gnmi_panel.set_gnmi_targets(self.gnmi.get_active_targets())
-                self._gnmi_panel.set_clients(self.gnmi.get_clients())
-            else:
-                self._gnmi_panel.set_gnmi_status("Idle")
+            # Reflect proxy + lock state FIRST so a later targets/clients refresh
+            # failure can't leave the proxy toggle stale — this sync is the only
+            # thing that mirrors a web-triggered proxy start onto the desktop.
             self._gnmi_panel.set_proxy_running(self.gnmi.is_proxy_running())
             self._binding_panel.set_gnmi_locked(running)
+            if running:
+                self._gnmi_panel.set_gnmi_status("Running")
+                try:
+                    self._gnmi_panel.set_gnmi_targets(self.gnmi.get_active_targets())
+                    self._gnmi_panel.set_clients(self.gnmi.get_clients())
+                except Exception as e:
+                    self._console_panel.log(f"gNMI targets/clients refresh error: {e}", "error")
+            else:
+                self._gnmi_panel.set_gnmi_status("Idle")
         except Exception as e:
             self._console_panel.log(f"gNMI UI sync error: {e}", "error")
 
