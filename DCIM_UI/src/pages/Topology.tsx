@@ -302,11 +302,11 @@ export default function Topology() {
   const [showStats, setShowStats] = useState(true)
   const [showTrapFeed, setShowTrapFeed] = useState(true)
   const [showTierBands, setShowTierBands] = useState(true)
-  const [networkFilter, setNetworkFilter] = useState<string>('all')
-  // Pre-select the datacenter when navigating in from the dashboard (?dc=<id>)
-  const [datacenterFilter, setDatacenterFilter] = useState<string>(
-    () => searchParams.get('dc') ?? 'all'
+e  // Pre-select the network when navigating in from the dashboard (?network=<id>)
+  const [networkFilter, setNetworkFilter] = useState<string>(
+    () => searchParams.get('network') ?? 'all'
   )
+  const [datacenterFilter, setDatacenterFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   // The query that has been *applied* via the Apply button. When set, the graph
   // is filtered down to the matching device(s) plus every device reachable from
@@ -451,9 +451,20 @@ export default function Topology() {
     return [...new Set(rawTree.map(n => n.network_id))].sort()
   }, [rawTree])
 
+  // Only show datacenter IDs that exist within the currently selected network.
   const datacenters = useMemo(() => {
-    return [...new Set(rawTree.map(n => n.datacenter_id).filter(Boolean))].sort()
-  }, [rawTree])
+    const source = networkFilter === 'all'
+      ? rawTree
+      : rawTree.filter(n => n.network_id === networkFilter)
+    return [...new Set(source.map(n => n.datacenter_id).filter(Boolean))].sort()
+  }, [rawTree, networkFilter])
+
+  // If the active datacenter filter is no longer present in the scoped list, reset it.
+  useEffect(() => {
+    if (datacenterFilter !== 'all' && !datacenters.includes(datacenterFilter)) {
+      setDatacenterFilter('all')
+    }
+  }, [datacenters, datacenterFilter])
 
   // Devices visible after the Datacenter + Network dropdown filters
   // (before any device focus).
@@ -1163,7 +1174,20 @@ export default function Topology() {
             Reset focus
           </button>
         )}
-        {/* Datacenter filter */}
+        {/* Network filter — pick first, datacenter options narrow to this network */}
+        {networks.length > 1 && (
+          <select
+            value={networkFilter}
+            onChange={e => setNetworkFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+          >
+            <option value="all">All Datacenters</option>
+            {networks.map(n => (
+              <option key={n} value={n}>{n.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        )}
+        {/* Datacenter filter — scoped to the selected network */}
         {datacenters.length > 0 && (
           <select
             value={datacenterFilter}
@@ -1174,19 +1198,6 @@ export default function Topology() {
             <option value="all">All Components</option>
             {datacenters.map(dc => (
               <option key={dc} value={dc}>{dc}</option>
-            ))}
-          </select>
-        )}
-        {/* Network filter */}
-        {networks.length > 1 && (
-          <select
-            value={networkFilter}
-            onChange={e => setNetworkFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
-          >
-            <option value="all">All Datacenters</option>
-            {networks.map(n => (
-              <option key={n} value={n}>{n.replace(/_/g, ' ')}</option>
             ))}
           </select>
         )}

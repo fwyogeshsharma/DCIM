@@ -159,9 +159,7 @@ export default function Dashboard() {
                 const color = NETWORK_COLORS[idx % NETWORK_COLORS.length]
                 const onlinePct = net.total_devices > 0 ? (net.online / net.total_devices) * 100 : 0
                 const hasAlerts = net.active_alerts > 0
-                const topoUrl = net.datacenter
-                  ? `/app/topology?dc=${encodeURIComponent(net.datacenter)}`
-                  : '/app/topology'
+                const topoUrl = `/app/topology?network=${encodeURIComponent(net.network_id)}`
 
                 return (
                   <div
