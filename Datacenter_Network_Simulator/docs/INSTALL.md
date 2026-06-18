@@ -290,7 +290,7 @@ manually: Device Manager → Action → Add legacy hardware → Network adapters
 libglib2.0-0`. The full `xcb` list is only needed for the desktop GUI.
 
 **Port 57400 fails to bind (Windows)**
-— Hyper-V/WinNAT reserved it. See the WinNAT fix in [README.md](README.md#ports-used).
+— Hyper-V/WinNAT reserved it. See the WinNAT fix in [README.md](../README.md#ports-used).
 
 **Login fails with "Invalid username or password" (Linux)**
 — The `$` in the hash was mangled. `auth.env` values must use **single** quotes
