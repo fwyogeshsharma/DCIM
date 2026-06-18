@@ -17,11 +17,13 @@ export const HEALTH_METRIC_NAMES = [
   'system.memory_utilization_percent',
   'system.memory_total_bytes',
   'system.memory_used_bytes',
+  'server.cpu_percent',
   'server.cpu_idle_percent',
   'server.cpu_user_percent',
   'server.cpu_system_percent',
   'server.memory_total_kb',
   'server.memory_available_kb',
+  'server.memory_used_percent',
 ] as const
 
 const clampPct = (v: number) => Math.min(100, Math.max(0, v))
@@ -30,6 +32,8 @@ const clampPct = (v: number) => Math.min(100, Math.max(0, v))
 export function deriveCpuPct(m: Record<string, number>): number | null {
   // Network devices report utilisation directly.
   if (m['system.cpu_utilization_percent'] != null) return clampPct(m['system.cpu_utilization_percent'])
+  // Servers that report busy% directly (no idle/user/system breakdown).
+  if (m['server.cpu_percent'] != null) return clampPct(m['server.cpu_percent'])
   // Servers: busy = 100 − idle.
   if (m['server.cpu_idle_percent'] != null) return clampPct(100 - m['server.cpu_idle_percent'])
   // Servers without idle: sum the active buckets we have.
@@ -54,6 +58,8 @@ export function deriveRamTotalGb(m: Record<string, number>): number | null {
 export function deriveRamPct(m: Record<string, number>): number | null {
   // Network devices report utilisation directly.
   if (m['system.memory_utilization_percent'] != null) return clampPct(m['system.memory_utilization_percent'])
+  // Servers that report used% directly.
+  if (m['server.memory_used_percent'] != null) return clampPct(m['server.memory_used_percent'])
   // gNMI total/used bytes.
   const tb = m['system.memory_total_bytes']
   const ub = m['system.memory_used_bytes']

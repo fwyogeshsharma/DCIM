@@ -146,6 +146,7 @@ export function createInventoryRouter(dbPool: Pool): Router {
           WHERE m.metric_name IN (
             'system.cpu_utilization_percent', 'system.memory_utilization_percent',
             'system.memory_total_bytes',      'system.memory_used_bytes',
+            'server.cpu_percent',             'server.memory_used_percent',
             'server.cpu_idle_percent',        'server.cpu_user_percent', 'server.cpu_system_percent',
             'server.memory_total_kb',         'server.memory_available_kb'
           )
@@ -157,12 +158,14 @@ export function createInventoryRouter(dbPool: Pool): Router {
             device_id,
             COALESCE(
               cpu_util,
+              cpu_direct,
               CASE WHEN cpu_idle IS NOT NULL THEN 100 - cpu_idle END,
               CASE WHEN cpu_user IS NOT NULL OR cpu_sys IS NOT NULL
                    THEN COALESCE(cpu_user, 0) + COALESCE(cpu_sys, 0) END
             ) AS cpu_pct,
             COALESCE(
               mem_util,
+              mem_used_pct,
               CASE WHEN mem_total_b > 0 THEN mem_used_b / mem_total_b * 100 END,
               CASE WHEN mem_total_kb > 0 THEN (mem_total_kb - mem_avail_kb) / mem_total_kb * 100 END
             ) AS ram_pct,
@@ -176,6 +179,8 @@ export function createInventoryRouter(dbPool: Pool): Router {
             SELECT
               device_id,
               MAX(value) FILTER (WHERE metric_name = 'system.cpu_utilization_percent')    AS cpu_util,
+              MAX(value) FILTER (WHERE metric_name = 'server.cpu_percent')                AS cpu_direct,
+              MAX(value) FILTER (WHERE metric_name = 'server.memory_used_percent')        AS mem_used_pct,
               MAX(value) FILTER (WHERE metric_name = 'server.cpu_idle_percent')           AS cpu_idle,
               MAX(value) FILTER (WHERE metric_name = 'server.cpu_user_percent')           AS cpu_user,
               MAX(value) FILTER (WHERE metric_name = 'server.cpu_system_percent')         AS cpu_sys,
