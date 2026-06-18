@@ -302,7 +302,7 @@ export default function Topology() {
   const [showStats, setShowStats] = useState(true)
   const [showTrapFeed, setShowTrapFeed] = useState(true)
   const [showTierBands, setShowTierBands] = useState(true)
-e  // Pre-select the network when navigating in from the dashboard (?network=<id>)
+  // Pre-select the network when navigating in from the dashboard (?network=<id>)
   const [networkFilter, setNetworkFilter] = useState<string>(
     () => searchParams.get('network') ?? 'all'
   )
