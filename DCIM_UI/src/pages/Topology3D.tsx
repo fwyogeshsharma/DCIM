@@ -2074,20 +2074,31 @@ export default function Topology3D() {
   const [datacenterFilter, setDatacenterFilter] = useState('all')
   const [componentFilter, setComponentFilter] = useState('all')
 
-  const datacenterList = useMemo(() =>
-    [...new Set((servers ?? []).map((s) => s.name).filter(Boolean))].sort(),
-    [servers]
+  // Build IP → datacenter_id and IP → network_id from topology tree
+  const datacenterByIp = useMemo(() => {
+    const map = new Map<string, string>()
+    topologyTree?.nodes.forEach(n => {
+      if (n.mgmt_ip && n.datacenter_id) map.set(n.mgmt_ip, n.datacenter_id)
+    })
+    return map
+  }, [topologyTree])
+
+  const networkByIp = useMemo(() => {
+    const map = new Map<string, string>()
+    topologyTree?.nodes.forEach(n => {
+      if (n.mgmt_ip && n.network_id) map.set(n.mgmt_ip, n.network_id)
+    })
+    return map
+  }, [topologyTree])
+
+  const datacenterIds = useMemo(() =>
+    [...new Set((topologyTree?.nodes ?? []).map(n => n.datacenter_id).filter(Boolean))].sort(),
+    [topologyTree]
   )
 
-  const filteredServers = useMemo(() => {
-    if (!servers) return []
-    if (datacenterFilter === 'all') return servers
-    return servers.filter((s) => s.name === datacenterFilter)
-  }, [servers, datacenterFilter])
-
-  const filteredServerIds = useMemo(
-    () => new Set(filteredServers.map((s) => s.id).filter((id): id is string => !!id)),
-    [filteredServers]
+  const networkIds = useMemo(() =>
+    [...new Set((topologyTree?.nodes ?? []).map(n => n.network_id).filter(Boolean))].sort(),
+    [topologyTree]
   )
   // The query applied via the Apply button. When set, the scene is filtered to
   // the matching device(s) plus every device reachable from them through the
@@ -2310,21 +2321,36 @@ export default function Topology3D() {
   // Filter to expanded servers and compute 3D layout
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
-    const activeServers = datacenterFilter === 'all' ? servers : filteredServers
+
+    // Returns true if the given device IP matches the active datacenter/network filter.
+    // 'all' → no filter (show everything).
+    // 'dc:<id>' → filter by datacenter_id from topology tree.
+    // 'net:<id>' → filter by network_id from topology tree.
+    const matchesDCFilter = (ip: string | undefined): boolean => {
+      if (datacenterFilter === 'all') return true
+      if (!ip) return false
+      if (datacenterFilter.startsWith('dc:'))
+        return datacenterByIp.get(ip) === datacenterFilter.slice(3)
+      if (datacenterFilter.startsWith('net:'))
+        return networkByIp.get(ip) === datacenterFilter.slice(4)
+      return true
+    }
+
+    const activeServers = servers
     const visibleAgents = agents.filter(a =>
       expandedServers.has(`server-${a.server_id}`) &&
-      (datacenterFilter === 'all' || filteredServerIds.has(a.server_id ?? ''))
+      matchesDCFilter(a.ip_address)
     )
     // Energy-monitor devices belong to Power Management → PDU circuit mapping,
     // not the 3D topology — drop them here (role resolved by mgmt IP).
     const visibleDevices = (snmpDevices || []).filter(
       d => expandedServers.has(`server-${d.server_id}`) &&
         roleByIp.get(d.device_ip) !== 'energy_monitor' &&
-        (datacenterFilter === 'all' || filteredServerIds.has(d.server_id ?? ''))
+        matchesDCFilter(d.device_ip)
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
     return computeHierarchicalLayout(activeServers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
-  }, [servers, filteredServers, filteredServerIds, datacenterFilter, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
+  }, [servers, datacenterFilter, datacenterByIp, networkByIp, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
 
   // IDs of layout nodes whose name or IP matches the search query (null = no search)
   const searchMatchIds = useMemo(() => {
@@ -2453,109 +2479,27 @@ export default function Topology3D() {
   const hasExpanded = expandedServers.size > 0
 
   return (
-    <div className="h-full flex flex-col space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
+    <div className="h-full flex flex-col space-y-3">
+      {/* Row 1: title + fixed action buttons */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-4xl font-bold text-white flex items-center gap-3">
             <Box className="w-9 h-9 text-blue-400" />
             3D Network Topology
           </h1>
-          <p className="text-slate-400 mt-2 text-lg">
+          <p className="text-slate-400 mt-1 text-lg">
             Interactive 3D visualization — drag to rotate, scroll to zoom, double-click a server to expand
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Device search — type a name/IP, then Apply to focus on that device
-              and its entire connected sub-network */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') setAppliedFocus(searchQuery) }}
-              placeholder="Search name or IP…"
-              className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
-            />
-            {searchActive && (
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                <span className={`text-[11px] font-medium ${searchMatchIds && searchMatchIds.size > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
-                  {searchMatchIds?.size ?? 0}
-                </span>
-                <button
-                  onClick={() => { setSearchQuery(''); setAppliedFocus('') }}
-                  className="text-slate-400 hover:text-white transition-colors"
-                  title="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => setAppliedFocus(searchQuery)}
-            disabled={!searchActive}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-            title="Show this device and everything connected to it"
-          >
-            Apply
-          </button>
-          {focusActive && (
-            <button
-              onClick={() => setAppliedFocus('')}
-              className="px-3 py-2 bg-slate-800/60 hover:bg-slate-700 border border-white/10 text-slate-300 text-sm font-medium rounded-lg transition-colors"
-              title="Show the full topology again"
-            >
-              Reset focus
-            </button>
-          )}
-          {datacenterList.length > 1 && (
-            <select
-              value={datacenterFilter}
-              onChange={(e) => setDatacenterFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
-              title="Filter by datacenter"
-            >
-              <option value="all">All Datacenters</option>
-              {datacenterList.map((dc) => (
-                <option key={dc} value={dc}>{dc}</option>
-              ))}
-            </select>
-          )}
-          <select
-            value={componentFilter}
-            onChange={(e) => setComponentFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
-            title="Filter by component type"
-          >
-            <option value="all">All Components</option>
-            <option value="server">Servers</option>
-            <option value="agent">Agents</option>
-            <option value="network">Network Devices</option>
-          </select>
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={hasExpanded ? collapseAll : expandAll}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10 text-sm"
             title={hasExpanded ? 'Collapse all servers' : 'Expand all servers'}
           >
             {hasExpanded ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
             {hasExpanded ? 'Collapse All' : 'Expand All'}
           </button>
-          {!showTrapFeed && (
-              <button
-                onClick={() => setShowTrapFeed(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-red-900/40 hover:bg-red-900/60 border border-red-500/40 text-red-300 rounded-lg transition-colors font-medium relative text-sm"
-              >
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                Traps
-                {trapFeed.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
-                    {trapFeed.length > 9 ? '9+' : trapFeed.length}
-                  </span>
-                )}
-              </button>
-            )}
           <button
             onClick={() => setShowTierBands(t => !t)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border text-sm ${
@@ -2581,11 +2525,107 @@ export default function Topology3D() {
           </button>
           <button
             onClick={() => navigate('/app/topology')}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10 text-sm"
           >
             2D View
           </button>
         </div>
+      </div>
+
+      {/* Row 2: search, filters, and conditional trap button */}
+      <div className="flex items-center gap-2">
+        {/* Device search */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') setAppliedFocus(searchQuery) }}
+            placeholder="Search name or IP…"
+            className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+          />
+          {searchActive && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <span className={`text-[11px] font-medium ${searchMatchIds && searchMatchIds.size > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
+                {searchMatchIds?.size ?? 0}
+              </span>
+              <button
+                onClick={() => { setSearchQuery(''); setAppliedFocus('') }}
+                className="text-slate-400 hover:text-white transition-colors"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => setAppliedFocus(searchQuery)}
+          disabled={!searchActive}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          title="Show this device and everything connected to it"
+        >
+          Apply
+        </button>
+        {focusActive && (
+          <button
+            onClick={() => setAppliedFocus('')}
+            className="px-3 py-2 bg-slate-800/60 hover:bg-slate-700 border border-white/10 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+            title="Show the full topology again"
+          >
+            Reset focus
+          </button>
+        )}
+        {(datacenterIds.length > 0 || networkIds.length > 0) && (
+          <select
+            value={datacenterFilter}
+            onChange={(e) => setDatacenterFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+            title="Filter by datacenter or network"
+          >
+            <option value="all">All Datacenters</option>
+            {datacenterIds.length > 0 && (
+              <optgroup label="By Datacenter">
+                {datacenterIds.map(dcId => (
+                  <option key={dcId} value={`dc:${dcId}`}>{dcId}</option>
+                ))}
+              </optgroup>
+            )}
+            {networkIds.length > 0 && (
+              <optgroup label="By Network">
+                {networkIds.map(netId => (
+                  <option key={netId} value={`net:${netId}`}>{netId}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        )}
+        <select
+          value={componentFilter}
+          onChange={(e) => setComponentFilter(e.target.value)}
+          className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+          title="Filter by component type"
+        >
+          <option value="all">All Components</option>
+          <option value="server">Servers</option>
+          <option value="agent">Agents</option>
+          <option value="network">Network Devices</option>
+        </select>
+        {!showTrapFeed && (
+          <button
+            onClick={() => setShowTrapFeed(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-red-900/40 hover:bg-red-900/60 border border-red-500/40 text-red-300 rounded-lg transition-colors font-medium relative text-sm"
+          >
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Traps
+            {trapFeed.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {trapFeed.length > 9 ? '9+' : trapFeed.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       <div className="flex-1 flex gap-4">
