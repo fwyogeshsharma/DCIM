@@ -14,7 +14,7 @@ import {
   Network,
   Search,
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { computeLayeredLayout } from '@/lib/topology-layered'
 import { useSSE } from '@/hooks/useSSE'
 
@@ -290,6 +290,7 @@ const linkPairKeys = (
 
 export default function Topology() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const svgRef = useRef<SVGSVGElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
@@ -302,7 +303,10 @@ export default function Topology() {
   const [showTrapFeed, setShowTrapFeed] = useState(true)
   const [showTierBands, setShowTierBands] = useState(true)
   const [networkFilter, setNetworkFilter] = useState<string>('all')
-  const [datacenterFilter, setDatacenterFilter] = useState<string>('all')
+  // Pre-select the datacenter when navigating in from the dashboard (?dc=<id>)
+  const [datacenterFilter, setDatacenterFilter] = useState<string>(
+    () => searchParams.get('dc') ?? 'all'
+  )
   const [searchQuery, setSearchQuery] = useState('')
   // The query that has been *applied* via the Apply button. When set, the graph
   // is filtered down to the matching device(s) plus every device reachable from

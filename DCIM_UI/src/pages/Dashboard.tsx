@@ -1,4 +1,3 @@
-import { useState, useMemo } from 'react'
 import { useAlerts } from '@/hooks/useAlerts'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -12,10 +11,9 @@ import {
   Wifi,
   WifiOff,
   MapPin,
-  GitBranch,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 function formatNetworkLabel(id: string): string {
   return id
@@ -39,7 +37,7 @@ const NETWORK_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '
 
 export default function Dashboard() {
   const { data: alerts } = useAlerts()
-  const [selectedDc, setSelectedDc] = useState('all')
+  const navigate = useNavigate()
 
   const { data: networks, isLoading: networksLoading } = useQuery({
     queryKey: ['networks-summary'],
@@ -53,20 +51,6 @@ export default function Dashboard() {
     queryFn: () => api.getRecentAgents(6),
     refetchInterval: 30000,
   })
-
-  // Unique datacenter names for the dropdown
-  const datacenters = useMemo(() => {
-    const seen = new Set<string>()
-    ;(networks ?? []).forEach(n => { if (n.datacenter) seen.add(n.datacenter) })
-    return [...seen].sort()
-  }, [networks])
-
-  // Networks visible in the health card (filtered by selected datacenter)
-  const visibleNetworks = useMemo(() => {
-    if (!networks) return []
-    if (selectedDc === 'all') return networks
-    return networks.filter(n => n.datacenter === selectedDc)
-  }, [networks, selectedDc])
 
   // Totals derived from networks
   const totalNetworks = networks?.length ?? 0
@@ -164,41 +148,28 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Datacenter Health */}
         <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all duration-300">
-          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-            <h3 className="text-xl font-semibold text-white shrink-0">Datacenter Health</h3>
-            <div className="flex items-center gap-2 flex-wrap">
-              {datacenters.length > 0 && (
-                <select
-                  value={selectedDc}
-                  onChange={e => setSelectedDc(e.target.value)}
-                  className="px-2.5 py-1.5 bg-slate-700/60 border border-white/10 text-white text-xs rounded-lg focus:outline-none focus:border-blue-500"
-                >
-                  <option value="all">All Datacenters</option>
-                  {datacenters.map(dc => (
-                    <option key={dc} value={dc}>{dc}</option>
-                  ))}
-                </select>
-              )}
-              <Link
-                to="/app/topology"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
-              >
-                <GitBranch className="w-3.5 h-3.5" />
-                See Topology
-              </Link>
-              <Link to="/app/agents" className="text-sm text-blue-400 hover:text-blue-300">View Devices</Link>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Datacenter Health</h3>
+            <span className="text-xs text-slate-500">Click a row to view its topology</span>
           </div>
 
-          {visibleNetworks.length > 0 ? (
+          {networks && networks.length > 0 ? (
             <div className="space-y-4">
-              {visibleNetworks.map((net, idx) => {
+              {networks.map((net, idx) => {
                 const color = NETWORK_COLORS[idx % NETWORK_COLORS.length]
                 const onlinePct = net.total_devices > 0 ? (net.online / net.total_devices) * 100 : 0
                 const hasAlerts = net.active_alerts > 0
+                const topoUrl = net.datacenter
+                  ? `/app/topology?dc=${encodeURIComponent(net.datacenter)}`
+                  : '/app/topology'
 
                 return (
-                  <div key={net.network_id} className="space-y-2">
+                  <div
+                    key={net.network_id}
+                    className="space-y-2 cursor-pointer rounded-lg px-2 py-1 -mx-2 hover:bg-white/5 transition-colors"
+                    onClick={() => navigate(topoUrl)}
+                    title={`View topology for ${net.datacenter ?? net.network_id}`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
@@ -258,14 +229,8 @@ export default function Dashboard() {
           ) : (
             <div className="text-center py-8">
               <Network className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">
-                {selectedDc !== 'all' ? `No networks in "${selectedDc}"` : 'No networks found'}
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                {selectedDc !== 'all'
-                  ? 'Try selecting a different datacenter'
-                  : 'Devices appear after simulators start syncing'}
-              </p>
+              <p className="text-slate-400">No networks found</p>
+              <p className="text-xs text-slate-500 mt-1">Devices appear after simulators start syncing</p>
             </div>
           )}
         </div>
