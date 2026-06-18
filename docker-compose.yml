@@ -12,8 +12,7 @@ volumes:
   dcim-server-a-data:
   dcim-server-b-data:
   dcim-server-c-data:
-  # NOTE: certbot certs/webroot are host bind mounts at ./simulator/certbot/{conf,ww
-  w}
+  # NOTE: certbot certs/webroot are host bind mounts at ./simulator/certbot/{conf,www}
   # (see nginx & certbot services) so the cert on disk is the single source of truth
   # shared by nginx, certbot, and simulator/init-letsencrypt.sh. No named volumes.
 
