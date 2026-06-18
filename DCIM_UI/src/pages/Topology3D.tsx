@@ -2074,23 +2074,6 @@ export default function Topology3D() {
   const [networkFilter, setNetworkFilter] = useState('all')
   const [datacenterFilter, setDatacenterFilter] = useState('all')
 
-  // Build IP → datacenter_id and IP → network_id from topology tree
-  const datacenterByIp = useMemo(() => {
-    const map = new Map<string, string>()
-    topologyTree?.nodes.forEach(n => {
-      if (n.mgmt_ip && n.datacenter_id) map.set(n.mgmt_ip, n.datacenter_id)
-    })
-    return map
-  }, [topologyTree])
-
-  const networkByIp = useMemo(() => {
-    const map = new Map<string, string>()
-    topologyTree?.nodes.forEach(n => {
-      if (n.mgmt_ip && n.network_id) map.set(n.mgmt_ip, n.network_id)
-    })
-    return map
-  }, [topologyTree])
-
   // Network options — unique network_ids from topology tree
   const networks = useMemo(() =>
     [...new Set((topologyTree?.nodes ?? []).map(n => n.network_id).filter(Boolean))].sort(),
@@ -2334,28 +2317,29 @@ export default function Topology3D() {
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
 
-    const matchesFilter = (ip: string | undefined): boolean => {
-      if (!ip) return networkFilter === 'all' && datacenterFilter === 'all'
-      const matchesNet = networkFilter === 'all' || networkByIp.get(ip) === networkFilter
-      const matchesDC  = datacenterFilter === 'all' || datacenterByIp.get(ip) === datacenterFilter
+    // Match a node against the active filters using the network_id / datacenter_id
+    // carried directly on the node's own payload — no fragile IP→tree lookup.
+    const matchesFilter = (networkId?: string, datacenterId?: string): boolean => {
+      const matchesNet = networkFilter === 'all' || networkId === networkFilter
+      const matchesDC  = datacenterFilter === 'all' || datacenterId === datacenterFilter
       return matchesNet && matchesDC
     }
 
     const activeServers = servers
     const visibleAgents = agents.filter(a =>
       expandedServers.has(`server-${a.server_id}`) &&
-      matchesFilter(a.ip_address)
+      matchesFilter(a.network_id, a.datacenter_id)
     )
     // Energy-monitor devices belong to Power Management → PDU circuit mapping,
     // not the 3D topology — drop them here (role resolved by mgmt IP).
     const visibleDevices = (snmpDevices || []).filter(
       d => expandedServers.has(`server-${d.server_id}`) &&
         roleByIp.get(d.device_ip) !== 'energy_monitor' &&
-        matchesFilter(d.device_ip)
+        matchesFilter(d.network_id, d.datacenter_id)
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
     return computeHierarchicalLayout(activeServers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
-  }, [servers, networkFilter, datacenterFilter, datacenterByIp, networkByIp, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
+  }, [servers, networkFilter, datacenterFilter, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
 
   // IDs of layout nodes whose name or IP matches the search query (null = no search)
   const searchMatchIds = useMemo(() => {

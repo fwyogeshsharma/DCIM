@@ -13,6 +13,8 @@ const DEVICE_SELECT = `
     d.group_id                  AS "group",
     d.network_id                AS server_name,
     d.network_id                AS server_id,
+    d.network_id                AS network_id,
+    d.datacenter_id             AS datacenter_id,
     d.last_seen_at              AS last_seen,
     d.device_type,
     d.device_role,

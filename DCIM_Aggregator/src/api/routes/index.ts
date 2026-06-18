@@ -180,6 +180,8 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
           d.id::text       AS agent_id,
           d.network_id     AS server_id,
           d.network_id     AS server_name,
+          d.network_id     AS network_id,
+          d.datacenter_id  AS datacenter_id,
           d.device_type,
           d.device_role,
           d.last_seen_at   AS last_seen

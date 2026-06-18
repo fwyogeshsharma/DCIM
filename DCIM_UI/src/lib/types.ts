@@ -30,6 +30,8 @@ export interface Agent {
   server_id?: string
   server_name?: string
   server_url?: string
+  network_id?: string
+  datacenter_id?: string
   certificate_cn: string
   hostname: string
   ip_address: string
@@ -102,6 +104,8 @@ export interface SNMPDevice {
   agent_id: string
   server_id: string
   server_name: string
+  network_id?: string
+  datacenter_id?: string
   device_type?: string | null
   device_role?: string | null
   last_seen: string
