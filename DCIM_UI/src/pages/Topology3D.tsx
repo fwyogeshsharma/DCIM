@@ -2079,6 +2079,22 @@ export default function Topology3D() {
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
+
+  const datacenterList = useMemo(() =>
+    [...new Set((servers ?? []).map((s) => s.name).filter(Boolean))].sort(),
+    [servers]
+  )
+
+  const filteredServers = useMemo(() => {
+    if (!servers) return []
+    if (datacenterFilter === 'all') return servers
+    return servers.filter((s) => s.name === datacenterFilter)
+  }, [servers, datacenterFilter])
+
+  const filteredServerIds = useMemo(
+    () => new Set(filteredServers.map((s) => s.id).filter((id): id is string => !!id)),
+    [filteredServers]
+  )
   const agentsLoading = USE_MOCK_DATA ? false : realAgentsLoading
   const serversLoading = USE_MOCK_DATA ? false : realServersLoading
   const navigate = useNavigate()
@@ -2090,6 +2106,8 @@ export default function Topology3D() {
   const [heatmapMode, setHeatmapMode] = useState(false)
   const [showTierBands, setShowTierBands] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [datacenterFilter, setDatacenterFilter] = useState('all')
+  const [componentFilter, setComponentFilter] = useState('all')
   // The query applied via the Apply button. When set, the scene is filtered to
   // the matching device(s) plus every device reachable from them through the
   // network links (their connected sub-network).
@@ -2311,16 +2329,21 @@ export default function Topology3D() {
   // Filter to expanded servers and compute 3D layout
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
-    const visibleAgents = agents.filter(a => expandedServers.has(`server-${a.server_id}`))
+    const activeServers = datacenterFilter === 'all' ? servers : filteredServers
+    const visibleAgents = agents.filter(a =>
+      expandedServers.has(`server-${a.server_id}`) &&
+      (datacenterFilter === 'all' || filteredServerIds.has(a.server_id ?? ''))
+    )
     // Energy-monitor devices belong to Power Management → PDU circuit mapping,
     // not the 3D topology — drop them here (role resolved by mgmt IP).
     const visibleDevices = (snmpDevices || []).filter(
       d => expandedServers.has(`server-${d.server_id}`) &&
-        roleByIp.get(d.device_ip) !== 'energy_monitor'
+        roleByIp.get(d.device_ip) !== 'energy_monitor' &&
+        (datacenterFilter === 'all' || filteredServerIds.has(d.server_id ?? ''))
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
-    return computeHierarchicalLayout(servers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
-  }, [servers, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
+    return computeHierarchicalLayout(activeServers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
+  }, [servers, filteredServers, filteredServerIds, datacenterFilter, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
 
   // IDs of layout nodes whose name or IP matches the search query (null = no search)
   const searchMatchIds = useMemo(() => {
@@ -2368,11 +2391,20 @@ export default function Topology3D() {
       }
     }
 
-    return {
-      nodes: layout.nodes.filter(n => keep.has(n.id)),
-      links: layout.links.filter(l => keep.has(l.sourceId) && keep.has(l.targetId)),
-    }
+    const focusedNodes = layout.nodes.filter(n => keep.has(n.id))
+    const focusedLinks = layout.links.filter(l => keep.has(l.sourceId) && keep.has(l.targetId))
+    return { nodes: focusedNodes, links: focusedLinks }
   }, [layout, appliedFocus])
+
+  // Apply component-type filter on top of the focus-filtered layout
+  const componentFilteredLayout = useMemo(() => {
+    if (componentFilter === 'all') return displayLayout
+    const allowed = new Set(displayLayout.nodes.filter(n => n.type === componentFilter).map(n => n.id))
+    return {
+      nodes: displayLayout.nodes.filter(n => n.type === componentFilter),
+      links: displayLayout.links.filter(l => allowed.has(l.sourceId) && allowed.has(l.targetId)),
+    }
+  }, [displayLayout, componentFilter])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
@@ -2497,6 +2529,30 @@ export default function Topology3D() {
               Reset focus
             </button>
           )}
+          {datacenterList.length > 1 && (
+            <select
+              value={datacenterFilter}
+              onChange={(e) => setDatacenterFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+              title="Filter by datacenter"
+            >
+              <option value="all">All Datacenters</option>
+              {datacenterList.map((dc) => (
+                <option key={dc} value={dc}>{dc}</option>
+              ))}
+            </select>
+          )}
+          <select
+            value={componentFilter}
+            onChange={(e) => setComponentFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+            title="Filter by component type"
+          >
+            <option value="all">All Components</option>
+            <option value="server">Servers</option>
+            <option value="agent">Agents</option>
+            <option value="network">Network Devices</option>
+          </select>
           <button
             onClick={hasExpanded ? collapseAll : expandAll}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10"
@@ -2565,8 +2621,8 @@ export default function Topology3D() {
             onPointerMissed={handleDeselect}
           >
             <SceneContent
-              nodes={displayLayout.nodes}
-              links={displayLayout.links}
+              nodes={componentFilteredLayout.nodes}
+              links={componentFilteredLayout.links}
               selectedNode={selectedNode}
               onSelectNode={handleSelectNode}
               onHover={handleHover}

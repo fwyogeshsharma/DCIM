@@ -106,6 +106,8 @@ const DEVICE_PAGE_SIZE = 50
 export default function NetworkOps() {
   const [tab, setTab] = useState<Tab>('inventory')
   const [search, setSearch] = useState('')
+  const [datacenterFilter, setDatacenterFilter] = useState('all')
+  const [componentFilter, setComponentFilter] = useState('all')
   const [deviceVisibleCount, setDeviceVisibleCount] = useState(DEVICE_PAGE_SIZE)
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -128,27 +130,47 @@ export default function NetworkOps() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
+  const datacenters = useMemo(() =>
+    [...new Set(snmpDevices.map((d) => d.server_name).filter(Boolean))].sort(),
+    [snmpDevices]
+  )
+
+  const componentCategories = useMemo(() => {
+    const cats = new Set<string>()
+    for (const d of snmpDevices) {
+      cats.add(getDeviceTypeMeta(d.agent_id || d.device_name, d.device_type, d.device_role).category)
+    }
+    return [...cats].sort()
+  }, [snmpDevices])
+
+  const filteredDevices = useMemo(() => {
+    const q = search.toLowerCase()
+    return snmpDevices.filter((d) => {
+      if (q && !d.device_name.toLowerCase().includes(q) && !d.device_ip.includes(q)) return false
+      if (datacenterFilter !== 'all' && d.server_name !== datacenterFilter) return false
+      if (componentFilter !== 'all') {
+        const cat = getDeviceTypeMeta(d.agent_id || d.device_name, d.device_type, d.device_role).category
+        if (cat !== componentFilter) return false
+      }
+      return true
+    })
+  }, [snmpDevices, search, datacenterFilter, componentFilter])
+
   const devicesByType = useMemo(() => {
     const map: Record<string, SNMPDevice[]> = {}
-    for (const d of snmpDevices) {
+    for (const d of filteredDevices) {
       const cat = getDeviceTypeMeta(d.agent_id || d.device_name, d.device_type, d.device_role).category
       if (!map[cat]) map[cat] = []
       map[cat].push(d)
     }
     return map
-  }, [snmpDevices])
-
-  const filteredDevices = useMemo(() => {
-    const q = search.toLowerCase()
-    if (!q) return snmpDevices
-    return snmpDevices.filter((d) => d.device_name.toLowerCase().includes(q) || d.device_ip.includes(q))
-  }, [snmpDevices, search])
+  }, [filteredDevices])
 
   // Device Inventory pagination: render 50 at a time, loading the next 50 when
   // the sentinel row scrolls into view (infinite scroll).
   useEffect(() => {
     setDeviceVisibleCount(DEVICE_PAGE_SIZE)
-  }, [search, snmpDevices])
+  }, [search, datacenterFilter, componentFilter, snmpDevices])
 
   const visibleDevices = useMemo(
     () => filteredDevices.slice(0, deviceVisibleCount),
@@ -398,12 +420,36 @@ export default function NetworkOps() {
       {tab === 'inventory' && (
         <div className="space-y-6">
           {/* Controls */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search device name or IP…"
                 className="w-full bg-slate-800 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />
             </div>
+            {datacenters.length > 0 && (
+              <select
+                value={datacenterFilter}
+                onChange={(e) => setDatacenterFilter(e.target.value)}
+                className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="all">All Datacenters</option>
+                {datacenters.map((dc) => (
+                  <option key={dc} value={dc}>{dc}</option>
+                ))}
+              </select>
+            )}
+            {componentCategories.length > 1 && (
+              <select
+                value={componentFilter}
+                onChange={(e) => setComponentFilter(e.target.value)}
+                className="bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="all">All Components</option>
+                {componentCategories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            )}
             <Link to="/app/topology" className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 hover:bg-blue-600/30 rounded-lg text-sm font-medium transition-all">
               <ExternalLink className="w-4 h-4" />Full Topology View
             </Link>
