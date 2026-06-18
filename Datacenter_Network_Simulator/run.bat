@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM ================================================================
 REM  Datacenter Network Simulator - Quick Launch Script
 REM ================================================================
@@ -7,6 +8,13 @@ echo Starting Datacenter Network Simulator...
 echo.
 
 cd /d "%~dp0"
+
+REM ---- Pick the Python interpreter (venv if present, else system) ----
+if exist .venv\Scripts\python.exe (
+    set "PY=.venv\Scripts\python.exe"
+) else (
+    set "PY=python"
+)
 
 REM ---- Require Administrator (needed to enable the loopback adapter and to
 REM      add the simulated device IPs via AddIPAddress). Self-elevate if not. ----
@@ -25,6 +33,23 @@ echo Checking Microsoft KM-TEST Loopback Adapter...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0install_loopback.ps1"
 echo.
 
+REM ---- Set up REST API / Web UI authentication (first run creates auth.env) ----
+"%PY%" bootstrap_auth.py
+
+REM ---- Load auth.env into this process so the app sees the credentials.
+REM      Values are single-quoted; the PBKDF2 hash contains '$' (literal in
+REM      batch) but no single quote, so stripping all quotes is safe. eol=#
+REM      skips comment lines. ----
+if exist auth.env (
+    for /f "usebackq eol=# tokens=1,* delims==" %%A in ("auth.env") do (
+        set "_val=%%B"
+        set "_val=!_val:'=!"
+        set "%%A=!_val!"
+    )
+    set "_val="
+)
+echo.
+
 REM ---- Build the web UI (served from webui\dist by the REST API) ----
 REM Skip with: set SKIP_WEBUI_BUILD=1
 if "%SKIP_WEBUI_BUILD%"=="1" goto skip_webui
@@ -41,11 +66,7 @@ call npm run build
 popd
 :skip_webui
 
-if exist .venv\Scripts\python.exe (
-    .venv\Scripts\python.exe app/main.py
-) else (
-    python app/main.py
-)
+"%PY%" app/main.py
 
 if %errorlevel% neq 0 (
     echo.
