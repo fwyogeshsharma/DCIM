@@ -2071,7 +2071,9 @@ export default function Topology3D() {
   const [heatmapMode, setHeatmapMode] = useState(false)
   const [showTierBands, setShowTierBands] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [networkFilter, setNetworkFilter] = useState('all')
+  // Default the network filter to net-usa-chicago (falls back to "All Datacenters"
+  // selectable from the dropdown).
+  const [networkFilter, setNetworkFilter] = useState('net-usa-chicago')
   const [datacenterFilter, setDatacenterFilter] = useState('all')
 
   // Network options — unique network_ids from topology tree
