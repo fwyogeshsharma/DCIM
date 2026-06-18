@@ -2073,7 +2073,6 @@ export default function Topology3D() {
   const [searchQuery, setSearchQuery] = useState('')
   const [networkFilter, setNetworkFilter] = useState('all')
   const [datacenterFilter, setDatacenterFilter] = useState('all')
-  const [componentFilter, setComponentFilter] = useState('all')
 
   // Build IP → datacenter_id and IP → network_id from topology tree
   const datacenterByIp = useMemo(() => {
@@ -2125,7 +2124,8 @@ export default function Topology3D() {
   // a search hit on a hidden device would otherwise have nothing to highlight).
   const searchActive = searchQuery.trim() !== ''
   const focusActive = appliedFocus.trim() !== ''
-  const forceExpandAll = heatmapMode || searchActive || focusActive
+  const filterActive = networkFilter !== 'all' || datacenterFilter !== 'all'
+  const forceExpandAll = heatmapMode || searchActive || focusActive || filterActive
   const preForceExpandRef = useRef<Set<string>>(new Set())
   const wasForcedRef = useRef(false)
   useEffect(() => {
@@ -2408,15 +2408,6 @@ export default function Topology3D() {
     return { nodes: focusedNodes, links: focusedLinks }
   }, [layout, appliedFocus])
 
-  // Apply component-type filter on top of the focus-filtered layout
-  const componentFilteredLayout = useMemo(() => {
-    if (componentFilter === 'all') return displayLayout
-    const allowed = new Set(displayLayout.nodes.filter(n => n.type === componentFilter).map(n => n.id))
-    return {
-      nodes: displayLayout.nodes.filter(n => n.type === componentFilter),
-      links: displayLayout.links.filter(l => allowed.has(l.sourceId) && allowed.has(l.targetId)),
-    }
-  }, [displayLayout, componentFilter])
 
   // ── Joystick-driven camera panning ──
   const panVelocityRef = useRef({ x: 0, y: 0 })
@@ -2607,17 +2598,6 @@ export default function Topology3D() {
             ))}
           </select>
         )}
-        <select
-          value={componentFilter}
-          onChange={(e) => setComponentFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
-          title="Filter by component type"
-        >
-          <option value="all">All Components</option>
-          <option value="server">Servers</option>
-          <option value="agent">Agents</option>
-          <option value="network">Network Devices</option>
-        </select>
         {!showTrapFeed && (
           <button
             onClick={() => setShowTrapFeed(true)}
@@ -2648,8 +2628,8 @@ export default function Topology3D() {
             onPointerMissed={handleDeselect}
           >
             <SceneContent
-              nodes={componentFilteredLayout.nodes}
-              links={componentFilteredLayout.links}
+              nodes={displayLayout.nodes}
+              links={displayLayout.links}
               selectedNode={selectedNode}
               onSelectNode={handleSelectNode}
               onHover={handleHover}
