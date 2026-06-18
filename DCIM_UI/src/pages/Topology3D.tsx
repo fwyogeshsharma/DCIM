@@ -2071,6 +2071,7 @@ export default function Topology3D() {
   const [heatmapMode, setHeatmapMode] = useState(false)
   const [showTierBands, setShowTierBands] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [networkFilter, setNetworkFilter] = useState('all')
   const [datacenterFilter, setDatacenterFilter] = useState('all')
   const [componentFilter, setComponentFilter] = useState('all')
 
@@ -2091,15 +2092,26 @@ export default function Topology3D() {
     return map
   }, [topologyTree])
 
-  const datacenterIds = useMemo(() =>
-    [...new Set((topologyTree?.nodes ?? []).map(n => n.datacenter_id).filter(Boolean))].sort(),
-    [topologyTree]
-  )
-
-  const networkIds = useMemo(() =>
+  // Network options — unique network_ids from topology tree
+  const networks = useMemo(() =>
     [...new Set((topologyTree?.nodes ?? []).map(n => n.network_id).filter(Boolean))].sort(),
     [topologyTree]
   )
+
+  // Datacenter options — scoped to the selected network
+  const datacenters = useMemo(() => {
+    const source = networkFilter === 'all'
+      ? (topologyTree?.nodes ?? [])
+      : (topologyTree?.nodes ?? []).filter(n => n.network_id === networkFilter)
+    return [...new Set(source.map(n => n.datacenter_id).filter(Boolean))].sort()
+  }, [topologyTree, networkFilter])
+
+  // Reset datacenter filter when it falls outside the scoped list
+  useEffect(() => {
+    if (datacenterFilter !== 'all' && !datacenters.includes(datacenterFilter)) {
+      setDatacenterFilter('all')
+    }
+  }, [datacenters, datacenterFilter])
   // The query applied via the Apply button. When set, the scene is filtered to
   // the matching device(s) plus every device reachable from them through the
   // network links (their connected sub-network).
@@ -2322,35 +2334,28 @@ export default function Topology3D() {
   const layout = useMemo(() => {
     if (!servers || !agents) return { nodes: [], links: [] }
 
-    // Returns true if the given device IP matches the active datacenter/network filter.
-    // 'all' → no filter (show everything).
-    // 'dc:<id>' → filter by datacenter_id from topology tree.
-    // 'net:<id>' → filter by network_id from topology tree.
-    const matchesDCFilter = (ip: string | undefined): boolean => {
-      if (datacenterFilter === 'all') return true
-      if (!ip) return false
-      if (datacenterFilter.startsWith('dc:'))
-        return datacenterByIp.get(ip) === datacenterFilter.slice(3)
-      if (datacenterFilter.startsWith('net:'))
-        return networkByIp.get(ip) === datacenterFilter.slice(4)
-      return true
+    const matchesFilter = (ip: string | undefined): boolean => {
+      if (!ip) return networkFilter === 'all' && datacenterFilter === 'all'
+      const matchesNet = networkFilter === 'all' || networkByIp.get(ip) === networkFilter
+      const matchesDC  = datacenterFilter === 'all' || datacenterByIp.get(ip) === datacenterFilter
+      return matchesNet && matchesDC
     }
 
     const activeServers = servers
     const visibleAgents = agents.filter(a =>
       expandedServers.has(`server-${a.server_id}`) &&
-      matchesDCFilter(a.ip_address)
+      matchesFilter(a.ip_address)
     )
     // Energy-monitor devices belong to Power Management → PDU circuit mapping,
     // not the 3D topology — drop them here (role resolved by mgmt IP).
     const visibleDevices = (snmpDevices || []).filter(
       d => expandedServers.has(`server-${d.server_id}`) &&
         roleByIp.get(d.device_ip) !== 'energy_monitor' &&
-        matchesDCFilter(d.device_ip)
+        matchesFilter(d.device_ip)
     )
     const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
     return computeHierarchicalLayout(activeServers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
-  }, [servers, datacenterFilter, datacenterByIp, networkByIp, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
+  }, [servers, networkFilter, datacenterFilter, datacenterByIp, networkByIp, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
 
   // IDs of layout nodes whose name or IP matches the search query (null = no search)
   const searchMatchIds = useMemo(() => {
@@ -2577,28 +2582,29 @@ export default function Topology3D() {
             Reset focus
           </button>
         )}
-        {(datacenterIds.length > 0 || networkIds.length > 0) && (
+        {networks.length > 0 && (
           <select
-            value={datacenterFilter}
-            onChange={(e) => setDatacenterFilter(e.target.value)}
+            value={networkFilter}
+            onChange={e => setNetworkFilter(e.target.value)}
             className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
-            title="Filter by datacenter or network"
           >
             <option value="all">All Datacenters</option>
-            {datacenterIds.length > 0 && (
-              <optgroup label="By Datacenter">
-                {datacenterIds.map(dcId => (
-                  <option key={dcId} value={`dc:${dcId}`}>{dcId}</option>
-                ))}
-              </optgroup>
-            )}
-            {networkIds.length > 0 && (
-              <optgroup label="By Network">
-                {networkIds.map(netId => (
-                  <option key={netId} value={`net:${netId}`}>{netId}</option>
-                ))}
-              </optgroup>
-            )}
+            {networks.map(n => (
+              <option key={n} value={n}>{n.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        )}
+        {datacenters.length > 0 && (
+          <select
+            value={datacenterFilter}
+            onChange={e => setDatacenterFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+            title="Filter by datacenter"
+          >
+            <option value="all">All Components</option>
+            {datacenters.map(dc => (
+              <option key={dc} value={dc}>{dc}</option>
+            ))}
           </select>
         )}
         <select
