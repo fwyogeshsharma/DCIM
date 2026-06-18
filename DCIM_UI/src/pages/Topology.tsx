@@ -1058,98 +1058,17 @@ export default function Topology() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
+    <div className="h-full flex flex-col space-y-3">
+      {/* Header — row 1: title + fixed action buttons */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-4xl font-bold text-white">Network Topology</h1>
           <p className="text-slate-400 mt-1 text-lg">
             {stats.total} devices · {stats.online} online · {stats.offline} offline · {stats.networks} network{stats.networks !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Device search — type a name/IP, then Apply to focus on that device
-              and its entire connected sub-network */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') setAppliedFocus(searchQuery) }}
-                placeholder="Search name or IP…"
-                className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
-              />
-              {searchQuery.trim() !== '' && (
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-                  <span className={`text-[11px] font-medium ${matchCount > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
-                    {matchCount}
-                  </span>
-                  <button
-                    onClick={() => { setSearchQuery(''); setAppliedFocus('') }}
-                    className="text-slate-400 hover:text-white transition-colors"
-                    title="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => setAppliedFocus(searchQuery)}
-              disabled={searchQuery.trim() === ''}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-              title="Show this device and everything connected to it"
-            >
-              Apply
-            </button>
-            {appliedFocus.trim() !== '' && (
-              <button
-                onClick={() => setAppliedFocus('')}
-                className="px-3 py-2 bg-slate-800/60 hover:bg-slate-700 border border-white/10 text-slate-300 text-sm font-medium rounded-lg transition-colors"
-                title="Show the full topology again"
-              >
-                Reset focus
-              </button>
-            )}
-          </div>
-          {/* Datacenter filter */}
-          {datacenters.length > 0 && (
-            <select
-              value={datacenterFilter}
-              onChange={e => setDatacenterFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
-              title="Filter by datacenter"
-            >
-              <option value="all">All Components</option>
-              {datacenters.map(dc => (
-                <option key={dc} value={dc}>{dc}</option>
-              ))}
-            </select>
-          )}
-          {/* Network filter */}
-          {networks.length > 1 && (
-            <select
-              value={networkFilter}
-              onChange={e => setNetworkFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
-            >
-              <option value="all">All Datacenters</option>
-              {networks.map(n => (
-                <option key={n} value={n}>{n.replace(/_/g, ' ')}</option>
-              ))}
-            </select>
-          )}
-          {!showTrapFeed && trapFeed.length > 0 && (
-            <button
-              onClick={() => setShowTrapFeed(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-red-900/40 hover:bg-red-900/60 border border-red-500/40 text-red-300 rounded-lg transition-colors text-sm font-medium"
-            >
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              Traps ({trapFeed.length})
-            </button>
-          )}
+        {/* Fixed action buttons — count never changes so this row is stable */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => navigate('/app/topology-3d')}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
@@ -1193,6 +1112,91 @@ export default function Topology() {
             <RefreshCw className="w-5 h-5 text-slate-300" />
           </button>
         </div>
+      </div>
+
+      {/* Header — row 2: search, filters, and conditional trap button */}
+      <div className="flex items-center gap-2">
+        {/* Device search */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') setAppliedFocus(searchQuery) }}
+            placeholder="Search name or IP…"
+            className="w-56 pl-9 pr-16 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder:text-slate-500"
+          />
+          {searchQuery.trim() !== '' && (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <span className={`text-[11px] font-medium ${matchCount > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
+                {matchCount}
+              </span>
+              <button
+                onClick={() => { setSearchQuery(''); setAppliedFocus('') }}
+                className="text-slate-400 hover:text-white transition-colors"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => setAppliedFocus(searchQuery)}
+          disabled={searchQuery.trim() === ''}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          title="Show this device and everything connected to it"
+        >
+          Apply
+        </button>
+        {appliedFocus.trim() !== '' && (
+          <button
+            onClick={() => setAppliedFocus('')}
+            className="px-3 py-2 bg-slate-800/60 hover:bg-slate-700 border border-white/10 text-slate-300 text-sm font-medium rounded-lg transition-colors"
+            title="Show the full topology again"
+          >
+            Reset focus
+          </button>
+        )}
+        {/* Datacenter filter */}
+        {datacenters.length > 0 && (
+          <select
+            value={datacenterFilter}
+            onChange={e => setDatacenterFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+            title="Filter by datacenter"
+          >
+            <option value="all">All Components</option>
+            {datacenters.map(dc => (
+              <option key={dc} value={dc}>{dc}</option>
+            ))}
+          </select>
+        )}
+        {/* Network filter */}
+        {networks.length > 1 && (
+          <select
+            value={networkFilter}
+            onChange={e => setNetworkFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-800/60 border border-white/10 text-white text-sm rounded-lg focus:outline-none focus:border-blue-500"
+          >
+            <option value="all">All Datacenters</option>
+            {networks.map(n => (
+              <option key={n} value={n}>{n.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        )}
+        {/* Trap feed toggle — sits at end of filter row; appearing/disappearing here
+            doesn't affect the action buttons above */}
+        {!showTrapFeed && trapFeed.length > 0 && (
+          <button
+            onClick={() => setShowTrapFeed(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-red-900/40 hover:bg-red-900/60 border border-red-500/40 text-red-300 rounded-lg transition-colors text-sm font-medium"
+          >
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Traps ({trapFeed.length})
+          </button>
+        )}
       </div>
 
       <div className="flex-1 flex gap-4 min-h-0">
