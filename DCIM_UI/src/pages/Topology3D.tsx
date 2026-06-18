@@ -1891,8 +1891,8 @@ function SceneContent({
         </group>
       ))}
 
-      {/* Connection lines */}
-      {links.map((link, i) => {
+      {/* Connection lines — skip agent-server links since server racks are hidden */}
+      {links.filter(l => l.linkType !== 'agent-server').map((link, i) => {
         const info = link.d2dInfo
         // Down only when THIS edge's endpoint pair matches a link-down trap, so a
         // single linkDown breaks just its own cable, not every link on the device.
@@ -1906,25 +1906,6 @@ function SceneContent({
           <ConnectionLine key={`${link.sourceId}-${link.targetId}-${i}`} link={link} isLinkDown={isLinkDown} />
         )
       })}
-
-      {/* Server nodes */}
-      {nodes
-        .filter((n) => n.type === 'server')
-        .map((node) => (
-          <ServerNode
-            key={node.id}
-            node={node}
-            isSelected={selectedNode?.id === node.id}
-            onSelect={onSelectNode}
-            onHover={onHover}
-            expanded={expandedServers.has(node.id)}
-            agentCount={agentCounts[node.id] || 0}
-            onDoubleClick={onDoubleClickServer}
-            heatmapMode={heatmapMode}
-            temperature={tempMap.get(node.agentId ?? '') ?? tempMap.get(node.ip ?? '') ?? tempMap.get(node.name ?? '') ?? undefined}
-            searchMatch={matchIds?.has(node.id) ?? false}
-          />
-        ))}
 
       {/* Agent nodes */}
       {(() => {
@@ -2079,6 +2060,19 @@ export default function Topology3D() {
   const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
   const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
+  const agentsLoading = USE_MOCK_DATA ? false : realAgentsLoading
+  const serversLoading = USE_MOCK_DATA ? false : realServersLoading
+  const navigate = useNavigate()
+  const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
+  const [cursorPointer, setCursorPointer] = useState(false)
+  const [currentFloor, setCurrentFloor] = useState(FLOORS.length - 1) // start at DCIM Servers (top)
+  const [showLegend, setShowLegend] = useState(true)
+  const [showStats, setShowStats] = useState(true)
+  const [heatmapMode, setHeatmapMode] = useState(false)
+  const [showTierBands, setShowTierBands] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [datacenterFilter, setDatacenterFilter] = useState('all')
+  const [componentFilter, setComponentFilter] = useState('all')
 
   const datacenterList = useMemo(() =>
     [...new Set((servers ?? []).map((s) => s.name).filter(Boolean))].sort(),
@@ -2095,19 +2089,6 @@ export default function Topology3D() {
     () => new Set(filteredServers.map((s) => s.id).filter((id): id is string => !!id)),
     [filteredServers]
   )
-  const agentsLoading = USE_MOCK_DATA ? false : realAgentsLoading
-  const serversLoading = USE_MOCK_DATA ? false : realServersLoading
-  const navigate = useNavigate()
-  const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
-  const [cursorPointer, setCursorPointer] = useState(false)
-  const [currentFloor, setCurrentFloor] = useState(FLOORS.length - 1) // start at DCIM Servers (top)
-  const [showLegend, setShowLegend] = useState(true)
-  const [showStats, setShowStats] = useState(true)
-  const [heatmapMode, setHeatmapMode] = useState(false)
-  const [showTierBands, setShowTierBands] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [datacenterFilter, setDatacenterFilter] = useState('all')
-  const [componentFilter, setComponentFilter] = useState('all')
   // The query applied via the Apply button. When set, the scene is filtered to
   // the matching device(s) plus every device reachable from them through the
   // network links (their connected sub-network).
