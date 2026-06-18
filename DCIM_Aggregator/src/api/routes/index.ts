@@ -200,6 +200,50 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     }
   })
 
+  // ── Physical facility layout (building → room → rack → devices) ──────────────
+  // Drives the Fire & Safety 3D Facility view. Each `network_id` is a building;
+  // physical placement comes straight from the devices table (room / rack_row /
+  // rack_num / rack_unit). Devices with no rack_num fall into an "Unassigned"
+  // bucket per building so nothing is silently dropped.
+  app.get('/api/v1/facility/layout', async (req, res) => {
+    try {
+      const { network_id } = req.query
+      const params: any[] = []
+      const netFilter = network_id ? `AND d.network_id = $1` : ''
+      if (network_id) params.push(network_id)
+
+      const { rows } = await dbPool.query(`
+        SELECT
+          d.id::text                          AS device_id,
+          d.hostname,
+          d.device_type,
+          d.device_role,
+          d.mgmt_ip::text                     AS mgmt_ip,
+          d.network_id,
+          d.datacenter_id,
+          d.datacenter                        AS datacenter_name,
+          d.datacenter_city,
+          d.country,
+          d.room,
+          d.rack_row,
+          d.rack_num,
+          d.rack_unit,
+          CASE
+            WHEN d.last_seen_at >= NOW() - INTERVAL '${HEARTBEAT_TIMEOUT_SECONDS} seconds'
+            THEN 'online' ELSE 'offline'
+          END                                 AS status,
+          d.last_seen_at                      AS last_seen
+        FROM devices d
+        WHERE d.network_id IS NOT NULL ${netFilter}
+        ORDER BY d.network_id, d.room NULLS LAST, d.rack_num NULLS LAST, d.rack_unit NULLS LAST, d.hostname
+      `, params)
+
+      res.json({ success: true, data: rows, count: rows.length })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  })
+
   // ── SNMP traps ─────────────────────────────────────────────────────────────
   app.get('/api/v1/traps', async (req, res) => {
     try {

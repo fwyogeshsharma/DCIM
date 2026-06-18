@@ -98,6 +98,27 @@ export interface DeduplicatedAlert {
   first_seen: string
 }
 
+// One device row from /facility/layout — physical placement straight from the
+// devices table. Drives the Fire & Safety 3D Facility view (building → rack).
+export interface FacilityDeviceRow {
+  device_id: string
+  hostname: string
+  device_type: string | null
+  device_role: string | null
+  mgmt_ip: string | null
+  network_id: string
+  datacenter_id: string | null
+  datacenter_name: string | null
+  datacenter_city: string | null
+  country: string | null
+  room: string | null
+  rack_row: number | null
+  rack_num: number | null
+  rack_unit: number | null
+  status: 'online' | 'offline'
+  last_seen: string | null
+}
+
 export interface SNMPDevice {
   device_name: string
   device_ip: string

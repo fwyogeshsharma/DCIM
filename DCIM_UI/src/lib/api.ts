@@ -5,6 +5,7 @@ import type {
   DeduplicatedAlert,
   SNMPMetric,
   SNMPDevice,
+  FacilityDeviceRow,
   TopologyLink,
   License,
   AggregatedMetric,
@@ -308,6 +309,13 @@ class APIClient {
   async getSNMPDevices(agentId?: string): Promise<SNMPDevice[]> {
     const queryString = agentId ? `?agent_id=${agentId}` : ''
     return this.request<SNMPDevice[]>(`/snmp/devices${queryString}`)
+  }
+
+  // Physical facility layout — one row per device with its building (network_id)
+  // and rack placement. Drives the Fire & Safety 3D Facility view.
+  async getFacilityLayout(networkId?: string): Promise<FacilityDeviceRow[]> {
+    const qs = networkId ? `?network_id=${encodeURIComponent(networkId)}` : ''
+    return this.request<FacilityDeviceRow[]>(`/facility/layout${qs}`)
   }
 
   // SNMP trap endpoints

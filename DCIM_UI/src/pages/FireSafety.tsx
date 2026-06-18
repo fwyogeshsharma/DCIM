@@ -6,9 +6,9 @@ import {
   RefreshCw, ChevronDown, ChevronUp, Bell, Box,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { buildFacility, isFacilityEmpty, demoFacility } from '@/lib/fireSafetyFacility'
+import { buildRackFacility, isRackFacilityEmpty } from '@/lib/facilityLayout'
 
-const FireSafety3DScene = lazy(() => import('@/components/FireSafety3DScene'))
+const FacilityBuildingsScene = lazy(() => import('@/components/FacilityBuildingsScene'))
 
 // ── Persistence ────────────────────────────────────────────────────────────────
 
@@ -328,35 +328,26 @@ export default function FireSafety() {
   const totalAccounted = zoneCounts.reduce((s, z) => s + z.accounted, 0)
   const sortedMaint = useMemo(() => [...maintItems].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()), [maintItems])
 
-  // ── 3D facility (data-driven) ───────────────────────────────────────────────
-  // Environment metrics carry each device's physical placement in metadata
-  // (room + floor); we collapse them into a floor/room facility model. Only
-  // fetched while the 3D tab is open. Falls back to a demo building when no
-  // device reports a room/floor.
-  const { data: envMetrics } = useQuery({
-    queryKey: ['firesafety-env-metrics'],
-    queryFn: () => api.getMetrics({ metric_type: 'environment.temperature_c', time_range: '1h', limit: 10000 }),
+  // ── 3D facility (building → rack → devices) ──────────────────────────────────
+  // The 3D Facility view is built from each device's physical placement stored in
+  // the devices table: network_id → building, room, rack_num → rack. Only fetched
+  // while the 3D tab is open.
+  const { data: facilityRows } = useQuery({
+    queryKey: ['facility-layout'],
+    queryFn: () => api.getFacilityLayout(),
     enabled: tab === '3d',
     refetchInterval: tab === '3d' ? 30000 : false,
     staleTime: 20000,
   })
 
-  const liveFacility = useMemo(() => buildFacility(envMetrics), [envMetrics])
-  const facility = useMemo(
-    () => (isFacilityEmpty(liveFacility) ? demoFacility() : liveFacility),
-    [liveFacility],
+  const buildings = useMemo(() => buildRackFacility(facilityRows), [facilityRows])
+  const facilityEmpty = isRackFacilityEmpty(buildings)
+  const facilityOnline = useMemo(
+    () => buildings.reduce((s, b) => s + b.rooms.reduce((rs, r) => rs + r.racks.reduce((ks, k) => ks + k.devices.filter((d) => d.status === 'online').length, 0), 0), 0),
+    [buildings],
   )
-  const usingDemo = isFacilityEmpty(liveFacility)
-
-  // Manual sensors carry a room hint (their zone's human label) so the scene can
-  // match them into the matching generated room.
-  const sceneSensors = useMemo(
-    () => sensors.map((s) => ({
-      id: s.id, name: s.name, type: s.type, zone: s.zone, status: s.status,
-      room: ZONES.find((z) => z.id === s.zone)?.label ?? s.zone,
-    })),
-    [sensors],
-  )
+  const facilityDevices = useMemo(() => buildings.reduce((s, b) => s + b.deviceCount, 0), [buildings])
+  const facilityRacks = useMemo(() => buildings.reduce((s, b) => s + b.rackCount, 0), [buildings])
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -1154,9 +1145,9 @@ export default function FireSafety() {
           <div>
             <h2 className="text-xl font-semibold text-white">3D Facility View</h2>
             <p className="text-sm text-slate-400 mt-0.5">
-              Building generated live from device telemetry — each environment metric's
-              <span className="text-slate-300"> room</span> and <span className="text-slate-300">floor</span> place its
-              device inside the matching room. Manual sensors from the Sensor Board are overlaid into their rooms.
+              One building per <span className="text-slate-300">network</span>, named by its datacenter / address. Inside each
+              building, devices are grouped into their real <span className="text-slate-300">racks</span> by rack number — hover a
+              rack to see the devices it holds.
             </p>
           </div>
 
@@ -1164,61 +1155,55 @@ export default function FireSafety() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 bg-slate-800/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs">
               <Box className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-slate-300">{facility.floors.length} floor{facility.floors.length > 1 ? 's' : ''}</span>
+              <span className="text-slate-300">{buildings.length} building{buildings.length !== 1 ? 's' : ''}</span>
               <span className="text-slate-500">·</span>
-              <span className="text-slate-300">{facility.floors.reduce((s, f) => s + f.rooms.length, 0)} rooms</span>
+              <span className="text-slate-300">{facilityRacks} racks</span>
               <span className="text-slate-500">·</span>
-              <span className="text-slate-300">{facility.devices.length} devices</span>
+              <span className="text-slate-300">{facilityDevices} devices</span>
             </div>
-            {(['alarm', 'fault', 'normal', 'offline'] as const).map((st) => {
-              const n = facility.devices.filter((d) => d.status === st).length
-              if (n === 0) return null
-              const c = st === 'alarm' ? '#ef4444' : st === 'fault' ? '#f59e0b' : st === 'offline' ? '#64748b' : '#22c55e'
-              return (
-                <div key={st} className="flex items-center gap-1.5 bg-slate-800/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
-                  <span className="text-slate-300">{n}</span>
-                  <span className="text-slate-500 capitalize">{st}</span>
-                </div>
-              )
-            })}
-            {usingDemo && (
+            {facilityDevices > 0 && (
+              <div className="flex items-center gap-1.5 bg-slate-800/50 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+                <span className="text-slate-300">{facilityOnline}</span>
+                <span className="text-slate-500">online</span>
+                <span className="text-slate-500">·</span>
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                <span className="text-slate-300">{facilityDevices - facilityOnline}</span>
+                <span className="text-slate-500">offline</span>
+              </div>
+            )}
+            {facilityEmpty && (
               <div className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-2.5 py-1.5 text-xs text-yellow-400">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                Demo facility — no device is reporting room/floor metadata yet
+                No devices have a network/rack assigned yet
               </div>
             )}
           </div>
 
-          <Suspense fallback={
+          {facilityEmpty ? (
             <div className="w-full rounded-xl border border-white/10 bg-slate-900 flex items-center justify-center" style={{ height: 600 }}>
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
-                <p className="text-slate-400 text-sm">Loading 3D scene…</p>
-              </div>
+              <p className="text-slate-400 text-sm">No facility data — devices need a network_id (and rack_num for racks).</p>
             </div>
-          }>
-            <FireSafety3DScene
-              facility={facility}
-              sensors={sceneSensors}
-              onSensorClick={(id) => {
-                setSelectedSensor(sensors.find((s) => s.id === id) ?? null)
-                setTab('sensors')
-              }}
-            />
-          </Suspense>
+          ) : (
+            <Suspense fallback={
+              <div className="w-full rounded-xl border border-white/10 bg-slate-900 flex items-center justify-center" style={{ height: 600 }}>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+                  <p className="text-slate-400 text-sm">Loading 3D scene…</p>
+                </div>
+              </div>
+            }>
+              <FacilityBuildingsScene buildings={buildings} />
+            </Suspense>
+          )}
 
           <div className="bg-slate-800/30 border border-white/10 rounded-xl p-4">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Scene Key</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-400">
-              <span>🟩 Floors &amp; rooms — built from device room/floor metadata</span>
-              <span>🟢 Green dot — device temperature normal</span>
-              <span>🟠 Amber dot — temperature elevated (≥30°C)</span>
-              <span>🔴 Red dot / beacon — temperature alarm (≥35°C)</span>
-              <span>⬜ White pipes — VESDA sampling lines</span>
-              <span>Ceiling cones — FM-200 suppression nozzles</span>
-              <span>Click a device — inspect floor / room / reading</span>
-              <span>Floor buttons — isolate a single floor</span>
+              <span>🏢 Each building — one network (datacenter / address)</span>
+              <span>🟦 Cabinets — racks, labelled by real rack number</span>
+              <span>🟢 Green — device online · 🔴 Red — offline</span>
+              <span>Hover a rack — list its devices &amp; building</span>
             </div>
           </div>
         </div>
