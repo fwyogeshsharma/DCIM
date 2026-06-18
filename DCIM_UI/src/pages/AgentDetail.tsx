@@ -169,28 +169,43 @@ function GnmiTable({ events }: { events: GnmiEvent[] }) {
   if (!events.length)
     return <p className="text-slate-500 text-sm py-3">No gNMI events yet — metrics post every 30 s.</p>
 
+  // Deduplicate to latest value per path::key (events are already sorted newest-first)
+  const rows: { path: string; key: string; value: number; unit: string; time: string }[] = []
+  const seen = new Set<string>()
+  for (const e of events) {
+    for (const [k, v] of Object.entries(e.values ?? {})) {
+      const uid = `${e.path}::${k}`
+      if (!seen.has(uid)) {
+        seen.add(uid)
+        rows.push({ path: e.path, key: k, value: v.value, unit: v.unit, time: e.timestamp })
+      }
+    }
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs text-slate-300">
         <thead>
           <tr className="text-slate-500 border-b border-white/10">
-            <th className="text-left py-2 pr-4 font-medium">Time</th>
-            <th className="text-left py-2 pr-4 font-medium">Path</th>
-            <th className="text-left py-2 pr-4 font-medium">Metrics</th>
-            <th className="text-left py-2 font-medium">Sample values</th>
+            <th className="text-left py-2 pr-4 font-medium w-48">Metric</th>
+            <th className="text-left py-2 pr-4 font-medium">gNMI Path</th>
+            <th className="text-right py-2 pr-4 font-medium">Value</th>
+            <th className="text-left py-2 font-medium">Last Seen</th>
           </tr>
         </thead>
         <tbody>
-          {events.map((e, i) => (
+          {rows.map((row, i) => (
             <tr key={i} className="border-b border-white/5 hover:bg-white/5">
-              <td className="py-1.5 pr-4 font-mono text-slate-400">{fmtTs(e.timestamp)}</td>
-              <td className="py-1.5 pr-4 font-mono text-blue-300">{e.path}</td>
-              <td className="py-1.5 pr-4">{e.metrics_count}</td>
-              <td className="py-1.5 text-slate-400">
-                {Object.entries(e.values ?? {}).slice(0, 3).map(([k, v]) =>
-                  <span key={k} className="mr-2" title={`${e.path}/${k}`}>{getReadablePath(e.path, k)}: {v.value}{v.unit}</span>
-                )}
+              <td className="py-1.5 pr-4 text-slate-200 font-medium">
+                {getReadablePath(row.path, row.key)}
               </td>
+              <td className="py-1.5 pr-4 font-mono text-blue-300 truncate max-w-[220px]" title={`${row.path}/${row.key}`}>
+                {row.path}/{row.key}
+              </td>
+              <td className="py-1.5 pr-4 text-right font-mono text-white">
+                {row.value} <span className="text-slate-500 font-sans">{row.unit}</span>
+              </td>
+              <td className="py-1.5 font-mono text-slate-500">{fmtTs(row.time)}</td>
             </tr>
           ))}
         </tbody>
@@ -360,9 +375,9 @@ export default function AgentDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5 pb-5 border-b border-white/10">
             {Object.entries(latestMetrics).map(([key, metric]) => (
               <div key={key} className="border border-white/10 rounded p-3">
-                <p className="text-xs text-slate-400">{key}</p>
+                <p className="text-xs text-slate-400 truncate" title={key}>{getReadablePath(key)}</p>
                 <p className="text-lg font-semibold mt-1 text-white">
-                  {metric.value.toFixed(2)} {metric.unit}
+                  {metric.value.toFixed(2)} <span className="text-sm text-slate-400">{metric.unit}</span>
                 </p>
               </div>
             ))}
