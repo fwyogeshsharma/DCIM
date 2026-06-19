@@ -113,7 +113,7 @@ class BindingPanel(QWidget):
         mask_label.setFont(QFont("Arial", 9))
         mask_label.setStyleSheet("color: #8b949e;")
         mask_row.addWidget(mask_label)
-        self.mask_edit = QLineEdit("255.255.255.0")
+        self.mask_edit = QLineEdit("255.255.254.0")
         self.mask_edit.setMaximumWidth(120)
         self.mask_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.mask_edit.setFont(QFont("Consolas", 9))
@@ -214,7 +214,7 @@ class BindingPanel(QWidget):
 
     @property
     def subnet_mask(self) -> str:
-        return self.mask_edit.text().strip() or "255.255.255.0"
+        return self.mask_edit.text().strip() or "255.255.254.0"
 
     def set_binding_in_progress(self, active: bool):
         self._binding_in_progress = active

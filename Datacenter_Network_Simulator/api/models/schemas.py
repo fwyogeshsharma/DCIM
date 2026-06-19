@@ -57,7 +57,7 @@ class AdapterSelectRequest(BaseModel):
 
 
 class SubnetMaskRequest(BaseModel):
-    mask: str = Field("255.255.255.0", description="IPv4 subnet mask")
+    mask: str = Field("255.255.254.0", description="IPv4 subnet mask (/23 default covers OOB mgmt 192.168.0.0/23)")
 
 
 class BindingStatusResponse(BaseModel):

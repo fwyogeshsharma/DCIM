@@ -314,6 +314,8 @@ export default function MenuBar() {
         { label: 'Kamada-Kawai Layout',                           action: () => setLayoutAlgo('kamada_kawai') },
       ],
     },
+    { label: '', divider: true, action: () => {} },
+    { label: 'Floor Plan', action: () => setActiveView('floorplan') },
   ]
   const simMenuItems: MenuItem[] = [
     { label: 'SNMP Simulator',  action: () => setRightTab('snmp')  },

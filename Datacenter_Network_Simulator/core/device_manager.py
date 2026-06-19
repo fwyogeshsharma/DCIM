@@ -42,7 +42,8 @@ FACILITY_TYPES = frozenset({
     DeviceType.CHILLER,
     DeviceType.PUMP,
     DeviceType.COOLING_TOWER,
-    DeviceType.CDU,
+    # NOTE: CDU is intentionally NOT here. In-rack CDUs (4U, e.g. CoolIT CHx)
+    # are rack-mounted, so sysLocation / Redfish Placement SHOULD emit Row/Rack/U.
     DeviceType.VALVE,
     DeviceType.ENERGY_MONITOR,
 })

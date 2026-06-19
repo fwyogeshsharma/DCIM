@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import MainPage from './pages/MainPage'
 import LiveMetricsPage from './pages/LiveMetricsPage'
+import FloorPlanPage from './pages/FloorPlanPage'
 import { useStore } from './store/useStore'
 import { api, getToken, AUTH_EXPIRED_EVENT } from './api/client'
 import LoginScreen from './components/LoginScreen'
@@ -50,5 +51,7 @@ export default function App() {
     return <LoginScreen onSuccess={() => setAuth('in')} />
   }
 
-  return activeView === 'metrics' ? <LiveMetricsPage /> : <MainPage />
+  if (activeView === 'metrics') return <LiveMetricsPage />
+  if (activeView === 'floorplan') return <FloorPlanPage />
+  return <MainPage />
 }

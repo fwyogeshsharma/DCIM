@@ -58,7 +58,9 @@ class AppState:
 
         # Binding state (mirrors MainWindow's _bound_ips etc.)
         self.selected_adapter: str = ""
-        self.subnet_mask: str = "255.255.255.0"
+        # /23 covers the OOB mgmt range 192.168.0.0/23 (PDUs span .0.x and .1.x);
+        # a single mask is applied to every bound alias (see binding.bind_ips).
+        self.subnet_mask: str = "255.255.254.0"
         self.bound_ips: List[str] = []
         self.nte_contexts: Dict[str, Any] = {}
         self.gnmi_bound_ips: List[str] = []

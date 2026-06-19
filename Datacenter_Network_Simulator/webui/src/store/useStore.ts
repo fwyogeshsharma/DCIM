@@ -72,8 +72,8 @@ interface Store {
   rightTab: string
 
   // active view
-  activeView: 'main' | 'metrics'
-  setActiveView: (v: 'main' | 'metrics') => void
+  activeView: 'main' | 'metrics' | 'floorplan'
+  setActiveView: (v: 'main' | 'metrics' | 'floorplan') => void
 
   // binding operation state (survives tab switches)
   bindingBusy:     boolean
