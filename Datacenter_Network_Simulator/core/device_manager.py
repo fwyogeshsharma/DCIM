@@ -31,6 +31,23 @@ class DeviceType(str, Enum):
     CDU            = "cdu"           # Coolant Distribution Unit (direct-to-chip liquid cooling) -- SNMP + BACnet (native comm card)
 
 
+# Floor-standing / plant equipment: located by room/area, NOT mounted in an IT rack.
+# Their rack_row/rack_num are only a synthetic room-grid coordinate, so sysLocation
+# must NOT emit "Row/Rack/U" tokens for them (that falsely implies rack mounting).
+FACILITY_TYPES = frozenset({
+    DeviceType.GENERATOR,
+    DeviceType.UPS,
+    DeviceType.RPP,
+    DeviceType.CRAH,
+    DeviceType.CHILLER,
+    DeviceType.PUMP,
+    DeviceType.COOLING_TOWER,
+    DeviceType.CDU,
+    DeviceType.VALVE,
+    DeviceType.ENERGY_MONITOR,
+})
+
+
 class Vendor(str, Enum):
     # Networking vendors (routers & switches)
     CISCO_SYSTEMS = "Cisco Systems"
@@ -496,12 +513,14 @@ class Device:
                 parts.append(f"Floor {self.floor}")
             if self.room:
                 parts.append(f"Room {self.room}")
-            if self.rack_row:
-                parts.append(f"Row {self.rack_row}")
-            if self.rack_num:
-                parts.append(f"Rack {self.rack_num}")
-            if self.rack_unit:
-                parts.append(f"U{self.rack_unit}")
+            # Floor-standing plant gear is located by room only -- no rack tokens.
+            if self.device_type not in FACILITY_TYPES:
+                if self.rack_row:
+                    parts.append(f"Row {self.rack_row}")
+                if self.rack_num:
+                    parts.append(f"Rack {self.rack_num}")
+                if self.rack_unit:
+                    parts.append(f"U{self.rack_unit}")
             return ", ".join(parts)
         return "Network Lab"
 

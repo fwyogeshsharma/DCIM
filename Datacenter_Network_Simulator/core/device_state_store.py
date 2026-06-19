@@ -414,6 +414,7 @@ class DeviceStateStore:
             "boot_time_ns": self._boot_times[ip],
             "cpu_temp":     device.cpu_temp,
             "inlet_temp":   device.inlet_temp,
+            "outlet_temp":  device.outlet_temp,
             "fan_rpm":      device.fan_rpm,
             "humidity":     device.humidity,
             "dewpoint":     device.dewpoint,
@@ -766,6 +767,37 @@ class DeviceStateStore:
             device.inlet_temp = round(max(15.0, min(55.0,
                 18.0 + device.cpu_usage * 0.12 + random.uniform(-0.5, 0.5))), 1)
             device.inlet_temp = self._num_limit("inlet_temp", device.inlet_temp)
+
+        # Server chassis airflow + exhaust temp. The BMC reports exhaust as
+        # inlet + ΔT, where ΔT follows from the heat dumped (power_draw_w) and
+        # the volumetric cooling flow the fans push. Fans track load, so exhaust
+        # velocity (airflow, m/s) rises with CPU load and inlet temp; the two
+        # are coupled — more flow ⇒ smaller rise. ΔT(°C) ≈ 1.76·P / CFM; with
+        # CFM ∝ velocity this reduces to k·P/v. DCIM reads outlet_temp (Redfish
+        # Thermal "Exhaust") to build hot-aisle heatmaps.
+        if device.device_type == DeviceType.SERVER:
+            load = device.cpu_usage / 100.0
+            _pw = float(device.power_draw_w or 0.0)
+            # fan controllers track the HEAT dumped, i.e. power, so flow scales
+            # with power_draw_w (cpu_usage drives cpu_temp/fan_rpm, but server
+            # power here is not cpu-correlated). pf normalises a typical
+            # ~450–760 W server band to 0..1.
+            pf = max(0.0, min(1.0, (_pw - 450.0) / 310.0))
+            if mf["airflow"]:
+                # exhaust air velocity (m/s): scales with power so ΔT stays in
+                # the realistic band; inlet temp + load add a small ramp.
+                _v = (2.2 + 1.3 * pf + max(0.0, device.inlet_temp - 24.0) * 0.03
+                      + 0.2 * load + random.uniform(-0.1, 0.1))
+                device.airflow = round(max(0.2, min(4.0, _v)), 2)
+                device.airflow = self._num_limit("airflow", device.airflow)
+            if mf["outlet_temp"]:
+                _v = device.airflow if device.airflow > 0.2 else 2.5
+                # ΔT(°C) ≈ 1.76·P / CFM, with CFM ∝ velocity ⇒ k·P/v (k=0.056).
+                # Hard-clamp to [3, 18] °C so no seed combination yields an
+                # unphysical exhaust rise.
+                _dt = max(3.0, min(18.0, 0.056 * _pw / _v))
+                device.outlet_temp = round(min(65.0, device.inlet_temp + _dt), 1)
+                device.outlet_temp = self._num_limit("outlet_temp", device.outlet_temp)
 
         # Environmental readings — sensor devices only
         if device.device_type == DeviceType.SENSOR:

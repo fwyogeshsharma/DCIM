@@ -183,10 +183,52 @@ def computer_system(device: "Device", power_state: str = "On",
     }
 
 
+def _location(device: "Device") -> dict:
+    """Redfish Resource.Location for the chassis — the device-side placement
+    breadcrumb a DCIM reads to bind a sensor reading to a rack/RU.
+
+    PostalAddress (datacenter/floor/room) is emitted whenever the datacenter is
+    known. Placement/PartLocation (rack, RU offset) is emitted only for
+    rack-mounted gear; floor-standing facility equipment (UPS, generator, CRAH…)
+    carries synthetic room-grid coordinates that are not real rack positions, so
+    rack tokens are suppressed — mirroring the sysLocation rule in device_manager.
+    """
+    from core.device_manager import FACILITY_TYPES
+    loc: dict = {}
+
+    postal = {}
+    if device.country:
+        postal["Country"] = device.country
+    if device.datacenter_city:
+        postal["City"] = device.datacenter_city
+    if device.datacenter:
+        postal["Building"] = device.datacenter
+    if device.floor:
+        postal["Floor"] = str(device.floor)
+    if device.room:
+        postal["Room"] = device.room
+    if postal:
+        loc["PostalAddress"] = postal
+
+    if device.device_type not in FACILITY_TYPES and device.rack_row and device.rack_num:
+        loc["Placement"] = {
+            "Row": str(device.rack_row),
+            "Rack": f"{device.datacenter}-R{device.rack_row}-{device.rack_num}",
+            "RackOffset": device.rack_unit,
+            "RackOffsetUnits": "EIA_310",
+        }
+        loc["PartLocation"] = {
+            "LocationType": "Slot",
+            "ServiceLabel": f"U{device.rack_unit}",
+            "LocationOrdinalValue": device.rack_unit,
+        }
+    return loc
+
+
 def chassis(device: "Device") -> dict:
     cid = member_id(device)
     vendor = device.vendor.value
-    return {
+    doc = {
         "@odata.type": "#Chassis.v1_14_0.Chassis",
         "@odata.id": f"/redfish/v1/Chassis/{cid}",
         "Id": cid,
@@ -204,6 +246,10 @@ def chassis(device: "Device") -> dict:
             "ManagedBy": [{"@odata.id": f"/redfish/v1/Managers/{MANAGER_ID}"}],
         },
     }
+    location = _location(device)
+    if location:
+        doc["Location"] = location
+    return doc
 
 
 def _temperature(cid: str, idx: int, name: str, reading: float,
@@ -226,6 +272,11 @@ def thermal(device: "Device") -> dict:
         _temperature(cid, 0, "CPU Temp", device.cpu_temp, "CPU", 95.0),
         _temperature(cid, 1, "Inlet Temp", device.inlet_temp, "Intake", 45.0),
     ]
+    # Exhaust/outlet sensor — populated by the ticker for servers; DCIM reads
+    # this (PhysicalContext "Exhaust") to build hot-aisle heatmaps.
+    if device.outlet_temp > 0:
+        temps.append(_temperature(cid, 2, "Exhaust Temp", device.outlet_temp,
+                                   "Exhaust", 60.0))
     return {
         "@odata.type": "#Thermal.v1_7_0.Thermal",
         "@odata.id": f"/redfish/v1/Chassis/{cid}/Thermal",

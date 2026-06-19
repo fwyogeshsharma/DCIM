@@ -104,9 +104,9 @@ const METRIC_GROUPS: MetricGroup[] = [
     { key: 'sensor_ambient_temp', label: 'Inlet / Ambient Temp', tip: '±0.3 °C walk, clamped 15–35 °C (independent of CPU load)' },
     { key: 'humidity',            label: 'Ambient Humidity',     tip: '±1.5 %RH walk, clamped 10–90 %' },
     { key: 'dewpoint',            label: 'Dew Point',            tip: 'Derived from inlet/ambient temp + humidity each tick', derived: true },
-    { key: 'airflow',             label: 'Airflow Speed',        tip: '±0.15 m/s walk, clamped 0.2–4.0 m/s (NetBotz only)' },
+    { key: 'airflow',             label: 'Airflow Speed',        tip: 'Servers: exhaust velocity from power (2.2–4.0 m/s). NetBotz sensors: ±0.15 m/s walk' },
     { key: 'mid_temp',            label: 'Mid-Rack Temp',        tip: 'Raritan DPX2-T3H1 only — tracks ambient +3–7 °C' },
-    { key: 'outlet_temp',         label: 'Exhaust Temp',         tip: 'Raritan DPX2-T3H1 only — tracks ambient +8–14 °C' },
+    { key: 'outlet_temp',         label: 'Exhaust Temp',         tip: 'Servers: inlet + ΔT (power/airflow, ~10–14 °C). Raritan DPX2-T3H1: ambient +8–14 °C' },
     { key: 'water_detection',     label: 'Water Detection',      tip: 'Raritan DPX2-CC2 only — 0.05% wet; clears 20%' },
   ]},
   { gid: 'ups', title: 'UPS Devices', rows: [

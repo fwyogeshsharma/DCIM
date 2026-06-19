@@ -459,7 +459,7 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
 
 // ── Server table (expandable) ─────────────────────────────────────────────────
 
-const SRV_COLS = 14
+const SRV_COLS = 15
 
 function ServerTable({ rows }: { rows: DeviceInfo[] }) {
   const sort = useSortState('name')
@@ -484,6 +484,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
       case 'disk':   return (pct(a.disk_used, a.disk_total) - pct(b.disk_used, b.disk_total)) * dir
       case 'ctemp':  return ((a.cpu_temp ?? 0) - (b.cpu_temp ?? 0)) * dir
       case 'itemp':  return ((a.inlet_temp ?? 0) - (b.inlet_temp ?? 0)) * dir
+      case 'otemp':  return ((a.outlet_temp ?? 0) - (b.outlet_temp ?? 0)) * dir
       case 'watts':  return ((a.power_watts ?? 0) - (b.power_watts ?? 0)) * dir
       case 'fan':    return ((a.fan_rpm ?? 0) - (b.fan_rpm ?? 0)) * dir
       case 'pstate': return (a.power_state ?? '').localeCompare(b.power_state ?? '') * dir
@@ -509,6 +510,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="Disk"       id="disk"   sort={sort} align="right" minW={100} />
           <SortTH label="CPU Temp"    id="ctemp"  sort={sort} align="right" minW={80} />
           <SortTH label="Inlet Temp" id="itemp"  sort={sort} align="right" minW={80} />
+          <SortTH label="Exhaust Temp" id="otemp" sort={sort} align="right" minW={80} title="Server chassis exhaust — Redfish Thermal 'Exhaust'; inlet + ΔT from power/airflow" />
           <SortTH label="Power"      id="watts"  sort={sort} align="right" minW={80} title="Derived: nominal power_draw_w × (0.55 + 0.45 × CPU load) — matches Redfish PowerConsumedWatts" />
           <SortTH label="Fan"        id="fan"    sort={sort} align="right" minW={80} title="Chassis fan speed (RPM) — rises with CPU temperature; matches Redfish Thermal Fans" />
           <SortTH label="Interfaces" id="ifaces" sort={sort} align="right" minW={80} />
@@ -550,6 +552,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
               {off ? <DashCell /> : <PctCell used={d.disk_used}   total={d.disk_total}   warn={70} crit={90} />}
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.cpu_temp}   unit="°C" warn={75} crit={85} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.inlet_temp} unit="°C" warn={35} crit={45} /></td>
+              <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.outlet_temp} unit="°C" warn={42} crit={52} /></td>
               <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.power_watts} unit=" W" decimals={0} /></td>
               {off ? <DashCell /> : <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.fan_rpm} unit=" RPM" decimals={0} warn={12000} crit={14000} /></td>}
               <td style={{ padding: '6px 10px', textAlign: 'right' }}>

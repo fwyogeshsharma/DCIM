@@ -47,9 +47,9 @@ _METRIC_GROUPS = [
         ("sensor_ambient_temp", "Inlet / Ambient Temp",      "±0.3 °C walk, clamped 15–35 °C (independent of CPU load)"),
         ("humidity",            "Ambient Humidity",          "±1.5 %RH walk, clamped 10–90 %"),
         ("dewpoint",            "Dew Point  ⓘ",              "Derived from inlet/ambient temp + humidity"),
-        ("airflow",             "Airflow Speed",             "±0.15 m/s walk, clamped 0.2–4.0 m/s (NetBotz only)"),
+        ("airflow",             "Airflow Speed",             "Servers: exhaust velocity from power (2.2–4.0 m/s). NetBotz sensors: ±0.15 m/s walk"),
         ("mid_temp",            "Mid-Rack Temp",             "Raritan DPX2-T3H1 only — tracks ambient +3–7 °C"),
-        ("outlet_temp",         "Exhaust Temp",              "Raritan DPX2-T3H1 only — tracks ambient +8–14 °C"),
+        ("outlet_temp",         "Exhaust Temp",              "Servers: inlet + ΔT (power/airflow, ~10–14 °C). Raritan DPX2-T3H1: ambient +8–14 °C"),
         ("water_detection",     "Water Detection",           "Raritan DPX2-CC2 only — 0.05% wet; clears 20%"),
     ]),
     ("UPS Devices Only", [

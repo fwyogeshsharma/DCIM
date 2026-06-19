@@ -126,10 +126,13 @@ def _device_to_info(device) -> DeviceInfo:
         fan_rpm=getattr(device, "fan_rpm", None) if dt == "server" else None,
         power_state=_server_power_state(device) if dt == "server" else None,
         mid_temp=getattr(device, "mid_temp", None)       if dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1" else None,
-        outlet_temp=getattr(device, "outlet_temp", None) if dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1" else None,
+        # Exhaust temp: servers report chassis exhaust (BMC/Redfish); the
+        # Raritan DPX2-T3H1 rack sensor reports its top probe.
+        outlet_temp=getattr(device, "outlet_temp", None) if dt == "server" or (dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1") else None,
         humidity=getattr(device, "humidity", None) if dt == "sensor" else None,
         dewpoint=getattr(device, "dewpoint", None) if dt == "sensor" else None,
-        airflow=getattr(device, "airflow", None)   if dt == "sensor" else None,
+        # Airflow (m/s): server chassis exhaust velocity + NetBotz room sensors.
+        airflow=getattr(device, "airflow", None)   if dt in ("server", "sensor") else None,
         ups_status=ext.get("ups_status")           if dt == "ups" else None,
         ups_output_load=ext.get("ups_output_load") if dt == "ups" else None,
         ups_battery_status=ext.get("ups_battery_status") if dt == "ups" else None,
