@@ -62,7 +62,7 @@ export default function Dashboard() {
 
   const stats = [
     {
-      name: 'Networks',
+      name: 'Datacenters',
       value: totalNetworks.toLocaleString(),
       subtitle: 'monitored',
       icon: Network,
