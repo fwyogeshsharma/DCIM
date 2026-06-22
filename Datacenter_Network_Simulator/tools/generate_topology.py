@@ -118,6 +118,7 @@ class TopologyBuilder:
                          oob_vendor: Vendor = Vendor.CISCO_SYSTEMS,
                          ports_per_oob: int = 46,
                          n_sensors: int = 2,
+                         oob_rack_num: int = 9,
                          base_loc: dict = None) -> dict:
         """Create OOB management switches, wire all devices via mgmt layer,
         and add environmental sensors.
@@ -179,7 +180,8 @@ class TopologyBuilder:
                 node["device"]["snmp_community"] = oob_core_mgmt_ip
                 if base_loc:
                     for k, v in {**base_loc, "room": "Server Hall",
-                                 "rack_row": 1, "rack_num": 9, "rack_unit": 42}.items():
+                                 "rack_row": 1, "rack_num": oob_rack_num,
+                                 "rack_unit": 42}.items():
                         node["device"][k] = v
                 break
 
@@ -202,9 +204,11 @@ class TopologyBuilder:
                     node["device"]["mgmt_ip"] = oob_mgmt_ip
                     node["device"]["snmp_community"] = oob_mgmt_ip
                     if base_loc:
+                        # All OOB switches share ONE management rack, stacked 2U
+                        # below the core (U40, U38, ...) -- not one cabinet each.
                         for k, v in {**base_loc, "room": "Server Hall",
-                                     "rack_row": 1, "rack_num": 10 + i,
-                                     "rack_unit": 42}.items():
+                                     "rack_row": 1, "rack_num": oob_rack_num,
+                                     "rack_unit": 40 - 2 * i}.items():
                             node["device"][k] = v
                     break
             oob_switches.append(oob)
@@ -294,7 +298,12 @@ class TopologyBuilder:
                     else:
                         node["device"]["datacenter"] = f"DC{dc_id}"
                         node["device"]["floor"]      = "1"
-                    node["device"]["room"]     = "Server Hall" if room == "A" else "Under Floor"
+                    # Sub-floor leak sensors (CC2) belong to the hall's raised-floor
+                    # plenum -- a SPACE, not a separate room. Keep them in the hall and
+                    # tag them sub-floor; downstream consolidation folds them onto the
+                    # hall's cooling (CDU) racks where the CHW leak risk actually is.
+                    node["device"]["room"]      = "Server Hall"
+                    node["device"]["sub_floor"] = (room == "UF")
                     node["device"]["rack_row"] = rack_row
                     node["device"]["rack_num"] = rack_num
                     node["device"]["rack_unit"] = rack_unit
@@ -487,14 +496,20 @@ class TopologyBuilder:
             rack_x_end   = rack_x_start + rack_width
             for device in devices:
                 dx = pos_map.get(device.id, (0, 0))[0]
-                if rack_x_start <= dx < rack_x_end:
-                    for node in self.nodes:
-                        if node["id"] == device.id:
-                            node["device"]["power_source_a"] = pdu_a.id
-                            node["device"]["power_source_b"] = pdu_b.id
-                            break
-                    self.link(pdu_a, device, layer="power")
-                    self.link(pdu_b, device, layer="power")
+                if not (rack_x_start <= dx < rack_x_end):
+                    continue
+                dnode = next((n for n in self.nodes if n["id"] == device.id), None)
+                if dnode is None:
+                    continue
+                # Sub-floor leak sensors (CC2) are powered by a leak-detection
+                # controller / low-voltage feed, NOT a rack PDU. Skip cording them so
+                # no dedicated per-sensor PDU pair is ever created for them.
+                if dnode["device"].get("model_name") == "Raritan DPX2-CC2":
+                    continue
+                dnode["device"]["power_source_a"] = pdu_a.id
+                dnode["device"]["power_source_b"] = pdu_b.id
+                self.link(pdu_a, device, layer="power")
+                self.link(pdu_b, device, layer="power")
 
         return {
             "generator":   generator,
@@ -1241,8 +1256,17 @@ def _build_dc(t: "TopologyBuilder", dc: str, n_spine: int, n_leaf: int,
     _set_location(t, lb2,   **_L, rack_row=1, rack_num=3, rack_unit=40)
     _set_location(t, core1, **_L, rack_row=1, rack_num=4, rack_unit=42)
     _set_location(t, core2, **_L, rack_row=1, rack_num=4, rack_unit=40)
+    # Spine packing: a small fabric (<=3 spines, 1U switches) shares one dedicated
+    # spine rack; a larger fabric splits 2-per-rack for A/B power + fault-domain
+    # diversity. Spines do NOT each squat a 42U cabinet. Keep in sync with
+    # spine_rack_span() so the OOB rack lands right after the last spine rack.
+    SPINE_RACK0 = 5
     for i, sp in enumerate(spines):
-        _set_location(t, sp, **_L, rack_row=1, rack_num=5 + i, rack_unit=42)
+        if len(spines) <= 3:
+            rk, ru = SPINE_RACK0, 42 - i
+        else:
+            rk, ru = SPINE_RACK0 + i // 2, (42 if i % 2 == 0 else 41)
+        _set_location(t, sp, **_L, rack_row=1, rack_num=rk, rack_unit=ru)
 
     # Compute rows (Row 2+): each leaf switch is top-of-rack (U42),
     # servers fill from U1 upward in 2U slots.
@@ -1351,13 +1375,22 @@ def build_dual_dc_enterprise():
     _dc1_loc = dict(country="USA", datacenter_city="Chicago", datacenter="DC1", floor="1")
     _dc2_loc = dict(country="USA", datacenter_city="Chicago", datacenter="DC2", floor="2")
 
+    # OOB management rack sits immediately after the last spine rack (racks 1-4 =
+    # edge/fw/lb/core; spines start at rack 5). Keep in sync with the spine packing
+    # rule in _build_dc: <=3 spines -> 1 rack, else 2-per-rack.
+    def _oob_rack(n_spine):
+        spine_racks = 1 if n_spine <= 3 else (n_spine + 1) // 2
+        return 5 + spine_racks
+
     mgmt1 = t.add_mgmt_network(dc1_devices, dc_id=1,
                                 mgmt_subnet_override="192.168.0.0/22",
                                 oob_vendor=Vendor.CISCO_SYSTEMS, n_sensors=20,
+                                oob_rack_num=_oob_rack(4),
                                 base_loc=_dc1_loc)
     mgmt2 = t.add_mgmt_network(dc2_devices, dc_id=2,
                                 mgmt_subnet_override="192.168.4.0/22",
                                 oob_vendor=Vendor.DELL, n_sensors=18,
+                                oob_rack_num=_oob_rack(3),
                                 base_loc=_dc2_loc)
 
     # ── Cross-DC OOB link (DCI for management plane) ─────────────────

@@ -174,22 +174,6 @@
         "racks_per_row": 2,
         "aisles": []
       },
-      "DC1/Under Floor": {
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "class": "facility",
-        "containment": "none",
-        "width_m": 3.0,
-        "depth_m": 9.6,
-        "rows": [
-          1,
-          2,
-          3,
-          4
-        ],
-        "racks_per_row": 5,
-        "aisles": []
-      },
       "DC2/Central Plant": {
         "datacenter": "DC2",
         "room": "Central Plant",
@@ -336,21 +320,6 @@
         ],
         "racks_per_row": 2,
         "aisles": []
-      },
-      "DC2/Under Floor": {
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "class": "facility",
-        "containment": "none",
-        "width_m": 3.0,
-        "depth_m": 7.2,
-        "rows": [
-          1,
-          2,
-          3
-        ],
-        "racks_per_row": 5,
-        "aisles": []
       }
     }
   },
@@ -372,14 +341,11 @@
         "ec012c83",
         "98993beb",
         "197fcc71",
-        "47e364b0",
-        "b0bc32c1",
-        "e9051e55",
         "d58842de",
         "baa80dd4"
       ],
-      "device_count": 8,
-      "it_power_draw_w": 798
+      "device_count": 5,
+      "it_power_draw_w": 771
     },
     {
       "rack_id": "DC1:ServerHallA:F1:R1:RACK2",
@@ -462,11 +428,12 @@
       "hot_aisle": null,
       "device_ids": [
         "1e8d2501",
+        "ab86bdd9",
         "9be578c7",
         "04fc6d82"
       ],
-      "device_count": 3,
-      "it_power_draw_w": 229
+      "device_count": 4,
+      "it_power_draw_w": 450
     },
     {
       "rack_id": "DC1:ServerHallA:F1:R1:RACK6",
@@ -482,54 +449,13 @@
       "cold_aisle": "CA1",
       "hot_aisle": null,
       "device_ids": [
-        "ab86bdd9",
+        "aa0d3200",
+        "feb6a517",
         "c40db9b4",
         "b09b2a5c"
       ],
-      "device_count": 3,
-      "it_power_draw_w": 221
-    },
-    {
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 7,
-      "floor_x": 3.9,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
-        "aa0d3200",
-        "3f76be1d",
-        "a18ff6b6"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 228
-    },
-    {
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK8",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 8,
-      "floor_x": 4.5,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
-        "feb6a517",
-        "7c441fe7",
-        "1825bc54"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 219
+      "device_count": 4,
+      "it_power_draw_w": 447
     },
     {
       "rack_id": "DC1:ServerHallA:F1:R2:RACK1",
@@ -564,12 +490,14 @@
         "1fb4e84d",
         "cd7c3147",
         "3081e4b9",
+        "1629fda9",
         "fe5b3521",
+        "47e364b0",
         "57c700aa",
         "d450281c"
       ],
-      "device_count": 22,
-      "it_power_draw_w": 12248
+      "device_count": 24,
+      "it_power_draw_w": 12266
     },
     {
       "rack_id": "DC1:ServerHallA:F1:R2:RACK2",
@@ -604,12 +532,14 @@
         "f297dbf9",
         "e65885b5",
         "83d517bd",
+        "fe9a82a9",
         "93799524",
+        "b0bc32c1",
         "bdc14f1f",
         "d5a804eb"
       ],
-      "device_count": 22,
-      "it_power_draw_w": 12001
+      "device_count": 24,
+      "it_power_draw_w": 12019
     },
     {
       "rack_id": "DC1:ServerHallA:F1:R2:RACK3",
@@ -644,12 +574,14 @@
         "4e47e2b0",
         "8acc5c8f",
         "9e088f65",
+        "6c4f7c37",
         "14de2793",
+        "e9051e55",
         "dc570131",
         "bfddc3d9"
       ],
-      "device_count": 22,
-      "it_power_draw_w": 11616
+      "device_count": 24,
+      "it_power_draw_w": 11632
     },
     {
       "rack_id": "DC1:ServerHallA:F1:R2:RACK4",
@@ -762,13 +694,14 @@
         "0763e757",
         "6f8d713c",
         "0eb906cb",
+        "b4556fbc",
         "b699b366",
         "311e2148",
         "09cb3942",
         "30a900ad"
       ],
-      "device_count": 23,
-      "it_power_draw_w": 11380
+      "device_count": 24,
+      "it_power_draw_w": 11384
     },
     {
       "rack_id": "DC1:ServerHallB:F2:R3:RACK2",
@@ -803,12 +736,13 @@
         "a11b8b8e",
         "149718ec",
         "2aefd2f1",
+        "a9a85a82",
         "c35f9db2",
         "d9178793",
         "8dedf9fb"
       ],
-      "device_count": 22,
-      "it_power_draw_w": 12492
+      "device_count": 23,
+      "it_power_draw_w": 12501
     },
     {
       "rack_id": "DC1:ServerHallB:F2:R3:RACK3",
@@ -945,14 +879,11 @@
         "f141cf08",
         "bd2953cc",
         "d8f9fde3",
-        "3a077722",
-        "921cfe39",
-        "efc2999b",
         "ce3714af",
         "7d7ddbed"
       ],
-      "device_count": 8,
-      "it_power_draw_w": 782
+      "device_count": 5,
+      "it_power_draw_w": 755
     },
     {
       "rack_id": "DC2:ServerHallA:F1:R1:RACK2",
@@ -1035,53 +966,13 @@
       "hot_aisle": null,
       "device_ids": [
         "96cb21c4",
+        "0ac7cb5c",
+        "24f0fd21",
         "7428a656",
         "2f65fafa"
       ],
-      "device_count": 3,
-      "it_power_draw_w": 232
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 6,
-      "floor_x": 3.3,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
-        "0ac7cb5c",
-        "4bd6cee6",
-        "f1afdb65"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 224
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK7",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 7,
-      "floor_x": 3.9,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
-        "24f0fd21",
-        "70c2903f",
-        "6694c343"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 197
+      "device_count": 5,
+      "it_power_draw_w": 653
     },
     {
       "rack_id": "DC2:ServerHallA:F1:R2:RACK1",
@@ -1114,12 +1005,14 @@
         "1defd435",
         "40f2235b",
         "59639ab5",
+        "e26a32c8",
         "94ccacef",
+        "3a077722",
         "b194990b",
         "409d3602"
       ],
-      "device_count": 20,
-      "it_power_draw_w": 11020
+      "device_count": 22,
+      "it_power_draw_w": 11033
     },
     {
       "rack_id": "DC2:ServerHallA:F1:R2:RACK2",
@@ -1152,12 +1045,14 @@
         "0f5d441a",
         "b23f84a6",
         "10ca468f",
+        "075de7ee",
         "c0b19b3a",
+        "921cfe39",
         "c1a6423b",
         "b2c08394"
       ],
-      "device_count": 20,
-      "it_power_draw_w": 10812
+      "device_count": 22,
+      "it_power_draw_w": 10827
     },
     {
       "rack_id": "DC2:ServerHallA:F1:R2:RACK3",
@@ -1191,11 +1086,12 @@
         "f366d1f2",
         "49dbe1af",
         "bb9206e3",
+        "efc2999b",
         "8d605936",
         "b77350ca"
       ],
-      "device_count": 20,
-      "it_power_draw_w": 10583
+      "device_count": 21,
+      "it_power_draw_w": 10592
     },
     {
       "rack_id": "DC2:ServerHallA:F1:R2:RACK4",
@@ -1265,13 +1161,14 @@
         "c66b1a6e",
         "05ec25db",
         "d897d9ee",
+        "cd67c3be",
         "7c036924",
         "1b18d1e3",
         "6090d697",
         "0b2c782a"
       ],
-      "device_count": 21,
-      "it_power_draw_w": 11388
+      "device_count": 22,
+      "it_power_draw_w": 11392
     },
     {
       "rack_id": "DC2:ServerHallB:F2:R3:RACK2",
@@ -1304,12 +1201,13 @@
         "d4adc1bc",
         "f14d7a51",
         "72e30bfb",
+        "07356413",
         "4502bc22",
         "d85480f0",
         "1327f1bc"
       ],
-      "device_count": 20,
-      "it_power_draw_w": 10847
+      "device_count": 21,
+      "it_power_draw_w": 10856
     },
     {
       "rack_id": "DC2:ServerHallB:F2:R3:RACK3",
@@ -1387,14 +1285,14 @@
       "it_power_draw_w": 10354
     },
     {
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
       "datacenter": "DC1",
       "datacenter_city": "Chicago",
       "room": "Server Hall A",
       "floor": "1",
       "row": 1,
-      "rack_num": 9,
-      "floor_x": 5.1,
+      "rack_num": 7,
+      "floor_x": 3.9,
       "floor_y": 1.8,
       "rack_facing": "S",
       "cold_aisle": "CA1",
@@ -1413,256 +1311,29 @@
       "it_power_draw_w": 455
     },
     {
-      "rack_id": "DC1:UnderFloor:F1:R1:RACK5",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Under Floor",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 5,
-      "floor_x": 2.7,
-      "floor_y": 0.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "1629fda9",
-        "e5af6e39",
-        "a07295e9"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 9
-    },
-    {
-      "rack_id": "DC1:UnderFloor:F2:R2:RACK4",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Under Floor",
-      "floor": "2",
-      "row": 2,
-      "rack_num": 4,
-      "floor_x": 2.1,
-      "floor_y": 3.0,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "fe9a82a9",
-        "0ff0a55c",
-        "f1578470"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 9
-    },
-    {
-      "rack_id": "DC1:UnderFloor:F1:R3:RACK3",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Under Floor",
-      "floor": "1",
-      "row": 3,
-      "rack_num": 3,
-      "floor_x": 1.5,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "6c4f7c37",
-        "55fa1ab8",
-        "b4d7e28e"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 7
-    },
-    {
-      "rack_id": "DC1:UnderFloor:F2:R4:RACK2",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Under Floor",
-      "floor": "2",
-      "row": 4,
-      "rack_num": 2,
-      "floor_x": 0.9,
-      "floor_y": 7.8,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "b4556fbc",
-        "45df16b6",
-        "d72b6108"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 4
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
       "datacenter": "DC2",
       "datacenter_city": "New York",
       "room": "Server Hall A",
       "floor": "1",
       "row": 1,
-      "rack_num": 9,
-      "floor_x": 5.1,
+      "rack_num": 6,
+      "floor_x": 3.3,
       "floor_y": 1.8,
       "rack_facing": "S",
       "cold_aisle": "CA1",
       "hot_aisle": null,
       "device_ids": [
         "431a7dbd",
-        "fe716b14",
-        "6dc7cac7"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 107
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK10",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 10,
-      "floor_x": 5.7,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
         "efbee6c2",
-        "2834e4c0",
-        "784c2f29"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 98
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK11",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 11,
-      "floor_x": 6.3,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
         "2067c82f",
-        "aff8754d",
-        "e88da719"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 77
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK12",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 12,
-      "floor_x": 6.9,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
         "e14eb712",
-        "706c5c56",
-        "40181c6e"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 84
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK13",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 13,
-      "floor_x": 7.5,
-      "floor_y": 1.8,
-      "rack_facing": "S",
-      "cold_aisle": "CA1",
-      "hot_aisle": null,
-      "device_ids": [
         "09e66792",
-        "a6c9537f",
-        "5913f9d3"
+        "4bd6cee6",
+        "f1afdb65"
       ],
-      "device_count": 3,
-      "it_power_draw_w": 98
-    },
-    {
-      "rack_id": "DC2:UnderFloor:F1:R1:RACK5",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Under Floor",
-      "floor": "1",
-      "row": 1,
-      "rack_num": 5,
-      "floor_x": 2.7,
-      "floor_y": 0.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "e26a32c8",
-        "aee1e86b",
-        "cdfc6ee0"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 4
-    },
-    {
-      "rack_id": "DC2:UnderFloor:F2:R2:RACK4",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Under Floor",
-      "floor": "2",
-      "row": 2,
-      "rack_num": 4,
-      "floor_x": 2.1,
-      "floor_y": 3.0,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "075de7ee",
-        "e726be23",
-        "a0d4de3d"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 6
-    },
-    {
-      "rack_id": "DC2:UnderFloor:F1:R3:RACK3",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Under Floor",
-      "floor": "1",
-      "row": 3,
-      "rack_num": 3,
-      "floor_x": 1.5,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "cd67c3be",
-        "40066ff2",
-        "b303f438"
-      ],
-      "device_count": 3,
-      "it_power_draw_w": 4
+      "device_count": 7,
+      "it_power_draw_w": 464
     },
     {
       "rack_id": "DC1:GeneratorRoom:FG:R1:RACK1",
@@ -1719,6 +1390,86 @@
         "b594e90b"
       ],
       "device_count": 1,
+      "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK6",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 2,
+      "rack_num": 6,
+      "floor_x": 3.3,
+      "floor_y": 4.2,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "a528c3ab",
+        "62bac0a5"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK7",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 2,
+      "rack_num": 7,
+      "floor_x": 3.9,
+      "floor_y": 4.2,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "5360689f",
+        "dd41d3ab"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC1:ServerHallB:F2:R3:RACK6",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 3,
+      "rack_num": 6,
+      "floor_x": 3.3,
+      "floor_y": 5.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "238d0922",
+        "f2488186"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC1:ServerHallB:F2:R3:RACK7",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 3,
+      "rack_num": 7,
+      "floor_x": 3.9,
+      "floor_y": 5.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "61b311bb",
+        "09711e29"
+      ],
+      "device_count": 2,
       "it_power_draw_w": 0
     },
     {
@@ -1779,6 +1530,86 @@
       "it_power_draw_w": 0
     },
     {
+      "rack_id": "DC2:ServerHallA:F1:R2:RACK5",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 2,
+      "rack_num": 5,
+      "floor_x": 2.7,
+      "floor_y": 4.2,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "b324209b",
+        "06af8df8"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC2:ServerHallA:F1:R2:RACK6",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 2,
+      "rack_num": 6,
+      "floor_x": 3.3,
+      "floor_y": 4.2,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "72c0c547",
+        "8be4852f"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC2:ServerHallB:F2:R3:RACK5",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 3,
+      "rack_num": 5,
+      "floor_x": 2.7,
+      "floor_y": 5.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "a8e3601e",
+        "d09bc056"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC2:ServerHallB:F2:R3:RACK6",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 3,
+      "rack_num": 6,
+      "floor_x": 3.3,
+      "floor_y": 5.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "e48c0c95",
+        "70d1d9b2"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0
+    },
+    {
       "rack_id": "DC1:MechanicalRoom:FG:R2:RACK1",
       "datacenter": "DC1",
       "datacenter_city": "Chicago",
@@ -1797,6 +1628,82 @@
       ],
       "device_count": 2,
       "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK1",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 1,
+      "floor_x": 1.05,
+      "floor_y": 9.0,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "43ab2687"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 2091
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK2",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 2,
+      "floor_x": 3.15,
+      "floor_y": 9.0,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "0e78ea53"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 1831
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK3",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 3,
+      "floor_x": 5.25,
+      "floor_y": 9.0,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "40b34bda"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 1886
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK4",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 4,
+      "floor_x": 7.35,
+      "floor_y": 9.0,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "ddc67fa6"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 1642
     },
     {
       "rack_id": "DC1:GeneratorRoom:FG:R2:RACK1",
@@ -1836,6 +1743,82 @@
       ],
       "device_count": 2,
       "it_power_draw_w": 0
+    },
+    {
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK1",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 1,
+      "floor_x": 0.97,
+      "floor_y": 6.6,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "5a83ce67"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 1595
+    },
+    {
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK2",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 2,
+      "floor_x": 2.92,
+      "floor_y": 6.6,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "d75f2a9e"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 1770
+    },
+    {
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK3",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 3,
+      "floor_x": 4.88,
+      "floor_y": 6.6,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "281c795b"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 1615
+    },
+    {
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK4",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 4,
+      "floor_x": 6.83,
+      "floor_y": 6.6,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "95dccf22"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 1630
     },
     {
       "rack_id": "DC2:GeneratorRoom:FG:R2:RACK1",
@@ -2057,158 +2040,6 @@
       "it_power_draw_w": 1454
     },
     {
-      "rack_id": "DC1:UnderFloor:F2:R3:RACK3",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Under Floor",
-      "floor": "2",
-      "row": 3,
-      "rack_num": 3,
-      "floor_x": 1.5,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "a9a85a82"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 9
-    },
-    {
-      "rack_id": "DC2:UnderFloor:F2:R3:RACK3",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Under Floor",
-      "floor": "2",
-      "row": 3,
-      "rack_num": 3,
-      "floor_x": 1.5,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "07356413"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 9
-    },
-    {
-      "rack_id": "DC1:GeneratorRoom:FG:R1:RACK2",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Generator Room",
-      "floor": "G",
-      "row": 1,
-      "rack_num": 2,
-      "floor_x": 0.9,
-      "floor_y": 0.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "f1e1dc00"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC2:GeneratorRoom:FG:R1:RACK2",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Generator Room",
-      "floor": "G",
-      "row": 1,
-      "rack_num": 2,
-      "floor_x": 0.9,
-      "floor_y": 0.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "5c86d596"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC1:ServerHallA:F1:R9:RACK1",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 1,
-      "floor_x": 1.05,
-      "floor_y": 9.0,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "43ab2687"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 2091
-    },
-    {
-      "rack_id": "DC1:ServerHallA:F1:R9:RACK2",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 2,
-      "floor_x": 3.15,
-      "floor_y": 9.0,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "0e78ea53"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 1831
-    },
-    {
-      "rack_id": "DC1:ServerHallA:F1:R9:RACK3",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 3,
-      "floor_x": 5.25,
-      "floor_y": 9.0,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "40b34bda"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 1886
-    },
-    {
-      "rack_id": "DC1:ServerHallA:F1:R9:RACK4",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 4,
-      "floor_x": 7.35,
-      "floor_y": 9.0,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "ddc67fa6"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 1642
-    },
-    {
       "rack_id": "DC1:ServerHallB:F2:R9:RACK1",
       "datacenter": "DC1",
       "datacenter_city": "Chicago",
@@ -2283,82 +2114,6 @@
       ],
       "device_count": 1,
       "it_power_draw_w": 2091
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R9:RACK1",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 1,
-      "floor_x": 0.97,
-      "floor_y": 6.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "5a83ce67"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 1595
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R9:RACK2",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 2,
-      "floor_x": 2.92,
-      "floor_y": 6.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "d75f2a9e"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 1770
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R9:RACK3",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 3,
-      "floor_x": 4.88,
-      "floor_y": 6.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "281c795b"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 1615
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R9:RACK4",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 9,
-      "rack_num": 4,
-      "floor_x": 6.83,
-      "floor_y": 6.6,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "95dccf22"
-      ],
-      "device_count": 1,
-      "it_power_draw_w": 1630
     },
     {
       "rack_id": "DC2:ServerHallB:F2:R9:RACK1",
@@ -2437,163 +2192,41 @@
       "it_power_draw_w": 1595
     },
     {
-      "rack_id": "DC1:ServerHallA:F1:R2:RACK6",
+      "rack_id": "DC1:GeneratorRoom:FG:R1:RACK2",
       "datacenter": "DC1",
       "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 2,
-      "rack_num": 6,
-      "floor_x": 3.3,
-      "floor_y": 4.2,
+      "room": "Generator Room",
+      "floor": "G",
+      "row": 1,
+      "rack_num": 2,
+      "floor_x": 0.9,
+      "floor_y": 0.6,
       "rack_facing": null,
       "cold_aisle": null,
       "hot_aisle": null,
       "device_ids": [
-        "a528c3ab",
-        "62bac0a5"
+        "f1e1dc00"
       ],
-      "device_count": 2,
+      "device_count": 1,
       "it_power_draw_w": 0
     },
     {
-      "rack_id": "DC1:ServerHallA:F1:R2:RACK7",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 2,
-      "rack_num": 7,
-      "floor_x": 3.9,
-      "floor_y": 4.2,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "5360689f",
-        "dd41d3ab"
-      ],
-      "device_count": 2,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC1:ServerHallB:F2:R3:RACK6",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall B",
-      "floor": "2",
-      "row": 3,
-      "rack_num": 6,
-      "floor_x": 3.3,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "238d0922",
-        "f2488186"
-      ],
-      "device_count": 2,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC1:ServerHallB:F2:R3:RACK7",
-      "datacenter": "DC1",
-      "datacenter_city": "Chicago",
-      "room": "Server Hall B",
-      "floor": "2",
-      "row": 3,
-      "rack_num": 7,
-      "floor_x": 3.9,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "61b311bb",
-        "09711e29"
-      ],
-      "device_count": 2,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R2:RACK5",
+      "rack_id": "DC2:GeneratorRoom:FG:R1:RACK2",
       "datacenter": "DC2",
       "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 2,
-      "rack_num": 5,
-      "floor_x": 2.7,
-      "floor_y": 4.2,
+      "room": "Generator Room",
+      "floor": "G",
+      "row": 1,
+      "rack_num": 2,
+      "floor_x": 0.9,
+      "floor_y": 0.6,
       "rack_facing": null,
       "cold_aisle": null,
       "hot_aisle": null,
       "device_ids": [
-        "b324209b",
-        "06af8df8"
+        "5c86d596"
       ],
-      "device_count": 2,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC2:ServerHallA:F1:R2:RACK6",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall A",
-      "floor": "1",
-      "row": 2,
-      "rack_num": 6,
-      "floor_x": 3.3,
-      "floor_y": 4.2,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "72c0c547",
-        "8be4852f"
-      ],
-      "device_count": 2,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC2:ServerHallB:F2:R3:RACK5",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall B",
-      "floor": "2",
-      "row": 3,
-      "rack_num": 5,
-      "floor_x": 2.7,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "a8e3601e",
-        "d09bc056"
-      ],
-      "device_count": 2,
-      "it_power_draw_w": 0
-    },
-    {
-      "rack_id": "DC2:ServerHallB:F2:R3:RACK6",
-      "datacenter": "DC2",
-      "datacenter_city": "New York",
-      "room": "Server Hall B",
-      "floor": "2",
-      "row": 3,
-      "rack_num": 6,
-      "floor_x": 3.3,
-      "floor_y": 5.4,
-      "rack_facing": null,
-      "cold_aisle": null,
-      "hot_aisle": null,
-      "device_ids": [
-        "e48c0c95",
-        "70d1d9b2"
-      ],
-      "device_count": 2,
+      "device_count": 1,
       "it_power_draw_w": 0
     }
   ],
@@ -2712,11 +2345,11 @@
       "device_type": "switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Nexus 93180YC-FX",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK6",
-      "rack_unit": 42,
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK5",
+      "rack_unit": 41,
       "power_draw_w": 221,
-      "feed_a": "PDU-DC1-SHA-R1-6-A",
-      "feed_b": "PDU-DC1-SHA-R1-6-B"
+      "feed_a": "PDU-DC1-SHA-R1-5-A",
+      "feed_b": "PDU-DC1-SHA-R1-5-B"
     },
     {
       "id": "aa0d3200",
@@ -2724,11 +2357,11 @@
       "device_type": "switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Nexus 93180YC-FX",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK6",
       "rack_unit": 42,
       "power_draw_w": 228,
-      "feed_a": "PDU-DC1-SHA-R1-7-A",
-      "feed_b": "PDU-DC1-SHA-R1-7-B"
+      "feed_a": "PDU-DC1-SHA-R1-6-A",
+      "feed_b": "PDU-DC1-SHA-R1-6-B"
     },
     {
       "id": "feb6a517",
@@ -2736,11 +2369,11 @@
       "device_type": "switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Nexus 93180YC-FX",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK8",
-      "rack_unit": 42,
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK6",
+      "rack_unit": 41,
       "power_draw_w": 219,
-      "feed_a": "PDU-DC1-SHA-R1-8-A",
-      "feed_b": "PDU-DC1-SHA-R1-8-B"
+      "feed_a": "PDU-DC1-SHA-R1-6-A",
+      "feed_b": "PDU-DC1-SHA-R1-6-B"
     },
     {
       "id": "6e0ae05a",
@@ -5136,11 +4769,11 @@
       "device_type": "switch",
       "vendor": "Dell Technologies",
       "model": "Dell Z9264F-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
-      "rack_unit": 42,
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK5",
+      "rack_unit": 41,
       "power_draw_w": 224,
-      "feed_a": "PDU-DC2-SHA-R1-6-A",
-      "feed_b": "PDU-DC2-SHA-R1-6-B"
+      "feed_a": "PDU-DC2-SHA-R1-5-A",
+      "feed_b": "PDU-DC2-SHA-R1-5-B"
     },
     {
       "id": "24f0fd21",
@@ -5148,11 +4781,11 @@
       "device_type": "switch",
       "vendor": "Dell Technologies",
       "model": "Dell Z9264F-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK7",
-      "rack_unit": 42,
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK5",
+      "rack_unit": 40,
       "power_draw_w": 197,
-      "feed_a": "PDU-DC2-SHA-R1-7-A",
-      "feed_b": "PDU-DC2-SHA-R1-7-B"
+      "feed_a": "PDU-DC2-SHA-R1-5-A",
+      "feed_b": "PDU-DC2-SHA-R1-5-B"
     },
     {
       "id": "27ae20e5",
@@ -6792,11 +6425,11 @@
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 9300-48T",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
       "rack_unit": 42,
       "power_draw_w": 94,
-      "feed_a": "PDU-DC1-SHA-R1-9-A",
-      "feed_b": "PDU-DC1-SHA-R1-9-B"
+      "feed_a": "PDU-DC1-SHA-R1-7-A",
+      "feed_b": "PDU-DC1-SHA-R1-7-B"
     },
     {
       "id": "94f1c5b0",
@@ -6804,11 +6437,11 @@
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 1000-48T",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
       "rack_unit": 40,
       "power_draw_w": 62,
-      "feed_a": "PDU-DC1-SHA-R1-9-A",
-      "feed_b": "PDU-DC1-SHA-R1-9-B"
+      "feed_a": "PDU-DC1-SHA-R1-7-A",
+      "feed_b": "PDU-DC1-SHA-R1-7-B"
     },
     {
       "id": "ffe07bcf",
@@ -6816,11 +6449,11 @@
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 1000-48T",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
       "rack_unit": 38,
       "power_draw_w": 99,
-      "feed_a": "PDU-DC1-SHA-R1-9-A",
-      "feed_b": "PDU-DC1-SHA-R1-9-B"
+      "feed_a": "PDU-DC1-SHA-R1-7-A",
+      "feed_b": "PDU-DC1-SHA-R1-7-B"
     },
     {
       "id": "46aac8d9",
@@ -6828,11 +6461,11 @@
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 1000-48T",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
       "rack_unit": 36,
       "power_draw_w": 67,
-      "feed_a": "PDU-DC1-SHA-R1-9-A",
-      "feed_b": "PDU-DC1-SHA-R1-9-B"
+      "feed_a": "PDU-DC1-SHA-R1-7-A",
+      "feed_b": "PDU-DC1-SHA-R1-7-B"
     },
     {
       "id": "54c037ab",
@@ -6840,11 +6473,11 @@
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 1000-48T",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
       "rack_unit": 34,
       "power_draw_w": 67,
-      "feed_a": "PDU-DC1-SHA-R1-9-A",
-      "feed_b": "PDU-DC1-SHA-R1-9-B"
+      "feed_a": "PDU-DC1-SHA-R1-7-A",
+      "feed_b": "PDU-DC1-SHA-R1-7-B"
     },
     {
       "id": "e69c9a56",
@@ -6852,11 +6485,11 @@
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 1000-48T",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
       "rack_unit": 32,
       "power_draw_w": 66,
-      "feed_a": "PDU-DC1-SHA-R1-9-A",
-      "feed_b": "PDU-DC1-SHA-R1-9-B"
+      "feed_a": "PDU-DC1-SHA-R1-7-A",
+      "feed_b": "PDU-DC1-SHA-R1-7-B"
     },
     {
       "id": "197fcc71",
@@ -6868,7 +6501,8 @@
       "rack_unit": 1,
       "power_draw_w": 5,
       "feed_a": "PDU-DC1-SHA-R1-1-A",
-      "feed_b": "PDU-DC1-SHA-R1-1-B"
+      "feed_b": "PDU-DC1-SHA-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "1629fda9",
@@ -6876,11 +6510,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:UnderFloor:F1:R1:RACK5",
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK1",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": "PDU-DC1-UNDE-R1-5-A",
-      "feed_b": "PDU-DC1-UNDE-R1-5-B"
+      "feed_a": "PDU-DC1-SHA-R2-1-A",
+      "feed_b": "PDU-DC1-SHA-R2-1-B",
+      "mounting": "underfloor"
     },
     {
       "id": "fe9a82a9",
@@ -6888,11 +6523,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:UnderFloor:F2:R2:RACK4",
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK2",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": "PDU-DC1-UNDE-R2-4-A",
-      "feed_b": "PDU-DC1-UNDE-R2-4-B"
+      "feed_a": "PDU-DC1-SHA-R2-2-A",
+      "feed_b": "PDU-DC1-SHA-R2-2-B",
+      "mounting": "underfloor"
     },
     {
       "id": "6c4f7c37",
@@ -6900,11 +6536,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:UnderFloor:F1:R3:RACK3",
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK3",
       "rack_unit": 0,
       "power_draw_w": 7,
-      "feed_a": "PDU-DC1-UNDE-R3-3-A",
-      "feed_b": "PDU-DC1-UNDE-R3-3-B"
+      "feed_a": "PDU-DC1-SHA-R2-3-A",
+      "feed_b": "PDU-DC1-SHA-R2-3-B",
+      "mounting": "underfloor"
     },
     {
       "id": "b4556fbc",
@@ -6912,11 +6549,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:UnderFloor:F2:R4:RACK2",
+      "rack_id": "DC1:ServerHallB:F2:R3:RACK1",
       "rack_unit": 0,
       "power_draw_w": 4,
-      "feed_a": "PDU-DC1-UNDE-R4-2-A",
-      "feed_b": "PDU-DC1-UNDE-R4-2-B"
+      "feed_a": "PDU-DC1-SHB-R3-1-A",
+      "feed_b": "PDU-DC1-SHB-R3-1-B",
+      "mounting": "underfloor"
     },
     {
       "id": "431a7dbd",
@@ -6924,11 +6562,11 @@
       "device_type": "oob_switch",
       "vendor": "Dell Technologies",
       "model": "Dell N3248TE-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK9",
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
       "rack_unit": 42,
       "power_draw_w": 107,
-      "feed_a": "PDU-DC2-SHA-R1-9-A",
-      "feed_b": "PDU-DC2-SHA-R1-9-B"
+      "feed_a": "PDU-DC2-SHA-R1-6-A",
+      "feed_b": "PDU-DC2-SHA-R1-6-B"
     },
     {
       "id": "efbee6c2",
@@ -6936,11 +6574,11 @@
       "device_type": "oob_switch",
       "vendor": "Dell Technologies",
       "model": "Dell N1148T-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK10",
-      "rack_unit": 42,
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
+      "rack_unit": 40,
       "power_draw_w": 98,
-      "feed_a": "PDU-DC2-SHA-R1-10-A",
-      "feed_b": "PDU-DC2-SHA-R1-10-B"
+      "feed_a": "PDU-DC2-SHA-R1-6-A",
+      "feed_b": "PDU-DC2-SHA-R1-6-B"
     },
     {
       "id": "2067c82f",
@@ -6948,11 +6586,11 @@
       "device_type": "oob_switch",
       "vendor": "Dell Technologies",
       "model": "Dell N1148T-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK11",
-      "rack_unit": 42,
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
+      "rack_unit": 38,
       "power_draw_w": 77,
-      "feed_a": "PDU-DC2-SHA-R1-11-A",
-      "feed_b": "PDU-DC2-SHA-R1-11-B"
+      "feed_a": "PDU-DC2-SHA-R1-6-A",
+      "feed_b": "PDU-DC2-SHA-R1-6-B"
     },
     {
       "id": "e14eb712",
@@ -6960,11 +6598,11 @@
       "device_type": "oob_switch",
       "vendor": "Dell Technologies",
       "model": "Dell N1148T-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK12",
-      "rack_unit": 42,
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
+      "rack_unit": 36,
       "power_draw_w": 84,
-      "feed_a": "PDU-DC2-SHA-R1-12-A",
-      "feed_b": "PDU-DC2-SHA-R1-12-B"
+      "feed_a": "PDU-DC2-SHA-R1-6-A",
+      "feed_b": "PDU-DC2-SHA-R1-6-B"
     },
     {
       "id": "09e66792",
@@ -6972,11 +6610,11 @@
       "device_type": "oob_switch",
       "vendor": "Dell Technologies",
       "model": "Dell N1148T-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK13",
-      "rack_unit": 42,
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK6",
+      "rack_unit": 34,
       "power_draw_w": 98,
-      "feed_a": "PDU-DC2-SHA-R1-13-A",
-      "feed_b": "PDU-DC2-SHA-R1-13-B"
+      "feed_a": "PDU-DC2-SHA-R1-6-A",
+      "feed_b": "PDU-DC2-SHA-R1-6-B"
     },
     {
       "id": "d8f9fde3",
@@ -6988,7 +6626,8 @@
       "rack_unit": 1,
       "power_draw_w": 7,
       "feed_a": "PDU-DC2-SHA-R1-1-A",
-      "feed_b": "PDU-DC2-SHA-R1-1-B"
+      "feed_b": "PDU-DC2-SHA-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "e26a32c8",
@@ -6996,11 +6635,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC2:UnderFloor:F1:R1:RACK5",
+      "rack_id": "DC2:ServerHallA:F1:R2:RACK1",
       "rack_unit": 0,
       "power_draw_w": 4,
-      "feed_a": "PDU-DC2-UNDE-R1-5-A",
-      "feed_b": "PDU-DC2-UNDE-R1-5-B"
+      "feed_a": "PDU-DC2-SHA-R2-1-A",
+      "feed_b": "PDU-DC2-SHA-R2-1-B",
+      "mounting": "underfloor"
     },
     {
       "id": "075de7ee",
@@ -7008,11 +6648,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC2:UnderFloor:F2:R2:RACK4",
+      "rack_id": "DC2:ServerHallA:F1:R2:RACK2",
       "rack_unit": 0,
       "power_draw_w": 6,
-      "feed_a": "PDU-DC2-UNDE-R2-4-A",
-      "feed_b": "PDU-DC2-UNDE-R2-4-B"
+      "feed_a": "PDU-DC2-SHA-R2-2-A",
+      "feed_b": "PDU-DC2-SHA-R2-2-B",
+      "mounting": "underfloor"
     },
     {
       "id": "cd67c3be",
@@ -7020,11 +6661,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC2:UnderFloor:F1:R3:RACK3",
+      "rack_id": "DC2:ServerHallB:F2:R3:RACK1",
       "rack_unit": 0,
       "power_draw_w": 4,
-      "feed_a": "PDU-DC2-UNDE-R3-3-A",
-      "feed_b": "PDU-DC2-UNDE-R3-3-B"
+      "feed_a": "PDU-DC2-SHB-R3-1-A",
+      "feed_b": "PDU-DC2-SHB-R3-1-B",
+      "mounting": "underfloor"
     },
     {
       "id": "08a89a19",
@@ -7660,7 +7302,8 @@
       "rack_unit": 0,
       "power_draw_w": 9,
       "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_b": "PDU-DC1-CENT-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "6b30c89c",
@@ -7672,7 +7315,8 @@
       "rack_unit": 0,
       "power_draw_w": 8,
       "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_b": "PDU-DC1-CENT-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "bea56af1",
@@ -7684,7 +7328,8 @@
       "rack_unit": 0,
       "power_draw_w": 7,
       "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_b": "PDU-DC1-CENT-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "f8b995ba",
@@ -7840,7 +7485,8 @@
       "rack_unit": 0,
       "power_draw_w": 6,
       "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_b": "PDU-DC2-CENT-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "fa7bff58",
@@ -7852,7 +7498,8 @@
       "rack_unit": 0,
       "power_draw_w": 6,
       "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_b": "PDU-DC2-CENT-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "85377da7",
@@ -7864,7 +7511,8 @@
       "rack_unit": 0,
       "power_draw_w": 7,
       "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_b": "PDU-DC2-CENT-R1-1-B",
+      "mounting": "rack_front"
     },
     {
       "id": "7ea9beb5",
@@ -7996,7 +7644,8 @@
       "rack_unit": 1,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "a9a85a82",
@@ -8004,11 +7653,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:UnderFloor:F2:R3:RACK3",
+      "rack_id": "DC1:ServerHallB:F2:R3:RACK2",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC1-SHB-R3-2-A",
+      "feed_b": "PDU-DC1-SHB-R3-2-B",
+      "mounting": "underfloor"
     },
     {
       "id": "7c036924",
@@ -8020,7 +7670,8 @@
       "rack_unit": 1,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "07356413",
@@ -8028,11 +7679,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC2:UnderFloor:F2:R3:RACK3",
+      "rack_id": "DC2:ServerHallB:F2:R3:RACK2",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC2-SHB-R3-2-A",
+      "feed_b": "PDU-DC2-SHB-R3-2-B",
+      "mounting": "underfloor"
     },
     {
       "id": "47e364b0",
@@ -8040,11 +7692,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK1",
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK1",
       "rack_unit": 0,
       "power_draw_w": 9,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "underfloor"
     },
     {
       "id": "b0bc32c1",
@@ -8052,11 +7705,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK1",
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK2",
       "rack_unit": 0,
       "power_draw_w": 9,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "underfloor"
     },
     {
       "id": "e9051e55",
@@ -8064,11 +7718,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK1",
+      "rack_id": "DC1:ServerHallA:F1:R2:RACK3",
       "rack_unit": 0,
       "power_draw_w": 9,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "underfloor"
     },
     {
       "id": "3a077722",
@@ -8076,11 +7731,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK1",
+      "rack_id": "DC2:ServerHallA:F1:R2:RACK1",
       "rack_unit": 0,
       "power_draw_w": 9,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "underfloor"
     },
     {
       "id": "921cfe39",
@@ -8088,11 +7744,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK1",
+      "rack_id": "DC2:ServerHallA:F1:R2:RACK2",
       "rack_unit": 0,
       "power_draw_w": 9,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "underfloor"
     },
     {
       "id": "efc2999b",
@@ -8100,11 +7757,12 @@
       "device_type": "sensor",
       "vendor": "Raritan",
       "model": "Raritan DPX2-CC2",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK1",
+      "rack_id": "DC2:ServerHallA:F1:R2:RACK3",
       "rack_unit": 0,
       "power_draw_w": 9,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "underfloor"
     },
     {
       "id": "d396a795",
@@ -8116,7 +7774,8 @@
       "rack_unit": 0,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "3e4ddd2d",
@@ -8128,7 +7787,8 @@
       "rack_unit": 0,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "b9dd5c5e",
@@ -8140,7 +7800,8 @@
       "rack_unit": 0,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "c8fd4d14",
@@ -8152,7 +7813,8 @@
       "rack_unit": 0,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "11992fa8",
@@ -8164,7 +7826,8 @@
       "rack_unit": 0,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "fc1ab32e",
@@ -8176,7 +7839,8 @@
       "rack_unit": 0,
       "power_draw_w": 8,
       "feed_a": null,
-      "feed_b": null
+      "feed_b": null,
+      "mounting": "rack_front"
     },
     {
       "id": "6db52bde",
@@ -8587,7 +8251,7 @@
       "feed_b": null
     },
     {
-      "id": "3f76be1d",
+      "id": "1931e9ee",
       "name": "PDU-DC1-SHA-R1-7-A",
       "device_type": "pdu",
       "vendor": "APC by Schneider Electric",
@@ -8599,60 +8263,12 @@
       "feed_b": null
     },
     {
-      "id": "a18ff6b6",
+      "id": "894a05e4",
       "name": "PDU-DC1-SHA-R1-7-B",
       "device_type": "pdu",
       "vendor": "Raritan",
       "model": "Raritan PX3-5190R",
       "rack_id": "DC1:ServerHallA:F1:R1:RACK7",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "7c441fe7",
-      "name": "PDU-DC1-SHA-R1-8-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK8",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "1825bc54",
-      "name": "PDU-DC1-SHA-R1-8-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK8",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "1931e9ee",
-      "name": "PDU-DC1-SHA-R1-9-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "894a05e4",
-      "name": "PDU-DC1-SHA-R1-9-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK9",
       "rack_unit": 0,
       "power_draw_w": 0,
       "feed_a": null,
@@ -8899,102 +8515,6 @@
       "feed_b": null
     },
     {
-      "id": "e5af6e39",
-      "name": "PDU-DC1-UNDE-R1-5-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:UnderFloor:F1:R1:RACK5",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "a07295e9",
-      "name": "PDU-DC1-UNDE-R1-5-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:UnderFloor:F1:R1:RACK5",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "55fa1ab8",
-      "name": "PDU-DC1-UNDE-R3-3-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:UnderFloor:F1:R3:RACK3",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "b4d7e28e",
-      "name": "PDU-DC1-UNDE-R3-3-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:UnderFloor:F1:R3:RACK3",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "0ff0a55c",
-      "name": "PDU-DC1-UNDE-R2-4-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:UnderFloor:F2:R2:RACK4",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "f1578470",
-      "name": "PDU-DC1-UNDE-R2-4-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:UnderFloor:F2:R2:RACK4",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "45df16b6",
-      "name": "PDU-DC1-UNDE-R4-2-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:UnderFloor:F2:R4:RACK2",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "d72b6108",
-      "name": "PDU-DC1-UNDE-R4-2-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:UnderFloor:F2:R4:RACK2",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
       "id": "7631de9d",
       "name": "PDU-DC2-CENT-R1-1-A",
       "device_type": "pdu",
@@ -9211,150 +8731,6 @@
       "feed_b": null
     },
     {
-      "id": "70c2903f",
-      "name": "PDU-DC2-SHA-R1-7-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK7",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "6694c343",
-      "name": "PDU-DC2-SHA-R1-7-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK7",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "fe716b14",
-      "name": "PDU-DC2-SHA-R1-9-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK9",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "6dc7cac7",
-      "name": "PDU-DC2-SHA-R1-9-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK9",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "2834e4c0",
-      "name": "PDU-DC2-SHA-R1-10-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK10",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "784c2f29",
-      "name": "PDU-DC2-SHA-R1-10-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK10",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "aff8754d",
-      "name": "PDU-DC2-SHA-R1-11-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK11",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "e88da719",
-      "name": "PDU-DC2-SHA-R1-11-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK11",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "706c5c56",
-      "name": "PDU-DC2-SHA-R1-12-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK12",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "40181c6e",
-      "name": "PDU-DC2-SHA-R1-12-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK12",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "a6c9537f",
-      "name": "PDU-DC2-SHA-R1-13-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK13",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "5913f9d3",
-      "name": "PDU-DC2-SHA-R1-13-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK13",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
       "id": "b194990b",
       "name": "PDU-DC2-SHA-R2-1-A",
       "device_type": "pdu",
@@ -9545,78 +8921,6 @@
       "power_draw_w": 0,
       "feed_a": null,
       "feed_b": null
-    },
-    {
-      "id": "aee1e86b",
-      "name": "PDU-DC2-UNDE-R1-5-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:UnderFloor:F1:R1:RACK5",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "cdfc6ee0",
-      "name": "PDU-DC2-UNDE-R1-5-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:UnderFloor:F1:R1:RACK5",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "40066ff2",
-      "name": "PDU-DC2-UNDE-R3-3-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:UnderFloor:F1:R3:RACK3",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "b303f438",
-      "name": "PDU-DC2-UNDE-R3-3-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:UnderFloor:F1:R3:RACK3",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "e726be23",
-      "name": "PDU-DC2-UNDE-R2-4-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:UnderFloor:F2:R2:RACK4",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "a0d4de3d",
-      "name": "PDU-DC2-UNDE-R2-4-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:UnderFloor:F2:R2:RACK4",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
     }
   ],
   "summary": {
@@ -9624,8 +8928,8 @@
       "DC1",
       "DC2"
     ],
-    "rooms": 16,
-    "racks": 92,
-    "devices": 585
+    "rooms": 14,
+    "racks": 75,
+    "devices": 555
   }
 }

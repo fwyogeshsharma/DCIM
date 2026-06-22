@@ -5040,8 +5040,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 6,
-        "rack_unit": 42,
+        "rack_num": 5,
+        "rack_unit": 41,
         "cpu_usage": 11,
         "memory_total": 2147483648,
         "memory_used": 1005072793,
@@ -5057,9 +5057,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "c40db9b4",
-        "power_source_b": "b09b2a5c",
-        "floor_x": 3.3,
+        "power_source_a": "9be578c7",
+        "power_source_b": "04fc6d82",
+        "floor_x": 2.7,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -5912,7 +5912,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 7,
+        "rack_num": 6,
         "rack_unit": 42,
         "cpu_usage": 79,
         "memory_total": 4294967296,
@@ -5929,9 +5929,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "3f76be1d",
-        "power_source_b": "a18ff6b6",
-        "floor_x": 3.9,
+        "power_source_a": "c40db9b4",
+        "power_source_b": "b09b2a5c",
+        "floor_x": 3.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -6784,8 +6784,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 8,
-        "rack_unit": 42,
+        "rack_num": 6,
+        "rack_unit": 41,
         "cpu_usage": 82,
         "memory_total": 2147483648,
         "memory_used": 1561819890,
@@ -6801,9 +6801,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "7c441fe7",
-        "power_source_b": "1825bc54",
-        "floor_x": 4.5,
+        "power_source_a": "c40db9b4",
+        "power_source_b": "b09b2a5c",
+        "floor_x": 3.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -37314,8 +37314,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 6,
-        "rack_unit": 42,
+        "rack_num": 5,
+        "rack_unit": 41,
         "cpu_usage": 65,
         "memory_total": 17179869184,
         "memory_used": 3860481541,
@@ -37331,9 +37331,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "4bd6cee6",
-        "power_source_b": "f1afdb65",
-        "floor_x": 3.3,
+        "power_source_a": "7428a656",
+        "power_source_b": "2f65fafa",
+        "floor_x": 2.7,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -38186,8 +38186,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 7,
-        "rack_unit": 42,
+        "rack_num": 5,
+        "rack_unit": 40,
         "cpu_usage": 81,
         "memory_total": 8589934592,
         "memory_used": 2526370386,
@@ -38203,9 +38203,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "70c2903f",
-        "power_source_b": "6694c343",
-        "floor_x": 3.9,
+        "power_source_a": "7428a656",
+        "power_source_b": "2f65fafa",
+        "floor_x": 2.7,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -57346,7 +57346,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 42,
         "cpu_usage": 65,
         "memory_total": 34359738368,
@@ -57365,7 +57365,7 @@
         "sys_location_override": "",
         "power_source_a": "1931e9ee",
         "power_source_b": "894a05e4",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -58159,7 +58159,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 40,
         "cpu_usage": 22,
         "memory_total": 4294967296,
@@ -58178,7 +58178,7 @@
         "sys_location_override": "",
         "power_source_a": "1931e9ee",
         "power_source_b": "894a05e4",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -58972,7 +58972,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 38,
         "cpu_usage": 56,
         "memory_total": 17179869184,
@@ -58991,7 +58991,7 @@
         "sys_location_override": "",
         "power_source_a": "1931e9ee",
         "power_source_b": "894a05e4",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -59785,7 +59785,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 36,
         "cpu_usage": 69,
         "memory_total": 2147483648,
@@ -59804,7 +59804,7 @@
         "sys_location_override": "",
         "power_source_a": "1931e9ee",
         "power_source_b": "894a05e4",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -60598,7 +60598,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 34,
         "cpu_usage": 84,
         "memory_total": 2147483648,
@@ -60617,7 +60617,7 @@
         "sys_location_override": "",
         "power_source_a": "1931e9ee",
         "power_source_b": "894a05e4",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -61411,7 +61411,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 32,
         "cpu_usage": 62,
         "memory_total": 4294967296,
@@ -61430,7 +61430,7 @@
         "sys_location_override": "",
         "power_source_a": "1931e9ee",
         "power_source_b": "894a05e4",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -61511,7 +61511,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -61563,10 +61564,10 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Under Floor",
+        "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
-        "rack_num": 5,
+        "rack_row": 2,
+        "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 54,
         "memory_total": 4294967296,
@@ -61583,10 +61584,11 @@
         "airflow": 1.97,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "e5af6e39",
-        "power_source_b": "a07295e9",
-        "floor_x": 2.7,
-        "floor_y": 0.6
+        "power_source_a": "57c700aa",
+        "power_source_b": "d450281c",
+        "floor_x": 0.3,
+        "floor_y": 4.2,
+        "mounting": "rack_front"
       }
     },
     {
@@ -61638,10 +61640,10 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Under Floor",
+        "room": "Server Hall A",
         "floor": "2",
         "rack_row": 2,
-        "rack_num": 4,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 16,
         "memory_total": 8589934592,
@@ -61658,10 +61660,11 @@
         "airflow": 0.83,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "0ff0a55c",
-        "power_source_b": "f1578470",
-        "floor_x": 2.1,
-        "floor_y": 3.0
+        "power_source_a": "bdc14f1f",
+        "power_source_b": "d5a804eb",
+        "floor_x": 0.9,
+        "floor_y": 4.2,
+        "mounting": "rack_front"
       }
     },
     {
@@ -61713,9 +61716,9 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Under Floor",
+        "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 3,
+        "rack_row": 2,
         "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 82,
@@ -61733,10 +61736,11 @@
         "airflow": 1.19,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "55fa1ab8",
-        "power_source_b": "b4d7e28e",
+        "power_source_a": "dc570131",
+        "power_source_b": "bfddc3d9",
         "floor_x": 1.5,
-        "floor_y": 5.4
+        "floor_y": 4.2,
+        "mounting": "rack_front"
       }
     },
     {
@@ -61788,10 +61792,10 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Under Floor",
+        "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 4,
-        "rack_num": 2,
+        "rack_row": 3,
+        "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 68,
         "memory_total": 8589934592,
@@ -61808,10 +61812,11 @@
         "airflow": 1.74,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "45df16b6",
-        "power_source_b": "d72b6108",
-        "floor_x": 0.9,
-        "floor_y": 7.8
+        "power_source_a": "09cb3942",
+        "power_source_b": "30a900ad",
+        "floor_x": 0.3,
+        "floor_y": 5.4,
+        "mounting": "rack_front"
       }
     },
     {
@@ -62031,7 +62036,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 6,
         "rack_unit": 42,
         "cpu_usage": 30,
         "memory_total": 4294967296,
@@ -62048,9 +62053,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "fe716b14",
-        "power_source_b": "6dc7cac7",
-        "floor_x": 5.1,
+        "power_source_a": "4bd6cee6",
+        "power_source_b": "f1afdb65",
+        "floor_x": 3.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -62843,8 +62848,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 10,
-        "rack_unit": 42,
+        "rack_num": 6,
+        "rack_unit": 40,
         "cpu_usage": 53,
         "memory_total": 34359738368,
         "memory_used": 22955678949,
@@ -62860,9 +62865,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "2834e4c0",
-        "power_source_b": "784c2f29",
-        "floor_x": 5.7,
+        "power_source_a": "4bd6cee6",
+        "power_source_b": "f1afdb65",
+        "floor_x": 3.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -63655,8 +63660,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 11,
-        "rack_unit": 42,
+        "rack_num": 6,
+        "rack_unit": 38,
         "cpu_usage": 34,
         "memory_total": 2147483648,
         "memory_used": 701261758,
@@ -63672,9 +63677,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "aff8754d",
-        "power_source_b": "e88da719",
-        "floor_x": 6.3,
+        "power_source_a": "4bd6cee6",
+        "power_source_b": "f1afdb65",
+        "floor_x": 3.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -64467,8 +64472,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 12,
-        "rack_unit": 42,
+        "rack_num": 6,
+        "rack_unit": 36,
         "cpu_usage": 65,
         "memory_total": 17179869184,
         "memory_used": 6113038435,
@@ -64484,9 +64489,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "706c5c56",
-        "power_source_b": "40181c6e",
-        "floor_x": 6.9,
+        "power_source_a": "4bd6cee6",
+        "power_source_b": "f1afdb65",
+        "floor_x": 3.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -65279,8 +65284,8 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 13,
-        "rack_unit": 42,
+        "rack_num": 6,
+        "rack_unit": 34,
         "cpu_usage": 43,
         "memory_total": 2147483648,
         "memory_used": 1546479288,
@@ -65296,9 +65301,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "a6c9537f",
-        "power_source_b": "5913f9d3",
-        "floor_x": 7.5,
+        "power_source_a": "4bd6cee6",
+        "power_source_b": "f1afdb65",
+        "floor_x": 3.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -65378,7 +65383,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -65430,10 +65436,10 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Under Floor",
+        "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
-        "rack_num": 5,
+        "rack_row": 2,
+        "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 78,
         "memory_total": 4294967296,
@@ -65450,10 +65456,11 @@
         "airflow": 1.33,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "aee1e86b",
-        "power_source_b": "cdfc6ee0",
-        "floor_x": 2.7,
-        "floor_y": 0.6
+        "power_source_a": "b194990b",
+        "power_source_b": "409d3602",
+        "floor_x": 0.3,
+        "floor_y": 4.2,
+        "mounting": "rack_front"
       }
     },
     {
@@ -65505,10 +65512,10 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Under Floor",
+        "room": "Server Hall A",
         "floor": "2",
         "rack_row": 2,
-        "rack_num": 4,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 19,
         "memory_total": 34359738368,
@@ -65525,10 +65532,11 @@
         "airflow": 1.34,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "e726be23",
-        "power_source_b": "a0d4de3d",
-        "floor_x": 2.1,
-        "floor_y": 3.0
+        "power_source_a": "c1a6423b",
+        "power_source_b": "b2c08394",
+        "floor_x": 0.9,
+        "floor_y": 4.2,
+        "mounting": "rack_front"
       }
     },
     {
@@ -65580,10 +65588,10 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Under Floor",
+        "room": "Server Hall B",
         "floor": "1",
         "rack_row": 3,
-        "rack_num": 3,
+        "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 42,
         "memory_total": 8589934592,
@@ -65600,10 +65608,11 @@
         "airflow": 0.63,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "40066ff2",
-        "power_source_b": "b303f438",
-        "floor_x": 1.5,
-        "floor_y": 5.4
+        "power_source_a": "6090d697",
+        "power_source_b": "0b2c782a",
+        "floor_x": 0.3,
+        "floor_y": 5.4,
+        "mounting": "rack_front"
       }
     },
     {
@@ -69707,7 +69716,8 @@
         "power_source_a": "a3b1799d",
         "power_source_b": "6c031199",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -69782,7 +69792,8 @@
         "power_source_a": "a3b1799d",
         "power_source_b": "6c031199",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -69857,7 +69868,8 @@
         "power_source_a": "a3b1799d",
         "power_source_b": "6c031199",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -71027,7 +71039,8 @@
         "power_source_a": "7631de9d",
         "power_source_b": "53ac2ab9",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -71102,7 +71115,8 @@
         "power_source_a": "7631de9d",
         "power_source_b": "53ac2ab9",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -71177,7 +71191,8 @@
         "power_source_a": "7631de9d",
         "power_source_b": "53ac2ab9",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -72023,7 +72038,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72075,10 +72091,10 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Under Floor",
+        "room": "Server Hall B",
         "floor": "2",
         "rack_row": 3,
-        "rack_num": 3,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 54,
         "memory_total": 4294967296,
@@ -72095,10 +72111,11 @@
         "airflow": 1.97,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 1.5,
-        "floor_y": 5.4
+        "power_source_a": "d9178793",
+        "power_source_b": "8dedf9fb",
+        "floor_x": 0.9,
+        "floor_y": 5.4,
+        "mounting": "rack_front"
       }
     },
     {
@@ -72176,7 +72193,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72228,10 +72246,10 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Under Floor",
+        "room": "Server Hall B",
         "floor": "2",
         "rack_row": 3,
-        "rack_num": 3,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 54,
         "memory_total": 4294967296,
@@ -72248,10 +72266,11 @@
         "airflow": 1.97,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 1.5,
-        "floor_y": 5.4
+        "power_source_a": "d85480f0",
+        "power_source_b": "1327f1bc",
+        "floor_x": 0.9,
+        "floor_y": 5.4,
+        "mounting": "rack_front"
       }
     },
     {
@@ -72305,7 +72324,7 @@
         "datacenter": "DC1",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
+        "rack_row": 2,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 54,
@@ -72328,7 +72347,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72382,8 +72402,8 @@
         "datacenter": "DC1",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
+        "rack_row": 2,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 54,
         "memory_total": 4294967296,
@@ -72405,7 +72425,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72459,8 +72480,8 @@
         "datacenter": "DC1",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
+        "rack_row": 2,
+        "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 54,
         "memory_total": 4294967296,
@@ -72482,7 +72503,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72536,7 +72558,7 @@
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
+        "rack_row": 2,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 54,
@@ -72559,7 +72581,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72613,8 +72636,8 @@
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
+        "rack_row": 2,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 54,
         "memory_total": 4294967296,
@@ -72636,7 +72659,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72690,8 +72714,8 @@
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
+        "rack_row": 2,
+        "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 54,
         "memory_total": 4294967296,
@@ -72713,7 +72737,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "mounting": "rack_front"
       }
     },
     {
@@ -72788,7 +72813,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -72863,7 +72889,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -72938,7 +72965,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -73013,7 +73041,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -73088,7 +73117,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -73163,7 +73193,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "mounting": "rack_front"
       }
     },
     {
@@ -75739,321 +75770,13 @@
       }
     },
     {
-      "id": "3f76be1d",
-      "position": {
-        "x": 1000,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-SHA-R1-7-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.239",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "3f76be1d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "20:ad:0a:75:70:03",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.239",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 7,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 3.9,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "a18ff6b6",
-      "position": {
-        "x": 1000,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-SHA-R1-7-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.240",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "a18ff6b6",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "75:22:10:a9:24:79",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.240",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 7,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 3.9,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "7c441fe7",
-      "position": {
-        "x": 1400,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-SHA-R1-8-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.241",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "7c441fe7",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "43:f2:7c:f2:d0:61",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.241",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 8,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 4.5,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "1825bc54",
-      "position": {
-        "x": 1400,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-SHA-R1-8-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.242",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "1825bc54",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "dc:b5:d8:d2:ef:1b",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.242",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 8,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 4.5,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
       "id": "1931e9ee",
       "position": {
         "x": 800,
         "y": 0
       },
       "device": {
-        "name": "PDU-DC1-SHA-R1-9-A",
+        "name": "PDU-DC1-SHA-R1-7-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76098,7 +75821,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 0,
         "cpu_usage": 95,
         "memory_total": 2147483648,
@@ -76117,7 +75840,7 @@
         "sys_location_override": "",
         "power_source_a": "",
         "power_source_b": "",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -76130,7 +75853,7 @@
         "y": 0
       },
       "device": {
-        "name": "PDU-DC1-SHA-R1-9-B",
+        "name": "PDU-DC1-SHA-R1-7-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -76175,7 +75898,7 @@
         "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 9,
+        "rack_num": 7,
         "rack_unit": 0,
         "cpu_usage": 95,
         "memory_total": 2147483648,
@@ -76194,7 +75917,7 @@
         "sys_location_override": "",
         "power_source_a": "",
         "power_source_b": "",
-        "floor_x": 5.1,
+        "floor_x": 3.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -77761,606 +77484,6 @@
       }
     },
     {
-      "id": "e5af6e39",
-      "position": {
-        "x": 112,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R1-5-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.25",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "e5af6e39",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "f3:e6:84:7e:8d:f8",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.25",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 5,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.7,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "a07295e9",
-      "position": {
-        "x": 112,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R1-5-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.26",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "a07295e9",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "8c:e1:27:92:78:8b",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.26",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 5,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.7,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "55fa1ab8",
-      "position": {
-        "x": 1362,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R3-3-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.27",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "55fa1ab8",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "29:46:4d:76:c4:4e",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.27",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 3,
-        "rack_num": 3,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 1.5,
-        "floor_y": 5.4
-      }
-    },
-    {
-      "id": "b4d7e28e",
-      "position": {
-        "x": 1362,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R3-3-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.28",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "b4d7e28e",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "20:d4:d0:a9:ee:d4",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.28",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 3,
-        "rack_num": 3,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 1.5,
-        "floor_y": 5.4
-      }
-    },
-    {
-      "id": "0ff0a55c",
-      "position": {
-        "x": 738,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R2-4-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.29",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "0ff0a55c",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "d7:c7:0a:c2:f4:03",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.29",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "2",
-        "rack_row": 2,
-        "rack_num": 4,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.1,
-        "floor_y": 3.0
-      }
-    },
-    {
-      "id": "f1578470",
-      "position": {
-        "x": 738,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R2-4-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.30",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "f1578470",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "98:c7:d6:70:f9:70",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.30",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "2",
-        "rack_row": 2,
-        "rack_num": 4,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.1,
-        "floor_y": 3.0
-      }
-    },
-    {
-      "id": "45df16b6",
-      "position": {
-        "x": 1988,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R4-2-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.31",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "45df16b6",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "f8:0e:c7:ac:cf:54",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.31",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "2",
-        "rack_row": 4,
-        "rack_num": 2,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.9,
-        "floor_y": 7.8
-      }
-    },
-    {
-      "id": "d72b6108",
-      "position": {
-        "x": 1988,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC1-UNDE-R4-2-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.1.32",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "d72b6108",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "41:0d:c9:0d:2a:db",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.1.32",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "floor": "2",
-        "rack_row": 4,
-        "rack_num": 2,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.9,
-        "floor_y": 7.8
-      }
-    },
-    {
       "id": "7631de9d",
       "position": {
         "x": 4040,
@@ -79735,930 +78858,6 @@
       }
     },
     {
-      "id": "70c2903f",
-      "position": {
-        "x": 3966,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-7-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.182",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "70c2903f",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "5e:1a:81:f4:3a:21",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.182",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 7,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 3.9,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "6694c343",
-      "position": {
-        "x": 3966,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-7-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.183",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "6694c343",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "25:1b:4d:4c:9b:2b",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.183",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 7,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 3.9,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "fe716b14",
-      "position": {
-        "x": 3540,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-9-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.184",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "fe716b14",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "3c:d5:73:c2:e6:e2",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.184",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 9,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 5.1,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "6dc7cac7",
-      "position": {
-        "x": 3540,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-9-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.185",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "6dc7cac7",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "1e:32:6a:6c:87:29",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.185",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 9,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 5.1,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "2834e4c0",
-      "position": {
-        "x": 2560,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-10-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.186",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "2834e4c0",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "58:26:50:01:d1:e6",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.186",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 10,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 5.7,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "784c2f29",
-      "position": {
-        "x": 2560,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-10-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.187",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "784c2f29",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "10:76:93:90:e8:24",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.187",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 10,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 5.7,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "aff8754d",
-      "position": {
-        "x": 3213,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-11-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.188",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "aff8754d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "87:65:d9:3a:73:4c",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.188",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 11,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 6.3,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "e88da719",
-      "position": {
-        "x": 3213,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-11-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.189",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "e88da719",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "48:24:1e:54:9d:93",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.189",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 11,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 6.3,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "706c5c56",
-      "position": {
-        "x": 3867,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-12-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.190",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "706c5c56",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "ef:9b:ce:8b:fc:e0",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.190",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 12,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 6.9,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "40181c6e",
-      "position": {
-        "x": 3867,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-12-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.191",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "40181c6e",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "2e:75:0a:89:14:59",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.191",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 12,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 6.9,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "a6c9537f",
-      "position": {
-        "x": 4520,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-13-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.192",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "a6c9537f",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "8e:5c:df:fb:2e:f0",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.192",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 13,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 7.5,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
-      "id": "5913f9d3",
-      "position": {
-        "x": 4520,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-SHA-R1-13-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.193",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "5913f9d3",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "aa:a4:35:52:a8:d2",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.193",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 13,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 7.5,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1"
-      }
-    },
-    {
       "id": "b194990b",
       "position": {
         "x": 2980,
@@ -81904,456 +80103,6 @@
         "rack_facing": "S",
         "cold_aisle": "CA2",
         "hot_aisle": "HA1"
-      }
-    },
-    {
-      "id": "aee1e86b",
-      "position": {
-        "x": 3025,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-UNDE-R1-5-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.5.37",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "aee1e86b",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "fe:49:76:ec:82:eb",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.5.37",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 5,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.7,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "cdfc6ee0",
-      "position": {
-        "x": 3025,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-UNDE-R1-5-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.5.38",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "cdfc6ee0",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "93:50:25:e2:b0:99",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.5.38",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 5,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.7,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "40066ff2",
-      "position": {
-        "x": 4169,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-UNDE-R3-3-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.5.39",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "40066ff2",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "9a:65:c4:f7:36:79",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.5.39",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 3,
-        "rack_num": 3,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 1.5,
-        "floor_y": 5.4
-      }
-    },
-    {
-      "id": "b303f438",
-      "position": {
-        "x": 4169,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-UNDE-R3-3-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.5.40",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "b303f438",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "0b:ca:8c:04:19:fe",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.5.40",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "floor": "1",
-        "rack_row": 3,
-        "rack_num": 3,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 1.5,
-        "floor_y": 5.4
-      }
-    },
-    {
-      "id": "e726be23",
-      "position": {
-        "x": 3597,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-UNDE-R2-4-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.5.41",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "e726be23",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "75:b4:70:61:80:46",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.5.41",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "floor": "2",
-        "rack_row": 2,
-        "rack_num": 4,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.1,
-        "floor_y": 3.0
-      }
-    },
-    {
-      "id": "a0d4de3d",
-      "position": {
-        "x": 3597,
-        "y": 0
-      },
-      "device": {
-        "name": "PDU-DC2-UNDE-R2-4-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.5.42",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "a0d4de3d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "14:9e:e1:11:ba:43",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.5.42",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "floor": "2",
-        "rack_row": 2,
-        "rack_num": 4,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 2.1,
-        "floor_y": 3.0
       }
     }
   ],
@@ -90571,62 +88320,6 @@
     },
     {
       "src": "a528c3ab",
-      "dst": "3f76be1d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "3f76be1d",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 23,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "a18ff6b6",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a18ff6b6",
-      "dst": "46aac8d9",
-      "src_iface": 0,
-      "dst_iface": 23,
-      "layer": "management"
-    },
-    {
-      "src": "a528c3ab",
-      "dst": "7c441fe7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7c441fe7",
-      "dst": "46aac8d9",
-      "src_iface": 0,
-      "dst_iface": 24,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "1825bc54",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1825bc54",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 22,
-      "layer": "management"
-    },
-    {
-      "src": "a528c3ab",
       "dst": "1931e9ee",
       "src_iface": 0,
       "dst_iface": 0,
@@ -90934,118 +88627,6 @@
       "layer": "management"
     },
     {
-      "src": "a528c3ab",
-      "dst": "e5af6e39",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e5af6e39",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 26,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "a07295e9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a07295e9",
-      "dst": "64d55984",
-      "src_iface": 0,
-      "dst_iface": 28,
-      "layer": "management"
-    },
-    {
-      "src": "a528c3ab",
-      "dst": "55fa1ab8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "55fa1ab8",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 27,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "b4d7e28e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b4d7e28e",
-      "dst": "64d55984",
-      "src_iface": 0,
-      "dst_iface": 29,
-      "layer": "management"
-    },
-    {
-      "src": "a528c3ab",
-      "dst": "0ff0a55c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0ff0a55c",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 28,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "f1578470",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f1578470",
-      "dst": "64d55984",
-      "src_iface": 0,
-      "dst_iface": 30,
-      "layer": "management"
-    },
-    {
-      "src": "a528c3ab",
-      "dst": "45df16b6",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "45df16b6",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 29,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "d72b6108",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d72b6108",
-      "dst": "64d55984",
-      "src_iface": 0,
-      "dst_iface": 31,
-      "layer": "management"
-    },
-    {
       "src": "b324209b",
       "dst": "7631de9d",
       "src_iface": 0,
@@ -91299,174 +88880,6 @@
     },
     {
       "src": "b324209b",
-      "dst": "70c2903f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "70c2903f",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 24,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "6694c343",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6694c343",
-      "dst": "09e66792",
-      "src_iface": 0,
-      "dst_iface": 22,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "fe716b14",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "fe716b14",
-      "dst": "431a7dbd",
-      "src_iface": 0,
-      "dst_iface": 22,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "6dc7cac7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6dc7cac7",
-      "dst": "efbee6c2",
-      "src_iface": 0,
-      "dst_iface": 22,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "2834e4c0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "2834e4c0",
-      "dst": "efbee6c2",
-      "src_iface": 0,
-      "dst_iface": 23,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "784c2f29",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "784c2f29",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 24,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "aff8754d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "aff8754d",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 25,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "e88da719",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e88da719",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 25,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "706c5c56",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "706c5c56",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 26,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "40181c6e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "40181c6e",
-      "dst": "09e66792",
-      "src_iface": 0,
-      "dst_iface": 23,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "a6c9537f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a6c9537f",
-      "dst": "09e66792",
-      "src_iface": 0,
-      "dst_iface": 24,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "5913f9d3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "5913f9d3",
-      "dst": "431a7dbd",
-      "src_iface": 0,
-      "dst_iface": 23,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
       "dst": "b194990b",
       "src_iface": 0,
       "dst_iface": 0,
@@ -91690,90 +89103,6 @@
       "layer": "management"
     },
     {
-      "src": "b324209b",
-      "dst": "aee1e86b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "aee1e86b",
-      "dst": "431a7dbd",
-      "src_iface": 0,
-      "dst_iface": 28,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "cdfc6ee0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "cdfc6ee0",
-      "dst": "efbee6c2",
-      "src_iface": 0,
-      "dst_iface": 28,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "40066ff2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "40066ff2",
-      "dst": "431a7dbd",
-      "src_iface": 0,
-      "dst_iface": 29,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "b303f438",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b303f438",
-      "dst": "efbee6c2",
-      "src_iface": 0,
-      "dst_iface": 29,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "e726be23",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e726be23",
-      "dst": "431a7dbd",
-      "src_iface": 0,
-      "dst_iface": 30,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "a0d4de3d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a0d4de3d",
-      "dst": "efbee6c2",
-      "src_iface": 0,
-      "dst_iface": 30,
-      "layer": "management"
-    },
-    {
       "src": "d58842de",
       "dst": "ec012c83",
       "src_iface": 0,
@@ -91914,42 +89243,42 @@
       "layer": "power"
     },
     {
-      "src": "c40db9b4",
+      "src": "9be578c7",
       "dst": "ab86bdd9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "04fc6d82",
+      "dst": "ab86bdd9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c40db9b4",
+      "dst": "aa0d3200",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
       "src": "b09b2a5c",
-      "dst": "ab86bdd9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "3f76be1d",
       "dst": "aa0d3200",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "a18ff6b6",
-      "dst": "aa0d3200",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7c441fe7",
+      "src": "c40db9b4",
       "dst": "feb6a517",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "1825bc54",
+      "src": "b09b2a5c",
       "dst": "feb6a517",
       "src_iface": 0,
       "dst_iface": 0,
@@ -94798,2227 +92127,2129 @@
       "layer": "power"
     },
     {
-      "src": "4bd6cee6",
+      "src": "7428a656",
       "dst": "0ac7cb5c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "2f65fafa",
+      "dst": "0ac7cb5c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "7428a656",
+      "dst": "24f0fd21",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "2f65fafa",
+      "dst": "24f0fd21",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "27ae20e5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "27ae20e5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "e8026ef2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "e8026ef2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "2c2625ca",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "2c2625ca",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "a3443a39",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "a3443a39",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "620e2e0b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "620e2e0b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "acdb545c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "acdb545c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "bc7d373d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "bc7d373d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "fe77700e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "fe77700e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "42ce579d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "42ce579d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "19084277",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "19084277",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "7527db7e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "7527db7e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "120bb470",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "120bb470",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "e323c743",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "e323c743",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "5a11efec",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "5a11efec",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "1defd435",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "1defd435",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "40f2235b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "40f2235b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "59639ab5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "59639ab5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "94ccacef",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "94ccacef",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "899f7b26",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "899f7b26",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "285e682b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "285e682b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "6075b380",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "6075b380",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "432bd47c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "432bd47c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "c3a50a9e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "c3a50a9e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "f359fd51",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "f359fd51",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "8607de17",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "8607de17",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "1a40bd5c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "1a40bd5c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "cdf0cd29",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "cdf0cd29",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "abf756a4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "abf756a4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "3e46719a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "3e46719a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "60ab37f8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "60ab37f8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "b45c08fb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "b45c08fb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "cd87c3e2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "cd87c3e2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "0f5d441a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "0f5d441a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "b23f84a6",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "b23f84a6",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "10ca468f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "10ca468f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "c0b19b3a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "c0b19b3a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "88c18748",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "88c18748",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "39bce271",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "39bce271",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "f38e8e91",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "f38e8e91",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "05169b42",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "05169b42",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "ffec80e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "ffec80e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "9a092c67",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "9a092c67",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "e7255df8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "e7255df8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "11c49b22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "11c49b22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "e1de098b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "e1de098b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "50e6e66d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "50e6e66d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "25ff05cf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "25ff05cf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "952ad7c1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "952ad7c1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "e91967cc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "e91967cc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "f281af1e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "f281af1e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "49a9f5c8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "49a9f5c8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "f366d1f2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "f366d1f2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "49dbe1af",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "49dbe1af",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "bb9206e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "bb9206e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "54673419",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "54673419",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "f4a07bf2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "f4a07bf2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "0b2e040b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "0b2e040b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "cd148b49",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "cd148b49",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "02cb86d7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "02cb86d7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "702e950a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "702e950a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "8cab6e8f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "8cab6e8f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "99e14688",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "99e14688",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "0514484a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "0514484a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "060ac7d2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "060ac7d2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "a1df2d8c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "a1df2d8c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "196840a1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "196840a1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "cca7cee4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "cca7cee4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "6c53ada7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "6c53ada7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "36096ff3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "36096ff3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "5999a07a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "5999a07a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d1fb540",
+      "dst": "29424174",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "00a81de9",
+      "dst": "29424174",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "4ff8c02f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "4ff8c02f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "56eceacc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "56eceacc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "06b47fce",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "06b47fce",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "6b045824",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "6b045824",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "be20df04",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "be20df04",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "42b82ca8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "42b82ca8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "6dcaa8fe",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "6dcaa8fe",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "5a5630a7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "5a5630a7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "01fcb97e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "01fcb97e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "5eac480b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "5eac480b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "e1520fb5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "e1520fb5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "7861887a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "7861887a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "58cd0208",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "58cd0208",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "16953bc9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "16953bc9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "c66b1a6e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "c66b1a6e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "05ec25db",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "05ec25db",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "d897d9ee",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "d897d9ee",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "12a6cf07",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "12a6cf07",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "8c766a43",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "8c766a43",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "1591a04b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "1591a04b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "ff698dfd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "ff698dfd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "03101de4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "03101de4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "266c363d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "266c363d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "a6014530",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "a6014530",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "81cf8ff8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "81cf8ff8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "a270ef89",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "a270ef89",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "eadc68e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "eadc68e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "bb64b8f0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "bb64b8f0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "a3f644bb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "a3f644bb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "d08dac04",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "d08dac04",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "558b2029",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "558b2029",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "d4adc1bc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "d4adc1bc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "f14d7a51",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "f14d7a51",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "72e30bfb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "72e30bfb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "4838c308",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "4838c308",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "a5eee128",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "a5eee128",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "526c4793",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "526c4793",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "04756996",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "04756996",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "59f2da4a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "59f2da4a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "b61f88a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "b61f88a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "d53ad494",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "d53ad494",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "5666ba55",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "5666ba55",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "e112b707",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "e112b707",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "5bd993c7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "5bd993c7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "98386d9f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "98386d9f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "d2320d92",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "d2320d92",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "ba5b1d64",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "ba5b1d64",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "58395aa2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "58395aa2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "7ba2c3e8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "7ba2c3e8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "c1d5d4a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "c1d5d4a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "b410e1d0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "b410e1d0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "de759d37",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "de759d37",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "3babcd3d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "3babcd3d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "fe4fa31e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "fe4fa31e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "d314dd78",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "d314dd78",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "1faed5ac",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "1faed5ac",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "1949b6a8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "1949b6a8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "7aa55eb4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "7aa55eb4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "ba5de063",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "ba5de063",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "d786a004",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "d786a004",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "33f27698",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "33f27698",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "b2c4bd29",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "b2c4bd29",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "a7bb14dc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "a7bb14dc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "89233779",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "89233779",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "82d6addd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "82d6addd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "74c92961",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "74c92961",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "9b55a3ec",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "9b55a3ec",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "e746ccb9",
+      "dst": "64685735",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6e417d47",
+      "dst": "64685735",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1931e9ee",
+      "dst": "64d55984",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "894a05e4",
+      "dst": "64d55984",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1931e9ee",
+      "dst": "94f1c5b0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "894a05e4",
+      "dst": "94f1c5b0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1931e9ee",
+      "dst": "ffe07bcf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "894a05e4",
+      "dst": "ffe07bcf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1931e9ee",
+      "dst": "46aac8d9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "894a05e4",
+      "dst": "46aac8d9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1931e9ee",
+      "dst": "54c037ab",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "894a05e4",
+      "dst": "54c037ab",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1931e9ee",
+      "dst": "e69c9a56",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "894a05e4",
+      "dst": "e69c9a56",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "4bd6cee6",
+      "dst": "431a7dbd",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
       "src": "f1afdb65",
-      "dst": "0ac7cb5c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "70c2903f",
-      "dst": "24f0fd21",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6694c343",
-      "dst": "24f0fd21",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "27ae20e5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "27ae20e5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "e8026ef2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "e8026ef2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "2c2625ca",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "2c2625ca",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "a3443a39",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "a3443a39",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "620e2e0b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "620e2e0b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "acdb545c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "acdb545c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "bc7d373d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "bc7d373d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "fe77700e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "fe77700e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "42ce579d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "42ce579d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "19084277",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "19084277",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "7527db7e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "7527db7e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "120bb470",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "120bb470",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "e323c743",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "e323c743",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "5a11efec",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "5a11efec",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "1defd435",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "1defd435",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "40f2235b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "40f2235b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "59639ab5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "59639ab5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b194990b",
-      "dst": "94ccacef",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "94ccacef",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "899f7b26",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "899f7b26",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "285e682b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "285e682b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "6075b380",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "6075b380",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "432bd47c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "432bd47c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "c3a50a9e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "c3a50a9e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "f359fd51",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "f359fd51",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "8607de17",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "8607de17",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "1a40bd5c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "1a40bd5c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "cdf0cd29",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "cdf0cd29",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "abf756a4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "abf756a4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "3e46719a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "3e46719a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "60ab37f8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "60ab37f8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "b45c08fb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "b45c08fb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "cd87c3e2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "cd87c3e2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "0f5d441a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "0f5d441a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "b23f84a6",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "b23f84a6",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "10ca468f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "10ca468f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c1a6423b",
-      "dst": "c0b19b3a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "c0b19b3a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "88c18748",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "88c18748",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "39bce271",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "39bce271",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "f38e8e91",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "f38e8e91",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "05169b42",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "05169b42",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "ffec80e1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "ffec80e1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "9a092c67",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "9a092c67",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "e7255df8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "e7255df8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "11c49b22",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "11c49b22",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "e1de098b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "e1de098b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "50e6e66d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "50e6e66d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "25ff05cf",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "25ff05cf",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "952ad7c1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "952ad7c1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "e91967cc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "e91967cc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "f281af1e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "f281af1e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "49a9f5c8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "49a9f5c8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "f366d1f2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "f366d1f2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "49dbe1af",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "49dbe1af",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d605936",
-      "dst": "bb9206e3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "bb9206e3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "54673419",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "54673419",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "f4a07bf2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "f4a07bf2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "0b2e040b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "0b2e040b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "cd148b49",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "cd148b49",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "02cb86d7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "02cb86d7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "702e950a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "702e950a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "8cab6e8f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "8cab6e8f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "99e14688",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "99e14688",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "0514484a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "0514484a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "060ac7d2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "060ac7d2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "a1df2d8c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "a1df2d8c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "196840a1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "196840a1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "cca7cee4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "cca7cee4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "6c53ada7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "6c53ada7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "36096ff3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "36096ff3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "5999a07a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "5999a07a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "8d1fb540",
-      "dst": "29424174",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "00a81de9",
-      "dst": "29424174",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "4ff8c02f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "4ff8c02f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "56eceacc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "56eceacc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "06b47fce",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "06b47fce",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "6b045824",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "6b045824",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "be20df04",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "be20df04",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "42b82ca8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "42b82ca8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "6dcaa8fe",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "6dcaa8fe",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "5a5630a7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "5a5630a7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "01fcb97e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "01fcb97e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "5eac480b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "5eac480b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "e1520fb5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "e1520fb5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "7861887a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "7861887a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "58cd0208",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "58cd0208",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "16953bc9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "16953bc9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "c66b1a6e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "c66b1a6e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "05ec25db",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "05ec25db",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6090d697",
-      "dst": "d897d9ee",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "d897d9ee",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "12a6cf07",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "12a6cf07",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "8c766a43",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "8c766a43",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "1591a04b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "1591a04b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "ff698dfd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "ff698dfd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "03101de4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "03101de4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "266c363d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "266c363d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "a6014530",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "a6014530",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "81cf8ff8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "81cf8ff8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "a270ef89",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "a270ef89",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "eadc68e1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "eadc68e1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "bb64b8f0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "bb64b8f0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "a3f644bb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "a3f644bb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "d08dac04",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "d08dac04",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "558b2029",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "558b2029",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "d4adc1bc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "d4adc1bc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "f14d7a51",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "f14d7a51",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d85480f0",
-      "dst": "72e30bfb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "72e30bfb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "4838c308",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "4838c308",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "a5eee128",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "a5eee128",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "526c4793",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "526c4793",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "04756996",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "04756996",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "59f2da4a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "59f2da4a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "b61f88a5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "b61f88a5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "d53ad494",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "d53ad494",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "5666ba55",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "5666ba55",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "e112b707",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "e112b707",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "5bd993c7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "5bd993c7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "98386d9f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "98386d9f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "d2320d92",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "d2320d92",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "ba5b1d64",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "ba5b1d64",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "58395aa2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "58395aa2",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "7ba2c3e8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "7ba2c3e8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "c1d5d4a5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "c1d5d4a5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f4427e0b",
-      "dst": "b410e1d0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "bf2c14a0",
-      "dst": "b410e1d0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "de759d37",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "de759d37",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "3babcd3d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "3babcd3d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "fe4fa31e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "fe4fa31e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "d314dd78",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "d314dd78",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "1faed5ac",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "1faed5ac",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "1949b6a8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "1949b6a8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "7aa55eb4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "7aa55eb4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "ba5de063",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "ba5de063",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "d786a004",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "d786a004",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "33f27698",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "33f27698",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "b2c4bd29",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "b2c4bd29",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "a7bb14dc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "a7bb14dc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "89233779",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "89233779",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "82d6addd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "82d6addd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "74c92961",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "74c92961",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "9b55a3ec",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "9b55a3ec",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e746ccb9",
-      "dst": "64685735",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6e417d47",
-      "dst": "64685735",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1931e9ee",
-      "dst": "64d55984",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "894a05e4",
-      "dst": "64d55984",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1931e9ee",
-      "dst": "94f1c5b0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "894a05e4",
-      "dst": "94f1c5b0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1931e9ee",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "894a05e4",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1931e9ee",
-      "dst": "46aac8d9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "894a05e4",
-      "dst": "46aac8d9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1931e9ee",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "894a05e4",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1931e9ee",
-      "dst": "e69c9a56",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "894a05e4",
-      "dst": "e69c9a56",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e5af6e39",
-      "dst": "1629fda9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a07295e9",
-      "dst": "1629fda9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "0ff0a55c",
-      "dst": "fe9a82a9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f1578470",
-      "dst": "fe9a82a9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "55fa1ab8",
-      "dst": "6c4f7c37",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b4d7e28e",
-      "dst": "6c4f7c37",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "45df16b6",
-      "dst": "b4556fbc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d72b6108",
-      "dst": "b4556fbc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "fe716b14",
       "dst": "431a7dbd",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "6dc7cac7",
-      "dst": "431a7dbd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "2834e4c0",
+      "src": "4bd6cee6",
       "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "784c2f29",
+      "src": "f1afdb65",
       "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "aff8754d",
+      "src": "4bd6cee6",
       "dst": "2067c82f",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "e88da719",
+      "src": "f1afdb65",
       "dst": "2067c82f",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "706c5c56",
+      "src": "4bd6cee6",
       "dst": "e14eb712",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "40181c6e",
+      "src": "f1afdb65",
       "dst": "e14eb712",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "a6c9537f",
+      "src": "4bd6cee6",
       "dst": "09e66792",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "5913f9d3",
+      "src": "f1afdb65",
       "dst": "09e66792",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "aee1e86b",
-      "dst": "e26a32c8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "cdfc6ee0",
-      "dst": "e26a32c8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e726be23",
-      "dst": "075de7ee",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a0d4de3d",
-      "dst": "075de7ee",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "40066ff2",
-      "dst": "cd67c3be",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b303f438",
-      "dst": "cd67c3be",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -97498,6 +94729,132 @@
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
+    },
+    {
+      "src": "57c700aa",
+      "dst": "1629fda9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d450281c",
+      "dst": "1629fda9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bdc14f1f",
+      "dst": "fe9a82a9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d5a804eb",
+      "dst": "fe9a82a9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "dc570131",
+      "dst": "6c4f7c37",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bfddc3d9",
+      "dst": "6c4f7c37",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "09cb3942",
+      "dst": "b4556fbc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "30a900ad",
+      "dst": "b4556fbc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d9178793",
+      "dst": "a9a85a82",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8dedf9fb",
+      "dst": "a9a85a82",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "e26a32c8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "e26a32c8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "075de7ee",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "075de7ee",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "cd67c3be",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "cd67c3be",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "07356413",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "07356413",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
     }
   ],
   "floorplan": {
@@ -97669,22 +95026,6 @@
         "racks_per_row": 2,
         "aisles": []
       },
-      "DC1/Under Floor": {
-        "datacenter": "DC1",
-        "room": "Under Floor",
-        "class": "facility",
-        "containment": "none",
-        "width_m": 3.0,
-        "depth_m": 9.6,
-        "rows": [
-          1,
-          2,
-          3,
-          4
-        ],
-        "racks_per_row": 5,
-        "aisles": []
-      },
       "DC2/Central Plant": {
         "datacenter": "DC2",
         "room": "Central Plant",
@@ -97830,21 +95171,6 @@
           1
         ],
         "racks_per_row": 2,
-        "aisles": []
-      },
-      "DC2/Under Floor": {
-        "datacenter": "DC2",
-        "room": "Under Floor",
-        "class": "facility",
-        "containment": "none",
-        "width_m": 3.0,
-        "depth_m": 7.2,
-        "rows": [
-          1,
-          2,
-          3
-        ],
-        "racks_per_row": 5,
         "aisles": []
       }
     }

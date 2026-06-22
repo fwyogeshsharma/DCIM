@@ -18,7 +18,10 @@ export default function FloorPlanPage() {
     const apiBase = (import.meta.env.DEV ? 'http://localhost:8000' : '') + '/api'
     const token = getToken() || ''
     const hash = `#api=${encodeURIComponent(apiBase)}&token=${encodeURIComponent(token)}&live=1`
-    return `${import.meta.env.BASE_URL}floorplan_viewer.html${hash}`
+    // Cache-bust the static viewer: its floor-plan data is inlined at build time,
+    // so a stale cached copy hides topology changes. Fresh query per mount.
+    const bust = `?v=${Date.now()}`
+    return `${import.meta.env.BASE_URL}floorplan_viewer.html${bust}${hash}`
   }, [])
 
   return (
