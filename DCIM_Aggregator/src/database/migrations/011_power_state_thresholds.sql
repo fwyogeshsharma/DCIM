@@ -12,6 +12,13 @@
 
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS power_state SMALLINT; -- 1=On, 2=Off, NULL=unknown
 
+-- Editable device-config columns the UI device page reads/writes (SNMP SET surface).
+-- sys_contact (1.3.6.1.2.1.1.4.0) and floor (asset/location label, distinct from the
+-- floor_id tenant key) were never added to the base schema — add them here so
+-- GET/PUT /agents/:id/config can select them.
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS sys_contact TEXT;
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS floor       TEXT;
+
 CREATE TABLE IF NOT EXISTS device_thresholds (
                                                  device_id   UUID              NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
     rule        TEXT              NOT NULL,       -- HighCPU, HighMemory, HighTemperature, …

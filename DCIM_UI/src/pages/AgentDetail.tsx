@@ -62,9 +62,19 @@ function statusBadge(ok: number) {
 function useTelemetry(hostname: string | undefined) {
   return useQuery<TelemetryResult[]>({
     queryKey: ['telemetry', hostname],
-    queryFn: () =>
-      fetch(`/orchestrator/telemetry?device=${encodeURIComponent(hostname ?? '')}&limit=50`)
-        .then(r => r.json()),
+    // The orchestrator (live gNMI/sFlow from the sim stack) may be absent or down
+    // in this deployment. Always resolve to an array so the page degrades to
+    // "No telemetry data yet" instead of crashing on a 500 / non-array body.
+    queryFn: async () => {
+      try {
+        const r = await fetch(`/orchestrator/telemetry?device=${encodeURIComponent(hostname ?? '')}&limit=50`)
+        if (!r.ok) return []
+        const json = await r.json().catch(() => null)
+        return Array.isArray(json) ? json : []
+      } catch {
+        return []
+      }
+    },
     enabled: !!hostname,
     refetchInterval: 15000,
     staleTime: 10000,
