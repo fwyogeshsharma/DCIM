@@ -96,8 +96,51 @@ def _wants_new_credentials() -> bool:
     if not (sys.stdin and sys.stdin.isatty()):
         return False  # no TTY -> never clobber working credentials
     print(f"Authentication already configured ({AUTH_ENV}).")
-    ans = input("Keep existing credentials or create new? [K]eep / [n]ew: ").strip().lower()
+    ans = _input_with_timeout(
+        "Keep existing credentials or create new? [K]eep / [n]ew (10s -> keep): ",
+        timeout=10.0,
+        default="",
+    ).strip().lower()
     return ans in ("n", "new")
+
+
+def _input_with_timeout(prompt: str, timeout: float, default: str = "") -> str:
+    """Prompt for input with a live countdown; return `default` on timeout.
+
+    Uses a daemon thread (not select) so it works on Windows stdin too. The
+    reader thread may linger blocked on input() after timeout, but being a
+    daemon it never holds up interpreter exit. The countdown is redrawn on the
+    same line via carriage return each second.
+    """
+    import threading
+
+    result = {"value": default, "got": False}
+
+    def _reader():
+        try:
+            result["value"] = input()
+            result["got"] = True
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+    sys.stdout.write(prompt + "\n")
+    sys.stdout.flush()
+    t = threading.Thread(target=_reader, daemon=True)
+    t.start()
+
+    remaining = int(timeout)
+    while remaining > 0 and not result["got"]:
+        sys.stdout.write(f"\r  Auto-keep in {remaining:2d}s  (type K/n + Enter) ")
+        sys.stdout.flush()
+        t.join(1)
+        remaining -= 1
+
+    sys.stdout.write("\r" + " " * 50 + "\r")  # wipe the countdown line
+    sys.stdout.flush()
+    if result["got"]:
+        return result["value"]
+    print(f"No input after {int(timeout)}s — keeping existing credentials.")
+    return default
 
 
 def main() -> int:

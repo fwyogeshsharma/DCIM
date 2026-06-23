@@ -4,9 +4,28 @@
 set -e
 cd "$(dirname "$0")"
 
+# Optional --recreate-venv: delete .venv so it is rebuilt fresh below.
+if [ "$1" = "--recreate-venv" ]; then
+    shift
+    if [ -d .venv ]; then
+        echo "Removing existing .venv for recreation..."
+        rm -rf .venv
+    fi
+fi
+
 PYTHON=".venv/bin/python"
 if [ ! -f "$PYTHON" ]; then
-    PYTHON="python3"
+    echo "Creating virtual environment (.venv)..."
+    if python3 -m venv .venv; then
+        "$PYTHON" -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then
+            echo "Installing dependencies from requirements.txt..."
+            "$PYTHON" -m pip install -r requirements.txt
+        fi
+    else
+        echo "WARNING: could not create .venv — falling back to system python3." >&2
+        PYTHON="python3"
+    fi
 fi
 
 # ---- Linux equivalent of the Windows KM-TEST loopback adapter ----

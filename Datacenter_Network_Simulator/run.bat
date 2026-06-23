@@ -9,10 +9,30 @@ echo.
 
 cd /d "%~dp0"
 
-REM ---- Pick the Python interpreter (venv if present, else system) ----
+REM ---- Optional --recreate-venv: delete .venv so it is rebuilt fresh below ----
+if /i "%~1"=="--recreate-venv" (
+    if exist .venv (
+        echo Removing existing .venv for recreation...
+        rmdir /s /q .venv
+    )
+)
+
+REM ---- Pick the Python interpreter; create .venv + install deps if missing ----
+if not exist .venv\Scripts\python.exe (
+    echo Creating virtual environment ^(.venv^)...
+    python -m venv .venv
+    if exist .venv\Scripts\python.exe (
+        .venv\Scripts\python.exe -m pip install --upgrade pip
+        if exist requirements.txt (
+            echo Installing dependencies from requirements.txt...
+            .venv\Scripts\python.exe -m pip install -r requirements.txt
+        )
+    )
+)
 if exist .venv\Scripts\python.exe (
     set "PY=.venv\Scripts\python.exe"
 ) else (
+    echo WARNING: could not create .venv - falling back to system python.
     set "PY=python"
 )
 
