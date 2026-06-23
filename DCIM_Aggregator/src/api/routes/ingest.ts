@@ -84,7 +84,9 @@ interface IngestDevice {
   device_role?: string
   role_confidence?: number
   role_source?: string
+  role_overridden?: boolean   // admin-set role; classifier never touches these rows
   is_reachable?: boolean
+  power_state?: number   // 1=On, 2=Off (chassis power, from Redfish)
   interfaces?: IngestInterface[]
   metrics?: IngestMetric[]
   energy_metrics?: IngestEnergyMetric[]
@@ -140,6 +142,9 @@ interface IngestPayload {
   // apply them to the live device objects. Omit on first contact to just receive
   // a fresh cursor without a backlog.
   ui_changes_since?: string
+  // Up-feeds from DCS: results of applied commands + current threshold values.
+  command_status?: Array<{ device_ip: string; field: string; status: string; error?: string }>
+  threshold_changes?: Array<{ device_ip: string; hostname?: string; rule: string; value: number }>
 }
 
 // Thresholds for auto-generating alert events from ingested metrics.
@@ -224,6 +229,8 @@ export function createIngestRouter(dbPool: Pool): Router {
           dev.rack_row ?? null, dev.rack_num ?? null, dev.rack_unit ?? null, dev.power_draw_w ?? null,
           dev.is_reachable ?? true,
           dev.device_role ?? null, dev.role_confidence ?? null, dev.role_source ?? null,
+          dev.power_state ?? null,
+          dev.role_overridden ?? null,
         ]
 
         let deviceId: string
@@ -245,8 +252,10 @@ export function createIngestRouter(dbPool: Pool): Router {
                              rack_row=COALESCE($24,rack_row), rack_num=COALESCE($25,rack_num),
                              rack_unit=COALESCE($26,rack_unit), power_draw_w=COALESCE($27,power_draw_w),
                              is_reachable=$28, device_role=$29, role_confidence=$30, role_source=$31,
+                             power_state=COALESCE($32,power_state),
+                             role_overridden=COALESCE($33,role_overridden),
                              last_seen_at=now(), updated_at=now()
-            WHERE id=$32
+            WHERE id=$34
           `, [...dp, deviceId])
         } else {
           const { rows } = await client.query<{ id: string }>(`
@@ -257,7 +266,7 @@ export function createIngestRouter(dbPool: Pool): Router {
               snmp_enabled, gnmi_enabled, snmp_port, snmp_version, gnmi_port,
               collector_agent, country, datacenter_city, datacenter, room,
               rack_row, rack_num, rack_unit, power_draw_w,
-              is_reachable, device_role, role_confidence, role_source,
+              is_reachable, device_role, role_confidence, role_source, power_state, role_overridden,
               org_id, datacenter_id, floor_id, network_id, group_id,
               last_seen_at, updated_at, id
             ) VALUES (
@@ -265,9 +274,9 @@ export function createIngestRouter(dbPool: Pool): Router {
                        $10::inet,$11::inet,$12::inet,$13::inet,
                        $14,$15,$16,$17,$18,$19,
                        $20,$21,$22,$23,$24,$25,$26,$27,
-                       $28,$29,$30,$31,
-                       $33,$34,$35,$36,$37,
-                       now(), now(), COALESCE($32::uuid, gen_random_uuid())
+                       $28,$29,$30,$31,$32,$33,
+                       $35,$36,$37,$38,$39,
+                       now(), now(), COALESCE($34::uuid, gen_random_uuid())
                      ) RETURNING id
           `, [...dp, dev.id ?? null,
             body.org_id, body.datacenter_id, body.floor_id, body.network_id, body.group_id])
@@ -539,6 +548,44 @@ export function createIngestRouter(dbPool: Pool): Router {
         }
       }
 
+      // ── 5. Command results (up) → advance rule_changes lifecycle ────────────
+      // DCS reports each applied/failed command. Flip the matching rule_changes
+      // row pending → applied/failed so the UI shows the outcome.
+      for (const cs of body.command_status ?? []) {
+        if (!cs.device_ip || !cs.field) continue
+        await client.query(`
+          UPDATE rule_changes
+          SET status = $3,
+              error  = COALESCE($4, ''),
+              applied_at = CASE WHEN $3 = 'applied' THEN now() ELSE applied_at END,
+              updated_at = now()
+          WHERE device_ip = $1 AND field = $2
+            AND status IN ('pending','applied')
+        `, [cs.device_ip, cs.field, cs.status, cs.error ?? ''])
+      }
+
+      // ── 6. Threshold values (up) → device_thresholds + confirm ──────────────
+      // DCS reports current per-device thresholds read from the device. Store for
+      // display, and confirm any pending rule_change whose value now matches.
+      for (const t of body.threshold_changes ?? []) {
+        if (!t.device_ip || !t.rule) continue
+        await client.query(`
+          INSERT INTO device_thresholds (mgmt_ip, hostname, rule, value, updated_at)
+          VALUES ($1, $2, $3, $4, now())
+          ON CONFLICT (mgmt_ip, rule)
+          DO UPDATE SET value = EXCLUDED.value,
+                        hostname = EXCLUDED.hostname,
+                        updated_at = now()
+        `, [t.device_ip, t.hostname ?? '', t.rule, t.value])
+        await client.query(`
+          UPDATE rule_changes
+          SET status = 'confirmed', confirmed_at = now(), updated_at = now()
+          WHERE device_ip = $1 AND field = $2
+            AND new_value = $3::text
+            AND status IN ('pending','applied')
+        `, [t.device_ip, t.rule, String(t.value)])
+      }
+
       await client.query('COMMIT')
 
       // Push live trap events to connected topology clients (SSE). Resolve each
@@ -593,13 +640,13 @@ export function createIngestRouter(dbPool: Pool): Router {
       if (body.ui_changes_since) {
         try {
           const { rows } = await dbPool.query<{ mgmt_ip: string; field: string; new_value: string; updated_at: string }>(
-            `SELECT device_ip AS mgmt_ip, field, new_value, updated_at
-             FROM rule_changes
-             WHERE status = 'pending'
-               AND updated_at > $1::timestamptz
+              `SELECT device_ip AS mgmt_ip, field, new_value, updated_at
+               FROM rule_changes
+               WHERE status = 'pending'
+                 AND updated_at > $1::timestamptz
                AND device_ip <> ''
-             ORDER BY updated_at ASC`,
-            [body.ui_changes_since]
+               ORDER BY updated_at ASC`,
+              [body.ui_changes_since]
           )
           for (const r of rows) {
             uiChanges.push({ mgmt_ip: r.mgmt_ip, field: r.field, new_value: r.new_value })
