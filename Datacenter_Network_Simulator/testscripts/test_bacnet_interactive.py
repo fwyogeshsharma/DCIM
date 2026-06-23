@@ -1463,7 +1463,7 @@ class BACnetTester:
     def _wait_cov(self, timeout: float, process_id: Optional[int] = None,
                   label: str = "COV", collect_all: bool = False):
         _subheader(f"Waiting up to {timeout:.0f}s for {label}")
-        _info("Simulator must tick for COV to be sent. Default tick = 30 s.")
+        _info("Simulator must tick for COV to be sent. Default tick = 1 s.")
         deadline = time.monotonic() + timeout
         old = self.sock.gettimeout()
         self.sock.settimeout(0.3)

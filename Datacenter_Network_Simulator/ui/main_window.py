@@ -458,7 +458,7 @@ class MainWindow(QMainWindow):
         self.redfish = RedfishController()
         self.state_store = DeviceStateStore(
             self.device_manager, self.topology, self._snmp_datasets_dir,
-            tick_interval=30.0, snmp_sync_every=1,
+            tick_interval=1.0, snmp_sync_every=5,
         )
         self.gnmi.set_state_store(self.state_store)
         self.sflow.set_state_store(self.state_store)

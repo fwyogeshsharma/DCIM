@@ -189,7 +189,7 @@ def _run_headless():
     bacnet         = BACnetController("datasets/bacnet")
     redfish        = RedfishController()
     state_store    = DeviceStateStore(
-        device_manager, topology, snmp_dir, tick_interval=30.0, snmp_sync_every=1,
+        device_manager, topology, snmp_dir, tick_interval=1.0, snmp_sync_every=5,
     )
     gnmi.set_state_store(state_store)
     sflow.set_state_store(state_store)

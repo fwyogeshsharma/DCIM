@@ -84,7 +84,7 @@ class DeviceStateStore:
 
     Usage::
 
-        store = DeviceStateStore(device_manager, topology, "datasets", tick_interval=30)
+        store = DeviceStateStore(device_manager, topology, "datasets", tick_interval=1)
         store.set_log_callback(console.log)
         gnmi_controller.set_state_store(store)       # gNMI reads live
         store.start()
@@ -104,8 +104,8 @@ class DeviceStateStore:
         device_manager: "DeviceManager",
         topology: "TopologyEngine",
         datasets_dir: str,
-        tick_interval: float = 30.0,
-        snmp_sync_every: int = 1,
+        tick_interval: float = 1.0,
+        snmp_sync_every: int = 5,   # rewrite SNMP .snmprec/.dbm every 5 ticks (decoupled from the 1s metric tick)
     ):
         self._dm              = device_manager
         self._topology        = topology
@@ -929,6 +929,13 @@ class DeviceStateStore:
                 _cpu_t += self._chw_pen.get(device.datacenter, 0.0) * 0.8
             else:
                 _cpu_t = 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0)
+            # Warmer INTAKE AIR raises the die/ASIC: air-cooled gear tracks its
+            # inlet nearly 1:1, so a cooling failure that lifts the cold-aisle temp
+            # also drives CPU temp up; direct-to-chip CPUs are largely decoupled
+            # (the cold plate, not room air, removes the heat) so only weakly.
+            # Uses last tick's inlet (the inlet block runs just below) — 1 s lag.
+            _intake = max(0.0, (getattr(device, "inlet_temp", 22.0) or 22.0) - 22.0)
+            _cpu_t += _intake * (0.3 if _liquid else 0.9)
             # Direct-to-chip leak: cold plate starves → chip runs hot (up to
             # +38 °C at full severity), pushing past the HighTemperature trap.
             # This cancels the liquid advantage above, as a real leak would.
