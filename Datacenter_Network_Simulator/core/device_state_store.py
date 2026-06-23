@@ -801,9 +801,19 @@ class DeviceStateStore:
 
         # CPU/ASIC temperature
         if mf["cpu_temp"]:
-            _cpu_t = 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0)
+            # Direct-to-chip liquid cooling holds the die far cooler than air: a
+            # cold plate fed with ~25 °C water keeps a loaded CPU ~45 °C, vs ~62 °C
+            # air-cooled. Model it as a lower baseline + flatter load slope for
+            # servers on a CDU loop; everything else uses the air-cooled curve.
+            _liquid = (device.device_type == DeviceType.SERVER
+                       and device.name in self._liquid_cooled_servers())
+            if _liquid:
+                _cpu_t = 18.0 + device.cpu_usage * 0.27 + random.uniform(-1.0, 1.0)
+            else:
+                _cpu_t = 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0)
             # Direct-to-chip leak: cold plate starves → chip runs hot (up to
             # +38 °C at full severity), pushing past the HighTemperature trap.
+            # This cancels the liquid advantage above, as a real leak would.
             if device.device_type == DeviceType.SERVER and self._leak_heat:
                 _cpu_t += self._leak_heat.get(device.name, 0.0) * 38.0
             device.cpu_temp = round(max(20.0, min(95.0, _cpu_t)), 1)
