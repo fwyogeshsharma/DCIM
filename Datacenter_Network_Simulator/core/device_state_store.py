@@ -118,6 +118,14 @@ class DeviceStateStore:
         self._liquid_servers_cache: Optional[set] = None   # servers on a CDU cold-plate loop
         self._leak_heat: Dict[str, float] = {}   # server name → 0..1 intensity
 
+        # Plant-wide cascade: upstream cooling faults (chiller/CHW-pump/tower)
+        # warm the chilled water serving a whole datacenter, which then warms the
+        # CRAH supply air (→ server inlet) and the CDU coolant (→ liquid CPU).
+        # _cool_ctx caches the cooling-topology maps; _chw_pen is the per-DC CHW
+        # temperature penalty (°C), ramped each tick toward the fault target.
+        self._cool_ctx: Optional[dict] = None
+        self._chw_pen: Dict[str, float] = {}
+
         # Per-rack cold-aisle supply temperature: {rack_key: [temp, last_tick]}.
         # All devices in a rack share one baseline (same cold aisle); it advances
         # by a slow random walk once per tick. Inlet = this baseline + a height
@@ -535,6 +543,78 @@ class DeviceStateStore:
                 if self._cdu_loop_servers() else set()
         return self._liquid_servers_cache
 
+    # ── Plant-wide cooling cascade ──────────────────────────────────────────
+    def _cooling_context(self) -> dict:
+        """Cached maps tying servers/rooms to the cooling plant that feeds them:
+          crah_by_room  {(dc,room): [crah names]}     — CRAHs cooling each room
+          cdu_by_server {server name: cdu name}       — which CDU cools a server
+          plant_by_dc   {dc: {chiller|pump|cooling_tower: [names]}}
+        Built once from the device inventory; used to propagate upstream faults.
+        """
+        if self._cool_ctx is not None:
+            return self._cool_ctx
+        crah_by_room: Dict[tuple, list] = {}
+        plant_by_dc: Dict[str, Dict[str, list]] = {}
+        try:
+            for d in self._dm.get_all_devices():
+                dt = d.device_type
+                if dt == DeviceType.CRAH:
+                    crah_by_room.setdefault((d.datacenter, d.room), []).append(d.name)
+                elif dt in (DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER):
+                    plant_by_dc.setdefault(d.datacenter, {}).setdefault(dt.value, []).append(d.name)
+        except Exception:
+            log.exception("[StateStore] cooling context build error")
+        cdu_by_server: Dict[str, str] = {}
+        for cdu_name, servers in self._cdu_loop_servers().items():
+            for s in servers:
+                cdu_by_server[s] = cdu_name
+        self._cool_ctx = {"crah_by_room": crah_by_room,
+                          "cdu_by_server": cdu_by_server,
+                          "plant_by_dc": plant_by_dc}
+        return self._cool_ctx
+
+    @staticmethod
+    def _is_faulted(name: str) -> bool:
+        """True if any Alarm_* point of this plant device is currently set."""
+        pv = _plant_state_cache.get(name)
+        if not pv:
+            return False
+        return any(k.startswith("Alarm_") and float(v) >= 0.5 for k, v in pv.items())
+
+    def _compute_chw_penalty(self) -> None:
+        """Per-tick: roll the per-DC chilled-water temperature penalty toward the
+        target implied by upstream cooling faults. Redundancy-aware — the penalty
+        scales with the FRACTION of failed units of each kind, so losing 1 of 3
+        chillers only partially warms the loop. Ramped (EMA) so it eases in/out."""
+        ctx = self._cooling_context()
+        # weight (°C of CHW rise) if an entire stage of a kind were down
+        W = {"chiller": 8.0, "pump": 5.0, "cooling_tower": 4.0}
+        for dc, kinds in ctx["plant_by_dc"].items():
+            target = 0.0
+            for kind, names in kinds.items():
+                if not names:
+                    continue
+                frac = sum(1 for n in names if self._is_faulted(n)) / len(names)
+                target += W.get(kind, 0.0) * frac
+            target = min(12.0, target)
+            cur = self._chw_pen.get(dc, 0.0)
+            self._chw_pen[dc] = round(cur + (target - cur) * 0.06, 3)   # smooth ramp
+
+    def _room_supply_temp(self, device: "Device") -> float:
+        """Cold-aisle supply temperature for a device's room. Tied to the live
+        CRAH supply air when available (so a CRAH fault propagates to inlets),
+        plus the datacenter CHW penalty from upstream faults; falls back to the
+        per-rack mean-reverting baseline when no CRAH telemetry is present."""
+        ctx = self._cooling_context()
+        crahs = ctx["crah_by_room"].get((device.datacenter, device.room))
+        supplies = []
+        for n in (crahs or []):
+            pv = _plant_state_cache.get(n)
+            if pv and pv.get("Supply_Air_Temp") is not None:
+                supplies.append(float(pv["Supply_Air_Temp"]))
+        base = sum(supplies) / len(supplies) if supplies else self._rack_supply_temp(device)
+        return base + self._chw_pen.get(device.datacenter, 0.0)
+
     def _compute_leak_heat(self) -> None:
         """Refresh server→intensity heat map from leaking CDUs. Intensity scales
         with the loop-pressure drop; a forced leak (alarm on, pressure normal)
@@ -555,6 +635,7 @@ class DeviceStateStore:
     def _tick(self):
         devices = self._dm.get_all_devices()
         self._compute_leak_heat()
+        self._compute_chw_penalty()       # roll per-DC CHW penalty from upstream faults
         for device in devices:
             self._step_device(device)
             self._step_ext_state(device)
@@ -809,6 +890,14 @@ class DeviceStateStore:
                        and device.name in self._liquid_cooled_servers())
             if _liquid:
                 _cpu_t = 18.0 + device.cpu_usage * 0.27 + random.uniform(-1.0, 1.0)
+                # Warmer coolant raises the die: a CDU fault (HighSupplyTemp/
+                # PumpFault/LowFlow) lifts its TCS_Supply_Temp above the ~32 °C
+                # nominal, and an upstream chiller/CHW fault adds the DC penalty.
+                _cdu = self._cooling_context()["cdu_by_server"].get(device.name)
+                _pv = _plant_state_cache.get(_cdu) if _cdu else None
+                if _pv and _pv.get("TCS_Supply_Temp") is not None:
+                    _cpu_t += max(0.0, float(_pv["TCS_Supply_Temp"]) - 32.0) * 1.2
+                _cpu_t += self._chw_pen.get(device.datacenter, 0.0) * 0.8
             else:
                 _cpu_t = 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0)
             # Direct-to-chip leak: cold plate starves → chip runs hot (up to
@@ -833,10 +922,12 @@ class DeviceStateStore:
         # rack — top-of-rack reads ~+3 °C warmer than the floor. Kept inside the
         # ASHRAE TC9.9 recommended envelope (18–27 °C).
         if mf["inlet_temp"] and device.device_type not in (DeviceType.SENSOR, DeviceType.RPP):
-            base = self._rack_supply_temp(device)
+            base = self._room_supply_temp(device)   # CRAH supply air + DC CHW penalty (cascade)
             grad = min(max(device.rack_unit, 0), 42) / 42.0 * 3.0   # 0 at floor .. +3 °C at top
             t = base + grad + random.uniform(-0.2, 0.2)             # small per-sensor noise
-            device.inlet_temp = round(max(15.0, min(32.0, t)), 1)
+            # ceiling well above the ASHRAE envelope so a real cooling failure can
+            # push inlets into the alarm range instead of pinning at 32 °C.
+            device.inlet_temp = round(max(15.0, min(45.0, t)), 1)
             device.inlet_temp = self._num_limit("inlet_temp", device.inlet_temp)
 
         # Server chassis airflow + exhaust temp. The BMC reports exhaust as

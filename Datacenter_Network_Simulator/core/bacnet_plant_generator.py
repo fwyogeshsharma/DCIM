@@ -197,6 +197,9 @@ class PlantTelemetryEngine:
         self._leak_active = False
         self._leak_t = 0.0      # seconds elapsed since leak onset
         self._leak_dur = 0.0    # leak duration before repair
+        # Per-alarm severity ramp timers (seconds a forced alarm has been held),
+        # used to ramp its coupled metric effects in _apply_alarm_couplings.
+        self._alarm_t: Dict[str, float] = {}
 
     def _diurnal(self) -> float:
         t = time.localtime()
@@ -208,7 +211,11 @@ class PlantTelemetryEngine:
     def _ema(new: float, old: float, a: float) -> float:
         return a * new + (1.0 - a) * old
 
-    def tick(self, dt: float, force_leak: bool = False) -> Dict[str, float]:
+    def tick(self, dt: float, force_leak: bool = False, forced=None) -> Dict[str, float]:
+        # `forced` is the set of binary alarm point-names the operator has locked
+        # "on" for this device (Limits tab). Back-compat: force_leak maps to it.
+        if forced is None:
+            forced = {"Alarm_Leak"} if force_leak else set()
         mul = self._diurnal()
         out: Dict[str, float] = {}
         for name, base, amp, is_load, is_hours in self._points:
@@ -228,15 +235,16 @@ class PlantTelemetryEngine:
         for name, val in self._binaries.items():
             out[name] = val
         if self._type == "cdu":
-            self._apply_cdu_leak(out, dt, force_leak)
+            self._apply_cdu_leak(out, dt, "Alarm_Leak" in forced)
+        self._apply_alarm_couplings(out, forced, dt)
         return out
 
     def _apply_cdu_leak(self, out: Dict[str, float], dt: float,
                         force_leak: bool = False) -> None:
-        """Couple a coolant leak to the TCS-loop physics. Onset is either a
-        manual force (Limits tab → cdu:Alarm_Leak locked on, held until cleared)
-        or a rare random event that clears after a repair interval. Severity
-        ramps over the first ~minute either way."""
+        """Couple a coolant leak to the TCS-loop physics. A leak is raised ONLY
+        by a manual force (Limits tab → cdu:Alarm_Leak locked on) and held until
+        the user clears it — there is no automatic/random onset. Severity ramps
+        over the first ~minute after onset."""
         _HELD = float("inf")
         if force_leak:
             if not self._leak_active:
@@ -245,16 +253,7 @@ class PlantTelemetryEngine:
                 self._leak_dur = _HELD          # held until the force is released
             self._leak_t += dt
         elif self._leak_active:
-            if self._leak_dur == _HELD:
-                self._leak_active = False        # force released → repaired
-            else:
-                self._leak_t += dt
-                if self._leak_t >= self._leak_dur:
-                    self._leak_active = False
-        elif random.random() < 0.0015:           # ~rare random onset per tick
-            self._leak_active = True
-            self._leak_t = 0.0
-            self._leak_dur = random.uniform(120.0, 480.0)
+            self._leak_active = False            # force released → repaired
         if not self._leak_active:
             return
         sev = min(1.0, 0.25 + self._leak_t / 60.0)   # 0.25 → 1.0 over ~45 s
@@ -273,3 +272,87 @@ class PlantTelemetryEngine:
             out["Approach_Temp"] = round(out["Approach_Temp"] + 2.0 * sev, 2)
         if sev > 0.4:                          # flow collapsed → low-flow trip
             out["Alarm_LowFlow"] = 1.0
+
+    def _apply_alarm_couplings(self, out: Dict[str, float], forced: set,
+                               dt: float) -> None:
+        """Local physics for every forced alarm EXCEPT the CDU leak (which has its
+        own richer handler). When the operator locks an alarm on, the device's own
+        coupled metrics move the way they would in the real fault, ramping with a
+        severity that grows ~0.25→1.0 over the first ~45 s. Effects are confined to
+        this device's points; plant-wide cascades are a separate layer."""
+        active = {a for a in forced if a != "Alarm_Leak"}
+        for a in [a for a in self._alarm_t if a not in active]:
+            del self._alarm_t[a]                       # cleared → reset ramp
+        if not active:
+            return
+        for a in active:
+            self._alarm_t[a] = self._alarm_t.get(a, 0.0) + dt
+
+        def mul(k, f):
+            v = out.get(k)
+            if v is not None:
+                out[k] = round(v * f, 2)
+
+        def add(k, d, hi=None):
+            v = out.get(k)
+            if v is not None:
+                nv = v + d
+                out[k] = round(min(hi, nv) if hi is not None else nv, 2)
+
+        t = self._type
+        for a in active:
+            s = min(1.0, 0.25 + self._alarm_t[a] / 60.0)
+            out[a] = 1.0
+            if t == "cdu":
+                if a == "Alarm_HighSupplyTemp":       # coolant too warm to setpoint
+                    add("TCS_Supply_Temp", 6.0 * s); add("Approach_Temp", 3.0 * s)
+                    add("Facility_CHW_Valve", 25.0 * s, 100.0)   # opens to compensate
+                elif a == "Alarm_PumpFault":          # pump degraded → flow + pressure fall
+                    mul("Pump_Speed", 1 - 0.60 * s); mul("Pump_Power", 1 - 0.50 * s)
+                    mul("TCS_Flow", 1 - 0.50 * s); mul("TCS_Loop_Pressure", 1 - 0.40 * s)
+                    add("TCS_Supply_Temp", 5.0 * s)
+                elif a == "Alarm_LowFlow":
+                    mul("TCS_Flow", 1 - 0.60 * s); mul("TCS_Loop_Pressure", 1 - 0.30 * s)
+                    add("TCS_Supply_Temp", 3.0 * s)
+            elif t == "chiller":
+                if a == "Alarm_HighPressure":         # high head pressure
+                    add("Cond_Pressure", 150.0 * s); mul("Active_Power", 1 + 0.20 * s)
+                    mul("COP", 1 - 0.20 * s); add("Compressor_Load", 15.0 * s, 100.0)
+                elif a == "Alarm_LowEvapTemp":        # evaporator near freeze → unload
+                    mul("Evap_Pressure", 1 - 0.18 * s); mul("Cooling_Capacity", 1 - 0.20 * s)
+                    mul("COP", 1 - 0.10 * s)
+                elif a == "Alarm_FlowLoss":           # evap flow lost → chiller sheds
+                    mul("Cooling_Capacity", 1 - 0.70 * s); mul("Compressor_Load", 1 - 0.50 * s)
+                    mul("Active_Power", 1 - 0.50 * s); add("Cond_Supply_Temp", 3.0 * s)
+            elif t == "pump":
+                if a == "Alarm_Fault":                # motor/pump failing
+                    for k, f in (("Speed", .7), ("Flow", .7), ("Discharge_Pressure", .6),
+                                 ("Diff_Pressure", .6), ("Motor_Power", .6), ("VFD_Frequency", .6)):
+                        mul(k, 1 - f * s)
+                    add("Motor_Temp", 10.0 * s)
+                elif a == "Alarm_LowFlow":
+                    mul("Flow", 1 - 0.60 * s); mul("Diff_Pressure", 1 - 0.30 * s)
+                    mul("Discharge_Pressure", 1 - 0.20 * s)
+            elif t == "cooling_tower":
+                if a == "Alarm_HighVibration":        # imbalance → protective slowdown
+                    add("Vibration", 6.0 * s); mul("Fan_Speed", 1 - 0.40 * s)
+                    mul("Fan_Power", 1 - 0.30 * s); add("Cond_Water_Out", 3.0 * s)
+                elif a == "Alarm_LowBasin":           # basin low → makeup tries to refill
+                    mul("Basin_Level", 1 - 0.50 * s); add("Makeup_Flow", 4.0 * s)
+                    add("Basin_Temp", 2.0 * s)
+            elif t == "valve":
+                if a == "Alarm_ActuatorFault":        # stuck actuator: stops tracking command
+                    add("Actuator_Temp", 12.0 * s)
+                    cmd = out.get("Commanded_Position")
+                    if cmd is not None and "Position" in out:
+                        out["Position"] = round(max(0.0, cmd - 20.0 * s), 2)
+            elif t == "crah":
+                if a == "Alarm_HighTemp":             # cooling shortfall
+                    add("Supply_Air_Temp", 6.0 * s); add("Return_Air_Temp", 5.0 * s)
+                    add("CHW_Valve", 30.0 * s, 100.0); add("Cooling_Capacity", 15.0 * s, 100.0)
+                elif a == "Alarm_AirflowLoss":        # fan/filter failure
+                    mul("Airflow", 1 - 0.60 * s); mul("Fan_Speed", 1 - 0.50 * s)
+                    add("Supply_Air_Temp", 4.0 * s); add("Return_Air_Temp", 6.0 * s)
+                elif a == "Filter_Dirty":             # clogged filter → fan ramps to hold flow
+                    mul("Airflow", 1 - 0.20 * s); add("Fan_Speed", 10.0 * s, 100.0)
+                    mul("Fan_Power", 1 + 0.15 * s)
