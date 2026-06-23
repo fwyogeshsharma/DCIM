@@ -582,9 +582,10 @@ class DeviceStateStore:
         """Cold-aisle supply temperature for the rack this device sits in.
 
         Shared by every device in the same rack (they breathe the same cold
-        aisle) and advanced by a slow random walk once per tick, so inlets stay
-        correlated within a rack instead of scattering independently. Held inside
-        ~20–25 °C (ASHRAE TC9.9 recommended). Callers add a height term on top.
+        aisle). It mean-reverts to the CRAC supply setpoint each tick (a random
+        walk alone drifts to the rails over a long run), so inlets stay correlated
+        within a rack and centred on ~22 °C — ASHRAE TC9.9 recommended. Callers
+        add a height term on top.
         """
         key = (device.datacenter, device.room, device.floor,
                device.rack_row, device.rack_num)
@@ -594,7 +595,8 @@ class DeviceStateStore:
             self._rack_supply[key] = [base, self._tick_count]
             return base
         if entry[1] != self._tick_count:                 # advance once per tick
-            entry[0] = max(20.0, min(25.0, entry[0] + random.uniform(-0.3, 0.3)))
+            entry[0] = max(20.0, min(25.0, entry[0]
+                + (_SUPPLY_SETPOINT_C - entry[0]) * 0.06 + random.uniform(-0.3, 0.3)))
             entry[1] = self._tick_count
         return entry[0]
 
@@ -845,10 +847,14 @@ class DeviceStateStore:
 
         # Environmental readings — sensor devices only
         if device.device_type == DeviceType.SENSOR:
-            # Ambient temperature: independent random walk (not CPU-linked)
+            # Ambient temperature: a rack environmental probe reads the cold-aisle
+            # air, so it mean-reverts to the CRAC supply setpoint (~22 °C) instead
+            # of drifting freely — otherwise the random walk wanders up to 35 °C
+            # and shows up as a phantom hot rack via the inlet max().
             if mf["sensor_ambient_temp"]:
-                device.inlet_temp = round(max(15.0, min(35.0,
-                    device.inlet_temp + random.uniform(-0.3, 0.3))), 1)
+                device.inlet_temp = round(max(15.0, min(30.0,
+                    device.inlet_temp + (_SUPPLY_SETPOINT_C - device.inlet_temp) * 0.06
+                    + random.uniform(-0.3, 0.3))), 1)
                 device.inlet_temp = self._num_limit("sensor_ambient_temp", device.inlet_temp)
 
             # Relative humidity is actively controlled by the CRAC humidifier/
