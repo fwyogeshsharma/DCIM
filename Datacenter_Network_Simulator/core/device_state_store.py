@@ -111,6 +111,12 @@ class DeviceStateStore:
         self._cdu_loop_servers_cache: Optional[Dict[str, set]] = None
         self._leak_heat: Dict[str, float] = {}   # server name → 0..1 intensity
 
+        # Per-rack cold-aisle supply temperature: {rack_key: [temp, last_tick]}.
+        # All devices in a rack share one baseline (same cold aisle); it advances
+        # by a slow random walk once per tick. Inlet = this baseline + a height
+        # term (top-of-rack runs warmer from recirculation).
+        self._rack_supply: Dict[tuple, list] = {}
+
         # Stable boot-time cache: {ip: nanoseconds}.
         # Computed once the first time get_metrics() is called for a device
         # so that boot-time never drifts between gNMI responses.
@@ -572,6 +578,26 @@ class DeviceStateStore:
             return lim["lock"]
         return value
 
+    def _rack_supply_temp(self, device: "Device") -> float:
+        """Cold-aisle supply temperature for the rack this device sits in.
+
+        Shared by every device in the same rack (they breathe the same cold
+        aisle) and advanced by a slow random walk once per tick, so inlets stay
+        correlated within a rack instead of scattering independently. Held inside
+        ~20–25 °C (ASHRAE TC9.9 recommended). Callers add a height term on top.
+        """
+        key = (device.datacenter, device.room, device.floor,
+               device.rack_row, device.rack_num)
+        entry = self._rack_supply.get(key)
+        if entry is None:
+            base = _SUPPLY_SETPOINT_C + random.uniform(-1.0, 1.0)
+            self._rack_supply[key] = [base, self._tick_count]
+            return base
+        if entry[1] != self._tick_count:                 # advance once per tick
+            entry[0] = max(20.0, min(25.0, entry[0] + random.uniform(-0.3, 0.3)))
+            entry[1] = self._tick_count
+        return entry[0]
+
     def _break_server_links(self, device: "Device") -> list:
         """Break production links from a powered-off server to its peers.
 
@@ -656,11 +682,14 @@ class DeviceStateStore:
             device.cpu_usage = 0
             device.memory_used = 0
             device.sys_uptime = 0
-            # Powered off: no airflow, the intake sensor reads surrounding
-            # cold-aisle air (the CRAH supply setpoint), same as a live inlet.
+            # Powered off: no self-airflow, but the intake sensor still reads the
+            # surrounding cold-aisle air — same rack supply baseline + height
+            # recirculation as a live device.
             if mf["inlet_temp"]:
+                base = self._rack_supply_temp(device)
+                grad = min(max(device.rack_unit, 0), 42) / 42.0 * 3.0
                 device.inlet_temp = round(max(15.0, min(32.0,
-                    _SUPPLY_SETPOINT_C + random.uniform(-1.0, 1.0))), 1)
+                    base + grad + random.uniform(-0.2, 0.2))), 1)
             # CPU temp decays gradually toward 0 — chip stops dissipating once
             # powered off (sensor reads no heat).
             if mf["cpu_temp"]:
@@ -769,16 +798,18 @@ class DeviceStateStore:
             _fan = 3000.0 + max(0.0, device.cpu_temp - 40.0) * 95.0 + random.uniform(-60, 60)
             device.fan_rpm = int(max(0.0, self._num_limit("fan_rpm", _fan)))
 
-        # Chassis inlet temperature — servers/network gear only. This is the
-        # COLD-AISLE INTAKE air the box pulls in, NOT an internal temperature:
-        # it is set by the CRAH supply setpoint + recirculation, and is largely
-        # independent of this device's own CPU load (the heat from load shows up
-        # in cpu_temp and outlet_temp, not at the inlet). Modelled as the supply
-        # setpoint plus small noise, kept inside the ASHRAE TC9.9 *recommended*
-        # envelope (18–27 °C; cold aisles typically run ~20–25 °C).
+        # Chassis inlet temperature — servers/network gear only. COLD-AISLE
+        # INTAKE air, set by the CRAH supply setpoint, NOT this device's own load
+        # (load heat shows up in cpu_temp / outlet_temp, not the inlet). Every
+        # device in a rack shares one supply baseline (same cold aisle); inlet
+        # then rises with HEIGHT because hot air recirculates over the top of the
+        # rack — top-of-rack reads ~+3 °C warmer than the floor. Kept inside the
+        # ASHRAE TC9.9 recommended envelope (18–27 °C).
         if mf["inlet_temp"] and device.device_type not in (DeviceType.SENSOR, DeviceType.RPP):
-            device.inlet_temp = round(max(15.0, min(32.0,
-                _SUPPLY_SETPOINT_C + random.uniform(-1.5, 2.5))), 1)
+            base = self._rack_supply_temp(device)
+            grad = min(max(device.rack_unit, 0), 42) / 42.0 * 3.0   # 0 at floor .. +3 °C at top
+            t = base + grad + random.uniform(-0.2, 0.2)             # small per-sensor noise
+            device.inlet_temp = round(max(15.0, min(32.0, t)), 1)
             device.inlet_temp = self._num_limit("inlet_temp", device.inlet_temp)
 
         # Server chassis airflow + exhaust temp. The BMC reports exhaust as
@@ -820,9 +851,13 @@ class DeviceStateStore:
                     device.inlet_temp + random.uniform(-0.3, 0.3))), 1)
                 device.inlet_temp = self._num_limit("sensor_ambient_temp", device.inlet_temp)
 
+            # Relative humidity is actively controlled by the CRAC humidifier/
+            # dehumidifier, so it mean-reverts toward a ~50% setpoint inside the
+            # ASHRAE TC9.9 recommended band rather than drifting freely.
             if mf["humidity"]:
-                device.humidity = round(max(10.0, min(90.0,
-                    device.humidity + random.uniform(-1.5, 1.5))), 1)
+                device.humidity = round(max(35.0, min(65.0,
+                    device.humidity + (50.0 - device.humidity) * 0.05
+                    + random.uniform(-0.8, 0.8))), 1)
                 device.humidity = self._num_limit("humidity", device.humidity)
             if mf["dewpoint"]:
                 device.dewpoint = round(
@@ -1112,14 +1147,18 @@ class DeviceStateStore:
                                        random.uniform(51.1, 53.0)])
                 st["pdu_frequency"] = round(self._num_limit("pdu_frequency", f), 2)
 
+            # PDU intake probe sits in the cold aisle, so it mean-reverts toward
+            # the ~23 °C supply rather than drifting up (a high drift would re-
+            # appear as a false hot rack via the floor-plan inlet max()).
             if mf["pdu_temperature"]:
                 t = st.get("pdu_temperature", 23.0)
-                t = max(15.0, min(45.0, t + random.uniform(-0.3, 0.3)))
+                t = max(18.0, min(30.0, t + (23.0 - t) * 0.08 + random.uniform(-0.25, 0.25)))
                 st["pdu_temperature"] = round(self._num_limit("pdu_temperature", t), 1)
 
+            # RH mean-reverts to the controlled ~50% setpoint (see sensor humidity).
             if mf["pdu_humidity"]:
                 h = st.get("pdu_humidity", 45.0)
-                h = max(10.0, min(90.0, h + random.uniform(-1.0, 1.0)))
+                h = max(35.0, min(65.0, h + (50.0 - h) * 0.05 + random.uniform(-0.8, 0.8)))
                 st["pdu_humidity"] = round(self._num_limit("pdu_humidity", h), 1)
 
             # Energy accumulator: integrate kW load × 1-min tick

@@ -547,16 +547,21 @@ function makeRack(r,ds,m){ const grp=new THREE.Group(); const W=FOOT.width,D=FOO
     const lo=m.bands[0][0], hi=m.bands[m.bands.length-1][0];
     const t=Math.max(0,Math.min(1,(v-lo)/((hi-lo)||1)));           // 0 = cool .. 1 = hot
     const col=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
-    // body glow: additive so it reads as light, and bolder the hotter the rack
-    // is -- cool racks barely tint, hot racks bloom. Overlapping glows pool like
-    // a real thermal field. depthWrite off avoids transparent-sort flicker.
-    const sh=new THREE.Mesh(new THREE.BoxGeometry(W+0.06,RACK_H+0.05,D+0.06),
-      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.18+0.42*t,
-        blending:THREE.AdditiveBlending,depthWrite:false})); sh.position.y=RACK_H/2; grp.add(sh);
-    // solid cap on top: gives every rack a flat colour chip readable from iso/top
-    const cap=new THREE.Mesh(new THREE.BoxGeometry(W+0.09,0.05,D+0.09),
-      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.92}));
-    cap.position.y=RACK_H+0.07; grp.add(cap); } }
+    // NB: no full-height translucent glow box. Several large additive boxes with
+    // depthWrite off overlap each other + the floor plane, so the transparent
+    // sort order flips every frame (OrbitControls damping keeps the camera micro-
+    // moving) -> visible blinking. Instead use only blink-free primitives:
+    //  (a) an OPAQUE cap on top (depthWrite on -> never re-sorted), taller for
+    //      hotter racks so it still reads from iso/top;
+    const ch=0.05+0.12*t;
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(W+0.09,ch,D+0.09),
+      new THREE.MeshBasicMaterial({color:col})); cap.position.y=RACK_H+0.04+ch/2; grp.add(cap);
+    //  (b) one flat colour panel on the rack FRONT (inlet face). A single depth-
+    //      tested quad per rack -> neighbours occlude it correctly, nothing
+    //      overlaps itself, so no z-fight / flicker. Bolder the hotter the rack.
+    const fp=new THREE.Mesh(new THREE.PlaneGeometry(W*0.9,RACK_H*0.96),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.3+0.4*t,depthWrite:false}));
+    fp.position.set(0,RACK_H/2,D/2+0.035); grp.add(fp); } }
   return grp; }
 
 // floor-standing perimeter CRAH: brushed-metal cabinet, top intake fan, downflow into plenum
