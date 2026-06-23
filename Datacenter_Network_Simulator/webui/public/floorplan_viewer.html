@@ -908,6 +908,7 @@ function render(){
   if(S.view==='2d'){ c2d.style.display='block'; $('#c3d').style.display='none'; draw2D(); }
   else { c2d.style.display='none'; $('#c3d').style.display='block'; draw3D(); }
   const n3=S.view==='3d'; $('#nav3d').style.display=n3?'flex':'none'; $('#nav3dhint').style.display=n3?'block':'none';
+  $('#cut').style.display=n3?'inline-block':'none';  // Cutaway is a 3D-only control
   buildSidebar();
 }
 
