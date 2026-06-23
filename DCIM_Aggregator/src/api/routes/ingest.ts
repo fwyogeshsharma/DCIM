@@ -135,6 +135,11 @@ interface IngestPayload {
   devices?: IngestDevice[]
   topology_links?: IngestTopologyLink[]
   events?: IngestEvent[]
+  // Change-feed cursor: DCS sends the cursor it last received; the response
+  // carries every UI edit (SNMP SET / Redfish field) made since then so DCS can
+  // apply them to the live device objects. Omit on first contact to just receive
+  // a fresh cursor without a backlog.
+  ui_changes_since?: string
 }
 
 // Thresholds for auto-generating alert events from ingested metrics.
@@ -577,6 +582,32 @@ export function createIngestRouter(dbPool: Pool): Router {
         }
       }
 
+      // ── 7. UI change-feed → tell DCS what the operator edited ──────────────
+      // Best-effort, after COMMIT: forward the still-pending rule_changes rows
+      // accumulated since DCS's cursor as a {mgmt_ip, field, new_value} list DCS
+      // applies via SNMP SET / Redfish. The new cursor is the newest updated_at
+      // returned (else the cursor we were given, or now() on first contact) so DCS
+      // advances monotonically.
+      let uiChanges: Array<{ mgmt_ip: string; field: string; new_value: unknown }> = []
+      let uiCursor: string = body.ui_changes_since ?? new Date().toISOString()
+      if (body.ui_changes_since) {
+        try {
+          const { rows } = await dbPool.query<{ mgmt_ip: string; field: string; new_value: string; updated_at: string }>(
+            `SELECT device_ip AS mgmt_ip, field, new_value, updated_at
+             FROM rule_changes
+             WHERE status = 'pending'
+               AND updated_at > $1::timestamptz
+               AND device_ip <> ''
+             ORDER BY updated_at ASC`,
+            [body.ui_changes_since]
+          )
+          for (const r of rows) {
+            uiChanges.push({ mgmt_ip: r.mgmt_ip, field: r.field, new_value: r.new_value })
+          }
+          if (rows.length > 0) uiCursor = rows[rows.length - 1].updated_at
+        } catch { /* non-fatal — DCS keeps its cursor and retries next ingest */ }
+      }
+
       res.status(201).json({
         success: true,
         ingested: {
@@ -585,6 +616,8 @@ export function createIngestRouter(dbPool: Pool): Router {
           events:         (body.events ?? []).length,
           energy_metrics: (body.devices ?? []).reduce((n, d) => n + (d.energy_metrics?.length ?? 0), 0),
         },
+        ui_changes: uiChanges,
+        ui_changes_cursor: uiCursor,
       })
     } catch (err: any) {
       await client.query('ROLLBACK')

@@ -5,6 +5,7 @@ import { BarChart3, ArrowLeft, Radio, Waves, RefreshCw, Zap, BatteryCharging, Th
 import { Button } from '@/components/ui/button'
 import { getDeviceTypeMeta, POWER_DEVICE_DESCRIPTIONS } from '@/lib/deviceType'
 import { getReadablePath } from '@/lib/openconfigLabels'
+import DeviceConfigPanel from '@/components/DeviceConfigPanel'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Zap, BatteryCharging, Thermometer, Server, Network, Router, Shield, HelpCircle,
@@ -352,6 +353,9 @@ export default function AgentDetail() {
           <p className="text-lg font-semibold mt-1 text-white">{agent.group || 'None'}</p>
         </div>
       </div>
+
+      {/* Editable device configuration — SNMP SET + Redfish surface */}
+      <DeviceConfigPanel agentId={agentId!} />
 
       {/* Combined telemetry metrics */}
       <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6">

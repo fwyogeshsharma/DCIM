@@ -727,9 +727,67 @@ class APIClient {
   async syncInventory(): Promise<{ devices_synced: number; links_synced: number }> {
     return this.request('/inventory/sync', { method: 'POST' })
   }
+
+  // ── Device configuration (editable SNMP SET + Redfish surface) ───────────────
+  async getDeviceConfig(agentId: string): Promise<DeviceConfig> {
+    return this.request<DeviceConfig>(`/agents/${agentId}/config`)
+  }
+
+  async updateDeviceConfig(agentId: string, data: DeviceConfigUpdate): Promise<{
+    agent_id: string; changed: string[]
+  }> {
+    return this.request(`/agents/${agentId}/config`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
 }
 
 export const api = new APIClient(API_BASE_URL)
+
+// ── Device configuration types ───────────────────────────────────────────────
+
+export interface DeviceConfigIdentity {
+  sysContact: string
+  sysName: string
+  sysLocation: string
+}
+
+export interface DeviceConfigAsset {
+  country: string
+  datacenter_city: string
+  datacenter: string
+  floor: string
+  room: string
+  rack_row: number | null
+  rack_num: number | null
+  rack_unit: number | null
+  model: string
+  power_draw_w: number | null
+}
+
+export interface DeviceConfigRedfish {
+  power_action: string
+  indicator_led: string
+}
+
+export interface DeviceConfig {
+  agent_id: string
+  device_type: string
+  redfish_capable: boolean
+  identity: DeviceConfigIdentity
+  asset: DeviceConfigAsset
+  thresholds: Record<string, number>
+  redfish: DeviceConfigRedfish | null
+  pending_since: string | null
+}
+
+export interface DeviceConfigUpdate {
+  identity?: Partial<DeviceConfigIdentity>
+  asset?: Partial<DeviceConfigAsset>
+  thresholds?: Record<string, number>
+  redfish?: Partial<DeviceConfigRedfish>
+}
 
 // ── Auth types ─────────────────────────────────────────────────────────────
 

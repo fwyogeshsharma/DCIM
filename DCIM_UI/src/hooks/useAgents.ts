@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import type { DeviceConfigUpdate } from '@/lib/api'
 import type { AgentFilter } from '@/lib/types'
 
 export function useAgents(filter?: AgentFilter) {
@@ -52,6 +53,29 @@ export function useUpdateAgentGroup() {
     onSuccess: (data, { agentId }) => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
       queryClient.setQueryData(['agents', agentId], data)
+    },
+  })
+}
+
+// Editable device configuration (SNMP SET + Redfish).
+export function useDeviceConfig(agentId: string) {
+  return useQuery({
+    queryKey: ['agents', agentId, 'config'],
+    queryFn: () => api.getDeviceConfig(agentId),
+    enabled: !!agentId,
+    staleTime: 30000,
+  })
+}
+
+export function useUpdateDeviceConfig(agentId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: DeviceConfigUpdate) => api.updateDeviceConfig(agentId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents', agentId, 'config'] })
+      // A sysName/sysLocation/asset edit changes columns the agent list reads.
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
     },
   })
 }
