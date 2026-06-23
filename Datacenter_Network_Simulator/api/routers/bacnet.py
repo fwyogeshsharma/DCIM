@@ -404,3 +404,56 @@ def plant_metrics():
             "values":      snap["values"],
         })
     return out
+
+
+# ── Per-device plant alarm overrides (Metric Tick window) ────────────────────
+
+class PlantOverride(BaseModel):
+    device: str               # topology device id (stable across renames)
+    point:  str               # binary point, e.g. "Alarm_FlowLoss" or "Chiller_Running"
+    value:  float | None = None   # None = clear; alarm-on = 1.0; unit-off = 0.0
+
+
+def _device_ip(device_id: str) -> str | None:
+    """Resolve a topology device id to the IP the override map is keyed by.
+    IP is stable across renames; the BACnet device is matched on it."""
+    dm = _state().device_manager
+    if dm is None:
+        return None
+    dev = dm.get_device(device_id)
+    return getattr(dev, "ip_address", None) if dev else None
+
+
+@router.get("/plant/overrides")
+def get_plant_overrides(device: str | None = None):
+    """Current per-device forced binary overrides (keyed by IP). With ?device=ID,
+    returns just that device's forced points; otherwise the whole map."""
+    st = getattr(_state(), "state_store", None)
+    ov = getattr(st, "plant_alarm_overrides", {}) if st else {}
+    if device is not None:
+        ip = _device_ip(device)
+        return {"device": device, "overrides": ov.get(ip, {}) if ip else {}}
+    return {"overrides": ov}
+
+
+@router.post("/plant/overrides", response_model=OkResponse)
+def set_plant_override(body: PlantOverride):
+    """Force (or clear) a single plant device's binary point. Forcing
+    Alarm_* = 1.0 trips that one unit's fault physics + cascade; a running-status
+    point = 0.0 stops it. value=null clears the override. The device is addressed
+    by its stable topology id (resolved to IP server-side)."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    ip = _device_ip(body.device)
+    if ip is None:
+        raise HTTPException(status_code=404, detail=f"Device '{body.device}' not found")
+    ov = st.plant_alarm_overrides
+    dev = ov.setdefault(ip, {})
+    if body.value is None:
+        dev.pop(body.point, None)
+        if not dev:
+            ov.pop(ip, None)
+        return OkResponse(message=f"Cleared {body.point}")
+    dev[body.point] = float(body.value)
+    return OkResponse(message=f"Set {body.point}={body.value}")

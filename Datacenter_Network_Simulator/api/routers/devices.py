@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from api.state import AppState
 from core.device_state_store import _get_ext_state
@@ -250,6 +251,116 @@ async def get_device(device_id: str):
     if device is None:
         raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
     return _device_to_info(device)
+
+
+# ── Per-device live-metric overrides (Metric Tick window) ────────────────────
+
+def _num(key, label, unit, lo, hi):
+    return {"key": key, "label": label, "unit": unit, "kind": "num", "min": lo, "max": hi}
+def _state_m(key, label, options):
+    return {"key": key, "label": label, "unit": "", "kind": "state", "options": options}
+
+_PROD_TYPES = {"server", "router", "switch", "firewall", "load_balancer", "oob_switch"}
+
+
+def overridable_metrics(device_type: str) -> list[dict]:
+    """The metrics the Metric Tick window may force on a device, with how to
+    render/validate each (numeric range or state options)."""
+    if device_type in _PROD_TYPES:
+        return [
+            _num("cpu_usage",  "CPU Usage",  "%",  0, 100),
+            _num("memory_pct", "Memory",     "%",  0, 100),
+            _num("disk_pct",   "Disk",       "%",  0, 100),
+            _num("cpu_temp",   "CPU Temp",   "°C", 0, 120),
+            _num("inlet_temp", "Inlet Temp", "°C", 0, 60),
+        ]
+    if device_type == "sensor":
+        return [
+            _num("inlet_temp",  "Ambient Temp",  "°C",   0, 60),
+            _num("humidity",    "Humidity",      "%",    0, 100),
+            _num("dewpoint",    "Dewpoint",      "°C",  -10, 40),
+            _num("airflow",     "Airflow",       "m/s",  0, 5),
+            _num("mid_temp",    "Mid-Rack Temp", "°C",   0, 60),
+            _num("outlet_temp", "Exhaust Temp",  "°C",   0, 70),
+        ]
+    if device_type == "ups":
+        return [
+            _state_m("ups_status",        "UPS Status",     ["normal", "on_battery", "low_battery"]),
+            _state_m("ups_bypass_status", "Bypass",         ["off", "on"]),
+            _state_m("ups_fan_status",    "Fan",            ["ok", "fail"]),
+            _num("ups_output_load",    "Output Load",    "%", 0, 120),
+            _num("ups_input_voltage",  "Input Voltage",  "V", 180, 260),
+            _num("ups_battery_health", "Battery Health", "%", 0, 100),
+        ]
+    if device_type in ("pdu", "floor_pdu"):
+        return [
+            _state_m("pdu_outlet_status",  "Outlet",       ["on", "off"]),
+            _state_m("pdu_breaker_status", "Breaker",      ["ok", "tripped"]),
+            _state_m("pdu_smoke",          "Smoke",        ["no", "yes"]),
+            _state_m("pdu_ground_fault",   "Ground Fault", ["no", "yes"]),
+            _num("pdu_load",           "Load",           "%", 0, 120),
+            _num("pdu_voltage",        "Voltage",        "V", 180, 260),
+            _num("pdu_outlet_current", "Outlet Current", "A", 0, 32),
+            _num("pdu_temperature",    "Temp",           "°C", 0, 60),
+            _num("pdu_humidity",       "Humidity",       "%", 0, 100),
+        ]
+    return []
+
+
+class DeviceOverride(BaseModel):
+    metric: str
+    value:  float | str | None = None   # None = clear; number or state string
+
+
+@router.get("/{device_id}/overridable")
+def get_overridable(device_id: str):
+    """Metrics that can be forced on this device (for the Metric Tick window)."""
+    s = _state()
+    dev = s.device_manager.get_device(device_id) if s.device_manager else None
+    if dev is None:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    return {"device": device_id, "metrics": overridable_metrics(dev.device_type.value)}
+
+
+@router.get("/{device_id}/overrides")
+def get_device_overrides(device_id: str):
+    """Current forced overrides for a device, keyed by metric."""
+    st = getattr(_state(), "state_store", None)
+    ov = getattr(st, "device_overrides", {}) if st else {}
+    return {"device": device_id, "overrides": ov.get(device_id, {})}
+
+
+@router.post("/{device_id}/override", response_model=OkResponse)
+def set_device_override(device_id: str, body: DeviceOverride):
+    """Force (or clear) one metric on a device. The store pins it each tick until
+    cleared (value=null). Numeric metrics are clamped; state metrics validated
+    against their options."""
+    s = _state()
+    dev = s.device_manager.get_device(device_id) if s.device_manager else None
+    if dev is None:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    spec = {m["key"]: m for m in overridable_metrics(dev.device_type.value)}
+    m = spec.get(body.metric)
+    if m is None:
+        raise HTTPException(status_code=400, detail=f"Metric '{body.metric}' not overridable")
+    st = getattr(s, "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    ov = st.device_overrides
+    dov = ov.setdefault(device_id, {})
+    if body.value is None:
+        dov.pop(body.metric, None)
+        if not dov:
+            ov.pop(device_id, None)
+        return OkResponse(message=f"Cleared {body.metric}")
+    if m["kind"] == "state":
+        val: float | str = str(body.value)
+        if val not in m["options"]:
+            raise HTTPException(status_code=400, detail=f"'{val}' not a valid state for {body.metric}")
+    else:
+        val = max(float(m["min"]), min(float(m["max"]), float(body.value)))
+    dov[body.metric] = val
+    return OkResponse(message=f"Set {body.metric}={val}")
 
 
 @router.post("", response_model=DeviceInfo)

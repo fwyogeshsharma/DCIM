@@ -139,6 +139,10 @@ export const api = {
   addDevice:  (d: unknown)            => post('/devices', d),
   editDevice: (id: string, d: unknown)=> put(`/devices/${id}`, d),
   delDevice:  (id: string)            => del(`/devices/${id}`),
+  deviceOverridable: (id: string)     => get(`/devices/${id}/overridable`),
+  deviceOverrides:   (id: string)     => get(`/devices/${id}/overrides`),
+  setDeviceOverride: (id: string, metric: string, value: number | string | null) =>
+    post(`/devices/${id}/override`, { metric, value }),
 
   // binding
   adapters:    ()                     => get('/binding/adapters'),
@@ -178,6 +182,9 @@ export const api = {
   bacnetStop:   ()                        => post('/bacnet/stop'),
   ev2Metrics:   ()                        => get('/bacnet/ev2/metrics'),
   plantMetrics: ()                        => get('/bacnet/plant/metrics'),
+  plantOverrides:   (device: string)      => get('/bacnet/plant/overrides?device=' + encodeURIComponent(device)),
+  setPlantOverride: (device: string, point: string, value: number | null) =>
+    post('/bacnet/plant/overrides', { device, point, value }),
 
   // redfish
   redfishStatus:   ()                     => get('/redfish/status'),

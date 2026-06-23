@@ -355,7 +355,8 @@ class BACnetController:
         return out
 
     def tick(self, dt: float, metric_flags: dict | None = None,
-             metric_limits: dict | None = None) -> None:
+             metric_limits: dict | None = None,
+             plant_overrides: dict | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -363,7 +364,10 @@ class BACnetController:
         any pending COV notifications. When *metric_flags* is given, points
         whose flag is False are dropped from the update (frozen at last value).
         When *metric_limits* is given, enabled points are clamped (numeric) or
-        forced (binary) before the update.
+        forced (binary) before the update. When *plant_overrides* is given
+        ({device_name: {point: value}}) those per-device binary forces are applied
+        last — this is how a single plant unit is alarmed from its Metric Tick
+        window, independent of the type-wide locks.
         """
         if not self._running:
             return
@@ -373,11 +377,13 @@ class BACnetController:
                 continue
             try:
                 kind = getattr(dev, "kind", "ev2")
+                # Keyed by device IP — stable across renames (the BACnet device's
+                # name is fixed at creation, so name-matching would break on edit).
+                ovr = (plant_overrides or {}).get(getattr(dev, "device_ip", ""), {})
                 # Manual alarm triggers: any plant binary the Limits tab locks
-                # "on" drives that device's coupled fault physics (pressure/flow/
-                # temp shifts, and for the CDU leak the downstream CPU heat) — not
-                # just the forced alarm bit. Build the set of locked-on alarms for
-                # this device type and hand it to the engine.
+                # "on" (type-wide) OR this device's per-device override drives that
+                # device's coupled fault physics (pressure/flow/temp shifts, and for
+                # the CDU leak the downstream CPU heat) — not just the forced bit.
                 if kind.startswith("plant:"):
                     forced = set()
                     if metric_limits:
@@ -387,6 +393,8 @@ class BACnetController:
                             if (_k.startswith(pref) and _lim.get("enabled")
                                     and str(_lim.get("lock")) == "on"):
                                 forced.add(_k[len(pref):])
+                    forced |= {p for p, v in ovr.items()
+                               if p.startswith("Alarm_") and float(v) >= 0.5}
                     values = engine.tick(dt, forced=forced)
                 else:
                     values = engine.tick(dt)
@@ -397,6 +405,10 @@ class BACnetController:
                     }
                 if metric_limits:
                     values = self._apply_limits(kind, values, metric_limits)
+                # Per-device binary overrides win last (alarm on = 1.0, unit off = 0.0).
+                for _p, _v in ovr.items():
+                    if _p in values:
+                        values[_p] = float(_v)
                 dev.update_present_values(values)
                 dev.dispatch_cov_notifications(
                     send_sock_fallback=self._recv_sock

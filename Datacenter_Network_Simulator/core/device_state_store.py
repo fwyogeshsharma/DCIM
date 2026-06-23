@@ -222,6 +222,19 @@ class DeviceStateStore:
                    "ev2_freq_pf", "ev2_alarms", "ev2_circuits"):
             self.metric_flags[_g] = True
 
+        # Per-DEVICE plant binary overrides, set from a node's Metric Tick window
+        # (right-click a plant device). Keyed by device IP (stable across renames)
+        # → {point: forced_value} — e.g. {"192.168.4.247": {"Alarm_FlowLoss": 1.0}}
+        # trips just that one unit, independent of the type-wide Limits-tab lock.
+        # Applied by the BACnet controller (matched on device_ip) atop the locks.
+        self.plant_alarm_overrides: Dict[str, Dict[str, float]] = {}
+
+        # Per-DEVICE live-metric overrides for servers / network gear, set from a
+        # node's Metric Tick window. {device_id: {metric: value}} — forces a metric
+        # to a held value each tick (cpu_usage/memory_pct/disk_pct/cpu_temp/
+        # inlet_temp), e.g. pin a server to 99% CPU to drive a hotspot + traps.
+        self.device_overrides: Dict[str, Dict[str, float]] = {}
+
         # Per-metric limits — toggled and configured by TickPanel (Limits tab)
         # Numeric: {"enabled": bool, "min": float, "max": float}
         # State lock: {"enabled": bool, "lock": str, "options": list[str]}
@@ -684,6 +697,7 @@ class DeviceStateStore:
         for device in devices:
             self._step_device(device)
             self._step_ext_state(device)
+            self._apply_ext_overrides(device)   # pin UPS/PDU overrides last
 
         self._tick_count += 1
 
@@ -696,7 +710,8 @@ class DeviceStateStore:
         # BACnet telemetry tick — advances EV2 + plant engines and dispatches COV
         if self._bacnet_ctrl:
             try:
-                self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits)
+                self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
+                                       self.plant_alarm_overrides)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
@@ -1099,6 +1114,59 @@ class DeviceStateStore:
                         self._pending_recovery.setdefault(device.name, {})[iface.index] = (
                             time.time() + 5.0
                         )
+
+        # Per-device metric overrides win last — a Metric Tick window pins these
+        # to a held value regardless of the random walk above.
+        self._apply_device_overrides(device)
+
+    def _apply_device_overrides(self, device: "Device") -> None:
+        """Force this device's live metrics to operator-set values (Metric Tick
+        window). Percentages are translated to the underlying used/total fields."""
+        ov = self.device_overrides.get(device.id)
+        if not ov:
+            return
+        for metric, v in ov.items():
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                continue
+            if metric == "cpu_usage":
+                device.cpu_usage = int(max(0.0, min(100.0, v)))
+            elif metric == "memory_pct" and getattr(device, "memory_total", 0):
+                device.memory_used = int(device.memory_total * max(0.0, min(100.0, v)) / 100.0)
+            elif metric == "disk_pct" and getattr(device, "disk_total", 0):
+                device.disk_used = int(device.disk_total * max(0.0, min(100.0, v)) / 100.0)
+            elif metric == "cpu_temp":
+                device.cpu_temp = round(max(0.0, min(120.0, v)), 1)
+            elif metric == "inlet_temp":
+                device.inlet_temp = round(max(0.0, min(60.0, v)), 1)
+            elif metric == "humidity":
+                device.humidity = round(max(0.0, min(100.0, v)), 1)
+            elif metric == "dewpoint":
+                device.dewpoint = round(max(-10.0, min(40.0, v)), 1)
+            elif metric == "airflow":
+                device.airflow = round(max(0.0, min(5.0, v)), 2)
+            elif metric == "mid_temp":
+                device.mid_temp = round(max(0.0, min(60.0, v)), 1)
+            elif metric == "outlet_temp":
+                device.outlet_temp = round(max(0.0, min(70.0, v)), 1)
+
+    def _apply_ext_overrides(self, device: "Device") -> None:
+        """Pin UPS/PDU extended-state metrics (ups_*/pdu_* — numeric or string
+        states) to operator-set values from the Metric Tick window, after the
+        random walk has run, and republish the module cache the API/SNMP read."""
+        ov = self.device_overrides.get(device.id)
+        if not ov:
+            return
+        ext = {k: val for k, val in ov.items()
+               if k.startswith("ups_") or k.startswith("pdu_")}
+        if not ext:
+            return
+        st = self._ext_states.get(device.name)
+        if st is None:
+            return
+        st.update(ext)
+        _ext_state_cache[device.name] = dict(st)
 
     # ------------------------------------------------------------------ #
     #  Extended state simulation (UPS, BGP)                              #
