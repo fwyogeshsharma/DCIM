@@ -593,25 +593,44 @@ class DeviceStateStore:
                 return True
         return False
 
+    # Cooling penalty model constants.
+    _COOL_TOL = 0.34     # cooling-loss fraction the plant rides out (N+1 + thermal mass)
+    _COOL_RUN = 0.20     # runaway integration gain (°C/tick per unit deficit)
+    _COOL_MAX = 28.0     # ceiling — equipment thermal-limit territory (inlet → ~50 °C)
+
     def _compute_chw_penalty(self) -> None:
-        """Per-tick: roll the per-DC chilled-water temperature penalty toward the
-        target implied by upstream cooling faults. Redundancy-aware — the penalty
-        scales with the FRACTION of failed units of each kind, so losing 1 of 3
-        chillers only partially warms the loop. Ramped (EMA) so it eases in/out."""
+        """Per-tick: update the per-DC chilled-water temperature penalty.
+
+        The cooling plant is a SERIES chain — chillers make CHW, pumps move it,
+        towers reject condenser heat — so the delivered cooling is the product of
+        each stage's surviving fraction. From that, a cooling-loss fraction L:
+
+          * Below the redundancy tolerance (N+1 + thermal mass) the loss is ridden
+            out and the penalty settles at a small bounded value (EMA).
+          * Above it the IT heat load exceeds the remaining cooling, so heat
+            ACCUMULATES — the penalty integrates upward every tick (thermal
+            runaway) toward an equipment-limit ceiling instead of plateauing.
+
+        So losing 1 of 3 chillers is a mild, steady offset, but losing the whole
+        chiller (or pump) stage runs the room away toward shutdown temperatures.
+        Clearing the fault drops L below tolerance and the penalty decays back."""
         ctx = self._cooling_context()
-        # weight (°C of CHW rise) if an entire stage of a kind were down. A stuck
-        # valve throttles its loop, so it contributes like a partial flow loss.
-        W = {"chiller": 8.0, "pump": 5.0, "cooling_tower": 4.0, "valve": 3.0}
         for dc, kinds in ctx["plant_by_dc"].items():
-            target = 0.0
-            for kind, names in kinds.items():
-                if not names:
-                    continue
-                frac = sum(1 for n in names if self._is_faulted(n)) / len(names)
-                target += W.get(kind, 0.0) * frac
-            target = min(12.0, target)
+            def frac(kind: str) -> float:
+                names = kinds.get(kind) or []
+                return (sum(1 for n in names if self._is_faulted(n)) / len(names)) if names else 0.0
+            # surviving cooling capacity (series chain); towers/valves throttle partially
+            avail = ((1.0 - frac("chiller")) * (1.0 - frac("pump"))
+                     * (1.0 - 0.6 * frac("cooling_tower")) * (1.0 - 0.5 * frac("valve")))
+            loss = max(0.0, 1.0 - avail)                  # 0 = full cooling, 1 = none
             cur = self._chw_pen.get(dc, 0.0)
-            self._chw_pen[dc] = round(cur + (target - cur) * 0.06, 3)   # smooth ramp
+            deficit = loss - self._COOL_TOL
+            if deficit <= 0.0:
+                target = loss * 18.0                       # bounded: redundancy absorbs it (≤ ~6 °C)
+                new = cur + (target - cur) * 0.06          # EMA ease in/out
+            else:
+                new = cur + self._COOL_RUN * deficit       # runaway: integrate heat upward
+            self._chw_pen[dc] = round(min(new, self._COOL_MAX), 3)
 
     def _room_supply_temp(self, device: "Device") -> float:
         """Cold-aisle supply temperature for a device's room.
