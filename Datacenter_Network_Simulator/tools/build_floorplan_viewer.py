@@ -450,20 +450,6 @@ function perfTexture(){ const N=64,cv=document.createElement('canvas');cv.width=
 // ---- realistic device front panels (drawn to a canvas, used as map + emissiveMap) ----
 const _panelCache={}, _frontCache={}; let _darkMat=null;
 function darkMat(){ return _darkMat || (_darkMat=mat3(0x191e26,{metalness:0.55,roughness:0.5}),_darkMat._keep=true,_darkMat); }
-// Soft radial-glow sprite texture (white, fading to transparent) reused for
-// every rack's thermal aura — tinted per rack via the SpriteMaterial colour.
-// Cached + _keep so it survives scene rebuilds and is never disposed.
-let _heatGlow=null;
-function heatGlowTex(){ if(_heatGlow) return _heatGlow;
-  const N=128, cv=document.createElement('canvas'); cv.width=cv.height=N;
-  const c=cv.getContext('2d'); const g=c.createRadialGradient(N/2,N/2,1,N/2,N/2,N/2);
-  g.addColorStop(0.0,'rgba(255,255,255,0.95)');
-  g.addColorStop(0.35,'rgba(255,255,255,0.45)');
-  g.addColorStop(0.7,'rgba(255,255,255,0.12)');
-  g.addColorStop(1.0,'rgba(255,255,255,0)');
-  c.fillStyle=g; c.fillRect(0,0,N,N);
-  const t=new THREE.CanvasTexture(cv); t.minFilter=t.magFilter=THREE.LinearFilter;
-  t._keep=true; _heatGlow=t; return t; }
 function frontMat(t,u){ const k=t+'_'+u; if(_frontCache[k]) return _frontCache[k]; const tex=panelTexture(t,u);
   const mt=new THREE.MeshStandardMaterial({map:tex,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:0.55,metalness:0.3,roughness:0.55}); mt._keep=true;
   return _frontCache[k]=mt; }
@@ -589,18 +575,8 @@ function makeRack(r,ds,m){ const grp=new THREE.Group(); const W=FOOT.width,D=FOO
   }
   for(const sx of [-1,1]){ const cb=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.028,RACK_H*0.82,6),
     mat3(0x0a0d12,{roughness:0.95})); cb.position.set(sx*(W/2-0.1),RACK_H*0.5+0.06,-D/2+0.06); grp.add(cb); }   // rear cable bundles
-  // Thermal aura: a soft glow that hugs the rack, coloured by inlet temperature
-  // and SWELLING with heat — a cool rack barely shimmers, a hot one blooms. Built
-  // as a camera-facing Sprite (not an axis-aligned box) so overlapping auras stay
-  // depth-sorted and never flicker. depthTest keeps neighbouring racks in front.
-  if(S.heat && heatReady(m)){ const v=m.val(r); if(v>0){ const c=bandColor(v,m.bands);
-    const lo=m.bands[0][0], hi=m.bands[m.bands.length-1][0];
-    const t=Math.max(0,Math.min(1,(v-lo)/((hi-lo)||1)));            // 0 = cool .. 1 = hot
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:heatGlowTex(),
-      color:`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`, transparent:true,
-      opacity:0.22+0.5*t, depthWrite:false, depthTest:true }));
-    sp.scale.set(W*(1.9+0.9*t), RACK_H*(1.15+0.55*t), 1);          // grows as it heats
-    sp.position.set(0, RACK_H*0.52, 0); grp.add(sp); } }
+  // Thermal is drawn as a field in the space AROUND the racks (see draw3D), not
+  // on the rack body — so the cabinet geometry stays readable.
   return grp; }
 
 // floor-standing perimeter CRAH: brushed-metal cabinet, top intake fan, downflow into plenum
@@ -828,11 +804,23 @@ function draw3D(){
       const tile=new THREE.Mesh(pl,mt); tile.rotation.x=-Math.PI/2; tile.position.set(0,RF+0.025,a.y-cz); root.add(tile); }
   }
 
-  // heat field overlay: a dim floor wash for context — the per-rack thermal
-  // auras (makeRack) are the hero, this just grounds them in the aisle field.
-  if(S.heat && heatReady(m)){ const hp=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
-      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,opacity:0.34}));
-    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.05,0); root.add(hp); }
+  // Thermal field AROUND the racks (CFD-style). A smooth interpolated temperature
+  // sheet fills the aisles; racks sit IN it and occlude it (depthTest on), so the
+  // colour reads in the open space between cabinets — cool cold-aisles, warm hot-
+  // aisles — instead of as a glow on the racks. Two stacked sheets give it depth:
+  // a faint one at floor level grounds the field, and a brighter cut plane at
+  // mid-rack height reads like a CFD slice through the hall. Each height is a
+  // single flat plane (no self-overlap) so there's no transparent-sort flicker.
+  if(S.heat && heatReady(m)){
+    const floorF=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
+      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,
+        opacity:0.3,depthWrite:false}));
+    floorF.rotation.x=-Math.PI/2; floorF.position.set(0,FLR+0.05,0); root.add(floorF);
+    const slice=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
+      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,
+        opacity:0.6,depthWrite:false,side:THREE.DoubleSide}));
+    slice.rotation.x=-Math.PI/2; slice.position.set(0,FLR+RACK_H*0.5,0); root.add(slice);
+  }
 
   // cells: CRAH unit / power panel / populated rack
   three.pick=[];
