@@ -46,6 +46,12 @@ log = logging.getLogger(__name__)
 # envelope (18–27 °C). Override-friendly single source of truth.
 _SUPPLY_SETPOINT_C = 22.0
 
+# Fraction of a direct-to-chip (CDU cold-plate) server's heat that still leaves
+# via AIR. Cold plates capture ~70 % of the load (CPU/GPU) into the liquid loop;
+# the residual (VRMs, DIMMs, drives, PSUs) is air-cooled, so the air-side exhaust
+# ΔT — and thus outlet_temp — is much lower than an all-air server's.
+_DTC_AIR_FRACTION = 0.30
+
 # UPS status progression
 _UPS_STATES = ("normal", "on_battery", "low_battery")
 # BGP session states
@@ -109,6 +115,7 @@ class DeviceStateStore:
         # lazily from the TCS cooling edges; intensity comes from the leak's
         # loop-pressure drop, refreshed each tick from the plant-state cache.
         self._cdu_loop_servers_cache: Optional[Dict[str, set]] = None
+        self._liquid_servers_cache: Optional[set] = None   # servers on a CDU cold-plate loop
         self._leak_heat: Dict[str, float] = {}   # server name → 0..1 intensity
 
         # Per-rack cold-aisle supply temperature: {rack_key: [temp, last_tick]}.
@@ -520,6 +527,14 @@ class DeviceStateStore:
         self._cdu_loop_servers_cache = out
         return out
 
+    def _liquid_cooled_servers(self) -> set:
+        """Set of all server names sitting on a CDU cold-plate loop (direct-to-
+        chip liquid cooling). Cached via the underlying CDU-loop map."""
+        if self._liquid_servers_cache is None:
+            self._liquid_servers_cache = set().union(*self._cdu_loop_servers().values()) \
+                if self._cdu_loop_servers() else set()
+        return self._liquid_servers_cache
+
     def _compute_leak_heat(self) -> None:
         """Refresh server→intensity heat map from leaking CDUs. Intensity scales
         with the loop-pressure drop; a forced leak (alarm on, pressure normal)
@@ -839,9 +854,13 @@ class DeviceStateStore:
             if mf["outlet_temp"]:
                 _v = device.airflow if device.airflow > 0.2 else 2.5
                 # ΔT(°C) ≈ 1.76·P / CFM, with CFM ∝ velocity ⇒ k·P/v (k=0.056).
-                # Hard-clamp to [3, 18] °C so no seed combination yields an
-                # unphysical exhaust rise.
-                _dt = max(3.0, min(18.0, 0.056 * _pw / _v))
+                # Direct-to-chip liquid-cooled servers dump only ~30 % of their
+                # heat to air (cold plates take the rest), so the air-side ΔT —
+                # and the rear exhaust — is much smaller than an all-air server's.
+                _liquid = device.name in self._liquid_cooled_servers()
+                _air_pw = _pw * (_DTC_AIR_FRACTION if _liquid else 1.0)
+                _floor = 2.0 if _liquid else 3.0
+                _dt = max(_floor, min(18.0, 0.056 * _air_pw / _v))
                 device.outlet_temp = round(min(65.0, device.inlet_temp + _dt), 1)
                 device.outlet_temp = self._num_limit("outlet_temp", device.outlet_temp)
 
