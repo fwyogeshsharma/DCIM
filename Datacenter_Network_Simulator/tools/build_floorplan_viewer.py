@@ -759,6 +759,7 @@ function draw3D(){
       if(three.anim){ const a=three.anim; a.t++; let k=Math.min(1,a.t/a.dur); k=k<0.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
         three.cam.position.lerpVectors(a.fromP,a.toP,k); three.ctr.target.lerpVectors(a.fromT,a.toT,k);
         if(a.t>=a.dur) three.anim=null; }
+      if(three.flow) stepFlow();             // animate the airflow smoke
       three.ctr.update(); three.rn.render(three.sc,three.cam); })();
   }
   const {cam,rn,ctr,root}=three; rn.setSize(W,H); cam.aspect=W/H; cam.updateProjectionMatrix();
@@ -804,23 +805,18 @@ function draw3D(){
       const tile=new THREE.Mesh(pl,mt); tile.rotation.x=-Math.PI/2; tile.position.set(0,RF+0.025,a.y-cz); root.add(tile); }
   }
 
-  // Thermal field AROUND the racks (CFD-style). A smooth interpolated temperature
-  // sheet fills the aisles; racks sit IN it and occlude it (depthTest on), so the
-  // colour reads in the open space between cabinets — cool cold-aisles, warm hot-
-  // aisles — instead of as a glow on the racks. Two stacked sheets give it depth:
-  // a faint one at floor level grounds the field, and a brighter cut plane at
-  // mid-rack height reads like a CFD slice through the hall. Each height is a
-  // single flat plane (no self-overlap) so there's no transparent-sort flicker.
+  // Metric heatmap: a faint floor field of the selected metric (live data only),
+  // a calm base the airflow smoke rises out of.
   if(S.heat && heatReady(m)){
     const floorF=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
       new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,
-        opacity:0.3,depthWrite:false}));
+        opacity:0.32,depthWrite:false}));
     floorF.rotation.x=-Math.PI/2; floorF.position.set(0,FLR+0.05,0); root.add(floorF);
-    const slice=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
-      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,
-        opacity:0.6,depthWrite:false,side:THREE.DoubleSide}));
-    slice.rotation.x=-Math.PI/2; slice.position.set(0,FLR+RACK_H*0.5,0); root.add(slice);
   }
+  // Airflow smoke: volumetric colored particles rising through the aisles, showing
+  // the supply -> intake -> exhaust -> return convection. Structural (depends on
+  // aisle layout, not telemetry), so it shows whenever the heat view is on.
+  if(S.heat) buildFlow(root,g,cx,cz); else three.flow=null;
 
   // cells: CRAH unit / power panel / populated rack
   three.pick=[];
@@ -920,6 +916,72 @@ function heatTexture(g,racks,m){ const N=128; const cv=document.createElement('c
     const c=bandColor(v,m.bands); cc.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; cc.fillRect(i,N-1-j,1,1); }
   const tx=new THREE.CanvasTexture(cv); tx.minFilter=tx.magFilter=THREE.LinearFilter;
   tx.needsUpdate=true; return tx; }
+
+/* ===================== airflow smoke (volumetric particles) =====================
+   Colored "smoke" that shows the raised-floor convection loop: cold supply rises
+   from the perforated tiles in the COLD aisles (cyan, slow) and hot exhaust rises
+   off the rack rears in the HOT aisles (orange-red, faster) toward the ceiling
+   return. Built as a single THREE.Points cloud — one draw call, stable vertex
+   order, so additive blending glows like smoke without any transparent-sort
+   flicker. Particles are animated every frame in the render loop (stepFlow). */
+let _softDot=null;
+function softDotTex(){ if(_softDot) return _softDot;
+  const N=64, cv=document.createElement('canvas'); cv.width=cv.height=N;
+  const c=cv.getContext('2d'); const g=c.createRadialGradient(N/2,N/2,1,N/2,N/2,N/2);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.4,'rgba(255,255,255,0.55)');
+  g.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle=g; c.fillRect(0,0,N,N);
+  const t=new THREE.CanvasTexture(cv); t.minFilter=t.magFilter=THREE.LinearFilter;
+  t._keep=true; _softDot=t; return t; }
+function _flowColor(col,i,type,y,y0,y1){
+  const h=Math.max(0,Math.min(1,(y-y0)/((y1-y0)||1)));   // 0 floor .. 1 ceiling
+  const fade=1-0.5*h;                                     // dissipates as it rises
+  let r,gc,b;
+  if(type==='hot'){ r=0.88; gc=0.32+0.12*(1-h); b=0.18; }  // exhaust: orange-red
+  else            { r=0.20; gc=0.58+0.22*(1-h); b=0.95; }  // supply: cyan-blue
+  col[i*3]=r*fade; col[i*3+1]=gc*fade; col[i*3+2]=b*fade;
+}
+function buildFlow(root,g,cx,cz){
+  const yFloor=(three.flr||RF)+0.05, yTop=(three.flr||RF)+3.0;
+  // Emitter bands = the room's aisles; fall back to the whole room if none.
+  const bands=[];
+  for(const a of (g.aisles||[])){ const zc=a.y-cz;
+    bands.push({z0:zc-a.width/2, z1:zc+a.width/2, type:(a.type==='hot'?'hot':'cold')}); }
+  if(!bands.length) bands.push({z0:-g.depth_m/2, z1:g.depth_m/2, type:'cold'});
+  const PER=70, N=bands.length*PER, W=g.width_m;
+  const key=g.width_m+'x'+g.depth_m+'#'+bands.length;
+  let pos, vy, aidx;
+  if(three._flowKey===key && three._flowPos && three._flowPos.length===N*3){
+    pos=three._flowPos; vy=three._flowVy; aidx=three._flowA;   // continue from last frame (no jump on rebuild)
+  } else {
+    pos=new Float32Array(N*3); vy=new Float32Array(N); aidx=new Int16Array(N);
+    for(let i=0;i<N;i++){ const bi=(i/PER)|0, band=bands[bi]; aidx[i]=bi;
+      pos[i*3]=(Math.random()-0.5)*W;
+      pos[i*3+1]=yFloor+Math.random()*(yTop-yFloor);
+      pos[i*3+2]=band.z0+Math.random()*(band.z1-band.z0);
+      vy[i]=(band.type==='hot'?0.009:0.004)+Math.random()*(band.type==='hot'?0.006:0.003);
+    }
+    three._flowKey=key; three._flowPos=pos; three._flowVy=vy; three._flowA=aidx;
+  }
+  const col=new Float32Array(N*3);
+  for(let i=0;i<N;i++) _flowColor(col,i,bands[aidx[i]].type,pos[i*3+1],yFloor,yTop);
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const mat=new THREE.PointsMaterial({size:0.32, map:softDotTex(), vertexColors:true,
+    transparent:true, opacity:0.55, depthWrite:false, sizeAttenuation:true,
+    blending:THREE.AdditiveBlending});
+  const pts=new THREE.Points(geo,mat); root.add(pts);
+  three.flow={pts,pos,vy,aidx,bands,yFloor,yTop,col,W};
+}
+function stepFlow(){ const f=three.flow; if(!f) return;
+  const {pos,vy,aidx,bands,yFloor,yTop,col,W}=f, n=vy.length;
+  for(let i=0;i<n;i++){ let y=pos[i*3+1]+vy[i];
+    if(y>yTop){ const b=bands[aidx[i]];                 // recycle to the floor
+      y=yFloor; pos[i*3]=(Math.random()-0.5)*W; pos[i*3+2]=b.z0+Math.random()*(b.z1-b.z0); }
+    pos[i*3+1]=y; _flowColor(col,i,bands[aidx[i]].type,y,yFloor,yTop); }
+  f.pts.geometry.attributes.position.needsUpdate=true;
+  f.pts.geometry.attributes.color.needsUpdate=true;
+}
 
 /* ===================== heatmap legend ===================== */
 function drawHLegend(m, racks){ const el=$('#hlegend'); if(!S.heat || !heatReady(m)){ el.style.display='none'; return; }
