@@ -543,8 +543,9 @@ function makeRack(r,ds,m){ const grp=new THREE.Group(); const W=FOOT.width,D=FOO
   }
   for(const sx of [-1,1]){ const cb=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.028,RACK_H*0.82,6),
     mat3(0x0a0d12,{roughness:0.95})); cb.position.set(sx*(W/2-0.1),RACK_H*0.5+0.06,-D/2+0.06); grp.add(cb); }   // rear cable bundles
-  // Thermal is drawn as a field in the space AROUND the racks (see draw3D), not
-  // on the rack body — so the cabinet geometry stays readable.
+  if(S.heat && heatReady(m)){ const v=m.val(r); if(v>0){ const c=bandColor(v,m.bands);
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(W+0.05,RACK_H+0.05,D+0.05),
+      new THREE.MeshBasicMaterial({color:`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`,transparent:true,opacity:0.42})); sh.position.y=RACK_H/2; grp.add(sh); } }
   return grp; }
 
 // floor-standing perimeter CRAH: brushed-metal cabinet, top intake fan, downflow into plenum
@@ -695,7 +696,7 @@ function makePlant(r,ds){ const grp=new THREE.Group();
 function disposeGroup(g){
   for(let i=g.children.length-1;i>=0;i--){ const o=g.children[i];
     if(o.children && o.children.length) disposeGroup(o);
-    if(o.geometry && !o.isSprite) o.geometry.dispose();   // Sprites share one global geometry — never dispose it
+    if(o.geometry) o.geometry.dispose();
     if(o.material){ const mats=Array.isArray(o.material)?o.material:[o.material];
       for(const mt of mats){ if(!mt||mt._keep) continue;
         for(const mk of ['map','emissiveMap','normalMap','roughnessMap','metalnessMap','alphaMap']){
@@ -727,7 +728,6 @@ function draw3D(){
       if(three.anim){ const a=three.anim; a.t++; let k=Math.min(1,a.t/a.dur); k=k<0.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
         three.cam.position.lerpVectors(a.fromP,a.toP,k); three.ctr.target.lerpVectors(a.fromT,a.toT,k);
         if(a.t>=a.dur) three.anim=null; }
-      if(three.flow) stepFlow();             // animate the airflow smoke
       three.ctr.update(); three.rn.render(three.sc,three.cam); })();
   }
   const {cam,rn,ctr,root}=three; rn.setSize(W,H); cam.aspect=W/H; cam.updateProjectionMatrix();
@@ -773,18 +773,10 @@ function draw3D(){
       const tile=new THREE.Mesh(pl,mt); tile.rotation.x=-Math.PI/2; tile.position.set(0,RF+0.025,a.y-cz); root.add(tile); }
   }
 
-  // Metric heatmap: a faint floor field of the selected metric (live data only),
-  // a calm base the airflow smoke rises out of.
-  if(S.heat && heatReady(m)){
-    const floorF=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
-      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,
-        opacity:0.32,depthWrite:false}));
-    floorF.rotation.x=-Math.PI/2; floorF.position.set(0,FLR+0.05,0); root.add(floorF);
-  }
-  // Airflow smoke: volumetric colored particles rising through the aisles, showing
-  // the supply -> intake -> exhaust -> return convection. Structural (depends on
-  // aisle layout, not telemetry), so it shows whenever the heat view is on.
-  if(S.heat) buildFlow(root,g,racks,cx,cz); else three.flow=null;
+  // heat field overlay when ON (and live data is available)
+  if(S.heat && heatReady(m)){ const hp=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
+      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,opacity:0.6}));
+    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.05,0); root.add(hp); }
 
   // cells: CRAH unit / power panel / populated rack
   three.pick=[];
@@ -884,56 +876,6 @@ function heatTexture(g,racks,m){ const N=128; const cv=document.createElement('c
     const c=bandColor(v,m.bands); cc.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; cc.fillRect(i,N-1-j,1,1); }
   const tx=new THREE.CanvasTexture(cv); tx.minFilter=tx.magFilter=THREE.LinearFilter;
   tx.needsUpdate=true; return tx; }
-
-/* ===================== airflow ribbons =====================
-   Smooth colored airflow streams in the style of a datacenter cooling diagram:
-   one ribbon per IT rack traces the raised-floor loop — cold supply rises from
-   the cold-aisle tiles (blue), flows INTO the rack front, OUT the rear, and the
-   hot exhaust (red) rises in the hot aisle toward the ceiling return. Ribbons
-   are TubeGeometry along a smooth curve; a repeating chevron texture scrolls
-   along them every frame (stepFlow) to show flow direction, and a blue->red
-   vertex gradient marks where the air heats up crossing the rack. */
-let _flowTex=null, _flowMat=null;
-function flowArrowTex(){ if(_flowTex) return _flowTex;
-  const W=24,H=48,cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-  const c=cv.getContext('2d'); c.clearRect(0,0,W,H);
-  c.fillStyle='rgba(255,255,255,0.16)'; c.fillRect(0,0,W,H);          // faint continuous ribbon body
-  c.strokeStyle='rgba(255,255,255,0.95)'; c.lineWidth=5; c.lineCap='round'; c.lineJoin='round';
-  c.beginPath(); c.moveTo(4,30); c.lineTo(W/2,12); c.lineTo(W-4,30); c.stroke();   // bright chevron (flow dir = +v)
-  c.globalAlpha=0.45;
-  c.beginPath(); c.moveTo(4,44); c.lineTo(W/2,26); c.lineTo(W-4,44); c.stroke();   // trailing chevron
-  const t=new THREE.CanvasTexture(cv); t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.repeat.set(1,7); t.minFilter=t.magFilter=THREE.LinearFilter; t._keep=true; _flowTex=t; return t; }
-function flowMat(){ return _flowMat || (_flowMat=new THREE.MeshBasicMaterial({map:flowArrowTex(),
-  vertexColors:true, transparent:true, opacity:0.85, depthWrite:false}), _flowMat._keep=true, _flowMat); }
-// blue cold supply -> red hot exhaust, transitioning where the air crosses the rack
-function _flowGrad(s){ const m = s<0.5 ? 0 : s>0.72 ? 1 : (s-0.5)/0.22;
-  return [0.18+0.74*m, 0.60-0.32*m, 0.95-0.75*m]; }
-function buildFlow(root,g,racks,cx,cz){
-  const cold=[], hot=[];
-  for(const a of (g.aisles||[])){ (a.type==='hot'?hot:cold).push(a.y-cz); }
-  if(!cold.length || !hot.length){ three.flow=null; return; }   // need both aisle types (server halls only)
-  const nearest=(arr,z)=>{ let best=arr[0],bd=1e9; for(const v of arr){ const d=Math.abs(v-z); if(d<bd){bd=d;best=v;} } return best; };
-  const yF=(three.flr||RF)+0.04, yM=(three.flr||RF)+RACK_H*0.5, yT=(three.flr||RF)+2.6;
-  const mat=flowMat(), TUB=28, RAD=5, ring=RAD+1; let made=0;
-  for(const r of racks){ if(!(r.device_count>0)) continue;     // skip empty cells / facility gear
-    const rx=r.floor_x-cx, rz=r.floor_y-cz, cZ=nearest(cold,rz), hZ=nearest(hot,rz);
-    // P0 cold-aisle floor -> P1 rise -> P2 into rack front -> P3 out rear into hot aisle -> P4 rise to return
-    const curve=new THREE.CatmullRomCurve3([
-      new THREE.Vector3(rx,yF,cZ), new THREE.Vector3(rx,yM,cZ),
-      new THREE.Vector3(rx,yM,rz), new THREE.Vector3(rx,yM,hZ),
-      new THREE.Vector3(rx,yT,hZ) ]);
-    const geo=new THREE.TubeGeometry(curve,TUB,0.055,RAD,false);
-    const cnt=geo.attributes.position.count, col=new Float32Array(cnt*3);
-    for(let ii=0;ii<=TUB;ii++){ const cc=_flowGrad(ii/TUB);
-      for(let j=0;j<ring;j++){ const k=(ii*ring+j)*3; col[k]=cc[0]; col[k+1]=cc[1]; col[k+2]=cc[2]; } }
-    geo.setAttribute('color',new THREE.BufferAttribute(col,3));
-    root.add(new THREE.Mesh(geo,mat)); made++;
-  }
-  three.flow = made ? {tex:flowArrowTex()} : null;
-}
-// Scroll the chevron texture along the ribbons so the flow appears to move.
-function stepFlow(){ if(three.flow) three.flow.tex.offset.y = (three.flow.tex.offset.y - 0.012) % 1; }
 
 /* ===================== heatmap legend ===================== */
 function drawHLegend(m, racks){ const el=$('#hlegend'); if(!S.heat || !heatReady(m)){ el.style.display='none'; return; }
