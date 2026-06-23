@@ -548,45 +548,49 @@ export function createIngestRouter(dbPool: Pool): Router {
         }
       }
 
-      // ── 5. Command results (up) → advance rule_changes lifecycle ────────────
-      // DCS reports each applied/failed command. Flip the matching rule_changes
-      // row pending → applied/failed so the UI shows the outcome.
-      for (const cs of body.command_status ?? []) {
-        if (!cs.device_ip || !cs.field) continue
-        await client.query(`
-          UPDATE rule_changes
-          SET status = $3,
-              error  = COALESCE($4, ''),
-              applied_at = CASE WHEN $3 = 'applied' THEN now() ELSE applied_at END,
-              updated_at = now()
-          WHERE device_ip = $1 AND field = $2
-            AND status IN ('pending','applied')
-        `, [cs.device_ip, cs.field, cs.status, cs.error ?? ''])
-      }
-
-      // ── 6. Threshold values (up) → device_thresholds + confirm ──────────────
-      // DCS reports current per-device thresholds read from the device. Store for
-      // display, and confirm any pending rule_change whose value now matches.
-      for (const t of body.threshold_changes ?? []) {
-        if (!t.device_ip || !t.rule) continue
-        await client.query(`
-          INSERT INTO device_thresholds (mgmt_ip, hostname, rule, value, updated_at)
-          VALUES ($1, $2, $3, $4, now())
-          ON CONFLICT (mgmt_ip, rule)
-          DO UPDATE SET value = EXCLUDED.value,
-                        hostname = EXCLUDED.hostname,
-                        updated_at = now()
-        `, [t.device_ip, t.hostname ?? '', t.rule, t.value])
-        await client.query(`
-          UPDATE rule_changes
-          SET status = 'confirmed', confirmed_at = now(), updated_at = now()
-          WHERE device_ip = $1 AND field = $2
-            AND new_value = $3::text
-            AND status IN ('pending','applied')
-        `, [t.device_ip, t.rule, String(t.value)])
-      }
-
       await client.query('COMMIT')
+
+      // ── 5+6. Control-plane up-feeds — AFTER COMMIT on the pool, so a consume
+      // error can't poison the device-upsert transaction or block the down-feed.
+      // (command results → rule_changes lifecycle; threshold values → store + confirm)
+      try {
+        for (const cs of body.command_status ?? []) {
+          if (!cs.device_ip || !cs.field) continue
+          await dbPool.query(`
+            UPDATE rule_changes
+            SET status = $3,
+                error  = COALESCE($4, ''),
+                applied_at = CASE WHEN $3 = 'applied' THEN now() ELSE applied_at END,
+                updated_at = now()
+            WHERE device_ip = $1 AND field = $2
+              AND status IN ('pending','applied')
+          `, [cs.device_ip, cs.field, cs.status, cs.error ?? ''])
+        }
+        for (const t of body.threshold_changes ?? []) {
+          if (!t.device_ip || !t.rule) continue
+          // device_thresholds is keyed by device_id (UUID) — resolve via mgmt IP.
+          // device_ip may be CIDR ("10.20.0.5/32"); ::inet matches the host.
+          const dres = await dbPool.query<{ id: string }>(
+              `SELECT id FROM devices WHERE mgmt_ip = $1::inet LIMIT 1`, [t.device_ip])
+          const did = dres.rows[0]?.id
+          if (!did) continue
+          await dbPool.query(`
+            INSERT INTO device_thresholds (device_id, rule, value, updated_at)
+            VALUES ($1, $2, $3, now())
+            ON CONFLICT (device_id, rule)
+            DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+          `, [did, t.rule, t.value])
+          await dbPool.query(`
+            UPDATE rule_changes
+            SET status = 'confirmed', confirmed_at = now(), updated_at = now()
+            WHERE device_ip = $1 AND field = $2
+              AND new_value = $3::text
+              AND status IN ('pending','applied')
+          `, [t.device_ip, t.rule, String(t.value)])
+        }
+      } catch (e: any) {
+        console.error('ingest: control-plane consume failed (non-fatal):', e?.message)
+      }
 
       // Push live trap events to connected topology clients (SSE). Resolve each
       // trap's hostname + mgmt_ip from the device row so the topology can match
