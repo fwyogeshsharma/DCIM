@@ -459,7 +459,7 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
 
 // ── Server table (expandable) ─────────────────────────────────────────────────
 
-const SRV_COLS = 15
+const SRV_COLS = 16
 
 function ServerTable({ rows }: { rows: DeviceInfo[] }) {
   const sort = useSortState('name')
@@ -488,6 +488,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
       case 'watts':  return ((a.power_watts ?? 0) - (b.power_watts ?? 0)) * dir
       case 'fan':    return ((a.fan_rpm ?? 0) - (b.fan_rpm ?? 0)) * dir
       case 'pstate': return (a.power_state ?? '').localeCompare(b.power_state ?? '') * dir
+      case 'cooling': return ((a.liquid_cooled ? 1 : 0) - (b.liquid_cooled ? 1 : 0)) * dir
       case 'ifaces': return ((a.interfaces_up ?? 0) - (b.interfaces_up ?? 0)) * dir
       case 'rx':     return ((a.total_rx_bytes ?? 0) - (b.total_rx_bytes ?? 0)) * dir
       case 'tx':     return ((a.total_tx_bytes ?? 0) - (b.total_tx_bytes ?? 0)) * dir
@@ -505,6 +506,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
           <SortTH label="Prod IP"    id="pip"    sort={sort} minW={95} title="Production NIC — OS SNMP agent answers here" />
           <SortTH label="Mgmt IP"    id="mip"    sort={sort} minW={95} title="BMC address — Redfish + BMC SNMP, alive even when powered off" />
           <SortTH label="Power State" id="pstate" sort={sort} minW={80} title="Live BMC power state — populated while the Redfish simulator runs" />
+          <SortTH label="Cooling"    id="cooling" sort={sort} minW={70} title="Direct-to-chip liquid cooling (CDU cold-plate loop) vs air-cooled" />
           <SortTH label="CPU"        id="cpu"    sort={sort} align="right" minW={80} />
           <SortTH label="Memory"     id="mem"    sort={sort} align="right" minW={100} />
           <SortTH label="Disk"       id="disk"   sort={sort} align="right" minW={100} />
@@ -540,6 +542,15 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
               <IpVal ip={d.ip_address} />
               <IpVal ip={d.mgmt_ip} />
               <td style={{ padding: '6px 10px' }}><StatePill val={d.power_state} okStates={['On']} /></td>
+              <td style={{ padding: '6px 10px' }}>
+                {d.liquid_cooled
+                  ? <span style={{
+                      display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
+                      fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
+                      background: '#0891b222', border: '1px solid #0891b255', color: '#22d3ee',
+                    }}>Liquid</span>
+                  : <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>Air</span>}
+              </td>
               {/* OS-level metrics have no reading while the chassis is off;
                   temps stay live — the BMC reads sensors on standby power. */}
               {off ? <DashCell /> : (

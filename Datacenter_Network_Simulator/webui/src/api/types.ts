@@ -46,6 +46,7 @@ export interface DeviceInfo {
   cpu_temp?: number
   inlet_temp?: number
   power_watts?: number
+  liquid_cooled?: boolean
   fan_rpm?: number
   power_state?: string
   mid_temp?: number

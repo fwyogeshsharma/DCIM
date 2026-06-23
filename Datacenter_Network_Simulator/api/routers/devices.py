@@ -25,6 +25,18 @@ def _state() -> AppState:
 _NO_IFACE_TYPES = {"ups", "pdu", "floor_pdu", "rpp", "sensor", "generator"}
 
 
+def _liquid_servers() -> set:
+    """Server names on a CDU cold-plate (direct-to-chip liquid) loop — derived
+    from the cooling topology, so it's valid even when BACnet isn't running."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        return set()
+    try:
+        return st._liquid_cooled_servers()
+    except Exception:
+        return set()
+
+
 def _server_power_state(device) -> str | None:
     """Live BMC power state — only available while the Redfish sim runs."""
     rf = _state().redfish
@@ -123,6 +135,7 @@ def _device_to_info(device) -> DeviceInfo:
         cpu_temp=getattr(device, "cpu_temp", None),
         inlet_temp=getattr(device, "inlet_temp", None),
         power_watts=(float(_live_watts(device)) or None) if dt == "server" else None,
+        liquid_cooled=(device.name in _liquid_servers()) if dt == "server" else None,
         fan_rpm=getattr(device, "fan_rpm", None) if dt == "server" else None,
         power_state=_server_power_state(device) if dt == "server" else None,
         mid_temp=getattr(device, "mid_temp", None)       if dt == "sensor" and getattr(device, "model_name", "") == "Raritan DPX2-T3H1" else None,

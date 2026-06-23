@@ -52,6 +52,10 @@ _SUPPLY_SETPOINT_C = 22.0
 # ΔT — and thus outlet_temp — is much lower than an all-air server's.
 _DTC_AIR_FRACTION = 0.30
 
+# Plant running-status points: a value of 0 means the unit is stopped, which for
+# cooling gear is as much a loss of cooling as an alarm — see _is_faulted().
+_RUNNING_POINTS = frozenset({"Chiller_Running", "Run_Status", "Fan_Status", "Unit_Running"})
+
 # UPS status progression
 _UPS_STATES = ("normal", "on_battery", "low_battery")
 # BGP session states
@@ -560,7 +564,8 @@ class DeviceStateStore:
                 dt = d.device_type
                 if dt == DeviceType.CRAH:
                     crah_by_room.setdefault((d.datacenter, d.room), []).append(d.name)
-                elif dt in (DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER):
+                elif dt in (DeviceType.CHILLER, DeviceType.PUMP,
+                            DeviceType.COOLING_TOWER, DeviceType.VALVE):
                     plant_by_dc.setdefault(d.datacenter, {}).setdefault(dt.value, []).append(d.name)
         except Exception:
             log.exception("[StateStore] cooling context build error")
@@ -575,11 +580,18 @@ class DeviceStateStore:
 
     @staticmethod
     def _is_faulted(name: str) -> bool:
-        """True if any Alarm_* point of this plant device is currently set."""
+        """True if this plant device is in a cooling-loss state — either any
+        Alarm_* point is set, or its running-status point reads 0 (unit stopped).
+        A stopped unit is as much a loss of cooling as an alarm."""
         pv = _plant_state_cache.get(name)
         if not pv:
             return False
-        return any(k.startswith("Alarm_") and float(v) >= 0.5 for k, v in pv.items())
+        for k, v in pv.items():
+            if k.startswith("Alarm_") and float(v) >= 0.5:
+                return True
+            if k in _RUNNING_POINTS and float(v) < 0.5:
+                return True
+        return False
 
     def _compute_chw_penalty(self) -> None:
         """Per-tick: roll the per-DC chilled-water temperature penalty toward the
@@ -587,8 +599,9 @@ class DeviceStateStore:
         scales with the FRACTION of failed units of each kind, so losing 1 of 3
         chillers only partially warms the loop. Ramped (EMA) so it eases in/out."""
         ctx = self._cooling_context()
-        # weight (°C of CHW rise) if an entire stage of a kind were down
-        W = {"chiller": 8.0, "pump": 5.0, "cooling_tower": 4.0}
+        # weight (°C of CHW rise) if an entire stage of a kind were down. A stuck
+        # valve throttles its loop, so it contributes like a partial flow loss.
+        W = {"chiller": 8.0, "pump": 5.0, "cooling_tower": 4.0, "valve": 3.0}
         for dc, kinds in ctx["plant_by_dc"].items():
             target = 0.0
             for kind, names in kinds.items():
@@ -601,18 +614,31 @@ class DeviceStateStore:
             self._chw_pen[dc] = round(cur + (target - cur) * 0.06, 3)   # smooth ramp
 
     def _room_supply_temp(self, device: "Device") -> float:
-        """Cold-aisle supply temperature for a device's room. Tied to the live
-        CRAH supply air when available (so a CRAH fault propagates to inlets),
-        plus the datacenter CHW penalty from upstream faults; falls back to the
-        per-rack mean-reverting baseline when no CRAH telemetry is present."""
+        """Cold-aisle supply temperature for a device's room.
+
+        Healthy CRAHs set the room supply via their live Supply_Air_Temp (so a
+        HighTemp fault, which warms that air, propagates to inlets). A CRAH that
+        is OFF (Unit_Running=0) or has lost airflow delivers no cold air, so it is
+        dropped from the average AND counts as lost cooling capacity — the room
+        warms in proportion to the fraction of CRAHs down. The datacenter CHW
+        penalty (upstream chiller/pump/tower/valve faults) is added on top."""
         ctx = self._cooling_context()
         crahs = ctx["crah_by_room"].get((device.datacenter, device.room))
-        supplies = []
-        for n in (crahs or []):
-            pv = _plant_state_cache.get(n)
-            if pv and pv.get("Supply_Air_Temp") is not None:
-                supplies.append(float(pv["Supply_Air_Temp"]))
+        if not crahs:
+            return self._rack_supply_temp(device) + self._chw_pen.get(device.datacenter, 0.0)
+        supplies, ndown = [], 0
+        for n in crahs:
+            pv = _plant_state_cache.get(n) or {}
+            off = float(pv.get("Unit_Running", 1.0)) < 0.5
+            noair = float(pv.get("Alarm_AirflowLoss", 0.0)) >= 0.5
+            if off or noair:               # not delivering cold air
+                ndown += 1
+                continue
+            sa = pv.get("Supply_Air_Temp")
+            if sa is not None:
+                supplies.append(float(sa))
         base = sum(supplies) / len(supplies) if supplies else self._rack_supply_temp(device)
+        base += (ndown / len(crahs)) * 12.0      # lost capacity → room heats (all down → +12)
         return base + self._chw_pen.get(device.datacenter, 0.0)
 
     def _compute_leak_heat(self) -> None:
@@ -895,8 +921,11 @@ class DeviceStateStore:
                 # nominal, and an upstream chiller/CHW fault adds the DC penalty.
                 _cdu = self._cooling_context()["cdu_by_server"].get(device.name)
                 _pv = _plant_state_cache.get(_cdu) if _cdu else None
-                if _pv and _pv.get("TCS_Supply_Temp") is not None:
-                    _cpu_t += max(0.0, float(_pv["TCS_Supply_Temp"]) - 32.0) * 1.2
+                if _pv:
+                    if float(_pv.get("Unit_Running", 1.0)) < 0.5:
+                        _cpu_t += 34.0          # CDU stopped → coolant flow lost → die climbs
+                    elif _pv.get("TCS_Supply_Temp") is not None:
+                        _cpu_t += max(0.0, float(_pv["TCS_Supply_Temp"]) - 32.0) * 1.2
                 _cpu_t += self._chw_pen.get(device.datacenter, 0.0) * 0.8
             else:
                 _cpu_t = 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0)
