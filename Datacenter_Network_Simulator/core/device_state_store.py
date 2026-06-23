@@ -40,6 +40,12 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
+# Cold-aisle CRAH supply-air setpoint (°C). IT inlet/intake temperatures are
+# modelled around this value, not around device CPU load — it is the air the
+# equipment pulls in. ~22 °C sits in the middle of the ASHRAE TC9.9 recommended
+# envelope (18–27 °C). Override-friendly single source of truth.
+_SUPPLY_SETPOINT_C = 22.0
+
 # UPS status progression
 _UPS_STATES = ("normal", "on_battery", "low_battery")
 # BGP session states
@@ -650,10 +656,11 @@ class DeviceStateStore:
             device.cpu_usage = 0
             device.memory_used = 0
             device.sys_uptime = 0
-            # CPU cools toward chassis inlet; inlet settles to room ambient.
+            # Powered off: no airflow, the intake sensor reads surrounding
+            # cold-aisle air (the CRAH supply setpoint), same as a live inlet.
             if mf["inlet_temp"]:
-                device.inlet_temp = round(max(15.0, min(55.0,
-                    18.0 + random.uniform(-0.5, 0.5))), 1)
+                device.inlet_temp = round(max(15.0, min(32.0,
+                    _SUPPLY_SETPOINT_C + random.uniform(-1.0, 1.0))), 1)
             # CPU temp decays gradually toward 0 — chip stops dissipating once
             # powered off (sensor reads no heat).
             if mf["cpu_temp"]:
@@ -762,10 +769,16 @@ class DeviceStateStore:
             _fan = 3000.0 + max(0.0, device.cpu_temp - 40.0) * 95.0 + random.uniform(-60, 60)
             device.fan_rpm = int(max(0.0, self._num_limit("fan_rpm", _fan)))
 
-        # Chassis inlet temperature — servers/network gear only (CPU-linked)
+        # Chassis inlet temperature — servers/network gear only. This is the
+        # COLD-AISLE INTAKE air the box pulls in, NOT an internal temperature:
+        # it is set by the CRAH supply setpoint + recirculation, and is largely
+        # independent of this device's own CPU load (the heat from load shows up
+        # in cpu_temp and outlet_temp, not at the inlet). Modelled as the supply
+        # setpoint plus small noise, kept inside the ASHRAE TC9.9 *recommended*
+        # envelope (18–27 °C; cold aisles typically run ~20–25 °C).
         if mf["inlet_temp"] and device.device_type not in (DeviceType.SENSOR, DeviceType.RPP):
-            device.inlet_temp = round(max(15.0, min(55.0,
-                18.0 + device.cpu_usage * 0.12 + random.uniform(-0.5, 0.5))), 1)
+            device.inlet_temp = round(max(15.0, min(32.0,
+                _SUPPLY_SETPOINT_C + random.uniform(-1.5, 2.5))), 1)
             device.inlet_temp = self._num_limit("inlet_temp", device.inlet_temp)
 
         # Server chassis airflow + exhaust temp. The BMC reports exhaust as

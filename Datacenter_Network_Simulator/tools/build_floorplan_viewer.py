@@ -69,10 +69,22 @@ HEAD = r"""<!doctype html>
   #c3d{position:absolute;inset:0;display:none}
   #tip{position:absolute;pointer-events:none;background:#000c;border:1px solid var(--line);
     border-radius:6px;padding:6px 8px;font-size:11px;display:none;z-index:5;max-width:240px}
-  #hlegend{position:absolute;left:12px;bottom:12px;background:#0b0e13d9;border:1px solid var(--line);
-    border-radius:8px;padding:8px 10px;font-size:11px;display:none;z-index:4}
-  #hlegend .bar{height:9px;width:170px;border-radius:3px;margin:5px 0}
-  #hlegend .ends{display:flex;justify-content:space-between;color:var(--muted)}
+  #hlegend{position:absolute;left:12px;bottom:12px;background:#0b0e13f2;border:1px solid var(--line);
+    border-radius:10px;padding:9px 12px 7px;font-size:11px;display:none;z-index:4;
+    box-shadow:0 6px 20px #0007;backdrop-filter:blur(3px)}
+  #hlegend .ttl{font-weight:600;letter-spacing:.02em;margin-bottom:6px}
+  #hlegend .ttl .tag{font-weight:500;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px}
+  #hlegend .ttl .tag.live{background:#10351f;color:#56d98a;border:1px solid #1d6b3d}
+  #hlegend .ttl .tag.est{background:#3a2a0b;color:#ffd98a;border:1px solid #6b5418}
+  #hlegend .barwrap{position:relative;width:200px;height:26px}
+  #hlegend .bar{height:11px;width:200px;border-radius:3px;
+    box-shadow:inset 0 0 0 1px #ffffff14}
+  #hlegend .tick{position:absolute;top:12px;transform:translateX(-50%);color:var(--muted);
+    font-size:9px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  #hlegend .tick::before{content:'';position:absolute;left:50%;top:-12px;width:1px;height:5px;
+    background:#ffffff55}
+  #hlegend .rng{color:var(--muted);font-size:10px;margin-top:3px}
+  #hlegend .rng b{color:var(--fg);font-variant-numeric:tabular-nums}
   #note{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#3a2a0bdd;
     border:1px solid #6b5418;color:#ffd98a;padding:5px 12px;border-radius:20px;font-size:11px;
     display:none;z-index:6}
@@ -114,7 +126,7 @@ HEAD = r"""<!doctype html>
     <span class="seg-wrap"><button id="v2d" class="seg on">2D</button><button id="v3d" class="seg">3D</button></span>
     <button id="heat">Heatmap: off</button>
     <button id="cut" title="3D: see into the raised-floor plenum (underfloor sensors)">Cutaway: off</button>
-    <span><label>Metric</label><select id="metric">
+    <span id="metricwrap" style="display:none"><label>Metric</label><select id="metric">
       <option value="power">Power density (kW)</option>
       <option value="capacity">Capacity (RU %)</option>
       <option value="inlet">Inlet thermal (&deg;C)</option>
@@ -132,7 +144,7 @@ HEAD = r"""<!doctype html>
       <div id="c3d"></div>
       <div id="tip"></div>
       <div id="note"></div>
-      <div id="hlegend"><div class="ttl"></div><div class="bar"></div><div class="ends"><span class="lo"></span><span class="hi"></span></div></div>
+      <div id="hlegend"><div class="ttl"></div><div class="barwrap"><div class="bar"></div><div class="ticks"></div></div><div class="rng"></div></div>
       <div id="nav3d">
         <div class="nrow"><button data-v="top" title="Top view">Top</button><button data-v="iso" title="Isometric">Iso</button><button data-v="front" title="Front view">Front</button></div>
         <div class="dpad">
@@ -232,8 +244,14 @@ function aggLive(rid, fields, agg){ if(typeof fields==='string') fields=[fields]
 /* ===================== metrics (heatmap_design sec 7.1 / 7.4) ===================== */
 function occupiedU(rid){ return (devByRack[rid]||[]).filter(d=>(d.rack_unit||0)>=1).length; }
 function rackKW(r){ return (r.it_power_draw_w||0)/1000; }
-let _roomMaxKW = 1;
-function estTemp(r){ return 18 + (rackKW(r)/Math.max(_roomMaxKW,0.001))*14; } // 18..32, NOT measured
+// Offline inlet ESTIMATE on an ABSOLUTE scale (not room-relative): a typical
+// cold-aisle supply setpoint plus a recirculation rise that grows with the
+// rack's ABSOLUTE load against a reference full rack. A lightly loaded hall no
+// longer shows a fake-hot rack just for being the densest in the room. Still an
+// estimate, not a measurement -- real inlet tracks CRAH supply + containment.
+const INLET_SUPPLY_C = 22;   // ASHRAE A1 recommended cold-aisle supply (~22 C)
+const RACK_FULL_KW   = 15;   // reference "full" rack load for the estimate
+function estTemp(r){ return INLET_SUPPLY_C + Math.min(rackKW(r)/RACK_FULL_KW,1)*10; } // ABSOLUTE 22..32, NOT measured
 const live = ()=> LIVE.on && LIVE.ok;
 const METRIC = {
   // power: live sum of power_watts when connected, else static nameplate-derived kW.
@@ -263,6 +281,12 @@ const METRIC = {
 };
 function metricReal(m){ return m.kind==='static' || m.kind==='either'
   || (m.kind==='liveOrEst' && live()) || (m.kind==='liveOnly' && live()); }
+// The heatmap overlay only renders with REAL data: 'static' metrics (capacity =
+// rack-unit occupancy from topology, no simulator tick needed) are always
+// allowed; every telemetry-derived metric (power/inlet/exhaust/humidity)
+// requires a live connection to the running simulator. No live = no heat paint,
+// so a stopped sim never shows a misleading estimated/nameplate heatmap.
+function heatReady(m){ return m.kind==='static' || live(); }
 
 function lerp(a,b,t){ return a+(b-a)*t; }
 function hex2rgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
@@ -292,15 +316,16 @@ function fitView(g){ const stage=$('#stage'), W=stage.clientWidth, H=stage.clien
 
 function draw2D(){
   const g=roomGeom(S.dc,S.room), racks=racksByRoom[S.dc+' / '+S.room]||[];
-  const m=METRIC[S.metric]; _roomMaxKW=Math.max(...racks.map(rackKW),0.001);
+  const m=METRIC[S.metric];
   const dpr=window.devicePixelRatio||1, stage=$('#stage');
   c2d.width=stage.clientWidth*dpr; c2d.height=stage.clientHeight*dpr;
   c2d.style.width=stage.clientWidth+'px'; c2d.style.height=stage.clientHeight+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,stage.clientWidth,stage.clientHeight);
   const {sc,ox,oy}=fitView(g); const X=mx=>ox+mx*sc, Y=my=>oy+my*sc;
+  const heatOn = S.heat && heatReady(m);   // no live data -> no heat paint
 
   // heatmap raster first (under racks)
-  if(S.heat){ const samples=samplesFor(racks,m); const step=0.3;
+  if(heatOn){ const samples=samplesFor(racks,m); const step=0.3;
     for(let gx=0;gx<g.width_m;gx+=step) for(let gy=0;gy<g.depth_m;gy+=step){
       const v=idw(samples,gx+step/2,gy+step/2); if(v==null) continue;
       const c=bandColor(v,m.bands); ctx.fillStyle=`rgba(${c[0]|0},${c[1]|0},${c[2]|0},0.78)`;
@@ -328,7 +353,7 @@ function draw2D(){
       const vlv=ds.filter(d=>d.device_type==='valve');
       chl.forEach((d,i)=>{ const cw=1.0*sc, ch=2.0*sc;
         const cpx=X(r.floor_x+0.7+i*1.5)-cw/2, cpy=Y(r.floor_y+0.9)-ch/2;
-        ctx.fillStyle=S.heat?'#555':tcolor('chiller'); ctx.fillRect(cpx,cpy,cw,ch);
+        ctx.fillStyle=heatOn?'#555':tcolor('chiller'); ctx.fillRect(cpx,cpy,cw,ch);
         ctx.strokeStyle='#0b0e13'; ctx.lineWidth=1; ctx.strokeRect(cpx,cpy,cw,ch);
         if(cw>16){ ctx.fillStyle='#052b2b'; ctx.font='bold 9px sans-serif'; ctx.fillText('CH'+(i+1),cpx+3,cpy+12); }
         hit2d.push({x:cpx,y:cpy,w:cw,h:ch,r}); });
@@ -348,7 +373,7 @@ function draw2D(){
     const fw=(gen?0.5:ups?0.55:FOOT.width)*sc, fd=(gen?1.7:ups?0.82:FOOT.depth)*sc;
     const px=X(r.floor_x)-fw/2, py=Y(r.floor_y)-fd/2;
     let fill;
-    if(S.heat){ const v=m.val(r); const c= v>0? bandColor(v,m.bands):[60,60,60];
+    if(heatOn){ const v=m.val(r); const c= v>0? bandColor(v,m.bands):[60,60,60];
       fill=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; }
     else { const main=ds[0]; fill = main? tcolor(main.device_type):'#444';
       if(ct) fill=tcolor('cooling_tower'); else if(rpp) fill=tcolor('rpp'); }
@@ -424,9 +449,10 @@ function perfTexture(){ const N=64,cv=document.createElement('canvas');cv.width=
 
 // ---- realistic device front panels (drawn to a canvas, used as map + emissiveMap) ----
 const _panelCache={}, _frontCache={}; let _darkMat=null;
-function darkMat(){ return _darkMat || (_darkMat=mat3(0x191e26,{metalness:0.55,roughness:0.5})); }
+function darkMat(){ return _darkMat || (_darkMat=mat3(0x191e26,{metalness:0.55,roughness:0.5}),_darkMat._keep=true,_darkMat); }
 function frontMat(t,u){ const k=t+'_'+u; if(_frontCache[k]) return _frontCache[k]; const tex=panelTexture(t,u);
-  return _frontCache[k]=new THREE.MeshStandardMaterial({map:tex,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:0.55,metalness:0.3,roughness:0.55}); }
+  const mt=new THREE.MeshStandardMaterial({map:tex,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:0.55,metalness:0.3,roughness:0.55}); mt._keep=true;
+  return _frontCache[k]=mt; }
 function panelTexture(type,u){ const key=type+'_'+u; if(_panelCache[key]) return _panelCache[key];
   const Wp=512, Hp=Math.max(44,Math.round(46*u)); const cv=document.createElement('canvas'); cv.width=Wp; cv.height=Hp;
   const c=cv.getContext('2d'); const A=tcolor(type), R=Math.max(2,Hp*0.05);
@@ -471,7 +497,7 @@ function panelTexture(type,u){ const key=type+'_'+u; if(_panelCache[key]) return
     c.fillStyle='#04222a'; c.fillRect(Wp*0.62,Hp*0.3,Wp*0.2,Hp*0.4); c.strokeStyle='#0d7d8c'; c.lineWidth=2; c.strokeRect(Wp*0.62,Hp*0.3,Wp*0.2,Hp*0.4);
     led(Wp-40,Hp*0.35,'#39d353'); led(Wp-40,Hp*0.6,'#f0a020');
   }
-  const tx=new THREE.CanvasTexture(cv); tx.anisotropy=4; _panelCache[key]=tx; return tx; }
+  const tx=new THREE.CanvasTexture(cv); tx.anisotropy=4; tx._keep=true; _panelCache[key]=tx; return tx; }
 
 // rear/exhaust face texture: perforated grille + PSU fans + power inlets (per type+U)
 function rearTexture(type,u){ const key='rear_'+type+'_'+u; if(_panelCache[key]) return _panelCache[key];
@@ -491,9 +517,10 @@ function rearTexture(type,u){ const key='rear_'+type+'_'+u; if(_panelCache[key])
       c.fillStyle='#05080c'; c.fillRect(px+4,py+psH-13,17,10); c.strokeStyle='#2a323d'; c.strokeRect(px+4,py+psH-13,17,10);    // C14 inlet
       c.fillStyle='#39d353'; c.beginPath(); c.arc(px+psW-9,py+9,3,0,7); c.fill(); }
     for(let i=0;i<2;i++){ c.fillStyle='#05080c'; c.fillRect(26+i*22,Hp*0.42,15,Hp*0.26); c.strokeStyle='#3a4658'; c.lineWidth=1; c.strokeRect(26+i*22,Hp*0.42,15,Hp*0.26); } }   // rear mgmt ports
-  const tx=new THREE.CanvasTexture(cv); tx.anisotropy=4; _panelCache[key]=tx; return tx; }
+  const tx=new THREE.CanvasTexture(cv); tx.anisotropy=4; tx._keep=true; _panelCache[key]=tx; return tx; }
 function rearMat(t,u){ const k='rearm_'+t+'_'+u; if(_frontCache[k]) return _frontCache[k]; const tex=rearTexture(t,u);
-  return _frontCache[k]=new THREE.MeshStandardMaterial({map:tex,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:0.28,metalness:0.4,roughness:0.6}); }
+  const mt=new THREE.MeshStandardMaterial({map:tex,emissive:0xffffff,emissiveMap:tex,emissiveIntensity:0.28,metalness:0.4,roughness:0.6}); mt._keep=true;
+  return _frontCache[k]=mt; }
 
 // a realistic 0U vertical rack PDU (e.g. APC AP86xx): dark metal strip, top metering
 // display, a column of outlets down the inner face, input cord stub at the bottom.
@@ -548,9 +575,20 @@ function makeRack(r,ds,m){ const grp=new THREE.Group(); const W=FOOT.width,D=FOO
   }
   for(const sx of [-1,1]){ const cb=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.028,RACK_H*0.82,6),
     mat3(0x0a0d12,{roughness:0.95})); cb.position.set(sx*(W/2-0.1),RACK_H*0.5+0.06,-D/2+0.06); grp.add(cb); }   // rear cable bundles
-  if(S.heat){ const v=m.val(r); if(v>0){ const c=bandColor(v,m.bands);
-    const sh=new THREE.Mesh(new THREE.BoxGeometry(W+0.05,RACK_H+0.05,D+0.05),
-      new THREE.MeshBasicMaterial({color:`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`,transparent:true,opacity:0.42})); sh.position.y=RACK_H/2; grp.add(sh); } }
+  if(S.heat && heatReady(m)){ const v=m.val(r); if(v>0){ const c=bandColor(v,m.bands);
+    const lo=m.bands[0][0], hi=m.bands[m.bands.length-1][0];
+    const t=Math.max(0,Math.min(1,(v-lo)/((hi-lo)||1)));           // 0 = cool .. 1 = hot
+    const col=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+    // body glow: additive so it reads as light, and bolder the hotter the rack
+    // is -- cool racks barely tint, hot racks bloom. Overlapping glows pool like
+    // a real thermal field. depthWrite off avoids transparent-sort flicker.
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(W+0.06,RACK_H+0.05,D+0.06),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.18+0.42*t,
+        blending:THREE.AdditiveBlending,depthWrite:false})); sh.position.y=RACK_H/2; grp.add(sh);
+    // solid cap on top: gives every rack a flat colour chip readable from iso/top
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(W+0.09,0.05,D+0.09),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.92}));
+    cap.position.y=RACK_H+0.07; grp.add(cap); } }
   return grp; }
 
 // floor-standing perimeter CRAH: brushed-metal cabinet, top intake fan, downflow into plenum
@@ -695,11 +733,26 @@ function makePlant(r,ds){ const grp=new THREE.Group();
       mat3(tcolor('oob_switch'),{emissive:emi(tcolor('oob_switch'),0.3)})); ob.userData.device=d; });
   return grp; }
 
+// Recursively remove + dispose a group's children. Geometries are always fresh
+// per build so they are disposed unconditionally; materials/textures tagged
+// ._keep (the shared _frontCache/_panelCache/darkMat caches) are left intact.
+function disposeGroup(g){
+  for(let i=g.children.length-1;i>=0;i--){ const o=g.children[i];
+    if(o.children && o.children.length) disposeGroup(o);
+    if(o.geometry) o.geometry.dispose();
+    if(o.material){ const mats=Array.isArray(o.material)?o.material:[o.material];
+      for(const mt of mats){ if(!mt||mt._keep) continue;
+        for(const mk of ['map','emissiveMap','normalMap','roughnessMap','metalnessMap','alphaMap']){
+          const t=mt[mk]; if(t && !t._keep) t.dispose(); }
+        mt.dispose(); } }
+    g.remove(o);
+  }
+}
 function draw3D(){
   const host=$('#c3d');
   if(typeof THREE==='undefined'){ host.innerHTML='<div style="color:#ffd98a;padding:30px">3D needs the Three.js CDN (internet). 2D works offline.</div>'; return; }
   const g=roomGeom(S.dc,S.room), racks=racksByRoom[S.dc+' / '+S.room]||[];
-  const m=METRIC[S.metric]; _roomMaxKW=Math.max(...racks.map(rackKW),0.001);
+  const m=METRIC[S.metric];
   const W=host.clientWidth,H=host.clientHeight;
   if(!three){ const sc=new THREE.Scene(); sc.background=new THREE.Color(0x090c11);
     const cam=new THREE.PerspectiveCamera(50,W/H,0.1,500);
@@ -714,13 +767,19 @@ function draw3D(){
     three={sc,cam,rn,ctr,root,ray:new THREE.Raycaster(),mouse:new THREE.Vector2()};
     rn.domElement.addEventListener('click',on3dClick);
     (function loop(){ requestAnimationFrame(loop);
+      if(S.view!=='3d') return;   // don't burn GPU rendering the hidden canvas while on 2D
       if(three.anim){ const a=three.anim; a.t++; let k=Math.min(1,a.t/a.dur); k=k<0.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
         three.cam.position.lerpVectors(a.fromP,a.toP,k); three.ctr.target.lerpVectors(a.fromT,a.toT,k);
         if(a.t>=a.dur) three.anim=null; }
       three.ctr.update(); three.rn.render(three.sc,three.cam); })();
   }
   const {cam,rn,ctr,root}=three; rn.setSize(W,H); cam.aspect=W/H; cam.updateProjectionMatrix();
-  while(root.children.length) root.remove(root.children[0]);
+  // Free GPU memory from the previous build before rebuilding. Three.js does NOT
+  // auto-dispose geometries/materials/textures; without this, a live poll every
+  // 5s leaks the whole scene each time -> hundreds of MB after ~20 min -> the
+  // browser stalls when the iframe is torn down on 'Back'. Cached, reused
+  // resources are tagged ._keep and skipped.
+  disposeGroup(root);
   const cx=g.width_m/2, cz=g.depth_m/2;
   // Cutaway fades the plenum perimeter walls too, else they hide the void from the side.
   const wmat = S.cut ? mat3(0x0f141b,{roughness:1,transparent:true,opacity:0.12})
@@ -757,10 +816,12 @@ function draw3D(){
       const tile=new THREE.Mesh(pl,mt); tile.rotation.x=-Math.PI/2; tile.position.set(0,RF+0.025,a.y-cz); root.add(tile); }
   }
 
-  // heat field overlay when ON
-  if(S.heat){ const hp=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
-      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,opacity:0.6}));
-    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.05,0); root.add(hp); }
+  // heat field overlay when ON (and live data is available). Additive so it
+  // glows from the floor rather than reading as a flat painted stain.
+  if(S.heat && heatReady(m)){ const hp=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
+      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,opacity:0.5,
+        blending:THREE.AdditiveBlending,depthWrite:false}));
+    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.06,0); root.add(hp); }
 
   // cells: CRAH unit / power panel / populated rack
   three.pick=[];
@@ -853,24 +914,35 @@ function on3dClick(e){ const host=$('#c3d'), b=host.getBoundingClientRect();
   if(!hits.length) return; let o=hits[0].object, dev=null, rack=null;
   while(o){ if(!dev&&o.userData.device) dev=o.userData.device; if(!rack&&o.userData.rack) rack=o.userData.rack; o=o.parent; }
   if(dev) selectDevice(dev,rack); else if(rack) selectRack(rack); }
-function heatTexture(g,racks,m){ const N=96; const cv=document.createElement('canvas'); cv.width=cv.height=N;
+function heatTexture(g,racks,m){ const N=128; const cv=document.createElement('canvas'); cv.width=cv.height=N;
   const cc=cv.getContext('2d'); const samples=samplesFor(racks,m);
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){ const gx=(i+0.5)/N*g.width_m, gy=(j+0.5)/N*g.depth_m;
     const v=idw(samples,gx,gy); if(v==null){ cc.clearRect(i,j,1,1); continue; }
     const c=bandColor(v,m.bands); cc.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; cc.fillRect(i,N-1-j,1,1); }
-  const tx=new THREE.CanvasTexture(cv); tx.needsUpdate=true; return tx; }
+  const tx=new THREE.CanvasTexture(cv); tx.minFilter=tx.magFilter=THREE.LinearFilter;
+  tx.needsUpdate=true; return tx; }
 
 /* ===================== heatmap legend ===================== */
-function drawHLegend(m, racks){ const el=$('#hlegend'); if(!S.heat){ el.style.display='none'; return; }
+function drawHLegend(m, racks){ const el=$('#hlegend'); if(!S.heat || !heatReady(m)){ el.style.display='none'; return; }
   el.style.display='block';
-  const vals=racks.map(m.val).filter(v=>v>0); const lo=Math.min(...vals,0), hi=Math.max(...vals,1);
-  const tag = metricReal(m) ? (live()&&(m.kind==='liveOrEst'||m.kind==='liveOnly'||m.kind==='either')?'  - live':'') : '  - estimated, not measured';
-  el.querySelector('.ttl').textContent=m.label+' ('+m.unit+')'+tag;
-  const stops=m.bands.map(b=>{ const c=hex2rgb(b[1]); return `rgb(${c[0]},${c[1]},${c[2]}) ${
-    Math.round((b[0]-m.bands[0][0])/((m.bands[m.bands.length-1][0]-m.bands[0][0])||1)*100)}%`; }).join(',');
+  const b0=m.bands[0][0], bN=m.bands[m.bands.length-1][0], span=(bN-b0)||1;
+  const pct=v=>Math.round((v-b0)/span*100), dp=m.unit==='%RU'?0:1;
+  // title + live/estimated chip
+  const isLive = live()&&(m.kind==='liveOrEst'||m.kind==='liveOnly'||m.kind==='either');
+  el.querySelector('.ttl').innerHTML = m.label+' <span style="color:var(--muted)">('+m.unit+')</span>'
+    + (isLive?'<span class="tag live">live</span>':!metricReal(m)?'<span class="tag est">estimated</span>':'');
+  // gradient bar coloured by band thresholds
+  const stops=m.bands.map(b=>{ const c=hex2rgb(b[1]); return `rgb(${c[0]},${c[1]},${c[2]}) ${pct(b[0])}%`; }).join(',');
   el.querySelector('.bar').style.background=`linear-gradient(90deg,${stops})`;
-  el.querySelector('.lo').textContent=m.bands[0][0]+' '+m.unit;
-  el.querySelector('.hi').textContent=m.bands[m.bands.length-1][0]+'+ '+m.unit;
+  // threshold tick marks: lets the reader map a colour back to a value
+  const ticks=el.querySelector('.ticks'); ticks.innerHTML='';
+  for(const b of m.bands){ const t=document.createElement('span'); t.className='tick';
+    t.style.left=pct(b[0])+'%'; t.textContent=b[0]; ticks.appendChild(t); }
+  // actual range over real samples in this room
+  const vals=racks.map(m.val).filter(v=>v!=null&&v>0);
+  el.querySelector('.rng').innerHTML = vals.length
+    ? 'room range <b>'+Math.min(...vals).toFixed(dp)+'</b>–<b>'+Math.max(...vals).toFixed(dp)+'</b> '+m.unit
+    : 'no racks reporting';
 }
 
 /* ===================== rack detail (layout.md elevation) ===================== */
@@ -932,10 +1004,10 @@ function buildSidebar(){ const racks=racksByRoom[S.dc+' / '+S.room]||[];
 /* ===================== render dispatch ===================== */
 function render(){
   const m=METRIC[S.metric], note=$('#note');
-  if(S.heat && !metricReal(m)){ note.style.display='block';
-    note.textContent = (m.kind==='liveOnly')
-      ? m.label+' has no data in a static asset file - enable Live + start the simulator API (heatmap_design sec 3.1).'
-      : 'Inlet thermal is ESTIMATED from power - enable Live for real Redfish/SNMP readings (heatmap_design sec 3.1).';
+  $('#metricwrap').style.display = S.heat ? '' : 'none';   // metric only matters with the heatmap on
+  if(S.heat && !heatReady(m)){ note.style.display='block';
+    note.textContent = m.label+' needs live telemetry - start the simulator and enable Live '
+      + '(no heatmap is drawn from static/estimated data; heatmap_design sec 3.1).';
   } else note.style.display='none';
   if(S.view==='2d'){ c2d.style.display='block'; $('#c3d').style.display='none'; draw2D(); }
   else { c2d.style.display='none'; $('#c3d').style.display='block'; draw3D(); }
@@ -967,6 +1039,19 @@ c2d.addEventListener('mousemove',e=>{ const b=c2d.getBoundingClientRect(),x=e.cl
       `<br>${m.label}: ${m.val(r).toFixed(1)} ${m.unit}`; return; } } tip.style.display='none'; });
 function closeDetailSilent(){ S.selDev=null; $('#main').classList.remove('detail'); $('#detail').innerHTML=''; }
 window.addEventListener('resize',()=>render());
+
+// Proactive teardown: the React host destroys this iframe on 'Back'. Release the
+// WebGL context + GPU memory and stop the live poll immediately, rather than
+// waiting on GC — that lag was what made the parent app freeze after a long
+// session. Idempotent and guarded so a failure here never blocks navigation.
+window.addEventListener('pagehide',()=>{ try{
+  if(LIVE.timer){ clearInterval(LIVE.timer); LIVE.timer=null; LIVE.on=false; }
+  if(three){ disposeGroup(three.root);
+    if(three.ctr&&three.ctr.dispose) three.ctr.dispose();
+    three.rn.dispose(); if(three.rn.forceContextLoss) three.rn.forceContextLoss();
+    const el=three.rn.domElement; if(el&&el.parentNode) el.parentNode.removeChild(el);
+    three=null; }
+}catch(e){} });
 
 /* ===================== init ===================== */
 fillSelect($('#dc'),DCs); S.dc=DCs[0]; const r0=roomsFor(S.dc); fillSelect($('#room'),r0);
