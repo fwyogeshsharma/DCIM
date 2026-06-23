@@ -544,24 +544,8 @@ function makeRack(r,ds,m){ const grp=new THREE.Group(); const W=FOOT.width,D=FOO
   for(const sx of [-1,1]){ const cb=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.028,RACK_H*0.82,6),
     mat3(0x0a0d12,{roughness:0.95})); cb.position.set(sx*(W/2-0.1),RACK_H*0.5+0.06,-D/2+0.06); grp.add(cb); }   // rear cable bundles
   if(S.heat && heatReady(m)){ const v=m.val(r); if(v>0){ const c=bandColor(v,m.bands);
-    const lo=m.bands[0][0], hi=m.bands[m.bands.length-1][0];
-    const t=Math.max(0,Math.min(1,(v-lo)/((hi-lo)||1)));           // 0 = cool .. 1 = hot
-    const col=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
-    // NB: no full-height translucent glow box. Several large additive boxes with
-    // depthWrite off overlap each other + the floor plane, so the transparent
-    // sort order flips every frame (OrbitControls damping keeps the camera micro-
-    // moving) -> visible blinking. Instead use only blink-free primitives:
-    //  (a) an OPAQUE cap on top (depthWrite on -> never re-sorted), taller for
-    //      hotter racks so it still reads from iso/top;
-    const ch=0.05+0.12*t;
-    const cap=new THREE.Mesh(new THREE.BoxGeometry(W+0.09,ch,D+0.09),
-      new THREE.MeshBasicMaterial({color:col})); cap.position.y=RACK_H+0.04+ch/2; grp.add(cap);
-    //  (b) one flat colour panel on the rack FRONT (inlet face). A single depth-
-    //      tested quad per rack -> neighbours occlude it correctly, nothing
-    //      overlaps itself, so no z-fight / flicker. Bolder the hotter the rack.
-    const fp=new THREE.Mesh(new THREE.PlaneGeometry(W*0.9,RACK_H*0.96),
-      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.3+0.4*t,depthWrite:false}));
-    fp.position.set(0,RACK_H/2,D/2+0.035); grp.add(fp); } }
+    const sh=new THREE.Mesh(new THREE.BoxGeometry(W+0.05,RACK_H+0.05,D+0.05),
+      new THREE.MeshBasicMaterial({color:`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`,transparent:true,opacity:0.42})); sh.position.y=RACK_H/2; grp.add(sh); } }
   return grp; }
 
 // floor-standing perimeter CRAH: brushed-metal cabinet, top intake fan, downflow into plenum
@@ -789,12 +773,10 @@ function draw3D(){
       const tile=new THREE.Mesh(pl,mt); tile.rotation.x=-Math.PI/2; tile.position.set(0,RF+0.025,a.y-cz); root.add(tile); }
   }
 
-  // heat field overlay when ON (and live data is available). Additive so it
-  // glows from the floor rather than reading as a flat painted stain.
+  // heat field overlay when ON (and live data is available)
   if(S.heat && heatReady(m)){ const hp=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
-      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,opacity:0.5,
-        blending:THREE.AdditiveBlending,depthWrite:false}));
-    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.06,0); root.add(hp); }
+      new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,opacity:0.6}));
+    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.05,0); root.add(hp); }
 
   // cells: CRAH unit / power panel / populated rack
   three.pick=[];
