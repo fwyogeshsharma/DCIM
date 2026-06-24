@@ -49,6 +49,13 @@ def main():
     old_pdu = {i for i, d in dev.items() if d["device_type"] == "pdu"}
     template = copy.deepcopy(nodeOf[next(iter(old_pdu))])
 
+    # Power-tier Y for the topology-canvas tier view: PDUs sit one tier above the
+    # RPP row (same 120px gap the generator used: pdu_y = rpp_y - 120). A single
+    # horizontal row keeps the canvas readable instead of piling PDUs at y=0.
+    rpp_ys = [n["position"]["y"] for n in nodes
+              if n["device"]["device_type"] == "rpp" and n.get("position")]
+    pdu_tier_y = (min(rpp_ys) - 120) if rpp_ys else 2020
+
     # RPP A/B per (dc, room) from the IT RPP nodes (name RPP-IT-<DC>-<A|B><n>)
     rpp_ab = {}   # (dc, room) -> {"A": id, "B": id}
     for d in dev.values():
@@ -117,7 +124,7 @@ def main():
                 "power_source_a": "", "power_source_b": "",
             })
             nd["id"] = nid
-            nd["position"] = {"x": sample_pos(nodeOf, members), "y": 0}
+            nd["position"] = {"x": sample_pos(nodeOf, members), "y": pdu_tier_y}
             d["interfaces"] = [dict(template["device"]["interfaces"][0],
                                     mac_address=macaddr(),
                                     connected_to_device=None, connected_to_iface=None)]
