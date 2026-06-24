@@ -77,6 +77,32 @@ function tempToColor(t: number): string {
 const HEATMAP_MIN_T = 10
 const HEATMAP_MAX_T = 55
 
+const DEVICE_ROLE_LABELS: Record<string, string> = {
+  edge_router: 'Edge Router', firewall: 'Firewall', load_balancer: 'Load Balancer',
+  core: 'Core Switch', spine: 'Spine Switch', distribution: 'Distribution Switch',
+  leaf: 'Leaf Switch', tor: 'ToR Switch', access: 'Access Switch',
+  oob_switch: 'OOB Switch', sensor: 'Sensor', server: 'Server',
+  pdu: 'PDU', ups: 'UPS', floor_pdu: 'Floor PDU',
+  pump: 'Pump', chiller: 'Chiller', cooling_tower: 'Cooling Tower',
+  crah: 'CRAH Unit', crac: 'CRAC Unit', valve: 'Valve', valves: 'Valve',
+  generator: 'Generator', cdu: 'CDU',
+}
+
+function getNodeDisplayType(node: LayoutNode): string {
+  if (node.type === 'server') return 'DCIM Server'
+  const role = node.deviceRole?.toLowerCase()
+  if (role && DEVICE_ROLE_LABELS[role]) return DEVICE_ROLE_LABELS[role]
+  if (node.deviceType) {
+    return node.deviceType
+      .replace('DeviceType.', '')
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, c => c.toUpperCase())
+  }
+  if (node.type === 'network') return 'Network Device'
+  return node.type.charAt(0).toUpperCase() + node.type.slice(1)
+}
+
 // ── Heatmap: top-down camera controller ──────────────────────────────────────
 
 function CameraTopDownController({ active }: { active: boolean }) {
@@ -2946,7 +2972,7 @@ export default function Topology3D() {
 
               <div>
                 <p className="text-sm text-slate-400">Type</p>
-                <p className="text-lg font-semibold text-white capitalize">{selectedNode.type}</p>
+                <p className="text-lg font-semibold text-white">{getNodeDisplayType(selectedNode)}</p>
               </div>
 
               <div>
