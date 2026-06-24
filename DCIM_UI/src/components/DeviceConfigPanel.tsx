@@ -17,9 +17,9 @@ const IDENTITY_FIELDS: { key: keyof DeviceConfigIdentity; label: string; oid: st
   { key: 'sysName',     label: 'sysName',     oid: '1.3.6.1.2.1.1.5.0' },
 ]
 
-const ASSET_FIELDS: { key: keyof DeviceConfigAsset; label: string; oid: string; numeric?: boolean }[] = [
-  { key: 'country',         label: 'Country',         oid: '…99999.4.1.0' },
-  { key: 'datacenter_city', label: 'Datacenter city', oid: '…99999.4.2.0' },
+const ASSET_FIELDS: { key: keyof DeviceConfigAsset; label: string; oid: string; numeric?: boolean; readonly?: boolean }[] = [
+  { key: 'country',         label: 'Country',         oid: '…99999.4.1.0', readonly: true },
+  { key: 'datacenter_city', label: 'Datacenter city', oid: '…99999.4.2.0', readonly: true },
   { key: 'datacenter',      label: 'Datacenter',      oid: '…99999.4.3.0' },
   { key: 'floor',           label: 'Floor',           oid: '…99999.4.4.0' },
   { key: 'room',            label: 'Room',            oid: '…99999.4.5.0' },
@@ -239,8 +239,11 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
           <div className="grid grid-cols-2 gap-3">
             {ASSET_FIELDS.map(f => (
               <Field key={f.key} label={f.label} oid={f.oid}>
-                <Input className={inputCls} type={f.numeric ? 'number' : 'text'}
-                  value={form.asset[f.key]} onChange={e => setAsset(f.key, e.target.value)} />
+                <Input className={`${inputCls}${f.readonly ? ' opacity-60 cursor-not-allowed' : ''}`}
+                  type={f.numeric ? 'number' : 'text'}
+                  value={form.asset[f.key]}
+                  readOnly={f.readonly} disabled={f.readonly}
+                  onChange={e => setAsset(f.key, e.target.value)} />
               </Field>
             ))}
           </div>
