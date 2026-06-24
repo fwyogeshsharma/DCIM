@@ -14,9 +14,7 @@ import type {
 // ── Field metadata ───────────────────────────────────────────────────────────
 
 const IDENTITY_FIELDS: { key: keyof DeviceConfigIdentity; label: string; oid: string }[] = [
-  { key: 'sysContact',  label: 'sysContact',  oid: '1.3.6.1.2.1.1.4.0' },
   { key: 'sysName',     label: 'sysName',     oid: '1.3.6.1.2.1.1.5.0' },
-  { key: 'sysLocation', label: 'sysLocation', oid: '1.3.6.1.2.1.1.6.0' },
 ]
 
 const ASSET_FIELDS: { key: keyof DeviceConfigAsset; label: string; oid: string; numeric?: boolean }[] = [
