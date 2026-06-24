@@ -545,53 +545,53 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Eaton RPP 250A", Vendor.EATON, DeviceType.RPP, [], "250A 3-phase RPP, 42 branch circuits, passive -- no SNMP"),
     ],
 
-    # ── CRAH -- Computer Room Air Handler (chilled water, metered via BACnet, no SNMP) ─
+    # ── CRAH -- Computer Room Air Handler (chilled water, SNMP + BACnet via native comm card) ─
     (DeviceType.CRAH, Vendor.VERTIV): [
-        DeviceModel("Vertiv Liebert PCW 100kW", Vendor.VERTIV, DeviceType.CRAH, [], "100kW chilled-water CRAH, cooling load -- metered via BACnet, no SNMP"),
-        DeviceModel("Vertiv Liebert CW 80kW", Vendor.VERTIV, DeviceType.CRAH, [], "80kW chilled-water CRAH, cooling load -- metered via BACnet, no SNMP"),
+        DeviceModel("Vertiv Liebert PCW 100kW", Vendor.VERTIV, DeviceType.CRAH, [], "100kW chilled-water CRAH, cooling load -- SNMP + BACnet (native comm card)"),
+        DeviceModel("Vertiv Liebert CW 80kW", Vendor.VERTIV, DeviceType.CRAH, [], "80kW chilled-water CRAH, cooling load -- SNMP + BACnet (native comm card)"),
     ],
     (DeviceType.CRAH, Vendor.APC): [
-        DeviceModel("APC InRow RC 60kW", Vendor.APC, DeviceType.CRAH, [], "60kW in-row chilled-water CRAH, cooling load -- metered via BACnet, no SNMP"),
+        DeviceModel("APC InRow RC 60kW", Vendor.APC, DeviceType.CRAH, [], "60kW in-row chilled-water CRAH, cooling load -- SNMP + BACnet (native comm card)"),
     ],
     (DeviceType.CRAH, Vendor.SCHNEIDER): [
-        DeviceModel("Schneider Uniflair LE 120kW", Vendor.SCHNEIDER, DeviceType.CRAH, [], "120kW perimeter chilled-water CRAH, cooling load -- metered via BACnet, no SNMP"),
+        DeviceModel("Schneider Uniflair LE 120kW", Vendor.SCHNEIDER, DeviceType.CRAH, [], "120kW perimeter chilled-water CRAH, cooling load -- SNMP + BACnet (native comm card)"),
     ],
 
-    # ── CHILLER -- Chiller unit (compressors + evaporator + condenser, SNMP + BACnet) ─
+    # ── CHILLER -- Chiller unit (compressors + evaporator + condenser, BACnet only -- no SNMP) ─
     (DeviceType.CHILLER, Vendor.CARRIER): [
-        DeviceModel("Carrier 30XW 500kW", Vendor.CARRIER, DeviceType.CHILLER, [_g(_GE, 1)], "500kW water-cooled screw chiller, SNMP + BACnet"),
-        DeviceModel("Carrier 19DV 800kW", Vendor.CARRIER, DeviceType.CHILLER, [_g(_GE, 1)], "800kW water-cooled centrifugal chiller, SNMP + BACnet"),
+        DeviceModel("Carrier 30XW 500kW", Vendor.CARRIER, DeviceType.CHILLER, [_g(_GE, 1)], "500kW water-cooled screw chiller, BACnet only -- no SNMP"),
+        DeviceModel("Carrier 19DV 800kW", Vendor.CARRIER, DeviceType.CHILLER, [_g(_GE, 1)], "800kW water-cooled centrifugal chiller, BACnet only -- no SNMP"),
     ],
     (DeviceType.CHILLER, Vendor.TRANE): [
-        DeviceModel("Trane RTAC 450kW", Vendor.TRANE, DeviceType.CHILLER, [_g(_GE, 1)], "450kW air-cooled screw chiller, SNMP + BACnet"),
+        DeviceModel("Trane RTAC 450kW", Vendor.TRANE, DeviceType.CHILLER, [_g(_GE, 1)], "450kW air-cooled screw chiller, BACnet only -- no SNMP"),
     ],
     (DeviceType.CHILLER, Vendor.DAIKIN): [
-        DeviceModel("Daikin WMC 600kW", Vendor.DAIKIN, DeviceType.CHILLER, [_g(_GE, 1)], "600kW water-cooled magnetic-bearing chiller, SNMP + BACnet"),
+        DeviceModel("Daikin WMC 600kW", Vendor.DAIKIN, DeviceType.CHILLER, [_g(_GE, 1)], "600kW water-cooled magnetic-bearing chiller, BACnet only -- no SNMP"),
     ],
 
-    # ── PUMP -- Chilled-/condenser-water pump (VFD, SNMP + BACnet) ─
+    # ── PUMP -- Chilled-/condenser-water pump (VFD, BACnet only -- no SNMP) ─
     (DeviceType.PUMP, Vendor.GRUNDFOS): [
-        DeviceModel("Grundfos NB 65-200", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "End-suction VFD water pump, SNMP + BACnet"),
-        DeviceModel("Grundfos TP 100-360", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "In-line VFD water pump, SNMP + BACnet"),
+        DeviceModel("Grundfos NB 65-200", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "End-suction VFD water pump, BACnet only -- no SNMP"),
+        DeviceModel("Grundfos TP 100-360", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "In-line VFD water pump, BACnet only -- no SNMP"),
     ],
     (DeviceType.PUMP, Vendor.ARMSTRONG): [
-        DeviceModel("Armstrong 4380 VFD", Vendor.ARMSTRONG, DeviceType.PUMP, [_g(_GE, 1)], "Vertical in-line VFD water pump, SNMP + BACnet"),
+        DeviceModel("Armstrong 4380 VFD", Vendor.ARMSTRONG, DeviceType.PUMP, [_g(_GE, 1)], "Vertical in-line VFD water pump, BACnet only -- no SNMP"),
     ],
 
-    # ── COOLING_TOWER -- Cooling tower (fan + basin, SNMP + BACnet) ─
+    # ── COOLING_TOWER -- Cooling tower (fan + basin, BACnet only -- no SNMP) ─
     (DeviceType.COOLING_TOWER, Vendor.BAC): [
-        DeviceModel("BAC PT2 Series", Vendor.BAC, DeviceType.COOLING_TOWER, [_g(_GE, 1)], "Counterflow cooling tower, VFD fan, SNMP + BACnet"),
+        DeviceModel("BAC PT2 Series", Vendor.BAC, DeviceType.COOLING_TOWER, [_g(_GE, 1)], "Counterflow cooling tower, VFD fan, BACnet only -- no SNMP"),
     ],
     (DeviceType.COOLING_TOWER, Vendor.MARLEY): [
-        DeviceModel("Marley NC Series", Vendor.MARLEY, DeviceType.COOLING_TOWER, [_g(_GE, 1)], "Crossflow cooling tower, VFD fan, SNMP + BACnet"),
+        DeviceModel("Marley NC Series", Vendor.MARLEY, DeviceType.COOLING_TOWER, [_g(_GE, 1)], "Crossflow cooling tower, VFD fan, BACnet only -- no SNMP"),
     ],
 
-    # ── VALVE -- Control / isolation valve (actuator, SNMP + BACnet) ─
+    # ── VALVE -- Control / isolation valve (actuator, BACnet only -- no SNMP) ─
     (DeviceType.VALVE, Vendor.BELIMO): [
-        DeviceModel("Belimo PR..A-BAC", Vendor.BELIMO, DeviceType.VALVE, [_g(_GE, 1)], "Modulating control valve actuator, SNMP + BACnet"),
+        DeviceModel("Belimo PR..A-BAC", Vendor.BELIMO, DeviceType.VALVE, [_g(_GE, 1)], "Modulating control valve actuator, BACnet only -- no SNMP"),
     ],
     (DeviceType.VALVE, Vendor.JOHNSON_CONTROLS): [
-        DeviceModel("JCI VG7000 Series", Vendor.JOHNSON_CONTROLS, DeviceType.VALVE, [_g(_GE, 1)], "Globe control valve actuator, SNMP + BACnet"),
+        DeviceModel("JCI VG7000 Series", Vendor.JOHNSON_CONTROLS, DeviceType.VALVE, [_g(_GE, 1)], "Globe control valve actuator, BACnet only -- no SNMP"),
     ],
 
     # ── CDU -- Coolant Distribution Unit (direct-to-chip liquid cooling, SNMP + BACnet) ─
