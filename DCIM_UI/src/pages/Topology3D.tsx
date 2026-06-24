@@ -2365,7 +2365,23 @@ export default function Topology3D() {
         roleByIp.get(d.device_ip) !== 'energy_monitor' &&
         matchesFilter(d.network_id, d.datacenter_id)
     )
-    const effectiveLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
+    const allLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
+
+    // When a datacenter or network filter is active, topology links have no
+    // datacenter_id of their own, so we restrict them to endpoints whose IP
+    // is already represented in the filtered agents/SNMP devices. This prevents
+    // computeHierarchicalLayout from creating synthetic ingest-device nodes for
+    // devices that live in other datacenters.
+    let effectiveLinks = allLinks
+    if (networkFilter !== 'all' || datacenterFilter !== 'all') {
+      const visibleIps = new Set<string>()
+      visibleAgents.forEach(a => { if (a.ip_address) visibleIps.add(a.ip_address) })
+      visibleDevices.forEach(d => { if (d.device_ip) visibleIps.add(d.device_ip) })
+      effectiveLinks = allLinks.filter(l =>
+        visibleIps.has(l.source_ip) && visibleIps.has(l.target_ip)
+      )
+    }
+
     return computeHierarchicalLayout(activeServers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
   }, [servers, networkFilter, datacenterFilter, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
 
