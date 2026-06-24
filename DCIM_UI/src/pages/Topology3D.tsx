@@ -1,10 +1,9 @@
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Billboard, Text, Line, Grid, Stars, Float, Html } from '@react-three/drei'
-import { useAgents } from '@/hooks/useAgents'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { computeHierarchicalLayout, type LayoutNode, type LayoutLink, FLOORS } from '@/lib/topology3d-layout'
+import { computeTreeLayout, type LayoutNode, type LayoutLink, FLOORS } from '@/lib/topology3d-layout'
 import { useNavigate } from 'react-router-dom'
 import { Activity, Server, Box, ChevronsDownUp, ChevronsUpDown, ChevronUp, ChevronDown, X, Thermometer, Search } from 'lucide-react'
 import * as THREE from 'three'
@@ -2031,25 +2030,10 @@ function SceneContent({
 
 export default function Topology3D() {
   const mockData = USE_MOCK_DATA ? getMockTopologyData() : null
-  const { data: realAgents, isLoading: realAgentsLoading } = useAgents()
   const { data: realServers, isLoading: realServersLoading } = useQuery({
     queryKey: ['servers'],
     queryFn: () => api.getServers(),
     staleTime: 60000,
-    enabled: !USE_MOCK_DATA,
-  })
-  const { data: realSnmpDevices } = useQuery({
-    queryKey: ['snmp-devices-3d'],
-    queryFn: () => api.getSNMPDevices(),
-    staleTime: 15000,
-    refetchInterval: USE_MOCK_DATA ? false : 15000,
-    enabled: !USE_MOCK_DATA,
-  })
-  const { data: realTopologyLinks } = useQuery({
-    queryKey: ['topology-links-3d'],
-    queryFn: () => api.getTopologyLinks(),
-    staleTime: 30000,
-    refetchInterval: USE_MOCK_DATA ? false : 60000,
     enabled: !USE_MOCK_DATA,
   })
 
@@ -2083,11 +2067,11 @@ export default function Topology3D() {
     return map
   }, [topologyTree])
 
-  const agents = USE_MOCK_DATA ? mockData!.agents : realAgents
   const servers = USE_MOCK_DATA ? mockData!.servers : realServers
-  const snmpDevices = USE_MOCK_DATA ? mockData!.snmpDevices : realSnmpDevices
-  const agentsLoading = USE_MOCK_DATA ? false : realAgentsLoading
   const serversLoading = USE_MOCK_DATA ? false : realServersLoading
+  // Tree nodes are the single source of truth — same as 2D topology
+  const treeNodes = USE_MOCK_DATA ? [] : (topologyTree?.nodes ?? [])
+  const treeLinks = USE_MOCK_DATA ? [] : (topologyTree?.links ?? [])
   const navigate = useNavigate()
   const [selectedNode, setSelectedNode] = useState<LayoutNode | null>(null)
   const [cursorPointer, setCursorPointer] = useState(false)
@@ -2127,31 +2111,9 @@ export default function Topology3D() {
   // network links (their connected sub-network).
   const [appliedFocus, setAppliedFocus] = useState('')
 
-  // Expand/collapse state
-  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
-
-  // Auto-expand all servers while heatmap OR search is active, so every agent &
-  // device is present in the layout (collapsed servers omit their children, and
-  // a search hit on a hidden device would otherwise have nothing to highlight).
+  // No expand/collapse needed — all filtered tree nodes are shown directly
   const searchActive = searchQuery.trim() !== ''
   const focusActive = appliedFocus.trim() !== ''
-  const filterActive = networkFilter !== 'all' || datacenterFilter !== 'all'
-  const forceExpandAll = heatmapMode || searchActive || focusActive || filterActive
-  const preForceExpandRef = useRef<Set<string>>(new Set())
-  const wasForcedRef = useRef(false)
-  useEffect(() => {
-    if (forceExpandAll && servers) {
-      if (!wasForcedRef.current) {
-        preForceExpandRef.current = new Set(expandedServers)
-        wasForcedRef.current = true
-      }
-      setExpandedServers(new Set(servers.filter(s => s.enabled).map(s => `server-${s.id}`)))
-    } else if (!forceExpandAll && wasForcedRef.current) {
-      setExpandedServers(new Set(preForceExpandRef.current))
-      wasForcedRef.current = false
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forceExpandAll, servers])
 
   // ── SNMP trap state (mirrors 2D Topology) ────────────────────────────────
   const [trapAlerts, setTrapAlerts] = useState<Map<string, TrapAlert>>(new Map())
@@ -2284,36 +2246,14 @@ export default function Topology3D() {
     })))
   }, [activeTraps])
 
-  const toggleServerExpansion = useCallback((node: LayoutNode) => {
-    setExpandedServers(prev => {
-      const next = new Set(prev)
-      if (next.has(node.id)) {
-        next.delete(node.id)
-      } else {
-        next.add(node.id)
-      }
-      return next
-    })
-  }, [])
-
-  const expandAll = useCallback(() => {
-    const allServerIds = servers?.filter(s => s.enabled).map(s => `server-${s.id}`) || []
-    setExpandedServers(new Set(allServerIds))
-  }, [servers])
-
-  const collapseAll = useCallback(() => {
-    setExpandedServers(new Set())
-  }, [])
-
-  // Compute agent counts per server
+  // Device count per network_id (replaces broken agentCounts-per-server-UUID)
   const agentCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    agents?.forEach(a => {
-      const sid = `server-${a.server_id}`
-      counts[sid] = (counts[sid] || 0) + 1
+    treeNodes.forEach(n => {
+      counts[n.network_id] = (counts[n.network_id] || 0) + 1
     })
     return counts
-  }, [agents])
+  }, [treeNodes])
 
   // Temperature map for heatmap mode — latest environment.temperature_c reading
   // per device. Environment metrics may identify the device via agent_id, the
@@ -2341,49 +2281,25 @@ export default function Topology3D() {
     return map
   }, [heatTempMetrics])
 
-  // Filter to expanded servers and compute 3D layout
+  // Compute 3D layout from topology tree — same data source as 2D topology
   const layout = useMemo(() => {
-    if (!servers || !agents) return { nodes: [], links: [] }
+    if (!topologyTree) return { nodes: [], links: [] }
 
-    // Match a node against the active filters using the network_id / datacenter_id
-    // carried directly on the node's own payload — no fragile IP→tree lookup.
-    const matchesFilter = (networkId?: string, datacenterId?: string): boolean => {
-      const matchesNet = networkFilter === 'all' || networkId === networkFilter
-      const matchesDC  = datacenterFilter === 'all' || datacenterId === datacenterFilter
-      return matchesNet && matchesDC
-    }
-
-    const activeServers = servers
-    const visibleAgents = agents.filter(a =>
-      expandedServers.has(`server-${a.server_id}`) &&
-      matchesFilter(a.network_id, a.datacenter_id)
+    // Filter nodes by network/datacenter, and drop energy-monitor devices
+    const visibleNodes = treeNodes.filter(n =>
+      (networkFilter === 'all' || n.network_id === networkFilter) &&
+      (datacenterFilter === 'all' || n.datacenter_id === datacenterFilter) &&
+      roleByIp.get(n.mgmt_ip ?? '') !== 'energy_monitor'
     )
-    // Energy-monitor devices belong to Power Management → PDU circuit mapping,
-    // not the 3D topology — drop them here (role resolved by mgmt IP).
-    const visibleDevices = (snmpDevices || []).filter(
-      d => expandedServers.has(`server-${d.server_id}`) &&
-        roleByIp.get(d.device_ip) !== 'energy_monitor' &&
-        matchesFilter(d.network_id, d.datacenter_id)
+
+    // Keep only links where both endpoints are in the visible set
+    const visibleIds = new Set(visibleNodes.map(n => n.device_id))
+    const visibleLinks = treeLinks.filter(
+      l => visibleIds.has(l.src_device_id) && visibleIds.has(l.dst_device_id)
     )
-    const allLinks = USE_MOCK_DATA ? (mockData?.topologyLinks || []) : (realTopologyLinks || [])
 
-    // When a datacenter or network filter is active, topology links have no
-    // datacenter_id of their own, so we restrict them to endpoints whose IP
-    // is already represented in the filtered agents/SNMP devices. This prevents
-    // computeHierarchicalLayout from creating synthetic ingest-device nodes for
-    // devices that live in other datacenters.
-    let effectiveLinks = allLinks
-    if (networkFilter !== 'all' || datacenterFilter !== 'all') {
-      const visibleIps = new Set<string>()
-      visibleAgents.forEach(a => { if (a.ip_address) visibleIps.add(a.ip_address) })
-      visibleDevices.forEach(d => { if (d.device_ip) visibleIps.add(d.device_ip) })
-      effectiveLinks = allLinks.filter(l =>
-        visibleIps.has(l.source_ip) && visibleIps.has(l.target_ip)
-      )
-    }
-
-    return computeHierarchicalLayout(activeServers, visibleAgents, visibleDevices, effectiveLinks, undefined, undefined, deviceAlertsByIp, roleByIp)
-  }, [servers, networkFilter, datacenterFilter, agents, expandedServers, snmpDevices, realTopologyLinks, mockData, deviceAlertsByIp, roleByIp])
+    return computeTreeLayout(visibleNodes, visibleLinks, deviceAlertsByIp)
+  }, [topologyTree, treeNodes, treeLinks, networkFilter, datacenterFilter, roleByIp, deviceAlertsByIp])
 
   // IDs of layout nodes whose name or IP matches the search query (null = no search)
   const searchMatchIds = useMemo(() => {
@@ -2483,7 +2399,7 @@ export default function Topology3D() {
     setCursorPointer(hovering)
   }, [])
 
-  const isLoading = agentsLoading || serversLoading
+  const isLoading = serversLoading || !topologyTree
 
   if (isLoading) {
     return (
@@ -2496,11 +2412,10 @@ export default function Topology3D() {
     )
   }
 
-  const onlineAgents = agents?.filter((a) => a.status === 'online').length || 0
-  const offlineAgents = agents?.filter((a) => a.status === 'offline').length || 0
+  const onlineDevices = treeNodes.filter((n) => n.status === 'online').length
+  const offlineDevices = treeNodes.filter((n) => n.status === 'offline').length
   const enabledServers = servers?.filter((s) => s.enabled) || []
   const offlineServers = enabledServers.filter((s) => s.health?.status !== 'healthy').length
-  const hasExpanded = expandedServers.size > 0
 
   return (
     <div className="h-full flex flex-col space-y-3">
@@ -2512,18 +2427,10 @@ export default function Topology3D() {
             3D Network Topology
           </h1>
           <p className="text-slate-400 mt-1 text-lg">
-            Interactive 3D visualization — drag to rotate, scroll to zoom, double-click a server to expand
+            Interactive 3D visualization — drag to rotate, scroll to zoom
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={hasExpanded ? collapseAll : expandAll}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors font-medium border border-white/10 text-sm"
-            title={hasExpanded ? 'Collapse all servers' : 'Expand all servers'}
-          >
-            {hasExpanded ? <ChevronsDownUp className="w-4 h-4" /> : <ChevronsUpDown className="w-4 h-4" />}
-            {hasExpanded ? 'Collapse All' : 'Expand All'}
-          </button>
           <button
             onClick={() => setShowTierBands(t => !t)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium border text-sm ${
@@ -2662,9 +2569,9 @@ export default function Topology3D() {
               onSelectNode={handleSelectNode}
               onHover={handleHover}
               onDeselect={handleDeselect}
-              expandedServers={expandedServers}
+              expandedServers={new Set()}
               agentCounts={agentCounts}
-              onDoubleClickServer={toggleServerExpansion}
+              onDoubleClickServer={() => {}}
               currentFloorY={FLOORS[currentFloor].y + panYOffset}
               targetPanX={panX}
               trapAlerts={trapAlerts}
@@ -2936,30 +2843,30 @@ export default function Topology3D() {
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-blue-400" />
                 <span className="text-slate-300">
-                  Agents: <span className="font-bold text-white">{agents?.length || 0}</span>
+                  Devices: <span className="font-bold text-white">{treeNodes.length}</span>
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-green-400" />
                 <span className="text-slate-300">
-                  Online: <span className="font-bold text-green-400">{onlineAgents}</span>
+                  Online: <span className="font-bold text-green-400">{onlineDevices}</span>
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-red-400" />
                 <span className="text-slate-300">
-                  Offline: <span className="font-bold text-red-400">{offlineAgents}</span>
+                  Offline: <span className="font-bold text-red-400">{offlineDevices}</span>
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-cyan-400" />
                 <span className="text-slate-300">
-                  Devices: <span className="font-bold text-cyan-400">{snmpDevices?.length || 0}</span>
+                  Visible: <span className="font-bold text-cyan-400">{layout.nodes.length}</span>
                 </span>
               </div>
               <div className="border-t border-white/10 pt-2 mt-2 flex items-center gap-2">
                 <span className="text-slate-400 text-xs">
-                  {expandedServers.size} / {enabledServers.length} expanded
+                  {enabledServers.length} DCIM server{enabledServers.length !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
@@ -3032,20 +2939,12 @@ export default function Topology3D() {
                 )}
 
               {selectedNode.type === 'server' && (
-                <>
-                  <div>
-                    <p className="text-sm text-slate-400">Connected Agents</p>
-                    <p className="text-2xl font-bold text-purple-400">
-                      {agentCounts[selectedNode.id] || 0}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => toggleServerExpansion(selectedNode)}
-                    className="block w-full text-center px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 text-indigo-400 rounded-lg transition-colors"
-                  >
-                    {expandedServers.has(selectedNode.id) ? 'Collapse Agents' : 'Expand Agents'}
-                  </button>
-                </>
+                <div>
+                  <p className="text-sm text-slate-400">Devices in Network</p>
+                  <p className="text-2xl font-bold text-purple-400">
+                    {agentCounts[selectedNode.id] || 0}
+                  </p>
+                </div>
               )}
 
               {selectedNode.type === 'agent' && selectedNode.deviceType && (
@@ -3080,12 +2979,12 @@ export default function Topology3D() {
                 </div>
               )}
 
-              {selectedNode.type === 'agent' && (
+              {selectedNode.type === 'network' && selectedNode.ip && (
                 <button
-                  onClick={() => navigate(`/app/agents/${selectedNode.agentId || selectedNode.id}`)}
+                  onClick={() => navigate(`/app/agents?search=${encodeURIComponent(selectedNode.ip!)}`)}
                   className="block w-full text-center px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 rounded-lg transition-colors"
                 >
-                  View Agent Details
+                  View Device Details
                 </button>
               )}
             </div>

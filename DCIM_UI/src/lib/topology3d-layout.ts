@@ -143,6 +143,174 @@ const WIDE_LAYER_ROW_DEPTH = 14 // Z step between wrap rows
 
 export type DeviceAlertInfo = { active: number; critical: number; warning: number }
 
+// Input types that mirror the topology/tree API response
+export interface TreeNode {
+  device_id: string
+  hostname: string
+  device_type: string | null
+  device_role: string | null
+  mgmt_ip: string | null
+  network_id: string
+  datacenter_id: string
+  status: 'online' | 'offline'
+  active_alerts: number
+  critical_alerts: number
+  depth: number
+  is_root: boolean
+}
+
+export interface TreeLink {
+  src_device_id: string
+  dst_device_id: string
+  src_status: 'online' | 'offline'
+  dst_status: 'online' | 'offline'
+  src_hostname: string
+  dst_hostname: string
+}
+
+// Layer assignment — shared logic used by both layout functions
+function resolveLayer(deviceRole: string | null | undefined, name: string, depth: number): number {
+  if (deviceRole) {
+    const l = ROLE_LAYERS_3D[deviceRole.toLowerCase()]
+    if (l !== undefined) return l
+  }
+  const byName = roleLayerOf(deviceRole, name)
+  if (byName !== null) return byName
+  return Math.min(4 + depth, 8)
+}
+
+// ─── computeTreeLayout ───────────────────────────────────────────────────────
+// Takes topology/tree nodes and links (same data source as 2D topology) and
+// produces a 3D LayoutResult. This is the preferred function for the 3D page.
+export function computeTreeLayout(
+  treeNodes: TreeNode[],
+  treeLinks: TreeLink[],
+  deviceAlertsByIp?: Map<string, DeviceAlertInfo>,
+): LayoutResult {
+  const nodes: LayoutNode[] = []
+  const nodeById = new Map<string, LayoutNode>()
+
+  treeNodes.forEach(n => {
+    const alertInfo = n.mgmt_ip ? deviceAlertsByIp?.get(n.mgmt_ip) : undefined
+    const color = alertInfo?.critical
+      ? '#ef4444'
+      : alertInfo?.warning
+      ? '#f59e0b'
+      : n.status === 'online' ? '#06b6d4' : '#475569'
+
+    const node: LayoutNode = {
+      id: n.device_id,
+      name: n.hostname,
+      type: 'network',
+      status: n.status,
+      position: [0, 0, 0],
+      color,
+      ip: n.mgmt_ip ?? undefined,
+      deviceRole: n.device_role,
+      deviceType: n.device_type ?? undefined,
+      alerts: n.active_alerts,
+    }
+    nodes.push(node)
+    nodeById.set(n.device_id, node)
+  })
+
+  // Build links — dedup bidirectional pairs
+  const links: LayoutLink[] = []
+  const seenPairs = new Set<string>()
+  treeLinks.forEach(tl => {
+    const srcN = nodeById.get(tl.src_device_id)
+    const tgtN = nodeById.get(tl.dst_device_id)
+    if (!srcN || !tgtN || srcN.id === tgtN.id) return
+    const pairKey = [srcN.id, tgtN.id].sort().join('|')
+    if (seenPairs.has(pairKey)) return
+    seenPairs.add(pairKey)
+    links.push({
+      sourceId: srcN.id,
+      targetId: tgtN.id,
+      sourcePos: [0, 0, 0],
+      targetPos: [0, 0, 0],
+      connected: tl.src_status === 'online' && tl.dst_status === 'online',
+      linkType: 'device-device',
+      cooling: isCoolingNode3D(srcN) && isCoolingNode3D(tgtN),
+      d2dInfo: {
+        sourceIp: srcN.ip ?? '',
+        sourceName: srcN.name,
+        targetIp: tgtN.ip ?? '',
+        targetName: tgtN.name,
+        lastSeen: new Date().toISOString(),
+        sourceStatus: srcN.status,
+        targetStatus: tgtN.status,
+      },
+    })
+  })
+
+  // Layer assignment for each node
+  const layerOf = (n: LayoutNode): number => {
+    const tn = treeNodes.find(t => t.device_id === n.id)
+    return resolveLayer(n.deviceRole, n.name || '', tn?.depth ?? 0)
+  }
+
+  const layered = computeLayeredLayout(
+    nodes.map(n => ({ id: n.id, layer: layerOf(n) })),
+    links.map(l => ({ source: l.sourceId, target: l.targetId })),
+    { nodeGapX: NODE_GAP_X, layerGapY: LAYER_GAP_Y, iterations: 28, originX: 0, originY: 0 },
+  )
+
+  // Wide-layer wrapping (same logic as computeHierarchicalLayout)
+  const layerCounts = new Map<number, number>()
+  nodes.forEach(n => {
+    const l = layerOf(n)
+    layerCounts.set(l, (layerCounts.get(l) ?? 0) + 1)
+  })
+
+  const wrapIndexById = new Map<string, { row: number; col: number; cols: number }>()
+  const byLayer = new Map<number, LayoutNode[]>()
+  nodes.forEach(n => {
+    const l = layerOf(n)
+    if (!byLayer.has(l)) byLayer.set(l, [])
+    byLayer.get(l)!.push(n)
+  })
+  byLayer.forEach((layerNodes, l) => {
+    if (layerNodes.length <= WIDE_LAYER_THRESHOLD) return
+    const sorted = layerNodes.slice().sort((a, b) => {
+      const pa = layered.positions.get(a.id)?.x ?? 0
+      const pb = layered.positions.get(b.id)?.x ?? 0
+      return pa - pb
+    })
+    const cols = Math.max(1, Math.ceil(Math.sqrt(sorted.length * 4)))
+    sorted.forEach((n, idx) => {
+      wrapIndexById.set(n.id, { row: Math.floor(idx / cols), col: idx % cols, cols })
+    })
+    void l
+  })
+
+  nodes.forEach(n => {
+    const p = layered.positions.get(n.id)
+    if (!p) return
+    const wrap = wrapIndexById.get(n.id)
+    if (wrap) {
+      const span = (wrap.cols - 1) * NODE_GAP_X
+      const x = -span / 2 + wrap.col * NODE_GAP_X
+      const totalRows = Math.ceil((layerCounts.get(layerOf(n)) ?? 1) / wrap.cols)
+      const z = wrap.row * WIDE_LAYER_ROW_DEPTH - (totalRows * WIDE_LAYER_ROW_DEPTH) / 2
+      n.position = [x, -p.y, z]
+    } else {
+      n.position = [p.x, -p.y, 0]
+    }
+  })
+
+  const nodePosById = new Map<string, [number, number, number]>()
+  nodes.forEach(n => nodePosById.set(n.id, n.position))
+  links.forEach(l => {
+    const sp = nodePosById.get(l.sourceId)
+    const tp = nodePosById.get(l.targetId)
+    if (sp) l.sourcePos = sp
+    if (tp) l.targetPos = tp
+  })
+
+  return { nodes, links }
+}
+
 export function computeHierarchicalLayout(
   servers: ServerConfig[],
   agents: Agent[],
