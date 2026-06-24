@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useDeviceConfig, useUpdateDeviceConfig } from '@/hooks/useAgents'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -159,6 +159,15 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
     setSeedKey(seededFor)
   }
 
+  // Auto-dismiss the "saved" confirmation a few seconds after a successful save.
+  const [showSaved, setShowSaved] = useState(false)
+  useEffect(() => {
+    if (!update.isSuccess) return
+    setShowSaved(true)
+    const t = setTimeout(() => setShowSaved(false), 6000)
+    return () => clearTimeout(t)
+  }, [update.isSuccess])
+
   if (isLoading || !form || !base || !cfg) {
     return (
       <div className="bg-slate-800/50 backdrop-blur-sm border border-white/10 rounded-lg p-6">
@@ -215,7 +224,7 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
           <AlertTriangle className="w-4 h-4" /> {(update.error as Error)?.message ?? 'Save failed'}
         </div>
       )}
-      {update.isSuccess && !dirty && (
+      {showSaved && !dirty && (
         <div className="mb-4 px-3 py-2 rounded bg-green-500/10 border border-green-500/30 text-green-300 text-xs">
           Configuration saved — changes queued for the device.
         </div>
