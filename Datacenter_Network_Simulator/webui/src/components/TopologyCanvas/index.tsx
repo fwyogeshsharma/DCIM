@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal, PlantMetricTickModal, DeviceMetricTickModal } from './NodeContextMenu'
+import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './NodeContextMenu'
 
-const PLANT_NODE_TYPES = ['chiller', 'pump', 'cooling_tower', 'valve', 'cdu', 'crah']
 import {
   ReactFlow,
   Background,
@@ -206,7 +205,6 @@ function Canvas() {
   const [ctxMenu,      setCtxMenu]      = useState<{ nodeId: string; deviceType: string; deviceName: string; modelName: string; x: number; y: number } | null>(null)
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null)
   const [infoDeviceId, setInfoDeviceId] = useState<string | null>(null)
-  const [metricTickDev, setMetricTickDev] = useState<{ id: string; name: string; type: string } | null>(null)
 
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -563,7 +561,6 @@ function Canvas() {
           onLocate={() => fitView({ nodes: [{ id: ctxMenu.nodeId }], padding: 0.4, duration: 400 })}
           onEditDevice={() => setEditDeviceId(ctxMenu.nodeId)}
           onShowInfo={() => setInfoDeviceId(ctxMenu.nodeId)}
-          onMetricTick={() => setMetricTickDev({ id: ctxMenu.nodeId, name: ctxMenu.deviceName, type: ctxMenu.deviceType })}
         />
       )}
       {editDeviceId && (
@@ -571,10 +568,6 @@ function Canvas() {
       )}
       {infoDeviceId && (
         <DeviceInfoModal deviceId={infoDeviceId} onClose={() => setInfoDeviceId(null)} />
-      )}
-      {metricTickDev && (PLANT_NODE_TYPES.includes(metricTickDev.type)
-        ? <PlantMetricTickModal  deviceId={metricTickDev.id} deviceName={metricTickDev.name} deviceType={metricTickDev.type} onClose={() => setMetricTickDev(null)} />
-        : <DeviceMetricTickModal deviceId={metricTickDev.id} deviceName={metricTickDev.name} deviceType={metricTickDev.type} onClose={() => setMetricTickDev(null)} />
       )}
     </div>
   )
