@@ -10,6 +10,35 @@ import * as THREE from 'three'
 import { getMockTopologyData } from '@/lib/topology-mock-data'
 import { useSSE } from '@/hooks/useSSE'
 
+// Amber warning beacon hovering above a device flagged as likely-to-fail
+// (devices.at_risk — live metrics breached its configured thresholds). Pulses to
+// draw the eye, in amber so it stays distinct from the red reserved for already
+// down / SNMP-trap states.
+function AtRiskBeacon({ position }: { position: [number, number, number] }) {
+  const ref = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    if (!ref.current) return
+    const t = Date.now() * 0.003
+    ref.current.scale.setScalar(1 + Math.sin(t) * 0.18)
+    ref.current.rotation.y = t
+  })
+  const [x, y, z] = position
+  return (
+    <group position={[x, y + 12, z]}>
+      <mesh ref={ref}>
+        <octahedronGeometry args={[1.4, 0]} />
+        <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={1.4} toneMapped={false} />
+      </mesh>
+      <pointLight color="#f59e0b" intensity={3} distance={18} />
+      <Billboard>
+        <Text position={[0, 3, 0]} fontSize={2.6} color="#fbbf24" anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#000">
+          !
+        </Text>
+      </Billboard>
+    </group>
+  )
+}
+
 interface TrapAlert {
   trapType: string
   severity: string
@@ -2000,6 +2029,14 @@ function SceneContent({
           )
         })}
 
+      {/* At-risk beacons — amber warning hovering over any device whose metrics
+          breached its thresholds (likely to fail). Works for every node type. */}
+      {nodes
+        .filter((n) => n.atRisk && n.status !== 'offline')
+        .map((node) => (
+          <AtRiskBeacon key={`risk-${node.id}`} position={node.position} />
+        ))}
+
       {/* Click on empty space to deselect */}
       <mesh position={[0, -14.9, 0]} rotation={[-Math.PI / 2, 0, 0]} onClick={onDeselect}>
         <planeGeometry args={[500, 500]} />
@@ -2910,6 +2947,18 @@ export default function Topology3D() {
                   {selectedNode.status.toUpperCase()}
                 </span>
               </div>
+
+              {selectedNode.atRisk && (
+                <div>
+                  <p className="text-sm text-slate-400">Health</p>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    ⚠️ At Risk
+                  </span>
+                  {selectedNode.riskReason && (
+                    <p className="mt-1 text-xs text-amber-300/80">{selectedNode.riskReason}</p>
+                  )}
+                </div>
+              )}
 
               {selectedNode.ip && (
                 <div>

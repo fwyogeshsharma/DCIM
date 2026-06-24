@@ -543,6 +543,8 @@ class APIClient {
       status: 'online' | 'offline'
       active_alerts: number
       critical_alerts: number
+      at_risk: boolean
+      risk_reason: string | null
     }>
     links: Array<{
       id: string
@@ -827,6 +829,8 @@ export interface InventoryDevice {
   power_draw_w?: number
   notes?: string
   monitoring_status?: 'online' | 'offline' | null
+  at_risk?: boolean
+  risk_reason?: string | null
   created_at: string
   updated_at: string
 }

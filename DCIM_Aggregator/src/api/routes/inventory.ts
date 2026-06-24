@@ -228,7 +228,9 @@ export function createInventoryRouter(dbPool: Pool): Router {
             WHEN md.last_seen_at IS NOT NULL                        THEN 'offline'
             ELSE NULL
           END AS monitoring_status,
-          md.hostname AS monitoring_hostname
+          md.hostname AS monitoring_hostname,
+          COALESCE(md.at_risk, false) AS at_risk,
+          md.risk_reason
         FROM dc_inventory_devices d
         LEFT JOIN devices md ON md.id = d.device_id
         LEFT JOIN health  h  ON h.device_id = d.device_id
@@ -312,7 +314,9 @@ export function createInventoryRouter(dbPool: Pool): Router {
             WHEN md.last_seen_at >= NOW() - INTERVAL '300 seconds' THEN 'online'
             WHEN md.last_seen_at IS NOT NULL                        THEN 'offline'
             ELSE NULL
-          END AS monitoring_status
+          END AS monitoring_status,
+          COALESCE(md.at_risk, false) AS at_risk,
+          md.risk_reason
         FROM dc_inventory_devices d
         LEFT JOIN devices md ON md.id = d.device_id
         WHERE d.id = $1::uuid

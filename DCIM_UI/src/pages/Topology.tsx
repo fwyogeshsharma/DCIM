@@ -37,6 +37,8 @@ interface TreeNode {
   status: 'online' | 'offline'
   active_alerts: number
   critical_alerts: number
+  at_risk: boolean
+  risk_reason: string | null
 }
 
 interface TreeLink {
@@ -65,6 +67,8 @@ interface TopoNode extends d3.SimulationNodeDatum {
   groupId: string
   alerts: number
   criticalAlerts: number
+  atRisk: boolean
+  riskReason: string | null
   parentId: string | null
   parentName: string | null
 }
@@ -575,6 +579,8 @@ export default function Topology() {
       groupId: row.group_id,
       alerts: row.active_alerts,
       criticalAlerts: row.critical_alerts,
+      atRisk: row.at_risk,
+      riskReason: row.risk_reason,
       parentId: row.parent_device_id,
       parentName: row.parent_hostname,
     }))
@@ -861,9 +867,10 @@ export default function Topology() {
       .attr('stroke', d => {
         if (hasTrap(d)) return '#ef4444'
         if (d.status === 'offline') return '#ef4444'
+        if (d.atRisk) return '#f59e0b'   // likely to fail — amber, distinct from down/red
         return deviceVisuals(d.deviceType, d.deviceRole).stroke
       })
-      .attr('stroke-width', d => (hasTrap(d) || d.status === 'offline') ? 3 : 2)
+      .attr('stroke-width', d => (hasTrap(d) || d.status === 'offline' || d.atRisk) ? 3 : 2)
       .attr('filter', d => (d.status === 'offline' || hasTrap(d)) ? 'url(#glow-red)' : null)
 
     // Icon text
@@ -923,6 +930,35 @@ export default function Topology() {
         })
     }
 
+    // Amber pulse ring for at-risk nodes (metrics breached thresholds → likely to
+    // fail). Skipped for already-offline nodes (the red offline ring takes over)
+    // and for very large graphs.
+    if (visNodes.length <= 200) {
+      nodeG.filter(d => d.atRisk && d.status !== 'offline').append('circle')
+        .attr('r', d => deviceVisuals(d.deviceType, d.deviceRole).radius)
+        .attr('fill', 'none').attr('stroke', '#f59e0b').attr('stroke-width', 2).attr('opacity', 0.85)
+        .each(function (d) {
+          const r = deviceVisuals(d.deviceType, d.deviceRole).radius
+          const el = d3.select(this)
+          el.append('animate').attr('attributeName', 'r').attr('values', `${r};${r + 12};${r}`).attr('dur', '1.8s').attr('repeatCount', 'indefinite')
+          el.append('animate').attr('attributeName', 'opacity').attr('values', '0.85;0;0.85').attr('dur', '1.8s').attr('repeatCount', 'indefinite')
+        })
+    }
+
+    // At-risk badge (⚠️) at top-left — distinct corner from the alert-count badge.
+    nodeG.filter(d => d.atRisk).append('circle')
+      .attr('cx', d => -(deviceVisuals(d.deviceType, d.deviceRole).radius - 4))
+      .attr('cy', d => -(deviceVisuals(d.deviceType, d.deviceRole).radius - 4))
+      .attr('r', 9)
+      .attr('fill', '#f59e0b')
+      .attr('stroke', '#0f172a').attr('stroke-width', 1.5)
+    nodeG.filter(d => d.atRisk).append('text')
+      .attr('x', d => -(deviceVisuals(d.deviceType, d.deviceRole).radius - 4))
+      .attr('y', d => -(deviceVisuals(d.deviceType, d.deviceRole).radius - 4))
+      .attr('text-anchor', 'middle').attr('dy', '0.35em')
+      .attr('font-size', '9px')
+      .text('⚠️')
+
     // Hover tooltip
     nodeG.on('mouseenter', function (event, d) {
       const tip = tooltipRef.current
@@ -943,6 +979,7 @@ export default function Topology() {
             ? `<span class="text-slate-400">Parent</span><span class="text-purple-300">${d.parentName}</span>`
             : `<span class="text-slate-400">Role</span><span class="text-yellow-300">Root / Gateway</span>`}
           ${d.alerts > 0 ? `<span class="text-slate-400">Alerts</span><span class="${d.criticalAlerts > 0 ? 'text-red-400 font-bold' : 'text-yellow-400'}">${d.alerts} (${d.criticalAlerts} critical)</span>` : ''}
+          ${d.atRisk ? `<span class="text-slate-400">At Risk</span><span class="text-amber-400 font-semibold">⚠️ ${d.riskReason || 'threshold breached'}</span>` : ''}
         </div>
         ${activeTrap ? `
           <div class="mt-2 pt-2 border-t border-red-500/40">

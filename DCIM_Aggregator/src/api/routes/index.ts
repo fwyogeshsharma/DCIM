@@ -444,7 +444,9 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
               THEN 'online' ELSE 'offline'
             END                                                                                    AS status,
             COALESCE(ac.active_alerts,   0)::int                                                   AS active_alerts,
-            COALESCE(ac.critical_alerts, 0)::int                                                   AS critical_alerts
+            COALESCE(ac.critical_alerts, 0)::int                                                   AS critical_alerts,
+            COALESCE(d.at_risk, false)                                                             AS at_risk,
+            d.risk_reason                                                                          AS risk_reason
           FROM tree t
           JOIN   devices d  ON d.id = t.device_id
           LEFT JOIN devices p  ON p.id = t.parent_id

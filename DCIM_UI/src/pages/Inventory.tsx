@@ -920,6 +920,14 @@ export default function Inventory() {
                                   <span className={`w-1.5 h-1.5 rounded-full ${sm.dot}`} />
                                   <span className={sm.color}>{sm.label}</span>
                                 </div>
+                                {d.at_risk && (
+                                  <span
+                                    title={d.risk_reason || 'Metrics breached configured thresholds'}
+                                    className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                  >
+                                    ⚠️ At Risk
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2.5 text-slate-300">
                                 {(d.cpu_cores != null || d.cpu_used_pct != null) ? (

@@ -156,6 +156,104 @@ const METRIC_THRESHOLDS: Record<string, { warn: number; crit: number; unit: stri
   if_error_rate: { warn: 1,  crit: 5,  unit: '%' },
 }
 
+// ── Failure-risk flag (devices.at_risk) ─────────────────────────────────────────
+// Core rules evaluated to decide whether a device is "likely to fail". For each
+// rule we take the worst (max) recent value across the metric names that feed it
+// and compare against the device's configured threshold (device_thresholds,
+// falling back to the default). Higher value = worse for all of these.
+const RISK_RULE_DEFAULTS: Record<string, number> = {
+  HighCPU:         90,
+  HighMemory:      85,
+  HighTemperature: 60,
+}
+const RISK_RULE_LABEL: Record<string, { label: string; unit: string }> = {
+  HighCPU:         { label: 'CPU',  unit: '%'  },
+  HighMemory:      { label: 'Mem',  unit: '%'  },
+  HighTemperature: { label: 'Temp', unit: '°C' },
+}
+// metric_name → the rule it contributes to. Multiple collectors report the same
+// signal under different names; whichever is highest drives the rule.
+const RISK_METRIC_RULES: Record<string, string> = {
+  cpu_util:                            'HighCPU',
+  'system.cpu_utilization_percent':    'HighCPU',
+  'server.cpu_percent':                'HighCPU',
+  mem_util:                            'HighMemory',
+  'system.memory_utilization_percent': 'HighMemory',
+  'server.memory_used_percent':        'HighMemory',
+  temperature:                         'HighTemperature',
+}
+// Clear the flag only once a metric falls this fraction below its threshold, so a
+// value hovering right at the limit doesn't flicker the flag on and off.
+const RISK_HYSTERESIS = 0.05
+
+// Recompute devices.at_risk from the device's recent metrics. Called at ingest
+// time whenever a payload carries a metric that feeds one of the core rules.
+async function evaluateDeviceRisk(client: PoolClient, deviceId: string): Promise<void> {
+  const metricNames = Object.keys(RISK_METRIC_RULES)
+
+  // Latest value per relevant metric in a short window — robust even when the
+  // current payload only carried a subset of the metrics.
+  const { rows: latest } = await client.query<{ metric_name: string; value: number }>(`
+    SELECT DISTINCT ON (metric_name) metric_name, value
+    FROM metrics
+    WHERE device_id = $1
+      AND metric_name = ANY($2)
+      AND ts >= NOW() - INTERVAL '15 minutes'
+    ORDER BY metric_name, ts DESC
+  `, [deviceId, metricNames])
+  if (latest.length === 0) return
+
+  // Per-device threshold overrides for the core rules (fall back to defaults).
+  const { rows: thrRows } = await client.query<{ rule: string; value: number }>(
+    `SELECT rule, value FROM device_thresholds WHERE device_id = $1 AND rule = ANY($2)`,
+    [deviceId, Object.keys(RISK_RULE_DEFAULTS)],
+  )
+  const thresholds: Record<string, number> = { ...RISK_RULE_DEFAULTS }
+  for (const r of thrRows) thresholds[r.rule] = Number(r.value)
+
+  // Worst observed value per rule.
+  const ruleValue: Record<string, number> = {}
+  for (const row of latest) {
+    const rule = RISK_METRIC_RULES[row.metric_name]
+    const v = Number(row.value)
+    if (!(rule in ruleValue) || v > ruleValue[rule]) ruleValue[rule] = v
+  }
+
+  const breaches: string[] = []
+  let anyElevated = false   // above the clear-threshold but below breach → hysteresis band
+  for (const [rule, value] of Object.entries(ruleValue)) {
+    const threshold = thresholds[rule]
+    if (value >= threshold) {
+      const { label, unit } = RISK_RULE_LABEL[rule]
+      breaches.push(`${label} ${Math.round(value)}${unit} ≥ ${threshold}${unit}`)
+    } else if (value > threshold * (1 - RISK_HYSTERESIS)) {
+      anyElevated = true
+    }
+  }
+
+  const { rows: cur } = await client.query<{ at_risk: boolean }>(
+    `SELECT at_risk FROM devices WHERE id = $1`, [deviceId])
+  const wasAtRisk = cur[0]?.at_risk ?? false
+
+  let nextRisk: boolean
+  let reason: string | null
+  if (breaches.length > 0) {
+    nextRisk = true
+    reason = breaches.join('; ')
+  } else if (wasAtRisk && anyElevated) {
+    return                    // hold inside the hysteresis band — leave flag + reason as-is
+  } else {
+    nextRisk = false
+    reason = null
+  }
+
+  if (!nextRisk && !wasAtRisk) return   // already clear, nothing to write
+  await client.query(
+    `UPDATE devices SET at_risk = $2, risk_reason = $3, risk_updated_at = now() WHERE id = $1`,
+    [deviceId, nextRisk, reason],
+  )
+}
+
 // ── Router ─────────────────────────────────────────────────────────────────────
 
 export function createIngestRouter(dbPool: Pool): Router {
@@ -396,6 +494,15 @@ export function createIngestRouter(dbPool: Pool): Router {
               ])
             }
           }
+        }
+
+        // ── 4a. Failure-risk flag: breach of this device's thresholds ─────────
+        // If a core metric (CPU/Memory/Temperature) crossed the device's
+        // configured threshold, flag it as "at risk" so topology 2D/3D + the
+        // inventory table surface it before it actually fails. Only runs when the
+        // payload carried a relevant metric; cleared with hysteresis.
+        if ((dev.metrics ?? []).some(m => RISK_METRIC_RULES[m.metric_name])) {
+          await evaluateDeviceRisk(client, deviceId)
         }
 
         // ── 4b. Insert energy metrics → dedicated energy_metrics table ────────

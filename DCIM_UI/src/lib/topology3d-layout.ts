@@ -22,6 +22,10 @@ export interface LayoutNode {
   deviceRole?: string | null
   /** Latest temperature reading (°C) for heatmap mode */
   temperature?: number
+  /** Metrics breached this device's thresholds → likely to fail (migration 013) */
+  atRisk?: boolean
+  /** Human-readable reason for the at-risk flag, e.g. "CPU 94% ≥ 90%" */
+  riskReason?: string | null
 }
 
 export interface D2DInfo {
@@ -155,6 +159,8 @@ export interface TreeNode {
   status: 'online' | 'offline'
   active_alerts: number
   critical_alerts: number
+  at_risk?: boolean
+  risk_reason?: string | null
   depth: number
   is_root: boolean
 }
@@ -209,6 +215,8 @@ export function computeTreeLayout(
       deviceRole: n.device_role,
       deviceType: n.device_type ?? undefined,
       alerts: n.active_alerts,
+      atRisk: n.at_risk ?? false,
+      riskReason: n.risk_reason ?? null,
     }
     nodes.push(node)
     nodeById.set(n.device_id, node)
