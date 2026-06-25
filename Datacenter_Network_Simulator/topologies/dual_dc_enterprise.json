@@ -94855,6 +94855,706 @@
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
+    },
+    {
+      "src": "6db52bde",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "6db52bde",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "ab297064",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "ab297064",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a0847e8b",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a0847e8b",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "14b33e62",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "14b33e62",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "3972dd82",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "424ba3be",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "708aea2e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "a8228918",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "81a4c6a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "671a0251",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "205dcea5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "5d057eef",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "241765bf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "7b5bd3fc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "defa1d3d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "311e2148",
+      "dst": "3a53a5b7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "02de238d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "54162870",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "5f7ade3c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "946078c6",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "7bd9a89a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "fb588f8f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "287249e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "aef6407e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "4f77cd6d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "bb295221",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "673bd9ba",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c35f9db2",
+      "dst": "5e8834f9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "18a9a712",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "29773896",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "e2e0fca1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "a0aaadf5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "5ce37ba8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "81d805c9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "6e60fc59",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "6f9087fc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "202aa9cc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "90fa2000",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "50006c53",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "0b5bbcb9",
+      "dst": "40eaebe2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c7052214",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "c7052214",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "60e70a92",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "60e70a92",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "2bad2225",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "2bad2225",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "f87af098",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "f87af098",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "56eceacc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "06b47fce",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "6b045824",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "be20df04",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "42b82ca8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "6dcaa8fe",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "5a5630a7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "01fcb97e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "5eac480b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "e1520fb5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "7861887a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1b18d1e3",
+      "dst": "58cd0208",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "8c766a43",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "1591a04b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "ff698dfd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "03101de4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "266c363d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "a6014530",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "81cf8ff8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "a270ef89",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "eadc68e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "bb64b8f0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "a3f644bb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4502bc22",
+      "dst": "d08dac04",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "a5eee128",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "526c4793",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "04756996",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "59f2da4a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "b61f88a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "d53ad494",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "5666ba55",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "e112b707",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "5bd993c7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "98386d9f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "d2320d92",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "78c47782",
+      "dst": "ba5b1d64",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
     }
   ],
   "floorplan": {
