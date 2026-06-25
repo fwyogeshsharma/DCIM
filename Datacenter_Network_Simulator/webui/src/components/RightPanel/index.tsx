@@ -10,6 +10,7 @@ import TrapsPanel   from './TrapsPanel'
 import RulesPanel   from './RulesPanel'
 import ConsolePanel from './ConsolePanel'
 import TickPanel    from './TickPanel'
+import FleetPanel   from './FleetPanel'
 
 const MIN_WIDTH     = 200
 const MAX_WIDTH     = 900
@@ -38,6 +39,7 @@ const TABS: Tab[] = [
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
+  { id: 'fleet',   icon: '📈',  label: 'Fleet Lifecycle', component: <FleetPanel /> },
   { id: 'console', icon: '>_',  iconColor: '#c9d1d9', label: 'Console', component: <ConsolePanel /> },
 ]
 

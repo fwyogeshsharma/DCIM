@@ -485,6 +485,54 @@ class GNMIController:
             if ok:
                 self._log(f"[gNMI] Hot-reloaded data for {ip}")
 
+    # ------------------------------------------------------------------ #
+    #  Hot add / remove (fleet lifecycle — commission a churned device)   #
+    # ------------------------------------------------------------------ #
+
+    def add_device(self, device, bind_ip: str = None, port: int = None) -> bool:
+        """Commission ONE device into the already-running gNMI sim.
+
+        Loads its dataset into the shared servicer (so the aggregating proxy can
+        answer for it immediately) and best-effort starts a direct per-IP gRPC
+        server. Requires the .gnmi.json dataset to already be on disk. Returns
+        True if the device is reachable (direct server up, or proxy-served)."""
+        if not self._running:
+            return False
+        dataset_ip = device.ip_address
+        bind_ip = bind_ip or getattr(device, "mgmt_ip", "") or device.ip_address
+        port = port or self._device_port
+        shared_ok = False
+        if self._servicer is not None:
+            try:
+                shared_ok = self._servicer.load_device(dataset_ip)
+            except Exception as exc:
+                self._log(f"[gNMI] hot-add load {dataset_ip} failed: {exc}")
+        self._dataset_ip_map[bind_ip] = dataset_ip
+        started = 0
+        try:
+            from simulator.gnmi_server import GNMIServicer, GNMIServer
+            started, _, _ = self._try_bind_servers({bind_ip: port}, GNMIServicer, GNMIServer)
+        except Exception as exc:
+            self._log(f"[gNMI] hot-add bind {bind_ip} failed: {exc}")
+        self._log(f"[gNMI] hot-added {dataset_ip} "
+                  f"({'direct' if started else 'proxy-only' if shared_ok else 'no-dataset'})")
+        return started > 0 or shared_ok
+
+    def remove_device(self, bind_ip: str) -> None:
+        """Decommission a device: stop its direct server and drop proxy routing."""
+        entry = self._per_device.pop(bind_ip, None)
+        if entry is not None:
+            try:
+                entry[1].stop(grace=1.0)
+            except Exception:
+                pass
+        if self._proxy_svc is not None:
+            try:
+                self._proxy_svc.remove_device(bind_ip)
+            except Exception:
+                pass
+        self._dataset_ip_map.pop(bind_ip, None)
+
     def get_clients(self) -> list:
         """Return a snapshot of connected Subscribe clients from all servers.
 

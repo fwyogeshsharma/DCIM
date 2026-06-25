@@ -251,6 +251,42 @@ class RedfishController:
                 pass
         return True
 
+    # ── hot add / remove (fleet lifecycle — commission a churned server) ──────
+    def add_device(self, device, ip_for=None) -> bool:
+        """Spin up ONE BMC for a server commissioned into a running Redfish sim.
+        The new BMC joins the health monitor automatically (it iterates
+        self._servers). Returns True if the endpoint bound."""
+        if not self._running:
+            return False
+        resolve = ip_for or (lambda d: (getattr(d, "mgmt_ip", "") or d.ip_address))
+        ip = resolve(device)
+        if not ip or ip in self._servers:
+            return False
+        rdev = RedfishDevice(device, username=self._username, password=self._password,
+                             power_trap_cb=self._trap_cb)
+        try:
+            httpd = _FastBindHTTPServer((ip, self._port), _RedfishHandler)
+        except OSError as exc:
+            self._log(f"[Redfish] hot-add {ip}:{self._port} bind failed — {exc}", "warning")
+            return False
+        httpd.redfish_device = rdev          # type: ignore[attr-defined]
+        httpd.daemon_threads = True
+        t = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.5},
+                             daemon=True, name=f"Redfish-{ip}")
+        t.start()
+        self._servers[ip] = (httpd, t, rdev)
+        self._log(f"[Redfish] hot-added BMC {ip}:{self._port}", "success")
+        return True
+
+    def remove_device(self, ip: str) -> None:
+        """Tear down a decommissioned server's BMC."""
+        entry = self._servers.pop(ip, None)
+        if entry is not None:
+            try:
+                entry[0].shutdown()
+            except Exception:
+                pass
+
     # ── health monitor ──────────────────────────────────────────────────────
     def _start_monitor(self):
         self._monitor_stop.clear()

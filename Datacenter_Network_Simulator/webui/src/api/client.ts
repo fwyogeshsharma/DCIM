@@ -221,4 +221,12 @@ export const api = {
   // tick settings
   tickSettings:      ()              => get('/tick/settings'),
   applyTickSettings: (body: unknown) => post('/tick/settings', body),
+
+  // fleet lifecycle (day-by-day server churn)
+  fleetStatus:  ()             => get('/fleet/status'),
+  fleetStart:   (cfg: unknown) => post('/fleet/start', cfg),
+  fleetStop:    ()             => post('/fleet/stop'),
+  fleetAdvance: ()             => post('/fleet/advance'),
+  fleetConfig:  (cfg: unknown) => post('/fleet/config', cfg),
+  snmpReload:   ()             => post('/snmp/reload'),
 }

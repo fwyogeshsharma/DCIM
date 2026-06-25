@@ -224,6 +224,82 @@ def start_snmp_simulator(req: SnmpStartRequest = None):
     return JobResponse(job_id=job_id, operation="start_snmp_simulator", status="running")
 
 
+@router.post("/reload", response_model=JobResponse)
+def reload_snmp_simulator():
+    """Hot-reload the SNMP simulator so newly-added devices (e.g. from the Fleet
+    Lifecycle churn) become pollable.
+
+    snmpsim indexes its data-dir at process start, so a device that appeared after
+    SNMP started isn't served until the process restarts. This binds any not-yet-
+    bound device IPs, then bounces the snmpsim subprocess with the *current* full
+    device-IP list — it re-reads the data-dir and serves every .snmprec, including
+    the new ones. Existing agents are briefly unavailable during the bounce."""
+    s = _state()
+    if not (s.snmpsim and s.snmpsim.is_running()):
+        raise HTTPException(status_code=409, detail="SNMP simulator is not running")
+    job_id = s.create_job("reload_snmp_simulator")
+
+    def _run():
+        try:
+            from core.snmprec_generator import SNMPRecGenerator as _Gen
+            seen: set = set()
+            device_ips = []
+            for d in s.topology.get_all_devices():
+                for ip in _Gen.snmp_bind_ips(d):
+                    if ip not in seen:
+                        seen.add(ip)
+                        device_ips.append(ip)
+
+            # Host-bind any IPs added since the last bind (new churned devices).
+            bound_set = set(s.bound_ips or [])
+            missing = [ip for ip in device_ips if ip not in bound_set]
+            if missing and s.selected_adapter:
+                from core.ip_binder import add_ips_fast, is_admin
+                if is_admin():
+                    s.update_job(job_id, message=f"Binding {len(missing)} new IP(s)...")
+                    bound, _ctx = add_ips_fast(
+                        s.selected_adapter, missing, s.subnet_mask,
+                        log_cb=lambda m, l: s.update_job(job_id, message=m),
+                    )
+                    s.bound_ips = list(bound_set | set(bound))
+
+            # Reuse the port snmpsim is currently serving on.
+            port = 161
+            eps = s.snmpsim.get_active_endpoints()
+            if eps:
+                try:
+                    port = int(eps[0].rsplit(":", 1)[1])
+                except (ValueError, IndexError):
+                    pass
+
+            if s.state_store:
+                s.state_store.disable_snmp_sync()
+            s.update_job(job_id, message="Restarting SNMP simulator...")
+            s.snmpsim.stop()
+            ok = s.snmpsim.start(device_ips, port=port)
+            if ok and s.state_store:
+                s.state_store.enable_snmp_sync(s.snmpsim)
+            if not ok:
+                s.update_job(job_id, status="failed", error="snmpsim.start() returned False",
+                             finished_at=datetime.utcnow().isoformat())
+                return
+
+            s.notify_ui("sync_snmp")
+            s.update_job(
+                job_id, status="completed",
+                message=f"SNMP reloaded — {len(device_ips)} agent(s)",
+                result={"endpoints": s.snmpsim.get_active_endpoints()},
+                finished_at=datetime.utcnow().isoformat(),
+            )
+        except Exception as e:
+            s.notify_ui("sync_snmp")
+            s.update_job(job_id, status="failed", error=str(e),
+                         finished_at=datetime.utcnow().isoformat())
+
+    s.executor.submit(_run)
+    return JobResponse(job_id=job_id, operation="reload_snmp_simulator", status="running")
+
+
 @router.post("/stop", response_model=OkResponse)
 def stop_snmp_simulator():
     """Stop the SNMP simulator."""

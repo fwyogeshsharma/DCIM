@@ -55,6 +55,7 @@ class AppState:
         self.rule_engine: Optional["RuleEngine"] = None
         self.trap_engine: Optional["TrapEngine"] = None
         self.snmp_set_agent: Optional[Any] = None
+        self.fleet_engine: Optional[Any] = None  # FleetLifecycleEngine (lazy)
 
         # Binding state (mirrors MainWindow's _bound_ips etc.)
         self.selected_adapter: str = ""

@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.auth import require_auth
 from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow, bacnet, redfish
-from api.routers import events, jobs, tick
+from api.routers import events, jobs, tick, fleet
 from api.routers import auth as auth_router
 from api.routers import graph as graph_router
 
@@ -63,6 +63,7 @@ app.include_router(redfish.router, prefix="/api", dependencies=_AUTH)
 app.include_router(events.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api", dependencies=_AUTH)
 app.include_router(tick.router, prefix="/api", dependencies=_AUTH)
+app.include_router(fleet.router, prefix="/api", dependencies=_AUTH)
 
 
 import os as _os
