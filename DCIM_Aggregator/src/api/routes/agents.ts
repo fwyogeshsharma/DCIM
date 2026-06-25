@@ -67,6 +67,41 @@ const REDFISH_DEFAULTS: Record<string, string> = {
 // Server device_types eligible for Redfish (power + identify LED).
 const REDFISH_TYPES = new Set(['server'])
 
+// Which threshold rules actually apply to each device_type. Mirrors the
+// simulator's APPLICABLE_TRAPS (Datacenter_Network_Simulator/core/trap_definitions.py):
+// only device types that run an SNMP agent AND expose the underlying metric get
+// the knob. Types absent here — chiller, pump, cooling_tower, valve, rpp, crah,
+// cdu, energy_monitor, generator, … — are BACnet-only with no SNMP agent, so
+// they get NO threshold surface (an empty object, not the static defaults).
+// Keep in sync with APPLICABLE_TRAPS.
+const CPU_RULES = ['HighCPU', 'HighCPUSustained', 'CPUNormal']
+const SENSOR_RULES = [
+  'SensorTempHigh', 'SensorTempCritical',
+  'SensorHumidityHigh', 'SensorHumidityCritical', 'SensorHumidityLow',
+  'SensorDewpointHigh', 'SensorAirflowHigh', 'SensorAirflowLow',
+]
+const THRESHOLDS_BY_TYPE: Record<string, string[]> = {
+  router:        [...CPU_RULES, 'HighTemperature'],
+  switch:        [...CPU_RULES, 'HighTemperature'],
+  oob_switch:    [...CPU_RULES, 'HighTemperature'],
+  firewall:      [...CPU_RULES, 'HighTemperature'],
+  load_balancer: [...CPU_RULES, 'HighMemory', 'HighTemperature'],
+  server:        [...CPU_RULES, 'HighMemory', 'HighTemperature'],
+  sensor:        [...SENSOR_RULES],
+  ups:           ['HighTemperature'],
+  // pdu: link/power only — no metric thresholds
+}
+
+// Threshold rules editable for a device, gated by type. Falls back to device_role
+// 'server' to match the Redfish gate (a server may carry a generic device_type).
+// Empty array → device has no threshold surface at all.
+function applicableThresholdRules(deviceType: unknown, deviceRole: unknown): string[] {
+  const t = String(deviceType ?? '').toLowerCase()
+  if (THRESHOLDS_BY_TYPE[t]) return THRESHOLDS_BY_TYPE[t]
+  if (String(deviceRole ?? '').toLowerCase() === 'server') return THRESHOLDS_BY_TYPE.server
+  return []
+}
+
 // Upsert a device_state config category, replacing its JSONB blob wholesale.
 async function upsertState(
   client: { query: (q: string, p: any[]) => Promise<unknown> },
@@ -354,6 +389,15 @@ export function createAgentsRouter(dbPool: Pool): Router {
       const savedThresholds: Record<string, number> = {}
       for (const r of thrRows) savedThresholds[r.rule] = Number(r.value)
 
+      // Only surface the threshold rules that actually apply to this device_type.
+      // A chiller/pump/etc. has no SNMP metrics → no knobs (empty object), instead
+      // of fabricating the full static default set for it.
+      const applicableRules = applicableThresholdRules(d.device_type, d.device_role)
+      const thresholds: Record<string, number> = {}
+      for (const k of applicableRules) {
+        thresholds[k] = savedThresholds[k] ?? THRESHOLD_DEFAULTS[k]
+      }
+
       // Redfish overrides still live in device_state.
       const { rows: redfishRows } = await dbPool.query(
         `SELECT data FROM device_state WHERE device_id = $1::uuid AND category = 'redfish'`,
@@ -398,7 +442,7 @@ export function createAgentsRouter(dbPool: Pool): Router {
             model:           d.model_name ?? '',
             power_draw_w:    d.power_draw_w ?? null,
           },
-          thresholds: { ...THRESHOLD_DEFAULTS, ...savedThresholds },
+          thresholds,
           redfish:    redfishCapable ? { ...REDFISH_DEFAULTS, ...redfishState } : null,
           // When DCS last had a change queued (drives the "pending push" hint).
           pending_since: pendingSince,
@@ -485,7 +529,10 @@ export function createAgentsRouter(dbPool: Pool): Router {
           [agentId]
         )
         const curMap = new Map<string, number>(curThr.map((r: any) => [r.rule, Number(r.value)]))
-        for (const k of Object.keys(THRESHOLD_DEFAULTS)) {
+        // Only persist rules that apply to this device_type — never queue a dead
+        // command for a metric the device doesn't have (e.g. HighCPU on a chiller).
+        const applicableRules = applicableThresholdRules(dev.device_type, dev.device_role)
+        for (const k of applicableRules) {
           if (!(k in thresholds) || thresholds[k] === '' || thresholds[k] === null) continue
           const n = Number(thresholds[k])
           if (Number.isNaN(n)) continue
