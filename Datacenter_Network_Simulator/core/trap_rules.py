@@ -100,7 +100,7 @@ DEFAULT_RULES: List[Rule] = [
           severity="major", priority=150),
 
     _rule("HighTemperature",
-          _threshold("temperature", ">", 60.0),
+          _threshold("temperature", ">", 90.0),
           "1.3.6.1.4.1.99999.1.3",
           severity="critical", priority=180),
 
@@ -309,7 +309,7 @@ DEFAULT_RULES: List[Rule] = [
     _rule("CriticalCPUAndTemp",
           _composite(
               _threshold("cpu_usage", ">", 90.0),
-              _threshold("temperature", ">", 60.0),
+              _threshold("temperature", ">", 90.0),
               logic="AND",
           ),
           "1.3.6.1.4.1.99999.1.21",
@@ -330,7 +330,7 @@ DEFAULT_RULES: List[Rule] = [
           recovery=True, recovery_of="HighMemory"),
 
     _rule("TemperatureNormal",
-          _threshold("temperature", "<", 55.0),
+          _threshold("temperature", "<", 85.0),
           "1.3.6.1.4.1.99999.1.15",
           severity="informational", priority=100,
           recovery=True, recovery_of="HighTemperature"),

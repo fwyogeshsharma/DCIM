@@ -243,6 +243,11 @@ class DeviceStateStore:
         # threshold so a recovery trap fires. {device_id: {metric: ramp-record}}.
         self._fault_ramps: Dict[str, Dict[str, dict]] = {}
 
+        # Per-device disk baseline (fraction 0–1). Disk hovers around this with
+        # small jitter instead of growth-walking to the 90 % cap, so the fleet
+        # shows varied, realistic disk usage rather than every server pinned full.
+        self._disk_anchor: Dict[str, float] = {}
+
         # Autonomous fault generation. OFF by default: the random walk keeps every
         # device healthy (metrics jitter inside safe bands, no state flips), so NO
         # SNMP trap fires unless the user injects a fault (Simulate Fault / Send
@@ -940,14 +945,20 @@ class DeviceStateStore:
                 _hi_mem = int(device.memory_total * _lim_mem["max"] / 100)
                 device.memory_used = max(_lo_mem, min(_hi_mem, device.memory_used))
 
-        # Disk: slow random walk — mostly grows (log/tmp accumulation), occasional drop
+        # Disk: hover around a per-device baseline with small jitter. A growth-
+        # biased walk would march every server to the 90 % cap and pin there; real
+        # disks change slowly and sit at varied levels, so mean-revert to the
+        # device's own anchor (its initial fill) instead.
         if mf["disk_used"]:
-            _disk_swing = max(1, device.disk_total // 200)
-            _disk_delta = random.randint(-_disk_swing // 4, _disk_swing)
-            device.disk_used = max(
-                int(device.disk_total * 0.05),
-                min(int(device.disk_total * 0.90), device.disk_used + _disk_delta),
-            )
+            _tot = max(1, device.disk_total)
+            _anchor = self._disk_anchor.get(device.name)
+            if _anchor is None:
+                _anchor = min(0.85, max(0.08, device.disk_used / _tot))
+                self._disk_anchor[device.name] = _anchor
+            _frac = device.disk_used / _tot
+            _frac += (_anchor - _frac) * 0.08 + random.uniform(-0.0035, 0.0035)
+            _frac = max(0.05, min(0.90, _frac))
+            device.disk_used = int(_tot * _frac)
         if mf["disk_used"]:
             _lim_disk = self.metric_limits.get("disk_pct")
             if _lim_disk and _lim_disk["enabled"]:
@@ -961,14 +972,16 @@ class DeviceStateStore:
 
         # CPU/ASIC temperature
         if mf["cpu_temp"]:
-            # Direct-to-chip liquid cooling holds the die far cooler than air: a
-            # cold plate fed with ~25 °C water keeps a loaded CPU ~45 °C, vs ~62 °C
-            # air-cooled. Model it as a lower baseline + flatter load slope for
-            # servers on a CDU loop; everything else uses the air-cooled curve.
+            # Realistic CPU die temps: air-cooled idles ~40 °C and reaches ~83 °C
+            # at 100 % load (Tjmax ~95–100 °C; Warning 85 / Critical 90). The load
+            # slope is tuned so a fully-loaded server peaks below 90 — so it never
+            # false-alarms — and only a cooling fault (warm intake / CDU leak) or an
+            # injected fault pushes it past Critical. Direct-to-chip liquid holds the
+            # die far cooler: a cold plate fed ~25 °C water keeps a loaded CPU ~65 °C.
             _liquid = (device.device_type == DeviceType.SERVER
                        and device.name in self._liquid_cooled_servers())
             if _liquid:
-                _cpu_t = 18.0 + device.cpu_usage * 0.27 + random.uniform(-1.0, 1.0)
+                _cpu_t = 35.0 + device.cpu_usage * 0.30 + random.uniform(-1.0, 1.0)
                 # Warmer coolant raises the die: a CDU fault (HighSupplyTemp/
                 # PumpFault/LowFlow) lifts its TCS_Supply_Temp above the ~32 °C
                 # nominal, and an upstream chiller/CHW fault adds the DC penalty.
@@ -981,7 +994,7 @@ class DeviceStateStore:
                         _cpu_t += max(0.0, float(_pv["TCS_Supply_Temp"]) - 32.0) * 1.2
                 _cpu_t += self._chw_pen.get(device.datacenter, 0.0) * 0.8
             else:
-                _cpu_t = 20.0 + device.cpu_usage * 0.42 + random.uniform(-1.0, 1.0)
+                _cpu_t = 38.0 + device.cpu_usage * 0.45 + random.uniform(-1.0, 1.0)
             # Warmer INTAKE AIR raises the die/ASIC: air-cooled gear tracks its
             # inlet nearly 1:1, so a cooling failure that lifts the cold-aisle temp
             # also drives CPU temp up; direct-to-chip CPUs are largely decoupled
@@ -1028,11 +1041,14 @@ class DeviceStateStore:
         # Thermal "Exhaust") to build hot-aisle heatmaps.
         if device.device_type == DeviceType.SERVER:
             load = device.cpu_usage / 100.0
-            _pw = float(device.power_draw_w or 0.0)
-            # fan controllers track the HEAT dumped, i.e. power, so flow scales
-            # with power_draw_w (cpu_usage drives cpu_temp/fan_rpm, but server
-            # power here is not cpu-correlated). pf normalises a typical
-            # ~450–760 W server band to 0..1.
+            # Live draw tracks CPU load — idle ~55 % of the configured nominal,
+            # 100 % at full load — the same curve Redfish _live_watts reports. So
+            # higher load raises power, which raises exhaust ΔT and airflow, while
+            # cpu_usage also drives cpu_temp and fan_rpm: load lifts all of them
+            # together (power_draw_w is the static full-load nameplate).
+            _pw = float(device.power_draw_w or 0.0) * (0.55 + 0.45 * load)
+            # fan controllers track the HEAT dumped, i.e. live power, so flow
+            # scales with it. pf normalises a typical ~450–760 W server band to 0..1.
             pf = max(0.0, min(1.0, (_pw - 450.0) / 310.0))
             if mf["airflow"]:
                 # exhaust air velocity (m/s): scales with power so ΔT stays in
@@ -1361,8 +1377,11 @@ class DeviceStateStore:
         mtot = getattr(device, "memory_total", 0)
         if mtot and device.memory_used > int(mtot * 0.849):       # HighMemory > 85 %
             device.memory_used = int(mtot * 0.849)
-        if getattr(device, "cpu_temp", 0) > 59.5:                 # HighTemperature > 60
-            device.cpu_temp = 59.5
+        # cpu_temp is NOT clamped: even at 100 % load the walk peaks ~84 °C (plus a
+        # few °C of intake coupling), staying below the 90 °C HighTemperature
+        # threshold, so it never auto-alarms. It only crosses 90 via a user-injected
+        # CDU leak, a CRAH/cooling fault, or Inject Fault — all of which SHOULD fire
+        # the trap, so scrubbing it here would wrongly suppress them.
 
         if dt == DeviceType.SENSOR:
             device.inlet_temp  = min(device.inlet_temp, 31.9)        # ambient > 32

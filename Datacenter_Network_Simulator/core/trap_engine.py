@@ -418,10 +418,10 @@ class TrapEngine(QObject):
                          TrapType.SENSOR_AMBIENT_TEMP_CRITICAL,
                          TrapType.SENSOR_AMBIENT_TEMP_NORMAL):
             temp = int(kwargs.get("metric_value", getattr(device, "cpu_temp", 0)
-                                  or random.randint(62, 90)))
+                                  or random.randint(90, 95)))
             return [
                 (_oid('1.3.6.1.4.1.99999.2.3'), rfc1902.Gauge32(max(0, temp))),
-                (_oid('1.3.6.1.4.1.99999.2.7'), rfc1902.Gauge32(40)),
+                (_oid('1.3.6.1.4.1.99999.2.7'), rfc1902.Gauge32(90)),
             ]
 
         if trap_type == TrapType.LINK_FLAP:
@@ -516,7 +516,7 @@ class TrapEngine(QObject):
                              device.memory_used * 100 // max(1, device.memory_total))
             return f"Memory {val}%  (threshold 85%)"
         if trap_type == TrapType.TEMPERATURE_ALERT:
-            return f"Temperature {kwargs.get('metric_value', '—')}°C  (threshold 40°C)"
+            return f"Temperature {kwargs.get('metric_value', '—')}°C  (threshold 90°C)"
         if trap_type == TrapType.LINK_FLAP:
             return (f"Interface flapped {kwargs.get('flap_count', 3)}× "
                     f"in {kwargs.get('window_sec', 60):.0f}s")
@@ -630,7 +630,7 @@ class TrapEngine(QObject):
             return f"Memory {val}%  (recovered <70%)"
         if trap_type == TrapType.TEMPERATURE_NORMAL:
             val = kwargs.get("metric_value", None) or device.cpu_temp
-            return f"Temperature {float(val):.1f}°C  (recovered <55°C)"
+            return f"Temperature {float(val):.1f}°C  (recovered <85°C)"
         # Sensor ambient temp variants + recovery
         if trap_type == TrapType.SENSOR_AMBIENT_TEMP_HIGH:
             val = kwargs.get("metric_value", None) or device.inlet_temp

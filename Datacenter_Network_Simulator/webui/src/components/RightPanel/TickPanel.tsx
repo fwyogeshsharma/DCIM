@@ -90,7 +90,7 @@ const METRIC_GROUPS: MetricGroup[] = [
     { key: 'memory_used',    label: 'Memory Used %',            tip: 'Random walk; 0.5% spike chance to >85%' },
     { key: 'disk_used',      label: 'Disk Used %',              tip: 'Growth-biased walk; capped 5–90%' },
     { key: 'sys_uptime',     label: 'System Uptime',            tip: '+tick_interval centiseconds per tick' },
-    { key: 'cpu_temp',       label: 'CPU Temperature',          tip: '20 + 0.42×cpu ± 1 °C, clamped 20–95 °C' },
+    { key: 'cpu_temp',       label: 'CPU Temperature',          tip: 'Air: 38 + 0.45×cpu (~40 idle, ~83 full). Liquid: 35 + 0.30×cpu. +intake & leak heat, clamped ≤95 °C' },
     { key: 'inlet_temp',     label: 'Chassis Inlet Temp',       tip: '18 + 0.12×cpu ± 0.5 °C, clamped 15–55 °C (servers only)' },
     { key: 'iface_octets',   label: 'Interface Byte Counters',  tip: '+5K–150K per tick on every UP interface' },
     { key: 'iface_errors',   label: 'Interface Error Counters', tip: 'in_errors 10% / out_errors 5% per UP interface' },

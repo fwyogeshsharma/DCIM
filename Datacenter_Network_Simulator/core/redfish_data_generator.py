@@ -253,30 +253,36 @@ def chassis(device: "Device") -> dict:
 
 
 def _temperature(cid: str, idx: int, name: str, reading: float,
-                 ctx: str, crit: float) -> dict:
-    return {
+                 ctx: str, crit: float, warn: float | None = None) -> dict:
+    health = "Critical" if reading >= crit else (
+        "Warning" if warn is not None and reading >= warn else "OK")
+    d = {
         "@odata.id": f"/redfish/v1/Chassis/{cid}/Thermal#/Temperatures/{idx}",
         "MemberId": str(idx),
         "Name": name,
         "ReadingCelsius": round(reading, 1),
         "PhysicalContext": ctx,
         "UpperThresholdCritical": crit,
-        "Status": {"State": "Enabled",
-                   "Health": "OK" if reading < crit else "Critical"},
+        "Status": {"State": "Enabled", "Health": health},
     }
+    if warn is not None:
+        d["UpperThresholdNonCritical"] = warn
+    return d
 
 
 def thermal(device: "Device") -> dict:
     cid = member_id(device)
+    # Thresholds match the BMC alarm points in _alarms() and the SNMP trap rules
+    # (HighTemperature > 90). CPU: Warning 85 / Critical 90. Inlet: 40 / 45.
     temps = [
-        _temperature(cid, 0, "CPU Temp", device.cpu_temp, "CPU", 95.0),
-        _temperature(cid, 1, "Inlet Temp", device.inlet_temp, "Intake", 45.0),
+        _temperature(cid, 0, "CPU Temp", device.cpu_temp, "CPU", 90.0, warn=85.0),
+        _temperature(cid, 1, "Inlet Temp", device.inlet_temp, "Intake", 45.0, warn=40.0),
     ]
     # Exhaust/outlet sensor — populated by the ticker for servers; DCIM reads
     # this (PhysicalContext "Exhaust") to build hot-aisle heatmaps.
     if device.outlet_temp > 0:
         temps.append(_temperature(cid, 2, "Exhaust Temp", device.outlet_temp,
-                                   "Exhaust", 60.0))
+                                   "Exhaust", 60.0, warn=55.0))
     return {
         "@odata.type": "#Thermal.v1_7_0.Thermal",
         "@odata.id": f"/redfish/v1/Chassis/{cid}/Thermal",
@@ -554,9 +560,15 @@ def _net_totals(device: "Device") -> tuple[float, float]:
 def _alarms(device: "Device") -> list[tuple[str, str]]:
     """Active alarm conditions → list of (severity, message)."""
     al: list[tuple[str, str]] = []
-    if device.cpu_temp >= 85.0:
-        al.append(("Critical", f"CPU temperature high: {device.cpu_temp:.1f} C"))
-    if device.inlet_temp >= 40.0:
+    # CPU thresholds match the Redfish sensor (Warning 85 / Critical 90) and the
+    # SNMP HighTemperature trap (> 90).
+    if device.cpu_temp >= 90.0:
+        al.append(("Critical", f"CPU temperature critical: {device.cpu_temp:.1f} C"))
+    elif device.cpu_temp >= 85.0:
+        al.append(("Warning", f"CPU temperature high: {device.cpu_temp:.1f} C"))
+    if device.inlet_temp >= 45.0:
+        al.append(("Critical", f"Inlet temperature critical: {device.inlet_temp:.1f} C"))
+    elif device.inlet_temp >= 40.0:
         al.append(("Warning", f"Inlet temperature high: {device.inlet_temp:.1f} C"))
     if _mem_pct(device) >= 90.0:
         al.append(("Warning", f"Memory utilization high: {_mem_pct(device):.0f}%"))

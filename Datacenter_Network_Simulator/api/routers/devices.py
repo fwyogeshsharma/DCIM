@@ -377,7 +377,7 @@ FAULT_MAP = {
     "memory_high":   {"metric": "memory_pct",          "target": 88.0, "rate": 8.0,
                       "label": "Memory High",
                       "types": ["server", "router", "switch", "firewall", "load_balancer"]},
-    "temp_high":     {"metric": "cpu_temp",            "target": 65.0, "rate": 3.0,
+    "temp_high":     {"metric": "cpu_temp",            "target": 93.0, "rate": 3.0,
                       "label": "Temperature High",
                       "types": ["server", "router", "switch", "firewall", "load_balancer", "oob_switch"]},
     "ambient_high":  {"metric": "sensor_ambient_temp", "target": 34.0, "rate": 1.5,
