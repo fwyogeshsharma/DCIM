@@ -548,7 +548,8 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
   )
 }
 
-// ── PlantEventModal (per-unit fault injection — BACnet plant only) ────────────
+// ── Plant events (per-unit fault injection — BACnet plant only) ───────────────
+// Rendered as the "Trigger Event" submenu in NodeContextMenu (toggle to inject/clear).
 // Each event forces ONE BACnet point on this single unit. Alarm_* forces also
 // drive the engine's coupled fault physics (pressure/flow/temp cascades; the CDU
 // leak heats downstream CPUs); a running-status force trips the unit. The forced
@@ -606,100 +607,6 @@ const PLANT_EVENTS: Record<string, PlantEvent[]> = {
 
 export const PLANT_EVENT_TYPES = Object.keys(PLANT_EVENTS)
 
-export function PlantEventModal({ deviceId, deviceName, deviceType, onClose }: { deviceId: string; deviceName: string; deviceType: string; onClose: () => void }) {
-  const events = PLANT_EVENTS[deviceType] ?? []
-  const [overrides, setOverrides] = useState<Record<string, number>>({})
-  const [busy, setBusy]           = useState<string | null>(null)
-  const [err,  setErr]            = useState('')
-
-  async function load() {
-    try {
-      const ov = await api.plantOverrides(deviceId) as { overrides: Record<string, number> }
-      setOverrides(ov.overrides ?? {})
-      setErr('')
-    } catch (e) { setErr(errorMessage(e)) }
-  }
-  useEffect(() => {
-    load()
-    const t = setInterval(load, 2000)
-    return () => clearInterval(t)
-  }, [deviceId])
-
-  // Each event owns a unique point, so presence in the override map == injected.
-  const isActive = (ev: PlantEvent) => ev.point in overrides
-
-  async function toggle(ev: PlantEvent) {
-    const active = isActive(ev)
-    setBusy(ev.point); setErr('')
-    try { await api.setPlantOverride(deviceId, ev.point, active ? null : ev.value); await load() }
-    catch (e) { setErr(errorMessage(e)) }
-    finally { setBusy(null) }
-  }
-
-  async function clearAll() {
-    setBusy('*'); setErr('')
-    try {
-      for (const ev of events) if (isActive(ev)) await api.setPlantOverride(deviceId, ev.point, null)
-      await load()
-    } catch (e) { setErr(errorMessage(e)) }
-    finally { setBusy(null) }
-  }
-
-  const anyActive = events.some(isActive)
-
-  return createPortal(
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(2px)' }}
-      onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 6, width: 440, maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 48px rgba(0,0,0,0.8)' }}>
-        <div className="panel-header" style={{ borderRadius: '6px 6px 0 0', flexShrink: 0 }}>
-          <span className="title">Trigger Event — {deviceName}</span>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer', padding: '0 4px' }}>✕</button>
-        </div>
-
-        <div style={{ padding: '12px 18px', overflowY: 'auto' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>
-            {deviceType.replace(/_/g, ' ')} · inject a fault on this unit only — sets the BACnet state + fires a COV alarm
-          </div>
-
-          <div style={SEC}>Events</div>
-          {events.length === 0 && <div style={{ color: 'var(--text-dim)', fontSize: 11 }}>No events for this device type.</div>}
-          {events.map(ev => {
-            const on = isActive(ev)
-            const label = on ? 'Clear' : ev.kind === 'trip' ? 'Force Stop' : 'Trigger'
-            return (
-              <div key={ev.point} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
-                <span style={{ flex: 1, color: 'var(--text)' }}>{ev.label}</span>
-                <span style={{ fontSize: 10, color: on ? '#f87171' : 'var(--text-dim)', width: 48, textAlign: 'right' }}>{on ? 'ACTIVE' : 'ok'}</span>
-                <button
-                  disabled={busy !== null}
-                  onClick={() => toggle(ev)}
-                  style={{
-                    minWidth: 88, padding: '3px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                    background: on ? '#f8514922' : 'var(--bg-hover)',
-                    border: `1px solid ${on ? '#f8514966' : 'var(--border)'}`,
-                    color: on ? '#f87171' : 'var(--text)',
-                  }}
-                >{busy === ev.point ? '…' : label}</button>
-              </div>
-            )
-          })}
-
-          {err && <div style={{ color: 'var(--red)', fontSize: 10, marginTop: 8 }}>{err}</div>}
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, padding: '8px 18px 14px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-          <button onClick={clearAll} disabled={busy !== null || !anyActive}
-            style={{ flex: 1, opacity: anyActive ? 1 : 0.5 }}>
-            {busy === '*' ? 'Clearing…' : 'Clear All'}
-          </button>
-          <button className="primary" style={{ flex: 1 }} onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  )
-}
-
 // ── NodeContextMenu ───────────────────────────────────────────────────────────
 
 interface Props {
@@ -713,16 +620,31 @@ interface Props {
   onLocate: () => void
   onEditDevice: () => void
   onShowInfo: () => void
-  onTriggerEvent: () => void
 }
 
-export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelName, x, y, onClose, onLocate, onEditDevice, onShowInfo, onTriggerEvent }: Props) {
+export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelName, x, y, onClose, onLocate, onEditDevice, onShowInfo }: Props) {
   const { snmp, fetchGraph, fetchDevices } = useStore()
   const menuRef  = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const evTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pos,     setPos]    = useState({ x, y })
   const [subOpen, setSubOpen] = useState(false)
+  const [evSubOpen, setEvSubOpen] = useState(false)
+  const [overrides, setOverrides] = useState<Record<string, number>>({})
+  const [evBusy, setEvBusy] = useState<string | null>(null)
   const snmpRunning = snmp?.running ?? false
+  const plantEvents = PLANT_EVENTS[deviceType] ?? []
+
+  // Load active fault overrides so the submenu can show ACTIVE state (plant only)
+  async function loadOverrides() {
+    try {
+      const ov = await api.plantOverrides(nodeId) as { overrides: Record<string, number> }
+      setOverrides(ov.overrides ?? {})
+    } catch { /* ignore */ }
+  }
+  useEffect(() => {
+    if (PLANT_EVENT_TYPES.includes(deviceType)) loadOverrides()
+  }, [deviceType, nodeId])
 
   // Adjust to keep on-screen after first render
   useEffect(() => {
@@ -757,6 +679,24 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   }
   function closeSub() {
     timerRef.current = setTimeout(() => setSubOpen(false), 150)
+  }
+
+  function openEvSub() {
+    if (evTimerRef.current) { clearTimeout(evTimerRef.current); evTimerRef.current = null }
+    setEvSubOpen(true)
+  }
+  function closeEvSub() {
+    evTimerRef.current = setTimeout(() => setEvSubOpen(false), 150)
+  }
+
+  // Toggle a plant fault override (inject/clear). Menu stays open so the user can
+  // fire several or watch ACTIVE state flip — events are stateful, unlike traps.
+  async function toggleEvent(ev: PlantEvent) {
+    const active = ev.point in overrides
+    setEvBusy(ev.point)
+    try { await api.setPlantOverride(nodeId, ev.point, active ? null : ev.value); await loadOverrides() }
+    catch (e) { alert(String(e)) }
+    finally { setEvBusy(null) }
   }
 
   async function removeDevice() {
@@ -817,8 +757,58 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
       <MenuDivider />
       <MenuItem label="Locate on Graph" onClick={() => { onLocate(); onClose() }} />
       <MenuItem label="Show Info"       onClick={() => { onClose(); onShowInfo() }} />
-      {PLANT_EVENT_TYPES.includes(deviceType) && (
-        <MenuItem label="Trigger Event…" onClick={() => { onClose(); onTriggerEvent() }} />
+
+      {plantEvents.length > 0 && (
+        <>
+          <MenuDivider />
+          <div style={{ position: 'relative' }}
+            onMouseEnter={openEvSub}
+            onMouseLeave={closeEvSub}
+          >
+            {/* "Trigger Event" row */}
+            <div style={{
+              padding: '6px 14px',
+              cursor: 'pointer',
+              color: 'var(--text)',
+              background: evSubOpen ? 'rgba(255,255,255,0.06)' : 'transparent',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <span>Trigger Event</span>
+              <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>▶</span>
+            </div>
+
+            {/* Submenu */}
+            {evSubOpen && (
+              <div
+                style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9001, maxHeight: 340, overflowY: 'auto' }}
+                onMouseEnter={openEvSub}
+                onMouseLeave={closeEvSub}
+              >
+                {plantEvents.map(ev => {
+                  const on = ev.point in overrides
+                  return (
+                    <div
+                      key={ev.point}
+                      style={{
+                        padding: '5px 14px', cursor: evBusy ? 'wait' : 'pointer',
+                        color: on ? '#f87171' : 'var(--text)', whiteSpace: 'nowrap',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      onMouseDown={e => { e.preventDefault(); if (!evBusy) toggleEvent(ev) }}
+                    >
+                      <span>{ev.label}</span>
+                      <span style={{ fontSize: 9, color: on ? '#f87171' : 'var(--text-dim)' }}>
+                        {evBusy === ev.point ? '…' : on ? 'ACTIVE' : ''}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {snmpRunning && traps.length > 0 && (
