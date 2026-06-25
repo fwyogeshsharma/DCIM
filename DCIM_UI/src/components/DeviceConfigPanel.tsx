@@ -180,6 +180,13 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
   const payload = diff(form, base, cfg.redfish_capable)
   const dirty = Object.keys(payload).length > 0
 
+  // Only surface optional sections when the device actually carries data for them.
+  const hasThresholds = THRESHOLD_FIELDS.some(f => {
+    const v = cfg.thresholds?.[f.key]
+    return v !== null && v !== undefined
+  })
+  const hasRedfish = cfg.redfish_capable && cfg.redfish !== null
+
   const setIdentity = (k: keyof DeviceConfigIdentity, v: string) =>
     setForm(f => f && { ...f, identity: { ...f.identity, [k]: v } })
   const setAsset = (k: keyof DeviceConfigAsset, v: string) =>
@@ -258,20 +265,22 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
           </div>
         </SectionCard>
 
-        {/* Alert thresholds */}
-        <SectionCard title="Alert Thresholds" icon={<AlertTriangle className="w-4 h-4 text-amber-400" />} note="SNMP SET · 99999.3.x">
-          <div className="grid grid-cols-2 gap-3">
-            {THRESHOLD_FIELDS.map(f => (
-              <Field key={f.key} label={`${f.label} (${f.unit})`} oid={f.oid}>
-                <Input className={inputCls} type="number" step="any"
-                  value={form.thresholds[f.key]} onChange={e => setThreshold(f.key, e.target.value)} />
-              </Field>
-            ))}
-          </div>
-        </SectionCard>
+        {/* Alert thresholds — only when the device reports threshold data */}
+        {hasThresholds && (
+          <SectionCard title="Alert Thresholds" icon={<AlertTriangle className="w-4 h-4 text-amber-400" />} note="SNMP SET · 99999.3.x">
+            <div className="grid grid-cols-2 gap-3">
+              {THRESHOLD_FIELDS.map(f => (
+                <Field key={f.key} label={`${f.label} (${f.unit})`} oid={f.oid}>
+                  <Input className={inputCls} type="number" step="any"
+                    value={form.thresholds[f.key]} onChange={e => setThreshold(f.key, e.target.value)} />
+                </Field>
+              ))}
+            </div>
+          </SectionCard>
+        )}
 
-        {/* Redfish — servers only */}
-        {cfg.redfish_capable ? (
+        {/* Redfish — only when the device carries Redfish data */}
+        {hasRedfish && (
           <SectionCard title="Redfish" icon={<Power className="w-4 h-4 text-emerald-400" />} note="HTTPS :443 · servers only">
             <div className="space-y-3">
               <Field label="Power action" oid="ComputerSystem.Reset">
@@ -305,12 +314,6 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
                 Power transitions fire a serverPowerOff/On trap and update the device power state.
               </p>
             </div>
-          </SectionCard>
-        ) : (
-          <SectionCard title="Redfish" icon={<Power className="w-4 h-4 text-slate-500" />} note="servers only">
-            <p className="text-xs text-slate-500">
-              Redfish power &amp; identify-LED controls are available on server devices only.
-            </p>
           </SectionCard>
         )}
       </div>
