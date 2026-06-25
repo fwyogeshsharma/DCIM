@@ -9,6 +9,7 @@ networks:
 volumes:
   timescaledb-data:
   redis-data:
+  dcim-ml-models:
   dcim-server-a-data:
   dcim-server-b-data:
   dcim-server-c-data:
@@ -167,6 +168,48 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+
+  # ── DCIM ML (AI capacity planning & rack forecasting) ───────────────────────
+  dcim-ml:
+    build:
+      context: ./DCIM_ML
+      dockerfile: Dockerfile
+    container_name: dcim-ml
+    environment:
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: dcim_aggregator
+      POSTGRES_USER: dcim
+      POSTGRES_PASSWORD: dcim_pas
+      LOG_LEVEL: INFO
+      MODEL_PATH: /app/models
+      # Capacity assumptions (no dedicated rack table yet)
+      RACK_U_DEFAULT: "42"
+      RACK_POWER_CAPACITY_W: "10000"
+      # Forecasting
+      FORECAST_HORIZONS: "30,60,90"
+      CPU_THRESHOLD_PCT: "85"
+      MEM_THRESHOLD_PCT: "85"
+      # Retraining (daily 02:00 UTC; also runs once at startup if stale)
+      RETRAIN_CRON: "0 2 * * *"
+      RUN_ON_STARTUP: "true"
+    volumes:
+      - dcim-ml-models:/app/models
+    ports:
+      - "5002:8000"
+    networks: [dcim-backend]
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      aggregator:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ── DCIM UI ──────────────────────────────────────────────────────────────────
   dcim-ui:
