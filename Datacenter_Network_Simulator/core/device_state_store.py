@@ -1212,18 +1212,24 @@ class DeviceStateStore:
             return False
         self._fault_ramps.setdefault(device_id, {})[metric] = {
             "target": float(target), "rate": abs(float(rate)),
-            "baseline": None, "clearing": False,
+            "baseline": None, "current": None, "clearing": False,
         }
         return True
 
     def clear_fault(self, device_id: str, metric: str) -> bool:
         """Reverse a ramp toward its captured baseline. The record is removed
         once the baseline is reached (after the recovery threshold is crossed)."""
-        r = self._fault_ramps.get(device_id, {}).get(metric)
+        dmap = self._fault_ramps.get(device_id, {})
+        r = dmap.get(metric)
         if not r:
             return False
-        if r["baseline"] is not None:
-            r["target"] = r["baseline"]
+        if r["current"] is None:
+            # Never advanced a tick — nothing to ramp down; just drop it.
+            dmap.pop(metric, None)
+            if not dmap:
+                self._fault_ramps.pop(device_id, None)
+            return True
+        r["target"] = r["baseline"]
         r["clearing"] = True
         return True
 
@@ -1272,15 +1278,22 @@ class DeviceStateStore:
                 done.append(metric)
                 continue
             kind, field, lo, hi = acc
-            cur = self._ramp_read(device, kind, field)
-            if r["baseline"] is None:                 # capture on first tick
-                r["baseline"] = cur
+            # The ramp owns its trajectory in r["current"] rather than re-reading
+            # the device value each tick — derived metrics like cpu_temp are
+            # recomputed by the walk every tick, which would otherwise reset the
+            # ramp's progress and it could never reach the target.
+            if r["current"] is None:                  # capture baseline on first tick
+                r["current"] = self._ramp_read(device, kind, field)
+                if r["baseline"] is None:
+                    r["baseline"] = r["current"]
+            cur = r["current"]
             target, rate = r["target"], r["rate"]
             if cur < target:
                 cur = min(target, cur + rate)
             elif cur > target:
                 cur = max(target, cur - rate)
             cur = max(lo, min(hi, cur))
+            r["current"] = cur
             self._ramp_write(device, kind, field, cur)
             # Clearing ramp that has reached baseline → fault fully resolved.
             if r["clearing"] and abs(cur - target) < max(0.5, rate):
