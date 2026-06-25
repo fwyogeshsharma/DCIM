@@ -180,11 +180,13 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
   const payload = diff(form, base, cfg.redfish_capable)
   const dirty = Object.keys(payload).length > 0
 
-  // Only surface optional sections when the device actually carries data for them.
-  const hasThresholds = THRESHOLD_FIELDS.some(f => {
+  // Only surface optional sections/fields when the device actually carries data.
+  // Each threshold field is shown individually — devices report different subsets.
+  const thresholdFields = THRESHOLD_FIELDS.filter(f => {
     const v = cfg.thresholds?.[f.key]
     return v !== null && v !== undefined
   })
+  const hasThresholds = thresholdFields.length > 0
   const hasRedfish = cfg.redfish_capable && cfg.redfish !== null
 
   const setIdentity = (k: keyof DeviceConfigIdentity, v: string) =>
@@ -269,7 +271,7 @@ export default function DeviceConfigPanel({ agentId }: { agentId: string }) {
         {hasThresholds && (
           <SectionCard title="Alert Thresholds" icon={<AlertTriangle className="w-4 h-4 text-amber-400" />} note="SNMP SET · 99999.3.x">
             <div className="grid grid-cols-2 gap-3">
-              {THRESHOLD_FIELDS.map(f => (
+              {thresholdFields.map(f => (
                 <Field key={f.key} label={`${f.label} (${f.unit})`} oid={f.oid}>
                   <Input className={inputCls} type="number" step="any"
                     value={form.thresholds[f.key]} onChange={e => setThreshold(f.key, e.target.value)} />
