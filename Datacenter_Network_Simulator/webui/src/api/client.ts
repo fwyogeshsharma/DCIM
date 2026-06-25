@@ -143,6 +143,9 @@ export const api = {
   deviceOverrides:   (id: string)     => get(`/devices/${id}/overrides`),
   setDeviceOverride: (id: string, metric: string, value: number | string | null) =>
     post(`/devices/${id}/override`, { metric, value }),
+  deviceFaults:      (id: string)     => get(`/devices/${id}/faults`),
+  setDeviceFault:    (id: string, fault: string, action: 'start' | 'clear') =>
+    post(`/devices/${id}/fault`, { fault, action }),
 
   // binding
   adapters:    ()                     => get('/binding/adapters'),

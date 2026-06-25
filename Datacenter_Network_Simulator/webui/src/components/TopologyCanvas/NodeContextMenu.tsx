@@ -627,11 +627,16 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const menuRef  = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const evTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fltTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pos,     setPos]    = useState({ x, y })
   const [subOpen, setSubOpen] = useState(false)
   const [evSubOpen, setEvSubOpen] = useState(false)
+  const [fltSubOpen, setFltSubOpen] = useState(false)
   const [overrides, setOverrides] = useState<Record<string, number>>({})
   const [evBusy, setEvBusy] = useState<string | null>(null)
+  const [faultsAvail, setFaultsAvail] = useState<{ fault: string; label: string }[]>([])
+  const [faultsActive, setFaultsActive] = useState<string[]>([])
+  const [fltBusy, setFltBusy] = useState<string | null>(null)
   const snmpRunning = snmp?.running ?? false
   const plantEvents = PLANT_EVENTS[deviceType] ?? []
 
@@ -645,6 +650,18 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   useEffect(() => {
     if (PLANT_EVENT_TYPES.includes(deviceType)) loadOverrides()
   }, [deviceType, nodeId])
+
+  // Inject Fault — available faults for this device type + which ramps are active
+  async function loadFaults() {
+    try {
+      const r = await api.deviceFaults(nodeId) as {
+        available: { fault: string; label: string }[]; active: string[]
+      }
+      setFaultsAvail(r.available ?? [])
+      setFaultsActive(r.active ?? [])
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { loadFaults() }, [nodeId])
 
   // Adjust to keep on-screen after first render
   useEffect(() => {
@@ -697,6 +714,24 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
     try { await api.setPlantOverride(nodeId, ev.point, active ? null : ev.value); await loadOverrides() }
     catch (e) { alert(String(e)) }
     finally { setEvBusy(null) }
+  }
+
+  function openFltSub() {
+    if (fltTimerRef.current) { clearTimeout(fltTimerRef.current); fltTimerRef.current = null }
+    setFltSubOpen(true)
+  }
+  function closeFltSub() {
+    fltTimerRef.current = setTimeout(() => setFltSubOpen(false), 150)
+  }
+
+  // Toggle an Inject Fault ramp. start = ramp the metric up across the SNMP
+  // threshold (trap fires organically); clear = ramp back, firing recovery.
+  async function toggleFault(fault: string) {
+    const active = faultsActive.includes(fault)
+    setFltBusy(fault)
+    try { await api.setDeviceFault(nodeId, fault, active ? 'clear' : 'start'); await loadFaults() }
+    catch (e) { alert(String(e)) }
+    finally { setFltBusy(null) }
   }
 
   async function removeDevice() {
@@ -801,6 +836,59 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                       <span>{ev.label}</span>
                       <span style={{ fontSize: 9, color: on ? '#f87171' : 'var(--text-dim)' }}>
                         {evBusy === ev.point ? '…' : on ? 'ACTIVE' : ''}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {faultsAvail.length > 0 && (
+        <>
+          <MenuDivider />
+          <div style={{ position: 'relative' }}
+            onMouseEnter={openFltSub}
+            onMouseLeave={closeFltSub}
+          >
+            {/* "Inject Fault" row */}
+            <div style={{
+              padding: '6px 14px',
+              cursor: 'pointer',
+              color: 'var(--text)',
+              background: fltSubOpen ? 'rgba(255,255,255,0.06)' : 'transparent',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <span>Inject Fault</span>
+              <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>▶</span>
+            </div>
+
+            {/* Submenu */}
+            {fltSubOpen && (
+              <div
+                style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9001, maxHeight: 340, overflowY: 'auto' }}
+                onMouseEnter={openFltSub}
+                onMouseLeave={closeFltSub}
+              >
+                {faultsAvail.map(f => {
+                  const on = faultsActive.includes(f.fault)
+                  return (
+                    <div
+                      key={f.fault}
+                      style={{
+                        padding: '5px 14px', cursor: fltBusy ? 'wait' : 'pointer',
+                        color: on ? '#f87171' : 'var(--text)', whiteSpace: 'nowrap',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      onMouseDown={e => { e.preventDefault(); if (!fltBusy) toggleFault(f.fault) }}
+                    >
+                      <span>{f.label}</span>
+                      <span style={{ fontSize: 9, color: on ? '#f87171' : 'var(--text-dim)' }}>
+                        {fltBusy === f.fault ? '…' : on ? 'ACTIVE' : ''}
                       </span>
                     </div>
                   )

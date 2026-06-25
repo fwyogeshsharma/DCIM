@@ -363,6 +363,81 @@ def set_device_override(device_id: str, body: DeviceOverride):
     return OkResponse(message=f"Set {body.metric}={val}")
 
 
+# ── Inject Fault — ramp a metric across its SNMP threshold ────────────────────
+# Unlike /override (instant pin), a fault eases the metric up over several ticks
+# so the rule engine fires the trap organically and an SNMP poll agrees. Toggle
+# off (action="clear") ramps it back to baseline, firing the recovery trap.
+# Each entry: metric (store ramp key), target (just past the rule threshold),
+# rate (per-tick step ≈ realistic inertia), device_types it applies to.
+
+FAULT_MAP = {
+    "cpu_high":      {"metric": "cpu_usage",           "target": 93.0, "rate": 12.0,
+                      "label": "CPU High",
+                      "types": ["server", "router", "switch", "firewall", "load_balancer", "oob_switch"]},
+    "memory_high":   {"metric": "memory_pct",          "target": 88.0, "rate": 8.0,
+                      "label": "Memory High",
+                      "types": ["server", "router", "switch", "firewall", "load_balancer"]},
+    "temp_high":     {"metric": "cpu_temp",            "target": 65.0, "rate": 3.0,
+                      "label": "Temperature High",
+                      "types": ["server", "router", "switch", "firewall", "load_balancer", "oob_switch"]},
+    "ambient_high":  {"metric": "sensor_ambient_temp", "target": 34.0, "rate": 1.5,
+                      "label": "Ambient Temp High", "types": ["sensor"]},
+    "humidity_high": {"metric": "humidity",            "target": 82.0, "rate": 4.0,
+                      "label": "High Humidity",      "types": ["sensor"]},
+    "ups_overload":  {"metric": "ups_output_load",     "target": 93.0, "rate": 10.0,
+                      "label": "Output Overload",    "types": ["ups"]},
+    "pdu_load_high": {"metric": "pdu_load",            "target": 85.0, "rate": 8.0,
+                      "label": "Load High",          "types": ["pdu", "floor_pdu"]},
+}
+
+# metric → fault id, to report active ramps back to the UI by fault id
+_METRIC_TO_FAULT = {v["metric"]: k for k, v in FAULT_MAP.items()}
+
+
+class FaultRequest(BaseModel):
+    fault: str
+    action: str = "start"   # "start" | "clear"
+
+
+@router.get("/{device_id}/faults")
+def get_device_faults(device_id: str):
+    """Available faults for this device type + which are currently active."""
+    s = _state()
+    dev = s.device_manager.get_device(device_id) if s.device_manager else None
+    if dev is None:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    dtype = dev.device_type.value
+    available = [{"fault": k, "label": v["label"]}
+                 for k, v in FAULT_MAP.items() if dtype in v["types"]]
+    st = getattr(s, "state_store", None)
+    active_metrics = st.get_faults(device_id) if st else {}
+    active = [_METRIC_TO_FAULT[m] for m in active_metrics if m in _METRIC_TO_FAULT]
+    return {"device": device_id, "available": available, "active": active}
+
+
+@router.post("/{device_id}/fault", response_model=OkResponse)
+def set_device_fault(device_id: str, body: FaultRequest):
+    """Start or clear an Inject Fault ramp on a device."""
+    s = _state()
+    dev = s.device_manager.get_device(device_id) if s.device_manager else None
+    if dev is None:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    spec = FAULT_MAP.get(body.fault)
+    if spec is None:
+        raise HTTPException(status_code=400, detail=f"Unknown fault '{body.fault}'")
+    if dev.device_type.value not in spec["types"]:
+        raise HTTPException(status_code=400,
+                            detail=f"Fault '{body.fault}' not applicable to {dev.device_type.value}")
+    st = getattr(s, "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    if body.action == "clear":
+        st.clear_fault(device_id, spec["metric"])
+        return OkResponse(message=f"Clearing {spec['label']} on {dev.name}")
+    st.set_fault(device_id, spec["metric"], spec["target"], spec["rate"])
+    return OkResponse(message=f"Injecting {spec['label']} on {dev.name}")
+
+
 @router.post("", response_model=DeviceInfo)
 def add_device(req: AddDeviceRequest):
     """Add a new device to the topology."""

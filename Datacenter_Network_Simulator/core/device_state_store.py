@@ -235,6 +235,14 @@ class DeviceStateStore:
         # inlet_temp), e.g. pin a server to 99% CPU to drive a hotspot + traps.
         self.device_overrides: Dict[str, Dict[str, float]] = {}
 
+        # Inject Fault ramps (right-click → Inject Fault). Unlike device_overrides
+        # (instant pin), these EASE a metric toward a target over several ticks so
+        # it crosses the SNMP threshold organically — the rule engine then fires
+        # the trap, and an SNMP poll of the same OID reads the same value. On clear
+        # the ramp reverses toward the captured baseline, crossing the recovery
+        # threshold so a recovery trap fires. {device_id: {metric: ramp-record}}.
+        self._fault_ramps: Dict[str, Dict[str, dict]] = {}
+
         # Per-metric limits — toggled and configured by TickPanel (Limits tab)
         # Numeric: {"enabled": bool, "min": float, "max": float}
         # State lock: {"enabled": bool, "lock": str, "options": list[str]}
@@ -698,6 +706,7 @@ class DeviceStateStore:
             self._step_device(device)
             self._step_ext_state(device)
             self._apply_ext_overrides(device)   # pin UPS/PDU overrides last
+            self._apply_fault_ramps(device)     # ease injected-fault metrics last
 
         self._tick_count += 1
 
@@ -1167,6 +1176,118 @@ class DeviceStateStore:
             return
         st.update(ext)
         _ext_state_cache[device.name] = dict(st)
+
+    # ------------------------------------------------------------------ #
+    #  Inject Fault — gradual metric ramps that cross SNMP thresholds     #
+    # ------------------------------------------------------------------ #
+
+    # metric → (kind, field, clamp_lo, clamp_hi)
+    #   dev : plain device attribute (int/float)
+    #   pct : percentage backed by <field>_used / <field>_total
+    #   ext : UPS/PDU extended-state dict entry
+    _RAMP_METRICS = {
+        "cpu_usage":           ("dev", "cpu_usage",           0.0, 100.0),
+        "cpu_temp":            ("dev", "cpu_temp",            0.0, 120.0),
+        "inlet_temp":          ("dev", "inlet_temp",          0.0,  60.0),
+        "sensor_ambient_temp": ("dev", "inlet_temp",          0.0,  60.0),
+        "humidity":            ("dev", "humidity",            0.0, 100.0),
+        "outlet_temp":         ("dev", "outlet_temp",         0.0,  70.0),
+        "mid_temp":            ("dev", "mid_temp",            0.0,  60.0),
+        "memory_pct":          ("pct", "memory",              0.0, 100.0),
+        "disk_pct":            ("pct", "disk",                0.0, 100.0),
+        "ups_output_load":     ("ext", "ups_output_load",     0.0, 150.0),
+        "ups_input_voltage":   ("ext", "ups_input_voltage",   0.0, 300.0),
+        "pdu_load":            ("ext", "pdu_load",            0.0, 150.0),
+        "pdu_voltage":         ("ext", "pdu_voltage",         0.0, 300.0),
+        "pdu_outlet_current":  ("ext", "pdu_outlet_current",  0.0,  50.0),
+    }
+
+    def set_fault(self, device_id: str, metric: str, target: float,
+                  rate: float) -> bool:
+        """Start an Inject Fault ramp: ease *metric* toward *target* at *rate*
+        per tick. Baseline (for the later ramp-down) is captured on the first
+        tick. Returns False for an unknown metric."""
+        if metric not in self._RAMP_METRICS:
+            return False
+        self._fault_ramps.setdefault(device_id, {})[metric] = {
+            "target": float(target), "rate": abs(float(rate)),
+            "baseline": None, "clearing": False,
+        }
+        return True
+
+    def clear_fault(self, device_id: str, metric: str) -> bool:
+        """Reverse a ramp toward its captured baseline. The record is removed
+        once the baseline is reached (after the recovery threshold is crossed)."""
+        r = self._fault_ramps.get(device_id, {}).get(metric)
+        if not r:
+            return False
+        if r["baseline"] is not None:
+            r["target"] = r["baseline"]
+        r["clearing"] = True
+        return True
+
+    def get_faults(self, device_id: str) -> dict:
+        """Active ramps for a device, keyed by metric (for the UI ACTIVE state)."""
+        return {m: {"target": r["target"], "clearing": r["clearing"]}
+                for m, r in self._fault_ramps.get(device_id, {}).items()}
+
+    def _ramp_read(self, device: "Device", kind: str, field: str) -> float:
+        if kind == "dev":
+            return float(getattr(device, field, 0.0))
+        if kind == "pct":
+            total = max(1, getattr(device, f"{field}_total", 1))
+            return getattr(device, f"{field}_used", 0) / total * 100.0
+        if kind == "ext":
+            return float(self._ext_states.get(device.name, {}).get(field, 0.0))
+        return 0.0
+
+    def _ramp_write(self, device: "Device", kind: str, field: str, value: float) -> None:
+        if kind == "dev":
+            cur = getattr(device, field, 0.0)
+            setattr(device, field,
+                    int(round(value)) if isinstance(cur, int) else round(value, 1))
+        elif kind == "pct":
+            total = getattr(device, f"{field}_total", 0)
+            if total:
+                setattr(device, f"{field}_used", int(total * value / 100.0))
+        elif kind == "ext":
+            st = self._ext_states.get(device.name)
+            if st is not None:
+                st[field] = round(value, 1)
+                _ext_state_cache[device.name] = dict(st)
+
+    def _apply_fault_ramps(self, device: "Device") -> None:
+        """Advance each active fault ramp one tick. Runs after the walk and the
+        static overrides so the injected value wins, and independent of the
+        per-metric enable flag so an injection always progresses while the ticker
+        runs."""
+        ramps = self._fault_ramps.get(device.id)
+        if not ramps:
+            return
+        done = []
+        for metric, r in ramps.items():
+            acc = self._RAMP_METRICS.get(metric)
+            if acc is None:
+                done.append(metric)
+                continue
+            kind, field, lo, hi = acc
+            cur = self._ramp_read(device, kind, field)
+            if r["baseline"] is None:                 # capture on first tick
+                r["baseline"] = cur
+            target, rate = r["target"], r["rate"]
+            if cur < target:
+                cur = min(target, cur + rate)
+            elif cur > target:
+                cur = max(target, cur - rate)
+            cur = max(lo, min(hi, cur))
+            self._ramp_write(device, kind, field, cur)
+            # Clearing ramp that has reached baseline → fault fully resolved.
+            if r["clearing"] and abs(cur - target) < max(0.5, rate):
+                done.append(metric)
+        for m in done:
+            ramps.pop(m, None)
+        if not ramps:
+            self._fault_ramps.pop(device.id, None)
 
     # ------------------------------------------------------------------ #
     #  Extended state simulation (UPS, BGP)                              #

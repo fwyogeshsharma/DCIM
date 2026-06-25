@@ -85,6 +85,7 @@ class Rule:
     model_names: List[str] = field(default_factory=list)   # empty = all models
     is_recovery: bool = False
     recovery_of: str = ""       # alert rule name this rule recovers from
+    cooldown_sec: float = 0.0   # 0 = fire every tick; >0 = re-notify interval
 
     def to_dict(self) -> dict:
         return {
@@ -97,6 +98,7 @@ class Rule:
             "model_names": self.model_names,
             "is_recovery": self.is_recovery,
             "recovery_of": self.recovery_of,
+            "cooldown_sec": self.cooldown_sec,
             "condition": _condition_to_dict(self.condition),
         }
 
@@ -112,6 +114,7 @@ class Rule:
             device_types=d.get("device_types", []),
             is_recovery=d.get("is_recovery", False),
             recovery_of=d.get("recovery_of", ""),
+            cooldown_sec=float(d.get("cooldown_sec", 0)),
         )
 
 
@@ -168,6 +171,7 @@ class RuleState:
     in_alert: bool = False
     fired_count: int = 0
     last_fire_ts: str = ""
+    last_fire_epoch: float = 0.0   # for cooldown/re-notify suppression
 
 
 # ── Rule Engine ───────────────────────────────────────────────────────────────
@@ -484,6 +488,13 @@ class RuleEngine:
         return d[rule_name]
 
     def _can_fire(self, state: RuleState, rule: Rule, now: float) -> bool:
+        # Cooldown: a sustained threshold alert re-notifies at most once per
+        # cooldown_sec instead of firing every tick. Already-in-alert + still
+        # inside the window → suppress. First breach (last_fire_epoch == 0) and
+        # rules with no cooldown (recovery/state-change) always fire.
+        if rule.cooldown_sec > 0 and state.in_alert and state.last_fire_epoch:
+            if (now - state.last_fire_epoch) < rule.cooldown_sec:
+                return False
         return True
 
     def _do_fire(self, rule: Rule, fact: DeviceFact, state: RuleState, now: float,
@@ -491,6 +502,7 @@ class RuleEngine:
         state.in_alert = True
         state.fired_count += 1
         state.last_fire_ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now))
+        state.last_fire_epoch = now
         log.debug("[RuleEngine] Rule '%s' fired for device %s", rule.rule_name, fact.device_id)
         return TrapAction(rule=rule, device_id=fact.device_id, extra=dict(extra))
 

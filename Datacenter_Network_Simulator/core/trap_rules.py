@@ -543,7 +543,27 @@ DEFAULT_RULES: List[Rule] = [
           device_types=["sensor"],
           model_names=["Raritan DPX2-T3H1"],
           recovery=True, recovery_of="SensorOutletTempHigh"),
+
+    # ── PDU load recovery (pairs with the Inject Fault "PDU Load High" ramp) ──
+    _rule("PDULoadNormal",
+          _threshold("pdu_load", "<", 70.0),
+          "1.3.6.1.4.1.99999.6.20",
+          severity="informational", priority=100,
+          device_types=["pdu", "floor_pdu"],
+          recovery=True, recovery_of="PDULoadHigh"),
 ]
+
+
+# Continuous alert rules (threshold/composite, non-recovery) re-notify at most
+# once per window instead of firing every tick while the condition holds: one
+# trap on breach, a reminder every _ALERT_COOLDOWN, then a recovery trap when it
+# clears. Recovery, state-change and temporal rules are exempt — they must fire
+# on the exact transition.
+_ALERT_COOLDOWN = 300.0
+for _r in DEFAULT_RULES:
+    if (not _r.is_recovery
+            and _r.condition.condition_type in ("threshold", "composite")):
+        _r.cooldown_sec = _ALERT_COOLDOWN
 
 
 # ── JSON serialization ────────────────────────────────────────────────────────
