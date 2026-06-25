@@ -632,6 +632,8 @@ class DeviceStateStore:
     _COOLING_TYPES = {"crah", "chiller", "pump", "cooling_tower", "cdu"}
     # Per-plant-type BACnet point that reports its live electrical draw (kW).
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
+    _UPS_DESIGN_MIN  = 8.0      # UPS autonomy (min) at full load, healthy battery
+    _GEN_FULL_HOURS  = 24.0     # genset full-tank runtime (h) at full load
 
     def _power_context(self) -> dict:
         """Cached power-graph structure + per-node rated capacity, built once.
@@ -653,6 +655,7 @@ class DeviceStateStore:
         rated_w: Dict[str, float] = {}
         ev2_ip_panel: Dict[str, str] = {}
         ev2_meters: list = []
+        gen_ups: Dict[str, list] = {}
         try:
             id_type = {d.id: d.device_type.value for d in self._dm.get_all_devices()}
             id_draw = {d.id: float(getattr(d, "power_draw_w", 0) or 0)
@@ -726,12 +729,23 @@ class DeviceStateStore:
             for ip, panel in ev2_ip_panel.items():
                 is_fac = bool(_subtree(panel) & cooling_ids)
                 ev2_meters.append({"ip": ip, "panel": panel, "facility": is_fac})
+
+            # Generator → names of the UPS units downstream of it. A genset starts
+            # when utility is lost, which the sim sees as a downstream UPS going
+            # on-battery — so this maps the trigger.
+            ups_ids = {i for i, t in id_type.items() if t == "ups"}
+            for gid, t in id_type.items():
+                if t == "generator":
+                    subups = _subtree(gid) & ups_ids
+                    gen_ups[gid] = [self._dm.get_device(i).name for i in subups
+                                    if self._dm.get_device(i)]
         except Exception:
             log.exception("[StateStore] power context build error")
 
         self._power_ctx = {"children": children, "parents": parents,
                            "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
-                           "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters}
+                           "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters,
+                           "gen_ups": gen_ups}
         return self._power_ctx
 
     def _server_live_watts(self, device: "Device") -> float:
@@ -773,6 +787,48 @@ class DeviceStateStore:
             "pue":            round(pue, 3),
             "source":         "meters" if metered else "computed",
         }
+
+    def _step_generator(self, device: "Device", st: dict) -> None:
+        """Live generator state. A genset is in STANDBY until utility is lost —
+        which the sim sees as a UPS downstream of it going on-battery. While
+        running it carries the live downstream load (server→…→generator through),
+        burns fuel proportional to that load, and accrues run-hours; the fuel
+        level sets the remaining runtime. Written to the ext-state cache so
+        snmprec serves the live OIDs."""
+        ctx = self._power_context()
+        ups_names = ctx.get("gen_ups", {}).get(device.id, [])
+        # Utility lost → any downstream UPS on battery → start.
+        on_outage = any(
+            (self._ext_states.get(n, {}) or _ext_state_cache.get(n, {})).get("ups_status")
+            in ("on_battery", "low_battery")
+            for n in ups_names
+        )
+        rated = self._power_context()["rated_w"].get(device.id, 0.0)
+        thr   = self._through_live.get(device.id, 0.0)
+        dt_h  = self._tick_interval / 3600.0
+
+        if on_outage and st.get("gen_fuel_pct", 0.0) > 0.5:
+            if not st.get("gen_was_running"):
+                st["gen_start_attempts"] = int(st.get("gen_start_attempts", 0)) + 1
+                st["gen_was_running"] = True
+            st["gen_status"] = "running"
+            load_pct = (thr / rated * 100.0) if rated > 0 else 0.0
+            st["gen_load_pct"] = round(max(0.0, min(100.0, load_pct)), 1)
+            st["gen_kw"]       = round(thr / 1000.0, 1)
+            st["gen_run_hours"] = round(st.get("gen_run_hours", 0.0) + dt_h, 3)
+            # Fuel burn ∝ load; full-tank lasts _GEN_FULL_HOURS at full load.
+            burn = (max(0.0, st["gen_load_pct"]) / 100.0) * dt_h / self._GEN_FULL_HOURS * 100.0
+            st["gen_fuel_pct"] = round(max(0.0, st.get("gen_fuel_pct", 0.0) - burn), 2)
+            lf = max(0.05, st["gen_load_pct"] / 100.0)
+            st["gen_runtime_min"] = round(st["gen_fuel_pct"] / 100.0
+                                          * self._GEN_FULL_HOURS / lf * 60.0, 1)
+        else:
+            st["gen_was_running"] = False
+            st["gen_status"] = "fault" if st.get("gen_fuel_pct", 100.0) <= 0.5 else "standby"
+            st["gen_load_pct"] = 0.0
+            st["gen_kw"] = 0.0
+            st["gen_runtime_min"] = 0.0
+        _ext_state_cache[device.name] = dict(st)
 
     def _plant_watts(self, name: str) -> float:
         """Live electrical draw (W) of a cooling-plant unit from its BACnet
@@ -1050,6 +1106,15 @@ class DeviceStateStore:
             "ups_bypass_status": "off",
             "ups_battery_health": random.uniform(92.0, 100.0),
             "ups_energy_kwh": 0.0,
+            "ups_runtime_min": 8.0,
+            "gen_fuel_pct": random.uniform(75.0, 95.0),
+            "gen_run_hours": 0.0,
+            "gen_status": "standby",
+            "gen_load_pct": 0.0,
+            "gen_kw": 0.0,
+            "gen_runtime_min": 0.0,
+            "gen_start_attempts": 0,
+            "gen_was_running": False,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(216.0, 224.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -1703,6 +1768,15 @@ class DeviceStateStore:
             "ups_bypass_status": "off",
             "ups_battery_health": random.uniform(92.0, 100.0),
             "ups_energy_kwh": 0.0,
+            "ups_runtime_min": 8.0,
+            "gen_fuel_pct": random.uniform(75.0, 95.0),
+            "gen_run_hours": 0.0,
+            "gen_status": "standby",
+            "gen_load_pct": 0.0,
+            "gen_kw": 0.0,
+            "gen_runtime_min": 0.0,
+            "gen_start_attempts": 0,
+            "gen_was_running": False,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(216.0, 224.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -1823,6 +1897,21 @@ class DeviceStateStore:
                 load_now = st.get("ups_output_load", 40.0)
                 st["ups_energy_kwh"] = round(st.get("ups_energy_kwh", 0.0)
                                              + (load_now / 100.0) * 3.0 / 60.0, 3)
+
+            # Battery runtime (minutes remaining) ∝ 1/load — a heavier load drains
+            # the battery faster. Anchored at ~8 min autonomy at full load (typical
+            # double-conversion DC UPS), scaled by state-of-health and charge level
+            # (on battery the charge falls, shortening runtime further).
+            load_now = max(5.0, st.get("ups_output_load", 40.0))
+            health   = max(10.0, st.get("ups_battery_health", 100.0)) / 100.0
+            charge   = 0.4 if st.get("ups_status") == "low_battery" else (
+                       0.7 if st.get("ups_status") == "on_battery" else 1.0)
+            runtime  = self._UPS_DESIGN_MIN * (100.0 / load_now) * health * charge
+            st["ups_runtime_min"] = round(min(120.0, runtime), 1)
+
+        # ── Generator ─────────────────────────────────────────────────────
+        if device.device_type == DeviceType.GENERATOR:
+            self._step_generator(device, st)
 
         # ── PDU / Floor PDU ───────────────────────────────────────────────
         if is_pdu:

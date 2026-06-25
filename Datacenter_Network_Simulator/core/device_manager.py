@@ -356,6 +356,34 @@ class Interface:
         return asdict(self)
 
 
+# Realistic full-load nameplate power (W) by device type. Used to fill
+# power_draw_w when a topology leaves it 0 so the live power cascade
+# (PDU / UPS / EV2 / PUE) reflects real IT load. Only IT loads feed the cascade;
+# infra (pdu/ups/rpp/generator/plant) carry power, they don't add it, so they
+# stay 0 here.
+DEFAULT_NAMEPLATE_W = {
+    DeviceType.SERVER:        550,   # modern 2U dual-socket at full load
+    DeviceType.SWITCH:        250,   # ToR / access switch
+    DeviceType.ROUTER:        450,
+    DeviceType.FIREWALL:      500,   # NGFW appliance
+    DeviceType.LOAD_BALANCER: 400,
+    DeviceType.OOB_SWITCH:    90,    # 1U management switch
+    DeviceType.SENSOR:        10,
+}
+# Model-name keywords that imply a much higher draw (GPU / AI / accelerated).
+_HIGH_POWER_KEYWORDS = ("gpu", "dgx", "a100", "h100", "l40", "mi300", "accel", "ai-", "ml-")
+
+
+def nameplate_power_w(device_type: "DeviceType", model_name: str = "") -> int:
+    """Realistic full-load draw (W) for a device type/model, for filling an unset
+    power_draw_w. GPU/AI servers draw far more than a general-purpose 2U."""
+    base = DEFAULT_NAMEPLATE_W.get(device_type, 0)
+    m = (model_name or "").lower()
+    if device_type == DeviceType.SERVER and any(k in m for k in _HIGH_POWER_KEYWORDS):
+        return 2200
+    return base
+
+
 @dataclass
 class Device:
     name: str
@@ -418,6 +446,10 @@ class Device:
             self.device_type = DeviceType(self.device_type)
         if isinstance(self.vendor, str):
             self.vendor = Vendor(self.vendor)
+        # Fill an unset nameplate so the power cascade reflects real IT load
+        # instead of reading 0 for devices the topology never sized.
+        if not self.power_draw_w or self.power_draw_w <= 0:
+            self.power_draw_w = nameplate_power_w(self.device_type, self.model_name)
         # Normalize interface_groups (str → InterfaceType)
         if self.interface_groups:
             normalized = []

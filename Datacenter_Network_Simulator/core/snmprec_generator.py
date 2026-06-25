@@ -722,6 +722,7 @@ class SNMPRecGenerator:
                 updates[f"{_UPS_ENT}.8.0"]  = ("2", str(batt_health))
                 updates[f"{_UPS_ENT}.9.0"]  = ("2", str(app_power))
                 updates[f"{_UPS_ENT}.10.0"] = ("2", str(energy_kwh))
+                updates[f"{_UPS_ENT}.11.0"] = ("2", str(int(round(ext.get("ups_runtime_min", 8.0)))))  # battery runtime (min)
                 # Live-derived UPS-MIB power/current metrics (previously static)
                 _NOM_VA      = 3000.0   # nominal UPS frame VA
                 _OUT_PF      = 0.9      # typical UPS output power factor
@@ -787,6 +788,26 @@ class SNMPRecGenerator:
                 updates[f"{_PDU_ENT}.17.0"] = ("2", str(pdu_outlet_w))
                 # Store outlet status for per-outlet table update below
                 _pdu_ol_out = pdu_out
+
+            # Generator pollable status OIDs — live load/fuel/runtime/status
+            if device.device_type == DeviceType.GENERATOR:
+                ext = {}
+                try:
+                    from core.device_state_store import _get_ext_state
+                    ext = _get_ext_state(device.name)
+                except Exception:
+                    pass
+                if ext:
+                    _GEN_ENT = "1.3.6.1.4.1.99999.7"
+                    _gen_st = {"standby": 1, "running": 2, "fault": 3}.get(
+                        ext.get("gen_status", "standby"), 1)
+                    updates[f"{_GEN_ENT}.1.0"]  = ("2", str(int(round(ext.get("gen_fuel_pct", 80.0)))))
+                    updates[f"{_GEN_ENT}.2.0"]  = ("2", str(int(ext.get("gen_run_hours", 0.0))))
+                    updates[f"{_GEN_ENT}.3.0"]  = ("2", str(_gen_st))
+                    updates[f"{_GEN_ENT}.4.0"]  = ("2", str(int(round(ext.get("gen_load_pct", 0.0)))))
+                    updates[f"{_GEN_ENT}.5.0"]  = ("2", str(int(round(ext.get("gen_kw", 0.0)))))
+                    updates[f"{_GEN_ENT}.13.0"] = ("2", str(int(ext.get("gen_start_attempts", 0))))
+                    updates[f"{_GEN_ENT}.14.0"] = ("2", str(int(round(ext.get("gen_runtime_min", 0.0)))))
 
             # Plant live telemetry — patched from the shared BACnet engine
             # (via _plant_state_cache) so SNMP serves the same ticking values
@@ -1278,6 +1299,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{_UPS_ENT}.8.0",  "2", "100"),   # upsBatteryHealthPercent %
             _oid_entry(f"{_UPS_ENT}.9.0",  "2", "1200"),  # upsOutputApparentPower VA
             _oid_entry(f"{_UPS_ENT}.10.0", "2", "0"),     # upsEnergyOutputKWh (kWh x10)
+            _oid_entry(f"{_UPS_ENT}.11.0", "2", "8"),     # upsBatteryRuntimeMin (min remaining)
         ]
         return entries
 
@@ -1380,6 +1402,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{_GEN_ENT}.11.0", "2",  "1"),    # genOilPressureOk (1=ok,2=warning)
             _oid_entry(f"{_GEN_ENT}.12.0", "2",  "1"),    # genBatteryStatus (1=ok,2=fault)
             _oid_entry(f"{_GEN_ENT}.13.0", "2",  "0"),    # genStartAttempts (counter)
+            _oid_entry(f"{_GEN_ENT}.14.0", "2",  "0"),    # genRuntimeRemainingMin (min)
         ]
         return entries
 
