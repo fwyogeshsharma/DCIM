@@ -43,8 +43,7 @@ export default function TrapsPanel() {
   const [applying,  setApplying]  = useState(false)
   const [filterSev, setFilterSev] = useState<string | null>(null)
 
-  const engineOn      = snmp?.rule_engine_enabled ?? false
-  const engineAvail   = snmp?.running             ?? false
+  const autonomousOn  = snmp?.autonomous_faults ?? false
   const trapReceiver  = `${snmp?.trap_receiver_ip ?? '—'}:${snmp?.trap_receiver_port ?? '—'}`
 
   // Severity counts
@@ -76,20 +75,16 @@ export default function TrapsPanel() {
     catch (e) { console.error(e) }
   }
 
-  async function toggleEngine() {
-    if (!engineAvail) return
-    try {
-      if (engineOn) await api.disableEngine()
-      else          await api.enableEngine()
-    } catch (e) { console.error(e) }
+  async function toggleAutonomous() {
+    try { await api.setAutonomousFaults(!autonomousOn) }
+    catch (e) { console.error(e) }
   }
 
-  // Header badge
+  // Header badge — rule engine is always on; the badge reflects autonomous mode.
   type BadgeCfg = { cls: string; dot: string; text: string }
-  let badge: BadgeCfg
-  if (!engineAvail)   badge = { cls: 'stopped', dot: 'grey',   text: 'Idle' }
-  else if (engineOn)  badge = { cls: 'running', dot: 'green',  text: `Traps ON · ${traps.length}` }
-  else                badge = { cls: 'ready',   dot: 'yellow', text: `Traps OFF · ${traps.length}` }
+  const badge: BadgeCfg = autonomousOn
+    ? { cls: 'running', dot: 'green',  text: `Auto faults · ${traps.length}` }
+    : { cls: 'ready',   dot: 'grey',   text: `Manual · ${traps.length}` }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -139,22 +134,22 @@ export default function TrapsPanel() {
           </div>
         </div>
 
-        {/* ── Rule Engine toggle ─────────────────────────────── */}
+        {/* ── Autonomous Faults toggle ───────────────────────── */}
         <div className="field-row-split" title={
-          !engineAvail ? 'Start SNMP simulator first'
-          : engineOn   ? 'Disable rule-driven trap generation'
-          : 'Enable rule-driven trap generation'
+          autonomousOn
+            ? 'Sim spontaneously breaches thresholds (live-monitoring demo)'
+            : 'Devices stay healthy — traps fire only on user-injected faults'
         }>
           <span className="label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <IconEngine />
-            Trap Simulation
+            Autonomous Faults
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: engineOn ? 'var(--green)' : 'var(--text-dim)' }}>
-              {engineOn ? 'ON' : 'OFF'}
+            <span style={{ fontSize: 10, fontWeight: 700, color: autonomousOn ? 'var(--green)' : 'var(--text-dim)' }}>
+              {autonomousOn ? 'ON' : 'OFF'}
             </span>
-            <label className="toggle" style={{ opacity: engineAvail ? 1 : 0.4, pointerEvents: engineAvail ? 'auto' : 'none' }}>
-              <input type="checkbox" checked={engineOn} onChange={toggleEngine} disabled={!engineAvail} />
+            <label className="toggle">
+              <input type="checkbox" checked={autonomousOn} onChange={toggleAutonomous} />
               <span className="toggle-slider" />
             </label>
           </div>

@@ -97,6 +97,7 @@ class SnmpStatusResponse(BaseModel):
     trap_receiver_ip: str
     trap_receiver_port: int
     rule_engine_enabled: bool
+    autonomous_faults: bool = False
     active_job_id: Optional[str] = None
 
 
@@ -135,6 +136,10 @@ class RulesTableResponse(BaseModel):
     rule_engine_enabled: bool
     total_fired_grand: int
     rules: List[RuleResponse]
+
+
+class AutonomousFaultsRequest(BaseModel):
+    enabled: bool
 
 
 # ── Traps ─────────────────────────────────────────────────────────────────────

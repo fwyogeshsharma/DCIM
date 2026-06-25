@@ -9,6 +9,7 @@ from api.models.schemas import (
     RuleResponse,
     RulesTableResponse,
     OkResponse,
+    AutonomousFaultsRequest,
 )
 
 router = APIRouter(prefix="/rules", tags=["Rule Engine"])
@@ -50,30 +51,18 @@ def get_all_rules():
     )
 
 
-@router.post("/enable", response_model=OkResponse)
-def enable_rule_engine():
-    """Enable the rule engine — rules will fire SNMP traps based on device metrics."""
+@router.post("/autonomous-faults", response_model=OkResponse)
+def set_autonomous_faults(body: AutonomousFaultsRequest):
+    """Toggle spontaneous fault generation. OFF (default) keeps every device
+    healthy so no trap fires unless the user injects one; ON lets the sim breach
+    thresholds on its own (realistic live-monitoring demo). The rule engine is
+    always enabled either way."""
     s = _state()
-    if s.trap_engine is None:
-        raise HTTPException(status_code=503, detail="Trap engine not initialized")
-    if not s.snmpsim or not s.snmpsim.is_running():
-        raise HTTPException(status_code=409, detail="SNMP simulator must be running to enable rule engine")
-    s.trap_engine.set_rule_engine_enabled(True)
-    s.rule_engine_enabled = True
-    s.notify_ui("sync_rules")
-    return OkResponse(message="Rule engine enabled")
-
-
-@router.post("/disable", response_model=OkResponse)
-def disable_rule_engine():
-    """Disable the rule engine — no automatic traps will be fired."""
-    s = _state()
-    if s.trap_engine is None:
-        raise HTTPException(status_code=503, detail="Trap engine not initialized")
-    s.trap_engine.set_rule_engine_enabled(False)
-    s.rule_engine_enabled = False
-    s.notify_ui("sync_rules")
-    return OkResponse(message="Rule engine disabled")
+    if s.state_store is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    s.state_store.autonomous_faults = bool(body.enabled)
+    s.notify_ui("sync_snmp")
+    return OkResponse(message=f"Autonomous faults {'enabled' if body.enabled else 'disabled'}")
 
 
 @router.post("/reset-counts", response_model=OkResponse)

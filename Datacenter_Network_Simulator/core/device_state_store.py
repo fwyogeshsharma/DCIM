@@ -243,6 +243,13 @@ class DeviceStateStore:
         # threshold so a recovery trap fires. {device_id: {metric: ramp-record}}.
         self._fault_ramps: Dict[str, Dict[str, dict]] = {}
 
+        # Autonomous fault generation. OFF by default: the random walk keeps every
+        # device healthy (metrics jitter inside safe bands, no state flips), so NO
+        # SNMP trap fires unless the user injects a fault (Simulate Fault / Send
+        # Trap). Flip on for a realistic "live monitoring" demo where the sim
+        # spontaneously breaches thresholds. The rule engine itself is always on.
+        self.autonomous_faults: bool = False
+
         # Per-metric limits — toggled and configured by TickPanel (Limits tab)
         # Numeric: {"enabled": bool, "min": float, "max": float}
         # State lock: {"enabled": bool, "lock": str, "options": list[str]}
@@ -705,6 +712,9 @@ class DeviceStateStore:
         for device in devices:
             self._step_device(device)
             self._step_ext_state(device)
+            self._force_states_nominal(device)      # state-change faults are manual-only
+            if not self.autonomous_faults:
+                self._scrub_numeric_faults(device)  # quiet baseline — no threshold traps
             self._apply_ext_overrides(device)   # pin UPS/PDU overrides last
             self._apply_fault_ramps(device)     # ease injected-fault metrics last
 
@@ -1112,17 +1122,8 @@ class DeviceStateStore:
                         iface.in_discards  += random.randint(0, 2)
                         iface.out_discards += random.randint(0, 3)
 
-        # Interface flapping — connected interfaces, 0.2% chance, recovers after 5 s
-        if mf["interface_flap"]:
-            for iface in device.interfaces:
-                if not iface.connected_to_device:
-                    continue
-                if iface.oper_status == 1 and random.random() < 0.002:
-                    iface.oper_status = 2
-                    with self._recovery_lock:
-                        self._pending_recovery.setdefault(device.name, {})[iface.index] = (
-                            time.time() + 5.0
-                        )
+        # Interface flapping is a LinkDown/LinkFlap state-change event → MANUAL
+        # only (Send Trap / link break). No autonomous flapping in either mode.
 
         # Per-device metric overrides win last — a Metric Tick window pins these
         # to a held value regardless of the random walk above.
@@ -1288,6 +1289,114 @@ class DeviceStateStore:
             ramps.pop(m, None)
         if not ramps:
             self._fault_ramps.pop(device.id, None)
+
+    def _force_states_nominal(self, device: "Device") -> None:
+        """State-change faults (UPS/PDU hardware states, smoke, breaker, ground
+        fault, water, BGP session) are MANUAL only — fired via Send Trap. The
+        walk's random state flips are scrubbed back to nominal every tick, in BOTH
+        modes, so they never raise an autonomous trap. Runs before user Metric-Tick
+        state overrides, which therefore still win. Numeric threshold metrics are
+        handled separately (_scrub_numeric_faults) and DO fire autonomously when
+        autonomous_faults is on. Interface flap is suppressed at its source."""
+        st = self._ext_states.get(device.name)
+        if st is None:
+            return
+        dt = device.device_type
+        changed = False
+
+        def setv(k: str, v) -> None:
+            nonlocal changed
+            if st.get(k) != v:
+                st[k] = v
+                changed = True
+
+        if dt == DeviceType.UPS:
+            setv("ups_status", "normal")
+            setv("ups_battery_status", "normal")
+            for c in ("ups_fan_status", "ups_charger_status",
+                      "ups_rectifier_status", "ups_phase_status"):
+                setv(c, "ok")
+            setv("ups_bypass_status", "off")
+        if dt in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            setv("pdu_outlet_status", "on")
+            setv("pdu_breaker_status", "ok")
+            setv("pdu_outlet_failure", "ok")
+            setv("pdu_smoke", "no")
+            setv("pdu_ground_fault", "no")
+        if "water_detection" in st:
+            setv("water_detection", "dry")
+        for sess in st.get("bgp_sessions", []):
+            if sess.get("state") != "established":
+                sess["state"] = "established"
+                changed = True
+
+        if changed:
+            _ext_state_cache[device.name] = dict(st)
+
+    def _scrub_numeric_faults(self, device: "Device") -> None:
+        """Quiet baseline for THRESHOLD metrics (autonomous_faults OFF): clamp any
+        numeric metric the walk pushed past its alert threshold back just inside
+        the safe band, so no threshold trap fires. Skipped when autonomous_faults
+        is ON, so the walk's spikes breach thresholds and fire traps organically.
+        Ceilings sit just inside the thresholds in core/trap_rules.py, preserving
+        normal sub-threshold variation. Runs before user overrides / ramps (which
+        therefore still win)."""
+        dt = device.device_type
+
+        if getattr(device, "cpu_usage", 0) > 89:                  # HighCPU > 90
+            device.cpu_usage = 89
+        mtot = getattr(device, "memory_total", 0)
+        if mtot and device.memory_used > int(mtot * 0.849):       # HighMemory > 85 %
+            device.memory_used = int(mtot * 0.849)
+        if getattr(device, "cpu_temp", 0) > 59.5:                 # HighTemperature > 60
+            device.cpu_temp = 59.5
+
+        if dt == DeviceType.SENSOR:
+            device.inlet_temp  = min(device.inlet_temp, 31.9)        # ambient > 32
+            device.humidity    = min(max(device.humidity, 30.1), 69.9)  # <30 / >70
+            device.dewpoint    = min(device.dewpoint, 20.9)          # > 21
+            device.airflow     = min(max(device.airflow, 0.31), 3.49)   # <0.3 / >3.5
+            device.mid_temp    = min(device.mid_temp, 37.9)          # > 38
+            device.outlet_temp = min(device.outlet_temp, 44.9)       # > 45
+
+        st = self._ext_states.get(device.name)
+        if st is None:
+            return
+        changed = False
+
+        def clamp(k: str, lo: float, hi: float, default: float) -> None:
+            nonlocal changed
+            v = st.get(k, default)
+            nv = min(max(v, lo), hi)
+            if nv != v:
+                st[k] = nv
+                changed = True
+
+        if dt == DeviceType.UPS:
+            if st.get("ups_output_load", 0.0) > 89.9:             # overload > 90
+                st["ups_output_load"] = 89.9; changed = True
+            clamp("ups_input_voltage", 190.1, 249.9, 220.0)        # >250 / <190
+            clamp("ups_input_frequency", 49.1, 50.9, 50.0)         # OOR <49 / >51
+            if st.get("ups_battery_health", 100.0) < 50.1:         # low health < 50
+                st["ups_battery_health"] = 50.1; changed = True
+        if dt in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            if st.get("pdu_load", 0.0) > 79.9:                     # load high > 80
+                st["pdu_load"] = 79.9; changed = True
+            clamp("pdu_voltage", 200.1, 239.9, 220.0)              # >240 / <200
+            if st.get("pdu_power_factor", 1.0) < 0.701:            # PF low < 0.70
+                st["pdu_power_factor"] = 0.701; changed = True
+            if st.get("pdu_phase_imbalance", 0.0) > 19.9:          # imbalance > 20
+                st["pdu_phase_imbalance"] = 19.9; changed = True
+            if st.get("pdu_outlet_current", 0.0) > 19.9:           # current > 20
+                st["pdu_outlet_current"] = 19.9; changed = True
+            clamp("pdu_frequency", 49.6, 50.9, 50.0)               # fault < 49.5
+            if st.get("pdu_temperature", 0.0) > 34.9:              # temp > 35
+                st["pdu_temperature"] = 34.9; changed = True
+            if st.get("pdu_humidity", 0.0) > 69.9:                 # humidity > 70
+                st["pdu_humidity"] = 69.9; changed = True
+
+        if changed:
+            _ext_state_cache[device.name] = dict(st)
 
     # ------------------------------------------------------------------ #
     #  Extended state simulation (UPS, BGP)                              #

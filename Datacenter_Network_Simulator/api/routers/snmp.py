@@ -314,9 +314,7 @@ def stop_snmp_simulator():
     if s.snmp_set_agent and s.snmp_set_agent.is_running():
         s.snmp_set_agent.stop()
         s.snmp_set_agent = None
-    if s.trap_engine and s.rule_engine_enabled:
-        s.trap_engine.set_rule_engine_enabled(False)
-        s.rule_engine_enabled = False
+    # Rule engine stays enabled (always on); stopping SNMP no longer disables it.
     s.stop_ticker_if_idle()
     s.notify_ui("sync_snmp")
     s.notify_ui("sync_binding")
@@ -387,6 +385,7 @@ async def get_snmp_status():
         trap_receiver_ip=s.trap_receiver_ip,
         trap_receiver_port=s.trap_receiver_port,
         rule_engine_enabled=s.rule_engine_enabled,
+        autonomous_faults=getattr(s.state_store, "autonomous_faults", False) if s.state_store else False,
         active_job_id=active_job,
     )
 

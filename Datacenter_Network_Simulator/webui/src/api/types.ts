@@ -141,6 +141,7 @@ export interface SnmpStatus {
   trap_receiver_ip: string
   trap_receiver_port: number
   rule_engine_enabled: boolean
+  autonomous_faults: boolean
   active_job_id?: string
 }
 

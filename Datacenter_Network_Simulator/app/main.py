@@ -202,6 +202,10 @@ def _run_headless():
         rule_engine.add_rule(rule)
     trap_engine.set_rule_engine(rule_engine, device_manager)
     state_store.set_rule_engine_callback(rule_engine.evaluate_fact)
+    # Rule engine is always on — turning trap firing into a user toggle is what
+    # made injected faults silently do nothing. Autonomous (spontaneous) faults
+    # are gated separately by state_store.autonomous_faults (default off).
+    trap_engine.set_rule_engine_enabled(True)
 
     # BMC platform-event traps: chassis power transitions → SNMP trap.
     from core.trap_definitions import TrapType as _TT
@@ -227,6 +231,7 @@ def _run_headless():
         snmp_datasets_dir=snmp_dir,
         gnmi_datasets_dir=gnmi_dir,
     )
+    api_state.rule_engine_enabled = True
     trap_engine.trap_sent.connect(api_state.record_trap)
     state_store.set_tick_callback(lambda: api_state.notify_ui("sync_devices"))
     state_store.set_link_callback(

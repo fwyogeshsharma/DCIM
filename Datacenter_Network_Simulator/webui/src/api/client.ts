@@ -206,8 +206,7 @@ export const api = {
 
   // rules
   rules:          ()                  => get('/rules'),
-  enableEngine:   ()                  => post('/rules/enable'),
-  disableEngine:  ()                  => post('/rules/disable'),
+  setAutonomousFaults: (enabled: boolean) => post('/rules/autonomous-faults', { enabled }),
   resetCounts:    ()                  => post('/rules/reset-counts'),
   enableRule:     (name: string)      => post(`/rules/${encodeURIComponent(name)}/enable`),
   disableRule:    (name: string)      => post(`/rules/${encodeURIComponent(name)}/disable`),
