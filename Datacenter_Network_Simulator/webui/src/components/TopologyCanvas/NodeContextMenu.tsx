@@ -626,12 +626,8 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const { snmp, fetchGraph, fetchDevices } = useStore()
   const menuRef  = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const evTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const fltTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pos,     setPos]    = useState({ x, y })
   const [subOpen, setSubOpen] = useState(false)
-  const [evSubOpen, setEvSubOpen] = useState(false)
-  const [fltSubOpen, setFltSubOpen] = useState(false)
   const [overrides, setOverrides] = useState<Record<string, number>>({})
   const [evBusy, setEvBusy] = useState<string | null>(null)
   const [faultsAvail, setFaultsAvail] = useState<{ fault: string; label: string }[]>([])
@@ -698,30 +694,13 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
     timerRef.current = setTimeout(() => setSubOpen(false), 150)
   }
 
-  function openEvSub() {
-    if (evTimerRef.current) { clearTimeout(evTimerRef.current); evTimerRef.current = null }
-    setEvSubOpen(true)
-  }
-  function closeEvSub() {
-    evTimerRef.current = setTimeout(() => setEvSubOpen(false), 150)
-  }
-
-  // Toggle a plant fault override (inject/clear). Menu stays open so the user can
-  // fire several or watch ACTIVE state flip — events are stateful, unlike traps.
+  // Toggle a plant fault override (force/clear a BACnet point + COV alarm).
   async function toggleEvent(ev: PlantEvent) {
     const active = ev.point in overrides
     setEvBusy(ev.point)
     try { await api.setPlantOverride(nodeId, ev.point, active ? null : ev.value); await loadOverrides() }
     catch (e) { alert(String(e)) }
     finally { setEvBusy(null) }
-  }
-
-  function openFltSub() {
-    if (fltTimerRef.current) { clearTimeout(fltTimerRef.current); fltTimerRef.current = null }
-    setFltSubOpen(true)
-  }
-  function closeFltSub() {
-    fltTimerRef.current = setTimeout(() => setFltSubOpen(false), 150)
   }
 
   // Toggle an Inject Fault ramp. start = ramp the metric up across the SNMP
@@ -782,6 +761,44 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
         { type: 'CPU_HIGH',   label: 'CPU High Usage' },
       ]
 
+  // ── Unified "Simulate Fault" model ─────────────────────────────────────────
+  // CONDITIONS = stateful toggles (ramp a metric on SNMP devices, force a BACnet
+  // point on plant devices). EVENTS = one-shot traps (SNMP only). The two are
+  // grouped under one submenu so the user sees a single, consistent entry point.
+  const isPlant = PLANT_EVENT_TYPES.includes(deviceType)
+
+  type SimCond = { key: string; label: string; on: boolean; busy: boolean; toggle: () => void }
+  const conditions: SimCond[] = isPlant
+    ? plantEvents.map(ev => ({
+        key: ev.point, label: ev.label,
+        on: ev.point in overrides, busy: evBusy === ev.point,
+        toggle: () => { if (!evBusy) toggleEvent(ev) },
+      }))
+    : faultsAvail.map(f => ({
+        key: f.fault, label: f.label,
+        on: faultsActive.includes(f.fault), busy: fltBusy === f.fault,
+        toggle: () => { if (!fltBusy) toggleFault(f.fault) },
+      }))
+
+  // One-shot events: drop trap types already represented as a Condition so the
+  // two groups never list the same fault twice.
+  const FAULT_TRAP: Record<string, string> = {
+    cpu_high: 'CPU_HIGH', memory_high: 'MEMORY_HIGH', temp_high: 'TEMPERATURE_ALERT',
+    ambient_high: 'TEMPERATURE_ALERT', humidity_high: 'HUMIDITY_ALERT',
+    ups_overload: 'UPS_OUTPUT_OVERLOAD', pdu_load_high: 'PDU_LOAD_HIGH',
+  }
+  const covered = new Set(faultsAvail.map(f => FAULT_TRAP[f.fault]).filter(Boolean))
+  const events = (!isPlant && snmpRunning) ? traps.filter(t => !covered.has(t.type)) : []
+
+  const hasSim = conditions.length > 0 || events.length > 0
+  const busyAny = evBusy !== null || fltBusy !== null
+
+  const GROUP_HDR: React.CSSProperties = {
+    fontSize: 9, fontWeight: 600, color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.6px',
+    padding: '5px 14px 2px',
+  }
+
   const menu = (
     <div
       ref={menuRef}
@@ -793,120 +810,14 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
       <MenuItem label="Locate on Graph" onClick={() => { onLocate(); onClose() }} />
       <MenuItem label="Show Info"       onClick={() => { onClose(); onShowInfo() }} />
 
-      {plantEvents.length > 0 && (
-        <>
-          <MenuDivider />
-          <div style={{ position: 'relative' }}
-            onMouseEnter={openEvSub}
-            onMouseLeave={closeEvSub}
-          >
-            {/* "Trigger Event" row */}
-            <div style={{
-              padding: '6px 14px',
-              cursor: 'pointer',
-              color: 'var(--text)',
-              background: evSubOpen ? 'rgba(255,255,255,0.06)' : 'transparent',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <span>Trigger Event</span>
-              <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>▶</span>
-            </div>
-
-            {/* Submenu */}
-            {evSubOpen && (
-              <div
-                style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9001, maxHeight: 340, overflowY: 'auto' }}
-                onMouseEnter={openEvSub}
-                onMouseLeave={closeEvSub}
-              >
-                {plantEvents.map(ev => {
-                  const on = ev.point in overrides
-                  return (
-                    <div
-                      key={ev.point}
-                      style={{
-                        padding: '5px 14px', cursor: evBusy ? 'wait' : 'pointer',
-                        color: on ? '#f87171' : 'var(--text)', whiteSpace: 'nowrap',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      onMouseDown={e => { e.preventDefault(); if (!evBusy) toggleEvent(ev) }}
-                    >
-                      <span>{ev.label}</span>
-                      <span style={{ fontSize: 9, color: on ? '#f87171' : 'var(--text-dim)' }}>
-                        {evBusy === ev.point ? '…' : on ? 'ACTIVE' : ''}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {faultsAvail.length > 0 && (
-        <>
-          <MenuDivider />
-          <div style={{ position: 'relative' }}
-            onMouseEnter={openFltSub}
-            onMouseLeave={closeFltSub}
-          >
-            {/* "Inject Fault" row */}
-            <div style={{
-              padding: '6px 14px',
-              cursor: 'pointer',
-              color: 'var(--text)',
-              background: fltSubOpen ? 'rgba(255,255,255,0.06)' : 'transparent',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <span>Inject Fault</span>
-              <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>▶</span>
-            </div>
-
-            {/* Submenu */}
-            {fltSubOpen && (
-              <div
-                style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9001, maxHeight: 340, overflowY: 'auto' }}
-                onMouseEnter={openFltSub}
-                onMouseLeave={closeFltSub}
-              >
-                {faultsAvail.map(f => {
-                  const on = faultsActive.includes(f.fault)
-                  return (
-                    <div
-                      key={f.fault}
-                      style={{
-                        padding: '5px 14px', cursor: fltBusy ? 'wait' : 'pointer',
-                        color: on ? '#f87171' : 'var(--text)', whiteSpace: 'nowrap',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      onMouseDown={e => { e.preventDefault(); if (!fltBusy) toggleFault(f.fault) }}
-                    >
-                      <span>{f.label}</span>
-                      <span style={{ fontSize: 9, color: on ? '#f87171' : 'var(--text-dim)' }}>
-                        {fltBusy === f.fault ? '…' : on ? 'ACTIVE' : ''}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {snmpRunning && traps.length > 0 && (
+      {hasSim && (
         <>
           <MenuDivider />
           <div style={{ position: 'relative' }}
             onMouseEnter={openSub}
             onMouseLeave={closeSub}
           >
-            {/* "Send Trap" row */}
+            {/* "Simulate Fault" row */}
             <div style={{
               padding: '6px 14px',
               cursor: 'pointer',
@@ -914,18 +825,39 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
               background: subOpen ? 'rgba(255,255,255,0.06)' : 'transparent',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <span>Send Trap</span>
+              <span>Simulate Fault</span>
               <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>▶</span>
             </div>
 
-            {/* Submenu */}
+            {/* Submenu — Conditions (stateful toggles) + Events (one-shot) */}
             {subOpen && (
               <div
-                style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9001, maxHeight: 340, overflowY: 'auto' }}
+                style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9001, maxHeight: 360, overflowY: 'auto' }}
                 onMouseEnter={openSub}
                 onMouseLeave={closeSub}
               >
-                {traps.map(t => (
+                {conditions.length > 0 && <div style={GROUP_HDR}>Conditions</div>}
+                {conditions.map(c => (
+                  <div
+                    key={c.key}
+                    style={{
+                      padding: '5px 14px', cursor: busyAny ? 'wait' : 'pointer',
+                      color: c.on ? '#f87171' : 'var(--text)', whiteSpace: 'nowrap',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseDown={e => { e.preventDefault(); c.toggle() }}
+                  >
+                    <span>{c.label}</span>
+                    <span style={{ fontSize: 9, color: c.on ? '#f87171' : 'var(--text-dim)' }}>
+                      {c.busy ? '…' : c.on ? 'ACTIVE' : ''}
+                    </span>
+                  </div>
+                ))}
+
+                {events.length > 0 && <div style={GROUP_HDR}>Events</div>}
+                {events.map(t => (
                   <div
                     key={t.type}
                     style={{ padding: '5px 14px', cursor: 'pointer', color: 'var(--text)', whiteSpace: 'nowrap' }}
