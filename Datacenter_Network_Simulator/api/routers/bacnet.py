@@ -20,6 +20,16 @@ class BACnetConfig(BaseModel):
     port:          int   = 47808
 
 
+@router.get("/power-summary")
+def bacnet_power_summary():
+    """Live facility power draw and PUE, from the power cascade
+    (server live watts → PDU → UPS → EV2 → facility = IT + cooling)."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        return {"it_watts": 0.0, "cooling_watts": 0.0, "facility_watts": 0.0, "pue": 0.0}
+    return st.get_power_summary()
+
+
 @router.get("/status")
 def bacnet_status():
     s  = _state()

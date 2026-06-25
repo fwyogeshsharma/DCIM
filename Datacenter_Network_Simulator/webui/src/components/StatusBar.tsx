@@ -1,4 +1,58 @@
+import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
+import { api } from '../api/client'
+
+type PowerSummary = {
+  it_watts: number; cooling_watts: number; facility_watts: number
+  pue: number; source?: 'meters' | 'computed'
+}
+
+function fmtKW(w: number): string {
+  const kw = w / 1000
+  return kw >= 1000 ? `${(kw / 1000).toFixed(2)} MW` : `${kw.toFixed(1)} kW`
+}
+
+// PUE colour band: efficient (<1.4) green, typical (1.4–2.0) amber, poor (>2.0) red
+function pueColor(pue: number): string {
+  if (pue <= 0) return 'var(--text-dim)'
+  if (pue < 1.4) return '#3fb950'
+  if (pue < 2.0) return '#d29922'
+  return '#f85149'
+}
+
+function PowerReadout() {
+  const [p, setP] = useState<PowerSummary | null>(null)
+  useEffect(() => {
+    let alive = true
+    const load = () => api.powerSummary()
+      .then(d => { if (alive) setP(d as PowerSummary) })
+      .catch(() => {})
+    load()
+    const t = setInterval(load, 3000)
+    return () => { alive = false; clearInterval(t) }
+  }, [])
+
+  if (!p || p.facility_watts <= 0) return null
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+        title={`Power Usage Effectiveness = facility ÷ IT${p.source === 'computed' ? ' (estimated — no meter hierarchy)' : ' (from EV2 meter readings)'}`}>
+        <span style={{ color: 'var(--text-muted)' }}>PUE</span>
+        <span style={{ color: pueColor(p.pue), fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+          {p.source === 'computed' ? '~' : ''}{p.pue > 0 ? p.pue.toFixed(2) : '—'}
+        </span>
+      </span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="Live IT load">
+        <span style={{ color: 'var(--text-muted)' }}>IT</span>
+        <span style={{ color: 'var(--text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtKW(p.it_watts)}</span>
+      </span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="Facility = IT + cooling">
+        <span style={{ color: 'var(--text-muted)' }}>Facility</span>
+        <span style={{ color: 'var(--text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtKW(p.facility_watts)}</span>
+      </span>
+    </span>
+  )
+}
 
 const DEVICE_TYPE_COLOR: Record<string, string> = {
   router:        'var(--node-router)',
@@ -63,7 +117,8 @@ export default function StatusBar() {
       fontSize: 10,
       color: 'var(--text-muted)',
     }}>
-      {/* ── Right: type counts ────────────────────────────── */}
+      {/* ── Left: live power + PUE ─────────────────────────── */}
+      <PowerReadout />
       <span style={{ flex: 1 }} />
       {Object.entries(typeCounts).map(([t, n]) => (
         <span key={t} style={{

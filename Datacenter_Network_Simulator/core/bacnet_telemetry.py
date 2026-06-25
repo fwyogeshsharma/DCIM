@@ -84,6 +84,11 @@ class EV2TelemetryEngine:
             self._i_nominal = (rated_kw * 1000.0) / (nominal_voltage * 0.90 * math.sqrt(3))
         else:
             self._i_nominal = 60.0 * self._load_scale
+        # Peak kW this panel carries at full load (I_nominal). When a live
+        # downstream load is supplied to tick(), the load multiplier is live_kw /
+        # this peak — so the panel meters the real IT draw instead of a synthetic
+        # diurnal curve.
+        self._rated_kw_peak = (self._i_nominal * nominal_voltage * 0.90 * math.sqrt(3)) / 1000.0
         # Phase-current ceiling and overcurrent trip both follow the panel size
         # so a large facility meter is not clipped and does not alarm constantly.
         # 85/60 keeps the legacy trip-to-nominal ratio for standard panels.
@@ -165,14 +170,21 @@ class EV2TelemetryEngine:
     #  Main tick
     # ─────────────────────────────────────────────────────────────
 
-    def tick(self, dt: float) -> Dict[str, float]:
+    def tick(self, dt: float, live_kw: float | None = None) -> Dict[str, float]:
         """
         Advance simulation by *dt* seconds.
+
+        *live_kw* — real downstream load (kW) measured from the power graph. When
+        supplied, the panel load multiplier follows the live IT draw instead of
+        the synthetic diurnal curve, so a server load change moves this meter.
 
         Returns a flat dict of all object names → new present values.
         Boolean alarm values are returned as 0.0 / 1.0.
         """
-        mul = self._diurnal()
+        if live_kw is not None and self._rated_kw_peak > 0:
+            mul = max(0.0, min(1.25, live_kw / self._rated_kw_peak))
+        else:
+            mul = self._diurnal()
         self._step_voltages()
         self._step_frequency()
         self._step_thd()

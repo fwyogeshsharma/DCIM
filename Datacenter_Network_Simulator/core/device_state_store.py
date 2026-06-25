@@ -248,6 +248,17 @@ class DeviceStateStore:
         # shows varied, realistic disk usage rather than every server pinned full.
         self._disk_anchor: Dict[str, float] = {}
 
+        # Live power cascade. _power_ctx caches the power-graph structure +
+        # per-PDU/UPS rated capacity (built once); _through_live[device_id] is the
+        # live watts flowing through each node, recomputed each tick by summing
+        # live server draw bottom-up. PDU load/current, UPS output load and the
+        # EV2 panels read it so a server load change ripples up the hierarchy.
+        self._power_ctx: "Optional[dict]" = None
+        self._through_live: Dict[str, float] = {}
+        self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
+        self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
+        self._it_w: float = 0.0         # IT-only draw for PUE denominator
+
         # Autonomous fault generation. OFF by default: the random walk keeps every
         # device healthy (metrics jitter inside safe bands, no state flips), so NO
         # SNMP trap fires unless the user injects a fault (Simulate Fault / Send
@@ -611,6 +622,215 @@ class DeviceStateStore:
                           "plant_by_dc": plant_by_dc}
         return self._cool_ctx
 
+    # Power-chain rank: source (0) → leaf load (4). A device's parents are its
+    # lower-rank power neighbours (the feeds above it). Mirrors api/routers/bacnet.py.
+    _POWER_RANK = {"generator": 0, "ups": 1, "rpp": 2, "floor_pdu": 2, "pdu": 3}
+    # Leaf IT load types whose live wattage drives the cascade.
+    _IT_LEAF_TYPES = {"server", "switch", "router", "firewall",
+                      "load_balancer", "oob_switch"}
+    # Cooling-plant types — electrical loads counted toward facility / PUE.
+    _COOLING_TYPES = {"crah", "chiller", "pump", "cooling_tower", "cdu"}
+    # Per-plant-type BACnet point that reports its live electrical draw (kW).
+    _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
+
+    def _power_context(self) -> dict:
+        """Cached power-graph structure + per-node rated capacity, built once.
+          children {id: [downstream ids]}     — loads fed by this node
+          parents  {id: [upstream feed ids]}  — feeds above this node
+          rank     {id: int}
+          rated_w  {id: W}                     — breaker rating (design peak ÷ 0.8)
+          peak_w   {id: W}                     — nameplate sum flowing through (full load)
+        Redundant feeds split a load equally among parents, so summing both A/B
+        meters recovers the full load instead of double-counting (matches bacnet.py).
+        """
+        if self._power_ctx is not None:
+            return self._power_ctx
+        topo = self._topology
+        children: Dict[str, list] = {}
+        parents: Dict[str, list] = {}
+        rank: Dict[str, int] = {}
+        peak_w: Dict[str, float] = {}
+        rated_w: Dict[str, float] = {}
+        ev2_ip_panel: Dict[str, str] = {}
+        ev2_meters: list = []
+        try:
+            id_type = {d.id: d.device_type.value for d in self._dm.get_all_devices()}
+            id_draw = {d.id: float(getattr(d, "power_draw_w", 0) or 0)
+                       for d in self._dm.get_all_devices()}
+            for i in id_type:
+                rank[i] = self._POWER_RANK.get(id_type[i], 4)
+            edges = topo.get_edges_by_layer("power") if topo else []
+
+            def _parents(i):
+                out = []
+                for u, v, _w in edges:
+                    if i in (u, v):
+                        nb = v if u == i else u
+                        if id_type.get(nb) == "energy_monitor":
+                            continue                 # meters clamp on, don't feed
+                        if rank.get(nb, 4) < rank.get(i, 4):
+                            out.append(nb)
+                return out
+
+            for i in id_type:
+                parents[i] = _parents(i)
+            for u, v, _w in edges:
+                pu, pv = rank.get(u, 4), rank.get(v, 4)
+                if pu < pv:
+                    children.setdefault(u, []).append(v)
+                elif pv < pu:
+                    children.setdefault(v, []).append(u)
+
+            # Nameplate peak flowing through each node (leaf→root, redundancy split).
+            incoming: Dict[str, float] = {}
+            for nid in sorted(id_type, key=lambda x: rank.get(x, 4), reverse=True):
+                thr = id_draw.get(nid, 0.0) + incoming.get(nid, 0.0)
+                peak_w[nid] = thr
+                ps = parents.get(nid, [])
+                if ps and thr:
+                    share = thr / len(ps)
+                    for p in ps:
+                        incoming[p] = incoming.get(p, 0.0) + share
+            # Breaker rating: design peak is ~80 % of rating (headroom). So a fully
+            # loaded chain reads ~80 % load, idle ~44 % — a realistic PDU band.
+            for nid, pk in peak_w.items():
+                rated_w[nid] = (pk / 0.8) if pk > 0 else 0.0
+
+            # EV2 meter IP → the panel/PDU it clamps onto (its power neighbour), so
+            # the live downstream load can be fed to each EV2 telemetry engine.
+            for d in self._dm.get_all_devices():
+                if d.device_type.value != "energy_monitor":
+                    continue
+                nb = next((v if u == d.id else u
+                           for u, v, _w in edges if d.id in (u, v)), None)
+                ip = d.ip_address or getattr(d, "mgmt_ip", None)
+                if nb and ip:
+                    ev2_ip_panel[ip] = nb
+
+            # Classify each EV2 meter: a FACILITY meter (its panel's subtree
+            # includes cooling plant — i.e. it's on the building feed) vs an IT
+            # SUB-METER (subtree is IT only). PUE = Σ facility-meter kW ÷ Σ IT-meter
+            # kW, exactly how a DCIM derives it from physical meter readings.
+            cooling_ids = {i for i, t in id_type.items() if t in self._COOLING_TYPES}
+
+            def _subtree(root):
+                seen, stack = set(), [root]
+                while stack:
+                    n = stack.pop()
+                    for c in children.get(n, []):
+                        if c not in seen:
+                            seen.add(c)
+                            stack.append(c)
+                return seen
+
+            for ip, panel in ev2_ip_panel.items():
+                is_fac = bool(_subtree(panel) & cooling_ids)
+                ev2_meters.append({"ip": ip, "panel": panel, "facility": is_fac})
+        except Exception:
+            log.exception("[StateStore] power context build error")
+
+        self._power_ctx = {"children": children, "parents": parents,
+                           "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
+                           "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters}
+        return self._power_ctx
+
+    def _server_live_watts(self, device: "Device") -> float:
+        """Per-leaf live draw: nameplate scaled by CPU load (idle ~55 %, full
+        100 %) — the same curve Redfish _live_watts reports. 0 if powered off."""
+        if getattr(device, "power_state", "On") == "Off":
+            return 0.0
+        nominal = float(getattr(device, "power_draw_w", 0) or 0)
+        if nominal <= 0:
+            return 0.0
+        load = max(0.0, min(1.0, getattr(device, "cpu_usage", 0) / 100.0))
+        return nominal * (0.55 + 0.45 * load)
+
+    def get_power_summary(self) -> dict:
+        """Live facility power + PUE, derived from the EV2 METER readings the way a
+        real DCIM does it: PUE = Σ facility-meter kW ÷ Σ IT-sub-meter kW. Each EV2
+        reports the live load through the panel it clamps (self._through_live). If
+        the topology has no proper meter hierarchy, fall back to the internal
+        IT/facility power sums so the value is still populated."""
+        ctx = self._power_context()
+        through = self._through_live
+        it_m = 0.0
+        fac_m = 0.0
+        for m in ctx.get("ev2_meters", []):
+            kw = through.get(m["panel"], 0.0) / 1000.0
+            if m["facility"]:
+                fac_m += kw          # building-feed meter — sees IT + cooling
+            else:
+                it_m += kw           # IT branch sub-meter
+
+        metered = it_m > 0 and fac_m > 0
+        it_w  = it_m * 1000.0 if it_m > 0 else self._it_w
+        fac_w = fac_m * 1000.0 if fac_m > 0 else self._facility_w
+        pue = (fac_w / it_w) if it_w > 0 else 0.0
+        return {
+            "it_watts":       round(it_w, 1),
+            "cooling_watts":  round(max(0.0, fac_w - it_w), 1),
+            "facility_watts": round(fac_w, 1),
+            "pue":            round(pue, 3),
+            "source":         "meters" if metered else "computed",
+        }
+
+    def _plant_watts(self, name: str) -> float:
+        """Live electrical draw (W) of a cooling-plant unit from its BACnet
+        telemetry (kW point → W). 0 if not running / unknown."""
+        pv = _plant_state_cache.get(name)
+        if not pv:
+            return 0.0
+        for k in self._PLANT_POWER_POINTS:
+            if k in pv:
+                try:
+                    return float(pv[k]) * 1000.0
+                except (TypeError, ValueError):
+                    return 0.0
+        return 0.0
+
+    def _compute_power_flow(self) -> None:
+        """Per tick: sum live IT load bottom-up through the power graph so each
+        PDU/UPS/EV2 node carries the real watts flowing through it right now.
+        Also totals IT vs facility (IT + cooling plant) draw for live PUE."""
+        ctx = self._power_context()
+        rank, parents = ctx["rank"], ctx["parents"]
+        through: Dict[str, float] = {}
+        incoming: Dict[str, float] = {}
+        it_w = 0.0
+        cool_w = 0.0
+        try:
+            devices = self._dm.get_all_devices()
+            own: Dict[str, float] = {}
+            for d in devices:
+                dtv = d.device_type.value
+                if dtv in self._IT_LEAF_TYPES:
+                    w = self._server_live_watts(d)
+                    own[d.id] = w
+                    it_w += w
+                elif dtv in self._COOLING_TYPES:
+                    # Cooling plant is also an electrical load on the power graph,
+                    # so a facility meter downstream reads IT + cooling → PUE > 1.
+                    w = self._plant_watts(d.name)
+                    if w > 0:
+                        own[d.id] = w
+                        cool_w += w
+            for nid in sorted(rank, key=lambda x: rank.get(x, 4), reverse=True):
+                thr = own.get(nid, 0.0) + incoming.get(nid, 0.0)
+                through[nid] = thr
+                ps = parents.get(nid, [])
+                if ps and thr:
+                    share = thr / len(ps)
+                    for p in ps:
+                        incoming[p] = incoming.get(p, 0.0) + share
+        except Exception:
+            log.exception("[StateStore] power flow error")
+        self._through_live = through
+        self._it_w = it_w
+        self._facility_w = it_w + cool_w
+        # Live downstream kW per EV2 meter IP, for the BACnet telemetry engines.
+        self._ev2_live_kw = {ip: through.get(panel, 0.0) / 1000.0
+                             for ip, panel in ctx.get("ev2_ip_panel", {}).items()}
+
     @staticmethod
     def _is_faulted(name: str) -> bool:
         """True if this plant device is in a cooling-loss state — either any
@@ -714,6 +934,7 @@ class DeviceStateStore:
         devices = self._dm.get_all_devices()
         self._compute_leak_heat()
         self._compute_chw_penalty()       # roll per-DC CHW penalty from upstream faults
+        self._compute_power_flow()        # live watts up the power graph (server→PDU→UPS→EV2)
         for device in devices:
             self._step_device(device)
             self._step_ext_state(device)
@@ -735,7 +956,7 @@ class DeviceStateStore:
         if self._bacnet_ctrl:
             try:
                 self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
-                                       self.plant_alarm_overrides)
+                                       self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
@@ -893,8 +1114,19 @@ class DeviceStateStore:
             for iface in device.interfaces:
                 iface.oper_status = 1
 
-        # CPU — brief vs sustained spike recovery
-        if mf["cpu_usage"]:
+        # Injected/overridden CPU pin: resolve it BEFORE the walk so cpu_temp,
+        # fan, power and exhaust all derive from the pinned value this tick. The
+        # walk would otherwise reset a >90 pin back to ~50 before those are
+        # computed, leaving SNMP cpu% high but the thermal chain at idle. The
+        # ramp/override engines re-apply at end-of-tick for the published value;
+        # here it just feeds the derivations below.
+        _cpu_pin     = self._pin_value(device, "cpu_usage")
+        _cputemp_pin = self._pin_value(device, "cpu_temp")
+        if _cpu_pin is not None:
+            device.cpu_usage = int(max(0.0, min(100.0, _cpu_pin)))
+
+        # CPU — brief vs sustained spike recovery (skipped while CPU is pinned)
+        if mf["cpu_usage"] and _cpu_pin is None:
             if device.cpu_usage > 90:
                 if ext.get("cpu_sustained", False):
                     device.cpu_usage = max(1, device.cpu_usage + random.randint(-8, -3))
@@ -907,7 +1139,6 @@ class DeviceStateStore:
                 if random.random() < 0.01:
                     device.cpu_usage = random.randint(91, 99)
                     ext["cpu_sustained"] = random.random() < (1.0 / 7.0)
-        if mf["cpu_usage"]:
             device.cpu_usage = int(self._num_limit("cpu_usage", device.cpu_usage))
 
         # Memory — brief (9 in 10) vs sustained (1 in 10) spike recovery
@@ -1009,6 +1240,10 @@ class DeviceStateStore:
                 _cpu_t += self._leak_heat.get(device.name, 0.0) * 38.0
             device.cpu_temp = round(max(20.0, min(95.0, _cpu_t)), 1)
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
+            # A pinned (injected/overridden) cpu_temp wins, so the fan below ramps
+            # to cool the hot die — the realistic response to a thermal fault.
+            if _cputemp_pin is not None:
+                device.cpu_temp = round(max(20.0, min(95.0, _cputemp_pin)), 1)
 
         # Chassis fan speed — servers only; rises with CPU temperature so it
         # tracks load. Single source of truth: Redfish _fans() reads this.
@@ -1254,6 +1489,22 @@ class DeviceStateStore:
         return {m: {"target": r["target"], "clearing": r["clearing"]}
                 for m, r in self._fault_ramps.get(device_id, {}).items()}
 
+    def _pin_value(self, device: "Device", metric: str) -> "Optional[float]":
+        """Current pinned value of a device-field metric (Metric-Tick override or
+        active Inject-Fault ramp), or None if not pinned. Override wins. Used to
+        feed the pinned cpu_usage/cpu_temp into the thermal/power/fan/exhaust
+        derivations BEFORE the walk runs, so they reflect the injected value."""
+        ov = self.device_overrides.get(device.id)
+        if ov and metric in ov:
+            try:
+                return float(ov[metric])
+            except (TypeError, ValueError):
+                return None
+        r = self._fault_ramps.get(device.id, {}).get(metric)
+        if r and r.get("current") is not None:
+            return float(r["current"])
+        return None
+
     def _ramp_read(self, device: "Device", kind: str, field: str) -> float:
         if kind == "dev":
             return float(getattr(device, field, 0.0))
@@ -1492,15 +1743,22 @@ class DeviceStateStore:
                 st["ups_status"] = self._state_lock("ups_status", st["ups_status"])
 
             if mf["ups_output_load"]:
-                load = st.get("ups_output_load", 40.0)
-                if load > 90.0:
-                    load = max(20.0, load + random.uniform(-8.0, -3.0))
-                elif load >= 70.0:
-                    load = max(20.0, load + random.uniform(-6.0, -2.0))
+                _rated = self._power_context()["rated_w"].get(device.id, 0.0)
+                _thr = self._through_live.get(device.id, 0.0)
+                if _rated > 0:
+                    # Live: output load = watts flowing through this UPS / its rating.
+                    load = max(0.0, min(100.0, _thr / _rated * 100.0 + random.uniform(-0.5, 0.5)))
                 else:
-                    load = max(5.0, min(70.0, load + random.uniform(-3.0, 3.0)))
-                    if random.random() < 0.005:
-                        load = random.uniform(91.0, 99.0)
+                    # Not wired into the power graph — legacy self-contained walk.
+                    load = st.get("ups_output_load", 40.0)
+                    if load > 90.0:
+                        load = max(20.0, load + random.uniform(-8.0, -3.0))
+                    elif load >= 70.0:
+                        load = max(20.0, load + random.uniform(-6.0, -2.0))
+                    else:
+                        load = max(5.0, min(70.0, load + random.uniform(-3.0, 3.0)))
+                        if random.random() < 0.005:
+                            load = random.uniform(91.0, 99.0)
                 st["ups_output_load"] = round(self._num_limit("ups_output_load", load), 1)
 
             if mf["ups_battery_status"]:
@@ -1568,16 +1826,24 @@ class DeviceStateStore:
 
         # ── PDU / Floor PDU ───────────────────────────────────────────────
         if is_pdu:
+            _pdu_rated = self._power_context()["rated_w"].get(device.id, 0.0)
+            _pdu_thr = self._through_live.get(device.id, 0.0)
             if mf["pdu_load"]:
-                ld = st.get("pdu_load", 45.0)
-                if ld > 90.0:
-                    ld = max(30.0, ld + random.uniform(-8.0, -3.0))
-                elif ld >= 80.0:
-                    ld = max(30.0, ld + random.uniform(-5.0, -1.0))
+                if _pdu_rated > 0:
+                    # Live: load % = watts drawn by downstream gear / breaker rating.
+                    ld = max(0.0, min(100.0, _pdu_thr / _pdu_rated * 100.0
+                                      + random.uniform(-0.5, 0.5)))
                 else:
-                    ld = max(10.0, min(75.0, ld + random.uniform(-3.0, 3.0)))
-                    if random.random() < 0.004:
-                        ld = random.uniform(81.0, 98.0)
+                    # Not wired into the power graph — legacy self-contained walk.
+                    ld = st.get("pdu_load", 45.0)
+                    if ld > 90.0:
+                        ld = max(30.0, ld + random.uniform(-8.0, -3.0))
+                    elif ld >= 80.0:
+                        ld = max(30.0, ld + random.uniform(-5.0, -1.0))
+                    else:
+                        ld = max(10.0, min(75.0, ld + random.uniform(-3.0, 3.0)))
+                        if random.random() < 0.004:
+                            ld = random.uniform(81.0, 98.0)
                 st["pdu_load"] = round(self._num_limit("pdu_load", ld), 1)
 
             if mf["pdu_voltage"]:
@@ -1636,10 +1902,17 @@ class DeviceStateStore:
                 st["pdu_smoke"] = self._state_lock("pdu_smoke", st["pdu_smoke"])
 
             if mf["pdu_outlet_current"]:
-                oc = st.get("pdu_outlet_current", 10.0)
-                oc = max(1.0, min(18.0, oc + random.uniform(-1.0, 1.0)))
-                if random.random() < 0.003:
-                    oc = random.uniform(21.0, 28.0)
+                if _pdu_rated > 0:
+                    # Live: phase current I = P / (V·√3·PF) for a 3-phase PDU.
+                    _v = st.get("pdu_voltage", 220.0)
+                    _pf = st.get("pdu_power_factor", 0.95)
+                    oc = max(0.0, _pdu_thr / max(1.0, _v * 1.732 * _pf)
+                             + random.uniform(-0.2, 0.2))
+                else:
+                    oc = st.get("pdu_outlet_current", 10.0)
+                    oc = max(1.0, min(18.0, oc + random.uniform(-1.0, 1.0)))
+                    if random.random() < 0.003:
+                        oc = random.uniform(21.0, 28.0)
                 st["pdu_outlet_current"] = round(self._num_limit("pdu_outlet_current", oc), 1)
 
             if mf["pdu_ground_fault"]:
@@ -1672,15 +1945,17 @@ class DeviceStateStore:
                 h = max(35.0, min(65.0, h + (50.0 - h) * 0.05 + random.uniform(-0.8, 0.8)))
                 st["pdu_humidity"] = round(self._num_limit("pdu_humidity", h), 1)
 
-            # Energy accumulator: integrate kW load × 1-min tick
+            # Energy accumulator: integrate real kW × tick interval.
             if mf["pdu_energy_kwh"]:
-                load_now = st.get("pdu_load", 45.0)
-                volt_now = st.get("pdu_voltage", 220.0)
-                cur_now  = st.get("pdu_outlet_current", 10.0)
-                pf_now   = st.get("pdu_power_factor", 0.95)
-                real_kw  = (volt_now * cur_now * pf_now) / 1000.0
+                if _pdu_rated > 0:
+                    real_kw = _pdu_thr / 1000.0          # live draw through the PDU
+                else:
+                    volt_now = st.get("pdu_voltage", 220.0)
+                    cur_now  = st.get("pdu_outlet_current", 10.0)
+                    pf_now   = st.get("pdu_power_factor", 0.95)
+                    real_kw  = (volt_now * cur_now * pf_now) / 1000.0
                 st["pdu_energy_kwh"] = round(st.get("pdu_energy_kwh", 0.0)
-                                             + real_kw / 60.0, 3)
+                                             + real_kw * self._tick_interval / 3600.0, 3)
 
         # Update module-level cache so snmprec_generator can read UPS/PDU states
         _ext_state_cache[name] = dict(st)
