@@ -397,14 +397,15 @@ class TrapEngine(QObject):
         if trap_type == TrapType.AUTH_FAILURE:
             return []
 
-        if trap_type == TrapType.CPU_HIGH:
+        if trap_type in (TrapType.CPU_HIGH, TrapType.CPU_SUSTAINED,
+                         TrapType.CPU_TEMP_CRITICAL, TrapType.CPU_NORMAL):
             val = int(kwargs.get("metric_value", device.cpu_usage))
             return [
                 (_oid('1.3.6.1.4.1.99999.2.1'), rfc1902.Gauge32(val)),
                 (_oid('1.3.6.1.4.1.99999.2.5'), rfc1902.Gauge32(90)),
             ]
 
-        if trap_type == TrapType.MEMORY_HIGH:
+        if trap_type in (TrapType.MEMORY_HIGH, TrapType.MEMORY_NORMAL):
             val = int(kwargs.get("metric_value",
                                  device.memory_used * 100 // max(1, device.memory_total)))
             return [
@@ -412,10 +413,14 @@ class TrapEngine(QObject):
                 (_oid('1.3.6.1.4.1.99999.2.6'), rfc1902.Gauge32(85)),
             ]
 
-        if trap_type == TrapType.TEMPERATURE_ALERT:
-            temp = int(kwargs.get("metric_value", random.randint(62, 90)))
+        if trap_type in (TrapType.TEMPERATURE_ALERT, TrapType.TEMPERATURE_NORMAL,
+                         TrapType.SENSOR_AMBIENT_TEMP_HIGH,
+                         TrapType.SENSOR_AMBIENT_TEMP_CRITICAL,
+                         TrapType.SENSOR_AMBIENT_TEMP_NORMAL):
+            temp = int(kwargs.get("metric_value", getattr(device, "cpu_temp", 0)
+                                  or random.randint(62, 90)))
             return [
-                (_oid('1.3.6.1.4.1.99999.2.3'), rfc1902.Gauge32(temp)),
+                (_oid('1.3.6.1.4.1.99999.2.3'), rfc1902.Gauge32(max(0, temp))),
                 (_oid('1.3.6.1.4.1.99999.2.7'), rfc1902.Gauge32(40)),
             ]
 
@@ -463,25 +468,28 @@ class TrapEngine(QObject):
                 (_oid('1.3.6.1.2.1.15.3.1.14.0'), rfc1902.Integer32(state_code)),
             ]
 
-        if trap_type == _HUMIDITY_ALERT:
-            val = int(round(float(kwargs.get("metric_value", device.humidity))))
+        if trap_type in (_HUMIDITY_ALERT, TrapType.SENSOR_HIGH_HUMIDITY,
+                         TrapType.SENSOR_CRITICAL_HUMIDITY, TrapType.SENSOR_LOW_HUMIDITY,
+                         TrapType.SENSOR_HUMIDITY_NORMAL):
+            val = int(round(float(kwargs.get("metric_value", None) or device.humidity)))
             return [
                 (_oid('1.3.6.1.4.1.99999.2.12'), rfc1902.Gauge32(max(0, val))),   # humidity %
                 (_oid('1.3.6.1.4.1.99999.2.15'), rfc1902.Gauge32(70)),             # threshold %
             ]
 
-        if trap_type == _DEWPOINT_ALERT:
+        if trap_type in (_DEWPOINT_ALERT, TrapType.SENSOR_DEWPOINT_NORMAL):
             # Encode as ×10 integer (e.g. 21.5°C → 215)
-            raw = float(kwargs.get("metric_value", device.dewpoint))
+            raw = float(kwargs.get("metric_value", None) or device.dewpoint)
             val = int(round(raw * 10))
             return [
                 (_oid('1.3.6.1.4.1.99999.2.13'), rfc1902.Integer32(val)),   # dewpoint ×10 °C
                 (_oid('1.3.6.1.4.1.99999.2.16'), rfc1902.Integer32(210)),   # threshold 21.0°C ×10
             ]
 
-        if trap_type == _AIRFLOW_ALERT:
+        if trap_type in (_AIRFLOW_ALERT, TrapType.SENSOR_HIGH_AIRFLOW,
+                         TrapType.SENSOR_LOW_AIRFLOW, TrapType.SENSOR_AIRFLOW_NORMAL):
             # Encode as ×10 integer (e.g. 3.5 m/s → 35)
-            raw = float(kwargs.get("metric_value", device.airflow))
+            raw = float(kwargs.get("metric_value", None) or device.airflow)
             val = int(round(raw * 10))
             return [
                 (_oid('1.3.6.1.4.1.99999.2.14'), rfc1902.Integer32(max(0, val))), # airflow ×10 m/s
@@ -610,6 +618,59 @@ class TrapEngine(QObject):
             return "ATS relay failure"
         if trap_type == TrapType.GEN_OVERCRANK:
             return "Failed to start — max crank attempts exceeded"
+        # CPU / memory / temperature variants + recoveries
+        if trap_type == TrapType.CPU_SUSTAINED:
+            return f"CPU {kwargs.get('metric_value', device.cpu_usage)}% sustained >5 min  (threshold 90%)"
+        if trap_type == TrapType.CPU_TEMP_CRITICAL:
+            return f"CPU {kwargs.get('metric_value', device.cpu_usage)}% with temperature critical (both high)"
+        if trap_type == TrapType.CPU_NORMAL:
+            return f"CPU {kwargs.get('metric_value', device.cpu_usage)}%  (recovered <70%)"
+        if trap_type == TrapType.MEMORY_NORMAL:
+            val = kwargs.get("metric_value", device.memory_used * 100 // max(1, device.memory_total))
+            return f"Memory {val}%  (recovered <70%)"
+        if trap_type == TrapType.TEMPERATURE_NORMAL:
+            val = kwargs.get("metric_value", None) or device.cpu_temp
+            return f"Temperature {float(val):.1f}°C  (recovered <55°C)"
+        # Sensor ambient temp variants + recovery
+        if trap_type == TrapType.SENSOR_AMBIENT_TEMP_HIGH:
+            val = kwargs.get("metric_value", None) or device.inlet_temp
+            return f"Ambient temp {float(val):.1f}°C  (threshold 32°C)"
+        if trap_type == TrapType.SENSOR_AMBIENT_TEMP_CRITICAL:
+            val = kwargs.get("metric_value", None) or device.inlet_temp
+            return f"Ambient temp {float(val):.1f}°C  (threshold 38°C)"
+        if trap_type == TrapType.SENSOR_AMBIENT_TEMP_NORMAL:
+            val = kwargs.get("metric_value", None) or device.inlet_temp
+            return f"Ambient temp {float(val):.1f}°C  (recovered <28°C)"
+        # Sensor humidity variants + recovery
+        if trap_type == TrapType.SENSOR_HIGH_HUMIDITY:
+            val = kwargs.get("metric_value", None) or device.humidity
+            return f"Humidity {float(val):.1f}%  (threshold 70%)"
+        if trap_type == TrapType.SENSOR_CRITICAL_HUMIDITY:
+            val = kwargs.get("metric_value", None) or device.humidity
+            return f"Humidity {float(val):.1f}%  (threshold 80%)"
+        if trap_type == TrapType.SENSOR_LOW_HUMIDITY:
+            val = kwargs.get("metric_value", None) or device.humidity
+            return f"Humidity {float(val):.1f}%  (threshold 30%)"
+        if trap_type == TrapType.SENSOR_HUMIDITY_NORMAL:
+            val = kwargs.get("metric_value", None) or device.humidity
+            return f"Humidity {float(val):.1f}%  (recovered 30–70%)"
+        # Sensor airflow variants + recovery
+        if trap_type == TrapType.SENSOR_HIGH_AIRFLOW:
+            val = kwargs.get("metric_value", None) or device.airflow
+            return f"Airflow {float(val):.2f} m/s  (threshold 3.5 m/s)"
+        if trap_type == TrapType.SENSOR_LOW_AIRFLOW:
+            val = kwargs.get("metric_value", None) or device.airflow
+            return f"Airflow {float(val):.2f} m/s  (threshold 0.3 m/s)"
+        if trap_type == TrapType.SENSOR_AIRFLOW_NORMAL:
+            val = kwargs.get("metric_value", None) or device.airflow
+            return f"Airflow {float(val):.2f} m/s  (recovered 0.3–3.5 m/s)"
+        if trap_type == TrapType.SENSOR_DEWPOINT_NORMAL:
+            val = kwargs.get("metric_value", None) or device.dewpoint
+            return f"Dew point {float(val):.1f}°C  (recovered <17°C)"
+        # PDU load recovery
+        if trap_type == TrapType.PDU_LOAD_NORMAL:
+            mv = kwargs.get("metric_value", None)
+            return f"PDU load {float(mv):.1f}%  (recovered <70%)" if mv else "PDU load recovered (<70%)"
         # Fallback: use trap definition description
         defn = TRAP_DEFINITIONS.get(trap_type)
         return defn.description if defn else ""

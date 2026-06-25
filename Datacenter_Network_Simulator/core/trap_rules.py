@@ -66,15 +66,21 @@ DEFAULT_RULES: List[Rule] = [
 
     # ── Standard interface traps (SNMPv2-MIB) ────────────────────────────────
 
+    # Production-layer link traps. Scoped to the link-bearing data-plane device
+    # types — oob_switch is intentionally excluded so its management-layer links
+    # fire ONLY the dedicated OOBSwitchLinkDown/Up rules (critical severity),
+    # not a duplicate generic linkDown on the same interface.
     _rule("LinkDown",
           _state_change("interface_status", "up", "down"),
           "1.3.6.1.6.3.1.1.5.3",
-          severity="major", priority=200),
+          severity="major", priority=200,
+          device_types=["router", "switch", "server", "firewall", "load_balancer"]),
 
     _rule("LinkUp",
           _state_change("interface_status", "down", "up"),
           "1.3.6.1.6.3.1.1.5.4",
-          severity="informational", priority=200),
+          severity="informational", priority=200,
+          device_types=["router", "switch", "server", "firewall", "load_balancer"]),
 
     # ── Enterprise: resource threshold traps ─────────────────────────────────
 
@@ -85,7 +91,7 @@ DEFAULT_RULES: List[Rule] = [
 
     _rule("HighCPUSustained",
           _threshold("cpu_usage", ">", 90.0, duration=300.0),
-          "1.3.6.1.4.1.99999.1.1",
+          "1.3.6.1.4.1.99999.1.20",
           severity="critical", priority=160),
 
     _rule("HighMemory",
@@ -306,26 +312,26 @@ DEFAULT_RULES: List[Rule] = [
               _threshold("temperature", ">", 60.0),
               logic="AND",
           ),
-          "1.3.6.1.4.1.99999.1.1",
+          "1.3.6.1.4.1.99999.1.21",
           severity="critical", priority=200),
 
     # ── Recovery rules ────────────────────────────────────────────────────────
 
     _rule("CPUNormal",
           _threshold("cpu_usage", "<", 70.0),
-          "1.3.6.1.6.3.1.1.5.4",
+          "1.3.6.1.4.1.99999.1.13",
           severity="informational", priority=100,
           recovery=True, recovery_of="HighCPU"),
 
     _rule("MemoryNormal",
           _threshold("memory_usage", "<", 70.0),
-          "1.3.6.1.6.3.1.1.5.4",
+          "1.3.6.1.4.1.99999.1.14",
           severity="informational", priority=100,
           recovery=True, recovery_of="HighMemory"),
 
     _rule("TemperatureNormal",
           _threshold("temperature", "<", 55.0),
-          "1.3.6.1.6.3.1.1.5.4",
+          "1.3.6.1.4.1.99999.1.15",
           severity="informational", priority=100,
           recovery=True, recovery_of="HighTemperature"),
 
@@ -347,19 +353,19 @@ DEFAULT_RULES: List[Rule] = [
 
     _rule("SensorAmbientTempHigh",
           _threshold("ambient_temp", ">", 32.0),
-          "1.3.6.1.4.1.99999.1.3",
+          "1.3.6.1.4.1.99999.1.22",
           severity="major", priority=180,
           device_types=["sensor"]),
 
     _rule("SensorAmbientTempCritical",
           _threshold("ambient_temp", ">", 38.0),
-          "1.3.6.1.4.1.99999.1.3",
+          "1.3.6.1.4.1.99999.1.23",
           severity="critical", priority=185,
           device_types=["sensor"]),
 
     _rule("SensorAmbientTempNormal",
           _threshold("ambient_temp", "<", 28.0),
-          "1.3.6.1.6.3.1.1.5.4",
+          "1.3.6.1.4.1.99999.1.16",
           severity="informational", priority=100,
           recovery=True, recovery_of="SensorAmbientTempHigh"),
 
@@ -367,21 +373,21 @@ DEFAULT_RULES: List[Rule] = [
 
     _rule("SensorHighHumidity",
           _threshold("humidity", ">", 70.0),
-          "1.3.6.1.4.1.99999.1.6",
+          "1.3.6.1.4.1.99999.1.24",
           severity="major", priority=175,
           device_types=["sensor"],
           model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     _rule("SensorCriticalHumidity",
           _threshold("humidity", ">", 80.0),
-          "1.3.6.1.4.1.99999.1.6",
+          "1.3.6.1.4.1.99999.1.25",
           severity="critical", priority=180,
           device_types=["sensor"],
           model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     _rule("SensorLowHumidity",
           _threshold("humidity", "<", 30.0),
-          "1.3.6.1.4.1.99999.1.6",
+          "1.3.6.1.4.1.99999.1.26",
           severity="major", priority=175,
           device_types=["sensor"],
           model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
@@ -392,7 +398,7 @@ DEFAULT_RULES: List[Rule] = [
               _threshold("humidity", "<=", 70.0),
               logic="AND",
           ),
-          "1.3.6.1.6.3.1.1.5.4",
+          "1.3.6.1.4.1.99999.1.17",
           severity="informational", priority=100,
           device_types=["sensor"],
           model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
@@ -409,7 +415,7 @@ DEFAULT_RULES: List[Rule] = [
 
     _rule("SensorDewPointNormal",
           _threshold("dewpoint", "<=", 17.0),
-          "1.3.6.1.6.3.1.1.5.4",
+          "1.3.6.1.4.1.99999.1.18",
           severity="informational", priority=100,
           device_types=["sensor"],
           model_names=["Vertiv Geist GTHD"],
@@ -419,14 +425,14 @@ DEFAULT_RULES: List[Rule] = [
 
     _rule("SensorHighAirflow",
           _threshold("airflow", ">", 3.5),
-          "1.3.6.1.4.1.99999.1.8",
+          "1.3.6.1.4.1.99999.1.27",
           severity="major", priority=170,
           device_types=["sensor"],
           model_names=["APC NetBotz 355", "APC NetBotz 250"]),
 
     _rule("SensorLowAirflow",
           _threshold("airflow", "<", 0.3),
-          "1.3.6.1.4.1.99999.1.8",
+          "1.3.6.1.4.1.99999.1.28",
           severity="critical", priority=180,
           device_types=["sensor"],
           model_names=["APC NetBotz 355", "APC NetBotz 250"]),
@@ -437,7 +443,7 @@ DEFAULT_RULES: List[Rule] = [
               _threshold("airflow", "<=", 3.5),
               logic="AND",
           ),
-          "1.3.6.1.6.3.1.1.5.4",
+          "1.3.6.1.4.1.99999.1.19",
           severity="informational", priority=100,
           device_types=["sensor"],
           model_names=["APC NetBotz 355", "APC NetBotz 250"],

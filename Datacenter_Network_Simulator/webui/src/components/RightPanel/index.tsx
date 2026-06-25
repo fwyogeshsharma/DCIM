@@ -176,7 +176,7 @@ export default function RightPanel() {
     sflow:   sflow?.running  ? 'sFlow running'  : undefined,
     bacnet:  bacnet?.running ? 'BACnet running' : undefined,
     redfish: redfish?.running ? 'Redfish running' : undefined,
-    traps:   snmp?.rule_engine_enabled ? 'Trap simulation running' : undefined,
+    traps:   snmp?.autonomous_faults ? 'Autonomous faults on' : undefined,
   }
 
   return (

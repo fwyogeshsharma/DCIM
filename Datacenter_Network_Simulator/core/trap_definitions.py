@@ -32,6 +32,29 @@ class TrapType(str, Enum):
     TEMPERATURE_ALERT = "temperatureAlert"
     LINK_FLAP         = "linkFlap"
     RACK_FAILURE      = "rackFailure"
+    # Enterprise resource recovery / clear traps (1.3.6.1.4.1.99999.1.13–1.15).
+    # Distinct OIDs so a receiver shows them as their own clear events instead of
+    # decoding the generic linkUp OID (1.3.6.1.6.3.1.1.5.4) as "linkUp".
+    CPU_NORMAL         = "cpuNormal"
+    MEMORY_NORMAL      = "memoryNormal"
+    TEMPERATURE_NORMAL = "temperatureNormal"
+    # Sensor recovery / clear traps (1.3.6.1.4.1.99999.1.16–1.19) — distinct OIDs
+    # so they don't decode as the generic linkUp OID.
+    SENSOR_AMBIENT_TEMP_NORMAL = "sensorAmbientTempNormal"
+    SENSOR_HUMIDITY_NORMAL     = "sensorHumidityNormal"
+    SENSOR_DEWPOINT_NORMAL     = "sensorDewPointNormal"
+    SENSOR_AIRFLOW_NORMAL      = "sensorAirflowNormal"
+    # Distinct severity/variant alert traps (1.3.6.1.4.1.99999.1.20–1.28) so each
+    # variant decodes as its own event instead of sharing the family alert OID.
+    CPU_SUSTAINED                = "cpuSustained"
+    CPU_TEMP_CRITICAL            = "cpuTempCritical"
+    SENSOR_AMBIENT_TEMP_HIGH     = "sensorAmbientTempHigh"
+    SENSOR_AMBIENT_TEMP_CRITICAL = "sensorAmbientTempCritical"
+    SENSOR_HIGH_HUMIDITY         = "sensorHighHumidity"
+    SENSOR_CRITICAL_HUMIDITY     = "sensorCriticalHumidity"
+    SENSOR_LOW_HUMIDITY          = "sensorLowHumidity"
+    SENSOR_HIGH_AIRFLOW          = "sensorHighAirflow"
+    SENSOR_LOW_AIRFLOW           = "sensorLowAirflow"
     # Environmental sensor traps
     HUMIDITY_ALERT    = "humidityAlert"
     DEWPOINT_ALERT    = "dewPointAlert"
@@ -71,6 +94,7 @@ class TrapType(str, Enum):
     PDU_TEMP_NORMAL           = "pduTempNormal"
     PDU_HUMIDITY_HIGH         = "pduHumidityHigh"
     PDU_HUMIDITY_NORMAL       = "pduHumidityNormal"
+    PDU_LOAD_NORMAL           = "pduLoadNormal"   # recovery for PDULoadHigh (99999.6.20)
     # UPS extended traps (1.3.6.1.4.1.99999.2.14–2.17)
     UPS_BATTERY_LOW_HEALTH    = "batteryLowHealth"
     UPS_BATTERY_HEALTH_RESTORED = "batteryHealthRestored"
@@ -188,6 +212,125 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
         "1.3.6.1.4.1.99999.1.3",
         "Temperature Alert",
         "Device chassis temperature has exceeded safe threshold",
+        "critical",
+    ),
+    TrapType.CPU_NORMAL: TrapDefinition(
+        TrapType.CPU_NORMAL,
+        "1.3.6.1.4.1.99999.1.13",
+        "CPU Normal",
+        "CPU utilisation has returned below threshold",
+        "informational",
+    ),
+    TrapType.MEMORY_NORMAL: TrapDefinition(
+        TrapType.MEMORY_NORMAL,
+        "1.3.6.1.4.1.99999.1.14",
+        "Memory Normal",
+        "Memory utilisation has returned below threshold",
+        "informational",
+    ),
+    TrapType.TEMPERATURE_NORMAL: TrapDefinition(
+        TrapType.TEMPERATURE_NORMAL,
+        "1.3.6.1.4.1.99999.1.15",
+        "Temperature Normal",
+        "Device temperature has returned to safe range",
+        "informational",
+    ),
+    TrapType.SENSOR_AMBIENT_TEMP_NORMAL: TrapDefinition(
+        TrapType.SENSOR_AMBIENT_TEMP_NORMAL,
+        "1.3.6.1.4.1.99999.1.16",
+        "Sensor Ambient Temp Normal",
+        "Ambient temperature has returned to safe range",
+        "informational",
+    ),
+    TrapType.SENSOR_HUMIDITY_NORMAL: TrapDefinition(
+        TrapType.SENSOR_HUMIDITY_NORMAL,
+        "1.3.6.1.4.1.99999.1.17",
+        "Sensor Humidity Normal",
+        "Relative humidity has returned to safe range",
+        "informational",
+    ),
+    TrapType.SENSOR_DEWPOINT_NORMAL: TrapDefinition(
+        TrapType.SENSOR_DEWPOINT_NORMAL,
+        "1.3.6.1.4.1.99999.1.18",
+        "Sensor Dew Point Normal",
+        "Dew point has returned to safe range",
+        "informational",
+    ),
+    TrapType.SENSOR_AIRFLOW_NORMAL: TrapDefinition(
+        TrapType.SENSOR_AIRFLOW_NORMAL,
+        "1.3.6.1.4.1.99999.1.19",
+        "Sensor Airflow Normal",
+        "Airflow has returned to normal range",
+        "informational",
+    ),
+    TrapType.PDU_LOAD_NORMAL: TrapDefinition(
+        TrapType.PDU_LOAD_NORMAL,
+        "1.3.6.1.4.1.99999.6.20",
+        "PDU Load Normal",
+        "PDU load has returned below threshold",
+        "informational",
+    ),
+    TrapType.CPU_SUSTAINED: TrapDefinition(
+        TrapType.CPU_SUSTAINED,
+        "1.3.6.1.4.1.99999.1.20",
+        "CPU Sustained High",
+        "CPU utilisation has stayed above 90 % for 5 minutes",
+        "critical",
+    ),
+    TrapType.CPU_TEMP_CRITICAL: TrapDefinition(
+        TrapType.CPU_TEMP_CRITICAL,
+        "1.3.6.1.4.1.99999.1.21",
+        "CPU & Temperature Critical",
+        "CPU and chassis temperature are both critically high",
+        "critical",
+    ),
+    TrapType.SENSOR_AMBIENT_TEMP_HIGH: TrapDefinition(
+        TrapType.SENSOR_AMBIENT_TEMP_HIGH,
+        "1.3.6.1.4.1.99999.1.22",
+        "Sensor Ambient Temp High",
+        "Ambient temperature has exceeded the high threshold",
+        "major",
+    ),
+    TrapType.SENSOR_AMBIENT_TEMP_CRITICAL: TrapDefinition(
+        TrapType.SENSOR_AMBIENT_TEMP_CRITICAL,
+        "1.3.6.1.4.1.99999.1.23",
+        "Sensor Ambient Temp Critical",
+        "Ambient temperature has exceeded the critical threshold",
+        "critical",
+    ),
+    TrapType.SENSOR_HIGH_HUMIDITY: TrapDefinition(
+        TrapType.SENSOR_HIGH_HUMIDITY,
+        "1.3.6.1.4.1.99999.1.24",
+        "Sensor High Humidity",
+        "Relative humidity has exceeded the high threshold",
+        "major",
+    ),
+    TrapType.SENSOR_CRITICAL_HUMIDITY: TrapDefinition(
+        TrapType.SENSOR_CRITICAL_HUMIDITY,
+        "1.3.6.1.4.1.99999.1.25",
+        "Sensor Critical Humidity",
+        "Relative humidity has exceeded the critical threshold",
+        "critical",
+    ),
+    TrapType.SENSOR_LOW_HUMIDITY: TrapDefinition(
+        TrapType.SENSOR_LOW_HUMIDITY,
+        "1.3.6.1.4.1.99999.1.26",
+        "Sensor Low Humidity",
+        "Relative humidity has dropped below the low threshold",
+        "major",
+    ),
+    TrapType.SENSOR_HIGH_AIRFLOW: TrapDefinition(
+        TrapType.SENSOR_HIGH_AIRFLOW,
+        "1.3.6.1.4.1.99999.1.27",
+        "Sensor High Airflow",
+        "Airflow has exceeded the high threshold",
+        "major",
+    ),
+    TrapType.SENSOR_LOW_AIRFLOW: TrapDefinition(
+        TrapType.SENSOR_LOW_AIRFLOW,
+        "1.3.6.1.4.1.99999.1.28",
+        "Sensor Low Airflow",
+        "Airflow has dropped below the low threshold",
         "critical",
     ),
     TrapType.LINK_FLAP: TrapDefinition(
