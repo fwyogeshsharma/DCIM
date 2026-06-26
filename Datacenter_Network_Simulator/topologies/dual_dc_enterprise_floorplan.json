@@ -1930,11 +1930,9 @@
         "79712904",
         "d396a795",
         "3e4ddd2d",
-        "b9dd5c5e",
-        "a3b1799d",
-        "6c031199"
+        "b9dd5c5e"
       ],
-      "device_count": 19,
+      "device_count": 17,
       "it_power_draw_w": 31031
     },
     {
@@ -1952,11 +1950,9 @@
       "hot_aisle": null,
       "device_ids": [
         "b04435fb",
-        "01154b78",
-        "ec1b8ca1",
-        "a9488d99"
+        "01154b78"
       ],
-      "device_count": 4,
+      "device_count": 2,
       "it_power_draw_w": 1675
     },
     {
@@ -2010,11 +2006,9 @@
         "97d819aa",
         "c8fd4d14",
         "11992fa8",
-        "fc1ab32e",
-        "7631de9d",
-        "53ac2ab9"
+        "fc1ab32e"
       ],
-      "device_count": 19,
+      "device_count": 17,
       "it_power_draw_w": 31893
     },
     {
@@ -2032,11 +2026,9 @@
       "hot_aisle": null,
       "device_ids": [
         "02407220",
-        "7b33144e",
-        "c4536f1d",
-        "edcb8cb6"
+        "7b33144e"
       ],
-      "device_count": 4,
+      "device_count": 2,
       "it_power_draw_w": 1454
     },
     {
@@ -7169,8 +7161,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7335,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "47bebbfb",
@@ -7181,8 +7173,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7299,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "893e478e",
@@ -7193,8 +7185,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1242,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "c04f2280",
@@ -7205,8 +7197,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1548,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "c9bf2418",
@@ -7217,8 +7209,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1732,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "b17bfd83",
@@ -7229,8 +7221,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1359,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "f0c4e963",
@@ -7241,8 +7233,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1743,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "b04435fb",
@@ -7253,8 +7245,8 @@
       "rack_id": "DC1:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 733,
-      "feed_a": "PDU-DC1-ROOF-R1-1-A",
-      "feed_b": "PDU-DC1-ROOF-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "01154b78",
@@ -7265,8 +7257,8 @@
       "rack_id": "DC1:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 942,
-      "feed_a": "PDU-DC1-ROOF-R1-1-A",
-      "feed_b": "PDU-DC1-ROOF-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "60d8fc26",
@@ -7277,8 +7269,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "69d174b4",
@@ -7289,8 +7281,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "e667fbd5",
@@ -7301,8 +7293,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B",
+      "feed_a": null,
+      "feed_b": null,
       "mounting": "rack_front"
     },
     {
@@ -7314,8 +7306,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 8,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B",
+      "feed_a": null,
+      "feed_b": null,
       "mounting": "rack_front"
     },
     {
@@ -7327,8 +7319,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B",
+      "feed_a": null,
+      "feed_b": null,
       "mounting": "rack_front"
     },
     {
@@ -7352,8 +7344,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7871,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "d0558940",
@@ -7364,8 +7356,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7624,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "f8eb42ae",
@@ -7376,8 +7368,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1498,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "cc17f464",
@@ -7388,8 +7380,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1456,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "53f15d15",
@@ -7400,8 +7392,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1633,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "fa708342",
@@ -7412,8 +7404,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1134,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "96796119",
@@ -7424,8 +7416,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1413,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "02407220",
@@ -7436,8 +7428,8 @@
       "rack_id": "DC2:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 802,
-      "feed_a": "PDU-DC2-ROOF-R1-1-A",
-      "feed_b": "PDU-DC2-ROOF-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "7b33144e",
@@ -7448,8 +7440,8 @@
       "rack_id": "DC2:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 652,
-      "feed_a": "PDU-DC2-ROOF-R1-1-A",
-      "feed_b": "PDU-DC2-ROOF-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "e13dfcba",
@@ -7460,8 +7452,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "774f3d06",
@@ -7472,8 +7464,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "77a2c912",
@@ -7484,8 +7476,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 6,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B",
+      "feed_a": null,
+      "feed_b": null,
       "mounting": "rack_front"
     },
     {
@@ -7497,8 +7489,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 6,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B",
+      "feed_a": null,
+      "feed_b": null,
       "mounting": "rack_front"
     },
     {
@@ -7510,8 +7502,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B",
+      "feed_a": null,
+      "feed_b": null,
       "mounting": "rack_front"
     },
     {
@@ -7523,8 +7515,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7621,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "79712904",
@@ -7535,8 +7527,8 @@
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1104,
-      "feed_a": "PDU-DC1-CENT-R1-1-A",
-      "feed_b": "PDU-DC1-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "1ff1caaf",
@@ -7547,8 +7539,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 7759,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "97d819aa",
@@ -7559,8 +7551,8 @@
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 1462,
-      "feed_a": "PDU-DC2-CENT-R1-1-A",
-      "feed_b": "PDU-DC2-CENT-R1-1-B"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "fe5b3521",
@@ -7643,8 +7635,8 @@
       "rack_id": "DC1:ServerHallB:F2:R3:RACK1",
       "rack_unit": 1,
       "power_draw_w": 8,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC1-SHB-R3-1-A",
+      "feed_b": "PDU-DC1-SHB-R3-1-B",
       "mounting": "rack_front"
     },
     {
@@ -7669,8 +7661,8 @@
       "rack_id": "DC2:ServerHallB:F2:R3:RACK1",
       "rack_unit": 1,
       "power_draw_w": 8,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC2-SHB-R3-1-A",
+      "feed_b": "PDU-DC2-SHB-R3-1-B",
       "mounting": "rack_front"
     },
     {
@@ -7695,8 +7687,8 @@
       "rack_id": "DC1:ServerHallA:F1:R2:RACK1",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC1-SHA-R2-1-A",
+      "feed_b": "PDU-DC1-SHA-R2-1-B",
       "mounting": "underfloor"
     },
     {
@@ -7708,8 +7700,8 @@
       "rack_id": "DC1:ServerHallA:F1:R2:RACK2",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC1-SHA-R2-2-A",
+      "feed_b": "PDU-DC1-SHA-R2-2-B",
       "mounting": "underfloor"
     },
     {
@@ -7721,8 +7713,8 @@
       "rack_id": "DC1:ServerHallA:F1:R2:RACK3",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC1-SHA-R2-3-A",
+      "feed_b": "PDU-DC1-SHA-R2-3-B",
       "mounting": "underfloor"
     },
     {
@@ -7734,8 +7726,8 @@
       "rack_id": "DC2:ServerHallA:F1:R2:RACK1",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC2-SHA-R2-1-A",
+      "feed_b": "PDU-DC2-SHA-R2-1-B",
       "mounting": "underfloor"
     },
     {
@@ -7747,8 +7739,8 @@
       "rack_id": "DC2:ServerHallA:F1:R2:RACK2",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC2-SHA-R2-2-A",
+      "feed_b": "PDU-DC2-SHA-R2-2-B",
       "mounting": "underfloor"
     },
     {
@@ -7760,8 +7752,8 @@
       "rack_id": "DC2:ServerHallA:F1:R2:RACK3",
       "rack_unit": 0,
       "power_draw_w": 9,
-      "feed_a": null,
-      "feed_b": null,
+      "feed_a": "PDU-DC2-SHA-R2-3-A",
+      "feed_b": "PDU-DC2-SHA-R2-3-B",
       "mounting": "underfloor"
     },
     {
@@ -7899,8 +7891,8 @@
       "rack_id": "DC1:ServerHallB:F2:R3:RACK1",
       "rack_unit": 38,
       "power_draw_w": 750,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC1-SHB-R3-1-A",
+      "feed_b": "PDU-DC1-SHB-R3-1-B"
     },
     {
       "id": "c35f9db2",
@@ -7911,8 +7903,8 @@
       "rack_id": "DC1:ServerHallB:F2:R3:RACK2",
       "rack_unit": 38,
       "power_draw_w": 750,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC1-SHB-R3-2-A",
+      "feed_b": "PDU-DC1-SHB-R3-2-B"
     },
     {
       "id": "0b5bbcb9",
@@ -7923,8 +7915,8 @@
       "rack_id": "DC1:ServerHallB:F2:R3:RACK3",
       "rack_unit": 38,
       "power_draw_w": 750,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC1-SHB-R3-3-A",
+      "feed_b": "PDU-DC1-SHB-R3-3-B"
     },
     {
       "id": "c7052214",
@@ -7983,8 +7975,8 @@
       "rack_id": "DC2:ServerHallB:F2:R3:RACK1",
       "rack_unit": 38,
       "power_draw_w": 750,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC2-SHB-R3-1-A",
+      "feed_b": "PDU-DC2-SHB-R3-1-B"
     },
     {
       "id": "4502bc22",
@@ -7995,8 +7987,8 @@
       "rack_id": "DC2:ServerHallB:F2:R3:RACK2",
       "rack_unit": 38,
       "power_draw_w": 750,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC2-SHB-R3-2-A",
+      "feed_b": "PDU-DC2-SHB-R3-2-B"
     },
     {
       "id": "78c47782",
@@ -8007,8 +7999,8 @@
       "rack_id": "DC2:ServerHallB:F2:R3:RACK3",
       "rack_unit": 38,
       "power_draw_w": 750,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDU-DC2-SHB-R3-3-A",
+      "feed_b": "PDU-DC2-SHB-R3-3-B"
     },
     {
       "id": "f1e1dc00",
@@ -8035,30 +8027,6 @@
       "feed_b": null
     },
     {
-      "id": "a3b1799d",
-      "name": "PDU-DC1-CENT-R1-1-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "6c031199",
-      "name": "PDU-DC1-CENT-R1-1-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
       "id": "6b65a6a4",
       "name": "PDU-DC1-CENT-R1-9-A",
       "device_type": "pdu",
@@ -8077,30 +8045,6 @@
       "vendor": "Raritan",
       "model": "Raritan PX3-5190R",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK9",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "ec1b8ca1",
-      "name": "PDU-DC1-ROOF-R1-1-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC1:Roof:FRoof:R1:RACK1",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "a9488d99",
-      "name": "PDU-DC1-ROOF-R1-1-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC1:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
       "feed_a": null,
@@ -8515,30 +8459,6 @@
       "feed_b": null
     },
     {
-      "id": "7631de9d",
-      "name": "PDU-DC2-CENT-R1-1-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "53ac2ab9",
-      "name": "PDU-DC2-CENT-R1-1-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
       "id": "8a175dfe",
       "name": "PDU-DC2-CENT-R1-9-A",
       "device_type": "pdu",
@@ -8557,30 +8477,6 @@
       "vendor": "Raritan",
       "model": "Raritan PX3-5190R",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK9",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "c4536f1d",
-      "name": "PDU-DC2-ROOF-R1-1-A",
-      "device_type": "pdu",
-      "vendor": "APC by Schneider Electric",
-      "model": "APC AP8681",
-      "rack_id": "DC2:Roof:FRoof:R1:RACK1",
-      "rack_unit": 0,
-      "power_draw_w": 0,
-      "feed_a": null,
-      "feed_b": null
-    },
-    {
-      "id": "edcb8cb6",
-      "name": "PDU-DC2-ROOF-R1-1-B",
-      "device_type": "pdu",
-      "vendor": "Raritan",
-      "model": "Raritan PX3-5190R",
-      "rack_id": "DC2:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
       "feed_a": null,
@@ -8930,6 +8826,6 @@
     ],
     "rooms": 14,
     "racks": 75,
-    "devices": 555
+    "devices": 547
   }
 }

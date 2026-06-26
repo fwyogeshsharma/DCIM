@@ -67305,8 +67305,8 @@
     {
       "id": "43ab2687",
       "position": {
-        "x": 1140,
-        "y": 2350
+        "x": 305,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-1",
@@ -67378,8 +67378,8 @@
     {
       "id": "0e78ea53",
       "position": {
-        "x": 1140,
-        "y": 2410
+        "x": 475,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-2",
@@ -67451,8 +67451,8 @@
     {
       "id": "40b34bda",
       "position": {
-        "x": 1140,
-        "y": 2470
+        "x": 645,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-3",
@@ -67524,8 +67524,8 @@
     {
       "id": "ddc67fa6",
       "position": {
-        "x": 1140,
-        "y": 2530
+        "x": 815,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-4",
@@ -67818,8 +67818,8 @@
     {
       "id": "5a83ce67",
       "position": {
-        "x": 3880,
-        "y": 2350
+        "x": 3105,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-1",
@@ -67891,8 +67891,8 @@
     {
       "id": "d75f2a9e",
       "position": {
-        "x": 3880,
-        "y": 2410
+        "x": 3275,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-2",
@@ -67964,8 +67964,8 @@
     {
       "id": "281c795b",
       "position": {
-        "x": 3880,
-        "y": 2470
+        "x": 3445,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-3",
@@ -68037,8 +68037,8 @@
     {
       "id": "95dccf22",
       "position": {
-        "x": 3880,
-        "y": 2530
+        "x": 3615,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-4",
@@ -68258,8 +68258,8 @@
     {
       "id": "6284bfa0",
       "position": {
-        "x": 1000,
-        "y": 2600
+        "x": 1070,
+        "y": 3820
       },
       "device": {
         "name": "RPP-PLANT-DC1",
@@ -68331,8 +68331,8 @@
     {
       "id": "fdf52019",
       "position": {
-        "x": 820,
-        "y": 2680
+        "x": 730,
+        "y": 3820
       },
       "device": {
         "name": "EV2-CHILLER-DC1",
@@ -68405,8 +68405,8 @@
     {
       "id": "3dcdcb2a",
       "position": {
-        "x": 3740,
-        "y": 2600
+        "x": 3870,
+        "y": 3820
       },
       "device": {
         "name": "RPP-PLANT-DC2",
@@ -68478,8 +68478,8 @@
     {
       "id": "6500dabe",
       "position": {
-        "x": 3560,
-        "y": 2680
+        "x": 3530,
+        "y": 3820
       },
       "device": {
         "name": "EV2-CHILLER-DC2",
@@ -68552,8 +68552,8 @@
     {
       "id": "1d31a3b3",
       "position": {
-        "x": 1220,
-        "y": 2480
+        "x": 900,
+        "y": 3820
       },
       "device": {
         "name": "OOB-PLANT-DC1",
@@ -68822,8 +68822,8 @@
     {
       "id": "903e3e7f",
       "position": {
-        "x": 1300,
-        "y": 2560
+        "x": 730,
+        "y": 3070
       },
       "device": {
         "name": "CHILLER-DC1-1",
@@ -68897,8 +68897,8 @@
     {
       "id": "47bebbfb",
       "position": {
-        "x": 1360,
-        "y": 2560
+        "x": 900,
+        "y": 3070
       },
       "device": {
         "name": "CHILLER-DC1-2",
@@ -68972,8 +68972,8 @@
     {
       "id": "893e478e",
       "position": {
-        "x": 1420,
-        "y": 2560
+        "x": 645,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC1-1",
@@ -69047,8 +69047,8 @@
     {
       "id": "c04f2280",
       "position": {
-        "x": 1480,
-        "y": 2560
+        "x": 815,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC1-2",
@@ -69122,8 +69122,8 @@
     {
       "id": "c9bf2418",
       "position": {
-        "x": 1300,
-        "y": 2630
+        "x": 985,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC1-3",
@@ -69197,8 +69197,8 @@
     {
       "id": "b17bfd83",
       "position": {
-        "x": 1360,
-        "y": 2630
+        "x": 815,
+        "y": 3220
       },
       "device": {
         "name": "CWP-DC1-1",
@@ -69272,8 +69272,8 @@
     {
       "id": "f0c4e963",
       "position": {
-        "x": 1420,
-        "y": 2630
+        "x": 985,
+        "y": 3220
       },
       "device": {
         "name": "CWP-DC1-2",
@@ -69347,8 +69347,8 @@
     {
       "id": "b04435fb",
       "position": {
-        "x": 1480,
-        "y": 2630
+        "x": 815,
+        "y": 3370
       },
       "device": {
         "name": "CT-DC1-1",
@@ -69422,8 +69422,8 @@
     {
       "id": "01154b78",
       "position": {
-        "x": 1300,
-        "y": 2700
+        "x": 985,
+        "y": 3370
       },
       "device": {
         "name": "CT-DC1-2",
@@ -69497,8 +69497,8 @@
     {
       "id": "60d8fc26",
       "position": {
-        "x": 1360,
-        "y": 2700
+        "x": 815,
+        "y": 3520
       },
       "device": {
         "name": "VLV-DC1-CHW",
@@ -69572,8 +69572,8 @@
     {
       "id": "69d174b4",
       "position": {
-        "x": 1420,
-        "y": 2700
+        "x": 985,
+        "y": 3520
       },
       "device": {
         "name": "VLV-DC1-CW",
@@ -69647,8 +69647,8 @@
     {
       "id": "e667fbd5",
       "position": {
-        "x": 1480,
-        "y": 2700
+        "x": 645,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC1-CHWS",
@@ -69723,8 +69723,8 @@
     {
       "id": "6b30c89c",
       "position": {
-        "x": 1300,
-        "y": 2770
+        "x": 475,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC1-CHWR",
@@ -69799,8 +69799,8 @@
     {
       "id": "bea56af1",
       "position": {
-        "x": 1360,
-        "y": 2770
+        "x": 1325,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC1-FLOW",
@@ -69875,8 +69875,8 @@
     {
       "id": "f8b995ba",
       "position": {
-        "x": 3960,
-        "y": 2480
+        "x": 3700,
+        "y": 3820
       },
       "device": {
         "name": "OOB-PLANT-DC2",
@@ -70145,8 +70145,8 @@
     {
       "id": "7fbc8b57",
       "position": {
-        "x": 4040,
-        "y": 2560
+        "x": 3530,
+        "y": 3070
       },
       "device": {
         "name": "CHILLER-DC2-1",
@@ -70220,8 +70220,8 @@
     {
       "id": "d0558940",
       "position": {
-        "x": 4100,
-        "y": 2560
+        "x": 3700,
+        "y": 3070
       },
       "device": {
         "name": "CHILLER-DC2-2",
@@ -70295,8 +70295,8 @@
     {
       "id": "f8eb42ae",
       "position": {
-        "x": 4160,
-        "y": 2560
+        "x": 3445,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC2-1",
@@ -70370,8 +70370,8 @@
     {
       "id": "cc17f464",
       "position": {
-        "x": 4220,
-        "y": 2560
+        "x": 3615,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC2-2",
@@ -70445,8 +70445,8 @@
     {
       "id": "53f15d15",
       "position": {
-        "x": 4040,
-        "y": 2630
+        "x": 3785,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC2-3",
@@ -70520,8 +70520,8 @@
     {
       "id": "fa708342",
       "position": {
-        "x": 4100,
-        "y": 2630
+        "x": 3615,
+        "y": 3220
       },
       "device": {
         "name": "CWP-DC2-1",
@@ -70595,8 +70595,8 @@
     {
       "id": "96796119",
       "position": {
-        "x": 4160,
-        "y": 2630
+        "x": 3785,
+        "y": 3220
       },
       "device": {
         "name": "CWP-DC2-2",
@@ -70670,8 +70670,8 @@
     {
       "id": "02407220",
       "position": {
-        "x": 4220,
-        "y": 2630
+        "x": 3615,
+        "y": 3370
       },
       "device": {
         "name": "CT-DC2-1",
@@ -70745,8 +70745,8 @@
     {
       "id": "7b33144e",
       "position": {
-        "x": 4040,
-        "y": 2700
+        "x": 3785,
+        "y": 3370
       },
       "device": {
         "name": "CT-DC2-2",
@@ -70820,8 +70820,8 @@
     {
       "id": "e13dfcba",
       "position": {
-        "x": 4100,
-        "y": 2700
+        "x": 3615,
+        "y": 3520
       },
       "device": {
         "name": "VLV-DC2-CHW",
@@ -70895,8 +70895,8 @@
     {
       "id": "774f3d06",
       "position": {
-        "x": 4160,
-        "y": 2700
+        "x": 3785,
+        "y": 3520
       },
       "device": {
         "name": "VLV-DC2-CW",
@@ -70970,8 +70970,8 @@
     {
       "id": "77a2c912",
       "position": {
-        "x": 4220,
-        "y": 2700
+        "x": 3445,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC2-CHWS",
@@ -71046,8 +71046,8 @@
     {
       "id": "fa7bff58",
       "position": {
-        "x": 4040,
-        "y": 2770
+        "x": 3275,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC2-CHWR",
@@ -71122,8 +71122,8 @@
     {
       "id": "85377da7",
       "position": {
-        "x": 4100,
-        "y": 2770
+        "x": 4125,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC2-FLOW",
@@ -71198,8 +71198,8 @@
     {
       "id": "7ea9beb5",
       "position": {
-        "x": 1300,
-        "y": 2720
+        "x": 1070,
+        "y": 3070
       },
       "device": {
         "name": "CHILLER-DC1-3",
@@ -71273,8 +71273,8 @@
     {
       "id": "79712904",
       "position": {
-        "x": 1480,
-        "y": 2700
+        "x": 1155,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC1-4",
@@ -71348,8 +71348,8 @@
     {
       "id": "1ff1caaf",
       "position": {
-        "x": 4040,
-        "y": 2720
+        "x": 3870,
+        "y": 3070
       },
       "device": {
         "name": "CHILLER-DC2-3",
@@ -71423,8 +71423,8 @@
     {
       "id": "97d819aa",
       "position": {
-        "x": 4220,
-        "y": 2700
+        "x": 3955,
+        "y": 2920
       },
       "device": {
         "name": "CHWP-DC2-4",
@@ -71498,8 +71498,8 @@
     {
       "id": "fe5b3521",
       "position": {
-        "x": 1320,
-        "y": 2330
+        "x": 475,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC1-1",
@@ -71576,8 +71576,8 @@
     {
       "id": "93799524",
       "position": {
-        "x": 1320,
-        "y": 2400
+        "x": 645,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC1-2",
@@ -71654,8 +71654,8 @@
     {
       "id": "14de2793",
       "position": {
-        "x": 1320,
-        "y": 2470
+        "x": 815,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC1-3",
@@ -71732,8 +71732,8 @@
     {
       "id": "94ccacef",
       "position": {
-        "x": 4060,
-        "y": 2330
+        "x": 3275,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC2-1",
@@ -71810,8 +71810,8 @@
     {
       "id": "c0b19b3a",
       "position": {
-        "x": 4060,
-        "y": 2400
+        "x": 3445,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC2-2",
@@ -71888,8 +71888,8 @@
     {
       "id": "bb9206e3",
       "position": {
-        "x": 4060,
-        "y": 2470
+        "x": 3615,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC2-3",
@@ -72744,8 +72744,8 @@
     {
       "id": "d396a795",
       "position": {
-        "x": 1480,
-        "y": 2700
+        "x": 1155,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC1-CWS",
@@ -72820,8 +72820,8 @@
     {
       "id": "3e4ddd2d",
       "position": {
-        "x": 1540,
-        "y": 2700
+        "x": 985,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC1-CWR",
@@ -72896,8 +72896,8 @@
     {
       "id": "b9dd5c5e",
       "position": {
-        "x": 1600,
-        "y": 2700
+        "x": 815,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC1-CTB",
@@ -72972,8 +72972,8 @@
     {
       "id": "c8fd4d14",
       "position": {
-        "x": 4220,
-        "y": 2700
+        "x": 3955,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC2-CWS",
@@ -73048,8 +73048,8 @@
     {
       "id": "11992fa8",
       "position": {
-        "x": 4280,
-        "y": 2700
+        "x": 3785,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC2-CWR",
@@ -73124,8 +73124,8 @@
     {
       "id": "fc1ab32e",
       "position": {
-        "x": 4340,
-        "y": 2700
+        "x": 3615,
+        "y": 3670
       },
       "device": {
         "name": "SENS-DC2-CTB",
@@ -73200,8 +73200,8 @@
     {
       "id": "6db52bde",
       "position": {
-        "x": 1140,
-        "y": 2350
+        "x": 985,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-5",
@@ -73273,8 +73273,8 @@
     {
       "id": "ab297064",
       "position": {
-        "x": 1140,
-        "y": 2410
+        "x": 1155,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-6",
@@ -73346,8 +73346,8 @@
     {
       "id": "a0847e8b",
       "position": {
-        "x": 1140,
-        "y": 2470
+        "x": 1325,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-7",
@@ -73419,8 +73419,8 @@
     {
       "id": "14b33e62",
       "position": {
-        "x": 1140,
-        "y": 2530
+        "x": 1495,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC1-8",
@@ -73492,8 +73492,8 @@
     {
       "id": "311e2148",
       "position": {
-        "x": 1320,
-        "y": 2330
+        "x": 985,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC1-4",
@@ -73570,8 +73570,8 @@
     {
       "id": "c35f9db2",
       "position": {
-        "x": 1320,
-        "y": 2400
+        "x": 1155,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC1-5",
@@ -73648,8 +73648,8 @@
     {
       "id": "0b5bbcb9",
       "position": {
-        "x": 1320,
-        "y": 2470
+        "x": 1325,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC1-6",
@@ -73726,8 +73726,8 @@
     {
       "id": "c7052214",
       "position": {
-        "x": 3880,
-        "y": 2350
+        "x": 3785,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-5",
@@ -73799,8 +73799,8 @@
     {
       "id": "60e70a92",
       "position": {
-        "x": 3880,
-        "y": 2410
+        "x": 3955,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-6",
@@ -73872,8 +73872,8 @@
     {
       "id": "2bad2225",
       "position": {
-        "x": 3880,
-        "y": 2470
+        "x": 4125,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-7",
@@ -73945,8 +73945,8 @@
     {
       "id": "f87af098",
       "position": {
-        "x": 3880,
-        "y": 2530
+        "x": 4295,
+        "y": 2770
       },
       "device": {
         "name": "CRAH-DC2-8",
@@ -74018,8 +74018,8 @@
     {
       "id": "1b18d1e3",
       "position": {
-        "x": 4060,
-        "y": 2330
+        "x": 3785,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC2-4",
@@ -74096,8 +74096,8 @@
     {
       "id": "4502bc22",
       "position": {
-        "x": 4060,
-        "y": 2400
+        "x": 3955,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC2-5",
@@ -74174,8 +74174,8 @@
     {
       "id": "78c47782",
       "position": {
-        "x": 4060,
-        "y": 2470
+        "x": 4125,
+        "y": 2620
       },
       "device": {
         "name": "CDU-DC2-6",
@@ -74396,156 +74396,6 @@
       }
     },
     {
-      "id": "a3b1799d",
-      "position": {
-        "x": 1300,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC1-CENT-R1-1-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.210",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "a3b1799d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "0c:8c:7d:72:47:34",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.210",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Central Plant",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "6c031199",
-      "position": {
-        "x": 1300,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC1-CENT-R1-1-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.211",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "6c031199",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "0f:2f:6f:77:0d:65",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.211",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Central Plant",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6
-      }
-    },
-    {
       "id": "6b65a6a4",
       "position": {
         "x": 1220,
@@ -74692,156 +74542,6 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 5.1,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "ec1b8ca1",
-      "position": {
-        "x": 1480,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC1-ROOF-R1-1-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.215",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "ec1b8ca1",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "28:96:b9:62:23:17",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.215",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Roof",
-        "floor": "Roof",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "a9488d99",
-      "position": {
-        "x": 1480,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC1-ROOF-R1-1-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.216",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "a9488d99",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "94:28:77:33:c2:8e",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.216",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Roof",
-        "floor": "Roof",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
         "floor_y": 0.6
       }
     },
@@ -77484,156 +77184,6 @@
       }
     },
     {
-      "id": "7631de9d",
-      "position": {
-        "x": 4040,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC2-CENT-R1-1-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.154",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "7631de9d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "19:85:c2:a7:6c:e8",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.154",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Central Plant",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "53ac2ab9",
-      "position": {
-        "x": 4040,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC2-CENT-R1-1-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.155",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "53ac2ab9",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "c2:8e:d7:81:29:f0",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.155",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Central Plant",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6
-      }
-    },
-    {
       "id": "8a175dfe",
       "position": {
         "x": 3960,
@@ -77780,156 +77330,6 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 5.1,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "c4536f1d",
-      "position": {
-        "x": 4220,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC2-ROOF-R1-1-A",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.159",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC AP8681",
-        "metrics_enabled": true,
-        "id": "c4536f1d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "55:3a:53:9f:37:0d",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.159",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Roof",
-        "floor": "Roof",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6
-      }
-    },
-    {
-      "id": "edcb8cb6",
-      "position": {
-        "x": 4220,
-        "y": 2020
-      },
-      "device": {
-        "name": "PDU-DC2-ROOF-R1-1-B",
-        "device_type": "pdu",
-        "vendor": "Raritan",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.160",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Raritan PX3-5190R",
-        "metrics_enabled": true,
-        "id": "edcb8cb6",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "c0:cb:65:26:7c:34",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.160",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Roof",
-        "floor": "Roof",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "power_source_a": "",
-        "power_source_b": "",
-        "floor_x": 0.3,
         "floor_y": 0.6
       }
     },
@@ -84434,57 +83834,8 @@
       "layer": "management"
     },
     {
-      "src": "99f004e4",
-      "dst": "94f1c5b0",
-      "src_iface": 0,
-      "dst_iface": 11,
-      "layer": "management"
-    },
-    {
-      "src": "30eb9e29",
-      "dst": "94f1c5b0",
-      "src_iface": 0,
-      "dst_iface": 12,
-      "layer": "management"
-    },
-    {
-      "src": "810faa4a",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
       "src": "1629fda9",
       "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "6b15c954",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "9362ba7d",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "b369533b",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "618465c1",
-      "dst": "46aac8d9",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
@@ -84497,66 +83848,10 @@
       "layer": "management"
     },
     {
-      "src": "c31f6252",
-      "dst": "46aac8d9",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "f46e4696",
-      "dst": "46aac8d9",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "e4b16290",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "f1f058c3",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
       "src": "6c4f7c37",
       "dst": "54c037ab",
       "src_iface": 0,
       "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "db4df986",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "c678301f",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "e22b27a4",
-      "dst": "e69c9a56",
-      "src_iface": 0,
-      "dst_iface": 9,
-      "layer": "management"
-    },
-    {
-      "src": "53aa1b64",
-      "dst": "e69c9a56",
-      "src_iface": 0,
-      "dst_iface": 10,
       "layer": "management"
     },
     {
@@ -85631,56 +84926,7 @@
       "layer": "management"
     },
     {
-      "src": "5eddb0f7",
-      "dst": "efbee6c2",
-      "src_iface": 0,
-      "dst_iface": 12,
-      "layer": "management"
-    },
-    {
-      "src": "7320c74e",
-      "dst": "efbee6c2",
-      "src_iface": 0,
-      "dst_iface": 13,
-      "layer": "management"
-    },
-    {
-      "src": "3c003fd5",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
       "src": "e26a32c8",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "365e09d2",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "3d57bdfe",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "df3ecded",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "caf32f58",
       "dst": "2067c82f",
       "src_iface": 0,
       "dst_iface": 49,
@@ -85694,59 +84940,10 @@
       "layer": "management"
     },
     {
-      "src": "82e73be1",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "914b09e4",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "bbc84072",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "c2eb1559",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
       "src": "cd67c3be",
       "dst": "e14eb712",
       "src_iface": 0,
       "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "46f0a2ee",
-      "dst": "09e66792",
-      "src_iface": 0,
-      "dst_iface": 11,
-      "layer": "management"
-    },
-    {
-      "src": "447c6f9f",
-      "dst": "09e66792",
-      "src_iface": 0,
-      "dst_iface": 12,
-      "layer": "management"
-    },
-    {
-      "src": "96ba93af",
-      "dst": "09e66792",
-      "src_iface": 0,
-      "dst_iface": 13,
       "layer": "management"
     },
     {
@@ -85834,57 +85031,57 @@
       "layer": "power"
     },
     {
-      "src": "62bac0a5",
-      "dst": "a528c3ab",
+      "src": "a528c3ab",
+      "dst": "62bac0a5",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "f2488186",
-      "dst": "238d0922",
+      "src": "238d0922",
+      "dst": "f2488186",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "dd41d3ab",
-      "dst": "5360689f",
+      "src": "5360689f",
+      "dst": "dd41d3ab",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "09711e29",
-      "dst": "61b311bb",
+      "src": "61b311bb",
+      "dst": "09711e29",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "06af8df8",
-      "dst": "b324209b",
+      "src": "b324209b",
+      "dst": "06af8df8",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "d09bc056",
-      "dst": "a8e3601e",
+      "src": "a8e3601e",
+      "dst": "d09bc056",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "8be4852f",
-      "dst": "72c0c547",
+      "src": "72c0c547",
+      "dst": "8be4852f",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
-      "src": "70d1d9b2",
-      "dst": "e48c0c95",
+      "src": "e48c0c95",
+      "dst": "70d1d9b2",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -86023,8 +85220,8 @@
       "layer": "power"
     },
     {
-      "src": "43d52fb5",
-      "dst": "be3c0680",
+      "src": "be3c0680",
+      "dst": "43d52fb5",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -86037,8 +85234,8 @@
       "layer": "management"
     },
     {
-      "src": "44f2e1dd",
-      "dst": "08a89a19",
+      "src": "08a89a19",
+      "dst": "44f2e1dd",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -86086,8 +85283,8 @@
       "layer": "power"
     },
     {
-      "src": "8491d46b",
-      "dst": "106516f1",
+      "src": "106516f1",
+      "dst": "8491d46b",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -86100,8 +85297,8 @@
       "layer": "management"
     },
     {
-      "src": "dc12eb64",
-      "dst": "4b0671f3",
+      "src": "4b0671f3",
+      "dst": "dc12eb64",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -86121,15 +85318,15 @@
       "layer": "power"
     },
     {
-      "src": "fdf52019",
-      "dst": "6284bfa0",
+      "src": "6284bfa0",
+      "dst": "fdf52019",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
       "src": "fdf52019",
-      "dst": "e69c9a56",
+      "dst": "1d31a3b3",
       "src_iface": 0,
       "dst_iface": 20,
       "layer": "management"
@@ -86142,15 +85339,15 @@
       "layer": "power"
     },
     {
-      "src": "6500dabe",
-      "dst": "3dcdcb2a",
+      "src": "3dcdcb2a",
+      "dst": "6500dabe",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
       "src": "6500dabe",
-      "dst": "09e66792",
+      "dst": "f8b995ba",
       "src_iface": 0,
       "dst_iface": 24,
       "layer": "management"
@@ -86217,13 +85414,6 @@
       "src_iface": 48,
       "dst_iface": 8,
       "layer": "management"
-    },
-    {
-      "src": "6284bfa0",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "903e3e7f",
@@ -86392,13 +85582,6 @@
       "src_iface": 48,
       "dst_iface": 7,
       "layer": "management"
-    },
-    {
-      "src": "3dcdcb2a",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "7fbc8b57",
@@ -86618,85 +85801,43 @@
       "layer": "management"
     },
     {
-      "src": "be3c0680",
-      "dst": "fe5b3521",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "fe5b3521",
-      "dst": "1d31a3b3",
+      "dst": "94f1c5b0",
       "src_iface": 0,
       "dst_iface": 17,
       "layer": "management"
     },
     {
-      "src": "be3c0680",
-      "dst": "93799524",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "93799524",
-      "dst": "1d31a3b3",
+      "dst": "94f1c5b0",
       "src_iface": 0,
       "dst_iface": 18,
       "layer": "management"
     },
     {
-      "src": "be3c0680",
-      "dst": "14de2793",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "14de2793",
-      "dst": "1d31a3b3",
+      "dst": "94f1c5b0",
       "src_iface": 0,
       "dst_iface": 19,
       "layer": "management"
     },
     {
-      "src": "106516f1",
-      "dst": "94ccacef",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "94ccacef",
-      "dst": "f8b995ba",
+      "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 17,
       "layer": "management"
     },
     {
-      "src": "106516f1",
-      "dst": "c0b19b3a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "c0b19b3a",
-      "dst": "f8b995ba",
+      "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 18,
       "layer": "management"
     },
     {
-      "src": "106516f1",
-      "dst": "bb9206e3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "bb9206e3",
-      "dst": "f8b995ba",
+      "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 19,
       "layer": "management"
@@ -87703,20 +86844,6 @@
       "layer": "management"
     },
     {
-      "src": "e407fc13",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 50,
-      "layer": "management"
-    },
-    {
-      "src": "a2d14d8e",
-      "dst": "54c037ab",
-      "src_iface": 0,
-      "dst_iface": 51,
-      "layer": "management"
-    },
-    {
       "src": "a9a85a82",
       "dst": "54c037ab",
       "src_iface": 0,
@@ -87731,13 +86858,6 @@
       "layer": "management"
     },
     {
-      "src": "f7917ad9",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 51,
-      "layer": "management"
-    },
-    {
       "src": "07356413",
       "dst": "e14eb712",
       "src_iface": 0,
@@ -87746,42 +86866,42 @@
     },
     {
       "src": "47e364b0",
-      "dst": "1d31a3b3",
+      "dst": "94f1c5b0",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
     },
     {
       "src": "b0bc32c1",
-      "dst": "1d31a3b3",
+      "dst": "94f1c5b0",
       "src_iface": 0,
       "dst_iface": 50,
       "layer": "management"
     },
     {
       "src": "e9051e55",
-      "dst": "1d31a3b3",
+      "dst": "94f1c5b0",
       "src_iface": 0,
       "dst_iface": 51,
       "layer": "management"
     },
     {
       "src": "3a077722",
-      "dst": "f8b995ba",
+      "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 49,
       "layer": "management"
     },
     {
       "src": "921cfe39",
-      "dst": "f8b995ba",
+      "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 50,
       "layer": "management"
     },
     {
       "src": "efc2999b",
-      "dst": "f8b995ba",
+      "dst": "efbee6c2",
       "src_iface": 0,
       "dst_iface": 51,
       "layer": "management"
@@ -87836,8 +86956,8 @@
       "layer": "management"
     },
     {
-      "src": "6db52bde",
-      "dst": "be3c0680",
+      "src": "be3c0680",
+      "dst": "6db52bde",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -87850,8 +86970,8 @@
       "layer": "management"
     },
     {
-      "src": "ab297064",
-      "dst": "be3c0680",
+      "src": "be3c0680",
+      "dst": "ab297064",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -87864,8 +86984,8 @@
       "layer": "management"
     },
     {
-      "src": "a0847e8b",
-      "dst": "be3c0680",
+      "src": "be3c0680",
+      "dst": "a0847e8b",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -87878,53 +86998,32 @@
       "layer": "management"
     },
     {
-      "src": "14b33e62",
-      "dst": "be3c0680",
+      "src": "be3c0680",
+      "dst": "14b33e62",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
       "src": "311e2148",
-      "dst": "1d31a3b3",
+      "dst": "54c037ab",
       "src_iface": 0,
       "dst_iface": 55,
       "layer": "management"
     },
     {
-      "src": "311e2148",
-      "dst": "be3c0680",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "c35f9db2",
-      "dst": "1d31a3b3",
+      "dst": "54c037ab",
       "src_iface": 0,
       "dst_iface": 56,
       "layer": "management"
-    },
-    {
-      "src": "c35f9db2",
-      "dst": "be3c0680",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "0b5bbcb9",
-      "dst": "1d31a3b3",
+      "dst": "54c037ab",
       "src_iface": 0,
       "dst_iface": 57,
       "layer": "management"
-    },
-    {
-      "src": "0b5bbcb9",
-      "dst": "be3c0680",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "c7052214",
@@ -87934,8 +87033,8 @@
       "layer": "management"
     },
     {
-      "src": "c7052214",
-      "dst": "106516f1",
+      "src": "106516f1",
+      "dst": "c7052214",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -87948,8 +87047,8 @@
       "layer": "management"
     },
     {
-      "src": "60e70a92",
-      "dst": "106516f1",
+      "src": "106516f1",
+      "dst": "60e70a92",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -87962,8 +87061,8 @@
       "layer": "management"
     },
     {
-      "src": "2bad2225",
-      "dst": "106516f1",
+      "src": "106516f1",
+      "dst": "2bad2225",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -87976,53 +87075,32 @@
       "layer": "management"
     },
     {
-      "src": "f87af098",
-      "dst": "106516f1",
+      "src": "106516f1",
+      "dst": "f87af098",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
     },
     {
       "src": "1b18d1e3",
-      "dst": "f8b995ba",
+      "dst": "e14eb712",
       "src_iface": 0,
       "dst_iface": 55,
       "layer": "management"
     },
     {
-      "src": "1b18d1e3",
-      "dst": "106516f1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "4502bc22",
-      "dst": "f8b995ba",
+      "dst": "e14eb712",
       "src_iface": 0,
       "dst_iface": 56,
       "layer": "management"
-    },
-    {
-      "src": "4502bc22",
-      "dst": "106516f1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "78c47782",
-      "dst": "f8b995ba",
+      "dst": "e14eb712",
       "src_iface": 0,
       "dst_iface": 57,
       "layer": "management"
-    },
-    {
-      "src": "78c47782",
-      "dst": "106516f1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "f1e1dc00",
@@ -88068,34 +87146,6 @@
     },
     {
       "src": "a528c3ab",
-      "dst": "a3b1799d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 20,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "6c031199",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 21,
-      "layer": "management"
-    },
-    {
-      "src": "a528c3ab",
       "dst": "6b65a6a4",
       "src_iface": 0,
       "dst_iface": 0,
@@ -88120,34 +87170,6 @@
       "dst": "1d31a3b3",
       "src_iface": 0,
       "dst_iface": 23,
-      "layer": "management"
-    },
-    {
-      "src": "a528c3ab",
-      "dst": "ec1b8ca1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "ec1b8ca1",
-      "dst": "ffe07bcf",
-      "src_iface": 0,
-      "dst_iface": 20,
-      "layer": "management"
-    },
-    {
-      "src": "5360689f",
-      "dst": "a9488d99",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a9488d99",
-      "dst": "46aac8d9",
-      "src_iface": 0,
-      "dst_iface": 20,
       "layer": "management"
     },
     {
@@ -88537,7 +87559,7 @@
     },
     {
       "src": "8dedf9fb",
-      "dst": "1d31a3b3",
+      "dst": "e69c9a56",
       "src_iface": 0,
       "dst_iface": 24,
       "layer": "management"
@@ -88551,7 +87573,7 @@
     },
     {
       "src": "001a9a8b",
-      "dst": "1d31a3b3",
+      "dst": "64d55984",
       "src_iface": 0,
       "dst_iface": 25,
       "layer": "management"
@@ -88628,34 +87650,6 @@
     },
     {
       "src": "b324209b",
-      "dst": "7631de9d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 20,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "53ac2ab9",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 21,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
       "dst": "8a175dfe",
       "src_iface": 0,
       "dst_iface": 0,
@@ -88680,34 +87674,6 @@
       "dst": "f8b995ba",
       "src_iface": 0,
       "dst_iface": 23,
-      "layer": "management"
-    },
-    {
-      "src": "b324209b",
-      "dst": "c4536f1d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c4536f1d",
-      "dst": "2067c82f",
-      "src_iface": 0,
-      "dst_iface": 20,
-      "layer": "management"
-    },
-    {
-      "src": "72c0c547",
-      "dst": "edcb8cb6",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "edcb8cb6",
-      "dst": "e14eb712",
-      "src_iface": 0,
-      "dst_iface": 20,
       "layer": "management"
     },
     {
@@ -89013,7 +87979,7 @@
     },
     {
       "src": "0b2c782a",
-      "dst": "f8b995ba",
+      "dst": "09e66792",
       "src_iface": 0,
       "dst_iface": 24,
       "layer": "management"
@@ -89027,7 +87993,7 @@
     },
     {
       "src": "d85480f0",
-      "dst": "f8b995ba",
+      "dst": "431a7dbd",
       "src_iface": 0,
       "dst_iface": 25,
       "layer": "management"
@@ -94269,230 +93235,6 @@
       "layer": "power"
     },
     {
-      "src": "a3b1799d",
-      "dst": "903e3e7f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "903e3e7f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "47bebbfb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "47bebbfb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "893e478e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "893e478e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "c04f2280",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "c04f2280",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "c9bf2418",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "c9bf2418",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "b17bfd83",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "b17bfd83",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "f0c4e963",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "f0c4e963",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "60d8fc26",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "60d8fc26",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "69d174b4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "69d174b4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "e667fbd5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "e667fbd5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "6b30c89c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "6b30c89c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "bea56af1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "bea56af1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "7ea9beb5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "7ea9beb5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a3b1799d",
-      "dst": "79712904",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6c031199",
-      "dst": "79712904",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "ec1b8ca1",
-      "dst": "b04435fb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a9488d99",
-      "dst": "b04435fb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "ec1b8ca1",
-      "dst": "01154b78",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "a9488d99",
-      "dst": "01154b78",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "8a175dfe",
       "dst": "f8b995ba",
       "src_iface": 0,
@@ -94502,230 +93244,6 @@
     {
       "src": "2702878b",
       "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "7fbc8b57",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "7fbc8b57",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "d0558940",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "d0558940",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "f8eb42ae",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "f8eb42ae",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "cc17f464",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "cc17f464",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "53f15d15",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "53f15d15",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "fa708342",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "fa708342",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "96796119",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "96796119",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "e13dfcba",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "e13dfcba",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "774f3d06",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "774f3d06",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "77a2c912",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "77a2c912",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "fa7bff58",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "fa7bff58",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "85377da7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "85377da7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "1ff1caaf",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "1ff1caaf",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7631de9d",
-      "dst": "97d819aa",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "53ac2ab9",
-      "dst": "97d819aa",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c4536f1d",
-      "dst": "02407220",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "edcb8cb6",
-      "dst": "02407220",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c4536f1d",
-      "dst": "7b33144e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "edcb8cb6",
-      "dst": "7b33144e",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -94857,8 +93375,8 @@
       "layer": "power"
     },
     {
-      "src": "6db52bde",
-      "dst": "e667fbd5",
+      "src": "e667fbd5",
+      "dst": "6db52bde",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -94871,8 +93389,8 @@
       "layer": "cooling"
     },
     {
-      "src": "ab297064",
-      "dst": "e667fbd5",
+      "src": "e667fbd5",
+      "dst": "ab297064",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -94885,8 +93403,8 @@
       "layer": "cooling"
     },
     {
-      "src": "a0847e8b",
-      "dst": "e667fbd5",
+      "src": "e667fbd5",
+      "dst": "a0847e8b",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -94899,8 +93417,8 @@
       "layer": "cooling"
     },
     {
-      "src": "14b33e62",
-      "dst": "e667fbd5",
+      "src": "e667fbd5",
+      "dst": "14b33e62",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -94913,8 +93431,8 @@
       "layer": "cooling"
     },
     {
-      "src": "311e2148",
-      "dst": "e667fbd5",
+      "src": "e667fbd5",
+      "dst": "311e2148",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95011,8 +93529,8 @@
       "layer": "cooling"
     },
     {
-      "src": "c35f9db2",
-      "dst": "e667fbd5",
+      "src": "e667fbd5",
+      "dst": "c35f9db2",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95109,8 +93627,8 @@
       "layer": "cooling"
     },
     {
-      "src": "0b5bbcb9",
-      "dst": "e667fbd5",
+      "src": "e667fbd5",
+      "dst": "0b5bbcb9",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95207,8 +93725,8 @@
       "layer": "cooling"
     },
     {
-      "src": "c7052214",
-      "dst": "77a2c912",
+      "src": "77a2c912",
+      "dst": "c7052214",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95221,8 +93739,8 @@
       "layer": "cooling"
     },
     {
-      "src": "60e70a92",
-      "dst": "77a2c912",
+      "src": "77a2c912",
+      "dst": "60e70a92",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95235,8 +93753,8 @@
       "layer": "cooling"
     },
     {
-      "src": "2bad2225",
-      "dst": "77a2c912",
+      "src": "77a2c912",
+      "dst": "2bad2225",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95249,8 +93767,8 @@
       "layer": "cooling"
     },
     {
-      "src": "f87af098",
-      "dst": "77a2c912",
+      "src": "77a2c912",
+      "dst": "f87af098",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95263,8 +93781,8 @@
       "layer": "cooling"
     },
     {
-      "src": "1b18d1e3",
-      "dst": "77a2c912",
+      "src": "77a2c912",
+      "dst": "1b18d1e3",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95361,8 +93879,8 @@
       "layer": "cooling"
     },
     {
-      "src": "4502bc22",
-      "dst": "77a2c912",
+      "src": "77a2c912",
+      "dst": "4502bc22",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95459,8 +93977,8 @@
       "layer": "cooling"
     },
     {
-      "src": "78c47782",
-      "dst": "77a2c912",
+      "src": "77a2c912",
+      "dst": "78c47782",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
@@ -95552,6 +94070,832 @@
     {
       "src": "78c47782",
       "dst": "ba5b1d64",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "241765bf",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "3972dd82",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5d057eef",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a8228918",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "81a4c6a5",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "424ba3be",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "671a0251",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "7b5bd3fc",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "defa1d3d",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "708aea2e",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "205dcea5",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "3a53a5b7",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "287249e1",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "02de238d",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "946078c6",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "673bd9ba",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb295221",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5f7ade3c",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "7bd9a89a",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "4f77cd6d",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "fb588f8f",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "aef6407e",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5e8834f9",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "54162870",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "6f9087fc",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "50006c53",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "18a9a712",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "81d805c9",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "40eaebe2",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5ce37ba8",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "29773896",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a0aaadf5",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "202aa9cc",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "90fa2000",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "6e60fc59",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "e2e0fca1",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "6dcaa8fe",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5eac480b",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "e1520fb5",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "6b045824",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "7861887a",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5a5630a7",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "58cd0208",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "be20df04",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "06b47fce",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "42b82ca8",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "56eceacc",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "01fcb97e",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a270ef89",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "81cf8ff8",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a3f644bb",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "d08dac04",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "8c766a43",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a6014530",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "ff698dfd",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "266c363d",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "eadc68e1",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb64b8f0",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "1591a04b",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "03101de4",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5666ba55",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "526c4793",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "d2320d92",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "04756996",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "b61f88a5",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "d53ad494",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "98386d9f",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "ba5b1d64",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "e112b707",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "5bd993c7",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "a5eee128",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "59f2da4a",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "09cb3942",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "30a900ad",
+      "dst": "311e2148",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d9178793",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8dedf9fb",
+      "dst": "c35f9db2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "001a9a8b",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "15b52908",
+      "dst": "0b5bbcb9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "1b18d1e3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "1327f1bc",
+      "dst": "4502bc22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "f4427e0b",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bf2c14a0",
+      "dst": "78c47782",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "60d8fc26",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "69d174b4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "e667fbd5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "6b30c89c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "bea56af1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "e13dfcba",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "774f3d06",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "77a2c912",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "fa7bff58",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "85377da7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "d396a795",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "3e4ddd2d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6284bfa0",
+      "dst": "b9dd5c5e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "c8fd4d14",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "11992fa8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "3dcdcb2a",
+      "dst": "fc1ab32e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "09cb3942",
+      "dst": "b699b366",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "30a900ad",
+      "dst": "b699b366",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "6090d697",
+      "dst": "7c036924",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "0b2c782a",
+      "dst": "7c036924",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "57c700aa",
+      "dst": "47e364b0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d450281c",
+      "dst": "47e364b0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bdc14f1f",
+      "dst": "b0bc32c1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "d5a804eb",
+      "dst": "b0bc32c1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "dc570131",
+      "dst": "e9051e55",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "bfddc3d9",
+      "dst": "e9051e55",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b194990b",
+      "dst": "3a077722",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "409d3602",
+      "dst": "3a077722",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "921cfe39",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b2c08394",
+      "dst": "921cfe39",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "8d605936",
+      "dst": "efc2999b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "b77350ca",
+      "dst": "efc2999b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
+      "src": "903e3e7f",
+      "dst": "79712904",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "cooling"
+    },
+    {
+      "src": "7fbc8b57",
+      "dst": "97d819aa",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
