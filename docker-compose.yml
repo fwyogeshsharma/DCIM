@@ -187,7 +187,7 @@ services:
       RACK_U_DEFAULT: "42"
       RACK_POWER_CAPACITY_W: "10000"
       # Forecasting
-      FORECAST_HORIZONS: "30,60,90"
+      FORECAST_HORIZONS: "[30,60,90]"
       CPU_THRESHOLD_PCT: "85"
       MEM_THRESHOLD_PCT: "85"
       # Retraining (daily 02:00 UTC; also runs once at startup if stale)
