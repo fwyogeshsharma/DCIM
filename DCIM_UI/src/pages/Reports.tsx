@@ -744,7 +744,7 @@ export default function Reports() {
     enabled: tab === 'forecast',
   })
 
-  const mlAvailable = mlHealth?.status === 'ok'
+  const mlAvailable = mlHealth?.status === 'healthy'
 
   const { data: mlPowerForecasts = [], isLoading: mlPowerLoading } = useQuery({
     queryKey: ['ml', 'forecasts', 'power'],

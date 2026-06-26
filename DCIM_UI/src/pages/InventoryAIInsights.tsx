@@ -191,7 +191,7 @@ export default function InventoryAIInsights() {
     queryFn: () => mlApi.capacitySummary({ scope: 'global', scope_id: 'all' }),
     retry: 1,
     staleTime: 60_000,
-    enabled: health?.status === 'ok',
+    enabled: health?.status === 'healthy',
   })
 
   const { data: recs = [] } = useQuery({
@@ -199,7 +199,7 @@ export default function InventoryAIInsights() {
     queryFn: () => mlApi.recommendations({ scope: 'global', scope_id: 'all' }),
     retry: 1,
     staleTime: 60_000,
-    enabled: health?.status === 'ok',
+    enabled: health?.status === 'healthy',
   })
 
   const { data: serverForecasts = [] } = useQuery({
@@ -207,7 +207,7 @@ export default function InventoryAIInsights() {
     queryFn: () => mlApi.forecasts({ scope: 'global', scope_id: 'all', target: 'server_count', horizon: 90 }),
     retry: 1,
     staleTime: 60_000,
-    enabled: health?.status === 'ok',
+    enabled: health?.status === 'healthy',
   })
 
   const { data: rackForecasts = [] } = useQuery({
@@ -215,7 +215,7 @@ export default function InventoryAIInsights() {
     queryFn: () => mlApi.forecasts({ scope: 'global', scope_id: 'all', target: 'rack_units', horizon: 90 }),
     retry: 1,
     staleTime: 60_000,
-    enabled: health?.status === 'ok',
+    enabled: health?.status === 'healthy',
   })
 
   const { data: modelRuns = [] } = useQuery({
@@ -223,7 +223,7 @@ export default function InventoryAIInsights() {
     queryFn: () => mlApi.modelRuns({ scope: 'global', scope_id: 'all' }),
     retry: 1,
     staleTime: 120_000,
-    enabled: health?.status === 'ok',
+    enabled: health?.status === 'healthy',
   })
 
   async function handleTrain() {
@@ -250,7 +250,7 @@ export default function InventoryAIInsights() {
     : null
 
   // ── ML unavailable state ─────────────────────────────────────────────────────
-  if (healthErr || (health && health.status !== 'ok')) {
+  if (healthErr || (health && health.status !== 'healthy')) {
     return (
       <div className="flex-1 flex items-center justify-center p-12">
         <div className="text-center max-w-md">
