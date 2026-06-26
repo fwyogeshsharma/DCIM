@@ -283,6 +283,25 @@ export default function InventoryAIInsights() {
     return 'text-red-400'
   }
 
+  // ── Current-state fallback from the snapshot in `details` ────────────────────
+  // The forecast fields go null when growth history is flat; show present-day
+  // utilization instead of an empty "—" so the cards stay informative.
+  const d = cap?.details ?? {}
+  const pctOf = (used?: number, total?: number) =>
+    total && total > 0 ? Math.round(((used ?? 0) / total) * 100) : null
+  const rackPct = pctOf(d.rack_u_used, d.rack_u_capacity)
+  const storagePct = pctOf(d.used_storage_gb, d.total_storage_gb)
+  const num = (n?: number) => (n != null ? Math.round(n).toLocaleString() : '—')
+  function utilColor(pct: number | null) {
+    if (pct == null) return 'text-slate-400'
+    if (pct >= 90) return 'text-red-400'
+    if (pct >= 75) return 'text-amber-400'
+    return 'text-green-400'
+  }
+
+  const rackPredicted = cap?.days_until_rack_full != null
+  const storagePredicted = cap?.days_until_storage_full != null
+
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
@@ -319,35 +338,70 @@ export default function InventoryAIInsights() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Rack Full In"
-          value={cap?.days_until_rack_full != null ? `${cap.days_until_rack_full}d` : '—'}
-          sub={cap?.rack_exhaustion_date ? `by ${new Date(cap.rack_exhaustion_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}` : 'no exhaustion predicted'}
+          label={rackPredicted ? 'Rack Full In' : 'Rack Utilization'}
+          value={
+            rackPredicted
+              ? `${cap!.days_until_rack_full}d`
+              : rackPct != null
+              ? `${rackPct}% full`
+              : '—'
+          }
+          sub={
+            rackPredicted
+              ? `by ${new Date(cap!.rack_exhaustion_date!).toLocaleDateString(undefined, { dateStyle: 'medium' })}`
+              : rackPct != null
+              ? `${num(d.rack_u_used)} / ${num(d.rack_u_capacity)}U · no exhaustion predicted`
+              : 'no exhaustion predicted'
+          }
           icon={<Server className="w-5 h-5 text-blue-400" />}
           color={
-            cap?.days_until_rack_full != null && cap.days_until_rack_full < 30
-              ? 'text-red-400'
-              : cap?.days_until_rack_full != null && cap.days_until_rack_full < 90
-              ? 'text-amber-400'
-              : 'text-green-400'
+            rackPredicted
+              ? cap!.days_until_rack_full! < 30
+                ? 'text-red-400'
+                : cap!.days_until_rack_full! < 90
+                ? 'text-amber-400'
+                : 'text-green-400'
+              : utilColor(rackPct)
           }
         />
         <KpiCard
-          label="Storage Full In"
-          value={cap?.days_until_storage_full != null ? `${cap.days_until_storage_full}d` : '—'}
-          sub={cap?.storage_exhaustion_date ? `by ${new Date(cap.storage_exhaustion_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}` : 'no exhaustion predicted'}
+          label={storagePredicted ? 'Storage Full In' : 'Storage Utilization'}
+          value={
+            storagePredicted
+              ? `${cap!.days_until_storage_full}d`
+              : storagePct != null
+              ? `${storagePct}% full`
+              : '—'
+          }
+          sub={
+            storagePredicted
+              ? `by ${new Date(cap!.storage_exhaustion_date!).toLocaleDateString(undefined, { dateStyle: 'medium' })}`
+              : storagePct != null
+              ? `${num(d.used_storage_gb)} / ${num(d.total_storage_gb)} GB · no exhaustion predicted`
+              : 'no exhaustion predicted'
+          }
           icon={<HardDrive className="w-5 h-5 text-cyan-400" />}
           color={
-            cap?.days_until_storage_full != null && cap.days_until_storage_full < 30
-              ? 'text-red-400'
-              : cap?.days_until_storage_full != null && cap.days_until_storage_full < 90
-              ? 'text-amber-400'
-              : 'text-green-400'
+            storagePredicted
+              ? cap!.days_until_storage_full! < 30
+                ? 'text-red-400'
+                : cap!.days_until_storage_full! < 90
+                ? 'text-amber-400'
+                : 'text-green-400'
+              : utilColor(storagePct)
           }
         />
         <KpiCard
           label="Server Growth (30d)"
           value={cap?.expected_server_growth_30d != null ? `+${cap.expected_server_growth_30d}` : '—'}
-          sub={cap?.expected_server_growth_90d != null ? `+${cap.expected_server_growth_90d} in 90d` : undefined}
+          sub={
+            [
+              d.current_servers != null ? `${num(d.current_servers)} today` : null,
+              cap?.expected_server_growth_90d != null ? `+${cap.expected_server_growth_90d} in 90d` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || undefined
+          }
           icon={<TrendingUp className="w-5 h-5 text-green-400" />}
           color="text-green-400"
         />

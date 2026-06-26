@@ -21,6 +21,20 @@ export interface MLForecastPoint {
   generated_at: string
 }
 
+// Current physical-capacity snapshot carried alongside the forecasts. Populated
+// even when the forecast fields are null (flat/insufficient growth history), so
+// the UI can still show present-day utilization on the capacity cards.
+export interface MLCapacityDetails {
+  n_racks?: number
+  rack_u_capacity?: number
+  rack_u_used?: number
+  total_storage_gb?: number
+  used_storage_gb?: number
+  current_servers?: number
+  avg_u_per_device?: number
+  avg_storage_per_device_gb?: number
+}
+
 export interface MLCapacitySummary {
   scope: string
   scope_id: string
@@ -35,7 +49,7 @@ export interface MLCapacitySummary {
   expected_server_growth_60d: number | null
   expected_server_growth_90d: number | null
   power_headroom_pct: number | null
-  details: Record<string, unknown>
+  details: MLCapacityDetails
   updated_at: string
 }
 
