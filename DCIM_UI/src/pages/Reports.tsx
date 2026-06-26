@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { usePrediction } from '@/hooks/usePredictions'
@@ -119,6 +119,102 @@ function TabBtn({ active, onClick, icon, label }: TabBtnProps) {
       {label}
     </button>
   )
+}
+
+// ── Animated KPI card (PUE / DCiE) ───────────────────────────────────────────
+// Shows the last reading immediately (the underlying energy API is slow to
+// compute), then count-up animates to the fresh value and pulses the card when
+// the number actually changes. The cached snapshot that makes the old reading
+// appear on open is persisted at the page level (see PUE_CACHE_KEY).
+
+function AnimatedKpiCard({
+  title, value, decimals, unit, sub, icon, accentBg,
+}: {
+  title: string
+  value: number | null
+  decimals: number
+  unit?: string
+  sub?: React.ReactNode
+  icon: React.ReactNode
+  accentBg: string
+}) {
+  const [shown, setShown] = useState<number | null>(value)
+  const [flash, setFlash] = useState(false)
+  const fromRef = useRef<number | null>(value)
+  const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (value == null) return                       // still loading → keep last shown
+    const from = fromRef.current
+    const eps = Math.pow(10, -decimals) / 2
+    if (from == null || Math.abs(from - value) <= eps) {
+      // First real value, or no visible change: adopt without animating.
+      fromRef.current = value
+      setShown(value)
+      return
+    }
+    // Visible change → tween old → new and pulse the card.
+    setFlash(true)
+    const start = performance.now()
+    const DUR = 700
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / DUR)
+      const eased = 1 - Math.pow(1 - t, 3)          // easeOutCubic
+      setShown(from + (value - from) * eased)
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step)
+      } else {
+        setShown(value)
+        fromRef.current = value
+        window.setTimeout(() => setFlash(false), 500)
+      }
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [value, decimals])
+
+  return (
+    <div
+      className={`bg-slate-800/50 border rounded-xl p-6 transition-all duration-500 ${
+        flash
+          ? 'border-cyan-400/60 ring-1 ring-cyan-400/40 shadow-lg shadow-cyan-500/10'
+          : 'border-white/10'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-400">{title}</p>
+          <p className={`text-3xl font-bold mt-2 transition-colors duration-500 ${flash ? 'text-cyan-300' : 'text-white'}`}>
+            {shown != null ? shown.toFixed(decimals) : '—'}
+            {shown != null && unit && <span className="text-lg font-normal text-slate-400 ml-1">{unit}</span>}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">{sub}</p>
+        </div>
+        <div className={`${accentBg} p-3 rounded-lg`}>{icon}</div>
+      </div>
+    </div>
+  )
+}
+
+// Persisted snapshot of the latest PUE/DCiE tab readings, so the cards can show
+// the previous values instantly while the slow energy API recomputes on open.
+const PUE_CACHE_KEY = 'dcim:pue:last'
+
+interface PueSnapshot {
+  metered: boolean
+  facility: number | null
+  it: number | null
+  pue: number | null
+  dcie: number | null
+}
+
+function loadPueSnapshot(): PueSnapshot | null {
+  try {
+    const raw = localStorage.getItem(PUE_CACHE_KEY)
+    return raw ? (JSON.parse(raw) as PueSnapshot) : null
+  } catch {
+    return null
+  }
 }
 
 // ── Energy monitor card ──────────────────────────────────────────────────────
@@ -643,6 +739,39 @@ export default function Reports() {
   const dispPue = metered ? pueStats.pue : summaryStats.pue
   const dispDcie = metered ? pueStats.dcie : summaryStats.dcie
 
+  // ── Cached PUE/DCiE readings ─────────────────────────────────────────────────
+  // The energy snapshot API is slow to compute, so on first open we show the
+  // last persisted readings immediately, then let each card animate to the live
+  // value once it arrives. `energyLoading` is true only on the cold first load
+  // (refetches keep the previous data), which is exactly when we want the cache.
+  const liveReady = !energyLoading
+  const liveFacility = metered
+    ? pueStats.facilityKw
+    : (facilityPower ? parseFloat(facilityPower) : null)
+  const liveIt = metered
+    ? (pueStats.itKw > 0 ? pueStats.itKw : null)
+    : summaryStats.totalPower
+
+  const pueCacheRef = useRef<PueSnapshot | null>(loadPueSnapshot())
+
+  useEffect(() => {
+    if (!liveReady) return
+    const snap: PueSnapshot = {
+      metered, facility: liveFacility, it: liveIt, pue: dispPue, dcie: dispDcie,
+    }
+    pueCacheRef.current = snap
+    try { localStorage.setItem(PUE_CACHE_KEY, JSON.stringify(snap)) } catch { /* ignore */ }
+  }, [liveReady, metered, liveFacility, liveIt, dispPue, dispDcie])
+
+  // Effective values fed to the cards: live once available, cached while the
+  // first slow fetch is still in flight.
+  const cachedPue = pueCacheRef.current
+  const effMetered = liveReady ? metered : (cachedPue?.metered ?? metered)
+  const effFacility = liveReady ? liveFacility : (cachedPue?.facility ?? null)
+  const effIt = liveReady ? liveIt : (cachedPue?.it ?? null)
+  const effPue = liveReady ? dispPue : (cachedPue?.pue ?? null)
+  const effDcie = liveReady ? dispDcie : (cachedPue?.dcie ?? null)
+
   // Pivot the per-scope trend rows into chart points { time, facility, it, cooling }.
   // Facility line = total of all meters per bucket (mirrors the PUE facility =
   // sum-of-all logic so the chart matches the KPIs); it / cooling are the scoped
@@ -943,68 +1072,43 @@ export default function Reports() {
             </div>
           )}
 
-          {/* Summary KPI cards */}
+          {/* Summary KPI cards — cached on open, animate to live readings */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Total Facility Power</p>
-                  <p className="text-3xl font-bold mt-2 text-white">
-                    {metered
-                      ? <>{pueStats.facilityKw.toFixed(2)}<span className="text-lg font-normal text-slate-400 ml-1">kW</span></>
-                      : (facilityPower ? <>{parseFloat(facilityPower).toFixed(0)}<span className="text-lg font-normal text-slate-400 ml-1">W</span></> : '—')}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">{metered ? 'measured at meters' : 'manual input'}</p>
-                </div>
-                <div className="bg-yellow-500/10 p-3 rounded-lg"><Zap className="h-6 w-6 text-yellow-500" /></div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">IT Power</p>
-                  <p className="text-3xl font-bold mt-2 text-white">
-                    {metered
-                      ? (pueStats.itKw > 0
-                          ? <>{pueStats.itKw.toFixed(2)}<span className="text-lg font-normal text-slate-400 ml-1">kW</span></>
-                          : '—')
-                      : <>{summaryStats.totalPower.toFixed(0)}<span className="text-lg font-normal text-slate-400 ml-1">W</span></>}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">{metered && pueStats.itKw === 0 ? 'tag a meter scope "it"' : metered ? 'IT-scoped meters' : 'across all servers'}</p>
-                </div>
-                <div className="bg-blue-500/10 p-3 rounded-lg"><Server className="h-6 w-6 text-blue-500" /></div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">PUE</p>
-                  <p className="text-3xl font-bold mt-2 text-white">
-                    {dispPue !== null ? dispPue.toFixed(2) : '—'}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {dispPue === null ? (metered ? 'needs an IT-scoped meter' : 'enter facility power above') : dispPue <= 1.2 ? 'excellent' : dispPue <= 1.5 ? 'average' : 'needs improvement'}
-                  </p>
-                </div>
-                <div className="bg-purple-500/10 p-3 rounded-lg"><Gauge className="h-6 w-6 text-purple-500" /></div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">DCiE</p>
-                  <p className="text-3xl font-bold mt-2 text-white">
-                    {dispDcie !== null ? dispDcie.toFixed(1) : '—'}
-                    {dispDcie !== null && <span className="text-lg font-normal text-slate-400 ml-1">%</span>}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">infrastructure efficiency</p>
-                </div>
-                <div className="bg-green-500/10 p-3 rounded-lg"><Activity className="h-6 w-6 text-green-500" /></div>
-              </div>
-            </div>
+            <AnimatedKpiCard
+              title="Total Facility Power"
+              value={effFacility}
+              decimals={effMetered ? 2 : 0}
+              unit={effMetered ? 'kW' : 'W'}
+              sub={effMetered ? 'measured at meters' : 'manual input'}
+              accentBg="bg-yellow-500/10"
+              icon={<Zap className="h-6 w-6 text-yellow-500" />}
+            />
+            <AnimatedKpiCard
+              title="IT Power"
+              value={effIt}
+              decimals={effMetered ? 2 : 0}
+              unit={effMetered ? 'kW' : 'W'}
+              sub={effMetered && (effIt == null) ? 'tag a meter scope "it"' : effMetered ? 'IT-scoped meters' : 'across all servers'}
+              accentBg="bg-blue-500/10"
+              icon={<Server className="h-6 w-6 text-blue-500" />}
+            />
+            <AnimatedKpiCard
+              title="PUE"
+              value={effPue}
+              decimals={2}
+              sub={effPue == null ? (effMetered ? 'needs an IT-scoped meter' : 'enter facility power above') : effPue <= 1.2 ? 'excellent' : effPue <= 1.5 ? 'average' : 'needs improvement'}
+              accentBg="bg-purple-500/10"
+              icon={<Gauge className="h-6 w-6 text-purple-500" />}
+            />
+            <AnimatedKpiCard
+              title="DCiE"
+              value={effDcie}
+              decimals={1}
+              unit="%"
+              sub="infrastructure efficiency"
+              accentBg="bg-green-500/10"
+              icon={<Activity className="h-6 w-6 text-green-500" />}
+            />
           </div>
 
           {/* Load breakdown + PUE rating */}
