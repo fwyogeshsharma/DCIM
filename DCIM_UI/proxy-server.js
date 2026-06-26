@@ -247,6 +247,50 @@ app.get('/api/v1/dashboard/stats', async (req, res) => {
   }
 });
 
+// ── ML service proxy ───────────────────────────────────────────────────────
+// Routes /api/v1/ml/* → DCIM_ML FastAPI service.
+// Strip the /api/v1/ml prefix; /health lives at ML root, all else under /api/v1.
+const _mlUrl = process.env.ML_URL || 'http://dcim-ml:8000'
+const _mlParsed = new URL(_mlUrl)
+const ML_HOST = _mlParsed.hostname
+const ML_PORT = parseInt(_mlParsed.port || '8000')
+
+function proxyToML(req, res) {
+  const rest = req.path.replace(/^\/api\/v1\/ml/, '') || '/'
+  const targetPath = (rest === '/health' || rest === '') ? '/health' : `/api/v1${rest}`
+  const queryString = req.url.includes('?') ? req.url.split('?').slice(1).join('?') : ''
+  const targetUrl = `http://${ML_HOST}:${ML_PORT}${targetPath}${queryString ? '?' + queryString : ''}`
+  console.log(`  → ML service: ${targetUrl}`)
+
+  const headers = { ...req.headers, host: `${ML_HOST}:${ML_PORT}` }
+  delete headers['host']
+  delete headers['connection']
+  delete headers['if-none-match']
+  delete headers['if-modified-since']
+
+  const proxyReq = http.request(targetUrl, { method: req.method, headers }, (proxyRes) => {
+    console.log(`  ← ML response: ${proxyRes.statusCode}`)
+    res.status(proxyRes.statusCode)
+    Object.keys(proxyRes.headers).forEach(k => res.setHeader(k, proxyRes.headers[k]))
+    proxyRes.pipe(res)
+  })
+
+  proxyReq.on('error', (err) => {
+    console.error('  ✗ ML proxy error:', err.message)
+    if (!res.headersSent) res.status(503).json({ error: 'ML service unavailable', message: err.message })
+  })
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    const body = JSON.stringify(req.body)
+    proxyReq.setHeader('Content-Length', Buffer.byteLength(body))
+    proxyReq.write(body)
+  }
+  proxyReq.end()
+}
+
+// Must be before the /api/v1/* aggregator catch-all
+app.all('/api/v1/ml/*', (req, res) => proxyToML(req, res))
+
 // ── Aggregator proxy helpers ───────────────────────────────────────────────
 // Some endpoints live in the aggregator (port 3002), not the DCIM server.
 // Route these BEFORE the catch-all that forwards to dcim-server-a.

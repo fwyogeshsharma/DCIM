@@ -7,8 +7,9 @@ import {
   Plus, Search, X, Server, Network, HardDrive, Cpu, MemoryStick,
   Zap, Package, Link as LinkIcon, Edit3, Trash2, ChevronDown,
   ChevronRight, Activity, Wifi, WifiOff, AlertCircle, CheckCircle2,
-  Wrench, Archive, RefreshCw, DatabaseZap,
+  Wrench, Archive, RefreshCw, DatabaseZap, BrainCircuit,
 } from 'lucide-react'
+import InventoryAIInsights from '@/pages/InventoryAIInsights'
 import toast from 'react-hot-toast'
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -622,7 +623,7 @@ const DEVICE_PAGE_SIZE = 50
 
 export default function Inventory() {
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<'devices' | 'links'>('devices')
+  const [tab, setTab] = useState<'devices' | 'links' | 'ai-insights'>('devices')
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterType, setFilterType] = useState('')
@@ -811,12 +812,22 @@ export default function Inventory() {
               )}
             </button>
           ))}
+          <button
+            onClick={() => setTab('ai-insights')}
+            className={`px-4 py-2 text-xs font-medium rounded-t-lg transition-colors flex items-center gap-1.5 ${tab === 'ai-insights' ? 'bg-slate-800 text-white border border-white/10 border-b-transparent' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <BrainCircuit className="w-3.5 h-3.5" />
+            AI Insights
+          </button>
         </div>
 
         {/* Content area */}
         <div className="flex-1 flex overflow-hidden border-t border-white/10">
+          {/* AI Insights — full-width panel */}
+          {tab === 'ai-insights' && <InventoryAIInsights />}
+
           {/* Table panel */}
-          <div className={`flex-1 flex flex-col overflow-hidden transition-all ${selectedDevice ? 'border-r border-white/10' : ''}`}>
+          <div className={`flex-1 flex flex-col overflow-hidden transition-all ${tab === 'ai-insights' ? 'hidden' : ''} ${selectedDevice ? 'border-r border-white/10' : ''}`}>
             {tab === 'devices' ? (
               <>
                 {/* Filters */}

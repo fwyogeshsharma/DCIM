@@ -2,6 +2,9 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { usePrediction } from '@/hooks/usePredictions'
+import { mlApi } from '@/lib/ml-api'
+import type { MLForecastPoint } from '@/lib/ml-api'
+import toast from 'react-hot-toast'
 import { getDeviceTypeMeta } from '@/lib/deviceType'
 import { classifyReading, energyMetricMeta, formatEnergyValue, isAlarmMetric, formatAlarmValue, ENERGY, SCOPE, normalizeScope, resolveScope } from '@/lib/energyMetrics'
 import type { EnergyReading } from '@/lib/types'
@@ -13,6 +16,7 @@ import {
   Zap, Thermometer, Activity, BarChart3, Download,
   BatteryCharging, Battery, DollarSign, Calendar, TrendingUp,
   Plus, CheckCircle, Clock, AlertTriangle, Gauge, Trash2, X, Server,
+  BrainCircuit, RefreshCw, HardDrive, Cpu,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -702,7 +706,7 @@ export default function Reports() {
     return { kwh, cost, monthlyKwh, monthlyCost, annualCost, costTrend, rate, measured, meteredKwhTotal }
   }, [summaryStats.totalPower, costPerKwh, timeRange, chartData, enabledServers, pueStats.meterCount, pueStats.facilityKw, energyCards])
 
-  // AI forecast: use first server's power data as representative
+  // Legacy AI forecast (Prophet) — kept for the per-server trend section
   const forecastHistory = useMemo(() => {
     return (powerAggregated ?? []).slice(-30).map((m) => ({
       timestamp: m.time_bucket,
@@ -728,6 +732,83 @@ export default function Reports() {
       upper: Math.round(p.upper_bound ?? p.value * 1.1),
     }))
   }, [forecast])
+
+  // ── DCIM_ML service queries (forecast tab) ─────────────────────────────────
+  const [mlTraining, setMlTraining] = useState(false)
+
+  const { data: mlHealth } = useQuery({
+    queryKey: ['ml', 'health'],
+    queryFn: () => mlApi.health(),
+    retry: 1,
+    staleTime: 30_000,
+    enabled: tab === 'forecast',
+  })
+
+  const mlAvailable = mlHealth?.status === 'ok'
+
+  const { data: mlPowerForecasts = [], isLoading: mlPowerLoading } = useQuery({
+    queryKey: ['ml', 'forecasts', 'power'],
+    queryFn: () => mlApi.forecasts({ scope: 'global', scope_id: 'all', target: 'power' }),
+    retry: 1,
+    staleTime: 60_000,
+    enabled: tab === 'forecast' && mlAvailable,
+  })
+
+  const { data: mlTempForecasts = [] } = useQuery({
+    queryKey: ['ml', 'forecasts', 'temperature'],
+    queryFn: () => mlApi.forecasts({ scope: 'global', scope_id: 'all', target: 'temperature' }),
+    retry: 1,
+    staleTime: 60_000,
+    enabled: tab === 'forecast' && mlAvailable,
+  })
+
+  const { data: mlCapacity = [] } = useQuery({
+    queryKey: ['ml', 'capacity'],
+    queryFn: () => mlApi.capacitySummary({ scope: 'global', scope_id: 'all' }),
+    retry: 1,
+    staleTime: 60_000,
+    enabled: tab === 'forecast' && mlAvailable,
+  })
+
+  const { data: mlPowerRecs = [] } = useQuery({
+    queryKey: ['ml', 'recommendations', 'power'],
+    queryFn: () => mlApi.recommendations({ scope: 'global', scope_id: 'all', category: 'power' }),
+    retry: 1,
+    staleTime: 60_000,
+    enabled: tab === 'forecast' && mlAvailable,
+  })
+
+  const { data: mlPowerModels = [] } = useQuery({
+    queryKey: ['ml', 'models', 'power'],
+    queryFn: () => mlApi.modelRuns({ scope: 'global', scope_id: 'all' }),
+    retry: 1,
+    staleTime: 120_000,
+    enabled: tab === 'forecast' && mlAvailable,
+  })
+
+  async function handleMlTrain() {
+    setMlTraining(true)
+    try {
+      const r = await mlApi.triggerTrain()
+      toast.success(`Training complete — ${r.forecasts} forecasts updated`)
+    } catch (e: any) {
+      toast.error(e.message || 'ML training failed')
+    } finally {
+      setMlTraining(false)
+    }
+  }
+
+  const mlCap = mlCapacity[0]
+  const powerModel = mlPowerModels.find(m => m.target === 'power')
+
+  function mlForecastToChart(pts: MLForecastPoint[]) {
+    return pts.map(p => ({
+      date: new Date(p.forecast_for).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value: Math.round(p.predicted_value * 10) / 10,
+      lower: p.lower_bound != null ? Math.round(p.lower_bound * 10) / 10 : undefined,
+      upper: p.upper_bound != null ? Math.round(p.upper_bound * 10) / 10 : undefined,
+    }))
+  }
 
   // ── Generator test handlers ────────────────────────────────────────────────
 
@@ -1528,71 +1609,183 @@ export default function Reports() {
       {/* ── TAB: AI Forecast ──────────────────────────────────────────────── */}
       {tab === 'forecast' && (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold text-white">AI Load Forecasting</h2>
-            <p className="text-sm text-slate-400 mt-0.5">Prophet-based power consumption predictions with confidence bands</p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                <BrainCircuit className="w-5 h-5 text-purple-400" />
+                AI Power Forecasting
+              </h2>
+              <p className="text-sm text-slate-400 mt-0.5">
+                ML-powered power consumption predictions and capacity headroom analysis
+                {mlHealth?.last_run_at && (
+                  <span className="text-slate-500"> · Last trained {new Date(mlHealth.last_run_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={handleMlTrain}
+              disabled={mlTraining || !mlAvailable}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-sm text-white font-medium transition-all"
+            >
+              <RefreshCw className={`w-4 h-4 ${mlTraining ? 'animate-spin' : ''}`} />
+              {mlTraining ? 'Training…' : 'Retrain'}
+            </button>
           </div>
 
-          {/* Model info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
-              <p className="text-xs text-slate-400 mb-1">Model</p>
-              <p className="text-base font-semibold text-white">Prophet (Facebook)</p>
-              <p className="text-xs text-slate-500 mt-1">Time-series decomposition</p>
-            </div>
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
-              <p className="text-xs text-slate-400 mb-1">Confidence</p>
-              <p className="text-base font-semibold text-white">{forecast ? '85%' : '—'}</p>
-              <p className="text-xs text-slate-500 mt-1">prediction interval</p>
-            </div>
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
-              <p className="text-xs text-slate-400 mb-1">Training Data</p>
-              <p className="text-base font-semibold text-white">{forecastHistory.length} points</p>
-              <p className="text-xs text-slate-500 mt-1">from aggregated metrics</p>
-            </div>
-          </div>
-
-          {forecastLoading ? (
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-12 flex items-center justify-center gap-4">
-              <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-              <p className="text-slate-400">Generating forecast...</p>
-            </div>
-          ) : forecastChartData.length > 0 ? (
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
-              <h3 className="text-base font-semibold text-white mb-4">14-Day Power Forecast</h3>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={forecastChartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={{ stroke: '#334155' }} tickLine={false} />
-                    <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={50} tickFormatter={(v) => `${v}W`} />
-                    <Tooltip
-                      contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12, color: '#e2e8f0' }}
-                      formatter={(v: number, name: string) => [`${v}W`, name === 'predicted' ? 'Forecast' : name === 'upper' ? 'Upper bound' : 'Lower bound']}
-                    />
-                    <Area type="monotone" dataKey="upper" stroke="transparent" fill="#3b82f6" fillOpacity={0.1} dot={false} />
-                    <Area type="monotone" dataKey="lower" stroke="transparent" fill="#1e293b" fillOpacity={1} dot={false} />
-                    <Line type="monotone" dataKey="predicted" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <p className="text-xs text-slate-500 mt-3">Shaded region shows 85% prediction interval. Requires AI prediction service (VITE_AI_API_URL).</p>
-            </div>
-          ) : forecastHistory.length < 7 ? (
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-12 text-center">
-              <TrendingUp className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">Insufficient historical data</p>
-              <p className="text-xs text-slate-500 mt-1">Need at least 7 aggregated data points — try a longer time range</p>
-            </div>
-          ) : (
-            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-12 text-center">
-              <TrendingUp className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400">Forecast unavailable</p>
-              <p className="text-xs text-slate-500 mt-1">AI prediction service not reachable (VITE_AI_API_URL)</p>
+          {/* ML unavailable notice */}
+          {!mlAvailable && (
+            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-8 text-center">
+              <BrainCircuit className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400 font-medium">DCIM_ML service not reachable</p>
+              <p className="text-xs text-slate-500 mt-1">Start it with <code className="bg-slate-700 px-1 rounded">docker compose up dcim-ml</code> to enable AI forecasts</p>
             </div>
           )}
 
-          {/* Per-server forecast summary from current trends */}
+          {mlAvailable && (
+            <>
+              {/* Power KPIs from ML */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
+                  <p className="text-xs text-slate-400 mb-1">Power Headroom</p>
+                  <p className={`text-2xl font-bold ${
+                    mlCap?.power_headroom_pct == null ? 'text-slate-400' :
+                    mlCap.power_headroom_pct > 30 ? 'text-green-400' :
+                    mlCap.power_headroom_pct > 10 ? 'text-amber-400' : 'text-red-400'
+                  }`}>
+                    {mlCap?.power_headroom_pct != null ? `${Math.round(mlCap.power_headroom_pct)}%` : '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">remaining capacity</p>
+                </div>
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
+                  <p className="text-xs text-slate-400 mb-1">Model (Power)</p>
+                  <p className="text-2xl font-bold text-white capitalize">{powerModel?.model_name ?? '—'}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {powerModel ? `MAE ${powerModel.mae?.toFixed(1) ?? '—'} · ${powerModel.n_points ?? '—'} pts` : 'not trained yet'}
+                  </p>
+                </div>
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
+                  <p className="text-xs text-slate-400 mb-1">Server Growth (30d)</p>
+                  <p className="text-2xl font-bold text-green-400">
+                    {mlCap?.expected_server_growth_30d != null ? `+${mlCap.expected_server_growth_30d}` : '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {mlCap?.expected_server_growth_90d != null ? `+${mlCap.expected_server_growth_90d} in 90d` : 'servers expected'}
+                  </p>
+                </div>
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-5">
+                  <p className="text-xs text-slate-400 mb-1">New Racks (90d)</p>
+                  <p className="text-2xl font-bold text-blue-400">
+                    {mlCap?.predicted_new_racks_90d != null ? mlCap.predicted_new_racks_90d : '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">racks needed</p>
+                </div>
+              </div>
+
+              {/* Power forecast chart */}
+              {mlPowerLoading ? (
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-12 flex items-center justify-center gap-4">
+                  <div className="w-8 h-8 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+                  <p className="text-slate-400">Loading ML forecasts…</p>
+                </div>
+              ) : mlPowerForecasts.length > 0 ? (
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="text-base font-semibold text-white mb-1">Power Consumption Forecast (90 days)</h3>
+                  <p className="text-xs text-slate-500 mb-4">Shaded region shows model confidence interval · unit: kW</p>
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={mlForecastToChart(mlPowerForecasts)} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: '#94a3b8', fontSize: 11 }}
+                          axisLine={{ stroke: '#334155' }}
+                          tickLine={false}
+                          interval={Math.ceil(mlPowerForecasts.length / 8) - 1}
+                        />
+                        <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={50} tickFormatter={v => `${v}kW`} />
+                        <Tooltip
+                          contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12, color: '#e2e8f0' }}
+                          formatter={(v: number | undefined, name: string) => [`${v ?? '—'} kW`, name === 'upper' ? 'Upper bound' : name === 'lower' ? 'Lower bound' : 'Power']}
+                        />
+                        <Area type="monotone" dataKey="upper" stroke="transparent" fill="#f59e0b" fillOpacity={0.12} dot={false} />
+                        <Area type="monotone" dataKey="lower" stroke="transparent" fill="#0f172a" fillOpacity={1} dot={false} />
+                        <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-8 text-center">
+                  <Zap className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400">No power forecasts yet — trigger a training run</p>
+                </div>
+              )}
+
+              {/* Temperature forecast chart */}
+              {mlTempForecasts.length > 0 && (
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
+                  <h3 className="text-base font-semibold text-white mb-1">Inlet Temperature Forecast (90 days)</h3>
+                  <p className="text-xs text-slate-500 mb-4">Predicted datacenter inlet temperature · unit: °C</p>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={mlForecastToChart(mlTempForecasts)} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: '#94a3b8', fontSize: 11 }}
+                          axisLine={{ stroke: '#334155' }}
+                          tickLine={false}
+                          interval={Math.ceil(mlTempForecasts.length / 8) - 1}
+                        />
+                        <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={42} tickFormatter={v => `${v}°C`} />
+                        <Tooltip
+                          contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12, color: '#e2e8f0' }}
+                          formatter={(v: number | undefined, name: string) => [`${v ?? '—'}°C`, name === 'upper' ? 'Upper' : name === 'lower' ? 'Lower' : 'Temperature']}
+                        />
+                        <Area type="monotone" dataKey="upper" stroke="transparent" fill="#ef4444" fillOpacity={0.10} dot={false} />
+                        <Area type="monotone" dataKey="lower" stroke="transparent" fill="#0f172a" fillOpacity={1} dot={false} />
+                        <Line type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} dot={false} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Power recommendations */}
+              {mlPowerRecs.length > 0 && (
+                <div className="bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-white/10">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-yellow-400" />
+                      Power Recommendations
+                    </h3>
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {mlPowerRecs.map(rec => (
+                      <div key={rec.id} className="px-5 py-4">
+                        <div className="flex items-start gap-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium border flex-shrink-0 mt-0.5 ${
+                            rec.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                            rec.severity === 'warning' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                            'bg-blue-500/20 text-blue-400 border-blue-500/20'
+                          }`}>{rec.severity}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-200">{rec.message}</p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {Math.round(rec.confidence * 100)}% confidence
+                              {rec.predicted_date && ` · by ${new Date(rec.predicted_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Per-server projected load from current trends */}
           {serverReports.length > 0 && (
             <div className="bg-slate-800/50 border border-white/10 rounded-xl p-6">
               <h3 className="text-base font-semibold text-white mb-4">Projected Monthly Load by Server</h3>
@@ -1605,7 +1798,7 @@ export default function Reports() {
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
                       <span className="text-sm text-slate-300 w-40 truncate">{r.serverName}</span>
                       <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-blue-500/70" style={{ width: `${Math.min(100, (r.avgPower / (summaryStats.totalPower || 1)) * 100)}%` }} />
+                        <div className="h-full rounded-full bg-yellow-500/70" style={{ width: `${Math.min(100, (r.avgPower / (summaryStats.totalPower || 1)) * 100)}%` }} />
                       </div>
                       <span className="text-sm font-medium text-white w-24 text-right">{monthlyKwh.toFixed(0)} kWh/mo</span>
                       <span className={`text-xs w-16 text-right ${trend > 20 ? 'text-red-400' : trend > 5 ? 'text-yellow-400' : 'text-green-400'}`}>

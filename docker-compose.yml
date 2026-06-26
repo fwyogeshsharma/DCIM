@@ -220,6 +220,7 @@ services:
     environment:
       DCIM_SERVER_URL: http://dcim-server-a:8080
       AGGREGATOR_URL: http://aggregator:3002
+      ML_URL: http://dcim-ml:8000
       VITE_API_BASE: http://localhost:3001
       # ORCHESTRATOR_URL: http://orchestrator:8099
     ports:
