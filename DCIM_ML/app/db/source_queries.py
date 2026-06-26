@@ -30,12 +30,17 @@ METRIC_GROUPS: dict[str, list[str]] = {
 }
 
 # Target → display unit, carried through to ml_forecasts.unit.
+# Note: "storage" from fetch_metric_series is a utilisation percent
+# (system.disk_usage_percent); the GB-valued derived curve from the capacity
+# engine is stored under the "storage" key but labelled by the capacity engine
+# itself. "rack_units" is only ever derived.
 TARGET_UNITS: dict[str, str] = {
-    "cpu": "%",
-    "memory": "%",
-    "storage": "GB",
-    "power": "kW",
-    "rack_units": "U",
+    "cpu":          "%",
+    "memory":       "%",
+    "temperature":  "°C",
+    "storage":      "%",
+    "power":        "kW",
+    "rack_units":   "U",
     "server_count": "servers",
 }
 

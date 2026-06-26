@@ -29,7 +29,10 @@ from app.models.selection import Selection, select_forecaster
 log = get_logger("dcim_ml.pipeline")
 
 # Targets forecast directly from a real/observed series.
-DIRECT_TARGETS = ["cpu", "memory", "power", "server_count"]
+# temperature — from metrics_rollup_1d (system.temperature_celsius)
+# storage     — from metrics_rollup_1d (disk_usage_percent); separate from the
+#               GB-based derived storage curve produced by the capacity engine.
+DIRECT_TARGETS = ["cpu", "memory", "temperature", "storage", "power", "server_count"]
 
 
 def _points_to_rows(scope, scope_id, target, points, unit, model_name) -> list[dict]:
