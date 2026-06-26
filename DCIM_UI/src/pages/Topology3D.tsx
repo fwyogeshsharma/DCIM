@@ -1526,7 +1526,7 @@ function ConnectionLine({ link, isLinkDown = false }: { link: LayoutLink; isLink
   const color = isLinkDown
     ? '#ef4444'
     : isD2D
-    ? (link.connected ? '#f59e0b' : '#ef4444')
+    ? (link.connected ? '#fcd34d' : '#ef4444')
     : isAgentLink
     ? '#06b6d4'
     : link.connected ? '#10b981' : '#ef4444'
@@ -1633,12 +1633,12 @@ function ConnectionLine({ link, isLinkDown = false }: { link: LayoutLink; isLink
         ref={ref}
         points={[link.sourcePos, link.targetPos]}
         color={color}
-        lineWidth={isD2D ? (hovered ? 3 : 2) : isAgentLink ? 1 : link.connected ? 1.5 : 2}
+        lineWidth={isD2D ? (link.connected ? (hovered ? 2 : 1.2) : (hovered ? 3 : 2)) : isAgentLink ? 1 : link.connected ? 1.5 : 2}
         dashed={isAgentLink || !link.connected}
         dashSize={isAgentLink ? 0.5 : 1}
         gapSize={isAgentLink ? 0.5 : 0.8}
         transparent
-        opacity={isD2D ? (link.connected ? 0.85 : 0.7) : isAgentLink ? 0.5 : link.connected ? 0.6 : 0.8}
+        opacity={isD2D ? (link.connected ? 0.55 : 0.7) : isAgentLink ? 0.5 : link.connected ? 0.6 : 0.8}
         onPointerOver={isD2D ? (e: any) => { e.stopPropagation?.(); setHovered(true) } : undefined}
         onPointerOut={isD2D ? () => setHovered(false) : undefined}
       />
@@ -2120,7 +2120,7 @@ export default function Topology3D() {
   const [searchQuery, setSearchQuery] = useState('')
   // Default the network filter to net-usa-chicago (falls back to "All Datacenters"
   // selectable from the dropdown).
-  const [networkFilter, setNetworkFilter] = useState('net-usa-chicago')
+  const [networkFilter, setNetworkFilter] = useState('all')
   const [datacenterFilter, setDatacenterFilter] = useState('all')
 
   // Network options — unique network_ids from topology tree
