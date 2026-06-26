@@ -257,7 +257,7 @@ export default function Alerts() {
           <div className="flex bg-slate-900/50 font-medium text-slate-300">
             <div className="p-4 w-[110px] shrink-0">Severity</div>
             <div className="p-4 flex-1 min-w-[100px]">Server</div>
-            <div className="p-4 flex-1 min-w-[120px]">Agent</div>
+            <div className="p-4 flex-1 min-w-[120px]">UniqueID</div>
             <div className="p-4 flex-1 min-w-[100px]">Metric</div>
             <div className="p-4 flex-[2] min-w-[150px]">Message</div>
             <div className="p-4 flex-1 min-w-[100px]">Value</div>
