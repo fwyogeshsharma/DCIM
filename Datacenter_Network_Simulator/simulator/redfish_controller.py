@@ -39,6 +39,20 @@ from simulator.redfish_device import RedfishDevice
 if TYPE_CHECKING:
     from core.device_manager import Device
 
+
+def _bind_hint(exc: OSError) -> str:
+    """Return a human-readable hint for a bind() failure, or "" if none.
+
+    WSAEACCES (WinError 10013) on a specific-IP bind almost always means the
+    port is already owned by another process (a second copy of this app, or
+    another tool on the same port) rather than a true permissions problem.
+    """
+    if getattr(exc, "winerror", None) == 10013:
+        return (" — port already in use by another process "
+                "(another instance of this app or a tool on the same port). "
+                "Close it, then start Redfish again.")
+    return ""
+
 log = logging.getLogger(__name__)
 
 
@@ -220,7 +234,7 @@ class RedfishController:
                 httpd = _FastBindHTTPServer((ip, port), _RedfishHandler)
             except OSError as exc:
                 failed += 1
-                self._log(f"[Redfish] {ip}:{port} bind failed — {exc}", "warning")
+                self._log(f"[Redfish] {ip}:{port} bind failed — {exc}{_bind_hint(exc)}", "warning")
                 continue
             httpd.redfish_device = rdev          # type: ignore[attr-defined]
             httpd.daemon_threads = True
@@ -267,7 +281,7 @@ class RedfishController:
         try:
             httpd = _FastBindHTTPServer((ip, self._port), _RedfishHandler)
         except OSError as exc:
-            self._log(f"[Redfish] hot-add {ip}:{self._port} bind failed — {exc}", "warning")
+            self._log(f"[Redfish] hot-add {ip}:{self._port} bind failed — {exc}{_bind_hint(exc)}", "warning")
             return False
         httpd.redfish_device = rdev          # type: ignore[attr-defined]
         httpd.daemon_threads = True

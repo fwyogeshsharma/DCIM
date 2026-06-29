@@ -127,9 +127,13 @@ class BACnetController:
         port:          int   = 47808,
         rated_kw_map:  Optional[Dict[str, float]] = None,
         plant_devices: Optional[List[dict]] = None,
-    ) -> None:
+    ) -> bool:
         """
         Bind sockets and start the recv thread for all device IPs.
+
+        Returns True if the recv socket bound and the controller started,
+        False on any failure (already running, no IPs, bind error). Callers
+        must check this before reporting success to the UI.
 
         device_ips:    list of already-bound IPs (e.g. from IPBindWorker)
         base_instance: first BACnet device instance number (increments by 1)
@@ -141,10 +145,10 @@ class BACnetController:
         """
         if self._running:
             self._log("[BACnet] Already running.", "warning")
-            return
+            return False
         if not device_ips:
             self._log("[BACnet] No device IPs provided.", "error")
-            return
+            return False
 
         _cmap = circuits_map or {}
         _kwmap = rated_kw_map or {}
@@ -172,9 +176,19 @@ class BACnetController:
             recv_sock.bind(("", port))
             self._recv_sock = recv_sock
         except OSError as exc:
-            self._log(f"[BACnet] Cannot open recv socket on port {port}: {exc}",
-                      "error")
-            return
+            hint = ""
+            # WSAEACCES (10013) with SO_REUSEADDR set almost always means the
+            # port is already owned by another process (e.g. a second copy of
+            # this app, YABE, or another BACnet stack) rather than a true
+            # permissions problem.
+            if getattr(exc, "winerror", None) == 10013:
+                hint = (" — port already in use by another process "
+                        "(another instance of this app or a BACnet tool). "
+                        "Close it, then start BACnet again.")
+            self._log(
+                f"[BACnet] Cannot open recv socket on port {port}: {exc}{hint}",
+                "error")
+            return False
 
         # Build devices (each device binds device_ip:BACNET_PORT with SO_REUSEADDR)
         for i, ip in enumerate(device_ips):
@@ -266,6 +280,8 @@ class BACnetController:
                 self._ready_cb()
             except Exception:
                 pass
+
+        return True
 
     def stop(self) -> None:
         """Graceful shutdown: stop recv thread, close all sockets."""

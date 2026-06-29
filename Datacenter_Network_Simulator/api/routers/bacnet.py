@@ -225,7 +225,7 @@ def bacnet_start(cfg: BACnetConfig):
             lambda msg, lvl="info": s.notify_ui("log_bacnet", msg, lvl)
         )
 
-    s.bacnet.start(
+    started = s.bacnet.start(
         device_ips=device_ips,
         base_instance=cfg.base_instance,
         circuits_map=circuits_map,
@@ -234,6 +234,15 @@ def bacnet_start(cfg: BACnetConfig):
         rated_kw_map=rated_kw_map,
         plant_devices=plant_devices,
     )
+
+    if not started:
+        # start() already logged the specific failure (e.g. port in use).
+        s.notify_ui("sync_bacnet")
+        raise HTTPException(
+            status_code=409,
+            detail=f"BACnet failed to start — could not bind port {cfg.port}. "
+                   f"Another instance or BACnet tool may already own it.",
+        )
 
     if s.state_store and hasattr(s.state_store, "enable_bacnet"):
         s.state_store.enable_bacnet(s.bacnet)

@@ -156,6 +156,16 @@ def _run_headless():
     log = logging.getLogger("headless")
     log.setLevel(logging.INFO)
 
+    # Refuse a second instance (see main() — protocol ports are host singletons).
+    if "--allow-multiple" not in sys.argv:
+        from app.single_instance import acquire, hold
+        _lock = acquire()
+        if _lock is None:
+            log.error("Another instance is already running. Close it first, or "
+                      "pass --allow-multiple to override. Exiting.")
+            sys.exit(1)
+        hold(_lock)
+
     from PySide6.QtCore import QCoreApplication
     _app = QCoreApplication(sys.argv)
 
@@ -288,6 +298,26 @@ def main():
     app.setApplicationName("Datacenter Network Simulator")
     app.setOrganizationName("Datacenter Network Simulator")
     app.setApplicationVersion("5.0.0")
+
+    # Refuse a second instance: protocol ports (SNMP/161, BACnet/47808, …) are
+    # host singletons, so a duplicate fails late and per-protocol (e.g. BACnet
+    # WinError 10013). Block here, before binding anything, unless overridden.
+    if "--allow-multiple" not in sys.argv:
+        from app.single_instance import acquire, hold
+        _lock = acquire()
+        if _lock is None:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(
+                None,
+                "Already running",
+                "Datacenter Network Simulator is already running.\n\n"
+                "Only one instance can run per machine because it binds fixed "
+                "protocol ports (SNMP 161, BACnet 47808, gNMI, sFlow, Redfish).\n\n"
+                "Close the other instance first, or relaunch with "
+                "--allow-multiple to override.",
+            )
+            sys.exit(1)
+        hold(_lock)
 
     # Import MainWindow AFTER QApplication so all Qt objects in imported
     # modules (e.g. QColor in DEVICE_COLORS) are created with a live app.
