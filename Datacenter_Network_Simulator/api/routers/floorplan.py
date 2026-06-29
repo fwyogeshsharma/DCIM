@@ -31,31 +31,16 @@ _CACHE: dict = {"doc": None, "t": 0.0}
 _LOCK = threading.Lock()
 _TTL_S = 2.0
 
-# Empty doc — the Floor Plan view shows nothing until a plan is uploaded.
-_EMPTY = {
-    "schema": "dcim-floorplan/1.0",
-    "description": "No floor-plan loaded.",
-    "floorplan": {"units": "meters", "rack_footprint": {"width": 0.6, "depth": 1.2},
-                  "rooms": {}},
-    "racks": [],
-    "devices": [],
-}
-
-
 @router.get("")
-def live_floorplan(live: bool = False):
-    """Floor-plan document for the viewer.
-
-    Default: the uploaded plan if one was uploaded, else an EMPTY plan — the page
-    stays blank until the user uploads a floor-plan JSON. Pass ?live=1 to build it
-    live from the current devices instead (incl. fleet-added racks)."""
+def live_floorplan():
+    """Floor-plan document for the viewer. The Floor Plan page is always LIVE: by
+    default this is built from the current in-memory devices (incl. fleet-added
+    racks/servers), so 2D and 3D reflect the running topology. An uploaded
+    floor-plan (POST /floorplan/upload) overrides the live build until cleared."""
     s = AppState.get()
     uploaded = getattr(s, "uploaded_floorplan", None)
-    if uploaded is not None and not live:
+    if uploaded is not None:
         return uploaded
-    if not live:
-        return _EMPTY
-    # Explicit live build.
     if s.device_manager is None or s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
     with _LOCK:

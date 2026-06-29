@@ -249,6 +249,7 @@ async function pollLive(){
     const fr=await fetch(base+'/floorplan',{cache:'no-store',headers});
     if(fr.ok){ applyFloorplan(await fr.json()); refreshSelectors(); }
   }catch(e){ /* keep the last good structure */ }
+  LIVE.fetched=true;   // only now is the "no floor-plan" state meaningful
   // 2. Overlay live telemetry (joined to placement by device identity).
   try{
     const res=await fetch(base+'/devices',{cache:'no-store',headers});
@@ -1028,7 +1029,9 @@ function buildSidebar(){ const racks=racksByRoom[S.dc+' / '+S.room]||[];
 /* ===================== render dispatch ===================== */
 function render(){
   // Empty-state: nothing to draw until a floor-plan is loaded/uploaded.
-  $('#fpEmpty').style.display = (RACKS && RACKS.length) ? 'none' : 'flex';
+  // Only show "no floor-plan loaded" once a live fetch has actually completed —
+  // otherwise it flashes for a moment on open before the upload/live data lands.
+  $('#fpEmpty').style.display = (LIVE.fetched && !(RACKS && RACKS.length)) ? 'flex' : 'none';
   const m=METRIC[S.metric], note=$('#note');
   $('#metricwrap').style.display = S.heat ? '' : 'none';   // metric only matters with the heatmap on
   if(S.heat && !heatReady(m)){ note.style.display='block';

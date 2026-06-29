@@ -140,6 +140,7 @@ export const api = {
     })
   },
   clearFloorplan: ()                  => post('/floorplan/clear'),
+  getFloorplan:   ()                  => get('/floorplan'),
   breakLink:    (src: string, dst: string, layer = 'production') =>
     post('/topology/links/break',   { src_id: src, dst_id: dst, layer }),
   restoreLink:  (src: string, dst: string, layer = 'production') =>

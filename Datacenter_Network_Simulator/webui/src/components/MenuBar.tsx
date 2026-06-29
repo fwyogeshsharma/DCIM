@@ -233,6 +233,19 @@ export default function MenuBar() {
     e.target.value = ''
   }
 
+  async function saveFloorplan() {
+    try {
+      const data = await api.getFloorplan()   // live build: curated + fleet racks/devices
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = 'floorplan.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) { console.error(e) }
+  }
+
   function newTopology() {
     if (!confirm('Clear the current topology?')) return
     api.clearTopology().then(() => { fetchGraph(); fetchDevices() }).catch(console.error)
@@ -300,6 +313,7 @@ export default function MenuBar() {
     { label: 'Save Topology',   shortcut: 'Ctrl+S', action: saveTopology   },
     { label: '',                divider: true,      action: () => {}       },
     { label: 'Upload Floorplan…',                    action: openFloorplanDialog },
+    { label: 'Save Floorplan',                       action: saveFloorplan      },
     { label: '',                divider: true,      action: () => {}       },
     { label: 'Close Topology',                       action: closeTopology },
     { label: '',                divider: true,      action: () => {}       },
