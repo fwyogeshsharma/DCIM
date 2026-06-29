@@ -42,6 +42,7 @@ from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_server_capacity,
     TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
 )
+from core import hall_geometry as geo
 
 if TYPE_CHECKING:
     from api.state import AppState
@@ -68,13 +69,12 @@ class FleetConfig:
     # Per-rack server ceiling = min(leaf downlink ports, power_cap). power_cap is
     # the realistic ~10-15 kW binding limit; flip-invariant for dual-homing.
     power_cap: int = 22
-    # Growth policy (locked with the user): fill the racks that already exist in
-    # the current halls first; never enlarge an existing hall's footprint. Only
-    # once every existing rack is at capacity does the fleet open a *new* hall
-    # (room), and a new hall is itself capped at a fixed grid of
-    # max_racks_per_row x compute_rows_per_room racks before the next hall opens.
-    max_racks_per_row: int = 5         # racks per compute row in a NEW (fleet) hall
-    compute_rows_per_room: int = 2     # compute rows per NEW hall -> grid = rows x width
+    # Growth policy: each hall holds up to compute_rows_per_room x max_racks_per_row
+    # compute racks. The fleet fills the racks already in a hall, then adds racks
+    # up to that grid (curated racks count toward it), and only once every hall is
+    # full opens a brand-new hall — matching the enlarged halls' headroom.
+    max_racks_per_row: int = 5         # compute racks per row in a hall's grid
+    compute_rows_per_room: int = 3     # compute rows per hall -> grid = rows x width
     max_total_servers: int = 600
 
 
@@ -89,11 +89,12 @@ class FleetLifecycleEngine:
         self.day = 0
         self.history: list[DaySummary] = []
         self._seq = 0                  # monotonic suffix for generated names
-        # Halls (rooms) that existed when the engine first provisioned — their
-        # footprint is frozen: the fleet fills their racks but never adds a rack
-        # to them. Snapshotted lazily on the first provision so it captures the
-        # loaded topology, not anything the fleet later creates.
-        self._frozen_rooms: Optional[set] = None
+        # Halls the fleet has opened, so they're counted/filled like curated ones.
+        self._fleet_halls: set = set()
+        # Stable, DC-globally-unique rack_row label per (hall, virtual-row) the
+        # fleet fills — keeps (dc, row, num) rack keys from colliding across halls.
+        self._row_labels: dict = {}
+        self._row_label_seq = 1000
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
@@ -183,7 +184,6 @@ class FleetLifecycleEngine:
     # ── provision ────────────────────────────────────────────────────────────
 
     def _provision(self, summ: DaySummary) -> None:
-        self._snapshot_existing_rooms()
         want = self._lumpy(self.cfg.provision_lambda)
         for _ in range(want):
             if len(self._servers()) >= self.cfg.max_total_servers:
@@ -228,12 +228,6 @@ class FleetLifecycleEngine:
         """Physically-unique hall (room) id: (dc, floor, room)."""
         return (d.datacenter or "", str(d.floor or ""), d.room or "")
 
-    def _snapshot_existing_rooms(self) -> None:
-        """Freeze the set of halls that already host servers, once. These curated
-        halls are filled but never enlarged; new capacity goes to new halls."""
-        if self._frozen_rooms is None:
-            self._frozen_rooms = {self._room_key(d) for d in self._servers()}
-
     def _rack_devices(self, key: tuple) -> list[Device]:
         return [d for d in self.s.device_manager.get_all_devices() if self._rack_key(d) == key]
 
@@ -262,8 +256,8 @@ class FleetLifecycleEngine:
                 continue
             if count >= self._rack_cap(tor):
                 continue
-            pdu = self._neighbor(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
-            return {"key": key, "tor": tor, "pdu": pdu, "server_tmpl": tmpl}
+            pdus = self._neighbors(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
+            return {"key": key, "tor": tor, "pdus": pdus, "server_tmpl": tmpl}
         return None
 
     def _rack_cap(self, tor: Device) -> int:
@@ -275,82 +269,161 @@ class FleetLifecycleEngine:
 
     def _neighbor(self, dev: Device, layer: str, types: tuple) -> Optional[Device]:
         """First neighbour of *dev* on *layer* whose type is in *types*."""
+        nb = self._neighbors(dev, layer, types)
+        return nb[0] if nb else None
+
+    def _neighbors(self, dev: Device, layer: str, types: tuple) -> list:
+        """All neighbours of *dev* on *layer* whose type is in *types*."""
+        out = []
         try:
             adj = self.s.topology.graph[dev.id]
         except Exception:
-            return None
+            return out
         for nbr, edges in adj.items():
             if any(ed.get("layer") == layer for ed in edges.values()):
                 d = self.s.device_manager.get_device(nbr)
                 if d and d.device_type in types:
-                    return d
-        return None
+                    out.append(d)
+        return out
 
-    # ── capacity expansion (new racks live in NEW halls, never curated ones) ──
+    # ── capacity expansion (fill each hall's grid, then open a new hall) ──────
+    #
+    # The static floor-plan (tools/enlarge_halls.py) sizes the rooms; the fleet
+    # is in-memory only, so it works in a LOGICAL grid, not floor coordinates.
+    # Each hall holds up to compute_rows_per_room x max_racks_per_row compute
+    # racks. Curated racks count toward that cap; the fleet fills the remainder,
+    # then opens a new hall. Fleet racks get DC-globally-unique synthetic row
+    # labels (>= 1000) so their (dc, row, num) keys never collide with curated
+    # rows or with another hall's.
+
+    _FLEET_ROW_BASE = 1000
 
     def _expand_capacity(self, summ: DaySummary) -> Optional[dict]:
-        """Add a compute rack without enlarging any existing hall. First try to
-        grow a fleet-created hall that still has grid space; if none has room (or
-        none exists yet), open a brand-new hall. Returns a placement target."""
-        rack = self._add_rack_to_fleet_room(summ)
+        """Add a compute rack. First fill a hall (curated or fleet) that still has
+        grid space; only when every hall is full open a brand-new hall."""
+        rack = self._fill_hall_grid(summ)
         if rack is not None:
             return rack
-        return self._open_new_room(summ)
+        return self._open_new_hall(summ)
 
-    def _fleet_rooms(self) -> dict[tuple, list[Device]]:
-        """Halls the fleet itself created (i.e. not in the frozen snapshot),
-        mapped roomkey -> its server devices."""
-        frozen = self._frozen_rooms or set()
-        rooms: dict[tuple, list[Device]] = {}
-        for srv in self._servers():
-            rk = self._room_key(srv)
-            if rk in frozen:
-                continue
-            rooms.setdefault(rk, []).append(srv)
-        return rooms
+    def _row_label(self, rk: tuple, vrow) -> int:
+        """Stable, globally-unique rack_row label for a (hall, virtual-row)."""
+        key = (rk, vrow)
+        if key not in self._row_labels:
+            self._row_label_seq += 1
+            self._row_labels[key] = self._row_label_seq
+        return self._row_labels[key]
 
-    def _add_rack_to_fleet_room(self, summ: DaySummary) -> Optional[dict]:
-        """If a fleet-created hall still has space in its fixed grid
-        (max_racks_per_row x compute_rows_per_room), add the next rack to it."""
+    def _hall_back_y(self, rk: tuple) -> Optional[float]:
+        """Back-most curated compute-row floor_y in hall *rk* — the row behind
+        which the fleet lays its new rows. None for a fresh fleet hall."""
+        ys = [d.floor_y for d in self._servers()
+              if self._room_key(d) == rk and d.floor_y is not None
+              and (d.rack_row or 0) < self._FLEET_ROW_BASE]
+        return max(ys) if ys else None
+
+    def _rack_coords(self, rk: tuple, vrow: int, num: int):
+        """Floor-plan coords for fleet rack (vrow, num) in hall *rk*: behind the
+        curated compute (or from the front in a fresh hall), on the shared grid."""
+        back = self._hall_back_y(rk)
+        fy = round((back + geo.ROW_PITCH * (vrow + 1)) if back is not None
+                   else geo.row_y(1) + geo.ROW_PITCH * vrow, 4)
+        fx = geo.rack_x(num)
+        i = max(1, int(round((fy - 1.8) / geo.ROW_PITCH)) + 1)
+        hot, cold, facing = geo.row_aisles(i)
+        return fx, fy, hot, cold, facing
+
+    def _hall_compute_racks(self) -> dict:
+        """roomkey -> set of (rack_row, rack_num) racks that hold servers."""
+        from collections import defaultdict
+        racks: dict = defaultdict(set)
+        for s in self._servers():
+            racks[self._room_key(s)].add((s.rack_row or 0, s.rack_num or 0))
+        return racks
+
+    def _hall_infra(self, rk: tuple) -> Optional[dict]:
+        """Resolve a hall's shared kit for cloning a new compute rack into it:
+        a server + leaf template, both rack-PDU feeds (RPP A/B), the OOB switch
+        and the spine set. None if the hall isn't a wired compute hall."""
+        servers = [s for s in self._servers() if self._room_key(s) == rk]
+        if not servers:
+            return None
+        srv_tmpl = servers[0]
+        leaf = self._neighbor(srv_tmpl, "production", (DeviceType.SWITCH,))
+        if leaf is None:
+            return None
+        oob = self._neighbor(leaf, "management", (DeviceType.OOB_SWITCH,))
+        spines = []
+        try:
+            for nbr in self.s.topology.graph.neighbors(leaf.id):
+                d = self.s.device_manager.get_device(nbr)
+                if d and d.device_type == DeviceType.SWITCH and "-SP" in (d.name or ""):
+                    spines.append(d)
+        except Exception:
+            pass
+        rpps = [d for d in self.s.device_manager.get_all_devices()
+                if d.device_type == DeviceType.RPP and self._room_key(d) == rk]
+        rpp_a = next((r for r in rpps if r.name and "A" in r.name.rsplit("-", 1)[-1]), None)
+        rpp_b = next((r for r in rpps if r.name and "B" in r.name.rsplit("-", 1)[-1]), None)
+        if rpp_a is None and rpps:
+            rpp_a = rpps[0]
+        if rpp_b is None and len(rpps) > 1:
+            rpp_b = rpps[1]
+        return {"srv_tmpl": srv_tmpl, "leaf_tmpl": leaf, "oob": oob,
+                "spines": spines, "rpp_a": rpp_a, "rpp_b": rpp_b,
+                "pdu_tmpl": self._dc_pdu(srv_tmpl.datacenter or "")}
+
+    def _fill_hall_grid(self, summ: DaySummary) -> Optional[dict]:
+        """Add the next compute rack to a hall that's still under its grid cap.
+        Most-occupied hall first, so one hall fills before the next is touched."""
         width = max(1, self.cfg.max_racks_per_row)
         grid = width * max(1, self.cfg.compute_rows_per_room)
-        # Most-full fleet hall first, so one hall fills before the next is touched.
-        for rk, servers in sorted(self._fleet_rooms().items(),
-                                  key=lambda kv: (-len(kv[1]), tuple(map(str, kv[0])))):
-            racks = {(s.rack_row or 0, s.rack_num or 0) for s in servers}
-            if len(racks) >= grid:
+        racks = self._hall_compute_racks()
+        for rk in sorted(racks, key=lambda k: (-len(racks[k]), tuple(map(str, k)))):
+            used = racks[rk]
+            if len(used) >= grid:
+                continue                              # hall full to its cap
+            curated = sum(1 for (rr, _n) in used if rr < self._FLEET_ROW_BASE)
+            fleet_used = {(rr, rn) for (rr, rn) in used if rr >= self._FLEET_ROW_BASE}
+            if len(fleet_used) >= max(0, grid - curated):
+                continue                              # no fleet room left in cap
+            infra = self._hall_infra(rk)
+            if infra is None:
                 continue
-            tmpl = servers[0]
-            tor_tmpl = self._neighbor(tmpl, "production", (DeviceType.SWITCH,))
-            if tor_tmpl is None:
-                continue
-            dc, floor, room = rk
-            base_row = min(s.rack_row or 0 for s in servers)
-            idx = len(racks)                       # next grid slot, fill in order
-            new_row = base_row + idx // width
-            new_num = idx % width + 1
-            return self._build_rack(dc, floor, room, new_row, new_num,
-                                    tor_tmpl, tmpl, summ)
+            idx = len(fleet_used)                     # next fleet slot, in order
+            vrow = idx // width
+            row = self._row_label(rk, vrow)
+            num = idx % width + 1
+            return self._build_compute_rack(rk, row, num, infra, summ, vrow)
         return None
 
-    def _open_new_room(self, summ: DaySummary) -> Optional[dict]:
-        """Commission a brand-new server hall in the busiest DC and seed it with
-        its first compute rack. The hall gets the next free floor and the next
-        'Server Hall <letter>'; its rows use DC-global-unique numbers so a rack's
-        (dc, row, num) key never collides with another hall's."""
+    def _open_new_hall(self, summ: DaySummary) -> Optional[dict]:
+        """Commission a brand-new server hall in the busiest DC: a fresh RPP pair
+        (fed from the DC UPS) plus the first compute rack. Subsequent provisions
+        fill its grid via _fill_hall_grid."""
         dc = self._busiest_dc()
         if dc is None:
             return None
-        srv_tmpl = next((s for s in self._servers() if (s.datacenter or "") == dc), None)
-        if srv_tmpl is None:
+        src_rk = self._busiest_hall(dc)
+        if src_rk is None:
             return None
-        tor_tmpl = self._neighbor(srv_tmpl, "production", (DeviceType.SWITCH,))
-        if tor_tmpl is None:
+        infra = self._hall_infra(src_rk)
+        if infra is None or infra["rpp_a"] is None:
             return None
         floor = self._next_floor(dc)
         room = self._next_hall_name(dc)
-        base_row = self._next_dc_row(dc)
-        return self._build_rack(dc, floor, room, base_row, 1, tor_tmpl, srv_tmpl, summ)
+        rk = (dc, floor, room)
+        # Fresh RPP pair fed by the same UPS units the source RPPs draw from, so
+        # the new hall's load still reaches the UPS/generator in the power model.
+        # RPP/CRAH sit at the back wall, one row behind the last compute row.
+        back_y = round(geo.row_y(1) + geo.ROW_PITCH * self.cfg.compute_rows_per_room, 4)
+        new_infra = dict(infra)
+        new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", back_y)
+        new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", back_y) if infra["rpp_b"] else None
+        self._fleet_halls.add(rk)
+        self._log(f"[Fleet] opened new hall {dc}/F{floor}/{room} "
+                  f"(grid {self.cfg.compute_rows_per_room}x{self.cfg.max_racks_per_row})")
+        return self._build_compute_rack(rk, self._row_label(rk, 0), 1, new_infra, summ, 0)
 
     def _busiest_dc(self) -> Optional[str]:
         counts: dict[str, int] = {}
@@ -360,9 +433,16 @@ class FleetLifecycleEngine:
             return None
         return max(sorted(counts), key=lambda d: counts[d])
 
+    def _busiest_hall(self, dc: str) -> Optional[tuple]:
+        counts: dict = {}
+        for s in self._servers():
+            if (s.datacenter or "") == dc:
+                counts[self._room_key(s)] = counts.get(self._room_key(s), 0) + 1
+        if not counts:
+            return None
+        return max(sorted(counts), key=lambda k: counts[k])
+
     def _next_floor(self, dc: str) -> str:
-        """Next numeric floor above the DC's existing numeric floors (G/Roof are
-        ignored). Halls live on numbered floors, one hall per floor."""
         nums = []
         for d in self.s.device_manager.get_all_devices():
             if (d.datacenter or "") != dc:
@@ -373,7 +453,6 @@ class FleetLifecycleEngine:
         return str((max(nums) if nums else 0) + 1)
 
     def _next_hall_name(self, dc: str) -> str:
-        """Next 'Server Hall <letter>' after the highest existing one in the DC."""
         letters = []
         prefix = "Server Hall "
         for d in self.s.device_manager.get_all_devices():
@@ -385,50 +464,75 @@ class FleetLifecycleEngine:
         nxt = chr(ord(max(letters)) + 1) if letters else "A"
         return f"{prefix}{nxt}"
 
-    def _next_dc_row(self, dc: str) -> int:
-        """One past the highest rack_row anywhere in the DC, so new-hall rows are
-        globally unique within the DC (keeps (dc, row, num) rack keys distinct)."""
-        rows = [d.rack_row or 0 for d in self.s.device_manager.get_all_devices()
-                if (d.datacenter or "") == dc]
-        return (max(rows) if rows else 0) + 1
-
-    def _build_rack(self, dc: str, floor: str, room: str, row: int, num: int,
-                    tor_tmpl: Device, srv_tmpl: Device,
-                    summ: DaySummary) -> Optional[dict]:
-        """Materialise a new compute rack (ToR leaf + rack PDU) at the given hall
-        location and return it as a placement target. The ToR clones *tor_tmpl*
-        (same DC vendor/model/spine) and is born MLAG-ready; the PDU clones the
-        DC's power kit. Both are commissioned onto the live protocol servers."""
-        pdu_tmpl = self._dc_pdu(dc)
-        upstream = self._uplink_for(tor_tmpl)
-        tor = self._clone(tor_tmpl, dc, row, num, TOR_A_UNIT, prefix="tor",
-                          floor=floor, room=room)
-        if tor is None:
+    def _clone_rpp(self, tmpl: Device, rk: tuple, side: str,
+                   y: Optional[float] = None) -> Optional[Device]:
+        """Clone a Remote Power Panel into hall *rk* and feed it from the same UPS
+        the template draws from, so downstream rack load reaches the UPS."""
+        dc, floor, room = rk
+        ups = self._neighbor(tmpl, "power", (DeviceType.UPS,))
+        rpp = self._clone(tmpl, dc, self._row_label(rk, "rpp"),
+                          1 if side == "A" else 2, PDU_UNIT,
+                          prefix=f"rpp{side.lower()}", floor=floor, room=room,
+                          fx=geo.rack_x(1 if side == "A" else 2), fy=y)
+        if rpp is None:
             return None
-        # New leaf is born MLAG-ready: realistic 48x25G+6x100G port-roles and a
-        # reserved U41 peer slot, so the future dual-homing flip is non-disruptive.
+        if ups is not None:
+            try:
+                self.s.topology.add_link(ups.id, rpp.id, layer="power")
+            except Exception:
+                pass
+        self._commission(rpp)
+        return rpp
+
+    def _build_compute_rack(self, rk: tuple, row: int, num: int, infra: dict,
+                            summ: DaySummary, vrow: int) -> Optional[dict]:
+        """Materialise a compute rack (leaf + dual rack PDUs) in hall *rk*, fully
+        wired: leaf → every spine + the OOB switch; each PDU → an RPP feed so
+        server load reaches the UPS. Placed on the floor grid at virtual row
+        *vrow*. Returns the placement target for servers."""
+        dc, floor, room = rk
+        fx, fy, hot, cold, facing = self._rack_coords(rk, vrow, num)
+        leaf = self._clone(infra["leaf_tmpl"], dc, row, num, TOR_A_UNIT,
+                           prefix="tor", floor=floor, room=room,
+                           fx=fx, fy=fy, hot=hot, cold=cold, facing=facing)
+        if leaf is None:
+            return None
         self.s.device_manager.update_device(
-            tor.id,
-            interface_groups=leaf_interface_groups(tor.model_name or "",
-                                                   tor.interface_count),
-            mlag_ready=True,
-            mlag_peer_unit=TOR_B_UNIT,
-        )
-        if upstream is not None:
-            self.s.topology.add_link(tor.id, upstream.id, layer="production")
-        # Rack PDU is a 0U vertical side-rail mount (no RU consumed).
-        pdu = (self._clone(pdu_tmpl, dc, row, num, PDU_UNIT, prefix="pdu",
-                           floor=floor, room=room) if pdu_tmpl else None)
+            leaf.id,
+            interface_groups=leaf_interface_groups(leaf.model_name or "",
+                                                   leaf.interface_count),
+            mlag_ready=True, mlag_peer_unit=TOR_B_UNIT)
+        try:
+            for sp in infra.get("spines") or []:
+                self.s.topology.add_link(leaf.id, sp.id, layer="production")
+            if infra.get("oob") is not None:
+                self.s.topology.add_link(leaf.id, infra["oob"].id, layer="management")
+        except Exception as e:
+            self._log(f"[Fleet] leaf uplink {leaf.name}: {e}")
 
-        # New ToR + PDU also answer SNMP/gNMI once commissioned.
-        self._commission(tor)
-        if pdu is not None:
+        pdus = []
+        for side, rpp in (("A", infra.get("rpp_a")), ("B", infra.get("rpp_b"))):
+            if infra.get("pdu_tmpl") is None:
+                break
+            pdu = self._clone(infra["pdu_tmpl"], dc, row, num, PDU_UNIT,
+                              prefix=f"pdu{side.lower()}", floor=floor, room=room,
+                              fx=fx, fy=fy, hot=hot, cold=cold, facing=facing)
+            if pdu is None:
+                continue
+            if rpp is not None:                       # PDU drinks from the RPP feed
+                try:
+                    self.s.topology.add_link(rpp.id, pdu.id, layer="power")
+                except Exception:
+                    pass
             self._commission(pdu)
+            pdus.append(pdu)
 
+        self._commission(leaf)
         summ.expanded_racks.append(f"{dc}:{room}:R{row}:RACK{num}")
-        self._log(f"[Fleet] new rack {dc}/F{floor}/{room} R{row} RACK{num} (ToR+PDU)")
+        self._log(f"[Fleet] new rack {dc}/F{floor}/{room} R{row} RACK{num} (leaf+{len(pdus)}PDU)")
         return {"key": (dc, row, num), "floor": floor, "room": room,
-                "tor": tor, "pdu": pdu, "server_tmpl": srv_tmpl}
+                "tor": leaf, "pdus": pdus, "server_tmpl": infra["srv_tmpl"],
+                "fx": fx, "fy": fy, "hot": hot, "cold": cold, "facing": facing}
 
     def _dc_pdu(self, dc: str) -> Optional[Device]:
         """A rack PDU in *dc* to clone the new rack's PDU from (vendor-consistent
@@ -489,26 +593,46 @@ class FleetLifecycleEngine:
         # New halls/racks carry an explicit floor+room; filling an existing rack
         # leaves them None so the server inherits its same-rack template's hall.
         dev = self._clone(tmpl, dc, row, num, unit, prefix="srv",
-                          floor=rack.get("floor"), room=rack.get("room"))
+                          floor=rack.get("floor"), room=rack.get("room"),
+                          fx=rack.get("fx"), fy=rack.get("fy"), hot=rack.get("hot"),
+                          cold=rack.get("cold"), facing=rack.get("facing"))
         if dev is None:
             return None
-        # Wire it in: production uplink to the rack ToR, power feed from the PDU.
+        # Wire it in: production uplink to the rack ToR, dual A/B power feeds from
+        # the rack PDUs — the power-layer edges are what the live load cascade
+        # follows up to the RPP/UPS, so this is what makes new IT load show on the
+        # upstream power meters.
+        pdus = rack.get("pdus") or ([rack["pdu"]] if rack.get("pdu") else [])
         try:
             self.s.topology.add_link(dev.id, rack["tor"].id, layer="production")
-            if rack.get("pdu"):
-                self.s.topology.add_link(dev.id, rack["pdu"].id, layer="power")
+            for p in pdus:
+                self.s.topology.add_link(dev.id, p.id, layer="power")
         except Exception as e:
             self._log(f"[Fleet] wiring {dev.name} failed: {e}")
+        # Record the A/B feed ids too (DCIM/Redfish power-source view + redundancy
+        # split); the cascade itself runs off the edges above.
+        upd = {}
+        if len(pdus) >= 1:
+            upd["power_source_a"] = pdus[0].id
+        if len(pdus) >= 2:
+            upd["power_source_b"] = pdus[1].id
+        if upd:
+            self.s.device_manager.update_device(dev.id, **upd)
         self._commission(dev)   # bring it online on SNMP/gNMI/Redfish
         return dev.name
 
     def _clone(self, tmpl: Device, dc: str, row: int, num: int, unit: int,
                prefix: str, floor: Optional[str] = None,
-               room: Optional[str] = None) -> Optional[Device]:
+               room: Optional[str] = None, fx: Optional[float] = None,
+               fy: Optional[float] = None, hot: Optional[str] = None,
+               cold: Optional[str] = None, facing: Optional[str] = None
+               ) -> Optional[Device]:
         """Create a new device cloned from *tmpl*'s vendor/model/port profile,
         placed at the given rack location, and register it in manager+topology.
         *floor*/*room* override the template's hall (used when the rack lives in a
-        new hall); left None they inherit the template's floor/room."""
+        new hall); *fx/fy/hot/cold/facing* set the floor-plan coordinates so the
+        device renders in the right spot. Any left None inherits the template's
+        value (so filling an existing rack copies its peers' placement)."""
         ip = self._alloc_ip()
         if ip is None:
             self._log("[Fleet] IP pool exhausted")
@@ -534,6 +658,11 @@ class FleetLifecycleEngine:
                 rack_row=row,
                 rack_num=num,
                 rack_unit=unit,
+                floor_x=fx if fx is not None else getattr(tmpl, "floor_x", None),
+                floor_y=fy if fy is not None else getattr(tmpl, "floor_y", None),
+                hot_aisle=hot if hot is not None else getattr(tmpl, "hot_aisle", ""),
+                cold_aisle=cold if cold is not None else getattr(tmpl, "cold_aisle", ""),
+                rack_facing=facing if facing is not None else getattr(tmpl, "rack_facing", ""),
                 # No sys_location_override: let Device.sys_location compute the
                 # full country/city/DC/floor/room/rack string so fleet-added
                 # devices match the format of curated peers.

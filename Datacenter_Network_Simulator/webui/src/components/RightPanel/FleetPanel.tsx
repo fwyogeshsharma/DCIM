@@ -27,9 +27,9 @@ const CFG_FIELDS: { key: keyof FleetConfig; label: string; step?: number; hint: 
   { key: 'minutes_per_day',      label: 'Minutes / day',      step: 0.5, hint: 'wall-clock minutes that equal one sim-day' },
   { key: 'provision_lambda',     label: 'Provision / day',    hint: 'avg servers added on a normal day' },
   { key: 'decommission_lambda',  label: 'Decommission / day', hint: 'avg servers removed (kept below provision = net growth)' },
-  { key: 'power_cap',            label: 'Power cap / rack',   hint: 'per-rack server cap (binds with leaf downlink ports); existing racks fill to min(downlinks, this) before any new rack opens' },
-  { key: 'max_racks_per_row',    label: 'Racks / row (new hall)', hint: 'row width of a newly-opened hall; existing halls are never enlarged' },
-  { key: 'compute_rows_per_room', label: 'Rows / new hall',   hint: 'compute rows per new hall; grid = racks/row × this, then the next hall opens' },
+  { key: 'power_cap',            label: 'Power cap / rack',   hint: 'per-rack server cap (binds with leaf downlink ports); a rack fills to min(downlinks, this) before another rack is added' },
+  { key: 'max_racks_per_row',    label: 'Racks / row',        hint: 'compute racks per row in a hall grid' },
+  { key: 'compute_rows_per_room', label: 'Rows / hall',       hint: 'each hall holds racks/row × this compute racks (curated racks count); fleet fills a hall to that grid, then opens a new hall' },
   { key: 'max_total_servers',    label: 'Max total servers',  hint: 'global ceiling — provisioning pauses here' },
 ]
 

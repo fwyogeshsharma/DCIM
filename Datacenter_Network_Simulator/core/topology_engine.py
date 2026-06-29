@@ -20,6 +20,10 @@ class TopologyEngine:
     def __init__(self):
         self.graph = nx.MultiGraph()
         self._node_positions: Dict[str, Tuple[float, float]] = {}
+        # Floor-plan extent block (rooms/aisles/pitches) from the loaded topology.
+        # Not graph data — kept so a live floor-plan export can pair the room
+        # geometry with the current (incl. fleet-added) device placements.
+        self.floorplan: Dict[str, Any] = {}
 
     # ------------------------------------------------------------------ #
     #  Nodes (Devices)                                                     #
@@ -287,12 +291,16 @@ class TopologyEngine:
                 "layer": data.get("layer", "production"),
             })
 
-        return {"nodes": nodes, "edges": edges}
+        out: Dict[str, Any] = {"nodes": nodes, "edges": edges}
+        if self.floorplan:
+            out["floorplan"] = self.floorplan
+        return out
 
     def from_dict(self, data: Dict[str, Any]):
         from core.device_manager import Device
         self.graph.clear()
         self._node_positions.clear()
+        self.floorplan = data.get("floorplan", {}) or {}
 
         for node_data in data.get("nodes", []):
             dev_data = node_data.get("device")

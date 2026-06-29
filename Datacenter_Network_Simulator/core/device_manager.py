@@ -407,6 +407,8 @@ class Device:
     # Power chain
     power_draw_w: int = 0   # typical power draw in watts
     power_source: str = ""  # device ID of rack PDU feeding this device
+    power_source_a: str = ""  # device ID of A-side rack PDU (dual-feed)
+    power_source_b: str = ""  # device ID of B-side rack PDU (dual-feed)
     ups_backup: str = ""    # device ID of UPS protecting this device
     power_state: str = "On"  # chassis power ("On"/"Off") — driven by Redfish ops
 
@@ -419,6 +421,16 @@ class Device:
     rack_row: int = 0
     rack_num: int = 0
     rack_unit: int = 0
+
+    # Floor-plan placement (room-local metres + aisle containment). NOT device
+    # telemetry — a device never reports these; they're the DCIM asset layer the
+    # floor-plan exporter reads. None on devices that aren't floor-placed.
+    floor_x: Optional[float] = None     # rack centre x within the room (m)
+    floor_y: Optional[float] = None     # rack centre y within the room (m)
+    rack_facing: str = ""               # 'N' (faces lower y) or 'S' (faces higher y)
+    cold_aisle: str = ""                # cold-aisle id this rack fronts (e.g. CA1)
+    hot_aisle: str = ""                 # hot-aisle id behind this rack (e.g. HA1)
+    sub_floor: bool = False             # device sits in the raised-floor plenum
 
     # Dual-homing (MLAG/vPC) forward-compat — see core/rack_capacity.py.
     # Single-homed today; these only mark a leaf rack as ready for a future 2nd

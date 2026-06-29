@@ -164,12 +164,12 @@ HEAD = r"""<!doctype html>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
-const FLOORPLAN = """
+const FLOORPLAN_EMBEDDED = """
 
 TAIL = r""";
-/* ===================== data indexing ===================== */
-const FP = FLOORPLAN.floorplan, ROOMS = FP.rooms, RACKS = FLOORPLAN.racks, DEVS = FLOORPLAN.devices;
-const FOOT = FP.rack_footprint || {width:0.6, depth:1.2};
+/* ===================== data indexing (rebuilt on live refresh) ===================== */
+let FLOORPLAN = FLOORPLAN_EMBEDDED;
+let FP, ROOMS, RACKS, DEVS, FOOT, devByRack = {}, rackById = {}, racksByRoom = {}, DCs = [];
 const TYPE = {
   router:['router','#ff66b3'], firewall:['firewall','#ef4444'], load_balancer:['LB','#fb923c'],
   switch:['switch','#3b82f6'], server:['server','#4f9dff'], oob_switch:['OOB','#7aa2ff'],
@@ -183,21 +183,29 @@ const EMO = {router:'R',firewall:'FW',load_balancer:'LB',switch:'SW',server:'SRV
   chiller:'CHL',pump:'PMP',cooling_tower:'CT',valve:'VLV',cdu:'CDU'};
 function tcolor(t){ return (TYPE[t]||['?','#888'])[1]; }
 
-const devByRack = {};
-for(const d of DEVS){ (devByRack[d.rack_id]=devByRack[d.rack_id]||[]).push(d); }
-for(const k in devByRack){ devByRack[k].sort((a,b)=>(b.rack_unit||0)-(a.rack_unit||0)); }
-const rackById = {}; for(const r of RACKS) rackById[r.rack_id]=r;
-
 function roomKey(r){ return r.datacenter + ' / ' + r.room; }
-const racksByRoom = {};
-for(const r of RACKS){ (racksByRoom[roomKey(r)]=racksByRoom[roomKey(r)]||[]).push(r); }
 function roomGeom(dc, room){ return ROOMS[dc + '/' + room] || {width_m:6,depth_m:6,aisles:[]}; }
+
+// (Re)build every data index from a floor-plan document — called once for the
+// embedded snapshot and again whenever a live /floorplan refresh arrives.
+function applyFloorplan(data){
+  FLOORPLAN = data || FLOORPLAN_EMBEDDED;
+  FP = FLOORPLAN.floorplan; ROOMS = FP.rooms; RACKS = FLOORPLAN.racks || []; DEVS = FLOORPLAN.devices || [];
+  FOOT = FP.rack_footprint || {width:0.6, depth:1.2};
+  devByRack = {};
+  for(const d of DEVS){ (devByRack[d.rack_id]=devByRack[d.rack_id]||[]).push(d); }
+  for(const k in devByRack){ devByRack[k].sort((a,b)=>(b.rack_unit||0)-(a.rack_unit||0)); }
+  rackById = {}; for(const r of RACKS) rackById[r.rack_id]=r;
+  racksByRoom = {};
+  for(const r of RACKS){ (racksByRoom[roomKey(r)]=racksByRoom[roomKey(r)]||[]).push(r); }
+  DCs = [...new Set(RACKS.map(r=>r.datacenter))].sort();
+}
+applyFloorplan(FLOORPLAN_EMBEDDED);
 
 /* ===================== state ===================== */
 const S = { dc:null, room:null, view:'2d', heat:false, metric:'power', sel:null, selDev:null, cut:false };
 const $ = s=>document.querySelector(s);
 
-const DCs = [...new Set(RACKS.map(r=>r.datacenter))].sort();
 function roomsFor(dc){ return [...new Set(RACKS.filter(r=>r.datacenter===dc).map(r=>r.room))]; }
 
 function fillSelect(el, items, val){ el.innerHTML=''; for(const it of items){
@@ -210,10 +218,27 @@ function fillSelect(el, items, val){ el.innerHTML=''; for(const it of items){
 const HASH = new URLSearchParams(location.hash.slice(1));
 const AUTH_TOKEN = HASH.get('token') || '';
 const LIVE = { on:false, ok:false, byId:{}, byName:{}, timer:null, count:0 };
+// Re-fill the DC/room pickers after the structure changes, keeping the current
+// selection when it still exists (so a live refresh doesn't snap the view away).
+function refreshSelectors(){
+  if(!DCs.includes(S.dc)) S.dc = DCs[0];
+  fillSelect($('#dc'), DCs, S.dc);
+  const rs = roomsFor(S.dc);
+  if(!rs.includes(S.room)) S.room = rs[0];
+  fillSelect($('#room'), rs, S.room);
+}
 async function pollLive(){
   const base=$('#api').value.replace(/\/+$/,'');
+  const headers = AUTH_TOKEN ? {Authorization:'Bearer '+AUTH_TOKEN} : {};
+  // 1. Refresh the floor-plan STRUCTURE from the live simulator so racks the
+  // fleet engine added after load (new rows, new halls) appear; fall back to the
+  // embedded snapshot if the API is unreachable.
   try{
-    const headers = AUTH_TOKEN ? {Authorization:'Bearer '+AUTH_TOKEN} : {};
+    const fr=await fetch(base+'/floorplan',{cache:'no-store',headers});
+    if(fr.ok){ applyFloorplan(await fr.json()); refreshSelectors(); }
+  }catch(e){ /* keep the last good structure */ }
+  // 2. Overlay live telemetry (joined to placement by device identity).
+  try{
     const res=await fetch(base+'/devices',{cache:'no-store',headers});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const j=await res.json(); const list=j.devices||j; LIVE.byId={}; LIVE.byName={};
