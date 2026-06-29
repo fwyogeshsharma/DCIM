@@ -9,6 +9,11 @@ echo.
 
 cd /d "%~dp0"
 
+REM Capture all args (e.g. --headless --port 8001) so they survive the admin
+REM self-elevation relaunch below — otherwise the elevated instance starts with
+REM no args and falls through to the GUI.
+set "ARGS=%*"
+
 REM ---- Optional --recreate-venv: delete .venv so it is rebuilt fresh below ----
 if /i "%~1"=="--recreate-venv" (
     if exist .venv (
@@ -41,7 +46,11 @@ REM      add the simulated device IPs via AddIPAddress). Self-elevate if not. --
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo Requesting administrator privileges...
-    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -WorkingDirectory '%~dp0' -Verb RunAs"
+    if defined ARGS (
+        powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -ArgumentList '!ARGS!' -WorkingDirectory '%~dp0' -Verb RunAs"
+    ) else (
+        powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -WorkingDirectory '%~dp0' -Verb RunAs"
+    )
     exit /b
 )
 
