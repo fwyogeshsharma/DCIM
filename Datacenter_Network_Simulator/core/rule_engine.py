@@ -197,6 +197,10 @@ class RuleEngine:
 
         # Per-device, per-rule state
         # device_id (or "rack:{rack_id}") → rule_state_key → RuleState
+        # Guarded by _states_lock: the tick thread grows it (new fleet devices)
+        # while API threads iterate it — without the lock that races
+        # ("dictionary changed size during iteration").
+        self._states_lock = threading.Lock()
         self._rule_states: Dict[str, Dict[str, RuleState]] = defaultdict(dict)
 
         # Previous interface oper_status per device
@@ -320,8 +324,8 @@ class RuleEngine:
         """
         total = self._manual_fire_counts.get(rule_name, 0)
         prefix = f"{rule_name}:"
-        for device_states in self._rule_states.values():
-            for key, state in device_states.items():
+        for items in self._states_snapshot():
+            for key, state in items:
                 if key == rule_name or key.startswith(prefix):
                     total += state.fired_count
         return total
@@ -329,8 +333,8 @@ class RuleEngine:
     def get_grand_total_fired(self) -> int:
         """Total fires across all rules and all devices, including manual fires."""
         total = sum(self._manual_fire_counts.values())
-        for device_states in self._rule_states.values():
-            for state in device_states.values():
+        for items in self._states_snapshot():
+            for _key, state in items:
                 total += state.fired_count
         return total
 
@@ -338,8 +342,8 @@ class RuleEngine:
         """Return the most recent last_fire_ts string across all state entries for this rule."""
         latest = ""
         prefix = f"{rule_name}:"
-        for device_states in self._rule_states.values():
-            for key, state in device_states.items():
+        for items in self._states_snapshot():
+            for key, state in items:
                 if key == rule_name or key.startswith(prefix):
                     if state.last_fire_ts and state.last_fire_ts > latest:
                         latest = state.last_fire_ts
@@ -348,13 +352,14 @@ class RuleEngine:
     def reset_fired_counts(self):
         """Zero all fired counts and last-fire timestamps across every rule and device."""
         self._manual_fire_counts.clear()
-        for device_states in self._rule_states.values():
-            for state in device_states.values():
+        for items in self._states_snapshot():
+            for _key, state in items:
                 state.fired_count = 0
                 state.last_fire_ts = ""
 
     def clear_device_state(self, device_id: str):
-        self._rule_states.pop(device_id, None)
+        with self._states_lock:
+            self._rule_states.pop(device_id, None)
         self._prev_iface.pop(device_id, None)
         self._prev_metrics.pop(device_id, None)
         self._prev_bgp.pop(device_id, None)
@@ -481,11 +486,22 @@ class RuleEngine:
 
     # ── State helpers ─────────────────────────────────────────────────────────
 
+    def _states_snapshot(self) -> list:
+        """A consistent copy of the per-device rule-state entries, taken under the
+        lock so readers never iterate the live dicts while the tick thread grows
+        them. Returns a list of [(key, RuleState), ...] per device."""
+        with self._states_lock:
+            return [list(ds.items()) for ds in self._rule_states.values()]
+
     def _get_state(self, state_key: str, rule_name: str) -> RuleState:
-        d = self._rule_states[state_key]
-        if rule_name not in d:
-            d[rule_name] = RuleState()
-        return d[rule_name]
+        # Lock only the structural insert (new device/rule key) so it can't grow
+        # the dict mid-iteration in a reader. Field updates on the returned state
+        # need no lock — they don't change dict size.
+        with self._states_lock:
+            d = self._rule_states[state_key]
+            if rule_name not in d:
+                d[rule_name] = RuleState()
+            return d[rule_name]
 
     def _can_fire(self, state: RuleState, rule: Rule, now: float) -> bool:
         # Cooldown: a sustained threshold alert re-notifies at most once per
