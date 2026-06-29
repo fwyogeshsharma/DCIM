@@ -420,6 +420,13 @@ class Device:
     rack_num: int = 0
     rack_unit: int = 0
 
+    # Dual-homing (MLAG/vPC) forward-compat — see core/rack_capacity.py.
+    # Single-homed today; these only mark a leaf rack as ready for a future 2nd
+    # ToR so the flip is non-disruptive. mlag_ready=True on a leaf means its rack
+    # reserves mlag_peer_unit (RU) and spare uplink ports for the peer leaf.
+    mlag_ready: bool = False
+    mlag_peer_unit: int = 0
+
     # Dynamic metrics (randomized per device)
     cpu_usage: int = field(default_factory=lambda: random.randint(5, 95))
     memory_total: int = field(default_factory=lambda: random.choice([2, 4, 8, 16, 32]) * 1024 * 1024 * 1024)

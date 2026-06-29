@@ -38,15 +38,17 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
 from core.device_manager import Device, DeviceType, Vendor
+from core.rack_capacity import (
+    leaf_interface_groups, leaf_port_roles, rack_server_capacity,
+    TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
+)
 
 if TYPE_CHECKING:
     from api.state import AppState
 
-# Rack geometry: servers fill from the bottom; ToR + PDU sit at the top.
-_RACK_UNITS = 42
-_TOR_UNIT = 42
-_PDU_UNIT = 41
-_FIRST_SERVER_UNIT = 1
+# Rack geometry (shared contract — see core/rack_capacity.py):
+#   U42 = ToR-A (leaf)   U41 = reserved for future MLAG peer leaf (empty)
+#   PDUs = 0U vertical    servers fill U1..U40 from the bottom.
 
 
 @dataclass
@@ -63,7 +65,9 @@ class FleetConfig:
     minutes_per_day: float = 5.0       # wall-clock minutes that equal one sim-day
     provision_lambda: int = 3          # avg servers provisioned on a normal day
     decommission_lambda: int = 1       # avg servers decommissioned (net-positive)
-    max_servers_per_rack: int = 20
+    # Per-rack server ceiling = min(leaf downlink ports, power_cap). power_cap is
+    # the realistic ~10-15 kW binding limit; flip-invariant for dual-homing.
+    power_cap: int = 22
     max_racks_per_row: int = 12
     max_total_servers: int = 600
 
@@ -189,6 +193,13 @@ class FleetLifecycleEngine:
     def _rack_key(d: Device) -> tuple:
         return (d.datacenter or "", d.rack_row or 0, d.rack_num or 0)
 
+    @staticmethod
+    def _phys_row_key(d: Device) -> tuple:
+        """Physically-unique row id. A DC can have several halls/floors that
+        reuse row numbers, so include floor + room — otherwise two different
+        physical rows collapse into one and a new rack gets mislocated."""
+        return (d.datacenter or "", str(d.floor or ""), d.room or "", d.rack_row or 0)
+
     def _rack_devices(self, key: tuple) -> list[Device]:
         return [d for d in self.s.device_manager.get_all_devices() if self._rack_key(d) == key]
 
@@ -206,18 +217,27 @@ class FleetLifecycleEngine:
             racks[self._rack_key(srv)] = racks.get(self._rack_key(srv), 0) + 1
         # Least-full first, so racks fill evenly. A rack's ToR/PDU are found by
         # following an existing peer server's real uplink — robust whether the
-        # ToR is per-rack or per-row.
+        # ToR is per-rack or per-row. Capacity is bound by the leaf's server-
+        # facing downlink ports (or the power cap), not a flat number.
         for key, count in sorted(racks.items(), key=lambda kv: kv[1]):
-            if count >= self.cfg.max_servers_per_rack:
-                continue
             tmpl = self._find_in_rack(key, DeviceType.SERVER)
             if tmpl is None:
                 continue
             tor = self._neighbor(tmpl, "production", (DeviceType.SWITCH,))
+            if tor is None:
+                continue
+            if count >= self._rack_cap(tor):
+                continue
             pdu = self._neighbor(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
-            if tor:
-                return {"key": key, "tor": tor, "pdu": pdu, "server_tmpl": tmpl}
+            return {"key": key, "tor": tor, "pdu": pdu, "server_tmpl": tmpl}
         return None
+
+    def _rack_cap(self, tor: Device) -> int:
+        """Server ceiling for a rack fronted by leaf *tor*: min(downlink ports,
+        power cap). Flip-invariant across single/dual-homing."""
+        downlink, _ = leaf_port_roles(getattr(tor, "model_name", "") or "",
+                                      getattr(tor, "interface_count", 54))
+        return rack_server_capacity(downlink, self.cfg.power_cap)
 
     def _neighbor(self, dev: Device, layer: str, types: tuple) -> Optional[Device]:
         """First neighbour of *dev* on *layer* whose type is in *types*."""
@@ -233,39 +253,68 @@ class FleetLifecycleEngine:
         return None
 
     def _expand_rack(self, summ: DaySummary) -> Optional[dict]:
-        """Provision a new rack (ToR switch + PDU) in a row with spare rack slots,
-        then return it as a placement target. The new ToR uplinks to the same
-        upstream switch an existing ToR uses (aggregation), so it isn't dangling."""
-        tor_tmpl = self._template_switch()
-        pdu_tmpl = self._by_type(DeviceType.PDU) or self._by_type(DeviceType.FLOOR_PDU)
-        srv_tmpl = self._servers()
-        if not (tor_tmpl and pdu_tmpl and srv_tmpl):
-            return None   # nothing to clone from — cannot expand coherently
-        pdu_tmpl = pdu_tmpl[0]
-        srv_tmpl = srv_tmpl[0]
+        """Provision a new compute rack (ToR switch + PDU) and return it as a
+        placement target. Expansion is scoped to a single datacenter and to its
+        *compute* rows only — never a cooling/network row — and every cloned
+        device (ToR template, spine uplink, server/location) comes from that same
+        DC so the new rack is internally consistent (right vendor, right DC,
+        right spine), not a cross-DC chimera."""
+        # Map each *physical* compute row to its leaf racks + same-row templates.
+        # A row is keyed by (dc, floor, room, row) because a DC can have several
+        # halls/floors that reuse row numbers — keying by row alone would merge
+        # two different physical rows and mislocate the new rack. A "compute row"
+        # is one that already fronts servers behind a leaf ToR; cooling/network
+        # rows have no such (server -> leaf) pair and are skipped.
+        leaf_racks: dict[tuple, set] = {}        # rowkey -> {compute rack_nums}
+        row_srv_tmpl: dict[tuple, Device] = {}   # rowkey -> a server in that row
+        row_leaf_tmpl: dict[tuple, Device] = {}  # rowkey -> that row's own leaf ToR
+        for srv in self._servers():
+            tor = self._neighbor(srv, "production", (DeviceType.SWITCH,))
+            if tor is None:
+                continue
+            rk = self._phys_row_key(srv)
+            leaf_racks.setdefault(rk, set()).add(srv.rack_num or 0)
+            row_srv_tmpl.setdefault(rk, srv)
+            row_leaf_tmpl.setdefault(rk, tor)
 
-        # Pick a row with fewer than max_racks_per_row racks.
-        rows: dict[tuple, set] = {}
-        for d in self.s.device_manager.get_all_devices():
-            if d.datacenter and d.rack_row:
-                rows.setdefault((d.datacenter, d.rack_row), set()).add(d.rack_num or 0)
-        target_row = None
-        for (dc, row), racknums in sorted(rows.items()):
-            if len(racknums) < self.cfg.max_racks_per_row:
-                target_row, used = (dc, row), racknums
-                break
-        if target_row is None:
+        # First compute row still under the per-row rack cap.
+        target = next((k for k in sorted(leaf_racks, key=lambda t: tuple(map(str, t)))
+                       if len(leaf_racks[k]) < self.cfg.max_racks_per_row), None)
+        if target is None:
             return None
-        dc, row = target_row
-        new_num = (max(used) if used else 0) + 1
+        dc, floor, room, row = target
+        # Both the ToR and the servers clone from THIS row, so vendor/model and
+        # all location fields (DC/floor/room/row) stay coherent within the rack.
+        srv_tmpl = row_srv_tmpl[target]
+        tor_tmpl = row_leaf_tmpl[target]
+        pdu_tmpl = self._dc_pdu(dc)
+        if not (srv_tmpl and tor_tmpl and pdu_tmpl):
+            return None
 
+        # New rack number sits past every existing rack in this physical row (so
+        # it never collides with end-of-row power racks), same hall/floor.
+        row_nums = {d.rack_num or 0 for d in self.s.device_manager.get_all_devices()
+                    if self._phys_row_key(d) == target}
+        new_num = (max(row_nums) if row_nums else 0) + 1
+
+        # Uplink to a spine in THIS DC (tor_tmpl is a same-DC leaf).
         upstream = self._uplink_for(tor_tmpl)
-        tor = self._clone(tor_tmpl, dc, row, new_num, _TOR_UNIT, prefix="tor")
+        tor = self._clone(tor_tmpl, dc, row, new_num, TOR_A_UNIT, prefix="tor")
         if tor is None:
             return None
+        # New leaf is born MLAG-ready: realistic 48x25G+6x100G port-roles and a
+        # reserved U41 peer slot, so the future dual-homing flip is non-disruptive.
+        self.s.device_manager.update_device(
+            tor.id,
+            interface_groups=leaf_interface_groups(tor.model_name or "",
+                                                   tor.interface_count),
+            mlag_ready=True,
+            mlag_peer_unit=TOR_B_UNIT,
+        )
         if upstream is not None:
             self.s.topology.add_link(tor.id, upstream.id, layer="production")
-        pdu = self._clone(pdu_tmpl, dc, row, new_num, _PDU_UNIT, prefix="pdu")
+        # Rack PDU is a 0U vertical side-rail mount (no RU consumed).
+        pdu = self._clone(pdu_tmpl, dc, row, new_num, PDU_UNIT, prefix="pdu")
 
         # New ToR + PDU also answer SNMP/gNMI once commissioned.
         self._commission(tor)
@@ -276,14 +325,14 @@ class FleetLifecycleEngine:
         self._log(f"[Fleet] expanded new rack {dc}:R{row}:RACK{new_num} (ToR+PDU)")
         return {"key": (dc, row, new_num), "tor": tor, "pdu": pdu, "server_tmpl": srv_tmpl}
 
-    def _template_switch(self) -> Optional[Device]:
-        # Prefer a switch that already has servers (a real ToR) over a spine.
-        switches = self._by_type(DeviceType.SWITCH)
-        for sw in switches:
-            key = self._rack_key(sw)
-            if any(d.device_type == DeviceType.SERVER for d in self._rack_devices(key)):
-                return sw
-        return switches[0] if switches else None
+    def _dc_pdu(self, dc: str) -> Optional[Device]:
+        """A rack PDU in *dc* to clone the new rack's PDU from (vendor-consistent
+        with that DC's power kit). Falls back to any PDU if the DC has none."""
+        for d in self.s.device_manager.get_all_devices():
+            if d.datacenter == dc and d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+                return d
+        pd = self._by_type(DeviceType.PDU) or self._by_type(DeviceType.FLOOR_PDU)
+        return pd[0] if pd else None
 
     def _uplink_for(self, tor: Device) -> Optional[Device]:
         """The aggregation/spine device a ToR connects up to — reused for new ToRs."""
@@ -321,9 +370,10 @@ class FleetLifecycleEngine:
                 return cand
 
     def _next_free_unit(self, key: tuple) -> int:
+        # Servers occupy U1..U40; U41 (MLAG peer slot) and U42 (ToR) stay clear.
         used = {d.rack_unit for d in self._rack_devices(key) if d.rack_unit}
-        u = _FIRST_SERVER_UNIT
-        while u in used and u < _PDU_UNIT:
+        u = FIRST_SERVER_UNIT
+        while u in used and u < LAST_SERVER_UNIT:
             u += 1
         return u
 
@@ -354,7 +404,6 @@ class FleetLifecycleEngine:
             return None
         base = f"{dc or 'dc'}-{prefix}".lower().replace(" ", "-")
         name = self._unique_name(base)
-        loc = ", ".join(p for p in [dc, f"Row {row}", f"Rack {num}", f"U{unit}"] if p)
         try:
             dev = Device(
                 name=name,
@@ -374,7 +423,9 @@ class FleetLifecycleEngine:
                 rack_row=row,
                 rack_num=num,
                 rack_unit=unit,
-                sys_location_override=loc,
+                # No sys_location_override: let Device.sys_location compute the
+                # full country/city/DC/floor/room/rack string so fleet-added
+                # devices match the format of curated peers.
             )
             self.s.device_manager.add_device(dev)
             self.s.topology.add_device(dev, x=0.0, y=0.0)
@@ -472,7 +523,7 @@ class FleetLifecycleEngine:
                 "minutes_per_day": self.cfg.minutes_per_day,
                 "provision_lambda": self.cfg.provision_lambda,
                 "decommission_lambda": self.cfg.decommission_lambda,
-                "max_servers_per_rack": self.cfg.max_servers_per_rack,
+                "power_cap": self.cfg.power_cap,
                 "max_racks_per_row": self.cfg.max_racks_per_row,
                 "max_total_servers": self.cfg.max_total_servers,
             },

@@ -7679,7 +7679,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -8552,7 +8554,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -9425,7 +9429,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -10298,7 +10304,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -11171,7 +11179,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -12044,7 +12054,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -12917,7 +12929,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -13790,7 +13804,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -14663,7 +14679,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -15536,7 +15554,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -39081,7 +39101,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -39954,7 +39976,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -40827,7 +40851,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -41700,7 +41726,9 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -42573,7 +42601,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -43446,7 +43476,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -44319,7 +44351,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {
@@ -45192,7 +45226,9 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "mlag_ready": true,
+        "mlag_peer_unit": 41
       }
     },
     {

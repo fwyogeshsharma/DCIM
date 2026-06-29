@@ -7,7 +7,7 @@ interface FleetConfig {
   minutes_per_day:      number
   provision_lambda:     number
   decommission_lambda:  number
-  max_servers_per_rack: number
+  power_cap:            number
   max_racks_per_row:    number
   max_total_servers:    number
 }
@@ -26,7 +26,7 @@ const CFG_FIELDS: { key: keyof FleetConfig; label: string; step?: number; hint: 
   { key: 'minutes_per_day',      label: 'Minutes / day',      step: 0.5, hint: 'wall-clock minutes that equal one sim-day' },
   { key: 'provision_lambda',     label: 'Provision / day',    hint: 'avg servers added on a normal day' },
   { key: 'decommission_lambda',  label: 'Decommission / day', hint: 'avg servers removed (kept below provision = net growth)' },
-  { key: 'max_servers_per_rack', label: 'Max srv / rack',     hint: 'rack fills to this, then a new rack is provisioned' },
+  { key: 'power_cap',            label: 'Power cap / rack',   hint: 'per-rack server cap (binds with leaf downlink ports); rack fills to min(downlinks, this), then a new rack is provisioned' },
   { key: 'max_racks_per_row',    label: 'Max racks / row',    hint: 'cap on rack expansion per row' },
   { key: 'max_total_servers',    label: 'Max total servers',  hint: 'global ceiling — provisioning pauses here' },
 ]

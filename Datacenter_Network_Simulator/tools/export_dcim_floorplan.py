@@ -29,6 +29,14 @@ from __future__ import annotations
 import json
 import sys
 from collections import OrderedDict
+from pathlib import Path
+
+# Make `core` importable whether run as `python tools/export_dcim_floorplan.py`
+# or `python -m tools.export_dcim_floorplan`.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from core.rack_capacity import (  # noqa: E402
+    leaf_port_roles, rack_server_capacity, POWER_CAP_DEFAULT,
+)
 
 
 def rack_id(dc: str, room: str, floor: str, row, num) -> str:
@@ -43,10 +51,12 @@ def build(topology: dict) -> "OrderedDict":
 
     # id -> device name, for resolving power-feed references to PDU names.
     id_to_name = {}
+    id_to_dev = {}
     for n in nodes:
         dev = n["device"]
         id_to_name[dev.get("id", n["id"])] = dev.get("name")
         id_to_name[n["id"]] = dev.get("name")
+        id_to_dev[dev.get("id", n["id"])] = dev
 
     def feed_name(ref):
         if not ref:
@@ -106,6 +116,29 @@ def build(topology: dict) -> "OrderedDict":
         members = [d for d in devices if d["id"] in ids]
         r["device_count"] = len(members)
         r["it_power_draw_w"] = sum(d.get("power_draw_w") or 0 for d in members)
+
+        # Compute-rack capacity + dual-homing (MLAG) readiness. Only racks with a
+        # leaf switch get a server_capacity; non-compute racks leave it null.
+        # server_capacity = min(leaf downlink ports, power cap) and is
+        # flip-invariant — it does not change when dual-homing is adopted later.
+        full = [id_to_dev[i] for i in ids if i in id_to_dev]
+        leaf = next((d for d in full if d.get("device_type") == "switch"
+                     and d.get("mlag_ready")), None)
+        if leaf is None:
+            leaf = next((d for d in full if d.get("device_type") == "switch"), None)
+        servers_used = sum(1 for d in full if d.get("device_type") == "server")
+        r["servers_used"] = servers_used
+        if leaf is not None and servers_used > 0:
+            downlink, _ = leaf_port_roles(leaf.get("model_name") or "",
+                                          leaf.get("interface_count") or 54)
+            r["server_capacity"] = rack_server_capacity(downlink, POWER_CAP_DEFAULT)
+            r["mlag_ready"] = bool(leaf.get("mlag_ready"))
+            peer = leaf.get("mlag_peer_unit") or 0
+            r["reserved_units"] = [peer] if peer else []
+        else:
+            r["server_capacity"] = None
+            r["mlag_ready"] = False
+            r["reserved_units"] = []
 
     out = OrderedDict()
     out["schema"] = "dcim-floorplan/1.0"

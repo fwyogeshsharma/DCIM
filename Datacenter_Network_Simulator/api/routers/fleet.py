@@ -35,7 +35,7 @@ class FleetConfigBody(BaseModel):
     minutes_per_day:      float | None = None
     provision_lambda:     int | None = None
     decommission_lambda:  int | None = None
-    max_servers_per_rack: int | None = None
+    power_cap:            int | None = None   # per-rack server cap (min w/ leaf downlinks)
     max_racks_per_row:    int | None = None
     max_total_servers:    int | None = None
 

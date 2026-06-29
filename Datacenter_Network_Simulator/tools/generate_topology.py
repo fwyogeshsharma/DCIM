@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from core.device_manager import Device, DeviceType, Vendor
 from core.ip_manager import IPManager
+from core.rack_capacity import leaf_interface_groups, TOR_A_UNIT, TOR_B_UNIT
 
 _SERVER_VENDORS = [Vendor.DELL, Vendor.HPE, Vendor.LENOVO, Vendor.SUPERMICRO]
 # (vendor, model) pairs cycled when placing sensors.
@@ -477,9 +478,12 @@ class TopologyBuilder:
                 if node["id"] == pdu_b.id:
                     node["device"]["model_name"] = "Raritan PX3-5190R"
                     if base_loc:
+                        # Rack PDUs are 0U vertical side-rail mounts — they
+                        # consume no RU, keeping U1 free for a server and U41
+                        # reserved for the future MLAG peer leaf.
                         for k, v in {**base_loc, "room": "Server Hall",
                                      "rack_row": pwr_row, "rack_num": pwr_rack,
-                                     "rack_unit": 1}.items():
+                                     "rack_unit": 0}.items():
                             node["device"][k] = v
                     break
 
@@ -1210,6 +1214,10 @@ def _build_dc(t: "TopologyBuilder", dc: str, n_spine: int, n_leaf: int,
         lf = t.add(f"{dc}-LF{i+1:02d}", DeviceType.SWITCH, switch_vendor, 54,
                    lx, LEAF_Y)
         _set_model(t, lf, leaf_model)
+        # Realistic leaf port-roles: 48x25G server-facing downlinks + 6x100G
+        # uplinks (SFP28 vs QSFP28 cages). Capacity logic reads the downlink
+        # group; uplink group carries the spine links + a reserved MLAG peer-link.
+        _set_leaf_ports(t, lf, leaf_model)
         leaves.append(lf)
         for sp in spines:
             t.link(sp, lf)
@@ -1274,7 +1282,11 @@ def _build_dc(t: "TopologyBuilder", dc: str, n_spine: int, n_leaf: int,
     for li, lf in enumerate(leaves):
         cmp_row  = (li // racks_per_row) + 2   # row 2, 3, ...
         cmp_rack = (li % racks_per_row) + 1    # rack 1..racks_per_row
-        _set_location(t, lf, **_L, rack_row=cmp_row, rack_num=cmp_rack, rack_unit=42)
+        # ToR-A at U42; U41 reserved (empty) for a future MLAG peer leaf so the
+        # dual-homing flip needs no server moves. See core/rack_capacity.py.
+        _set_location(t, lf, **_L, rack_row=cmp_row, rack_num=cmp_rack,
+                      rack_unit=TOR_A_UNIT, mlag_ready=True,
+                      mlag_peer_unit=TOR_B_UNIT)
 
     # Servers were added in order: srv_idx increments across leaf loop.
     # Re-walk leaves to assign server locations using the same li index.
@@ -1327,6 +1339,24 @@ def _set_model(t: "TopologyBuilder", dev, model_name: str):
     for node in t.nodes:
         if node["id"] == dev.id:
             node["device"]["model_name"] = model_name
+            return
+
+
+def _set_leaf_ports(t: "TopologyBuilder", dev, model_name: str):
+    """Give a leaf its realistic 48x25G downlink + 6x100G uplink port-role split
+    (interface_count unchanged at 54). Regenerates the interface list so port
+    speeds/names match the groups. Capacity logic reads the downlink group."""
+    from dataclasses import asdict
+    groups = leaf_interface_groups(model_name, dev.interface_count)
+    # Throwaway Device just to render consistent interface rows for the groups.
+    tmp = Device(name=dev.name, device_type=DeviceType.SWITCH, vendor=dev.vendor,
+                 ip_address="0.0.0.0", interface_groups=[dict(g) for g in groups],
+                 model_name=model_name)
+    for node in t.nodes:
+        if node["id"] == dev.id:
+            node["device"]["interface_groups"] = groups
+            node["device"]["interface_count"] = tmp.interface_count
+            node["device"]["interfaces"] = [asdict(i) for i in tmp.interfaces]
             return
 
 
