@@ -86,7 +86,8 @@ call npm run build
 popd
 :skip_webui
 
-"%PY%" app/main.py
+REM Forward all args (e.g. --headless --port 8001) through to the app.
+"%PY%" app/main.py %*
 
 if %errorlevel% neq 0 (
     echo.
