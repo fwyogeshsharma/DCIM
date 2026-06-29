@@ -36,7 +36,8 @@ class FleetConfigBody(BaseModel):
     provision_lambda:     int | None = None
     decommission_lambda:  int | None = None
     power_cap:            int | None = None   # per-rack server cap (min w/ leaf downlinks)
-    max_racks_per_row:    int | None = None
+    max_racks_per_row:    int | None = None   # racks per compute row in a NEW hall
+    compute_rows_per_room: int | None = None  # compute rows per NEW hall
     max_total_servers:    int | None = None
 
 

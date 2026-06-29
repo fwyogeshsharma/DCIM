@@ -9,6 +9,7 @@ interface FleetConfig {
   decommission_lambda:  number
   power_cap:            number
   max_racks_per_row:    number
+  compute_rows_per_room: number
   max_total_servers:    number
 }
 interface DayLog {
@@ -26,8 +27,9 @@ const CFG_FIELDS: { key: keyof FleetConfig; label: string; step?: number; hint: 
   { key: 'minutes_per_day',      label: 'Minutes / day',      step: 0.5, hint: 'wall-clock minutes that equal one sim-day' },
   { key: 'provision_lambda',     label: 'Provision / day',    hint: 'avg servers added on a normal day' },
   { key: 'decommission_lambda',  label: 'Decommission / day', hint: 'avg servers removed (kept below provision = net growth)' },
-  { key: 'power_cap',            label: 'Power cap / rack',   hint: 'per-rack server cap (binds with leaf downlink ports); rack fills to min(downlinks, this), then a new rack is provisioned' },
-  { key: 'max_racks_per_row',    label: 'Max racks / row',    hint: 'cap on rack expansion per row' },
+  { key: 'power_cap',            label: 'Power cap / rack',   hint: 'per-rack server cap (binds with leaf downlink ports); existing racks fill to min(downlinks, this) before any new rack opens' },
+  { key: 'max_racks_per_row',    label: 'Racks / row (new hall)', hint: 'row width of a newly-opened hall; existing halls are never enlarged' },
+  { key: 'compute_rows_per_room', label: 'Rows / new hall',   hint: 'compute rows per new hall; grid = racks/row × this, then the next hall opens' },
   { key: 'max_total_servers',    label: 'Max total servers',  hint: 'global ceiling — provisioning pauses here' },
 ]
 
