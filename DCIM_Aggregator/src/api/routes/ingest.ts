@@ -205,8 +205,8 @@ async function evaluateDeviceRisk(client: PoolClient, deviceId: string): Promise
 
   // Per-device threshold overrides for the core rules (fall back to defaults).
   const { rows: thrRows } = await client.query<{ rule: string; value: number }>(
-    `SELECT rule, value FROM device_thresholds WHERE device_id = $1 AND rule = ANY($2)`,
-    [deviceId, Object.keys(RISK_RULE_DEFAULTS)],
+      `SELECT rule, value FROM device_thresholds WHERE device_id = $1 AND rule = ANY($2)`,
+      [deviceId, Object.keys(RISK_RULE_DEFAULTS)],
   )
   const thresholds: Record<string, number> = { ...RISK_RULE_DEFAULTS }
   for (const r of thrRows) thresholds[r.rule] = Number(r.value)
@@ -232,7 +232,7 @@ async function evaluateDeviceRisk(client: PoolClient, deviceId: string): Promise
   }
 
   const { rows: cur } = await client.query<{ at_risk: boolean }>(
-    `SELECT at_risk FROM devices WHERE id = $1`, [deviceId])
+      `SELECT at_risk FROM devices WHERE id = $1`, [deviceId])
   const wasAtRisk = cur[0]?.at_risk ?? false
 
   let nextRisk: boolean
@@ -249,9 +249,44 @@ async function evaluateDeviceRisk(client: PoolClient, deviceId: string): Promise
 
   if (!nextRisk && !wasAtRisk) return   // already clear, nothing to write
   await client.query(
-    `UPDATE devices SET at_risk = $2, risk_reason = $3, risk_updated_at = now() WHERE id = $1`,
-    [deviceId, nextRisk, reason],
+      `UPDATE devices SET at_risk = $2, risk_reason = $3, risk_updated_at = now() WHERE id = $1`,
+      [deviceId, nextRisk, reason],
   )
+}
+
+// batchInsert collapses N single-row INSERTs into one multi-row INSERT (chunked
+// to stay under Postgres's 65535-parameter limit). Each value is still bound as
+// its own parameter, exactly like the per-row form, so jsonb/timestamptz/uuid
+// casts behave identically — this is a pure round-trip reduction, not a semantic
+// change. `casts[i]` adds `::type` to column i's placeholders (e.g. 'timestamptz')
+// where the original query had an explicit cast; '' leaves the implicit cast.
+// `conflict` is the trailing ON CONFLICT clause. No-op on an empty row set.
+async function batchInsert(
+    client: PoolClient,
+    table: string,
+    cols: string[],
+    casts: string[],
+    rows: unknown[][],
+    conflict: string,
+): Promise<void> {
+  if (rows.length === 0) return
+  const ncols = cols.length
+  const chunkSize = Math.max(1, Math.floor(60000 / ncols))
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const slice = rows.slice(i, i + chunkSize)
+    const params: unknown[] = []
+    const tuples = slice.map(row => {
+      const ph = row.map((val, ci) => {
+        params.push(val)
+        return `$${params.length}${casts[ci] ? '::' + casts[ci] : ''}`
+      })
+      return `(${ph.join(',')})`
+    })
+    await client.query(
+        `INSERT INTO ${table} (${cols.join(', ')}) VALUES ${tuples.join(', ')} ${conflict}`,
+        params,
+    )
+  }
 }
 
 // ── Router ─────────────────────────────────────────────────────────────────────
@@ -448,15 +483,15 @@ export function createIngestRouter(dbPool: Pool): Router {
         }
 
         // ── 4. Insert metrics + auto-generate threshold alerts ───────────────
+        // Accumulate this device's metric rows and write them in ONE batched
+        // INSERT (below) instead of one round-trip per metric — the per-row loop
+        // was the main ingest-latency / 502 source. The threshold-alert logic is
+        // unchanged and stays per-metric (it writes events, not metrics).
+        const metricRows: unknown[][] = []
         for (const m of dev.metrics ?? []) {
           const ifaceKey = m.interface_name ? `${deviceId}:${m.interface_name}` : undefined
           const ifaceId = ifaceKey ? (ifaceIdMap.get(ifaceKey) ?? null) : null
-          await client.query(`
-            INSERT INTO metrics (device_id, ts, metric_name, tag, value, attributes,
-                                 collector_agent, collector_protocol, interface_id)
-            VALUES ($1, $2::timestamptz, $3, $4, $5, $6, $7, $8, $9)
-              ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING
-          `, [
+          metricRows.push([
             deviceId, m.ts ?? 'now()', m.metric_name, m.tag ?? '', m.value,
             m.attributes ? JSON.stringify(m.attributes) : null,
             m.collector_agent ?? 'EDR', m.collector_protocol ?? 'SNMP',
@@ -495,6 +530,15 @@ export function createIngestRouter(dbPool: Pool): Router {
             }
           }
         }
+        // One batched INSERT for all of this device's metrics (was one round-trip
+        // per metric). Same columns, same ON CONFLICT DO NOTHING, same ts cast —
+        // and still BEFORE evaluateDeviceRisk below, which reads them back.
+        await batchInsert(client, 'metrics',
+            ['device_id', 'ts', 'metric_name', 'tag', 'value', 'attributes',
+              'collector_agent', 'collector_protocol', 'interface_id'],
+            ['', 'timestamptz', '', '', '', '', '', '', ''],
+            metricRows,
+            'ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING')
 
         // ── 4a. Failure-risk flag: breach of this device's thresholds ─────────
         // If a core metric (CPU/Memory/Temperature) crossed the device's
@@ -506,22 +550,25 @@ export function createIngestRouter(dbPool: Pool): Router {
         }
 
         // ── 4b. Insert energy metrics → dedicated energy_metrics table ────────
+        // Same per-device batching as metrics above.
+        const energyRows: unknown[][] = []
         for (const e of dev.energy_metrics ?? []) {
           const tag = e.tag ?? ''
           const circuit = e.circuit ?? (tag.startsWith('Ckt') ? tag : '')
           const phase = e.phase ?? (tag === 'PhA' || tag === 'PhB' || tag === 'PhC' ? tag : '')
-          await client.query(`
-            INSERT INTO energy_metrics (device_id, ts, metric_name, tag, circuit, phase, value,
-                                        scope, attributes, collector_agent, collector_protocol)
-            VALUES ($1, $2::timestamptz, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-              ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING
-          `, [
+          energyRows.push([
             deviceId, e.ts ?? 'now()', e.metric_name, tag, circuit, phase, e.value,
             e.scope ?? '',
             e.attributes ? JSON.stringify(e.attributes) : null,
             e.collector_agent ?? 'EDR', e.collector_protocol ?? 'BACNET',
           ])
         }
+        await batchInsert(client, 'energy_metrics',
+            ['device_id', 'ts', 'metric_name', 'tag', 'circuit', 'phase', 'value',
+              'scope', 'attributes', 'collector_agent', 'collector_protocol'],
+            ['', 'timestamptz', '', '', '', '', '', '', '', '', ''],
+            energyRows,
+            'ON CONFLICT (device_id, metric_name, tag, ts) DO NOTHING')
       }
 
       // ── 5. Upsert topology links ───────────────────────────────────────────
