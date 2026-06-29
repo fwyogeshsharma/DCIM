@@ -84,6 +84,8 @@ class AppState:
 
         # Current topology file path
         self.current_topology_path: str = ""
+        # Uploaded floor-plan doc that overrides the live build (None = live).
+        self.uploaded_floorplan: Optional[dict] = None
 
         # Registered by MainWindow — the same queue drained every 150 ms on the main thread.
         self._ui_queue: Optional[Any] = None  # queue.Queue

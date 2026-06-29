@@ -118,6 +118,14 @@ HEAD = r"""<!doctype html>
 </style>
 </head>
 <body>
+<div id="fpEmpty" style="display:none;position:fixed;inset:0;z-index:50;
+  flex-direction:column;align-items:center;justify-content:center;
+  background:var(--bg);color:var(--muted);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;
+  text-align:center;pointer-events:none">
+  <div style="font-size:46px;margin-bottom:12px;opacity:.6">▦</div>
+  <div style="color:var(--fg);font-weight:600">No floor-plan loaded</div>
+  <div style="margin-top:6px">Use <b>File ▸ Upload Floorplan…</b> to load a floor-plan JSON</div>
+</div>
 <div id="app">
   <header>
     <h1>DCIM Floor-Plan</h1>
@@ -200,7 +208,11 @@ function applyFloorplan(data){
   for(const r of RACKS){ (racksByRoom[roomKey(r)]=racksByRoom[roomKey(r)]||[]).push(r); }
   DCs = [...new Set(RACKS.map(r=>r.datacenter))].sort();
 }
-applyFloorplan(FLOORPLAN_EMBEDDED);
+// Empty plan — shown until the user uploads/loads one (live=1 host embeds drive
+// the structure from the API, so don't flash the baked-in snapshot there).
+const EMPTY_FP = {floorplan:{units:'meters',rack_footprint:{width:0.6,depth:1.2},rooms:{}},racks:[],devices:[]};
+const _LIVE_EMBED = /(?:^|&)live=1(?:&|$)/.test(location.hash.slice(1));
+applyFloorplan(_LIVE_EMBED ? EMPTY_FP : FLOORPLAN_EMBEDDED);
 
 /* ===================== state ===================== */
 const S = { dc:null, room:null, view:'2d', heat:false, metric:'power', sel:null, selDev:null, cut:false };
@@ -1015,6 +1027,8 @@ function buildSidebar(){ const racks=racksByRoom[S.dc+' / '+S.room]||[];
 
 /* ===================== render dispatch ===================== */
 function render(){
+  // Empty-state: nothing to draw until a floor-plan is loaded/uploaded.
+  $('#fpEmpty').style.display = (RACKS && RACKS.length) ? 'none' : 'flex';
   const m=METRIC[S.metric], note=$('#note');
   $('#metricwrap').style.display = S.heat ? '' : 'none';   // metric only matters with the heatmap on
   if(S.heat && !heatReady(m)){ note.style.display='block';

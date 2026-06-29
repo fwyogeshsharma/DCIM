@@ -97,6 +97,11 @@ class FleetLifecycleEngine:
         # fleet fills — keeps (dc, row, num) rack keys from colliding across halls.
         self._row_labels: dict = {}
         self._row_label_seq = 1000
+        # Topology-graph layout for fleet nodes: each DC gets its own band (the
+        # curated x-range, below the curated nodes) so DC1/DC2 fleet growth never
+        # overlaps the other DC. Bounds snapshotted per DC; placed counter tiles.
+        self._dc_bounds_cache: dict = {}
+        self._dc_placed: dict = {}
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
@@ -444,9 +449,25 @@ class FleetLifecycleEngine:
         new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", back_y)
         new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", back_y) if infra["rpp_b"] else None
         self._fleet_halls.add(rk)
+        self._register_hall_extent(dc, room)
         self._log(f"[Fleet] opened new hall {dc}/F{floor}/{room} "
                   f"(grid {self.cfg.compute_rows_per_room}x{self.cfg.max_racks_per_row})")
         return self._build_compute_rack(rk, self._row_label(rk, 0), 1, new_infra, summ, 0)
+
+    def _register_hall_extent(self, dc: str, room: str) -> None:
+        """Add a floorplan room extent for a fleet-created hall so the static
+        floor-plan (and Save Topology export) draws the room box + aisles, not
+        just loose racks. Grid = compute_rows_per_room compute rows + one back row
+        for the RPP/CRAH, matching where _build_compute_rack / _clone_rpp place
+        them. No-op if the topology carries no floorplan block."""
+        fp = getattr(self.s.topology, "floorplan", None)
+        if not isinstance(fp, dict):
+            return
+        n_rows = max(1, self.cfg.compute_rows_per_room) + 1   # compute rows + back row
+        ext = geo.hall_extent(n_rows, max(1, self.cfg.max_racks_per_row))
+        ext.update({"datacenter": dc, "room": room,
+                    "class": "white_space", "containment": "cold_aisle"})
+        fp.setdefault("rooms", {})[f"{dc}/{room}"] = ext
 
     def _busiest_dc(self) -> Optional[str]:
         counts: dict[str, int] = {}
@@ -580,6 +601,46 @@ class FleetLifecycleEngine:
 
     # ── device creation ──────────────────────────────────────────────────────
 
+    def _dc_bounds(self, dc: str) -> tuple:
+        """(x0, x1, y_bottom) of *dc*'s CURATED nodes on the topology canvas,
+        snapshotted once. Defines the band the fleet lays its nodes into so each
+        DC stays in its own column and never overlaps the other."""
+        if dc in self._dc_bounds_cache:
+            return self._dc_bounds_cache[dc]
+        # X-band: from the DC's SERVER cluster only — facility/power nodes can sit
+        # at odd coords (x=0) and would bleed one DC's band into the other.
+        # Y-floor: the LOWEST point of ANY curated node in the DC (CDU, OOB,
+        # sensors, RPP/PDU all sit below the servers), so the fleet grid starts
+        # clear of them instead of growing down into them.
+        xs, all_y = [], []
+        for d in self.s.device_manager.get_all_devices():
+            if (d.datacenter or "") != dc:
+                continue
+            x, y = self.s.topology.get_position(d.id)
+            all_y.append(y)
+            if d.device_type == DeviceType.SERVER:
+                xs.append(x)
+        x0, x1 = (min(xs), max(xs)) if xs else (0.0, 1200.0)
+        y_floor = max(all_y) if all_y else 1200.0
+        b = (x0, x1, y_floor)
+        self._dc_bounds_cache[dc] = b
+        return b
+
+    # Clear vertical gap between the lowest curated node and the first fleet row.
+    _FLEET_Y_GAP = 220.0
+
+    def _fleet_pos(self, dc: str) -> tuple:
+        """Next canvas slot for a fleet node in *dc*'s band: a grid spanning the
+        DC's server x-width, starting a clear gap BELOW every curated node and
+        growing down. Monotone, so nodes never overlap each other, the curated
+        CDU/OOB/power rows, or the other DC."""
+        x0, x1, y_floor = self._dc_bounds(dc)
+        step = 46.0
+        cols = max(1, int(max(200.0, x1 - x0) // step))
+        n = self._dc_placed.get(dc, 0)
+        self._dc_placed[dc] = n + 1
+        return (x0 + (n % cols) * step, y_floor + self._FLEET_Y_GAP + (n // cols) * 38.0)
+
     def _used_ips(self) -> set:
         """Every production + management IP currently in use, so a new device
         never collides regardless of which pool it draws from."""
@@ -618,6 +679,23 @@ class FleetLifecycleEngine:
             cand = f"{base}-{self._seq:04d}"
             if cand not in names:
                 return cand
+
+    def _next_srv_name(self, dc: str) -> str:
+        """Curated server-name style: DC2-SRV027 — DC + 'SRV' + a zero-padded
+        number continuing past the highest existing one (no dash before it)."""
+        prefix = f"{dc}-SRV"
+        names, mx = set(), 0
+        for d in self.s.device_manager.get_all_devices():
+            nm = d.name or ""
+            names.add(nm)
+            if nm.startswith(prefix):
+                tail = nm[len(prefix):].lstrip("-")   # tolerate old DC2-SRV-0021
+                if tail.isdigit():
+                    mx = max(mx, int(tail))
+        n = mx + 1
+        while f"{dc}-SRV{n:03d}" in names:
+            n += 1
+        return f"{dc}-SRV{n:03d}"
 
     def _next_free_unit(self, key: tuple) -> int:
         # Servers occupy U1..U40; U41 (MLAG peer slot) and U42 (ToR) stay clear.
@@ -686,10 +764,13 @@ class FleetLifecycleEngine:
         if ip:
             used.add(ip)
         mgmt_ip = self._alloc_in_subnet(getattr(tmpl, "mgmt_ip", "") or "", 22, used)
-        # Match the curated naming style (e.g. DC2-SRV-0007): uppercase DC + role,
-        # not a lowercased slug.
-        base = f"{(dc or 'DC')}-{prefix.upper()}".replace(" ", "-")
-        name = self._unique_name(base)
+        # Match the curated naming style: servers are DC2-SRV027 (continue the
+        # sequence, no dash); other fleet kit keeps DC2-TOR-0007 style.
+        if prefix == "srv":
+            name = self._next_srv_name(dc or "DC")
+        else:
+            base = f"{(dc or 'DC')}-{prefix.upper()}".replace(" ", "-")
+            name = self._unique_name(base)
         try:
             dev = Device(
                 name=name,
@@ -719,8 +800,15 @@ class FleetLifecycleEngine:
                 # full country/city/DC/floor/room/rack string so fleet-added
                 # devices match the format of curated peers.
             )
+            # Canvas position: a per-DC grid below that DC's curated nodes, so
+            # fleet nodes never pile on the origin, never overlap each other, and
+            # DC1/DC2 fleet growth stays in separate bands. Computed BEFORE the
+            # device is registered so the (still position-less) new node can't
+            # poison the band bounds. Cosmetic graph layout only — floor placement
+            # lives in floor_x/floor_y.
+            px, py = self._fleet_pos(dc)
             self.s.device_manager.add_device(dev)
-            self.s.topology.add_device(dev, x=0.0, y=0.0)
+            self.s.topology.add_device(dev, x=px, y=py)
             if self.s.ip_manager and ip:
                 self.s.ip_manager.reserve(ip)
             return dev

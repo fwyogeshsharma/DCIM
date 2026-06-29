@@ -124,6 +124,22 @@ export const api = {
   },
   exportTopology: ()                  => get('/topology/export'),
   clearTopology:  ()                  => post('/topology/clear'),
+  uploadFloorplan: (file: File)       => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const token = getToken()
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    return fetch(`${BASE}/floorplan/upload`, { method: 'POST', body: fd, headers }).then(async r => {
+      if (r.status === 401) { onAuthExpired(); throw apiError(401) }
+      if (!r.ok) {
+        const text = await r.text().catch(() => '')
+        console.error(`[api] POST /floorplan/upload → ${r.status}: ${text}`)
+        throw apiError(r.status)
+      }
+      return r.json()
+    })
+  },
+  clearFloorplan: ()                  => post('/floorplan/clear'),
   breakLink:    (src: string, dst: string, layer = 'production') =>
     post('/topology/links/break',   { src_id: src, dst_id: dst, layer }),
   restoreLink:  (src: string, dst: string, layer = 'production') =>

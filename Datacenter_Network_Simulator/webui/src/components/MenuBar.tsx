@@ -180,6 +180,7 @@ function StatusChip({ label, dot, value, color }: {
 
 export default function MenuBar() {
   const fileRef    = useRef<HTMLInputElement>(null)
+  const fpFileRef  = useRef<HTMLInputElement>(null)
   const menuBarRef = useRef<HTMLDivElement>(null)
   const [openMenu,  setOpenMenu]  = useState<string | null>(null)
   const [showAdd,   setShowAdd]   = useState(false)
@@ -212,12 +213,23 @@ export default function MenuBar() {
   }
 
   const openFileDialog = useCallback(() => fileRef.current?.click(), [])
+  const openFloorplanDialog = useCallback(() => fpFileRef.current?.click(), [])
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
     await api.uploadTopology(f)
     fetchGraph(); fetchDevices(); fetchSnmp()
+    e.target.value = ''
+  }
+
+  async function onFloorplanFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    try {
+      await api.uploadFloorplan(f)
+      setActiveView('floorplan')          // show the uploaded plan
+    } catch (err) { console.error(err) }
     e.target.value = ''
   }
 
@@ -286,6 +298,8 @@ export default function MenuBar() {
     { label: 'New Topology',    shortcut: 'Ctrl+N', action: newTopology    },
     { label: 'Open Topology…',  shortcut: 'Ctrl+O', action: openFileDialog },
     { label: 'Save Topology',   shortcut: 'Ctrl+S', action: saveTopology   },
+    { label: '',                divider: true,      action: () => {}       },
+    { label: 'Upload Floorplan…',                    action: openFloorplanDialog },
     { label: '',                divider: true,      action: () => {}       },
     { label: 'Close Topology',                       action: closeTopology },
     { label: '',                divider: true,      action: () => {}       },
@@ -445,6 +459,13 @@ export default function MenuBar() {
         accept=".json"
         style={{ display: 'none' }}
         onChange={onFileChange}
+      />
+      <input
+        ref={fpFileRef}
+        type="file"
+        accept=".json"
+        style={{ display: 'none' }}
+        onChange={onFloorplanFileChange}
       />
 
       {showAdd  && <AddDeviceDialog     onClose={() => setShowAdd(false)}  />}
