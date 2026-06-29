@@ -287,7 +287,7 @@ def main():
 
     app.setApplicationName("Datacenter Network Simulator")
     app.setOrganizationName("Datacenter Network Simulator")
-    app.setApplicationVersion("4.1.0")
+    app.setApplicationVersion("5.0.0")
 
     # Import MainWindow AFTER QApplication so all Qt objects in imported
     # modules (e.g. QColor in DEVICE_COLORS) are created with a live app.
