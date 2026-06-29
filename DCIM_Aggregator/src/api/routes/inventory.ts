@@ -148,7 +148,8 @@ export function createInventoryRouter(dbPool: Pool): Router {
             'system.memory_total_bytes',      'system.memory_used_bytes',
             'server.cpu_percent',             'server.memory_used_percent',
             'server.cpu_idle_percent',        'server.cpu_user_percent', 'server.cpu_system_percent',
-            'server.memory_total_kb',         'server.memory_available_kb'
+            'server.memory_total_kb',         'server.memory_available_kb',
+            'server.storage_available_kb',    'server.storage_used_kb'
           )
             AND m.ts >= NOW() - INTERVAL '2 hours'
           ORDER BY m.device_id, m.metric_name, m.ts DESC
@@ -174,7 +175,15 @@ export function createInventoryRouter(dbPool: Pool): Router {
             COALESCE(
               CASE WHEN mem_total_b  > 0 THEN mem_total_b  / 1073741824.0 END,
               CASE WHEN mem_total_kb > 0 THEN mem_total_kb / 1048576.0 END
-            ) AS ram_gb
+            ) AS ram_gb,
+            -- Live storage in GB from UCD-SNMP (kB ÷ 1024²). Total = used + available.
+            CASE WHEN storage_avail_kb >= 0 THEN storage_avail_kb / 1048576.0 END AS storage_available_gb,
+            CASE WHEN storage_used_kb  >= 0 THEN storage_used_kb  / 1048576.0 END AS storage_used_gb_live,
+            CASE WHEN storage_used_kb >= 0 AND storage_avail_kb >= 0
+                 THEN (storage_used_kb + storage_avail_kb) / 1048576.0 END AS storage_total_gb,
+            CASE WHEN storage_used_kb >= 0 AND storage_avail_kb >= 0
+                   AND (storage_used_kb + storage_avail_kb) > 0
+                 THEN storage_used_kb / (storage_used_kb + storage_avail_kb) * 100 END AS storage_used_pct
           FROM (
             SELECT
               device_id,
@@ -188,7 +197,9 @@ export function createInventoryRouter(dbPool: Pool): Router {
               MAX(value) FILTER (WHERE metric_name = 'system.memory_total_bytes')         AS mem_total_b,
               MAX(value) FILTER (WHERE metric_name = 'system.memory_used_bytes')          AS mem_used_b,
               MAX(value) FILTER (WHERE metric_name = 'server.memory_total_kb')            AS mem_total_kb,
-              MAX(value) FILTER (WHERE metric_name = 'server.memory_available_kb')        AS mem_avail_kb
+              MAX(value) FILTER (WHERE metric_name = 'server.memory_available_kb')        AS mem_avail_kb,
+              MAX(value) FILTER (WHERE metric_name = 'server.storage_available_kb')       AS storage_avail_kb,
+              MAX(value) FILTER (WHERE metric_name = 'server.storage_used_kb')            AS storage_used_kb
             FROM latest_health
             GROUP BY device_id
           ) agg
@@ -212,12 +223,15 @@ export function createInventoryRouter(dbPool: Pool): Router {
           d.specs,
           d.cpu_cores,
           COALESCE(ROUND(h.ram_gb::numeric, 1)::double precision, d.ram_gb) AS ram_gb,
-          d.storage_gb,
+          -- Total storage in GB: live (used + available) from metrics, else stored snapshot.
+          COALESCE(ROUND(h.storage_total_gb::numeric, 1)::double precision, d.storage_gb) AS storage_gb,
           d.power_capacity_w,
           d.port_count,
           ROUND(LEAST(100, GREATEST(0, COALESCE(h.cpu_pct, d.cpu_used_pct)))::numeric, 1)::double precision AS cpu_used_pct,
           ROUND(LEAST(100, GREATEST(0, COALESCE(h.ram_pct, d.ram_used_pct)))::numeric, 1)::double precision AS ram_used_pct,
-          d.storage_used_gb,
+          COALESCE(ROUND(h.storage_used_gb_live::numeric, 1)::double precision, d.storage_used_gb) AS storage_used_gb,
+          ROUND(h.storage_available_gb::numeric, 1)::double precision AS storage_available_gb,
+          ROUND(LEAST(100, GREATEST(0, h.storage_used_pct))::numeric, 1)::double precision AS storage_used_pct,
           d.power_draw_w,
           d.notes,
           d.created_at,

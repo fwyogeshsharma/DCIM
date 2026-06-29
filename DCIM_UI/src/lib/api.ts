@@ -826,6 +826,8 @@ export interface InventoryDevice {
   cpu_used_pct?: number
   ram_used_pct?: number
   storage_used_gb?: number
+  storage_available_gb?: number
+  storage_used_pct?: number
   power_draw_w?: number
   notes?: string
   monitoring_status?: 'online' | 'offline' | null

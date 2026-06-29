@@ -899,8 +899,12 @@ export default function Inventory() {
                       <tbody>
                         {visibleDevices.map(d => {
                           const sm = STATUS_META[d.status] ?? STATUS_META['idle']
-                          const storageAvail = d.storage_gb != null && d.storage_used_gb != null
-                            ? d.storage_gb - d.storage_used_gb : null
+                          // Prefer the live free-storage metric (server.storage_available_kb),
+                          // falling back to the stored total − used snapshot.
+                          const storageAvail = d.storage_available_gb != null
+                            ? d.storage_available_gb
+                            : (d.storage_gb != null && d.storage_used_gb != null
+                                ? d.storage_gb - d.storage_used_gb : null)
                           const isSelected = selectedDevice?.id === d.id
 
                           return (
@@ -961,9 +965,12 @@ export default function Inventory() {
                                 ) : '—'}
                               </td>
                               <td className="px-3 py-2.5">
-                                {d.storage_gb != null ? (
+                                {(d.storage_gb != null || storageAvail != null) ? (
                                   <div>
-                                    <span className="text-slate-300">{fmtGb(d.storage_gb)}</span>
+                                    <span className="text-slate-300">{d.storage_gb != null ? fmtGb(d.storage_gb) : '—'}</span>
+                                    {d.storage_used_pct != null && (
+                                      <div className="w-16 mt-0.5"><UsageBar pct={d.storage_used_pct} color="bg-emerald-500" /></div>
+                                    )}
                                     {storageAvail != null && (
                                       <p className="text-emerald-500 text-[10px]">{fmtGb(storageAvail)} free</p>
                                     )}
