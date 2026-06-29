@@ -437,7 +437,16 @@ class SnmpSetAgent:
             self._sock.bind((self._host, self._port))
             self._sock.settimeout(1.0)
         except OSError as exc:
-            log.error("[SnmpSetAgent] Failed to bind %s:%d — %s", self._host, self._port, exc)
+            # WSAEACCES (WinError 10013) with SO_REUSEADDR set almost always
+            # means the port is already owned by another process (e.g. a second
+            # copy of this app) rather than a true permissions problem.
+            hint = ""
+            if getattr(exc, "winerror", None) == 10013:
+                hint = (" — port already in use by another process "
+                        "(another instance of this app or a tool on the same "
+                        "port). Close it, then start again.")
+            log.error("[SnmpSetAgent] Failed to bind %s:%d — %s%s",
+                      self._host, self._port, exc, hint)
             self._sock = None
             return False
 
