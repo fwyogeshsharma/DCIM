@@ -595,6 +595,11 @@ class SNMPRecGenerator:
                 updates[f"{UCD_CPU}.1.0"]  = ("2",  str(cpu_user))
                 updates[f"{UCD_CPU}.2.0"]  = ("2",  str(cpu_system))
                 updates[f"{UCD_CPU}.4.0"]  = ("2",  str(cpu_idle))
+                # Standard ssCpu percentages — keep them live so a real poller's
+                # 100 - ssCpuIdle tracks the device, not a frozen value.
+                updates[f"{UCD_CPU}.9.0"]  = ("2",  str(cpu_user))    # ssCpuUser %
+                updates[f"{UCD_CPU}.10.0"] = ("2",  str(cpu_system))  # ssCpuSystem %
+                updates[f"{UCD_CPU}.11.0"] = ("2",  str(cpu_idle))    # ssCpuIdle %
                 updates[f"{UCD_MEM}.5.0"]  = ("2", str(device.memory_total // 1024))
                 updates[f"{UCD_MEM}.6.0"]  = ("2", str(mem_free // 1024))
                 updates[f"{UCD_MEM}.11.0"] = ("2", str(device.memory_used  // 1024))
@@ -1200,8 +1205,12 @@ class SNMPRecGenerator:
             _oid_entry(f"{UCD_CPU}.3.0",  "2",  str(random.randint(0,5))),   # nice
             _oid_entry(f"{UCD_CPU}.4.0",  "2",  str(cpu_idle)),
             _oid_entry(f"{UCD_CPU}.8.0",  "2",  str(random.randint(0,5))),   # interrupt
-            _oid_entry(f"{UCD_CPU}.9.0",  "2",  str(random.randint(0,3))),   # softirq
-            _oid_entry(f"{UCD_CPU}.11.0", "4",  "systemStats"),
+            # Standard UCD-SNMP-MIB ssCpu percentages (ssCpuUser/System/Idle) —
+            # what real pollers actually read for Linux CPU. Previously .9 held
+            # softirq and .11 a stray "systemStats" string, so 100-.9 read ~99%.
+            _oid_entry(f"{UCD_CPU}.9.0",  "2",  str(cpu_user)),    # ssCpuUser %
+            _oid_entry(f"{UCD_CPU}.10.0", "2",  str(cpu_system)),  # ssCpuSystem %
+            _oid_entry(f"{UCD_CPU}.11.0", "2",  str(cpu_idle)),    # ssCpuIdle %
         ]
 
         # Memory UCD
