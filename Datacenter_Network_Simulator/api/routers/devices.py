@@ -23,6 +23,17 @@ def _state() -> AppState:
     return AppState.get()
 
 
+def _invalidate_power(s: AppState) -> None:
+    """Drop the live power-cascade cache so a topology change (device add/remove
+    or power-feed edit) ripples up to the PDU/UPS/RPP/EV2 meters next tick."""
+    ss = getattr(s, "state_store", None)
+    if ss is not None:
+        try:
+            ss.invalidate_power_context()
+        except Exception:
+            pass
+
+
 _NO_IFACE_TYPES = {"ups", "pdu", "floor_pdu", "rpp", "sensor", "generator"}
 
 
@@ -500,6 +511,7 @@ def add_device(req: AddDeviceRequest):
         s.topology.add_device(device, x=0.0, y=0.0)
         if s.ip_manager:
             s.ip_manager.reserve(req.ip_address)
+        _invalidate_power(s)
         s.notify_ui("sync_devices")
         return _device_to_info(device)
     except Exception as e:
@@ -530,6 +542,9 @@ def edit_device(device_id: str, req: EditDeviceRequest):
     try:
         for k, v in update.items():
             setattr(device, k, v)
+        if any(k in update for k in ("power_draw_w", "power_source_a",
+                                     "power_source_b", "power_source")):
+            _invalidate_power(s)        # power feeds/draw changed -> rebuild cascade
         s.notify_ui("sync_devices")
         if s.topology is not None:
             try:
@@ -558,6 +573,7 @@ def remove_device(device_id: str):
         s.topology.remove_device(device_id)
         if s.ip_manager:
             s.ip_manager.release(ip)
+        _invalidate_power(s)
         s.notify_ui("sync_devices")
         return OkResponse(message=f"Device '{device.name}' removed")
     except Exception as e:

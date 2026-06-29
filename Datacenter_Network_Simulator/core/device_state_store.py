@@ -748,6 +748,14 @@ class DeviceStateStore:
                            "gen_ups": gen_ups}
         return self._power_ctx
 
+    def invalidate_power_context(self) -> None:
+        """Drop the cached power graph so it rebuilds on the next tick. Call this
+        whenever the power topology changes — a device (server/PDU/RPP) is added
+        or removed, or its power feeds change — otherwise the bottom-up load
+        cascade keeps walking a stale graph and new IT load never reaches the
+        PDU/UPS/RPP/EV2 meters that feed it."""
+        self._power_ctx = None
+
     def _server_live_watts(self, device: "Device") -> float:
         """Per-leaf live draw: nameplate scaled by CPU load (idle ~55 %, full
         100 %) — the same curve Redfish _live_watts reports. 0 if powered off."""

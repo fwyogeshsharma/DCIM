@@ -138,6 +138,13 @@ class FleetLifecycleEngine:
             summ.total_servers = len(self._servers())
             self.history.append(summ)
             self.history = self.history[-60:]
+            # Power graph changed (devices + power edges added/removed) — drop the
+            # cached cascade so the new IT load ripples up to the PDU/UPS/RPP/EV2
+            # meters on the next tick instead of being summed against a stale tree.
+            ss = getattr(self.s, "state_store", None)
+            if ss is not None:
+                try: ss.invalidate_power_context()
+                except Exception as e: self._log(f"[Fleet] power ctx invalidate: {e}")
             if self.s is not None:
                 self.s.notify_ui("sync_devices")
             self._log(f"[Fleet] day {self.day}: +{len(summ.added)} -{len(summ.removed)} "
