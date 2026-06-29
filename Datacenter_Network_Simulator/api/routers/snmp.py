@@ -241,53 +241,15 @@ def reload_snmp_simulator():
 
     def _run():
         try:
-            from core.snmprec_generator import SNMPRecGenerator as _Gen
-            seen: set = set()
-            device_ips = []
-            for d in s.topology.get_all_devices():
-                for ip in _Gen.snmp_bind_ips(d):
-                    if ip not in seen:
-                        seen.add(ip)
-                        device_ips.append(ip)
-
-            # Host-bind any IPs added since the last bind (new churned devices).
-            bound_set = set(s.bound_ips or [])
-            missing = [ip for ip in device_ips if ip not in bound_set]
-            if missing and s.selected_adapter:
-                from core.ip_binder import add_ips_fast, is_admin
-                if is_admin():
-                    s.update_job(job_id, message=f"Binding {len(missing)} new IP(s)...")
-                    bound, _ctx = add_ips_fast(
-                        s.selected_adapter, missing, s.subnet_mask,
-                        log_cb=lambda m, l: s.update_job(job_id, message=m),
-                    )
-                    s.bound_ips = list(bound_set | set(bound))
-
-            # Reuse the port snmpsim is currently serving on.
-            port = 161
-            eps = s.snmpsim.get_active_endpoints()
-            if eps:
-                try:
-                    port = int(eps[0].rsplit(":", 1)[1])
-                except (ValueError, IndexError):
-                    pass
-
-            if s.state_store:
-                s.state_store.disable_snmp_sync()
-            s.update_job(job_id, message="Restarting SNMP simulator...")
-            s.snmpsim.stop()
-            ok = s.snmpsim.start(device_ips, port=port)
-            if ok and s.state_store:
-                s.state_store.enable_snmp_sync(s.snmpsim)
+            ok = s.reload_snmp(log_cb=lambda m: s.update_job(job_id, message=m))
             if not ok:
-                s.update_job(job_id, status="failed", error="snmpsim.start() returned False",
+                s.update_job(job_id, status="failed",
+                             error="SNMP reload skipped or snmpsim.start() failed",
                              finished_at=datetime.utcnow().isoformat())
                 return
-
-            s.notify_ui("sync_snmp")
             s.update_job(
                 job_id, status="completed",
-                message=f"SNMP reloaded — {len(device_ips)} agent(s)",
+                message="SNMP reloaded",
                 result={"endpoints": s.snmpsim.get_active_endpoints()},
                 finished_at=datetime.utcnow().isoformat(),
             )

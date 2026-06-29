@@ -95,6 +95,10 @@ class AppState:
         self.jobs: Dict[str, JobStatus] = {}
         self._state_lock = threading.Lock()
         self.executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="api-worker")
+        # Guards SNMP-sim hot-reloads so concurrent triggers (button + fleet
+        # day) coalesce into one bounce instead of stacking restarts.
+        self._snmp_reload_lock = threading.Lock()
+        self._snmp_reloading = False
 
     @classmethod
     def get(cls) -> "AppState":
@@ -202,6 +206,66 @@ class AppState:
         redfish_on = bool(self.redfish and self.redfish.is_running())
         if not (snmp_on or gnmi_on or sflow_on or bacnet_on or redfish_on):
             self.state_store.stop()
+
+    def reload_snmp(self, log_cb=None) -> bool:
+        """Hot-reload the SNMP simulator so devices added after it started (e.g.
+        Fleet Lifecycle churn) become pollable. snmpsim indexes its data-dir at
+        process start, so it only serves the new .snmprec files after a bounce.
+        Host-binds any not-yet-bound device IPs, then restarts snmpsim with the
+        current full device-IP list. Coalesced via _snmp_reload_lock so the Reload
+        button and the per-day fleet trigger never stack restarts. Returns True on
+        a successful (re)start, False if skipped/failed."""
+        log = log_cb or (lambda *_a, **_k: None)
+        if not (self.snmpsim and self.snmpsim.is_running()):
+            return False
+        with self._snmp_reload_lock:
+            if self._snmp_reloading:
+                log("SNMP reload already in progress — skipped")
+                return False
+            self._snmp_reloading = True
+        try:
+            from core.snmprec_generator import SNMPRecGenerator as _Gen
+            seen: set = set()
+            device_ips: List[str] = []
+            for d in self.topology.get_all_devices():
+                for ip in _Gen.snmp_bind_ips(d):
+                    if ip not in seen:
+                        seen.add(ip)
+                        device_ips.append(ip)
+            # Host-bind any IPs added since the last bind (new churned devices).
+            bound_set = set(self.bound_ips or [])
+            missing = [ip for ip in device_ips if ip not in bound_set]
+            if missing and self.selected_adapter:
+                from core.ip_binder import add_ips_fast, is_admin
+                if is_admin():
+                    log(f"Binding {len(missing)} new IP(s)...")
+                    bound, _ctx = add_ips_fast(
+                        self.selected_adapter, missing, self.subnet_mask,
+                        log_cb=lambda m, _l=None: log(m))
+                    self.bound_ips = list(bound_set | set(bound))
+                else:
+                    log("not admin — skipping host IP bind (new SNMP IPs unreachable)")
+            # Reuse the port snmpsim is currently serving on.
+            port = 161
+            eps = self.snmpsim.get_active_endpoints()
+            if eps:
+                try:
+                    port = int(eps[0].rsplit(":", 1)[1])
+                except (ValueError, IndexError):
+                    pass
+            if self.state_store:
+                self.state_store.disable_snmp_sync()
+            log("Restarting SNMP simulator...")
+            self.snmpsim.stop()
+            ok = self.snmpsim.start(device_ips, port=port)
+            if ok and self.state_store:
+                self.state_store.enable_snmp_sync(self.snmpsim)
+            self.notify_ui("sync_snmp")
+            log(f"SNMP reloaded — {len(device_ips)} agent(s)" if ok
+                else "SNMP reload failed — snmpsim.start() returned False")
+            return ok
+        finally:
+            self._snmp_reloading = False
 
     def get_all_bind_ips(self) -> List[str]:
         """Return all IPs that should be bound (production + mgmt, deduplicated)."""

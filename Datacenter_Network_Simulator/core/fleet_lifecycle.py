@@ -148,6 +148,17 @@ class FleetLifecycleEngine:
                 except Exception as e: self._log(f"[Fleet] power ctx invalidate: {e}")
             if self.s is not None:
                 self.s.notify_ui("sync_devices")
+            # SNMP agents for churned devices only become pollable after snmpsim
+            # re-indexes its data-dir. Bounce it ONCE per changed day — async (off
+            # the sim-day thread) and coalesced inside reload_snmp, never per
+            # device. gNMI/Redfish were already hot-added live in _commission.
+            if summ.added or summ.removed or summ.expanded_racks:
+                ex = getattr(self.s, "executor", None)
+                if ex is not None and getattr(self.s, "snmpsim", None) is not None:
+                    try:
+                        ex.submit(self.s.reload_snmp, self._log)
+                    except Exception as e:
+                        self._log(f"[Fleet] snmp reload submit: {e}")
             self._log(f"[Fleet] day {self.day}: +{len(summ.added)} -{len(summ.removed)} "
                       f"(servers={summ.total_servers})")
             return summ
