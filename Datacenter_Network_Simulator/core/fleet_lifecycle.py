@@ -55,8 +55,10 @@ if TYPE_CHECKING:
 @dataclass
 class DaySummary:
     day: int
-    added: list[str] = field(default_factory=list)
-    removed: list[str] = field(default_factory=list)
+    # added/removed hold per-device info dicts (name, vendor, mgmt_ip, ip) so the
+    # UI Activity log can expand a day and show what actually churned.
+    added: list[dict] = field(default_factory=list)
+    removed: list[dict] = field(default_factory=list)
     expanded_racks: list[str] = field(default_factory=list)
     total_servers: int = 0
 
@@ -188,7 +190,7 @@ class FleetLifecycleEngine:
                 self.s.topology.remove_device(dev.id)   # also drops incident links
                 if self.s.ip_manager and ip:
                     self.s.ip_manager.release(ip)
-                summ.removed.append(dev.name)
+                summ.removed.append(self._dev_info(dev))
             except Exception as e:
                 self._log(f"[Fleet] decom {dev.name} failed: {e}")
 
@@ -210,9 +212,9 @@ class FleetLifecycleEngine:
                 if rack is None:
                     self._log("[Fleet] no capacity to expand — provisioning paused")
                     break
-            name = self._add_server(rack)
-            if name:
-                summ.added.append(name)
+            dev = self._add_server(rack)
+            if dev is not None:
+                summ.added.append(self._dev_info(dev))
 
     # ── placement helpers ────────────────────────────────────────────────────
 
@@ -238,6 +240,16 @@ class FleetLifecycleEngine:
     def _room_key(d: Device) -> tuple:
         """Physically-unique hall (room) id: (dc, floor, room)."""
         return (d.datacenter or "", str(d.floor or ""), d.room or "")
+
+    @staticmethod
+    def _dev_info(dev: Device) -> dict:
+        """Compact device descriptor for the Activity log (name/vendor/IPs)."""
+        return {
+            "name": dev.name,
+            "vendor": getattr(dev.vendor, "value", str(dev.vendor or "")),
+            "mgmt_ip": getattr(dev, "mgmt_ip", "") or "",
+            "ip": getattr(dev, "ip_address", "") or "",
+        }
 
     def _rack_devices(self, key: tuple) -> list[Device]:
         return [d for d in self.s.device_manager.get_all_devices() if self._rack_key(d) == key]
@@ -568,18 +580,36 @@ class FleetLifecycleEngine:
 
     # ── device creation ──────────────────────────────────────────────────────
 
-    def _alloc_ip(self) -> Optional[str]:
-        used = {d.ip_address for d in self.s.device_manager.get_all_devices()}
-        if self.s.ip_manager is None:
-            return None
-        for _ in range(10000):
-            try:
-                ip = self.s.ip_manager.next_ip()
-            except Exception:
-                return None
-            if ip not in used:
-                return ip
-        return None
+    def _used_ips(self) -> set:
+        """Every production + management IP currently in use, so a new device
+        never collides regardless of which pool it draws from."""
+        used: set = set()
+        for d in self.s.device_manager.get_all_devices():
+            if d.ip_address:
+                used.add(d.ip_address)
+            m = getattr(d, "mgmt_ip", "")
+            if m:
+                used.add(m)
+        return used
+
+    @staticmethod
+    def _alloc_in_subnet(ref_ip: str, prefix: int, used: set) -> str:
+        """Lowest free host in the subnet that *ref_ip* belongs to (e.g. the prod
+        10.50.0.0/16 or a DC's mgmt 192.168.4.0/22). Derives the network from a
+        template peer so fleet devices share the curated addressing — not a
+        mis-seeded global pool. '' if ref_ip is blank or the subnet is full."""
+        if not ref_ip:
+            return ""
+        import ipaddress
+        try:
+            net = ipaddress.ip_network(f"{ref_ip}/{prefix}", strict=False)
+        except ValueError:
+            return ""
+        for host in net.hosts():
+            s = str(host)
+            if s not in used:
+                return s
+        return ""
 
     def _unique_name(self, base: str) -> str:
         names = {d.name for d in self.s.device_manager.get_all_devices()}
@@ -597,7 +627,7 @@ class FleetLifecycleEngine:
             u += 1
         return u
 
-    def _add_server(self, rack: dict) -> Optional[str]:
+    def _add_server(self, rack: dict) -> Optional[Device]:
         tmpl: Device = rack["server_tmpl"]
         dc, row, num = rack["key"]
         unit = self._next_free_unit(rack["key"])
@@ -630,7 +660,7 @@ class FleetLifecycleEngine:
         if upd:
             self.s.device_manager.update_device(dev.id, **upd)
         self._commission(dev)   # bring it online on SNMP/gNMI/Redfish
-        return dev.name
+        return dev
 
     def _clone(self, tmpl: Device, dc: str, row: int, num: int, unit: int,
                prefix: str, floor: Optional[str] = None,
@@ -644,11 +674,21 @@ class FleetLifecycleEngine:
         new hall); *fx/fy/hot/cold/facing* set the floor-plan coordinates so the
         device renders in the right spot. Any left None inherits the template's
         value (so filling an existing rack copies its peers' placement)."""
-        ip = self._alloc_ip()
-        if ip is None:
-            self._log("[Fleet] IP pool exhausted")
+        # Allocate from the SAME subnets as the template peer so fleet devices
+        # share the curated addressing: prod in the production /16 (e.g.
+        # 10.50.0.0/16), mgmt in the DC's mgmt /22 (e.g. 192.168.4.0/22). A
+        # device with no prod IP (a 0U PDU) keeps it blank, like its curated peer.
+        used = self._used_ips()
+        ip = self._alloc_in_subnet(getattr(tmpl, "ip_address", "") or "", 16, used)
+        if getattr(tmpl, "ip_address", "") and not ip:
+            self._log("[Fleet] prod IP subnet exhausted")
             return None
-        base = f"{dc or 'dc'}-{prefix}".lower().replace(" ", "-")
+        if ip:
+            used.add(ip)
+        mgmt_ip = self._alloc_in_subnet(getattr(tmpl, "mgmt_ip", "") or "", 22, used)
+        # Match the curated naming style (e.g. DC2-SRV-0007): uppercase DC + role,
+        # not a lowercased slug.
+        base = f"{(dc or 'DC')}-{prefix.upper()}".replace(" ", "-")
         name = self._unique_name(base)
         try:
             dev = Device(
@@ -656,6 +696,7 @@ class FleetLifecycleEngine:
                 device_type=tmpl.device_type,
                 vendor=tmpl.vendor,
                 ip_address=ip,
+                mgmt_ip=mgmt_ip,
                 model_name=tmpl.model_name,
                 snmp_port=getattr(tmpl, "snmp_port", 161),
                 gnmi_port=getattr(tmpl, "gnmi_port", 57400),
@@ -680,12 +721,12 @@ class FleetLifecycleEngine:
             )
             self.s.device_manager.add_device(dev)
             self.s.topology.add_device(dev, x=0.0, y=0.0)
-            if self.s.ip_manager:
+            if self.s.ip_manager and ip:
                 self.s.ip_manager.reserve(ip)
             return dev
         except Exception as e:
             self._log(f"[Fleet] create {name} failed: {e}")
-            if self.s.ip_manager:
+            if self.s.ip_manager and ip:
                 self.s.ip_manager.release(ip)
             return None
 

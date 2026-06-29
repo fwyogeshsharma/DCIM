@@ -12,8 +12,11 @@ interface FleetConfig {
   compute_rows_per_room: number
   max_total_servers:    number
 }
+interface FleetDevice {
+  name: string; vendor: string; mgmt_ip: string; ip: string
+}
 interface DayLog {
-  day: number; added: string[]; removed: string[]; expanded_racks: string[]; total_servers: number
+  day: number; added: FleetDevice[]; removed: FleetDevice[]; expanded_racks: string[]; total_servers: number
 }
 interface FleetStatus {
   enabled: boolean
@@ -40,7 +43,14 @@ export default function FleetPanel() {
   const [cfg, setCfg]       = useState<FleetConfig | null>(null)
   const [busy, setBusy]     = useState<string | null>(null)
   const [err, setErr]       = useState('')
+  const [openDays, setOpenDays] = useState<Set<number>>(new Set())
   const seeded = useRef(false)
+
+  const toggleDay = (day: number) => setOpenDays(prev => {
+    const next = new Set(prev)
+    if (next.has(day)) next.delete(day); else next.add(day)
+    return next
+  })
 
   const refresh = useCallback(() => {
     api.fleetStatus()
@@ -162,19 +172,53 @@ export default function FleetPanel() {
           {(!status || status.history.length === 0) && (
             <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No days elapsed yet.</div>
           )}
-          {status && [...status.history].reverse().map(d => (
-            <div key={d.day} style={{
-              display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0',
-              fontSize: 11, fontFamily: 'monospace', borderBottom: '1px solid var(--border)',
-            }}>
-              <span style={{ color: 'var(--text-dim)', width: 38 }}>D{d.day}</span>
-              <span style={{ color: '#3fb950' }}>+{d.added.length}</span>
-              <span style={{ color: '#f87171' }}>-{d.removed.length}</span>
-              {d.expanded_racks.length > 0 &&
-                <span style={{ color: '#d29922' }} title={d.expanded_racks.join(', ')}>+{d.expanded_racks.length} rack</span>}
-              <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>{d.total_servers} srv</span>
+          {status && [...status.history].reverse().map(d => {
+            const hasDetail = d.added.length > 0 || d.removed.length > 0
+            const open = openDays.has(d.day)
+            return (
+            <div key={d.day} style={{ borderBottom: '1px solid var(--border)' }}>
+              <div
+                onClick={() => hasDetail && toggleDay(d.day)}
+                style={{
+                  display: 'flex', alignItems: 'baseline', gap: 8, padding: '3px 0',
+                  fontSize: 11, fontFamily: 'monospace',
+                  cursor: hasDetail ? 'pointer' : 'default',
+                }}>
+                <span style={{ width: 10, color: 'var(--text-dim)' }}>
+                  {hasDetail ? (open ? '▾' : '▸') : ''}
+                </span>
+                <span style={{ color: 'var(--text-dim)', width: 34 }}>D{d.day}</span>
+                <span style={{ color: '#3fb950' }}>+{d.added.length}</span>
+                <span style={{ color: '#f87171' }}>-{d.removed.length}</span>
+                {d.expanded_racks.length > 0 &&
+                  <span style={{ color: '#d29922' }} title={d.expanded_racks.join(', ')}>+{d.expanded_racks.length} rack</span>}
+                <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>{d.total_servers} srv</span>
+              </div>
+              {open && hasDetail && (
+                <div style={{ padding: '2px 0 6px 20px' }}>
+                  {[...d.added.map(x => ({ ...x, op: '+' as const })),
+                    ...d.removed.map(x => ({ ...x, op: '-' as const }))].map((x, i) => (
+                    <div key={i} style={{
+                      display: 'grid',
+                      gridTemplateColumns: '10px 1fr auto', columnGap: 8,
+                      fontSize: 10, fontFamily: 'monospace', padding: '1px 0',
+                      color: 'var(--text-muted)',
+                    }}>
+                      <span style={{ color: x.op === '+' ? '#3fb950' : '#f87171' }}>{x.op}</span>
+                      <span style={{ color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {x.name} <span style={{ color: 'var(--text-dim)' }}>· {x.vendor || '—'}</span>
+                      </span>
+                      <span style={{ textAlign: 'right' }}>
+                        {x.ip || '—'}<span style={{ color: 'var(--text-dim)' }}> / {x.mgmt_ip || '—'}</span>
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>prod ip / mgmt ip</div>
+                </div>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {err && <div style={{ color: 'var(--red)', fontSize: 10 }}>{err}</div>}
