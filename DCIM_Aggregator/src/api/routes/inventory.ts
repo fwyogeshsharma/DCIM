@@ -15,22 +15,79 @@ export function createInventoryRouter(dbPool: Pool): Router {
 
       if (datacenter_id) { conditions.push(`datacenter_id = $${i++}`); params.push(datacenter_id) }
 
+      // RAM/storage "available" is the real free amount derived from the latest
+      // live metrics (same UCD-SNMP / gNMI keys as the device list), falling back
+      // to the stored snapshot when a device has no recent metrics. This keeps the
+      // summary cards consistent with the per-row STORAGE/RAM columns.
+      const conditionsD = conditions.map(c => `d.${c}`)
       const { rows: devRows } = await dbPool.query(`
+        WITH latest_health AS (
+          SELECT DISTINCT ON (m.device_id, m.metric_name)
+            m.device_id, m.metric_name, m.value
+          FROM metrics m
+          WHERE m.metric_name IN (
+            'system.memory_total_bytes', 'system.memory_used_bytes',
+            'server.memory_total_kb',    'server.memory_available_kb',
+            'server.storage_available_kb', 'server.storage_used_kb'
+          )
+            AND m.ts >= NOW() - INTERVAL '2 hours'
+          ORDER BY m.device_id, m.metric_name, m.ts DESC
+        ),
+        health AS (
+          SELECT
+            device_id,
+            -- Total installed RAM (GB) and live free RAM (GB).
+            COALESCE(
+              CASE WHEN mem_total_b  > 0 THEN mem_total_b  / 1073741824.0 END,
+              CASE WHEN mem_total_kb > 0 THEN mem_total_kb / 1048576.0 END
+            ) AS ram_gb,
+            COALESCE(
+              CASE WHEN mem_total_b >= 0 AND mem_used_b >= 0 THEN (mem_total_b - mem_used_b) / 1073741824.0 END,
+              CASE WHEN mem_avail_kb >= 0 THEN mem_avail_kb / 1048576.0 END
+            ) AS ram_available_gb,
+            -- Total storage (used + available) and live free storage (GB).
+            CASE WHEN storage_used_kb >= 0 AND storage_avail_kb >= 0
+                 THEN (storage_used_kb + storage_avail_kb) / 1048576.0 END AS storage_total_gb,
+            CASE WHEN storage_avail_kb >= 0 THEN storage_avail_kb / 1048576.0 END AS storage_available_gb
+          FROM (
+            SELECT
+              device_id,
+              MAX(value) FILTER (WHERE metric_name = 'system.memory_total_bytes')   AS mem_total_b,
+              MAX(value) FILTER (WHERE metric_name = 'system.memory_used_bytes')    AS mem_used_b,
+              MAX(value) FILTER (WHERE metric_name = 'server.memory_total_kb')      AS mem_total_kb,
+              MAX(value) FILTER (WHERE metric_name = 'server.memory_available_kb')  AS mem_avail_kb,
+              MAX(value) FILTER (WHERE metric_name = 'server.storage_available_kb') AS storage_avail_kb,
+              MAX(value) FILTER (WHERE metric_name = 'server.storage_used_kb')      AS storage_used_kb
+            FROM latest_health
+            GROUP BY device_id
+          ) agg
+        )
         SELECT
           COUNT(*)::int                                                                     AS total,
-          COUNT(CASE WHEN status = 'idle'           THEN 1 END)::int                       AS idle,
-          COUNT(CASE WHEN status = 'in_use'         THEN 1 END)::int                       AS in_use,
-          COUNT(CASE WHEN status = 'maintenance'    THEN 1 END)::int                       AS maintenance,
-          COUNT(CASE WHEN status = 'decommissioned' THEN 1 END)::int                       AS decommissioned,
-          COALESCE(SUM(cpu_cores),   0)::int                                               AS total_cpu_cores,
-          COALESCE(SUM(ram_gb),      0)                                                    AS total_ram_gb,
-          COALESCE(SUM(storage_gb),  0)                                                    AS total_storage_gb,
-          COALESCE(SUM(CASE WHEN status = 'idle' THEN cpu_cores   ELSE 0 END), 0)::int    AS available_cpu_cores,
-          COALESCE(SUM(CASE WHEN status = 'idle' THEN ram_gb      ELSE 0 END), 0)          AS available_ram_gb,
-          COALESCE(SUM(CASE WHEN status = 'idle' THEN storage_gb  ELSE 0 END), 0)          AS available_storage_gb,
-          COALESCE(SUM(storage_gb) - SUM(COALESCE(storage_used_gb, 0)), 0)                 AS storage_remaining_gb
-        FROM dc_inventory_devices
-        WHERE ${conditions.join(' AND ')}
+          COUNT(CASE WHEN d.status = 'idle'           THEN 1 END)::int                     AS idle,
+          COUNT(CASE WHEN d.status = 'in_use'         THEN 1 END)::int                     AS in_use,
+          COUNT(CASE WHEN d.status = 'maintenance'    THEN 1 END)::int                     AS maintenance,
+          COUNT(CASE WHEN d.status = 'decommissioned' THEN 1 END)::int                     AS decommissioned,
+          COALESCE(SUM(d.cpu_cores), 0)::int                                               AS total_cpu_cores,
+          COALESCE(SUM(COALESCE(h.ram_gb, d.ram_gb)), 0)                                   AS total_ram_gb,
+          COALESCE(SUM(COALESCE(h.storage_total_gb, d.storage_gb)), 0)                     AS total_storage_gb,
+          COALESCE(SUM(CASE WHEN d.status = 'idle' THEN d.cpu_cores ELSE 0 END), 0)::int   AS available_cpu_cores,
+          -- Real free RAM/storage: live metric, else stored (total − used) snapshot.
+          COALESCE(SUM(COALESCE(
+            h.ram_available_gb,
+            GREATEST(COALESCE(d.ram_gb, 0) - COALESCE(d.ram_gb, 0) * COALESCE(d.ram_used_pct, 0) / 100, 0)
+          )), 0)                                                                           AS available_ram_gb,
+          COALESCE(SUM(COALESCE(
+            h.storage_available_gb,
+            GREATEST(COALESCE(d.storage_gb, 0) - COALESCE(d.storage_used_gb, 0), 0)
+          )), 0)                                                                           AS available_storage_gb,
+          COALESCE(SUM(COALESCE(
+            h.storage_available_gb,
+            GREATEST(COALESCE(d.storage_gb, 0) - COALESCE(d.storage_used_gb, 0), 0)
+          )), 0)                                                                           AS storage_remaining_gb
+        FROM dc_inventory_devices d
+        LEFT JOIN health h ON h.device_id = d.device_id
+        WHERE ${conditionsD.join(' AND ')}
       `, params)
 
       const { rows: linkRows } = await dbPool.query(`
