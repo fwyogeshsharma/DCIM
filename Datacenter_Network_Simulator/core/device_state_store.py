@@ -772,11 +772,20 @@ class DeviceStateStore:
                 brs.sort(key=lambda b: b.name or "")
                 ev2_circuit_pdus[ip] = [b.id for b in brs]
 
-            # Classify each EV2 meter: a FACILITY meter (its panel's subtree
-            # includes cooling plant — i.e. it's on the building feed) vs an IT
-            # SUB-METER (subtree is IT only). PUE = Σ facility-meter kW ÷ Σ IT-meter
-            # kW, exactly how a DCIM derives it from physical meter readings.
-            cooling_ids = {i for i, t in id_type.items() if t in self._COOLING_TYPES}
+            # Classify each EV2 meter by what its panel's subtree contains:
+            #   • "main" (building feed): sees BOTH IT load and central cooling
+            #     plant — a whole-facility meter (e.g. on the generator/utility
+            #     feed). Its reading = total facility power.
+            #   • "it" sub-meter: IT load, no central plant.
+            #   • "cool" sub-meter: central plant, no IT.
+            # PUE = Σ main ÷ Σ IT when a whole-facility meter exists; otherwise
+            # facility = Σ(IT)+Σ(cool) from the non-overlapping branch sub-meters
+            # (see get_power_summary). Central plant is BULK mechanical only
+            # (chiller/tower/pump/CRAH); a CDU is in-rack direct-to-chip cooling fed
+            # from the IT PDU, so it must NOT flag an IT branch as a facility meter.
+            _central_ids = {i for i, t in id_type.items()
+                            if t in ("crah", "chiller", "pump", "cooling_tower")}
+            _it_ids = {i for i, t in id_type.items() if t in self._IT_LEAF_TYPES}
 
             def _subtree(root):
                 seen, stack = set(), [root]
@@ -789,8 +798,16 @@ class DeviceStateStore:
                 return seen
 
             for ip, panel in ev2_ip_panel.items():
-                is_fac = bool(_subtree(panel) & cooling_ids)
-                ev2_meters.append({"ip": ip, "panel": panel, "facility": is_fac})
+                sub = _subtree(panel)
+                has_it    = bool(sub & _it_ids)
+                has_plant = bool(sub & _central_ids)
+                role = ("main" if (has_it and has_plant)
+                        else "it" if has_it
+                        else "cool" if has_plant else "other")
+                ev2_meters.append({
+                    "ip": ip, "panel": panel, "role": role,
+                    "facility": role in ("main", "cool"),   # legacy key
+                })
 
             # Generator → names of the UPS units downstream of it. A genset starts
             # when utility is lost, which the sim sees as a downstream UPS going
@@ -842,15 +859,22 @@ class DeviceStateStore:
         IT/facility power sums so the value is still populated."""
         ctx = self._power_context()
         through = self._through_live
-        it_m = 0.0
-        fac_m = 0.0
+        it_m = main_m = cool_m = 0.0
         for m in ctx.get("ev2_meters", []):
             kw = through.get(m["panel"], 0.0) / 1000.0
-            if m["facility"]:
-                fac_m += kw          # building-feed meter — sees IT + cooling
-            else:
+            role = m.get("role") or ("main" if m.get("facility") else "it")
+            if role == "it":
                 it_m += kw           # IT branch sub-meter
+            elif role == "main":
+                main_m += kw         # building-feed meter — whole facility (IT+cooling)
+            elif role == "cool":
+                cool_m += kw         # cooling-plant sub-meter
 
+        # A building-main meter already sums IT + cooling, so use it directly and
+        # do NOT add the cooling sub-meters (they sit inside it → double count).
+        # With no main meter, fall back to summing the non-overlapping branch
+        # sub-meters: facility = IT + cooling.
+        fac_m = main_m if main_m > 0 else (it_m + cool_m)
         metered = it_m > 0 and fac_m > 0
         it_w  = it_m * 1000.0 if it_m > 0 else self._it_w
         fac_w = fac_m * 1000.0 if fac_m > 0 else self._facility_w
