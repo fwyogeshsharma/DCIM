@@ -11,6 +11,7 @@ import { createTicketsRouter } from './tickets'
 import { createIngestRouter } from './ingest'
 import { createInventoryRouter } from './inventory'
 import { createAuthRouter } from './auth'
+import { authenticate, guardDomain } from '../middleware/auth'
 import { addSSEClient, removeSSEClient } from '../../events/sseEmitter'
 
 const HEARTBEAT_TIMEOUT_SECONDS = 300
@@ -24,14 +25,19 @@ export function setupRoutes(app: Express, dbPool: Pool, redisClient: RedisClient
     req.on('close', () => removeSSEClient(clientId))
   })
 
-  app.use('/api/v1/servers',  createServersRouter(dbPool, cacheService))
-  app.use('/api/v1/agents',   createAgentsRouter(dbPool))
-  app.use('/api/v1/metrics',  createMetricsRouter(dbPool, cacheService))
-  app.use('/api/v1/energy',   createEnergyRouter(dbPool, cacheService))
-  app.use('/api/v1/alerts',   createAlertsRouter(dbPool))
-  app.use('/api/v1/tickets',  createTicketsRouter(dbPool))
+  // RBAC: authenticate + coarse per-domain guard (GET → read, mutations → write).
+  // `ingest` is machine-to-machine (agents) and `auth` guards itself, so neither
+  // sits behind the user-session guard. The SSE /events stream is also left open
+  // because EventSource cannot send an Authorization header.
+  const auth = authenticate(dbPool)
+  app.use('/api/v1/servers',    auth, guardDomain('servers'),    createServersRouter(dbPool, cacheService))
+  app.use('/api/v1/agents',     auth, guardDomain('devices'),    createAgentsRouter(dbPool))
+  app.use('/api/v1/metrics',    auth, guardDomain('monitoring'), createMetricsRouter(dbPool, cacheService))
+  app.use('/api/v1/energy',     auth, guardDomain('energy'),     createEnergyRouter(dbPool, cacheService))
+  app.use('/api/v1/alerts',     auth, guardDomain('alerts'),     createAlertsRouter(dbPool))
+  app.use('/api/v1/tickets',    auth, guardDomain('tickets'),    createTicketsRouter(dbPool))
+  app.use('/api/v1/inventory',  auth, guardDomain('inventory'),  createInventoryRouter(dbPool))
   app.use('/api/v1/ingest',     createIngestRouter(dbPool))
-  app.use('/api/v1/inventory',  createInventoryRouter(dbPool))
   app.use('/api/v1/auth',       createAuthRouter(dbPool))
 
   // ── Dashboard stats ────────────────────────────────────────────────────────

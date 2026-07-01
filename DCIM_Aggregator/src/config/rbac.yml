@@ -1,0 +1,191 @@
+# =============================================================================
+# DCIM Role-Based Access Control (RBAC) — single source of truth
+# -----------------------------------------------------------------------------
+# Edit THIS file to change what any role can see or do. Both the backend
+# (DCIM_Aggregator route guards) and the frontend (sidebar / route / button
+# gating) derive their permissions from here — never hard-code roles in code.
+#
+# Access levels (per feature):
+#   none   -> feature hidden, API rejects
+#   read   -> can view only; all write/act endpoints rejected
+#   write  -> can view + create / edit / act (implies read)
+#   manage -> write + delete / destructive / admin actions (implies write)
+#
+# Approval model:
+#   A newly registered user REQUESTS a role at sign-up. Until an approver
+#   (root/admin) approves, every "write"/"manage" grant is downgraded to
+#   "read" so the user sees their whole role in read-only mode. Approval
+#   restores the levels defined below. See `approval:` at the bottom.
+# =============================================================================
+
+version: 1
+
+# ---------------------------------------------------------------------------
+# FEATURE CATALOG — every gate-able area of DCIM (maps to UI pages + API domains)
+# ---------------------------------------------------------------------------
+features:
+  dashboard:      { label: "Dashboard / Overview" }
+  devices:        { label: "Devices / Agents" }
+  device_config:  { label: "Device Configuration & Commands", sensitive: true }
+  monitoring:     { label: "Monitoring / Metrics / SNMP" }
+  energy:         { label: "Energy / Power Management" }
+  alerts:         { label: "Alerts & Traps" }
+  thresholds:     { label: "Thresholds / Rules", sensitive: true }
+  tickets:        { label: "Tickets / Incidents" }
+  inventory:      { label: "Inventory / Assets" }
+  topology:       { label: "Topology (view + editor)" }
+  network_ops:    { label: "Network Operations" }
+  fire_safety:    { label: "Fire & Safety / Facility" }
+  reports:        { label: "Reports / Power Reports" }
+  servers:        { label: "Servers / Collectors", sensitive: true }
+  ai_ml:          { label: "AI / ML Analytics & Forecasts" }
+  settings:       { label: "Application Settings", sensitive: true }
+  user_admin:     { label: "User & Role Administration", sensitive: true }
+
+# ---------------------------------------------------------------------------
+# ROLES — ordered by tier. `tier` is display/priority only; access is per-feature.
+# `approves` = can approve other users' role requests. `assignable_by` limits
+# who may grant this role. `wildcard: manage` is shorthand for "manage on every
+# feature" (used by root/admin so new features are covered automatically).
+# ---------------------------------------------------------------------------
+roles:
+
+  # --- Tier 0 -------------------------------------------------------------
+  root:
+    label: "Root (Super Admin)"
+    tier: 0
+    approves: true
+    assignable_by: [root]
+    wildcard: manage          # full manage on ALL features, present and future
+    # Root additionally owns the RBAC system itself (edit this file / roles).
+
+  # --- Tier 1 (full product access) --------------------------------------
+  admin:
+    label: "Admin"
+    tier: 1
+    approves: true
+    assignable_by: [root]
+    wildcard: manage
+    overrides:
+      user_admin: write       # can manage users but not create/promote root
+
+  csr:
+    label: "CSR (Customer Support)"
+    tier: 1
+    approves: false
+    assignable_by: [root, admin]
+    wildcard: write           # full read/write everywhere...
+    overrides:
+      servers: read           # ...but not destructive infra actions
+      user_admin: read
+      settings: read
+
+  # --- Tier 2 (domain operational roles) ---------------------------------
+  noc_operator:
+    label: "NOC Operator (Monitoring & Response)"
+    tier: 2
+    assignable_by: [root, admin]
+    features:
+      dashboard: read
+      devices: read
+      monitoring: read
+      alerts: write            # resolve / bulk-resolve
+      tickets: write           # create / comment
+      topology: read
+      network_ops: read
+      fire_safety: read
+      energy: read
+      reports: read
+
+  infra_engineer:
+    label: "Infrastructure / Facilities Engineer"
+    tier: 2
+    assignable_by: [root, admin]
+    features:
+      dashboard: read
+      devices: write
+      device_config: write
+      monitoring: read
+      energy: write
+      alerts: write
+      thresholds: write
+      tickets: write
+      fire_safety: write
+      servers: manage
+      reports: read
+
+  network_engineer:
+    label: "Network Engineer"
+    tier: 2
+    assignable_by: [root, admin]
+    features:
+      dashboard: read
+      devices: write
+      monitoring: read
+      alerts: read
+      topology: write          # includes topology editor
+      network_ops: write
+      tickets: write
+
+  energy_manager:
+    label: "Energy / Sustainability Manager"
+    tier: 2
+    assignable_by: [root, admin]
+    features:
+      dashboard: read
+      devices: read
+      monitoring: read
+      energy: write
+      thresholds: write
+      reports: write
+      ai_ml: read
+
+  inventory_manager:
+    label: "Inventory / Asset Manager"
+    tier: 2
+    assignable_by: [root, admin]
+    features:
+      dashboard: read
+      devices: read
+      inventory: manage
+      topology: read
+      servers: write           # register collectors
+      reports: read
+
+  # --- Tier 3 (limited) ---------------------------------------------------
+  technician:
+    label: "Technician / Field Tech"
+    tier: 3
+    assignable_by: [root, admin]
+    scope: assigned_only       # only tickets/devices assigned to this user
+    features:
+      tickets: write           # own tickets only (enforced via scope)
+      devices: read
+      alerts: write            # resolve alert tied to their ticket
+
+  viewer:
+    label: "Viewer / Auditor (read-only)"
+    tier: 3
+    assignable_by: [root, admin]
+    features:
+      dashboard: read
+      devices: read
+      monitoring: read
+      energy: read
+      alerts: read
+      topology: read
+      reports: read
+
+# ---------------------------------------------------------------------------
+# APPROVAL WORKFLOW
+# ---------------------------------------------------------------------------
+approval:
+  # New sign-ups request a role and start here:
+  default_status: pending
+  approver_roles: [root, admin]
+  # While status == pending, every write/manage grant is clamped to `read`:
+  pending_access: read
+  # Roles that are auto-approved on creation (created only by an approver anyway):
+  auto_approved_roles: [root, admin]
+  # Users may hold multiple roles; effective access = highest level per feature.
+  allow_multiple_roles: true

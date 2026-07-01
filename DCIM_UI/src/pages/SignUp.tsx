@@ -1,10 +1,11 @@
-import { useState, type FormEvent, useRef, useMemo } from 'react'
+import { useState, type FormEvent, useRef, useMemo, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Server, Lock, User, Mail } from 'lucide-react'
+import { Server, Lock, User, Mail, Briefcase } from 'lucide-react'
 import { useAuthStore } from '../stores/useAuthStore'
+import { api, type RoleOption } from '../lib/api'
 
 // ─── Three.js network background ────────────────────────────────────────────
 
@@ -145,8 +146,22 @@ export default function SignUp() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [role, setRole] = useState('')
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Load the roles a new user may request (root/admin are excluded server-side).
+  useEffect(() => {
+    api
+      .getRequestableRoles()
+      .then((roles) => {
+        setRoleOptions(roles)
+        const viewer = roles.find((r) => r.key === 'viewer')
+        setRole(viewer?.key ?? roles[0]?.key ?? '')
+      })
+      .catch(() => setRoleOptions([]))
+  }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -156,7 +171,7 @@ export default function SignUp() {
     if (password.length < 6) { setError('Password must be at least 6 characters'); return }
 
     setLoading(true)
-    const result = await register(username, email, password)
+    const result = await register(username, email, password, role)
     setLoading(false)
 
     if (result.success) {
@@ -256,6 +271,27 @@ export default function SignUp() {
                   placeholder="••••••••"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">Requested role</label>
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 z-10" />
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full appearance-none bg-slate-800/60 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  {roleOptions.map((r) => (
+                    <option key={r.key} value={r.key} className="bg-slate-800">
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                An administrator approves your role. Until then you’ll have read-only access.
+              </p>
             </div>
 
             {error && (

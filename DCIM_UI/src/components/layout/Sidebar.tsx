@@ -15,30 +15,41 @@ import {
   Radio,
   Flame,
   Ticket,
-  Package
+  Package,
+  ShieldCheck
 } from 'lucide-react'
 import { useUIStore } from '@/stores/useUIStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { Button } from '@/components/ui/button'
 
+// `feature` maps each item to a key in rbac.yml; items the user has no access to
+// are hidden. `approverOnly` items (Approvals) show only for root/admin.
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Devices', href: '/agents', icon: Server },
-  { name: 'Alerts', href: '/alerts', icon: AlertTriangle },
-  { name: 'Tickets', href: '/tickets', icon: Ticket },
-  { name: 'Power Mgmt', href: '/reports', icon: ZapIcon },
-  { name: 'Network Ops', href: '/network-ops', icon: Radio },
-  { name: 'Fire & Safety', href: '/fire-safety', icon: Flame },
-  { name: 'Inventory', href: '/inventory', icon: Package },
-  { name: 'Topology', href: '/topology', icon: Network },
-  // { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit },
-  // { name: 'NL Query', href: '/nl-query', icon: MessageSquareText },
-  { name: 'Servers', href: '/servers', icon: ServerCog },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, feature: 'dashboard' },
+  { name: 'Devices', href: '/agents', icon: Server, feature: 'devices' },
+  { name: 'Alerts', href: '/alerts', icon: AlertTriangle, feature: 'alerts' },
+  { name: 'Tickets', href: '/tickets', icon: Ticket, feature: 'tickets' },
+  { name: 'Power Mgmt', href: '/reports', icon: ZapIcon, feature: 'reports' },
+  { name: 'Network Ops', href: '/network-ops', icon: Radio, feature: 'network_ops' },
+  { name: 'Fire & Safety', href: '/fire-safety', icon: Flame, feature: 'fire_safety' },
+  { name: 'Inventory', href: '/inventory', icon: Package, feature: 'inventory' },
+  { name: 'Topology', href: '/topology', icon: Network, feature: 'topology' },
+  // { name: 'AI Analytics', href: '/ai-analytics', icon: BrainCircuit, feature: 'ai_ml' },
+  // { name: 'NL Query', href: '/nl-query', icon: MessageSquareText, feature: 'ai_ml' },
+  { name: 'Servers', href: '/servers', icon: ServerCog, feature: 'servers' },
+  { name: 'Approvals', href: '/approvals', icon: ShieldCheck, feature: 'user_admin', approverOnly: true },
+  { name: 'Settings', href: '/settings', icon: Settings, feature: 'settings' },
 ]
 
 export default function Sidebar() {
   const location = useLocation()
   const { sidebarOpen, setSidebarOpen } = useUIStore()
+  const can = useAuthStore((s) => s.can)
+  const isApprover = useAuthStore((s) => s.isApprover())
+
+  const visibleNav = navigation.filter((item) =>
+    item.approverOnly ? isApprover : can(item.feature, 'read'),
+  )
 
   return (
     <aside
@@ -84,7 +95,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-3">
-          {navigation.map((item) => {
+          {visibleNav.map((item) => {
             const isActive = location.pathname === item.href || location.pathname.startsWith('/app' + item.href)
             const Icon = item.icon
 

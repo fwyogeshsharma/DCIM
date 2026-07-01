@@ -26,9 +26,16 @@ const API_BASE_URL = import.meta.env.VITE_AGGREGATOR_URL || import.meta.env.VITE
 
 class APIClient {
   private baseURL: string
+  private authToken: string | null = null
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
+  }
+
+  // The bearer token is set by the auth store on login / rehydrate and sent on
+  // every request so the aggregator can enforce RBAC.
+  setAuthToken(token: string | null) {
+    this.authToken = token
   }
 
   private async request<T>(
@@ -52,6 +59,7 @@ class APIClient {
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
+          ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
           ...options?.headers,
         },
       })
@@ -77,17 +85,57 @@ class APIClient {
 
   // Auth endpoints — credentials are stored/verified against the database
   // (users table) so an account works across browsers, devices and deployments.
-  async register(username: string, email: string, password: string): Promise<AuthUser> {
-    return this.request<AuthUser>('/auth/register', {
+  async register(
+    username: string,
+    email: string,
+    password: string,
+    requestedRole?: string,
+  ): Promise<AuthSession> {
+    return this.request<AuthSession>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, email, password }),
+      body: JSON.stringify({ username, email, password, requested_role: requestedRole }),
     })
   }
 
-  async login(username: string, password: string): Promise<AuthUser> {
-    return this.request<AuthUser>('/auth/login', {
+  async login(username: string, password: string): Promise<AuthSession> {
+    return this.request<AuthSession>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
+    })
+  }
+
+  async me(): Promise<AuthUser> {
+    return this.request<AuthUser>('/auth/me')
+  }
+
+  async logout(): Promise<void> {
+    await this.request('/auth/logout', { method: 'POST' })
+  }
+
+  // Roles a new user may request at sign-up (excludes root/admin).
+  async getRequestableRoles(): Promise<RoleOption[]> {
+    return this.request<RoleOption[]>('/auth/roles')
+  }
+
+  // Approver-only: users awaiting approval.
+  async getPendingUsers(): Promise<PendingUser[]> {
+    return this.request<PendingUser[]>('/auth/pending')
+  }
+
+  // Approver-only: full role catalog for assigning roles.
+  async getRoleCatalog(): Promise<RoleCatalogEntry[]> {
+    return this.request<RoleCatalogEntry[]>('/auth/role-catalog')
+  }
+
+  // Approver-only: approve/reject a user (optionally overriding their roles).
+  async reviewUser(
+    userId: number,
+    action: 'approve' | 'reject',
+    roles?: string[],
+  ): Promise<AuthUser> {
+    return this.request<AuthUser>(`/auth/users/${userId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ action, roles }),
     })
   }
 
@@ -793,10 +841,45 @@ export interface DeviceConfigUpdate {
 
 // ── Auth types ─────────────────────────────────────────────────────────────
 
+export type AccessLevel = 'none' | 'read' | 'write' | 'manage'
+
+// Feature keys mirror the `features:` block in DCIM_Aggregator/src/config/rbac.yml.
+export type PermissionMap = Record<string, AccessLevel>
+
 export interface AuthUser {
   id: number
   username: string
   email: string
+  status: 'pending' | 'approved' | 'rejected'
+  requested_role?: string | null
+  roles: string[]
+  permissions: PermissionMap
+}
+
+export interface AuthSession {
+  token: string
+  user: AuthUser
+}
+
+export interface RoleOption {
+  key: string
+  label: string
+  tier: number
+}
+
+export interface RoleCatalogEntry extends RoleOption {
+  approves: boolean
+  assignable_by: string[]
+}
+
+export interface PendingUser {
+  id: number
+  username: string
+  email: string
+  status: string
+  requested_role?: string | null
+  created_at: string
+  roles: string[]
 }
 
 // ── Inventory types ────────────────────────────────────────────────────────

@@ -6,6 +6,8 @@ import { useUIStore } from './stores/useUIStore'
 import { useAlertNotifications } from './hooks/useAlertNotifications'
 import AppLayout from './components/layout/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import RequireFeature from './components/RequireFeature'
+import Approvals from './pages/Approvals'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import LandingOptimized from './pages/LandingOptimized'
@@ -64,23 +66,25 @@ function App() {
             <Route path="/register" element={<SignUp />} />
             <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/app/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="agents" element={<Agents />} />
-              <Route path="agents/:agentId" element={<AgentDetail />} />
-              <Route path="agents/:agentId/analytics" element={<AgentAnalytics />} />
-              <Route path="alerts" element={<Alerts />} />
-              <Route path="tickets" element={<Tickets />} />
-              <Route path="topology" element={<Topology />} />
-              <Route path="topology-3d" element={<Topology3D />} />
-              <Route path="topology-editor" element={<TopologyEditor />} />
-              <Route path="ai-analytics" element={<AIAnalytics />} />
-              <Route path="nl-query" element={<NaturalLanguageQuery />} />
-              <Route path="servers" element={<ServerManagement />} />
-              <Route path="settings" element={<Settings />} />
-<Route path="reports" element={<Reports />} />
-              <Route path="network-ops" element={<NetworkOps />} />
-              <Route path="fire-safety" element={<FireSafety />} />
-              <Route path="inventory" element={<Inventory />} />
+              <Route path="dashboard" element={<RequireFeature feature="dashboard"><Dashboard /></RequireFeature>} />
+              <Route path="agents" element={<RequireFeature feature="devices"><Agents /></RequireFeature>} />
+              <Route path="agents/:agentId" element={<RequireFeature feature="devices"><AgentDetail /></RequireFeature>} />
+              <Route path="agents/:agentId/analytics" element={<RequireFeature feature="devices"><AgentAnalytics /></RequireFeature>} />
+              <Route path="alerts" element={<RequireFeature feature="alerts"><Alerts /></RequireFeature>} />
+              <Route path="tickets" element={<RequireFeature feature="tickets"><Tickets /></RequireFeature>} />
+              <Route path="topology" element={<RequireFeature feature="topology"><Topology /></RequireFeature>} />
+              <Route path="topology-3d" element={<RequireFeature feature="topology"><Topology3D /></RequireFeature>} />
+              <Route path="topology-editor" element={<RequireFeature feature="topology" level="write"><TopologyEditor /></RequireFeature>} />
+              <Route path="ai-analytics" element={<RequireFeature feature="ai_ml"><AIAnalytics /></RequireFeature>} />
+              <Route path="nl-query" element={<RequireFeature feature="ai_ml"><NaturalLanguageQuery /></RequireFeature>} />
+              <Route path="servers" element={<RequireFeature feature="servers"><ServerManagement /></RequireFeature>} />
+              <Route path="settings" element={<RequireFeature feature="settings"><Settings /></RequireFeature>} />
+              <Route path="reports" element={<RequireFeature feature="reports"><Reports /></RequireFeature>} />
+              <Route path="network-ops" element={<RequireFeature feature="network_ops"><NetworkOps /></RequireFeature>} />
+              <Route path="fire-safety" element={<RequireFeature feature="fire_safety"><FireSafety /></RequireFeature>} />
+              <Route path="inventory" element={<RequireFeature feature="inventory"><Inventory /></RequireFeature>} />
+              <Route path="approvals" element={<RequireFeature feature="user_admin" level="write"><Approvals /></RequireFeature>} />
+
             </Route>
           </Routes>
         </div>
