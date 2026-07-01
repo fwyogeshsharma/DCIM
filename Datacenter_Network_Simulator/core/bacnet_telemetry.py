@@ -196,15 +196,31 @@ class EV2TelemetryEngine:
         self._step_frequency()
         self._step_thd()
         self._step_pf()
-        self._step_panel_current(mul)
+
+        live_circuits = circuit_kw is not None
+        if not live_circuits:
+            # Legacy/unpopulated mode: the panel current is the driver and the
+            # circuits are a panel-scaled random walk beneath it. Step the panel
+            # first so the circuits can follow it.
+            self._step_panel_current(mul)
         self._step_circuits(dt, mul, circuit_kw)
-        self._update_alarms()
 
         # ── Panel kW ──────────────────────────────────────────────
-        # Approximate: P = V_avg × I_avg × PF × sqrt(3) for 3-phase
-        v_avg = (self._va + self._vb + self._vc) / 3.0
-        i_avg = (self._ia + self._ib + self._ic) / 3.0
-        panel_kw = round(v_avg * i_avg * self._pf * math.sqrt(3) / 1000.0, 3)
+        if live_circuits:
+            # Real mode: the mains IS the sum of the branch circuits it meters,
+            # exactly as a Verdigris main CT equals the sum of its branch CTs.
+            # _derive_panel_from_circuits sets the per-phase currents + panel PF
+            # and returns Σ branch kW.
+            panel_kw = self._derive_panel_from_circuits()
+        else:
+            # Approximate: P = V_avg × I_avg × PF × sqrt(3) for 3-phase
+            v_avg = (self._va + self._vb + self._vc) / 3.0
+            i_avg = (self._ia + self._ib + self._ic) / 3.0
+            panel_kw = round(v_avg * i_avg * self._pf * math.sqrt(3) / 1000.0, 3)
+
+        # Alarms read the (now summed) per-phase currents, so evaluate after the
+        # panel is resolved.
+        self._update_alarms()
 
         # ── Panel kWh accumulation ─────────────────────────────────
         self._panel_kwh += panel_kw * dt / 3600.0
@@ -355,6 +371,34 @@ class EV2TelemetryEngine:
                 continue
             smoothed = self._ema(raw, old, alpha=0.18)
             setattr(self, attr, max(0.0, min(self._i_clamp, smoothed)))
+
+    def _derive_panel_from_circuits(self) -> float:
+        """Mains = sum of the branch circuits (real EV2: main CTs == Σ branch CTs).
+
+        Each active branch is a single-phase L-N load assigned to a phase
+        round-robin (A/B/C), matching the pole rotation of a real panelboard, so
+        the phase imbalance falls out of the actual per-branch loads instead of
+        an independent random walk. Per-phase current is the sum of that phase's
+        branch currents; panel real power is Σ branch kW; panel PF is the
+        current-weighted mean of the branch PFs (so V·ΣI·PF reconciles with Σ kW).
+
+        Note: a 3-phase rack PDU is modelled as one single-phase equivalent branch
+        here (one CT per downstream PDU), a deliberate simplification.
+        """
+        ph = [0.0, 0.0, 0.0]      # phase A / B / C current sums (A)
+        tot_kw   = 0.0
+        sum_i    = 0.0
+        sum_i_pf = 0.0
+        for idx in range(self._active):
+            cs = self._circuits_state[idx]
+            ph[idx % 3] += cs.current
+            tot_kw   += cs.kw
+            sum_i    += cs.current
+            sum_i_pf += cs.current * cs.pf
+        self._ia, self._ib, self._ic = ph
+        if sum_i > 0.0:
+            self._pf = max(0.70, min(0.99, sum_i_pf / sum_i))
+        return round(max(0.0, tot_kw), 3)
 
     def _step_circuits(self, dt: float, mul: float, circuit_kw: list | None = None):
         """
