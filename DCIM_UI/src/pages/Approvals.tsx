@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ShieldCheck, Check, X, UserCog } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api, type PendingUser, type RoleCatalogEntry } from '@/lib/api'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 // Root/Admin screen: approve or reject users awaiting access, optionally
 // overriding the role they requested. Until approved, users see their whole
@@ -58,8 +59,10 @@ export default function Approvals() {
     }
   }
 
-  // Roles that are meaningful to assign (hide root unless already granting it).
-  const assignable = catalog.filter((r) => r.key !== 'root')
+  // Only a root user may grant the root role; everyone else (e.g. admins) sees
+  // every assignable role except root.
+  const isRoot = useAuthStore((s) => (s.currentUser?.roles ?? []).includes('root'))
+  const assignable = catalog.filter((r) => r.key !== 'root' || isRoot)
 
   return (
     <div className="max-w-5xl">
