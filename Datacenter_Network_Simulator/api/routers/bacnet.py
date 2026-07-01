@@ -49,8 +49,23 @@ def bacnet_debug_ev2(ip: str = "192.168.0.229"):
             circuits = getattr(eng, "_circuits", None)
     lkw = getattr(st, "_ev2_live_kw", {}) if st else {}
     ckw = getattr(st, "_ev2_circuit_kw", {}) if st else {}
+    # Root-cause probes: is state_store looking at the same populated managers?
+    ss_dm  = getattr(st, "_dm", None) if st else None
+    ss_topo = getattr(st, "_topology", None) if st else None
+    dm_same  = ss_dm is s.device_manager
+    topo_same = ss_topo is s.topology
+    ss_dm_count = len(ss_dm.get_all_devices()) if ss_dm else None
+    api_dm_count = len(s.device_manager.get_all_devices()) if s.device_manager else None
+    ss_power_edges = len(ss_topo.get_edges_by_layer("power")) if ss_topo else None
     return {
         "ip": ip,
+        "state_store_dm_is_api_dm":   dm_same,
+        "state_store_topo_is_api_topo": topo_same,
+        "state_store_dm_device_count": ss_dm_count,
+        "api_dm_device_count":         api_dm_count,
+        "state_store_power_edges":     ss_power_edges,
+        "power_ctx_cached":            getattr(st, "_power_ctx", None) is not None if st else None,
+        "ticker_running":              st.is_running() if st and hasattr(st, "is_running") else None,
         "ev2_live_kw_keys":    list(lkw.keys()),
         "ev2_circuit_kw_keys": list(ckw.keys()),
         "this_ip_live_kw":     lkw.get(ip),
