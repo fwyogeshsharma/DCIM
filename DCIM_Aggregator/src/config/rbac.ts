@@ -73,12 +73,45 @@ function roleLevels(roleKey: string): Record<string, AccessLevel> {
   return out
 }
 
+// The privileged roles (root/admin) get all-access and may approve others. Kept
+// in sync with approval.auto_approved_roles so there is a single source of truth.
+function privilegedRoleSet(): Set<string> {
+  return new Set(loadRbac().approval.auto_approved_roles)
+}
+
+// True if any of the given roles is a privileged (root/admin) super-user role.
+export function isPrivileged(roles: string[]): boolean {
+  const priv = privilegedRoleSet()
+  return roles.some((r) => priv.has(r))
+}
+
+// Effective role list for a user: the roles granted in user_roles, PLUS a
+// privileged role (root/admin) taken straight from the users table's
+// requested_role when present. This lets a root/admin be recognised as an
+// all-access super-user directly from the users table — even if their
+// user_roles row is missing. Non-privileged requested roles are ignored here
+// (they only take effect once actually granted into user_roles on approval).
+export function effectiveRoles(roles: string[], requestedRole?: string | null): string[] {
+  const priv = privilegedRoleSet()
+  if (requestedRole && priv.has(requestedRole) && !roles.includes(requestedRole)) {
+    return [...roles, requestedRole]
+  }
+  return roles
+}
+
 // Effective permissions for a user: highest level across their roles, then
 // clamped to `pending_access` while the account is not yet approved.
 export function resolvePermissions(roles: string[], status: string): Record<string, AccessLevel> {
   const cfg = loadRbac()
   const out: Record<string, AccessLevel> = {}
   for (const f of Object.keys(cfg.features)) out[f] = 'none'
+
+  // Root/admin are all-access: full "manage" on every feature (present and
+  // future) and never clamped by pending status.
+  if (isPrivileged(roles)) {
+    for (const f of Object.keys(cfg.features)) out[f] = 'manage'
+    return out
+  }
 
   for (const r of roles) {
     for (const [f, lvl] of Object.entries(roleLevels(r))) {

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { Pool } from 'pg'
-import { AccessLevel, resolvePermissions, meets, isApprover } from '../../config/rbac'
+import { AccessLevel, resolvePermissions, effectiveRoles, meets, isApprover } from '../../config/rbac'
 
 // =============================================================================
 // Authentication + RBAC enforcement middleware.
@@ -37,7 +37,7 @@ function bearerToken(req: Request): string | null {
 // Resolve a session token → hydrated user (roles + effective permissions).
 export async function loadUserFromToken(pool: Pool, token: string): Promise<AuthedUser | null> {
   const { rows } = await pool.query(
-    `SELECT u.id, u.username, u.email, u.status,
+    `SELECT u.id, u.username, u.email, u.status, u.requested_role,
             COALESCE(array_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '{}') AS roles
        FROM sessions s
        JOIN users u    ON u.id = s.user_id
@@ -48,7 +48,9 @@ export async function loadUserFromToken(pool: Pool, token: string): Promise<Auth
   )
   const row = rows[0]
   if (!row) return null
-  const roles: string[] = row.roles || []
+  // Recognise root/admin straight from users.requested_role (all-access), even
+  // if the user_roles row is absent.
+  const roles: string[] = effectiveRoles(row.roles || [], row.requested_role)
   return {
     id: row.id,
     username: row.username,

@@ -4,6 +4,7 @@ import { randomBytes, scrypt, timingSafeEqual } from 'crypto'
 import { promisify } from 'util'
 import {
   resolvePermissions,
+  effectiveRoles,
   requestableRoles,
   roleCatalog,
   isValidRole,
@@ -56,7 +57,9 @@ async function buildUserPayload(dbPool: Pool, userId: number) {
     [userId]
   )
   const u = rows[0]
-  const roles: string[] = u.roles || []
+  // Recognise root/admin straight from users.requested_role (all-access), even
+  // if the user_roles row is absent.
+  const roles: string[] = effectiveRoles(u.roles || [], u.requested_role)
   return {
     id: u.id,
     username: u.username,
@@ -127,8 +130,8 @@ export function createAuthRouter(dbPool: Pool): Router {
       )
       const userId = rows[0].id
       await client.query(
-        `INSERT INTO user_roles (user_id, role, granted_by) VALUES ($1, $2, $2)`,
-        [userId, grantedRole]
+        `INSERT INTO user_roles (user_id, role, granted_by) VALUES ($1, $2, $3)`,
+        [userId, grantedRole, userId]
       )
       await client.query('COMMIT')
 
