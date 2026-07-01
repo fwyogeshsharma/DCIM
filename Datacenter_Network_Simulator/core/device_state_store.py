@@ -651,9 +651,18 @@ class DeviceStateStore:
         Redundant feeds split a load equally among parents, so summing both A/B
         meters recovers the full load instead of double-counting (matches bacnet.py).
         """
-        if self._power_ctx is not None:
-            return self._power_ctx
+        # Self-healing cache: rebuild whenever the device set or the power-edge
+        # count changes, so a topology load / device add / feed edit ripples into
+        # the cascade even if the caller forgot to invalidate. Explicit
+        # invalidate_power_context() still forces a rebuild (sets _power_ctx None).
         topo = self._topology
+        try:
+            _sig = (len(self._dm.get_all_devices()),
+                    len(topo.get_edges_by_layer("power")) if topo else 0)
+        except Exception:
+            _sig = None
+        if self._power_ctx is not None and getattr(self, "_power_ctx_sig", None) == _sig:
+            return self._power_ctx
         children: Dict[str, list] = {}
         parents: Dict[str, list] = {}
         rank: Dict[str, int] = {}
@@ -803,6 +812,7 @@ class DeviceStateStore:
                            "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
                            "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters,
                            "ev2_circuit_pdus": ev2_circuit_pdus, "gen_ups": gen_ups}
+        self._power_ctx_sig = _sig
         return self._power_ctx
 
     def invalidate_power_context(self) -> None:
