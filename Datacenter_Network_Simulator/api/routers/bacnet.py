@@ -30,6 +30,40 @@ def bacnet_power_summary():
     return st.get_power_summary()
 
 
+@router.get("/_debug_ev2")
+def bacnet_debug_ev2(ip: str = "192.168.0.229"):
+    """TEMP diagnostic: expose the live-load wiring for one EV2 IP so we can see
+    whether circuit_kw actually reaches the telemetry engine. Remove after use."""
+    s = _state()
+    st = getattr(s, "state_store", None)
+    bc = s.bacnet
+    ctx = st._power_context() if st else {}
+    eng = None
+    active = circuits = None
+    if bc is not None:
+        dev = getattr(bc, "_devices_by_ip", {}).get(ip)
+        inst = getattr(dev, "device_instance", None) if dev else None
+        eng = getattr(bc, "_telemetry", {}).get(inst) if inst is not None else None
+        if eng is not None:
+            active = getattr(eng, "_active", None)
+            circuits = getattr(eng, "_circuits", None)
+    lkw = getattr(st, "_ev2_live_kw", {}) if st else {}
+    ckw = getattr(st, "_ev2_circuit_kw", {}) if st else {}
+    return {
+        "ip": ip,
+        "ev2_live_kw_keys":    list(lkw.keys()),
+        "ev2_circuit_kw_keys": list(ckw.keys()),
+        "this_ip_live_kw":     lkw.get(ip),
+        "this_ip_circuit_kw":  ckw.get(ip),
+        "engine_active":       active,
+        "engine_circuits":     circuits,
+        "ev2_ip_panel_size":   len(ctx.get("ev2_ip_panel", {})),
+        "ev2_meters_size":     len(ctx.get("ev2_meters", [])),
+        "ev2_circuit_pdus_size": len(ctx.get("ev2_circuit_pdus", {})),
+        "through_live_size":   len(getattr(st, "_through_live", {}) or {}),
+    }
+
+
 @router.get("/status")
 def bacnet_status():
     s  = _state()
