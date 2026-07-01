@@ -39,7 +39,15 @@ FIRST_SERVER_UNIT = 1
 LAST_SERVER_UNIT = 40      # U41/U42 reserved for the ToR pair
 
 # ── Capacity knobs ────────────────────────────────────────────────────────────
-POWER_CAP_DEFAULT = 22     # realistic server count at ~10-15 kW / rack
+POWER_CAP_DEFAULT = 22     # legacy server-COUNT proxy; still used by the static
+                           # floor-plan exporter for a coarse per-rack capacity
+                           # column. The live fleet engine no longer fills by
+                           # count — it sums device nameplate watts vs the budget
+                           # below (see rack_has_power_headroom).
+RACK_POWER_BUDGET_W_DEFAULT = 15000   # usable per-rack power budget (W), ~15 kW.
+                           # This is the USABLE figure (already derated for the
+                           # NEC 80% continuous-load rule); the rack fills until
+                           # summed nameplate draw of its kit would exceed it.
 MLAG_PEERLINK_PORTS = 2    # uplink ports held back for the inter-leaf peer-link
 
 # (downlink_ports, uplink_ports) per known leaf model. Downlink = server-facing.
@@ -67,6 +75,18 @@ def rack_server_capacity(downlink_ports: int,
     """Max servers per rack — the binding minimum of server-facing ports and
     the power/thermal budget. Flip-invariant across single/dual-homing."""
     return max(0, min(downlink_ports, power_cap))
+
+
+def rack_has_power_headroom(current_w: float, add_w: float,
+                            budget_w: int = RACK_POWER_BUDGET_W_DEFAULT) -> bool:
+    """True if adding a device drawing *add_w* watts keeps the rack's summed
+    nameplate draw within its provisioned power budget.
+
+    Models how a rack is really filled: capacity planning sums the design/
+    nameplate power of installed kit (servers + ToR) and stops before the budget
+    (PDU/branch-circuit rating and per-rack cooling) is exceeded — it does NOT
+    fill to a flat server count. Port count is a separate physical co-limit."""
+    return (current_w + add_w) <= budget_w
 
 
 def usable_uplinks(uplink_ports: int) -> int:

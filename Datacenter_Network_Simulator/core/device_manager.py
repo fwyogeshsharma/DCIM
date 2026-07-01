@@ -370,18 +370,68 @@ DEFAULT_NAMEPLATE_W = {
     DeviceType.OOB_SWITCH:    90,    # 1U management switch
     DeviceType.SENSOR:        10,
 }
-# Model-name keywords that imply a much higher draw (GPU / AI / accelerated).
+# Per-SKU nameplate draw (W) for the server models the app actually offers
+# (webui/src/data/deviceConstants.ts → MODELS). Keyed by a distinctive lowercase
+# substring of the model string; the first key contained in the model wins, so
+# more-specific keys are listed before less-specific ones (gen11 before gen10).
+#
+# NOTE on what "nameplate" means here: these are representative FULL-LOAD
+# operating draws at a common CPU/DIMM config — the value the sim uses as the
+# power_draw_w nominal (live telemetry scales 0.55–1.0× it, and the rack power
+# budget sums it). They are NOT the PSU-label max (that's the redundant supply
+# rating, ~1.5–2× higher and mostly stranded) and NOT a specific SKU's exact
+# vendor-calculator figure — real draw swings widely with CPU TDP, DIMM count,
+# drives and especially GPUs. Treat as a realistic default, override per device
+# via power_draw_w when an exact figure is known.
+#
+# Rough tiers: 1U 2-socket ~450–550, 2U 2-socket ~650–750, 4U/4-socket
+# ~1100–1400, dense-GPU chassis ~6000. POWER/RISC boxes run hotter than x86.
+_MODEL_NAMEPLATE_W = {
+    # Cisco UCS
+    "ucs c220":      500,   # 1U 2S
+    "ucs c240":      650,   # 2U 2S
+    "ucs b200":      500,   # 2S blade (chassis-fed; represent per-blade)
+    # HPE ProLiant  (gen11 before gen10 so the more-specific key matches first)
+    "dl380 gen11":   750,   # 2U 2S, Sapphire Rapids — higher TDP
+    "dl360 gen10":   500,   # 1U 2S
+    "dl380 gen10":   650,   # 2U 2S
+    "dl560 gen10":  1100,   # 2U 4S
+    # Dell PowerEdge
+    "poweredge r640":  500,  # 1U 2S
+    "poweredge r740":  650,  # 2U 2S
+    "poweredge r750":  750,  # 2U 2S, newer
+    "poweredge r940": 1200,  # 3U 4S
+    "poweredge r7525":1000,  # 2U dual-Epyc, GPU-capable
+    # Lenovo ThinkSystem
+    "sr630":  500,   # 1U 2S
+    "sr650":  700,   # 2U 2S
+    "sr860": 1300,   # 4U 4S
+    # Supermicro
+    "sys-120u": 550,  # 1U 2S
+    "sys-220u": 700,  # 2U 2S
+    "as-4124gs":6000, # 4U dual-Epyc + up to 8 GPU — dense accelerated
+    # IBM
+    "power system s922": 1000,  # 2U 2S POWER9
+    "x3850 x6":          1400,  # 4U 4S
+    "flexsystem x240":    450,  # 2S blade
+}
+# Model-name keywords that imply a much higher draw (GPU / AI / accelerated),
+# used as a fallback for models not in the per-SKU table above.
 _HIGH_POWER_KEYWORDS = ("gpu", "dgx", "a100", "h100", "l40", "mi300", "accel", "ai-", "ml-")
 
 
 def nameplate_power_w(device_type: "DeviceType", model_name: str = "") -> int:
     """Realistic full-load draw (W) for a device type/model, for filling an unset
-    power_draw_w. GPU/AI servers draw far more than a general-purpose 2U."""
-    base = DEFAULT_NAMEPLATE_W.get(device_type, 0)
+    power_draw_w. Prefers a per-SKU value from the real model catalog; falls back
+    to a GPU/AI keyword bump, then a per-device-type default."""
     m = (model_name or "").lower()
+    if m:
+        for key, w in _MODEL_NAMEPLATE_W.items():
+            if key in m:
+                return w
     if device_type == DeviceType.SERVER and any(k in m for k in _HIGH_POWER_KEYWORDS):
         return 2200
-    return base
+    return DEFAULT_NAMEPLATE_W.get(device_type, 0)
 
 
 @dataclass
@@ -406,6 +456,13 @@ class Device:
 
     # Power chain
     power_draw_w: int = 0   # typical power draw in watts
+    # Nameplate THROUGHPUT rating (W) for power-distribution / backup gear
+    # (PDU / RPP / floor-PDU / UPS / generator). Fixed at install: load% = live
+    # downstream draw ÷ this, so it stays constant as the fleet grows and the
+    # node marches toward overload. 0 = auto-derive from the initial downstream
+    # nameplate sum (÷0.8) and freeze at that install baseline. IT devices leave
+    # this 0 (they are loads, not distribution nodes).
+    rated_power_w: int = 0
     power_source: str = ""  # device ID of rack PDU feeding this device
     power_source_a: str = ""  # device ID of A-side rack PDU (dual-feed)
     power_source_b: str = ""  # device ID of B-side rack PDU (dual-feed)

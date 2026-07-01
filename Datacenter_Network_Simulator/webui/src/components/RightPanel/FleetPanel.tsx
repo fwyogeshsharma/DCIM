@@ -7,7 +7,7 @@ interface FleetConfig {
   minutes_per_day:      number
   provision_lambda:     number
   decommission_lambda:  number
-  power_cap:            number
+  rack_power_budget_w:  number
   max_racks_per_row:    number
   compute_rows_per_room: number
   max_total_servers:    number
@@ -30,9 +30,7 @@ const CFG_FIELDS: { key: keyof FleetConfig; label: string; step?: number; hint: 
   { key: 'minutes_per_day',      label: 'Minutes / day',      step: 0.5, hint: 'wall-clock minutes that equal one sim-day' },
   { key: 'provision_lambda',     label: 'Provision / day',    hint: 'avg servers added on a normal day' },
   { key: 'decommission_lambda',  label: 'Decommission / day', hint: 'avg servers removed (kept below provision = net growth)' },
-  { key: 'power_cap',            label: 'Power cap / rack',   hint: 'per-rack server cap (binds with leaf downlink ports); a rack fills to min(downlinks, this) before another rack is added' },
-  { key: 'max_racks_per_row',    label: 'Racks / row',        hint: 'compute racks per row in a hall grid' },
-  { key: 'compute_rows_per_room', label: 'Rows / hall',       hint: 'each hall holds racks/row × this compute racks (curated racks count); fleet fills a hall to that grid, then opens a new hall' },
+  { key: 'rack_power_budget_w',  label: 'Power budget / rack (W)', step: 500, hint: 'per-rack power budget in watts (~15000 = 15 kW usable). A rack fills until summed server+ToR nameplate draw would exceed this, or the leaf runs out of downlink ports — whichever binds first' },
   { key: 'max_total_servers',    label: 'Max total servers',  hint: 'global ceiling — provisioning pauses here' },
 ]
 

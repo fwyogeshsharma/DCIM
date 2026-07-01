@@ -373,7 +373,8 @@ class BACnetController:
     def tick(self, dt: float, metric_flags: dict | None = None,
              metric_limits: dict | None = None,
              plant_overrides: dict | None = None,
-             live_kw_by_ip: dict | None = None) -> None:
+             live_kw_by_ip: dict | None = None,
+             circuit_kw_by_ip: dict | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -416,8 +417,12 @@ class BACnetController:
                 else:
                     # EV2 energy meter: drive the panel from the live downstream
                     # load (server→PDU→panel) when available, else its own curve.
-                    _lkw = (live_kw_by_ip or {}).get(getattr(dev, "device_ip", ""))
-                    values = engine.tick(dt, live_kw=_lkw)
+                    # Per-circuit loads (one per clamped branch PDU) make each
+                    # circuit meter its real branch draw instead of a random walk.
+                    _ip = getattr(dev, "device_ip", "")
+                    _lkw = (live_kw_by_ip or {}).get(_ip)
+                    _ckw = (circuit_kw_by_ip or {}).get(_ip)
+                    values = engine.tick(dt, live_kw=_lkw, circuit_kw=_ckw)
                 if metric_flags:
                     values = {
                         k: v for k, v in values.items()

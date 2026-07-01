@@ -170,13 +170,20 @@ class EV2TelemetryEngine:
     #  Main tick
     # ─────────────────────────────────────────────────────────────
 
-    def tick(self, dt: float, live_kw: float | None = None) -> Dict[str, float]:
+    def tick(self, dt: float, live_kw: float | None = None,
+             circuit_kw: list | None = None) -> Dict[str, float]:
         """
         Advance simulation by *dt* seconds.
 
         *live_kw* — real downstream load (kW) measured from the power graph. When
         supplied, the panel load multiplier follows the live IT draw instead of
         the synthetic diurnal curve, so a server load change moves this meter.
+
+        *circuit_kw* — per-circuit live load (kW), one entry per branch this panel
+        clamps (circuit i → circuit_kw[i]). When supplied, each circuit meters the
+        REAL draw of its branch PDU (an empty branch reads ~0, a full one its live
+        kW) instead of a panel-scaled random walk, and the circuits sum to the
+        panel. Branches beyond the list are spare CTs and read 0.
 
         Returns a flat dict of all object names → new present values.
         Boolean alarm values are returned as 0.0 / 1.0.
@@ -190,7 +197,7 @@ class EV2TelemetryEngine:
         self._step_thd()
         self._step_pf()
         self._step_panel_current(mul)
-        self._step_circuits(dt, mul)
+        self._step_circuits(dt, mul, circuit_kw)
         self._update_alarms()
 
         # ── Panel kW ──────────────────────────────────────────────
@@ -349,33 +356,46 @@ class EV2TelemetryEngine:
             smoothed = self._ema(raw, old, alpha=0.18)
             setattr(self, attr, max(0.0, min(self._i_clamp, smoothed)))
 
-    def _step_circuits(self, dt: float, mul: float):
+    def _step_circuits(self, dt: float, mul: float, circuit_kw: list | None = None):
         """
-        Operational signal class — circuit current ±0.08 A/tick with EMA α=0.18.
-        Load transitions are smooth. kWh accumulates deterministically.
+        Operational signal class — circuit current eases toward its target with
+        EMA smoothing. Load transitions are smooth. kWh accumulates deterministically.
         COV cadence: current/kW every 1–2 min, kWh every few hours.
+
+        *circuit_kw* — when given, circuit i's target is the REAL branch load
+        circuit_kw[i] (kW → current via P = V·I·PF), so the meter reflects the
+        actual PDU it clamps. Branches past the list are spare CTs → 0. Without it,
+        each circuit falls back to a panel-scaled random walk (unpopulated topology).
         """
         v_avg = (self._va + self._vb + self._vc) / 3.0
 
-        for cs in self._circuits_state:
-            # Target current drifts slowly
-            cs._target_current += random.uniform(-0.15, 0.15)
-            cs._target_current  = max(0.1, min(20.0 * mul, cs._target_current))
+        for i, cs in enumerate(self._circuits_state):
+            # Power factor first (very slow drift) — needed to turn a target kW
+            # into a target current.
+            raw_pf = cs.pf + random.uniform(-0.002, 0.002)
+            cs.pf  = self._ema(raw_pf, cs.pf, alpha=0.12)
+            cs.pf  = max(0.70, min(0.99, cs.pf))
 
-            # Small routine jitter + mean-reversion toward target
-            raw_i = cs.current + (cs._target_current - cs.current) * 0.08
-            raw_i += random.uniform(-0.08, 0.08)
-            # Occasional load step (0.5% chance per circuit per tick)
-            if random.random() < 0.005:
+            if circuit_kw is not None:
+                # Real branch load: I = P / (V × PF). Spare CTs (past the mapped
+                # branches, or an energised-but-unloaded rack PDU) target 0.
+                tgt_kw = circuit_kw[i] if i < len(circuit_kw) else 0.0
+                denom = v_avg * cs.pf
+                cs._target_current = (tgt_kw * 1000.0 / denom) if denom > 0 else 0.0
+            else:
+                # Legacy synthetic walk when no live per-circuit load is available.
+                cs._target_current += random.uniform(-0.15, 0.15)
+                cs._target_current  = max(0.1, min(20.0 * mul, cs._target_current))
+
+            # Mean-reversion toward target + small routine CT jitter.
+            raw_i = cs.current + (cs._target_current - cs.current) * 0.20
+            raw_i += random.uniform(-0.05, 0.05)
+            # Occasional load step only in synthetic mode — real mode follows load.
+            if circuit_kw is None and random.random() < 0.005:
                 raw_i += random.choice([-1, 1]) * random.uniform(1.0, 4.0)
                 cs.current = max(0.0, raw_i)
             else:
                 cs.current = max(0.0, self._ema(raw_i, cs.current, alpha=0.18))
-
-            # Power factor: very slow drift, EMA α=0.12
-            raw_pf = cs.pf + random.uniform(-0.002, 0.002)
-            cs.pf  = self._ema(raw_pf, cs.pf, alpha=0.12)
-            cs.pf  = max(0.70, min(0.99, cs.pf))
 
             # kW from single-phase: P = V × I × PF
             cs.kw = v_avg * cs.current * cs.pf / 1000.0

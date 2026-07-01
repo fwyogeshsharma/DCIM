@@ -39,7 +39,8 @@ from typing import TYPE_CHECKING, Optional
 
 from core.device_manager import Device, DeviceType, Vendor
 from core.rack_capacity import (
-    leaf_interface_groups, leaf_port_roles, rack_server_capacity,
+    leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
+    RACK_POWER_BUDGET_W_DEFAULT,
     TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
 )
 from core import hall_geometry as geo
@@ -68,9 +69,12 @@ class FleetConfig:
     minutes_per_day: float = 5.0       # wall-clock minutes that equal one sim-day
     provision_lambda: int = 3          # avg servers provisioned on a normal day
     decommission_lambda: int = 1       # avg servers decommissioned (net-positive)
-    # Per-rack server ceiling = min(leaf downlink ports, power_cap). power_cap is
-    # the realistic ~10-15 kW binding limit; flip-invariant for dual-homing.
-    power_cap: int = 22
+    # Per-rack fill is bound by TWO real limits, whichever binds first:
+    #   1. leaf downlink ports — physical, flip-invariant for dual-homing.
+    #   2. rack_power_budget_w — summed nameplate draw of the rack's kit must stay
+    #      within its provisioned power budget (~15 kW usable). This is the usual
+    #      binding limit in an enterprise hall (power/thermal, not ports).
+    rack_power_budget_w: int = RACK_POWER_BUDGET_W_DEFAULT
     # Growth policy: each hall holds up to compute_rows_per_room x max_racks_per_row
     # compute racks. The fleet fills the racks already in a hall, then adds racks
     # up to that grid (curated racks count toward it), and only once every hall is
@@ -174,6 +178,8 @@ class FleetLifecycleEngine:
 
     @staticmethod
     def _lumpy(lam: int) -> int:
+        if lam <= 0:                       # rate of 0 = disabled, never any events
+            return 0
         r = random.random()
         if r < 0.35:                       # quiet day — nothing happens
             return 0
@@ -268,13 +274,21 @@ class FleetLifecycleEngine:
     def _rack_with_space(self) -> Optional[dict]:
         """A populated rack that has free U, a ToR switch and a PDU. Returns the
         rack context (key + ToR + PDU + a server template) or None."""
-        racks: dict[tuple, int] = {}
+        racks: dict[tuple, int] = {}          # rack -> server count
+        racks_w: dict[tuple, float] = {}      # rack -> summed nameplate watts (all kit)
         for srv in self._servers():
             racks[self._rack_key(srv)] = racks.get(self._rack_key(srv), 0) + 1
+        # Rack power is the summed nameplate draw of ALL its kit (servers + ToR),
+        # not just servers — PDUs are 0U infra and read 0, so they don't inflate.
+        for d in self.s.device_manager.get_all_devices():
+            k = self._rack_key(d)
+            if k in racks:                    # only racks that already hold servers
+                racks_w[k] = racks_w.get(k, 0.0) + float(getattr(d, "power_draw_w", 0) or 0)
         # Least-full first, so racks fill evenly. A rack's ToR/PDU are found by
         # following an existing peer server's real uplink — robust whether the
-        # ToR is per-rack or per-row. Capacity is bound by the leaf's server-
-        # facing downlink ports (or the power cap), not a flat number.
+        # ToR is per-rack or per-row. A rack has room only if it clears BOTH the
+        # physical downlink-port limit AND the power budget (summed watts + the
+        # next server's nameplate draw must stay within the per-rack budget).
         for key, count in sorted(racks.items(), key=lambda kv: kv[1]):
             tmpl = self._find_in_rack(key, DeviceType.SERVER)
             if tmpl is None:
@@ -282,18 +296,24 @@ class FleetLifecycleEngine:
             tor = self._neighbor(tmpl, "production", (DeviceType.SWITCH,))
             if tor is None:
                 continue
-            if count >= self._rack_cap(tor):
-                continue
+            if count >= self._port_cap(tor):
+                continue                       # leaf downlink ports exhausted
+            add_w = float(getattr(tmpl, "power_draw_w", 0) or 0)
+            if not rack_has_power_headroom(racks_w.get(key, 0.0), add_w,
+                                           self.cfg.rack_power_budget_w):
+                continue                       # would exceed the rack power budget
             pdus = self._neighbors(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
             return {"key": key, "tor": tor, "pdus": pdus, "server_tmpl": tmpl}
         return None
 
-    def _rack_cap(self, tor: Device) -> int:
-        """Server ceiling for a rack fronted by leaf *tor*: min(downlink ports,
-        power cap). Flip-invariant across single/dual-homing."""
+    def _port_cap(self, tor: Device) -> int:
+        """Physical per-rack server ceiling: the leaf's server-facing downlink
+        ports. Flip-invariant across single/dual-homing (a dual-homed server uses
+        one downlink on each of the two leaves, so the count is unchanged). This
+        is a hard co-limit alongside the power budget."""
         downlink, _ = leaf_port_roles(getattr(tor, "model_name", "") or "",
                                       getattr(tor, "interface_count", 54))
-        return rack_server_capacity(downlink, self.cfg.power_cap)
+        return max(0, downlink)
 
     def _neighbor(self, dev: Device, layer: str, types: tuple) -> Optional[Device]:
         """First neighbour of *dev* on *layer* whose type is in *types*."""
@@ -563,6 +583,14 @@ class FleetLifecycleEngine:
                               fx=fx, fy=fy, hot=hot, cold=cold, facing=facing)
             if pdu is None:
                 continue
+            # A rack PDU is sized to the rack's power FEED, not whatever load
+            # happens to exist the instant it's created. Without this the fixed-
+            # rating model would freeze it near-empty (only the ToR under it) and
+            # then read a false 1000 %+ overload as the rack fills. Rate it to the
+            # rack power budget with breaker headroom (÷0.8), and full budget per
+            # side so an A/B PDU can carry the whole rack on failover.
+            self.s.device_manager.update_device(
+                pdu.id, rated_power_w=int(self.cfg.rack_power_budget_w / 0.8))
             if rpp is not None:                       # PDU drinks from the RPP feed
                 try:
                     self.s.topology.add_link(rpp.id, pdu.id, layer="power")
@@ -782,6 +810,17 @@ class FleetLifecycleEngine:
                 snmp_port=getattr(tmpl, "snmp_port", 161),
                 gnmi_port=getattr(tmpl, "gnmi_port", 57400),
                 interface_count=getattr(tmpl, "interface_count", 8),
+                # Inherit the rack peer's nameplate draw so the fleet server's
+                # watts match its rack profile and feed the power-budget cap +
+                # the live power cascade consistently. (0 lets Device fill a
+                # type/model default in __post_init__.)
+                power_draw_w=int(getattr(tmpl, "power_draw_w", 0) or 0),
+                # Inherit the template's install rating. A hall feed (RPP) is rated
+                # for the whole hall, so a cloned RPP must NOT re-derive from the one
+                # rack it opens with (that would peg it at overload immediately) — it
+                # copies the curated hall RPP's frozen nameplate. Rack PDUs/servers
+                # carry no rating (0) and derive fresh, which is correct per-rack.
+                rated_power_w=int(getattr(tmpl, "rated_power_w", 0) or 0),
                 metrics_enabled=True,
                 country=getattr(tmpl, "country", ""),
                 datacenter_city=getattr(tmpl, "datacenter_city", ""),
@@ -903,7 +942,7 @@ class FleetLifecycleEngine:
                 "minutes_per_day": self.cfg.minutes_per_day,
                 "provision_lambda": self.cfg.provision_lambda,
                 "decommission_lambda": self.cfg.decommission_lambda,
-                "power_cap": self.cfg.power_cap,
+                "rack_power_budget_w": self.cfg.rack_power_budget_w,
                 "max_racks_per_row": self.cfg.max_racks_per_row,
                 "compute_rows_per_room": self.cfg.compute_rows_per_room,
                 "max_total_servers": self.cfg.max_total_servers,

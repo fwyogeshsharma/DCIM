@@ -254,8 +254,14 @@ class DeviceStateStore:
         # live server draw bottom-up. PDU load/current, UPS output load and the
         # EV2 panels read it so a server load change ripples up the hierarchy.
         self._power_ctx: "Optional[dict]" = None
+        # Per-node breaker/nameplate rating (W), FROZEN at install. Unlike
+        # _power_ctx this survives invalidation — ratings are fixed at build time,
+        # so as the fleet adds load the node's load% climbs toward overload
+        # instead of the rating re-sizing itself to the new load.
+        self._rated_w_frozen: Dict[str, float] = {}
         self._through_live: Dict[str, float] = {}
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
+        self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
@@ -655,11 +661,14 @@ class DeviceStateStore:
         rated_w: Dict[str, float] = {}
         ev2_ip_panel: Dict[str, str] = {}
         ev2_meters: list = []
+        ev2_circuit_pdus: Dict[str, list] = {}
         gen_ups: Dict[str, list] = {}
         try:
-            id_type = {d.id: d.device_type.value for d in self._dm.get_all_devices()}
-            id_draw = {d.id: float(getattr(d, "power_draw_w", 0) or 0)
-                       for d in self._dm.get_all_devices()}
+            _devs = self._dm.get_all_devices()
+            id_dev = {d.id: d for d in _devs}
+            id_type = {d.id: d.device_type.value for d in _devs}
+            id_draw = {d.id: float(getattr(d, "power_draw_w", 0) or 0) for d in _devs}
+            id_rated = {d.id: float(getattr(d, "rated_power_w", 0) or 0) for d in _devs}
             for i in id_type:
                 rank[i] = self._POWER_RANK.get(id_type[i], 4)
             edges = topo.get_edges_by_layer("power") if topo else []
@@ -694,10 +703,32 @@ class DeviceStateStore:
                     share = thr / len(ps)
                     for p in ps:
                         incoming[p] = incoming.get(p, 0.0) + share
-            # Breaker rating: design peak is ~80 % of rating (headroom). So a fully
-            # loaded chain reads ~80 % load, idle ~44 % — a realistic PDU band.
+            # Breaker/nameplate rating, FIXED at install so load% climbs as the
+            # fleet grows (not re-sized to the new load). Precedence per node:
+            #   1. explicit device.rated_power_w  — hand-set or inherited nameplate
+            #   2. a value frozen on a previous build — the install baseline
+            #   3. first-time derive: design peak ÷ 0.8 (so a fully-loaded chain
+            #      reads ~80 %, idle ~44 %). Freeze + stamp it so it never re-sizes.
+            # Only power-distribution/backup nodes are rated+frozen; IT leaves are
+            # loads, not distribution, so their (unused) rated_w stays transient.
             for nid, pk in peak_w.items():
-                rated_w[nid] = (pk / 0.8) if pk > 0 else 0.0
+                explicit = id_rated.get(nid, 0.0)
+                if explicit > 0:
+                    rated_w[nid] = explicit
+                    continue
+                frozen = self._rated_w_frozen.get(nid, 0.0)
+                if frozen > 0:
+                    rated_w[nid] = frozen
+                    continue
+                r = (pk / 0.8) if pk > 0 else 0.0
+                rated_w[nid] = r
+                # Freeze only once a power node actually carries load, so a node
+                # seen before its downstream is wired doesn't lock in a 0 rating.
+                if r > 0 and id_type.get(nid) in self._POWER_RANK:
+                    self._rated_w_frozen[nid] = r
+                    dev = id_dev.get(nid)
+                    if dev is not None:
+                        dev.rated_power_w = int(r)   # stamp so clones inherit it
 
             # EV2 meter IP → the panel/PDU it clamps onto (its power neighbour), so
             # the live downstream load can be fed to each EV2 telemetry engine.
@@ -709,6 +740,28 @@ class DeviceStateStore:
                 ip = d.ip_address or getattr(d, "mgmt_ip", None)
                 if nb and ip:
                     ev2_ip_panel[ip] = nb
+
+            # Ordered circuit → downstream-PDU map per EV2, matching the display
+            # order used by the API (the clamp panel's downstream power neighbours,
+            # excluding the meter and any upstream UPS/generator, sorted by name).
+            # Circuit i meters ev2_circuit_pdus[ip][i-1], so each circuit reflects
+            # the REAL branch load it clamps — an empty rack PDU reads 0, a full one
+            # reads its live kW — instead of a panel-scaled random walk.
+            _up_types = {"ups", "generator"}
+            for d in self._dm.get_all_devices():
+                if d.device_type.value != "energy_monitor":
+                    continue
+                ip = d.ip_address or getattr(d, "mgmt_ip", None)
+                panel = ev2_ip_panel.get(ip)
+                if not ip or panel is None:
+                    continue
+                nbr_ids = [(u if v == panel else v) for u, v, _w in edges
+                           if panel in (u, v) and d.id not in (u, v)]
+                brs = [id_dev.get(nid) for nid in nbr_ids]
+                brs = [b for b in brs if b is not None
+                       and id_type.get(b.id) not in _up_types]
+                brs.sort(key=lambda b: b.name or "")
+                ev2_circuit_pdus[ip] = [b.id for b in brs]
 
             # Classify each EV2 meter: a FACILITY meter (its panel's subtree
             # includes cooling plant — i.e. it's on the building feed) vs an IT
@@ -745,7 +798,7 @@ class DeviceStateStore:
         self._power_ctx = {"children": children, "parents": parents,
                            "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
                            "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters,
-                           "gen_ups": gen_ups}
+                           "ev2_circuit_pdus": ev2_circuit_pdus, "gen_ups": gen_ups}
         return self._power_ctx
 
     def invalidate_power_context(self) -> None:
@@ -753,7 +806,11 @@ class DeviceStateStore:
         whenever the power topology changes — a device (server/PDU/RPP) is added
         or removed, or its power feeds change — otherwise the bottom-up load
         cascade keeps walking a stale graph and new IT load never reaches the
-        PDU/UPS/RPP/EV2 meters that feed it."""
+        PDU/UPS/RPP/EV2 meters that feed it.
+
+        Node RATINGS (_rated_w_frozen) are deliberately NOT cleared here: a
+        breaker's rating is fixed at install, so as the rebuilt graph carries more
+        fleet load each node's load% climbs toward overload instead of re-sizing."""
         self._power_ctx = None
 
     def _server_live_watts(self, device: "Device") -> float:
@@ -894,6 +951,11 @@ class DeviceStateStore:
         # Live downstream kW per EV2 meter IP, for the BACnet telemetry engines.
         self._ev2_live_kw = {ip: through.get(panel, 0.0) / 1000.0
                              for ip, panel in ctx.get("ev2_ip_panel", {}).items()}
+        # Live kW per branch circuit (ordered), so each EV2 circuit meters the real
+        # load of the PDU it clamps instead of a synthetic per-circuit random walk.
+        self._ev2_circuit_kw = {
+            ip: [through.get(pid, 0.0) / 1000.0 for pid in pids]
+            for ip, pids in ctx.get("ev2_circuit_pdus", {}).items()}
 
     @staticmethod
     def _is_faulted(name: str) -> bool:
@@ -1020,7 +1082,8 @@ class DeviceStateStore:
         if self._bacnet_ctrl:
             try:
                 self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
-                                       self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw)
+                                       self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw,
+                                       circuit_kw_by_ip=self._ev2_circuit_kw)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
