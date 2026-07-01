@@ -15,6 +15,9 @@ RUN npm run build
 # Copy SQL migration files (TypeScript compiler only outputs .js)
 RUN mkdir -p dist/database/migrations && cp src/database/migrations/*.sql dist/database/migrations/
 
+# Copy non-TS config assets (e.g. rbac.yml — the RBAC role/feature config)
+RUN mkdir -p dist/config && cp src/config/*.yml dist/config/
+
 # Remove dev dependencies after build
 RUN npm prune --production
 

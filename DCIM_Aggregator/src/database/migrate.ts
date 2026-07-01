@@ -16,20 +16,30 @@ async function runMigrations() {
   try {
     logger.info('Starting database migration...')
 
-    // Drop legacy tables that conflict with the new unified schema
-    await pool.query(`
-      DROP TABLE IF EXISTS snmp_traps        CASCADE;
-      DROP TABLE IF EXISTS snmp_metrics      CASCADE;
-      DROP TABLE IF EXISTS alerts            CASCADE;
-      DROP TABLE IF EXISTS metrics           CASCADE;
-      DROP TABLE IF EXISTS topology_links    CASCADE;
-      DROP TABLE IF EXISTS agents            CASCADE;
-      DROP TABLE IF EXISTS servers           CASCADE;
-      DROP VIEW  IF EXISTS topology_view     CASCADE;
-      DROP VIEW  IF EXISTS device_inventory  CASCADE;
-      DROP MATERIALIZED VIEW IF EXISTS metrics_5m CASCADE;
-    `)
-    logger.info('Dropped legacy tables (if any)')
+    // One-time legacy cleanup. This DROPs `metrics` (and CASCADEs into every
+    // continuous aggregate / materialized view built on it — metrics_5m,
+    // metrics_rollup_*, energy_rollup_*), which the migrations below then rebuild
+    // WITH NO DATA. Running it on every boot wipes metric history AND makes the
+    // rebuild so slow the aggregator healthcheck times out (containers go
+    // "unhealthy"). All migrations are idempotent (IF NOT EXISTS), so this block
+    // is NOT needed for normal runs — gate it behind an explicit flag.
+    if (process.env.MIGRATE_RESET_LEGACY === 'true') {
+      await pool.query(`
+        DROP TABLE IF EXISTS snmp_traps        CASCADE;
+        DROP TABLE IF EXISTS snmp_metrics      CASCADE;
+        DROP TABLE IF EXISTS alerts            CASCADE;
+        DROP TABLE IF EXISTS metrics           CASCADE;
+        DROP TABLE IF EXISTS topology_links    CASCADE;
+        DROP TABLE IF EXISTS agents            CASCADE;
+        DROP TABLE IF EXISTS servers           CASCADE;
+        DROP VIEW  IF EXISTS topology_view     CASCADE;
+        DROP VIEW  IF EXISTS device_inventory  CASCADE;
+        DROP MATERIALIZED VIEW IF EXISTS metrics_5m CASCADE;
+      `)
+      logger.warn('MIGRATE_RESET_LEGACY=true → dropped legacy tables & materialized views')
+    } else {
+      logger.info('Skipping legacy drop (materialized views & data preserved). Set MIGRATE_RESET_LEGACY=true to force a rebuild.')
+    }
 
     // Run every migration file in lexicographic order (001_init.sql,
     // 002_topology_relation.sql, …). Each file is idempotent, so re-running is
