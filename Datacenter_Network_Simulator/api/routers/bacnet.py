@@ -65,6 +65,7 @@ def bacnet_debug_ev2(ip: str = "192.168.0.229"):
         "api_dm_device_count":         api_dm_count,
         "state_store_power_edges":     ss_power_edges,
         "power_ctx_cached":            getattr(st, "_power_ctx", None) is not None if st else None,
+        "power_ctx_error":             getattr(st, "_power_ctx_error", "<attr missing>") if st else None,
         "ticker_running":              st.is_running() if st and hasattr(st, "is_running") else None,
         "ev2_live_kw_keys":    list(lkw.keys()),
         "ev2_circuit_kw_keys": list(ckw.keys()),
