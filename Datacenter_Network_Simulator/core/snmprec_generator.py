@@ -331,6 +331,15 @@ class SNMPRecGenerator:
         entries += self._ip_entries(device)
         entries += self._snmp_entries(device)
 
+        # ENTITY-MIB chassis inventory — structured OS/model/serial for the
+        # NOS-running devices (switches, routers, firewalls, LBs, OOB switches),
+        # which all implement it. Lets a DCIM read the software rev / serial
+        # directly instead of regex-parsing sysDescr.
+        _ENTITY_TYPES = (DeviceType.ROUTER, DeviceType.SWITCH, DeviceType.FIREWALL,
+                         DeviceType.LOAD_BALANCER, DeviceType.OOB_SWITCH)
+        if device.device_type in _ENTITY_TYPES:
+            entries += self._entity_entries(device)
+
         neighbor_tuples = self._build_neighbor_tuples(device, topology)
         _NETWORK_TYPES = (DeviceType.ROUTER, DeviceType.SWITCH,
                           DeviceType.FIREWALL, DeviceType.LOAD_BALANCER)
@@ -1027,6 +1036,35 @@ class SNMPRecGenerator:
     # ------------------------------------------------------------------ #
     #  System OIDs                                                         #
     # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _entity_serial(device: Device) -> str:
+        """Deterministic 7-char service-tag-style serial, stable across restarts
+        (derived from the topology device id)."""
+        import hashlib
+        h = hashlib.sha1((device.id or device.name).encode()).hexdigest().upper()
+        return h[:7]
+
+    def _entity_entries(self, device: Device) -> List[OidEntry]:
+        """ENTITY-MIB (RFC 4133) chassis row: entPhysicalEntry columns for a single
+        chassis entity (index 1). Real switches also list fan/PSU/module/port rows;
+        modelled minimally here. entPhysicalClass=3 (chassis); IsFRU=2 (false).
+        entPhysicalSoftwareRev carries the NOS version so a DCIM reads it directly."""
+        ent = "1.3.6.1.2.1.47.1.1.1.1"      # entPhysicalEntry
+        i = 1
+        model = device.model_name or device.vendor.value
+        sw    = device.os_version or "Unknown"
+        return [
+            _oid_entry(f"{ent}.2.{i}",  "4", f"{model} chassis"),           # entPhysicalDescr
+            _oid_entry(f"{ent}.5.{i}",  "2", "3"),                          # entPhysicalClass = chassis(3)
+            _oid_entry(f"{ent}.7.{i}",  "4", device.name),                  # entPhysicalName
+            _oid_entry(f"{ent}.8.{i}",  "4", "A00"),                        # entPhysicalHardwareRev
+            _oid_entry(f"{ent}.10.{i}", "4", sw),                           # entPhysicalSoftwareRev
+            _oid_entry(f"{ent}.11.{i}", "4", self._entity_serial(device)),  # entPhysicalSerialNum
+            _oid_entry(f"{ent}.12.{i}", "4", device.vendor.value),          # entPhysicalMfgName
+            _oid_entry(f"{ent}.13.{i}", "4", model),                        # entPhysicalModelName
+            _oid_entry(f"{ent}.16.{i}", "2", "2"),                          # entPhysicalIsFRU = false(2)
+        ]
 
     def _system_entries(self, device: Device) -> List[OidEntry]:
         return [
