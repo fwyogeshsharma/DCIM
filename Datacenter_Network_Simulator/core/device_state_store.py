@@ -885,6 +885,14 @@ class DeviceStateStore:
             "facility_watts": round(fac_w, 1),
             "pue":            round(pue, 3),
             "source":         "meters" if metered else "computed",
+            "_dbg": {
+                "it_m": round(it_m, 3), "main_m": round(main_m, 3), "cool_m": round(cool_m, 3),
+                "roles": [ {"panel": self._dm.get_device(m["panel"]).name
+                                     if self._dm.get_device(m["panel"]) else m["panel"],
+                            "role": m.get("role"),
+                            "kw": round(through.get(m["panel"], 0.0)/1000.0, 2)}
+                          for m in ctx.get("ev2_meters", []) ],
+            },
         }
 
     def _step_generator(self, device: "Device", st: dict) -> None:
