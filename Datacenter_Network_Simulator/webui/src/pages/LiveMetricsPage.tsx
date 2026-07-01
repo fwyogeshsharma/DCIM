@@ -934,8 +934,8 @@ function EV2CircuitTable({ circuits }: { circuits: EV2CircuitMetrics[] }) {
           <tr key={c.circuit} style={{ background: i % 2 === 0 ? 'transparent' : 'var(--bg-stripe, rgba(255,255,255,0.02))' }}>
             <td style={{ padding: '3px 8px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>{c.label}</td>
             <td style={{ padding: '3px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.device_name ?? '—'}</td>
-            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.current} unit=" A"  warn={16} crit={20} /></td>
-            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.kw}      unit=" kW" warn={3}  crit={4}  /></td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.current} unit=" A"  decimals={2} warn={16} crit={20} /></td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.kw}      unit=" kW" decimals={3} warn={3}  crit={4}  /></td>
             <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{fmtVal(c.kwh, 1)}</td>
             <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.pf}      unit=""    warn={0}  crit={0}  /></td>
             <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.thd}     unit="%"   warn={5}  crit={7}  /></td>

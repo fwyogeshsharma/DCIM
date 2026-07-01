@@ -122,7 +122,17 @@ class EV2TelemetryEngine:
         self._h9       = random.uniform(0.2, 1.0)   # 9th harmonic %
 
         # ── Energy accumulators (kWh) ─────────────────────────────
-        self._panel_kwh = random.uniform(50_000.0, 500_000.0)
+        # A real Verdigris counts up from 0 at commissioning, so a branch's
+        # lifetime kWh ≈ its average load × install age — and the mains kWh equals
+        # the sum of the branch kWh. Rather than seed each counter with an
+        # independent random number (which made an idle branch show huge kWh and
+        # the panel disagree with its circuits), we seed lazily on the first tick
+        # from each branch's REAL load × a per-panel install age, and set the
+        # panel counter to Σ branch kWh. Coherence then holds forever because both
+        # sides accumulate the same per-tick energy.
+        self._install_age_h = random.uniform(2160.0, 12960.0)   # ~90–540 days
+        self._kwh_seeded    = False
+        self._panel_kwh     = 0.0
 
         # ── Per-circuit state ─────────────────────────────────────
         self._circuits_state: List[CircuitState] = [
@@ -130,7 +140,7 @@ class EV2TelemetryEngine:
                 current=random.uniform(0.5, 16.0),
                 pf=random.uniform(0.88, 0.99),
                 thd=random.uniform(2.0, 6.0),
-                kwh=random.uniform(500.0, 5000.0),
+                kwh=0.0,
             )
             for _ in range(circuits)
         ]
@@ -221,6 +231,24 @@ class EV2TelemetryEngine:
         # Alarms read the (now summed) per-phase currents, so evaluate after the
         # panel is resolved.
         self._update_alarms()
+
+        # ── One-time kWh seeding (commissioning baseline) ─────────────
+        # Seed each branch's lifetime energy from its real load × install age, and
+        # the mains from the sum, so lifetime kWh is load-proportional and the
+        # panel counter equals Σ branch counters. Done once, on the first tick when
+        # loads are known; both sides then accrue the same per-tick energy.
+        if not self._kwh_seeded:
+            for i, cs in enumerate(self._circuits_state):
+                if live_circuits and circuit_kw is not None:
+                    base_kw = circuit_kw[i] if (i < len(circuit_kw) and i < self._active) else 0.0
+                else:
+                    base_kw = cs.kw if i < self._active else 0.0
+                cs.kwh = max(0.0, base_kw) * self._install_age_h
+            if live_circuits:
+                self._panel_kwh = sum(cs.kwh for cs in self._circuits_state)
+            else:
+                self._panel_kwh = max(0.0, panel_kw) * self._install_age_h
+            self._kwh_seeded = True
 
         # ── Panel kWh accumulation ─────────────────────────────────
         self._panel_kwh += panel_kw * dt / 3600.0

@@ -802,11 +802,7 @@ class DeviceStateStore:
                     gen_ups[gid] = [self._dm.get_device(i).name for i in subups
                                     if self._dm.get_device(i)]
         except Exception:
-            import traceback as _tb
-            self._power_ctx_error = _tb.format_exc()   # TEMP: surfaced via debug
             log.exception("[StateStore] power context build error")
-        else:
-            self._power_ctx_error = None
 
         self._power_ctx = {"children": children, "parents": parents,
                            "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
