@@ -41,6 +41,21 @@ async function runMigrations() {
       logger.info('Skipping legacy drop (materialized views & data preserved). Set MIGRATE_RESET_LEGACY=true to force a rebuild.')
     }
 
+    // Plain (non-materialized) VIEWs hold no data and are cheap to rebuild. Some
+    // are redefined across migrations (001 and 003 both define topology_view /
+    // topology_tree, the later one adding columns). Postgres CREATE OR REPLACE
+    // VIEW cannot drop/reorder an existing view's columns (error 42P16), so on a
+    // re-run the earlier, smaller definition fails against the already-extended
+    // view. Dropping just these views each run keeps migrations idempotent
+    // WITHOUT touching materialized views / continuous aggregates or table data.
+    await pool.query(`
+      DROP VIEW IF EXISTS topology_view        CASCADE;
+      DROP VIEW IF EXISTS topology_tree        CASCADE;
+      DROP VIEW IF EXISTS device_inventory     CASCADE;
+      DROP VIEW IF EXISTS dc_inventory_summary CASCADE;
+    `)
+    logger.info('Dropped plain views for clean re-create (no data affected)')
+
     // Run every migration file in lexicographic order (001_init.sql,
     // 002_topology_relation.sql, …). Each file is idempotent, so re-running is
     // a no-op against an already-migrated database.
