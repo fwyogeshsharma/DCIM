@@ -101,9 +101,15 @@ def bacnet_start(cfg: BACnetConfig):
     # Build id→device_type and id→power_draw_w maps.
     _id_to_type: dict = {}
     _id_to_draw: dict = {}
-    if s.topology and hasattr(s.topology, 'devices'):
-        for dev in s.topology.devices:
-            _id_to_type[dev.id] = getattr(dev, 'device_type', None)
+    # NOTE: source the type/draw maps from device_manager, NOT s.topology.
+    # TopologyEngine has no `.devices` attribute (only get_all_devices()), so the
+    # old `hasattr(s.topology, 'devices')` guard was always False — leaving both
+    # maps empty. That silently broke the UPS/generator exclusion below (every
+    # .get() returned None, so upstream feeds were counted as active circuits)
+    # and the rated_kw sizing (_through stayed empty). Mirrors main_window.py.
+    if s.device_manager:
+        for dev in s.device_manager.get_all_devices():
+            _id_to_type[dev.id] = dev.device_type
             _id_to_draw[dev.id] = getattr(dev, 'power_draw_w', 0) or 0
 
     # Power-chain rank orders the distribution hierarchy from source (0) to
