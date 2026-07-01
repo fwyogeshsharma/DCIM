@@ -102,6 +102,13 @@ class BACnetController:
         self._frequency_hz:  float = 50.0
         self._port:          int   = 47808
 
+        # kWh register persistence — EV2 energy accumulators survive restarts the
+        # way a real meter's non-volatile register does. Flushed periodically and
+        # on stop(); restored (keyed by device IP) at start().
+        self._energy_path = Path(self._datasets_dir) / "ev2_energy.json"
+        self._tick_count = 0
+        self._energy_save_every = 300   # ticks (~5 min at the 1 s tick interval)
+
     # ─────────────────────────────────────────────────────────────
     #  Callbacks
     # ─────────────────────────────────────────────────────────────
@@ -190,6 +197,10 @@ class BACnetController:
                 "error")
             return False
 
+        # Restore persisted kWh registers (keyed by device IP) so lifetime energy
+        # continues across restarts instead of reseeding.
+        saved_energy = self._load_energy()
+
         # Build devices (each device binds device_ip:BACNET_PORT with SO_REUSEADDR)
         for i, ip in enumerate(device_ips):
             instance    = base_instance + i
@@ -219,13 +230,16 @@ class BACnetController:
             )
             self._devices[instance]  = dev
             self._devices_by_ip[ip]  = dev
-            self._telemetry[instance] = EV2TelemetryEngine(
+            _eng = EV2TelemetryEngine(
                 circuits=circuits,
                 frequency_hz=frequency_hz,
                 active_circuits=active_circuits,
                 load_scale=load_scale,
                 rated_kw=_kwmap.get(ip),
             )
+            if ip in saved_energy:
+                _eng.set_energy_state(saved_energy[ip])
+            self._telemetry[instance] = _eng
 
         # ── Chiller-plant BACnet devices (chiller/pump/cooling_tower/valve) ──
         # Instances continue after the EV2 block. Each gets its type-specific
@@ -283,10 +297,46 @@ class BACnetController:
 
         return True
 
+    def _load_energy(self) -> Dict[str, dict]:
+        """Read persisted per-EV2 kWh registers ({ip: {panel_kwh, circuit_kwh}})."""
+        try:
+            import json
+            if self._energy_path.exists():
+                with open(self._energy_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception as exc:
+            self._log(f"[BACnet] Could not load kWh state ({exc}); starting fresh.",
+                      "warning")
+        return {}
+
+    def _save_energy(self) -> None:
+        """Flush every EV2 engine's kWh registers to disk atomically. Plant engines
+        are skipped (they have no lifetime kWh register)."""
+        out: Dict[str, dict] = {}
+        for ip, dev in self._devices_by_ip.items():
+            eng = self._telemetry.get(getattr(dev, "device_instance", None))
+            if isinstance(eng, EV2TelemetryEngine):
+                out[ip] = eng.get_energy_state()
+        if not out:
+            return
+        try:
+            import json, os
+            tmp = str(self._energy_path) + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(out, f)
+            os.replace(tmp, str(self._energy_path))
+        except Exception as exc:
+            self._log(f"[BACnet] Could not save kWh state: {exc}", "warning")
+
     def stop(self) -> None:
         """Graceful shutdown: stop recv thread, close all sockets."""
         if not self._running:
             return
+
+        # Final flush so the lifetime kWh registers survive this shutdown.
+        self._save_energy()
 
         self._stop_ev.set()
 
@@ -440,6 +490,11 @@ class BACnetController:
                 )
             except Exception:
                 log.exception("[BACnet] tick error for instance %d", instance)
+
+        # Periodic kWh flush so the lifetime registers survive an unclean exit.
+        self._tick_count += 1
+        if self._energy_save_every and self._tick_count % self._energy_save_every == 0:
+            self._save_energy()
 
     # ─────────────────────────────────────────────────────────────
     #  Receive loop

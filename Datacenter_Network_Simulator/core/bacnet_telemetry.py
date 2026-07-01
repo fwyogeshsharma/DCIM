@@ -250,8 +250,16 @@ class EV2TelemetryEngine:
                 self._panel_kwh = max(0.0, panel_kw) * self._install_age_h
             self._kwh_seeded = True
 
-        # ── Panel kWh accumulation ─────────────────────────────────
-        self._panel_kwh += panel_kw * dt / 3600.0
+        # ── Panel kWh ──────────────────────────────────────────────
+        if live_circuits:
+            # Main register = Σ branch registers exactly. The branches already
+            # accrued this tick's energy in _step_circuits, so summing them keeps
+            # the panel kWh identical to the circuit total (no rounding drift from
+            # accumulating the rounded panel kW separately). Spare breakers carry
+            # no energy, so only the active branches contribute.
+            self._panel_kwh = sum(cs.kwh for cs in self._circuits_state[:self._active])
+        else:
+            self._panel_kwh += panel_kw * dt / 3600.0
 
         values: Dict[str, float] = {
             "Panel_Total_kW":     max(0.0, panel_kw),
@@ -428,6 +436,35 @@ class EV2TelemetryEngine:
             self._pf = max(0.70, min(0.99, sum_i_pf / sum_i))
         return round(max(0.0, tot_kw), 3)
 
+    # ─────────────────────────────────────────────────────────────
+    #  Energy-register persistence (non-volatile meter behaviour)
+    # ─────────────────────────────────────────────────────────────
+
+    def get_energy_state(self) -> Dict[str, object]:
+        """Snapshot the lifetime energy registers for persistence."""
+        return {
+            "panel_kwh":   self._panel_kwh,
+            "circuit_kwh": [cs.kwh for cs in self._circuits_state],
+        }
+
+    def set_energy_state(self, state: dict) -> None:
+        """Restore persisted lifetime energy so kWh is CONTINUOUS across restarts,
+        like a real meter's non-volatile register. Marks the accumulators seeded so
+        the commissioning baseline is NOT re-applied on the first tick."""
+        try:
+            pk = float(state.get("panel_kwh", 0.0))
+            if pk >= 0.0:
+                self._panel_kwh = pk
+            saved = state.get("circuit_kwh") or []
+            for i, cs in enumerate(self._circuits_state):
+                if i < len(saved):
+                    v = float(saved[i])
+                    if v >= 0.0:
+                        cs.kwh = v
+            self._kwh_seeded = True
+        except (TypeError, ValueError):
+            pass
+
     def _step_circuits(self, dt: float, mul: float, circuit_kw: list | None = None):
         """
         Operational signal class — circuit current eases toward its target with
@@ -442,6 +479,13 @@ class EV2TelemetryEngine:
         v_avg = (self._va + self._vb + self._vc) / 3.0
 
         for i, cs in enumerate(self._circuits_state):
+            if i >= self._active:
+                # Spare breaker — no load, no energy accrual. Zero it directly so
+                # the startup transient never adds phantom kWh to the register.
+                cs.current = 0.0
+                cs.kw      = 0.0
+                cs.thd     = 0.0
+                continue
             # Power factor first (very slow drift) — needed to turn a target kW
             # into a target current.
             raw_pf = cs.pf + random.uniform(-0.002, 0.002)
