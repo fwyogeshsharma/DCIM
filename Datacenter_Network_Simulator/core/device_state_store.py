@@ -870,12 +870,17 @@ class DeviceStateStore:
             elif role == "cool":
                 cool_m += kw         # cooling-plant sub-meter
 
-        # A building-main meter already sums IT + cooling, so use it directly and
-        # do NOT add the cooling sub-meters (they sit inside it → double count).
-        # With no main meter, fall back to summing the non-overlapping branch
-        # sub-meters: facility = IT + cooling.
-        fac_m = main_m if main_m > 0 else (it_m + cool_m)
-        metered = it_m > 0 and fac_m > 0
+        # Facility power from meters. The branch sub-meters (IT + cooling) are
+        # non-overlapping and together cover the whole load, so their sum is the
+        # primary facility figure. A building-main meter is only a cross-check: on
+        # a redundant A/B feed a single metered main reads just its side (which can
+        # be LESS than the full sub-meter sum), so take the larger of the two
+        # rather than trusting an under-metered main alone.
+        sub_fac = it_m + cool_m
+        fac_m = max(sub_fac, main_m)
+        # A trustworthy facility reading must be ≥ IT (the facility carries IT +
+        # cooling). If it isn't, metering is incomplete → fall back to computed.
+        metered = it_m > 0 and fac_m >= it_m
         it_w  = it_m * 1000.0 if it_m > 0 else self._it_w
         fac_w = fac_m * 1000.0 if fac_m > 0 else self._facility_w
         pue = (fac_w / it_w) if it_w > 0 else 0.0
@@ -885,14 +890,6 @@ class DeviceStateStore:
             "facility_watts": round(fac_w, 1),
             "pue":            round(pue, 3),
             "source":         "meters" if metered else "computed",
-            "_dbg": {
-                "it_m": round(it_m, 3), "main_m": round(main_m, 3), "cool_m": round(cool_m, 3),
-                "roles": [ {"panel": self._dm.get_device(m["panel"]).name
-                                     if self._dm.get_device(m["panel"]) else m["panel"],
-                            "role": m.get("role"),
-                            "kw": round(through.get(m["panel"], 0.0)/1000.0, 2)}
-                          for m in ctx.get("ev2_meters", []) ],
-            },
         }
 
     def _step_generator(self, device: "Device", st: dict) -> None:
