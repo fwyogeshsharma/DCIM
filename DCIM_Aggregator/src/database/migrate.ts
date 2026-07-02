@@ -17,8 +17,8 @@ async function runMigrations() {
     logger.info('Starting database migration...')
 
     // One-time legacy cleanup. This DROPs `metrics` (and CASCADEs into every
-    // continuous aggregate / materialized view built on it — metrics_5m,
-    // metrics_rollup_*, energy_rollup_*), which the migrations below then rebuild
+    // continuous aggregate / materialized view built on it — metrics_5m),
+    // which the migrations below then rebuild
     // WITH NO DATA. Running it on every boot wipes metric history AND makes the
     // rebuild so slow the aggregator healthcheck times out (containers go
     // "unhealthy"). All migrations are idempotent (IF NOT EXISTS), so this block

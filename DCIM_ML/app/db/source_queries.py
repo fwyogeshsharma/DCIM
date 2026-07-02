@@ -4,8 +4,8 @@ Everything here is SELECT-only. Series are returned as pandas Series indexed by
 a daily DatetimeIndex so the forecasters can treat every target uniformly.
 
 Schema references (see DCIM_Aggregator/src/database/migrations):
-  - metrics / metrics_rollup_1d        (001_init.sql, 014_metric_rollups.sql)
-  - energy_metrics / energy_rollup_1d  (007_energy_metrics.sql, 014_metric_rollups.sql)
+  - metrics / metrics_5m               (001_init.sql)
+  - energy_metrics / energy_metrics_5m (007_energy_metrics.sql)
   - devices                            (001_init.sql, 003/011/013)
   - dc_inventory_devices               (005_inventory.sql)
 """
@@ -66,8 +66,9 @@ def fetch_metric_series(
 ) -> pd.Series:
     """Daily average of a utilization metric across (optionally one) datacenter.
 
-    Prefers the 1-day rollup; falls back to bucketing raw `metrics` when the
-    rollup has too few points (typical on a young / shallow deployment).
+    Prefers the metrics_5m continuous aggregate (6-month retention) bucketed to
+    days; falls back to bucketing raw `metrics` when the aggregate has too few
+    points (typical on a young / shallow deployment).
     """
     names = METRIC_GROUPS.get(target, [])
     if not names:
@@ -77,7 +78,7 @@ def fetch_metric_series(
         text(
             f"""
             SELECT r.bucket::date AS bucket, avg(r.avg_value) AS value
-            FROM metrics_rollup_1d r
+            FROM metrics_5m r
             JOIN devices d ON d.id = r.device_id
             WHERE r.metric_name = ANY(:names)
               AND r.bucket >= now() - make_interval(days => :lb)
@@ -114,21 +115,23 @@ def fetch_power_series(
 ) -> pd.Series:
     """Daily total facility active power (kW).
 
-    Uses the panel scalar reading (empty circuit) per device to avoid double
-    counting per-circuit rows, then sums devices — mirroring energy.ts.
+    Reads energy_metrics_5m (2-year retention) bucketed to days, using the
+    panel scalar reading (empty circuit) per device to avoid double counting
+    per-circuit rows, then sums devices — mirroring energy.ts. Falls back to
+    raw energy_metrics on shallow history.
     """
     rollup = conn.execute(
         text(
             f"""
             SELECT bucket::date AS bucket, sum(dev_avg) AS value FROM (
-                SELECT r.bucket, r.device_id, avg(r.avg_value) AS dev_avg
-                FROM energy_rollup_1d r
+                SELECT r.bucket::date AS bucket, r.device_id, avg(r.avg_value) AS dev_avg
+                FROM energy_metrics_5m r
                 JOIN devices d ON d.id = r.device_id
                 WHERE r.metric_name = 'energy.active_power_kw'
                   AND coalesce(r.circuit, '') = ''
                   AND r.bucket >= now() - make_interval(days => :lb)
                   {_dc_clause('d', dc)}
-                GROUP BY r.bucket, r.device_id
+                GROUP BY 1, r.device_id
             ) s GROUP BY 1 ORDER BY 1
             """
         ),

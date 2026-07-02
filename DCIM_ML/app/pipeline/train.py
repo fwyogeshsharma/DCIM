@@ -29,8 +29,8 @@ from app.models.selection import Selection, select_forecaster
 log = get_logger("dcim_ml.pipeline")
 
 # Targets forecast directly from a real/observed series.
-# temperature — from metrics_rollup_1d (system.temperature_celsius)
-# storage     — from metrics_rollup_1d (disk_usage_percent); separate from the
+# temperature — from metrics_5m (system.temperature_celsius)
+# storage     — from metrics_5m (disk_usage_percent); separate from the
 #               GB-based derived storage curve produced by the capacity engine.
 DIRECT_TARGETS = ["cpu", "memory", "temperature", "storage", "power", "server_count"]
 
