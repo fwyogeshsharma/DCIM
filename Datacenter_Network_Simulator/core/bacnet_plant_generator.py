@@ -191,6 +191,13 @@ class PlantTelemetryEngine:
         _PWR = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
         self._power_point = next(
             (n for (n, *_r) in self._points if n in _PWR), None)
+        self._nameplate_kw = float(rated_kw)
+        # VFD speed point coupled to the affinity power (P ∝ speed³) for centrifugal
+        # pumps/fans, so the published Speed tracks the metered draw. Chillers have no
+        # such point (compressor unloads instead) → None, speed left on its walk.
+        _SPD = {"pump": "Speed", "cooling_tower": "Fan_Speed",
+                "crah": "Fan_Speed", "cdu": "Pump_Speed"}
+        self._speed_point = _SPD.get(device_type)
 
         self._binaries: Dict[str, float] = {}
         for name in spec["bi"]:
@@ -229,6 +236,7 @@ class PlantTelemetryEngine:
             forced = {"Alarm_Leak"} if force_leak else set()
         mul = self._diurnal()
         out: Dict[str, float] = {}
+        _pwr_out: float | None = None
         for name, base, amp, is_load, is_hours in self._points:
             if is_hours:
                 self._values[name] += dt / 3600.0          # accumulate run-hours
@@ -239,6 +247,7 @@ class PlantTelemetryEngine:
                 raw = max(0.0, live_power) + random.uniform(-0.02, 0.02) * max(1.0, live_power)
                 self._values[name] = self._ema(raw, self._values[name], 0.3)
                 out[name] = round(max(0.0, self._values[name]), 2)
+                _pwr_out = out[name]
                 continue
             if amp == 0.0:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
@@ -249,6 +258,19 @@ class PlantTelemetryEngine:
             lo, hi = target - amp, target + amp
             self._values[name] = max(lo, min(hi, self._values[name]))
             out[name] = round(self._values[name], 2)
+        # Couple the VFD speed point to the metered affinity power (inverse of
+        # P ∝ speed³) so a throttled pump/fan reports the matching speed, not an
+        # independent random walk. VFD_Frequency (Hz) follows the same speed.
+        if _pwr_out is not None and self._speed_point and self._speed_point in out:
+            from core.cooling_model import affinity_speed_frac
+            spd = affinity_speed_frac(_pwr_out, self._nameplate_kw)
+            self._values[self._speed_point] = self._ema(
+                spd * 100.0, self._values[self._speed_point], 0.3)
+            out[self._speed_point] = round(
+                max(0.0, min(100.0, self._values[self._speed_point])), 2)
+            if "VFD_Frequency" in out:
+                out["VFD_Frequency"] = round(spd * 50.0, 2)   # 50 Hz mains at 100 %
+
         for name, val in self._binaries.items():
             out[name] = val
         if self._type == "cdu":

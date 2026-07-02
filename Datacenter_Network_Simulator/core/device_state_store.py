@@ -871,6 +871,24 @@ class DeviceStateStore:
             elif role == "cool":
                 cool_m += kw         # cooling-plant sub-meter
 
+        # CDU reclassification. A CDU (in-rack coolant distribution) is fed from the
+        # IT PDU, so its pump draw rides an IT-role sub-meter and would be counted as
+        # IT load — understating PUE. Its work is mechanical cooling overhead (Green
+        # Grid/ASHRAE put it in the numerator), and the computed path (_COOLING_TYPES)
+        # already treats it as cooling. Shift live CDU watts IT→cool so the meter PUE
+        # matches: facility is unchanged (sub-meter sum is conserved), only the IT
+        # denominator drops. Bounded by the metered IT so we never go negative.
+        cdu_kw = 0.0
+        try:
+            for d in self._dm.get_all_devices():
+                if d.device_type.value == "cdu":
+                    cdu_kw += self._plant_watts(d.name) / 1000.0
+        except Exception:
+            log.exception("[StateStore] CDU reclassification error")
+        cdu_kw = max(0.0, min(cdu_kw, it_m))
+        it_m   -= cdu_kw
+        cool_m += cdu_kw
+
         # Facility power from meters. The branch sub-meters (IT + cooling) are
         # non-overlapping and together cover the whole load, so their sum is the
         # primary facility figure. A building-main meter is only a cross-check: on
@@ -1008,8 +1026,11 @@ class DeviceStateStore:
             # tracks the real IT load and the location's weather instead of a fixed
             # nameplate × clock curve.
             from core.cooling_model import (
-                cooling_electrical_w, crah_fan_factor, OH_FLOOR, OH_VAR)
+                cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
+                affinity_power_kw, PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR)
             _oh_design = (OH_FLOOR + OH_VAR) or 0.47
+            _VFD_FAN  = ("crah", "cooling_tower")   # centrifugal fans
+            _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
             plant_power: Dict[str, float] = {}
             for _dc, units in plant_dc.items():
                 itl = it_live_dc.get(_dc, 0.0)
@@ -1020,21 +1041,32 @@ class DeviceStateStore:
                 # this fixed ceiling (PUE → 1.47), and cooling caps at P.
                 itd = np_sum / _oh_design
                 total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc))
-                # Hall inlet/return air temp → CRAH fan ramp (control response).
+                # Plant-wide duty fraction: how hard the plant works vs its installed
+                # nameplate. 1.0 at design (total_w == np_sum), <1 at part load. Sets
+                # the VFD speed of every pump/fan in the DC.
+                lf = min(1.0, total_w / np_sum)
+                # Hall inlet/return air temp → CRAH fan SPEED ramp (more airflow when
+                # hot). The cube-law POWER cost is applied once, by affinity_power_kw
+                # below — no double-cube.
                 avg_inlet = (inlet_sum_dc.get(_dc, 0.0) / inlet_n_dc[_dc]
                              if inlet_n_dc.get(_dc) else 24.0)
-                fan_f = crah_fan_factor(avg_inlet)
+                fan_spd_ratio = crah_fan_speed_ratio(avg_inlet)
                 for _n, w, _t in units:
-                    base = total_w * (w / np_sum)
-                    # CRAHs ramp their fans when the hall runs hot — extra fan power
-                    # on top of the heat-load-driven share, cube-law with speed.
-                    if _t == "crah":
-                        base *= fan_f
-                    # Nameplate share of the demand, capped at the unit's rating —
-                    # a chiller/pump/fan cannot draw more than its nameplate. When
-                    # demand exceeds total plant nameplate the plant is at 100 %
-                    # (cooling-capacity-limited).
-                    tgt_w = min(base, w if w > 0 else base)
+                    if _t in _VFD_FAN or _t in _VFD_PUMP:
+                        # VFD centrifugal pump/fan — affinity law P ∝ speed³. Speed
+                        # tracks the thermal duty (flow ∝ speed), floored at the drive
+                        # turndown; CRAHs push extra airflow when the hall is hot. Draw
+                        # equals nameplate only at full speed, far less when throttled.
+                        duty = lf * fan_spd_ratio if _t == "crah" else lf
+                        _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
+                        spd  = vfd_speed_frac(duty, _min)
+                        tgt_w = affinity_power_kw(w, spd)
+                    else:
+                        # Chiller / valve: compressor work tracks the cooling load
+                        # ~linearly (part-load curve handled separately); nameplate
+                        # share of demand, capped at the unit's rating.
+                        base = total_w * (w / np_sum)
+                        tgt_w = min(base, w if w > 0 else base)
                     plant_power[_n] = tgt_w / 1000.0   # kW
             self._plant_power_by_name = plant_power
         except Exception:
@@ -1854,10 +1886,18 @@ class DeviceStateStore:
         therefore still win)."""
         dt = device.device_type
 
-        if getattr(device, "cpu_usage", 0) > 89:                  # HighCPU > 90
+        # An explicit, enabled Metric-Tick limit is deliberate operator intent and
+        # must win over the quiet-baseline scrub (same as overrides/ramps). Only skip
+        # the scrub cap when the user's floor sits above it — otherwise the organic
+        # walk is still tamed as before.
+        _cl = self.metric_limits.get("cpu_usage")
+        _cpu_forced = bool(_cl and _cl["enabled"] and _cl["min"] > 89)
+        if getattr(device, "cpu_usage", 0) > 89 and not _cpu_forced:   # HighCPU > 90
             device.cpu_usage = 89
         mtot = getattr(device, "memory_total", 0)
-        if mtot and device.memory_used > int(mtot * 0.849):       # HighMemory > 85 %
+        _ml = self.metric_limits.get("memory_pct")
+        _mem_forced = bool(_ml and _ml["enabled"] and _ml["min"] > 84.9)
+        if mtot and device.memory_used > int(mtot * 0.849) and not _mem_forced:  # HighMemory > 85 %
             device.memory_used = int(mtot * 0.849)
         # cpu_temp is NOT clamped: even at 100 % load the walk peaks ~84 °C (plus a
         # few °C of intake coupling), staying below the 90 °C HighTemperature

@@ -111,17 +111,64 @@ FAN_SPEED_GAIN  = 0.05    # +5 % fan speed per °C above setpoint
 FAN_FACTOR_MAX  = 3.0     # cap on the fan-power multiplier (≈ full-speed fans)
 
 
-def crah_fan_factor(inlet_c: float) -> float:
-    """CRAH fan-power multiplier vs. hall inlet/return air temperature.
+def crah_fan_speed_ratio(inlet_c: float) -> float:
+    """CRAH fan-SPEED (airflow) multiplier vs. hall inlet/return air temperature.
 
     A rising hall temperature drives the CRAH control loop to ramp fan speed to
-    move more air; fan power follows the cube (affinity) law P ∝ speed³. Returns
-    1.0 at or below the setpoint, growing (capped) as the hall gets hotter. This
-    is a *control response* to the sensed temperature — the extra fan power adds to
-    the cooling draw and pushes PUE up when the hall runs hot."""
+    move more air (flow ∝ speed). Returns 1.0 at or below the setpoint, growing as
+    the hall gets hotter, capped so speed stays ≤ FAN_FACTOR_MAX**(1/3) (i.e. the
+    same ceiling as the power cap once cubed). The cube-law POWER cost of this
+    extra speed is applied once, downstream, by affinity_power_kw()."""
     over = max(0.0, inlet_c - CRAH_SETPOINT_C)
-    speed_ratio = 1.0 + FAN_SPEED_GAIN * over
-    return min(FAN_FACTOR_MAX, speed_ratio ** 3)
+    ratio = 1.0 + FAN_SPEED_GAIN * over
+    return min(FAN_FACTOR_MAX ** (1.0 / 3.0), ratio)
+
+
+def crah_fan_factor(inlet_c: float) -> float:
+    """CRAH fan-POWER multiplier vs. hall temperature (P ∝ speed³). Kept for any
+    caller that wants the power multiplier directly; the plant power path now uses
+    crah_fan_speed_ratio() + affinity_power_kw() so speed and power stay coupled."""
+    return crah_fan_speed_ratio(inlet_c) ** 3
+
+
+# ── VFD affinity law for centrifugal pumps & fans: P ∝ speed³ ──────────────────
+# A variable-frequency-driven centrifugal pump/fan delivers flow ∝ speed, head ∝
+# speed², and draws power ∝ speed³. So a unit whose NAMEPLATE (label) rating is the
+# full-speed draw pulls only ~speed³ of that when the VFD throttles it back — a pump
+# at 70 % speed draws ~0.34× nameplate, not the nameplate. This is why VFD hydronics
+# dominate modern plant: cubic savings at part load. A small fixed drive/motor
+# parasitic keeps the floor realistic (a VFD at min speed is not zero watts).
+PUMP_MIN_SPEED  = 0.35    # VFD turndown floor — pumps rarely modulate below ~35 %
+FAN_MIN_SPEED   = 0.30    # CRAH / cooling-tower fans floor ~30 %
+DRIVE_PARASITIC = 0.04    # fixed VFD + motor no-load loss as a fraction of nameplate
+
+
+def vfd_speed_frac(duty_frac: float, min_frac: float) -> float:
+    """VFD speed needed to deliver a flow/airflow duty. Flow ∝ speed, so speed
+    tracks the duty (thermal-load) fraction, floored at the drive's turndown
+    minimum and capped at 100 %."""
+    return max(min_frac, min(1.0, duty_frac))
+
+
+def affinity_power_kw(nameplate_kw: float, speed_frac: float,
+                      parasitic: float = DRIVE_PARASITIC) -> float:
+    """Electrical draw (kW) of a VFD centrifugal pump/fan at *speed_frac* of full
+    speed, via the affinity law P ∝ speed³ plus a fixed drive parasitic. Equals the
+    nameplate at 100 % speed (so the plant design point / PUE anchor is preserved);
+    ~0.34× nameplate at 70 % speed; never below the parasitic floor."""
+    s = max(0.0, min(1.0, speed_frac))
+    return max(0.0, nameplate_kw) * (parasitic + (1.0 - parasitic) * s ** 3)
+
+
+def affinity_speed_frac(power_kw: float, nameplate_kw: float,
+                        parasitic: float = DRIVE_PARASITIC) -> float:
+    """Inverse of affinity_power_kw: recover the VFD speed fraction that produced a
+    given electrical draw, so a unit's published Speed point stays consistent with
+    its metered power. Returns 0..1."""
+    if nameplate_kw <= 0.0:
+        return 0.0
+    frac = (power_kw / nameplate_kw - parasitic) / max(1e-6, 1.0 - parasitic)
+    return max(0.0, min(1.0, frac)) ** (1.0 / 3.0)
 
 
 def cooling_floor_w(it_design_w: float) -> float:
