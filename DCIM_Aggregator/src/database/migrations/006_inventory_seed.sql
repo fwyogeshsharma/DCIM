@@ -42,7 +42,7 @@ INSERT INTO dc_inventory_devices (
   power_capacity_w,
   notes
 )
-SELECT
+SELECT DISTINCT ON (d.org_id, d.datacenter_id, d.hostname)
   d.org_id,
   d.datacenter_id,
   d.id                                              AS device_id,
@@ -58,6 +58,12 @@ SELECT
   d.power_draw_w                                    AS power_capacity_w,
   d.sys_description                                 AS notes
 FROM devices d
+-- DISTINCT ON keeps one row per conflict target: a single INSERT may not
+-- propose two rows for the same (org_id, datacenter_id, hostname) — Postgres
+-- rejects that with "ON CONFLICT DO UPDATE command cannot affect row a second
+-- time". Prefer the most recently seen device.
+ORDER BY d.org_id, d.datacenter_id, d.hostname,
+         d.last_seen_at DESC NULLS LAST, d.updated_at DESC
 ON CONFLICT (org_id, datacenter_id, hostname) DO UPDATE SET
   device_id         = EXCLUDED.device_id,
   device_type       = EXCLUDED.device_type,
@@ -88,7 +94,7 @@ INSERT INTO dc_inventory_links (
   link_type, speed_mbps,
   status
 )
-SELECT
+SELECT DISTINCT ON (tl.id)
   inv_src.org_id,
   inv_src.datacenter_id,
   tl.id                                                     AS topology_link_id,
@@ -102,6 +108,10 @@ SELECT
 FROM topology_links tl
 JOIN dc_inventory_devices inv_src ON inv_src.device_id = tl.src_device_id
 JOIN dc_inventory_devices inv_dst ON inv_dst.device_id = tl.dst_device_id
+-- DISTINCT ON (tl.id): if a device_id ever maps to more than one inventory
+-- row, the joins fan out and one INSERT would hit the same topology_link_id
+-- twice (same 21000 error as above). Keep one row per link.
+ORDER BY tl.id
 ON CONFLICT (topology_link_id) WHERE topology_link_id IS NOT NULL
 DO UPDATE SET
   status     = EXCLUDED.status,
