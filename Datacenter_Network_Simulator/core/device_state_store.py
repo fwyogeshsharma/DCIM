@@ -264,6 +264,10 @@ class DeviceStateStore:
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
         self._plant_power_by_name: Dict[str, float] = {}  # {plant_name: live cooling kW}
         self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
+        # Frozen per-DC design cooling nameplate (first-seen), so IT_design stays a
+        # fixed capacity ceiling even when the fleet adds CRAHs to new halls — those
+        # are air distribution, not extra chiller/plant capacity.
+        self._plant_np0_by_dc: Dict[str, float] = {}
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
@@ -1049,8 +1053,11 @@ class DeviceStateStore:
                 # Design IT capacity is set by the INSTALLED cooling plant (fixed),
                 # not the live server population: a plant of nameplate P cools
                 # IT_design = P / 0.47 at design PUE. So adding IT raises load toward
-                # this fixed ceiling (PUE → 1.47), and cooling caps at P.
-                itd = np_sum / _oh_design
+                # this fixed ceiling (PUE → 1.47), and cooling caps at P. FROZEN at
+                # the first-seen (curated) plant nameplate so fleet-added hall CRAHs —
+                # air distribution, not new chiller capacity — don't inflate it.
+                np0 = self._plant_np0_by_dc.setdefault(_dc, np_sum)
+                itd = np0 / _oh_design
                 total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc))
                 # Plant-wide duty fraction: how hard the plant works vs its installed
                 # nameplate. 1.0 at design (total_w == np_sum), <1 at part load. Sets

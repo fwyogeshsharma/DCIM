@@ -460,6 +460,7 @@ class FleetLifecycleEngine:
     # rows or with another hall's.
 
     _FLEET_ROW_BASE = 1000
+    _HALL_SENSORS   = 3      # environmental probes (temp/RH/airflow) per new hall
 
     def _expand_capacity(self, summ: DaySummary) -> Optional[dict]:
         """Add a compute rack. First fill a hall (curated or fleet) that still has
@@ -532,9 +533,21 @@ class FleetLifecycleEngine:
             rpp_a = rpps[0]
         if rpp_b is None and len(rpps) > 1:
             rpp_b = rpps[1]
+        # Hall cooling/env: the CRAHs that air-cool this hall and a sensor to clone,
+        # plus a DC chiller to hang new CRAHs' CHW loop off (cooling layer).
+        _dc = srv_tmpl.datacenter or ""
+        crahs = [d for d in self.s.device_manager.get_all_devices()
+                 if d.device_type == DeviceType.CRAH and self._room_key(d) == rk]
+        sensor_tmpl = next((d for d in self.s.device_manager.get_all_devices()
+                            if d.device_type == DeviceType.SENSOR
+                            and self._room_key(d) == rk), None)
+        chiller = next((d for d in self.s.device_manager.get_all_devices()
+                        if d.device_type == DeviceType.CHILLER
+                        and (d.datacenter or "") == _dc), None)
         return {"srv_tmpl": srv_tmpl, "leaf_tmpl": leaf, "oob": oob,
                 "spines": spines, "rpp_a": rpp_a, "rpp_b": rpp_b,
-                "pdu_tmpl": self._dc_pdu(srv_tmpl.datacenter or "")}
+                "pdu_tmpl": self._dc_pdu(_dc),
+                "crahs": crahs, "sensor_tmpl": sensor_tmpl, "chiller": chiller}
 
     def _fill_hall_grid(self, summ: DaySummary) -> Optional[dict]:
         """Add the next compute rack to a hall that's still under its grid cap.
@@ -595,28 +608,52 @@ class FleetLifecycleEngine:
         # Lay the pod fabric on dedicated NETWORK rows behind the RPP back row,
         # wrapping across the hall width so it never spills past the room box, and
         # extend the room extent to cover those rows.
+        # Pod fabric (spines/OOB) + hall cooling/env (CRAHs, sensors), laid on
+        # dedicated rows behind the RPP back row, wrapping across the hall width so
+        # nothing spills past the room box. A hall's CRAHs are its OWN air handlers
+        # (built with the hall, sized to it) fed from the shared, pre-installed
+        # chiller plant via the CHW loop (cooling-layer link) — no new chillers.
         width = max(1, self.cfg.max_racks_per_row)
         net_y0 = round(back_y + geo.ROW_PITCH, 4)
+        chiller = infra.get("chiller")
         gear = [(sp, "sp") for sp in (infra.get("spines") or [])]
         if infra.get("oob") is not None:
             gear.append((infra["oob"], "oob"))
-        new_spines, new_oob = [], None
+        gear += [(c, "crah") for c in (infra.get("crahs") or [])]
+        sen_tmpl = infra.get("sensor_tmpl")
+        if sen_tmpl is not None:
+            gear += [(sen_tmpl, "sen")] * self._HALL_SENSORS
+        new_spines, new_oob, new_crahs = [], None, []
         for i, (tmpl, pfx) in enumerate(gear):
             fx = geo.rack_x(i % width + 1)
             fy = round(net_y0 + geo.ROW_PITCH * (i // width), 4)
-            c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=fy)
+            if pfx in ("sp", "oob"):
+                c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=fy)
+            else:                                  # CRAH / sensor — plain hall device
+                c = self._clone(tmpl, dc, self._row_label(rk, pfx), 100 + i,
+                                int(getattr(tmpl, "rack_unit", 1) or 1),
+                                prefix=pfx, floor=floor, room=room, fx=fx, fy=fy)
+                if c is not None and pfx == "crah" and chiller is not None:
+                    try:                           # CRAH drinks chilled water from a chiller
+                        self.s.topology.add_link(c.id, chiller.id, layer="cooling")
+                    except Exception:
+                        pass
             if c is None:
                 continue
             self._commission(c)
-            (new_spines.append(c) if pfx == "sp" else None)
-            if pfx == "oob":
+            if pfx == "sp":
+                new_spines.append(c)
+            elif pfx == "oob":
                 new_oob = c
+            elif pfx == "crah":
+                new_crahs.append(c)
         if new_spines:
             new_infra["spines"] = new_spines
         if new_oob is not None:
             new_infra["oob"] = new_oob
         net_rows = (len(gear) + width - 1) // width if gear else 0
-        self._log(f"[Fleet] new pod fabric: {len(new_spines)} spine(s) + OOB")
+        self._log(f"[Fleet] new pod: {len(new_spines)} spine(s), OOB, "
+                  f"{len(new_crahs)} CRAH, {self._HALL_SENSORS} sensor(s)")
         self._fleet_halls.add(rk)
         # Back rows = 1 RPP/power row + the network rows the fabric occupies.
         self._register_hall_extent(dc, room, back_rows=1 + net_rows)
