@@ -27,6 +27,13 @@ from typing import Dict, List, Optional
 # and climbs toward unity as the supply loads up, while current distortion (%THD-i)
 # is HIGH at light load (the fundamental is small) and falls as the load rises.
 # Both are functions of the load fraction, not free-running walks.
+# Fixed rack-PDU branch breaker (32 A @ 230 V single-phase), the reference a
+# branch's live kW is measured against for its PF/THD load fraction — the SAME
+# basis the PDU uses (device_state_store._DEFAULT_PDU_RATED_W), so the EV2 branch
+# and the rack PDU it clamps report a consistent power factor.
+BRANCH_BREAKER_KW = 7.36
+
+
 def _pf_from_load(lf: float) -> float:
     """Displacement/true PF vs load fraction: ~0.70 idle → 0.99 near full, with a
     fast-saturating knee typical of active PFC."""
@@ -108,9 +115,10 @@ class EV2TelemetryEngine:
         # this peak — so the panel meters the real IT draw instead of a synthetic
         # diurnal curve.
         self._rated_kw_peak = (self._i_nominal * nominal_voltage * 0.90 * math.sqrt(3)) / 1000.0
-        # A branch's fair share of the panel's peak kW — used to turn its live load
-        # into a 0..1 load fraction that drives its PF and current-THD.
-        self._branch_rated_kw = self._rated_kw_peak / max(1, self._active)
+        # A branch is one rack PDU on a fixed 32 A breaker — its live load over that
+        # breaker is the 0..1 load fraction driving its PF and current-THD, matching
+        # the PDU's own basis so the two agree.
+        self._branch_rated_kw = BRANCH_BREAKER_KW
         # Phase-current ceiling and overcurrent trip both follow the panel size
         # so a large facility meter is not clipped and does not alarm constantly.
         # 85/60 keeps the legacy trip-to-nominal ratio for standard panels.

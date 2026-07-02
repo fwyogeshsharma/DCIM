@@ -285,7 +285,7 @@ DEFAULT_RULES: List[Rule] = [
           device_types=["pdu", "floor_pdu"]),
 
     _rule("PDUOutletCurrentHigh",
-          _threshold("pdu_outlet_current", ">", 20.0),
+          _threshold("pdu_outlet_current", ">", 32.0),   # 32A rack-PDU breaker
           "1.3.6.1.4.1.99999.6.12",
           severity="major", priority=170,
           device_types=["pdu", "floor_pdu"]),

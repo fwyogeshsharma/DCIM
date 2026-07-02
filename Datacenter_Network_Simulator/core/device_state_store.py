@@ -296,7 +296,7 @@ class DeviceStateStore:
             "ups_battery_health":  {"enabled": False, "min": 0.0,   "max": 100.0},
             "pdu_load":            {"enabled": False, "min": 0.0,   "max": 100.0},
             "pdu_voltage":         {"enabled": False, "min": 205.0, "max": 235.0},
-            "pdu_outlet_current":  {"enabled": False, "min": 0.0,   "max": 20.0},
+            "pdu_outlet_current":  {"enabled": False, "min": 0.0,   "max": 40.0},
             "pdu_frequency":       {"enabled": False, "min": 49.5,  "max": 50.5},
             "pdu_temperature":     {"enabled": False, "min": 15.0,  "max": 45.0},
             "pdu_humidity":        {"enabled": False, "min": 10.0,  "max": 90.0},
@@ -733,12 +733,13 @@ class DeviceStateStore:
                     rated_w[nid] = frozen
                     continue
                 r = (pk / 0.8) if pk > 0 else 0.0
-                # A rack PDU has a breaker regardless of how loaded the rack is, so
-                # an empty/near-empty rack still has a real nameplate — its load%
-                # then reads ~0 from the live draw instead of falling back to a
-                # phantom random walk (which contradicted the EV2 clamp).
-                if r <= 0 and id_type.get(nid) in ("pdu", "floor_pdu"):
-                    r = self._DEFAULT_PDU_RATED_W
+                # A rack PDU's breaker is FIXED hardware, not sized to how many
+                # servers are currently installed. Floor its rating at the breaker
+                # so a near-empty rack reads ~0 % from its live draw (not a phantom
+                # high % from a rating shrunk to the tiny occupancy). A fuller rack
+                # whose nameplate exceeds the default keeps the larger derived value.
+                if id_type.get(nid) in ("pdu", "floor_pdu"):
+                    r = max(r, self._DEFAULT_PDU_RATED_W)
                 rated_w[nid] = r
                 # Freeze only once a power node actually carries load, so a node
                 # seen before its downstream is wired doesn't lock in a 0 rating.
@@ -1963,8 +1964,8 @@ class DeviceStateStore:
                 st["pdu_power_factor"] = 0.701; changed = True
             if st.get("pdu_phase_imbalance", 0.0) > 19.9:          # imbalance > 20
                 st["pdu_phase_imbalance"] = 19.9; changed = True
-            if st.get("pdu_outlet_current", 0.0) > 19.9:           # current > 20
-                st["pdu_outlet_current"] = 19.9; changed = True
+            if st.get("pdu_outlet_current", 0.0) > 31.9:           # current > 32A breaker
+                st["pdu_outlet_current"] = 31.9; changed = True
             clamp("pdu_frequency", 49.6, 50.9, 50.0)               # fault < 49.5
             if st.get("pdu_temperature", 0.0) > 34.9:              # temp > 35
                 st["pdu_temperature"] = 34.9; changed = True
