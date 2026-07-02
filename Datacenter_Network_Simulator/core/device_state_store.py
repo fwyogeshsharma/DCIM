@@ -642,6 +642,7 @@ class DeviceStateStore:
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
     _UPS_DESIGN_MIN  = 8.0      # UPS autonomy (min) at full load, healthy battery
     _GEN_FULL_HOURS  = 24.0     # genset full-tank runtime (h) at full load
+    _DEFAULT_PDU_RATED_W = 7360.0   # rack-PDU breaker default: 32 A @ 230 V single-phase
 
     def _power_context(self) -> dict:
         """Cached power-graph structure + per-node rated capacity, built once.
@@ -732,6 +733,12 @@ class DeviceStateStore:
                     rated_w[nid] = frozen
                     continue
                 r = (pk / 0.8) if pk > 0 else 0.0
+                # A rack PDU has a breaker regardless of how loaded the rack is, so
+                # an empty/near-empty rack still has a real nameplate — its load%
+                # then reads ~0 from the live draw instead of falling back to a
+                # phantom random walk (which contradicted the EV2 clamp).
+                if r <= 0 and id_type.get(nid) in ("pdu", "floor_pdu"):
+                    r = self._DEFAULT_PDU_RATED_W
                 rated_w[nid] = r
                 # Freeze only once a power node actually carries load, so a node
                 # seen before its downstream is wired doesn't lock in a 0 rating.
@@ -1329,7 +1336,7 @@ class DeviceStateStore:
             "gen_start_attempts": 0,
             "gen_was_running": False,
             "pdu_load": random.uniform(30.0, 60.0),
-            "pdu_voltage": random.uniform(216.0, 224.0),
+            "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
             "pdu_phase_imbalance": random.uniform(0.0, 5.0),
             "pdu_outlet_status": "on",
@@ -1951,7 +1958,7 @@ class DeviceStateStore:
         if dt in (DeviceType.PDU, DeviceType.FLOOR_PDU):
             if st.get("pdu_load", 0.0) > 79.9:                     # load high > 80
                 st["pdu_load"] = 79.9; changed = True
-            clamp("pdu_voltage", 200.1, 239.9, 220.0)              # >240 / <200
+            clamp("pdu_voltage", 200.1, 239.9, 230.0)              # >240 / <200
             if st.get("pdu_power_factor", 1.0) < 0.701:            # PF low < 0.70
                 st["pdu_power_factor"] = 0.701; changed = True
             if st.get("pdu_phase_imbalance", 0.0) > 19.9:          # imbalance > 20
@@ -1999,7 +2006,7 @@ class DeviceStateStore:
             "gen_start_attempts": 0,
             "gen_was_running": False,
             "pdu_load": random.uniform(30.0, 60.0),
-            "pdu_voltage": random.uniform(216.0, 224.0),
+            "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
             "pdu_phase_imbalance": random.uniform(0.0, 5.0),
             "pdu_outlet_status": "on",
@@ -2157,18 +2164,33 @@ class DeviceStateStore:
                 st["pdu_load"] = round(self._num_limit("pdu_load", ld), 1)
 
             if mf["pdu_voltage"]:
-                pv = st.get("pdu_voltage", 220.0)
-                pv = max(205.0, min(235.0, pv + random.uniform(-2.0, 2.0)))
+                # Mean-revert to 230 V nominal (matches the EV2 clamp's nominal) so
+                # the rack bus doesn't drift; occasional transient sag/swell still
+                # passes through for the over/under-voltage alarms.
+                pv = st.get("pdu_voltage", 230.0)
+                pv += (230.0 - pv) * 0.05 + random.uniform(-0.8, 0.8)
+                pv = max(223.0, min(237.0, pv))
                 if random.random() < 0.003:
                     pv = random.choice([random.uniform(241.0, 250.0),
                                         random.uniform(190.0, 199.0)])
                 st["pdu_voltage"] = round(self._num_limit("pdu_voltage", pv), 1)
 
             if mf["pdu_power_factor"]:
-                pf = st.get("pdu_power_factor", 0.95)
-                pf = max(0.60, min(0.99, pf + random.uniform(-0.02, 0.02)))
-                if random.random() < 0.003:
-                    pf = random.uniform(0.50, 0.69)
+                if _pdu_rated > 0:
+                    # Active-PFC IT load: PF tracks load (poor light, ~unity full),
+                    # the same curve the EV2 branch uses, so the PDU and its EV2
+                    # clamp report a consistent power factor.
+                    from core.bacnet_telemetry import _pf_from_load
+                    _lf = _pdu_thr / _pdu_rated
+                    pf = _pf_from_load(_lf) + random.uniform(-0.004, 0.004)
+                    if random.random() < 0.003:
+                        pf = random.uniform(0.50, 0.69)   # occasional bad-PSU event
+                    pf = max(0.50, min(0.99, pf))
+                else:
+                    pf = st.get("pdu_power_factor", 0.95)
+                    pf = max(0.60, min(0.99, pf + random.uniform(-0.02, 0.02)))
+                    if random.random() < 0.003:
+                        pf = random.uniform(0.50, 0.69)
                 st["pdu_power_factor"] = round(pf, 3)
 
             if mf["pdu_phase_imbalance"]:
@@ -2213,10 +2235,12 @@ class DeviceStateStore:
 
             if mf["pdu_outlet_current"]:
                 if _pdu_rated > 0:
-                    # Live: phase current I = P / (V·√3·PF) for a 3-phase PDU.
-                    _v = st.get("pdu_voltage", 220.0)
+                    # Live: single-phase equivalent I = P / (V·PF), matching the EV2
+                    # branch CT model (one CT per rack PDU) so the PDU's own current
+                    # and the EV2 clamp agree, and V·I·PF reconciles to the real draw.
+                    _v = st.get("pdu_voltage", 230.0)
                     _pf = st.get("pdu_power_factor", 0.95)
-                    oc = max(0.0, _pdu_thr / max(1.0, _v * 1.732 * _pf)
+                    oc = max(0.0, _pdu_thr / max(1.0, _v * _pf)
                              + random.uniform(-0.2, 0.2))
                 else:
                     oc = st.get("pdu_outlet_current", 10.0)
@@ -2260,7 +2284,7 @@ class DeviceStateStore:
                 if _pdu_rated > 0:
                     real_kw = _pdu_thr / 1000.0          # live draw through the PDU
                 else:
-                    volt_now = st.get("pdu_voltage", 220.0)
+                    volt_now = st.get("pdu_voltage", 230.0)
                     cur_now  = st.get("pdu_outlet_current", 10.0)
                     pf_now   = st.get("pdu_power_factor", 0.95)
                     real_kw  = (volt_now * cur_now * pf_now) / 1000.0
@@ -2366,7 +2390,7 @@ class DeviceStateStore:
                     ups_output_apparent_power=float(ext.get("ups_output_load", 0.0)) * 30.0,
                     ups_energy_kwh=float(ext.get("ups_energy_kwh", 0.0)),
                     pdu_load=float(ext.get("pdu_load", 0.0)),
-                    pdu_voltage=float(ext.get("pdu_voltage", 220.0)),
+                    pdu_voltage=float(ext.get("pdu_voltage", 230.0)),
                     pdu_power_factor=float(ext.get("pdu_power_factor", 0.95)),
                     pdu_phase_imbalance=float(ext.get("pdu_phase_imbalance", 0.0)),
                     pdu_outlet_status=ext.get("pdu_outlet_status", "on"),
