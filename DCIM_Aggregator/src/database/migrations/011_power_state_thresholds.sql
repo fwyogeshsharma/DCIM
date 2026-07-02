@@ -27,7 +27,10 @@ CREATE TABLE IF NOT EXISTS device_thresholds (
     PRIMARY KEY (device_id, rule)
     );
 
--- Widen an already-created INTEGER column (idempotent: a no-op once it's DOUBLE PRECISION).
+-- Widen an already-created INTEGER column. NOTE: ALTER COLUMN … TYPE performs a
+-- full table rewrite even when the target type is unchanged — it is NOT a no-op
+-- on re-run. It's cheap only because device_thresholds is tiny, and with the
+-- migration ledger (migrate.ts) this file now runs exactly once regardless.
 ALTER TABLE device_thresholds ALTER COLUMN value TYPE DOUBLE PRECISION;
 
 CREATE INDEX IF NOT EXISTS ix_device_thresholds_device ON device_thresholds (device_id);

@@ -266,6 +266,7 @@ SELECT add_retention_policy('events', INTERVAL '1 year', if_not_exists => TRUE);
 -- View: topology_view
 -- ────────────────────────────────────────────────────────────────────────────
 
+DROP VIEW IF EXISTS topology_view CASCADE;
 CREATE OR REPLACE VIEW topology_view AS
 SELECT
     tl.id,
@@ -310,6 +311,7 @@ LEFT JOIN  interfaces di ON di.id = tl.dst_interface_id;
 -- View: device_inventory
 -- ────────────────────────────────────────────────────────────────────────────
 
+DROP VIEW IF EXISTS device_inventory CASCADE;
 CREATE OR REPLACE VIEW device_inventory AS
 SELECT
     d.id,

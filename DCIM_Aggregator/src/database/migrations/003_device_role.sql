@@ -22,6 +22,7 @@ CREATE INDEX IF NOT EXISTS idx_devices_role ON devices(device_role);
 -- View: topology_view  — add both endpoints' fabric role (appended at end so
 -- CREATE OR REPLACE keeps the existing column order intact).
 -- ────────────────────────────────────────────────────────────────────────────
+DROP VIEW IF EXISTS topology_view CASCADE;
 CREATE OR REPLACE VIEW topology_view AS
 SELECT
     tl.id,
@@ -70,6 +71,7 @@ LEFT JOIN  interfaces di ON di.id = tl.dst_interface_id;
 -- View: topology_tree — add the device's fabric role + confidence (appended last).
 -- Lets the UI lay out tiers (core→spine→leaf→server) without a second query.
 -- ────────────────────────────────────────────────────────────────────────────
+DROP VIEW IF EXISTS topology_tree CASCADE;
 CREATE OR REPLACE VIEW topology_tree AS
 WITH RECURSIVE
 parent_of AS (

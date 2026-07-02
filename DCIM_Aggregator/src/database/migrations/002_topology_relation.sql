@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_links_relation ON topology_links(relation);
 -- aggregator does a single SELECT — no BFS, no edge orientation, no dedup.
 -- Derives live from topology_links + devices; stores nothing. Idempotent.
 
+DROP VIEW IF EXISTS topology_tree CASCADE;
 CREATE OR REPLACE VIEW topology_tree AS
 WITH RECURSIVE
 -- One parent per child, deduped from both LLDP directions of the tree edge.

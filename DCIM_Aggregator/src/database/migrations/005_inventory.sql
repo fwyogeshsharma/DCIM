@@ -117,6 +117,7 @@ CREATE INDEX IF NOT EXISTS idx_inv_link_dst ON dc_inventory_links (dst_device_id
 -- Per-datacenter capacity & availability rollup used by the summary cards.
 -- ════════════════════════════════════════════════════════════════════════════
 
+DROP VIEW IF EXISTS dc_inventory_summary CASCADE;
 CREATE OR REPLACE VIEW dc_inventory_summary AS
 SELECT
     org_id,
