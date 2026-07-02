@@ -92,7 +92,7 @@ export class DataSyncService {
 
       logger.info(`Synced ${agents.length} agents from server ${serverId}`)
     } catch (error: any) {
-      logger.error(`Failed to sync agents from ${serverId}:`, error.message)
+      logger.error(`Failed to sync agents from ${serverId}: ${error.message}`)
     }
   }
 
@@ -160,7 +160,7 @@ export class DataSyncService {
 
       if (totalInserted > 0) logger.info(`Synced ${totalInserted} metrics from server ${serverId}`)
     } catch (error: any) {
-      logger.error(`Failed to sync metrics from ${serverId}:`, error.message)
+      logger.error(`Failed to sync metrics from ${serverId}: ${error.message}`)
     }
   }
 
@@ -282,7 +282,7 @@ export class DataSyncService {
 
       logger.info(`Synced ${allAlerts.length} alerts from server ${serverId} (${newAlerts.length} new)`)
     } catch (error: any) {
-      logger.error(`Failed to sync alerts from ${serverId}:`, error.message)
+      logger.error(`Failed to sync alerts from ${serverId}: ${error.message}`)
     }
   }
 
@@ -344,7 +344,7 @@ export class DataSyncService {
 
       logger.info(`Synced ${metrics.length} SNMP metrics from server ${serverId}`)
     } catch (error: any) {
-      logger.error(`Failed to sync SNMP metrics from ${serverId}:`, error.message)
+      logger.error(`Failed to sync SNMP metrics from ${serverId}: ${error.message}`)
     }
   }
 
@@ -441,7 +441,7 @@ export class DataSyncService {
         }
       }
     } catch (error: any) {
-      logger.error(`Failed to sync traps from ${serverId}:`, error.message)
+      logger.error(`Failed to sync traps from ${serverId}: ${error.message}`)
     }
   }
 
@@ -501,7 +501,7 @@ export class DataSyncService {
         logger.info(`Synced ${upserted} topology links from server ${serverId}`)
       }
     } catch (error: any) {
-      logger.error(`Failed to sync topology links from ${serverId}:`, error.message)
+      logger.error(`Failed to sync topology links from ${serverId}: ${error.message}`)
     }
   }
 

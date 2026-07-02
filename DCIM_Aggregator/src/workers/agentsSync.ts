@@ -27,7 +27,7 @@ export function startAgentsSyncWorker() {
         servers.map((server) => syncService.syncAgentsFromServer(server.id, server.url))
       )
     } catch (error: any) {
-      logger.error('Agents sync worker error:', error.message)
+      logger.error(`Agents sync worker error: ${error.message}`)
     }
   })
 

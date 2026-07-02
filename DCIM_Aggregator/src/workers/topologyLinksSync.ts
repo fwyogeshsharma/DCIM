@@ -25,7 +25,7 @@ export function startTopologyLinksSyncWorker() {
 
       await Promise.all(servers.map((server: any) => syncService.syncTopologyLinksFromServer(server.id, server.url)))
     } catch (error: any) {
-      logger.error('Topology links sync worker error:', error.message)
+      logger.error(`Topology links sync worker error: ${error.message}`)
     }
   })
 

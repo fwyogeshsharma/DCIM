@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { Pool, PoolClient } from 'pg'
 import { emitSSEEvent } from '../../events/sseEmitter'
+import { logger } from '../../utils/logger'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -305,7 +306,16 @@ export function createIngestRouter(dbPool: Pool): Router {
       return res.status(400).json({ success: false, error: 'org_id, datacenter_id, floor_id, network_id, group_id are required' })
     }
 
-    const client: PoolClient = await dbPool.connect()
+    // Acquire the pooled connection in its own try so a pool-timeout rejection
+    // (DB unreachable / pool exhausted) is returned as a 503 instead of escaping
+    // the async handler as an unhandled rejection that crashes the process.
+    let client: PoolClient
+    try {
+      client = await dbPool.connect()
+    } catch (err: any) {
+      return res.status(503).json({ success: false, error: err.message })
+    }
+
     try {
       await client.query('BEGIN')
 
@@ -825,7 +835,13 @@ export function createIngestRouter(dbPool: Pool): Router {
         ui_changes_cursor: uiCursor,
       })
     } catch (err: any) {
-      await client.query('ROLLBACK')
+      // Guard the ROLLBACK — on a dead/broken connection it throws, which would
+      // otherwise escape this catch as an unhandled rejection and crash.
+      try {
+        await client.query('ROLLBACK')
+      } catch (rollbackErr: any) {
+        logger.error(`Ingest rollback failed: ${rollbackErr.message}`)
+      }
       res.status(500).json({ success: false, error: err.message })
     } finally {
       client.release()

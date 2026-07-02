@@ -25,7 +25,7 @@ export function startTrapsSyncWorker() {
 
       await Promise.all(servers.map((server: any) => syncService.syncTrapsFromServer(server.id, server.url)))
     } catch (error: any) {
-      logger.error('Traps sync worker error:', error.message)
+      logger.error(`Traps sync worker error: ${error.message}`)
     }
   })
 

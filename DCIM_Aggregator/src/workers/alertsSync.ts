@@ -27,7 +27,7 @@ export function startAlertsSyncWorker() {
         servers.map((server) => syncService.syncAlertsFromServer(server.id, server.url))
       )
     } catch (error: any) {
-      logger.error('Alerts sync worker error:', error.message)
+      logger.error(`Alerts sync worker error: ${error.message}`)
     }
   })
 

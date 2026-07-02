@@ -26,7 +26,7 @@ export function startMetricsSyncWorker() {
       await Promise.all(servers.map((server) => syncService.syncMetricsFromServer(server.id, server.url)))
       await Promise.all(servers.map((server) => syncService.syncSNMPMetricsFromServer(server.id, server.url)))
     } catch (error: any) {
-      logger.error('Metrics sync worker error:', error.message)
+      logger.error(`Metrics sync worker error: ${error.message}`)
     }
   })
 

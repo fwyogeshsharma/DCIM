@@ -65,7 +65,7 @@ export function startHealthMonitorWorker() {
         }
       }
     } catch (error: any) {
-      logger.error('Health monitor worker error:', error.message)
+      logger.error(`Health monitor worker error: ${error.message}`)
     }
   })
 

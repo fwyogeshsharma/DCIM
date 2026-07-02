@@ -100,7 +100,7 @@ export class HttpClient {
         } else if (error.request) {
           logger.error(`HTTP No Response: ${error.config?.url}`)
         } else {
-          logger.error('HTTP Error:', error.message)
+          logger.error(`HTTP Error: ${error.message}`)
         }
         return Promise.reject(error)
       }
