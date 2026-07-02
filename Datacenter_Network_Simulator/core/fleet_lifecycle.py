@@ -168,6 +168,12 @@ class FleetLifecycleEngine:
             # the sim-day thread) and coalesced inside reload_snmp, never per
             # device. gNMI/Redfish were already hot-added live in _commission.
             if summ.added or summ.removed or summ.expanded_racks:
+                # The power/topology graph gained or lost nodes+edges — tell the UI
+                # to rebuild the topology scene (Qt) / refetch the graph (web), not
+                # just the device list. Without this the churned devices show in the
+                # device table but never appear/disappear on the live topology.
+                if self.s is not None:
+                    self.s.notify_ui("rebuild_topology_scene")
                 ex = getattr(self.s, "executor", None)
                 if ex is not None and getattr(self.s, "snmpsim", None) is not None:
                     try:
