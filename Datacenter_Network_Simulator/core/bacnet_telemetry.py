@@ -22,6 +22,25 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 
+# ── Load-coupled power-quality curves (active-PFC IT loads) ───────────────────
+# Modern server PSUs use active power-factor correction: PF is poor at light load
+# and climbs toward unity as the supply loads up, while current distortion (%THD-i)
+# is HIGH at light load (the fundamental is small) and falls as the load rises.
+# Both are functions of the load fraction, not free-running walks.
+def _pf_from_load(lf: float) -> float:
+    """Displacement/true PF vs load fraction: ~0.70 idle → 0.99 near full, with a
+    fast-saturating knee typical of active PFC."""
+    lf = max(0.0, min(1.0, lf))
+    return max(0.70, min(0.99, 0.99 - 0.29 * (1.0 - lf) ** 2))
+
+
+def _thd_i_from_load(lf: float) -> float:
+    """Current THD (%) vs load fraction: ~22 % at light load → ~5 % near full,
+    the inverse-of-load shape real PSUs exhibit."""
+    lf = max(0.0, min(1.0, lf))
+    return max(4.0, min(25.0, 5.0 + 17.0 * (1.0 - lf) ** 2))
+
+
 @dataclass
 class CircuitState:
     """Per-circuit electrical state."""
@@ -89,6 +108,9 @@ class EV2TelemetryEngine:
         # this peak — so the panel meters the real IT draw instead of a synthetic
         # diurnal curve.
         self._rated_kw_peak = (self._i_nominal * nominal_voltage * 0.90 * math.sqrt(3)) / 1000.0
+        # A branch's fair share of the panel's peak kW — used to turn its live load
+        # into a 0..1 load fraction that drives its PF and current-THD.
+        self._branch_rated_kw = self._rated_kw_peak / max(1, self._active)
         # Phase-current ceiling and overcurrent trip both follow the panel size
         # so a large facility meter is not clipped and does not alarm constantly.
         # 85/60 keeps the legacy trip-to-nominal ratio for standard panels.
@@ -204,7 +226,7 @@ class EV2TelemetryEngine:
             mul = self._diurnal()
         self._step_voltages()
         self._step_frequency()
-        self._step_thd()
+        self._step_thd(mul)
         self._step_pf()
 
         live_circuits = circuit_kw is not None
@@ -348,20 +370,19 @@ class EV2TelemetryEngine:
         self._freq = self._ema(raw, self._freq, alpha=0.12)
         self._freq = max(45.0, min(65.0, self._freq))
 
-    def _step_thd(self):
+    def _step_thd(self, load_frac: float = 1.0):
         """
-        Burst/event signal class — routine jitter ±0.05 %/tick with EMA α=0.15.
-        Periodic harmonic events (UPS startup, nonlinear load) spike THD.
-        COV cadence: mostly quiet, fires on harmonic events only.
+        Current THD tracks the INVERSE of panel load (high at light load, ~5 % near
+        full), with occasional nonlinear-load harmonic bursts on top. Voltage THD
+        stays a slow independent walk. EMA α=0.15.
         """
-        # Current THD: small routine jitter
-        raw_i = self._i_thd + random.uniform(-0.05, 0.05)
-        raw_i = max(1.0, min(15.0, raw_i))
-        # Harmonic event: 0.3% chance per tick (UPS, VFD, nonlinear load)
+        # Current THD: load-driven target + routine jitter.
+        raw_i = _thd_i_from_load(load_frac) + random.uniform(-0.2, 0.2)
+        # Harmonic burst: 0.3% chance per tick (UPS, VFD, nonlinear load)
         if random.random() < 0.003:
-            raw_i = random.uniform(7.5, 12.0)   # spike — bypasses EMA clamp
+            raw_i = random.uniform(12.0, 20.0)   # spike — bypasses EMA clamp
         self._i_thd = self._ema(raw_i, self._i_thd, alpha=0.15)
-        self._i_thd = max(1.0, min(15.0, self._i_thd))
+        self._i_thd = max(3.0, min(25.0, self._i_thd))
 
         # Voltage THD: even slower
         raw_v = self._v_thd + random.uniform(-0.03, 0.03)
@@ -486,20 +507,24 @@ class EV2TelemetryEngine:
                 cs.kw      = 0.0
                 cs.thd     = 0.0
                 continue
-            # Power factor first (very slow drift) — needed to turn a target kW
-            # into a target current.
-            raw_pf = cs.pf + random.uniform(-0.002, 0.002)
-            cs.pf  = self._ema(raw_pf, cs.pf, alpha=0.12)
-            cs.pf  = max(0.70, min(0.99, cs.pf))
-
+            # Power factor: real active-PFC IT loads improve PF as they load up
+            # (poor at light load, ~unity near full), so drive it from the branch
+            # load fraction instead of a free walk. PF is set first — it turns the
+            # target kW into a target current. Legacy mode keeps the slow walk.
             if circuit_kw is not None:
                 # Real branch load: I = P / (V × PF). Spare CTs (past the mapped
                 # branches, or an energised-but-unloaded rack PDU) target 0.
                 tgt_kw = circuit_kw[i] if i < len(circuit_kw) else 0.0
-                denom = v_avg * cs.pf
+                cs_lf  = (tgt_kw / self._branch_rated_kw) if self._branch_rated_kw > 0 else 0.0
+                tgt_pf = _pf_from_load(cs_lf) + random.uniform(-0.004, 0.004)
+                cs.pf  = max(0.70, min(0.99, self._ema(tgt_pf, cs.pf, alpha=0.12)))
+                denom  = v_avg * cs.pf
                 cs._target_current = (tgt_kw * 1000.0 / denom) if denom > 0 else 0.0
             else:
                 # Legacy synthetic walk when no live per-circuit load is available.
+                cs_lf  = None
+                raw_pf = cs.pf + random.uniform(-0.002, 0.002)
+                cs.pf  = max(0.70, min(0.99, self._ema(raw_pf, cs.pf, alpha=0.12)))
                 cs._target_current += random.uniform(-0.15, 0.15)
                 cs._target_current  = max(0.1, min(20.0 * mul, cs._target_current))
 
@@ -519,10 +544,18 @@ class EV2TelemetryEngine:
             # kWh accumulation (deterministic — no noise on energy counter)
             cs.kwh += cs.kw * dt / 3600.0
 
-            # Circuit THD: burst/event class — small routine jitter, EMA α=0.15
-            raw_thd = cs.thd + random.uniform(-0.05, 0.05)
-            cs.thd  = self._ema(raw_thd, cs.thd, alpha=0.15)
-            cs.thd  = max(1.0, min(12.0, cs.thd))
+            # Circuit current THD: %THD-i is HIGH at light load and falls as the
+            # branch loads up, so track the inverse of load; nonlinear bursts on top.
+            if cs_lf is not None:
+                raw_thd = _thd_i_from_load(cs_lf) + random.uniform(-0.2, 0.2)
+                if random.random() < 0.003:
+                    raw_thd = random.uniform(12.0, 20.0)
+                cs.thd = self._ema(raw_thd, cs.thd, alpha=0.15)
+                cs.thd = max(3.0, min(25.0, cs.thd))
+            else:
+                raw_thd = cs.thd + random.uniform(-0.05, 0.05)
+                cs.thd  = self._ema(raw_thd, cs.thd, alpha=0.15)
+                cs.thd  = max(1.0, min(12.0, cs.thd))
 
     def _update_alarms(self):
         """Evaluate alarm conditions with debounce — N consecutive ticks required."""
@@ -553,9 +586,10 @@ class EV2TelemetryEngine:
             '_cnt_voltage_imbalance', '_alarm_voltage_imbalance',
         )
 
-        # High THD: current THD exceeds threshold
+        # High THD: alarm on VOLTAGE THD (IEEE-519), not current THD — %THD-i is
+        # naturally high at light load, so it is not itself a fault condition.
         _debounce(
-            self._i_thd > self.HIGH_THD_THRESH,
+            self._v_thd > self.HIGH_THD_THRESH,
             '_cnt_high_thd', '_alarm_high_thd',
         )
 
