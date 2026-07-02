@@ -344,6 +344,111 @@ class FleetLifecycleEngine:
                     out.append(d)
         return out
 
+    # ── fabric port-capacity (spines fixed per pod, OOB stacks per hall) ──────
+    def _is_spine(self, d: Optional[Device]) -> bool:
+        return (d is not None and d.device_type == DeviceType.SWITCH
+                and "-SP" in (d.name or ""))
+
+    def _is_leaf(self, d: Optional[Device]) -> bool:
+        return (d is not None and d.device_type == DeviceType.SWITCH
+                and "-SP" not in (d.name or ""))
+
+    def _spine_downlink_cap(self, spine: Device) -> int:
+        """Leaf-facing downlink ports on a spine — the max leaves (hence racks) a
+        pod can hold before a new pod/hall is needed."""
+        return max(8, int(getattr(spine, "interface_count", 32) or 32))
+
+    def _oob_port_cap(self, oob: Device) -> int:
+        """Management ports on an OOB switch — max managed uplinks before another
+        OOB must be stacked into the hall."""
+        return max(8, int(getattr(oob, "interface_count", 48) or 48))
+
+    def _leaves_on(self, dev: Device) -> int:
+        """How many leaf switches are attached to *dev* (spine downlinks / OOB ports
+        in use)."""
+        try:
+            return sum(1 for nbr in self.s.topology.graph.neighbors(dev.id)
+                       if self._is_leaf(self.s.device_manager.get_device(nbr)))
+        except Exception:
+            return 0
+
+    def _spines_have_room(self, spines: list) -> bool:
+        """Clos rule: a new leaf uplinks to EVERY spine, so it needs a free downlink
+        on every one. Full fabric → the pod (hall) is full."""
+        return bool(spines) and all(
+            self._leaves_on(sp) < self._spine_downlink_cap(sp) for sp in spines)
+
+    def _link_layer(self, a: str, b: str) -> Optional[str]:
+        try:
+            for ed in self.s.topology.graph[a][b].values():
+                if ed.get("layer"):
+                    return ed["layer"]
+        except Exception:
+            pass
+        return None
+
+    def _hall_oobs(self, rk: tuple) -> list:
+        """Every OOB switch that manages a leaf in hall *rk* (deduped)."""
+        seen: dict = {}
+        for s in self._servers():
+            if self._room_key(s) != rk:
+                continue
+            leaf = self._neighbor(s, "production", (DeviceType.SWITCH,))
+            if leaf is None:
+                continue
+            for o in self._neighbors(leaf, "management", (DeviceType.OOB_SWITCH,)):
+                seen[o.id] = o
+        return list(seen.values())
+
+    def _clone_fabric_node(self, tmpl: Device, rk: tuple, prefix: str,
+                           num: int = 1, fx: Optional[float] = None,
+                           fy: Optional[float] = None) -> Optional[Device]:
+        """Clone a shared fabric node (spine / OOB) into hall *rk* and replicate its
+        UPSTREAM links (to the core / management aggregation) — but NOT its downstream
+        leaves/servers/PDUs. Used to give a new hall its own pod fabric and to stack
+        an extra OOB when a hall's management ports are exhausted. *num*/*fx*/*fy*
+        place it on the hall's floor grid (network/back row) so the floor-plan draws
+        it inside the right hall; without them it would inherit the source hall's
+        coordinates and render in the wrong room."""
+        dc, floor, room = rk
+        new = self._clone(tmpl, dc, self._row_label(rk, prefix), num,
+                          int(getattr(tmpl, "rack_unit", 1) or 1),
+                          prefix=prefix, floor=floor, room=room, fx=fx, fy=fy)
+        if new is None:
+            return None
+        _down = (DeviceType.SERVER, DeviceType.PDU, DeviceType.FLOOR_PDU)
+        try:
+            for nbr in list(self.s.topology.graph.neighbors(tmpl.id)):
+                d = self.s.device_manager.get_device(nbr)
+                if d is None or self._is_leaf(d) or d.device_type in _down:
+                    continue                      # skip downstream; keep uplinks only
+                self.s.topology.add_link(new.id, nbr,
+                                         layer=self._link_layer(tmpl.id, nbr) or "production")
+        except Exception as e:
+            self._log(f"[Fleet] fabric clone uplink {new.name}: {e}")
+        return new
+
+    def _oob_for_new_leaf(self, rk: tuple, infra: dict) -> Optional[Device]:
+        """An OOB switch in hall *rk* with a free management port; stack a new OOB
+        into the hall (cloned from the existing one) when they are all full."""
+        oobs = self._hall_oobs(rk) or ([infra["oob"]] if infra.get("oob") else [])
+        for o in oobs:
+            if self._leaves_on(o) < self._oob_port_cap(o):
+                return o
+        tmpl = oobs[0] if oobs else infra.get("oob")
+        if tmpl is None:
+            return None
+        # Next free slot on the hall's back network row (past RPPs + spines + OOBs).
+        slot = 3 + len(infra.get("spines") or []) + len(oobs)
+        new = self._clone_fabric_node(tmpl, rk, "oob", num=slot,
+                                      fx=geo.rack_x(slot),
+                                      fy=getattr(tmpl, "floor_y", None))
+        if new is not None:
+            self._commission(new)
+            self._log(f"[Fleet] OOB ports exhausted — stacked {new.name} in "
+                      f"{rk[0]}/{rk[2]}")
+        return new
+
     # ── capacity expansion (fill each hall's grid, then open a new hall) ──────
     #
     # The static floor-plan (tools/enlarge_halls.py) sizes the rooms; the fleet
@@ -448,6 +553,11 @@ class FleetLifecycleEngine:
             infra = self._hall_infra(rk)
             if infra is None:
                 continue
+            # Fabric limit: a new rack means a new leaf, which needs a free downlink
+            # on every spine. If the pod's spine fabric is full, this hall is done —
+            # skip it so a new hall (its own pod) is opened instead.
+            if not self._spines_have_room(infra.get("spines")):
+                continue
             idx = len(fleet_used)                     # next fleet slot, in order
             vrow = idx // width
             row = self._row_label(rk, vrow)
@@ -478,6 +588,29 @@ class FleetLifecycleEngine:
         new_infra = dict(infra)
         new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", back_y)
         new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", back_y) if infra["rpp_b"] else None
+        # A new hall is a new POD: give it its OWN spine set + OOB (cloned from the
+        # source hall, with their upstream core/mgmt links replicated) instead of
+        # cross-wiring its leaves into another hall's fabric. This is what makes the
+        # spine/OOB port caps meaningful — each pod has finite, dedicated fabric.
+        # Lay the pod fabric on the back row alongside the RPPs (slots 1-2), so it
+        # sits inside the new hall's floor-plan extent, not on the source hall's
+        # coordinates. Network gear starts at slot 3.
+        _slot = 3
+        new_spines = []
+        for sp in (infra.get("spines") or []):
+            c = self._clone_fabric_node(sp, rk, "sp", num=_slot,
+                                        fx=geo.rack_x(_slot), fy=back_y)
+            if c is not None:
+                self._commission(c); new_spines.append(c); _slot += 1
+        if new_spines:
+            new_infra["spines"] = new_spines
+        if infra.get("oob") is not None:
+            new_oob = self._clone_fabric_node(infra["oob"], rk, "oob", num=_slot,
+                                              fx=geo.rack_x(_slot), fy=back_y)
+            if new_oob is not None:
+                self._commission(new_oob)
+                new_infra["oob"] = new_oob
+        self._log(f"[Fleet] new pod fabric: {len(new_spines)} spine(s) + OOB")
         self._fleet_halls.add(rk)
         self._register_hall_extent(dc, room)
         self._log(f"[Fleet] opened new hall {dc}/F{floor}/{room} "
@@ -579,8 +712,10 @@ class FleetLifecycleEngine:
         try:
             for sp in infra.get("spines") or []:
                 self.s.topology.add_link(leaf.id, sp.id, layer="production")
-            if infra.get("oob") is not None:
-                self.s.topology.add_link(leaf.id, infra["oob"].id, layer="management")
+            # OOB with a free port (stacks a new OOB into the hall if full).
+            oob = self._oob_for_new_leaf(rk, infra)
+            if oob is not None:
+                self.s.topology.add_link(leaf.id, oob.id, layer="management")
         except Exception as e:
             self._log(f"[Fleet] leaf uplink {leaf.name}: {e}")
 
