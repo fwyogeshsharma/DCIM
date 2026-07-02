@@ -1,0 +1,153 @@
+"""
+Load- and weather-coupled cooling-power model.
+
+Real datacenter cooling power is NOT the plant nameplate — it tracks the IT heat
+being rejected, the ambient conditions at the site, and how far below design the
+plant is running:
+
+    cooling_electrical = Q_IT × overhead(load_fraction, ambient_C)
+
+    PUE ≈ 1 + overhead        (cooling-only; UPS/PDU/lighting losses not modelled)
+
+The overhead is anchored so that at the reference point — annual-mean ambient
+(REF_AMBIENT_C) and a typical part-load (REF_LOAD_FRAC) — it equals OH_REF, i.e.
+the design/annual PUE. From there:
+
+  • Ambient factor — a waterside/airside economizer offloads the chillers when it
+    is cold (overhead falls, PUE dips in winter); a hot, humid day raises the
+    condenser temperature and drops chiller COP (overhead rises, PUE climbs in
+    summer). This is the dominant location effect — cold-climate sites (Chicago,
+    Dublin) run far lower annual PUE than hot ones (Phoenix, Singapore).
+
+  • Part-load factor — pumps, fans and chiller auxiliaries have a fixed floor, so
+    the overhead-per-kW-IT rises as the IT load drops below design.
+
+The absolute level is a calibration choice (OH_REF); the *shape* — how PUE breathes
+with weather and load — is the physics we care about.
+"""
+from __future__ import annotations
+
+import math
+import time
+
+# ── Calibration anchor (fixed floor + variable) ───────────────────────────────
+# Cooling electrical = FLOOR + variable, where
+#     FLOOR    = OH_FLOOR × IT_design      — pumps/fans/chiller-aux that stay on
+#                                            regardless of IT (does NOT scale down)
+#     variable = IT_live × OH_VAR × ambient_factor   — chiller compressor work
+# At the design point (IT_live == IT_design, REF_AMBIENT_C) both terms are at
+# reference, so PUE = 1 + OH_FLOOR + OH_VAR. With OH_FLOOR + OH_VAR = 0.47 the
+# design PUE is 1.47; below design load the FLOOR/IT_live term climbs, so PUE
+# rises (and spikes as IT → 0), exactly like a real plant with a fixed base load.
+OH_FLOOR      = 0.15     # fixed cooling overhead as a fraction of DESIGN IT
+OH_VAR        = 0.32     # variable (chiller) overhead as a fraction of LIVE IT
+REF_AMBIENT_C = 15.0     # annual-mean dry-bulb the variable term is anchored to
+
+# ── Ambient response (variable term only — the floor is weather-independent) ───
+ECON_KNEE_C   = 10.0     # below this, the economizer starts offloading chillers
+AMB_SLOPE     = 0.030    # +3.0 % variable per °C above REF_AMBIENT_C (COP droop)
+ECON_SLOPE    = 0.045    # extra reduction per °C below ECON_KNEE_C (free cooling)
+AMB_MIN, AMB_MAX = 0.35, 2.20   # clamp the ambient factor
+
+# ── Per-city climate: (annual-mean dry-bulb °C, seasonal amplitude °C) ─────────
+# Seasonal amplitude = half the peak-to-peak swing (summer mean − annual mean).
+_CITY_CLIMATE = {
+    "chicago":       (10.0, 14.0),
+    "new york":      (13.0, 12.0),
+    "dallas":        (19.0, 11.0),
+    "phoenix":       (24.0, 12.0),
+    "san jose":      (16.0,  7.0),
+    "seattle":       (11.5,  7.0),
+    "atlanta":       (17.0, 10.0),
+    "ashburn":       (13.5, 12.0),
+    "dublin":        (10.0,  6.0),
+    "london":        (11.5,  7.0),
+    "frankfurt":     (10.5, 10.0),
+    "amsterdam":     (10.5,  8.0),
+    "stockholm":     ( 7.0, 11.0),
+    "singapore":     (27.5,  1.5),
+    "mumbai":        (27.5,  4.0),
+    "sydney":        (18.0,  6.0),
+    "tokyo":         (16.0, 11.0),
+    "sao paulo":     (19.5,  5.0),
+}
+_DEFAULT_CLIMATE = (15.0, 10.0)   # temperate fallback for unknown cities
+
+DIURNAL_AMP_C = 5.0     # ± day/night swing added on top of the seasonal mean
+
+
+def ambient_c(city: str | None, now: float | None = None) -> float:
+    """Approximate outdoor dry-bulb (°C) for a city at time *now* (epoch seconds).
+
+    Seasonal term: coldest in January, warmest in July (northern-hemisphere
+    approximation). Diurnal term: peak ~15:00 local, trough ~03:00. Southern-
+    hemisphere cities in the table already carry a small seasonal amplitude, so
+    the phase error is minor; the point is a plausible, location-dependent ambient
+    that drives the economizer, not a meteorological forecast.
+    """
+    mean, seas_amp = _CITY_CLIMATE.get((city or "").strip().lower(), _DEFAULT_CLIMATE)
+    lt = time.localtime(now)
+    doy = lt.tm_yday                       # 1..366
+    hour = lt.tm_hour + lt.tm_min / 60.0
+    # Coldest near Jan 15 (doy≈15): -cos peaks negative there.
+    seasonal = -seas_amp * math.cos(2.0 * math.pi * (doy - 15) / 365.0)
+    diurnal  = DIURNAL_AMP_C * math.sin(2.0 * math.pi * (hour - 9.0) / 24.0)
+    return mean + seasonal + diurnal
+
+
+def ambient_factor(ambient: float) -> float:
+    """Overhead multiplier vs. ambient. 1.0 at REF_AMBIENT_C; <1 in the cold
+    (economizer), >1 in the heat (chiller COP droop)."""
+    f = 1.0 + AMB_SLOPE * (ambient - REF_AMBIENT_C)
+    if ambient < ECON_KNEE_C:
+        # Below the economizer knee the chillers progressively unload.
+        f -= ECON_SLOPE * (ECON_KNEE_C - ambient)
+    return max(AMB_MIN, min(AMB_MAX, f))
+
+
+# ── Air-side (CRAH) fan response to hall inlet/return temperature ─────────────
+CRAH_SETPOINT_C = 24.0    # ASHRAE recommended max inlet; above this the CRAHs ramp
+FAN_SPEED_GAIN  = 0.05    # +5 % fan speed per °C above setpoint
+FAN_FACTOR_MAX  = 3.0     # cap on the fan-power multiplier (≈ full-speed fans)
+
+
+def crah_fan_factor(inlet_c: float) -> float:
+    """CRAH fan-power multiplier vs. hall inlet/return air temperature.
+
+    A rising hall temperature drives the CRAH control loop to ramp fan speed to
+    move more air; fan power follows the cube (affinity) law P ∝ speed³. Returns
+    1.0 at or below the setpoint, growing (capped) as the hall gets hotter. This
+    is a *control response* to the sensed temperature — the extra fan power adds to
+    the cooling draw and pushes PUE up when the hall runs hot."""
+    over = max(0.0, inlet_c - CRAH_SETPOINT_C)
+    speed_ratio = 1.0 + FAN_SPEED_GAIN * over
+    return min(FAN_FACTOR_MAX, speed_ratio ** 3)
+
+
+def cooling_floor_w(it_design_w: float) -> float:
+    """Fixed cooling draw (W) that stays on regardless of IT load — the pumps,
+    fan minimums and chiller auxiliaries sized to the design IT."""
+    return OH_FLOOR * max(0.0, it_design_w)
+
+
+def cooling_electrical_w(it_live_w: float, it_design_w: float,
+                         city: str | None, now: float | None = None) -> float:
+    """Total cooling electrical draw (W): a fixed floor sized to the design IT
+    plus a variable chiller term that tracks the live IT heat and site ambient.
+
+    Never returns 0 while there is plant to run — even at zero IT the floor draws
+    power, which is what makes PUE spike at very low load."""
+    if it_design_w <= 0.0:
+        it_design_w = it_live_w
+    ambient = ambient_c(city, now)
+    floor    = cooling_floor_w(it_design_w)
+    variable = max(0.0, it_live_w) * OH_VAR * ambient_factor(ambient)
+    return floor + variable
+
+
+def pue_estimate(it_live_w: float, it_design_w: float,
+                 city: str | None, now: float | None = None) -> float:
+    """Cooling-only PUE = 1 + cooling_electrical / IT_live (for tests/inspection)."""
+    if it_live_w <= 0.0:
+        return float("inf")
+    return 1.0 + cooling_electrical_w(it_live_w, it_design_w, city, now) / it_live_w

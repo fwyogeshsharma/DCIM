@@ -424,7 +424,8 @@ class BACnetController:
              metric_limits: dict | None = None,
              plant_overrides: dict | None = None,
              live_kw_by_ip: dict | None = None,
-             circuit_kw_by_ip: dict | None = None) -> None:
+             circuit_kw_by_ip: dict | None = None,
+             plant_power_by_name: dict | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -463,7 +464,8 @@ class BACnetController:
                                 forced.add(_k[len(pref):])
                     forced |= {p for p, v in ovr.items()
                                if p.startswith("Alarm_") and float(v) >= 0.5}
-                    values = engine.tick(dt, forced=forced)
+                    _pw = (plant_power_by_name or {}).get(getattr(dev, "device_name", ""))
+                    values = engine.tick(dt, forced=forced, live_power=_pw)
                 else:
                     # EV2 energy meter: drive the panel from the live downstream
                     # load (server→PDU→panel) when available, else its own curve.

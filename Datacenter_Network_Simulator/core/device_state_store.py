@@ -262,6 +262,7 @@ class DeviceStateStore:
         self._through_live: Dict[str, float] = {}
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
+        self._plant_power_by_name: Dict[str, float] = {}  # {plant_name: live cooling kW}
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
@@ -959,14 +960,29 @@ class DeviceStateStore:
         it_w = 0.0
         cool_w = 0.0
         try:
+            from collections import defaultdict as _dd
             devices = self._dm.get_all_devices()
             own: Dict[str, float] = {}
+            # Per-datacenter tallies for the load-/weather-coupled cooling model.
+            it_live_dc: Dict[str, float] = _dd(float)   # live IT heat per DC
+            inlet_sum_dc: Dict[str, float] = _dd(float) # Σ server inlet temp per DC
+            inlet_n_dc: Dict[str, int] = _dd(int)       # server count per DC (for avg)
+            dc_city: Dict[str, str] = {}
+            plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
             for d in devices:
                 dtv = d.device_type.value
+                _dc = getattr(d, "datacenter", None) or "?"
+                if _dc not in dc_city:
+                    dc_city[_dc] = getattr(d, "datacenter_city", None)
                 if dtv in self._IT_LEAF_TYPES:
                     w = self._server_live_watts(d)
                     own[d.id] = w
                     it_w += w
+                    it_live_dc[_dc] += w
+                    _inl = getattr(d, "inlet_temp", None)
+                    if _inl is not None:
+                        inlet_sum_dc[_dc] += float(_inl)
+                        inlet_n_dc[_dc] += 1
                 elif dtv in self._COOLING_TYPES:
                     # Cooling plant is also an electrical load on the power graph,
                     # so a facility meter downstream reads IT + cooling → PUE > 1.
@@ -974,6 +990,8 @@ class DeviceStateStore:
                     if w > 0:
                         own[d.id] = w
                         cool_w += w
+                    plant_dc[_dc].append(
+                        (d.name, float(getattr(d, "power_draw_w", 0) or 0), dtv))
             for nid in sorted(rank, key=lambda x: rank.get(x, 4), reverse=True):
                 thr = own.get(nid, 0.0) + incoming.get(nid, 0.0)
                 through[nid] = thr
@@ -982,6 +1000,43 @@ class DeviceStateStore:
                     share = thr / len(ps)
                     for p in ps:
                         incoming[p] = incoming.get(p, 0.0) + share
+
+            # ── Load-/weather-coupled cooling power ──────────────────────────
+            # Size each DC's total cooling electrical from its live IT heat + site
+            # ambient (cooling_model), then split across the DC's plant units by
+            # nameplate share. Fed to the plant engines next tick, so cooling draw
+            # tracks the real IT load and the location's weather instead of a fixed
+            # nameplate × clock curve.
+            from core.cooling_model import (
+                cooling_electrical_w, crah_fan_factor, OH_FLOOR, OH_VAR)
+            _oh_design = (OH_FLOOR + OH_VAR) or 0.47
+            plant_power: Dict[str, float] = {}
+            for _dc, units in plant_dc.items():
+                itl = it_live_dc.get(_dc, 0.0)
+                np_sum = sum(w for _n, w, _t in units) or 1.0
+                # Design IT capacity is set by the INSTALLED cooling plant (fixed),
+                # not the live server population: a plant of nameplate P cools
+                # IT_design = P / 0.47 at design PUE. So adding IT raises load toward
+                # this fixed ceiling (PUE → 1.47), and cooling caps at P.
+                itd = np_sum / _oh_design
+                total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc))
+                # Hall inlet/return air temp → CRAH fan ramp (control response).
+                avg_inlet = (inlet_sum_dc.get(_dc, 0.0) / inlet_n_dc[_dc]
+                             if inlet_n_dc.get(_dc) else 24.0)
+                fan_f = crah_fan_factor(avg_inlet)
+                for _n, w, _t in units:
+                    base = total_w * (w / np_sum)
+                    # CRAHs ramp their fans when the hall runs hot — extra fan power
+                    # on top of the heat-load-driven share, cube-law with speed.
+                    if _t == "crah":
+                        base *= fan_f
+                    # Nameplate share of the demand, capped at the unit's rating —
+                    # a chiller/pump/fan cannot draw more than its nameplate. When
+                    # demand exceeds total plant nameplate the plant is at 100 %
+                    # (cooling-capacity-limited).
+                    tgt_w = min(base, w if w > 0 else base)
+                    plant_power[_n] = tgt_w / 1000.0   # kW
+            self._plant_power_by_name = plant_power
         except Exception:
             log.exception("[StateStore] power flow error")
         self._through_live = through
@@ -1122,7 +1177,8 @@ class DeviceStateStore:
             try:
                 self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
                                        self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw,
-                                       circuit_kw_by_ip=self._ev2_circuit_kw)
+                                       circuit_kw_by_ip=self._ev2_circuit_kw,
+                                       plant_power_by_name=self._plant_power_by_name)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")

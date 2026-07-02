@@ -186,6 +186,12 @@ class PlantTelemetryEngine:
             self._points.append((name, bv, av, _is_load(name), is_hours))
             # start slightly off base so devices don't look identical
             self._values[name] = bv + (rng.uniform(-0.3, 0.3) * av)
+        # Primary electrical-power point for this unit — overridden by the live
+        # load-/weather-coupled cooling model when the controller supplies it.
+        _PWR = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
+        self._power_point = next(
+            (n for (n, *_r) in self._points if n in _PWR), None)
+
         self._binaries: Dict[str, float] = {}
         for name in spec["bi"]:
             self._binaries[name] = 1.0 if name in spec["on"] else 0.0
@@ -211,9 +217,14 @@ class PlantTelemetryEngine:
     def _ema(new: float, old: float, a: float) -> float:
         return a * new + (1.0 - a) * old
 
-    def tick(self, dt: float, force_leak: bool = False, forced=None) -> Dict[str, float]:
+    def tick(self, dt: float, force_leak: bool = False, forced=None,
+             live_power: float | None = None) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
         # "on" for this device (Limits tab). Back-compat: force_leak maps to it.
+        # `live_power` (kW) — when supplied, the primary electrical-power point is
+        # driven by the load-/weather-coupled cooling model instead of the
+        # nameplate×diurnal curve, so cooling draw tracks the real IT heat and the
+        # site ambient.
         if forced is None:
             forced = {"Alarm_Leak"} if force_leak else set()
         mul = self._diurnal()
@@ -222,6 +233,12 @@ class PlantTelemetryEngine:
             if is_hours:
                 self._values[name] += dt / 3600.0          # accumulate run-hours
                 out[name] = round(self._values[name], 2)
+                continue
+            if live_power is not None and name == self._power_point:
+                # Load-/weather-coupled draw + a little metering jitter.
+                raw = max(0.0, live_power) + random.uniform(-0.02, 0.02) * max(1.0, live_power)
+                self._values[name] = self._ema(raw, self._values[name], 0.3)
+                out[name] = round(max(0.0, self._values[name]), 2)
                 continue
             if amp == 0.0:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
