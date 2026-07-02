@@ -592,41 +592,49 @@ class FleetLifecycleEngine:
         # source hall, with their upstream core/mgmt links replicated) instead of
         # cross-wiring its leaves into another hall's fabric. This is what makes the
         # spine/OOB port caps meaningful — each pod has finite, dedicated fabric.
-        # Lay the pod fabric on the back row alongside the RPPs (slots 1-2), so it
-        # sits inside the new hall's floor-plan extent, not on the source hall's
-        # coordinates. Network gear starts at slot 3.
-        _slot = 3
-        new_spines = []
-        for sp in (infra.get("spines") or []):
-            c = self._clone_fabric_node(sp, rk, "sp", num=_slot,
-                                        fx=geo.rack_x(_slot), fy=back_y)
-            if c is not None:
-                self._commission(c); new_spines.append(c); _slot += 1
+        # Lay the pod fabric on dedicated NETWORK rows behind the RPP back row,
+        # wrapping across the hall width so it never spills past the room box, and
+        # extend the room extent to cover those rows.
+        width = max(1, self.cfg.max_racks_per_row)
+        net_y0 = round(back_y + geo.ROW_PITCH, 4)
+        gear = [(sp, "sp") for sp in (infra.get("spines") or [])]
+        if infra.get("oob") is not None:
+            gear.append((infra["oob"], "oob"))
+        new_spines, new_oob = [], None
+        for i, (tmpl, pfx) in enumerate(gear):
+            fx = geo.rack_x(i % width + 1)
+            fy = round(net_y0 + geo.ROW_PITCH * (i // width), 4)
+            c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=fy)
+            if c is None:
+                continue
+            self._commission(c)
+            (new_spines.append(c) if pfx == "sp" else None)
+            if pfx == "oob":
+                new_oob = c
         if new_spines:
             new_infra["spines"] = new_spines
-        if infra.get("oob") is not None:
-            new_oob = self._clone_fabric_node(infra["oob"], rk, "oob", num=_slot,
-                                              fx=geo.rack_x(_slot), fy=back_y)
-            if new_oob is not None:
-                self._commission(new_oob)
-                new_infra["oob"] = new_oob
+        if new_oob is not None:
+            new_infra["oob"] = new_oob
+        net_rows = (len(gear) + width - 1) // width if gear else 0
         self._log(f"[Fleet] new pod fabric: {len(new_spines)} spine(s) + OOB")
         self._fleet_halls.add(rk)
-        self._register_hall_extent(dc, room)
+        # Back rows = 1 RPP/power row + the network rows the fabric occupies.
+        self._register_hall_extent(dc, room, back_rows=1 + net_rows)
         self._log(f"[Fleet] opened new hall {dc}/F{floor}/{room} "
                   f"(grid {self.cfg.compute_rows_per_room}x{self.cfg.max_racks_per_row})")
         return self._build_compute_rack(rk, self._row_label(rk, 0), 1, new_infra, summ, 0)
 
-    def _register_hall_extent(self, dc: str, room: str) -> None:
+    def _register_hall_extent(self, dc: str, room: str, back_rows: int = 1) -> None:
         """Add a floorplan room extent for a fleet-created hall so the static
-        floor-plan (and Save Topology export) draws the room box + aisles, not
-        just loose racks. Grid = compute_rows_per_room compute rows + one back row
-        for the RPP/CRAH, matching where _build_compute_rack / _clone_rpp place
-        them. No-op if the topology carries no floorplan block."""
+        floor-plan (and Save Topology export) draws the room box + aisles, not just
+        loose racks. Grid = compute_rows_per_room compute rows + *back_rows* rows for
+        the RPP/CRAH and the pod's network gear (spines/OOB), matching where
+        _build_compute_rack / _clone_rpp / the fabric clones place them. No-op if the
+        topology carries no floorplan block."""
         fp = getattr(self.s.topology, "floorplan", None)
         if not isinstance(fp, dict):
             return
-        n_rows = max(1, self.cfg.compute_rows_per_room) + 1   # compute rows + back row
+        n_rows = max(1, self.cfg.compute_rows_per_room) + max(1, back_rows)
         ext = geo.hall_extent(n_rows, max(1, self.cfg.max_racks_per_row))
         ext.update({"datacenter": dc, "room": room,
                     "class": "white_space", "containment": "cold_aisle"})
