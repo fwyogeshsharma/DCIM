@@ -225,7 +225,8 @@ class PlantTelemetryEngine:
         return a * new + (1.0 - a) * old
 
     def tick(self, dt: float, force_leak: bool = False, forced=None,
-             live_power: float | None = None) -> Dict[str, float]:
+             live_power: float | None = None,
+             live_cop: float | None = None) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
         # "on" for this device (Limits tab). Back-compat: force_leak maps to it.
         # `live_power` (kW) — when supplied, the primary electrical-power point is
@@ -281,6 +282,11 @@ class PlantTelemetryEngine:
                 fla, self._values["Compressor_Load"], 0.3)
             out["Compressor_Load"] = round(
                 max(0.0, min(100.0, self._values["Compressor_Load"])), 2)
+        # COP tracks the part-load / condenser efficiency (peaks mid-load, droops
+        # when hot) — driven by the model instead of a free walk.
+        if live_cop is not None and live_cop > 0.0 and "COP" in out:
+            self._values["COP"] = self._ema(live_cop, self._values["COP"], 0.3)
+            out["COP"] = round(self._values["COP"], 2)
 
         for name, val in self._binaries.items():
             out[name] = val

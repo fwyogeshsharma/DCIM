@@ -263,6 +263,7 @@ class DeviceStateStore:
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
         self._plant_power_by_name: Dict[str, float] = {}  # {plant_name: live cooling kW}
+        self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
@@ -1027,12 +1028,13 @@ class DeviceStateStore:
             # nameplate × clock curve.
             from core.cooling_model import (
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
-                affinity_power_kw, chiller_electrical_w,
+                affinity_power_kw, chiller_electrical_w, chiller_cop,
                 PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR)
             _oh_design = (OH_FLOOR + OH_VAR) or 0.47
             _VFD_FAN  = ("crah", "cooling_tower")   # centrifugal fans
             _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
             plant_power: Dict[str, float] = {}
+            plant_cop: Dict[str, float] = {}
             for _dc, units in plant_dc.items():
                 itl = it_live_dc.get(_dc, 0.0)
                 np_sum = sum(w for _n, w, _t in units) or 1.0
@@ -1070,14 +1072,17 @@ class DeviceStateStore:
                         # Chiller — part-load kW/ton curve × ambient/condenser
                         # factor. Compressor power is U-shaped in efficiency, not
                         # linear: nameplate at design, cheaper mid-load, penalised at
-                        # very low PLR (fixed losses dominate).
+                        # very low PLR (fixed losses dominate). COP is the inverse —
+                        # peaks mid-load, droops with a hot condenser.
                         tgt_w = chiller_electrical_w(w, plr, _city)
+                        plant_cop[_n] = chiller_cop(plr, _city)
                     else:
                         # Valve / other: negligible actuator draw — nameplate share.
                         base = total_w * (w / np_sum)
                         tgt_w = min(base, w if w > 0 else base)
                     plant_power[_n] = tgt_w / 1000.0   # kW
             self._plant_power_by_name = plant_power
+            self._plant_cop_by_name = plant_cop
         except Exception:
             log.exception("[StateStore] power flow error")
         self._through_live = through
@@ -1219,7 +1224,8 @@ class DeviceStateStore:
                 self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
                                        self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
-                                       plant_power_by_name=self._plant_power_by_name)
+                                       plant_power_by_name=self._plant_power_by_name,
+                                       plant_cop_by_name=self._plant_cop_by_name)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")

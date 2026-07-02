@@ -212,6 +212,25 @@ def chiller_load_frac(power_frac: float) -> float:
     return max(0.0, min(1.0, x))
 
 
+CHILLER_COP_RATED = 5.5    # water-cooled centrifugal at design (kW/ton ≈ 0.60)
+
+
+def chiller_cop(plr: float, city: str | None, now: float | None = None,
+                cop_rated: float = CHILLER_COP_RATED) -> float:
+    """Chiller coefficient of performance (COP = cooling ÷ electrical) at thermal
+    part-load ratio *plr* and site ambient. COP is the inverse of kW/ton: it RISES
+    at part load (the efficiency dip) and FALLS with a hot condenser (ambient
+    lift). Equals cop_rated at the design point (PLR=1, reference ambient); clamped
+    to a physically sane band."""
+    p = max(0.0, min(1.0, plr))
+    if p <= 0.0:
+        return 0.0
+    pf  = chiller_power_frac(p)
+    amb = ambient_factor(ambient_c(city, now))
+    cop = cop_rated * p / (pf * max(1e-6, amb))
+    return max(2.0, min(9.0, cop))
+
+
 def chiller_electrical_w(nameplate_w: float, plr: float,
                          city: str | None, now: float | None = None) -> float:
     """Chiller electrical draw (W): nameplate × part-load power fraction (kW/ton
