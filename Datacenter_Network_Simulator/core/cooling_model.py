@@ -171,6 +171,59 @@ def affinity_speed_frac(power_kw: float, nameplate_kw: float,
     return max(0.0, min(1.0, frac)) ** (1.0 / 3.0)
 
 
+# ── Chiller part-load efficiency (kW/ton curve) ───────────────────────────────
+# A chiller's electrical draw is NOT linear in cooling load. As a fraction of
+# nameplate electrical vs the thermal part-load ratio (PLR = cooling delivered /
+# rated cooling), a VFD water-cooled centrifugal follows roughly
+#     P/P_rated = C0 + C1·PLR + C2·PLR²          (C0+C1+C2 = 1 → nameplate at PLR=1)
+# The fixed C0 term (hot-gas bypass, oil/control loads, minimum compressor speed)
+# is what makes kW/ton (= P/P_rated ÷ PLR) U-SHAPED: efficiency IMPROVES from full
+# load down to ~50–75 %, then WORSENS at low load as that fixed floor dominates —
+# the classic reason plants stage multiple chillers instead of running one at low
+# PLR. Coefficients tuned to IPLV ≈ 0.82× the full-load kW/ton (efficient VFD
+# centrifugal). Condenser-water / ambient effects are applied separately via
+# ambient_factor(), so this curve is the pure load-shape at reference conditions.
+CHILLER_PLF = (0.10, 0.25, 0.65)   # (C0, C1, C2)
+
+
+def chiller_power_frac(plr: float) -> float:
+    """Chiller electrical draw as a fraction of nameplate at thermal part-load
+    ratio *plr* (0..1), at reference ambient. 0 when off (plr≤0); otherwise the
+    fixed-loss floor keeps it above 0 and produces the realistic low-load kW/ton
+    penalty. 1.0 at full load."""
+    p = max(0.0, min(1.0, plr))
+    if p <= 0.0:
+        return 0.0
+    c0, c1, c2 = CHILLER_PLF
+    return c0 + c1 * p + c2 * p * p
+
+
+def chiller_load_frac(power_frac: float) -> float:
+    """Inverse of chiller_power_frac: the thermal PLR that yields a given
+    reference-ambient power fraction (for a consistent Compressor_Load readout).
+    Returns 0..1."""
+    c0, c1, c2 = CHILLER_PLF
+    if power_frac <= c0:
+        return 0.0
+    disc = c1 * c1 - 4.0 * c2 * (c0 - power_frac)
+    if disc < 0.0:
+        return 1.0
+    x = (-c1 + math.sqrt(disc)) / (2.0 * c2)
+    return max(0.0, min(1.0, x))
+
+
+def chiller_electrical_w(nameplate_w: float, plr: float,
+                         city: str | None, now: float | None = None) -> float:
+    """Chiller electrical draw (W): nameplate × part-load power fraction (kW/ton
+    curve) × ambient/condenser factor, capped at the compressor's nameplate. At
+    the design point (PLR=1, reference ambient) it equals the nameplate, so the
+    plant PUE anchor is preserved."""
+    if plr <= 0.0 or nameplate_w <= 0.0:
+        return 0.0
+    p = nameplate_w * chiller_power_frac(plr) * ambient_factor(ambient_c(city, now))
+    return max(0.0, min(nameplate_w, p))
+
+
 def cooling_floor_w(it_design_w: float) -> float:
     """Fixed cooling draw (W) that stays on regardless of IT load — the pumps,
     fan minimums and chiller auxiliaries sized to the design IT."""

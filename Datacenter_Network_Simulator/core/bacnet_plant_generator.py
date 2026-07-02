@@ -271,6 +271,17 @@ class PlantTelemetryEngine:
             if "VFD_Frequency" in out:
                 out["VFD_Frequency"] = round(spd * 50.0, 2)   # 50 Hz mains at 100 %
 
+        # Chiller compressor load ≈ % full-load amps, which tracks the metered
+        # electrical draw (rises with both cooling load and condenser lift), so
+        # report it from the part-load power instead of a free walk.
+        if (_pwr_out is not None and self._type == "chiller"
+                and self._nameplate_kw > 0 and "Compressor_Load" in out):
+            fla = 100.0 * _pwr_out / self._nameplate_kw
+            self._values["Compressor_Load"] = self._ema(
+                fla, self._values["Compressor_Load"], 0.3)
+            out["Compressor_Load"] = round(
+                max(0.0, min(100.0, self._values["Compressor_Load"])), 2)
+
         for name, val in self._binaries.items():
             out[name] = val
         if self._type == "cdu":

@@ -1027,7 +1027,8 @@ class DeviceStateStore:
             # nameplate × clock curve.
             from core.cooling_model import (
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
-                affinity_power_kw, PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR)
+                affinity_power_kw, chiller_electrical_w,
+                PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR)
             _oh_design = (OH_FLOOR + OH_VAR) or 0.47
             _VFD_FAN  = ("crah", "cooling_tower")   # centrifugal fans
             _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
@@ -1045,6 +1046,10 @@ class DeviceStateStore:
                 # nameplate. 1.0 at design (total_w == np_sum), <1 at part load. Sets
                 # the VFD speed of every pump/fan in the DC.
                 lf = min(1.0, total_w / np_sum)
+                # Thermal part-load ratio (ambient-free) for the chiller kW/ton
+                # curve: live IT heat vs the design IT the plant is sized to reject.
+                plr = (itl / itd) if itd > 0 else 0.0
+                _city = dc_city.get(_dc)
                 # Hall inlet/return air temp → CRAH fan SPEED ramp (more airflow when
                 # hot). The cube-law POWER cost is applied once, by affinity_power_kw
                 # below — no double-cube.
@@ -1061,10 +1066,14 @@ class DeviceStateStore:
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
                         spd  = vfd_speed_frac(duty, _min)
                         tgt_w = affinity_power_kw(w, spd)
+                    elif _t == "chiller":
+                        # Chiller — part-load kW/ton curve × ambient/condenser
+                        # factor. Compressor power is U-shaped in efficiency, not
+                        # linear: nameplate at design, cheaper mid-load, penalised at
+                        # very low PLR (fixed losses dominate).
+                        tgt_w = chiller_electrical_w(w, plr, _city)
                     else:
-                        # Chiller / valve: compressor work tracks the cooling load
-                        # ~linearly (part-load curve handled separately); nameplate
-                        # share of demand, capped at the unit's rating.
+                        # Valve / other: negligible actuator draw — nameplate share.
                         base = total_w * (w / np_sum)
                         tgt_w = min(base, w if w > 0 else base)
                     plant_power[_n] = tgt_w / 1000.0   # kW
