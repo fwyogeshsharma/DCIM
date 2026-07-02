@@ -1,0 +1,46 @@
+-- 020_remove_compression.sql
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Remove native TimescaleDB compression from the metric hypertables.
+--
+-- Compression (formerly migration 018, now deleted) is retired: on this
+-- deployment its policy repeatedly compressed the chunk backlog and pegged
+-- Postgres CPU. This migration removes the compression POLICIES so no further
+-- compression work is ever scheduled.
+--
+-- It is deliberately CHEAP — it does NOT decompress existing chunks, because a
+-- mass decompress at boot would re-spike CPU (the exact problem we are removing).
+-- Any already-compressed chunks stay compressed: they remain fully queryable and
+-- are dropped normally by the retention policies (metrics 30d, energy_metrics
+-- 365d) as they age out.
+--
+-- Idempotent: if_exists on the policy removal, and a no-op on databases that
+-- never had compression (fresh installs, where 018 no longer exists to enable it).
+--
+-- Rollups: the tiered continuous aggregates are removed separately by
+-- 017_drop_metric_rollups.sql. Between 017 and this file, the DB is back to the
+-- known-good structure — raw hypertables + the single 5-minute aggregates
+-- (metrics_5m, energy_metrics_5m), no rollup pyramid, no compression.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+SELECT remove_compression_policy('metrics',        if_exists => TRUE);
+SELECT remove_compression_policy('energy_metrics', if_exists => TRUE);
+
+-- ── OPTIONAL, MANUAL — do NOT run at boot ────────────────────────────────────
+-- To fully decompress existing chunks and turn compression off at the table
+-- level (reclaims the columnar chunks immediately instead of waiting for
+-- retention). CPU-heavy in proportion to the compressed backlog — run only in a
+-- quiet maintenance window:
+--
+--   DO $$
+--   DECLARE c regclass;
+--   BEGIN
+--     FOR c IN
+--       SELECT format('%I.%I', chunk_schema, chunk_name)::regclass
+--       FROM timescaledb_information.chunks
+--       WHERE hypertable_name IN ('metrics','energy_metrics') AND is_compressed
+--     LOOP
+--       PERFORM decompress_chunk(c, true);
+--     END LOOP;
+--   END $$;
+--   ALTER TABLE metrics        SET (timescaledb.compress = false);
+--   ALTER TABLE energy_metrics SET (timescaledb.compress = false);

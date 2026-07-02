@@ -8,12 +8,9 @@ import { logger } from '../utils/logger'
 // operation that should be a deliberate maintenance action rather than a
 // boot-time surprise. A gated file stays "pending" (unrecorded in the ledger)
 // until its env flag is set to 'true', then it applies once like any other file.
-const GATED_MIGRATIONS: Record<string, string> = {
-  // Enabling compression schedules a background job that compresses the entire
-  // existing chunk backlog at once — hundreds of chunks under 30d/365d retention,
-  // and compression is very CPU-heavy. Flag it on for a maintenance window.
-  '018_metric_compression.sql': 'MIGRATE_ENABLE_COMPRESSION',
-}
+// (None currently: metric compression and the tiered rollups were removed
+// outright — see 020_remove_compression.sql and 017_drop_metric_rollups.sql.)
+const GATED_MIGRATIONS: Record<string, string> = {}
 
 async function runMigrations() {
   const pool = new Pool({
