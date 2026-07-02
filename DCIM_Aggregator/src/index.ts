@@ -68,13 +68,25 @@ app.use(errorHandler)
 
 // Start server
 async function start() {
+  // Start listening FIRST, before migrations, so /health responds immediately and
+  // the container is reported healthy while startup work runs. Migrations used to
+  // run before listen(): a slow one-time catch-up pass kept /health down long
+  // enough for the Docker healthcheck to fail and abort dependent services
+  // (dcim-ui / dcim-ml gate on service_healthy). API routes return transient
+  // errors until migrations finish, but liveness is up from the start.
+  app.listen(port, () => {
+    logger.info(`DCIM Aggregator listening on port ${port}`)
+    logger.info(`Environment: ${config.server.env}`)
+    logger.info(`Health check: http://localhost:${port}/health`)
+  })
+
   try {
     // Test database connection
     const dbClient = await dbPool.connect()
     logger.info('PostgreSQL connected')
     dbClient.release()
 
-    // Run DB migrations before anything else
+    // Run DB migrations before workers touch the schema
     await runMigrations()
 
     // Connect Redis
@@ -84,14 +96,9 @@ async function start() {
     // Start background workers
     startWorkers(dbPool, redisClient as any)
 
-    // Start HTTP server
-    app.listen(port, () => {
-      logger.info(`DCIM Aggregator listening on port ${port}`)
-      logger.info(`Environment: ${config.server.env}`)
-      logger.info(`Health check: http://localhost:${port}/health`)
-    })
-  } catch (error) {
-    logger.error('Failed to start aggregator:', error)
+    logger.info('Startup complete — migrations applied, workers running')
+  } catch (error: any) {
+    logger.error(`Failed to start aggregator: ${error.message}`)
     process.exit(1)
   }
 }

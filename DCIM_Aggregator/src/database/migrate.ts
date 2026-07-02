@@ -22,6 +22,14 @@ async function runMigrations() {
     database: config.postgres.database,
     user: config.postgres.user,
     password: config.postgres.password,
+    // Fail a migration statement that is BLOCKED waiting on a lock after 30s
+    // instead of hanging indefinitely (e.g. a DROP VIEW … CASCADE stuck behind a
+    // live read, or a stale connection left by the previous container). lock_timeout
+    // only fires while waiting to acquire a lock — it does not interrupt a
+    // migration that is actively doing work — so legitimately long migrations are
+    // unaffected. On timeout the migration errors, the process exits, and the
+    // container restarts and resumes from the ledger (blocker usually gone by then).
+    options: '-c lock_timeout=30000',
   })
 
   try {
