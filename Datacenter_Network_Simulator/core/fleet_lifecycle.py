@@ -105,12 +105,6 @@ class FleetLifecycleEngine:
         # fleet fills — keeps (dc, row, num) rack keys from colliding across halls.
         self._row_labels: dict = {}
         self._row_label_seq = 1000
-        # Per fleet-hall compute-grid x-offset (columns). A new hall reserves a
-        # CRAH lane on each side wall (perimeter cooling), so its compute racks
-        # shift one column right; _rack_coords/_clone_rpp read this so later
-        # _fill_hall_grid racks land in the same offset grid. Curated halls (not
-        # in this map) stay at offset 0.
-        self._hall_x_off: dict = {}
         # Topology-graph layout for fleet nodes: each DC gets its own band (the
         # curated x-range, below the curated nodes) so DC1/DC2 fleet growth never
         # overlaps the other DC. Bounds snapshotted per DC; placed counter tiles.
@@ -492,14 +486,46 @@ class FleetLifecycleEngine:
               and (d.rack_row or 0) < self._FLEET_ROW_BASE]
         return max(ys) if ys else None
 
-    def _rack_coords(self, rk: tuple, vrow: int, num: int):
-        """Floor-plan coords for fleet rack (vrow, num) in hall *rk*: behind the
-        curated compute (or from the front in a fresh hall), on the shared grid."""
+    def _hall_extent(self, rk: tuple) -> Optional[dict]:
+        """The floor-plan room extent (width/depth/racks_per_row/rows/aisles) for
+        hall *rk*, or None when the topology carries no floor-plan block."""
+        dc, _floor, room = rk
+        fp = getattr(self.s.topology, "floorplan", None)
+        if not isinstance(fp, dict):
+            return None
+        return (fp.get("rooms") or {}).get(f"{dc}/{room}")
+
+    def _hall_grid(self, rk: tuple):
+        """(racks_per_row, compute_rows, first_compute_row, n_rows) for hall *rk*,
+        derived from its PHYSICAL floor-plan extent so a hall fills to its real
+        rack capacity before a new hall opens — instead of a fixed config box.
+        The front row (row 1) is the network/edge row and the back row (row
+        n_rows) is the CRAH perimeter, exactly like the curated halls, so compute
+        occupies the (n_rows - 2) middle rows starting at row 2. Falls back to the
+        config grid for a hall with no extent."""
+        ext = self._hall_extent(rk)
+        rows = ext.get("rows") if ext else None
+        rpr = ext.get("racks_per_row") if ext else None
+        if ext and rpr and rows:
+            rpr = max(1, int(rpr))
+            n_rows = max(3, len(rows))
+            return rpr, max(1, n_rows - 2), 2, n_rows
+        cr = max(1, self.cfg.compute_rows_per_room)
+        return max(1, self.cfg.max_racks_per_row), cr, 1, cr + 1
+
+    def _rack_coords(self, rk: tuple, vrow: int, num: int,
+                     first_row: int = 1, n_rows: Optional[int] = None):
+        """Floor-plan coords for fleet rack (vrow, num) in hall *rk*: laid on the
+        empty rows behind the curated compute (curated hall) or from *first_row*
+        (fresh fleet hall). Returns None when the row would reach the back-wall
+        CRAH perimeter (row n_rows) — the hall is then full and a new one opens."""
         back = self._hall_back_y(rk)
         fy = round((back + geo.ROW_PITCH * (vrow + 1)) if back is not None
-                   else geo.row_y(1) + geo.ROW_PITCH * vrow, 4)
-        fx = geo.rack_x(num + self._hall_x_off.get(rk, 0))
-        i = max(1, int(round((fy - 1.8) / geo.ROW_PITCH)) + 1)
+                   else geo.row_y(first_row + vrow), 4)
+        if n_rows is not None and fy >= geo.row_y(n_rows) - 1e-6:
+            return None                                # would hit the CRAH back row
+        fx = geo.rack_x(num)
+        i = max(1, int(round((fy - geo.row_y(1)) / geo.ROW_PITCH)) + 1)
         hot, cold, facing = geo.row_aisles(i)
         return fx, fy, hot, cold, facing
 
@@ -568,17 +594,20 @@ class FleetLifecycleEngine:
 
     def _fill_hall_grid(self, summ: DaySummary) -> Optional[dict]:
         """Add the next compute rack to a hall that's still under its grid cap.
-        Most-occupied hall first, so one hall fills before the next is touched."""
-        width = max(1, self.cfg.max_racks_per_row)
-        grid = width * max(1, self.cfg.compute_rows_per_room)
+        Most-occupied hall first, so one hall fills before the next is touched.
+        The cap (racks_per_row x compute_rows) and row width come from each hall's
+        PHYSICAL extent, so a hall fills to its real floor capacity before a new
+        hall opens."""
         racks = self._hall_compute_racks()
         for rk in sorted(racks, key=lambda k: (-len(racks[k]), tuple(map(str, k)))):
             used = racks[rk]
-            if len(used) >= grid:
+            rpr, comp_rows, first_row, n_rows = self._hall_grid(rk)
+            cap = rpr * comp_rows
+            if len(used) >= cap:
                 continue                              # hall full to its cap
             curated = sum(1 for (rr, _n) in used if rr < self._FLEET_ROW_BASE)
-            fleet_used = {(rr, rn) for (rr, rn) in used if rr >= self._FLEET_ROW_BASE}
-            if len(fleet_used) >= max(0, grid - curated):
+            fleet_used = sum(1 for (rr, _n) in used if rr >= self._FLEET_ROW_BASE)
+            if fleet_used >= max(0, cap - curated):
                 continue                              # no fleet room left in cap
             infra = self._hall_infra(rk)
             if infra is None:
@@ -588,17 +617,23 @@ class FleetLifecycleEngine:
             # skip it so a new hall (its own pod) is opened instead.
             if not self._spines_have_room(infra.get("spines")):
                 continue
-            idx = len(fleet_used)                     # next fleet slot, in order
-            vrow = idx // width
+            vrow = fleet_used // rpr                   # next fleet slot, in order
+            num = fleet_used % rpr + 1
+            coords = self._rack_coords(rk, vrow, num, first_row, n_rows)
+            if coords is None:
+                continue                              # rows exhausted (hit CRAH wall)
             row = self._row_label(rk, vrow)
-            num = idx % width + 1
-            return self._build_compute_rack(rk, row, num, infra, summ, vrow)
+            return self._build_compute_rack(rk, row, num, infra, summ, vrow, coords)
         return None
 
     def _open_new_hall(self, summ: DaySummary) -> Optional[dict]:
-        """Commission a brand-new server hall in the busiest DC: a fresh RPP pair
-        (fed from the DC UPS) plus the first compute rack. Subsequent provisions
-        fill its grid via _fill_hall_grid."""
+        """Commission a brand-new server hall in the busiest DC, built to look
+        like the curated halls: it CLONES the source hall's floor-plan extent (so
+        it is the same physical size/shape), lays its power + pod-network gear on
+        the front row, spreads its CRAHs along the back wall, and puts the first
+        compute rack in the first middle row. Subsequent provisions fill the
+        middle-row grid via _fill_hall_grid — the extent-derived cap fills the
+        hall to capacity before another new hall opens."""
         dc = self._busiest_dc()
         if dc is None:
             return None
@@ -611,88 +646,35 @@ class FleetLifecycleEngine:
         floor = self._next_floor(dc)
         room = self._next_hall_name(dc)
         rk = (dc, floor, room)
-        # Reserve a CRAH lane on each side wall (perimeter cooling): compute
-        # racks shift one column right, into cols 2..W+1, leaving col 1 (left
-        # wall) and col W+2 (right wall) for the air handlers. Recorded per-hall
-        # so later _fill_hall_grid racks land in the same offset grid.
-        self._hall_x_off[rk] = 1
-        W = max(1, self.cfg.max_racks_per_row)
-        R = max(1, self.cfg.compute_rows_per_room)
-        # Fresh RPP pair fed by the same UPS units the source RPPs draw from, so
-        # the new hall's load still reaches the UPS/generator in the power model.
-        # RPP sits at the back wall, one row behind the last compute row.
-        back_y = round(geo.row_y(1) + geo.ROW_PITCH * R, 4)
-        new_infra = dict(infra)
-        new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", back_y)
-        new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", back_y) if infra["rpp_b"] else None
+        # Clone the SOURCE curated hall's extent so the new hall matches its
+        # physical dimensions/rows/aisles (not a config-sized box). Fall back to
+        # a config-derived extent only if the source hall has none.
+        src_ext = self._hall_extent(src_rk)
+        if src_ext:
+            self._register_hall_extent_copy(dc, room, src_ext)
+        else:
+            self._register_hall_extent(dc, room, back_rows=2)
+        rpr, comp_rows, first_row, n_rows = self._hall_grid(rk)
+        ext = self._hall_extent(rk) or {}
+        width_m = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
         chw_supply = infra.get("chw_supply")
         chw_return = infra.get("chw_return")
+        new_infra = dict(infra)
 
-        # ── Perimeter cooling: CRAHs on the side walls, sensors in the aisles ──
-        # Real halls line the perimeter with downflow CRAHs at the hot-aisle
-        # ends, not stacked in deep rows behind compute (that stretched the room
-        # into a thin strip). Each CRAH rides a side wall (right, then left) at a
-        # compute-row depth; environmental probes sit in the cold aisles. CRAHs
-        # and sensors reuse existing rows/aisles, so they add width, not depth —
-        # the hall stays wide-and-shallow like the curated halls. CRAHs join the
-        # shared, pre-installed CHW loop at the DC's supply/return headers — no new
-        # chillers.
-        xL, xR = geo.rack_x(1), geo.rack_x(W + 2)
-        crah_slots = []
-        for r in range(1, R + 1):
-            y = geo.row_y(r)
-            crah_slots.append((xR, y))              # right wall
-            crah_slots.append((xL, y))              # left wall
-        cx = geo.rack_x(1 + (W + 1) // 2)           # aisle-centre column
-        sen_slots = [(cx, round(0.6 + geo.ROW_PITCH * j, 4)) for j in range(1, R + 2)]
-        new_crahs = []
-        for i, crah_tmpl in enumerate(infra.get("crahs") or []):
-            fx, fy = crah_slots[i % len(crah_slots)] if crah_slots else (xR, geo.row_y(1))
-            c = self._clone(crah_tmpl, dc, self._row_label(rk, "crah"), 200 + i,
-                            int(getattr(crah_tmpl, "rack_unit", 1) or 1),
-                            prefix="crah", floor=floor, room=room, fx=fx, fy=fy)
-            if c is None:
-                continue
-            # Join the CHW loop with the SAME two directional cooling edges the
-            # curated CRAHs use, so the viewer colours/animates them correctly:
-            #   • supply (cold): CHWS header → CRAH   (chilled water in)
-            #   • return (hot):  CRAH → CHWR header   (warm water out)
-            # One edge, or the wrong direction, mis-colours the link and leaves the
-            # supply/return pair incomplete.
-            try:
-                if chw_supply is not None:
-                    self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
-                if chw_return is not None:
-                    self.s.topology.add_link(c.id, chw_return.id, layer="cooling")
-            except Exception:
-                pass
-            self._commission(c)
-            new_crahs.append(c)
-        sen_tmpl = infra.get("sensor_tmpl")
-        if sen_tmpl is not None:
-            for i in range(self._HALL_SENSORS):
-                fx, fy = sen_slots[i % len(sen_slots)] if sen_slots else (cx, geo.row_y(1))
-                c = self._clone(sen_tmpl, dc, self._row_label(rk, "sen"), 300 + i,
-                                int(getattr(sen_tmpl, "rack_unit", 1) or 1),
-                                prefix="sen", floor=floor, room=room, fx=fx, fy=fy)
-                if c is not None:
-                    self._commission(c)
-
-        # A new hall is a new POD: give it its OWN spine set + OOB (cloned from
-        # the source hall, upstream core/mgmt links replicated) instead of cross-
-        # wiring its leaves into another hall's fabric — this is what makes the
-        # spine/OOB port caps meaningful. Lay the fabric on ONE network row
-        # behind the RPP back wall, across the compute columns (offset grid) so
-        # it never spills past the side CRAH lanes.
-        net_y0 = round(back_y + geo.ROW_PITCH, 4)
+        # ── Front row (row 1): power + pod network, like the curated halls ──
+        # Fresh RPP pair (fed by the source RPPs' UPS so hall load still reaches
+        # the UPS/generator) at the near wall, then the pod's OWN spine set + OOB
+        # (own fabric = meaningful spine/OOB port caps) across the rest of the row.
+        front_y = round(geo.row_y(1), 4)
+        new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", front_y)
+        new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", front_y) if infra["rpp_b"] else None
         fabric = [(sp, "sp") for sp in (infra.get("spines") or [])]
         if infra.get("oob") is not None:
             fabric.append((infra["oob"], "oob"))
         new_spines, new_oob = [], None
         for i, (tmpl, pfx) in enumerate(fabric):
-            fx = geo.rack_x(2 + i % W)              # compute columns (offset grid)
-            fy = round(net_y0 + geo.ROW_PITCH * (i // W), 4)
-            c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=fy)
+            fx = geo.rack_x(min(3 + i, rpr))          # cols 1-2 are the RPP pair
+            c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=front_y)
             if c is None:
                 continue
             self._commission(c)
@@ -704,17 +686,62 @@ class FleetLifecycleEngine:
             new_infra["spines"] = new_spines
         if new_oob is not None:
             new_infra["oob"] = new_oob
-        net_rows = (len(fabric) + W - 1) // W if fabric else 0
 
-        self._log(f"[Fleet] new pod: {len(new_spines)} spine(s), OOB, "
-                  f"{len(new_crahs)} CRAH, {self._HALL_SENSORS} sensor(s)")
+        # ── Back wall (row n_rows): CRAHs spread evenly across the width, the
+        # curated perimeter-cooling layout. Each joins the CHW loop with the same
+        # two directional edges the curated CRAHs use so the viewer colours them
+        # right: supply CHWS→CRAH (cold) and return CRAH→CHWR (hot).
+        crahs = infra.get("crahs") or []
+        ncr = max(1, len(crahs))
+        crah_y = round(geo.row_y(n_rows), 4)
+        new_crahs = []
+        for i, crah_tmpl in enumerate(crahs):
+            cx = round(width_m * (i + 0.5) / ncr, 4)
+            c = self._clone(crah_tmpl, dc, self._row_label(rk, "crah"), 200 + i,
+                            int(getattr(crah_tmpl, "rack_unit", 1) or 1),
+                            prefix="crah", floor=floor, room=room, fx=cx, fy=crah_y)
+            if c is None:
+                continue
+            try:
+                if chw_supply is not None:
+                    self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
+                if chw_return is not None:
+                    self.s.topology.add_link(c.id, chw_return.id, layer="cooling")
+            except Exception:
+                pass
+            self._commission(c)
+            new_crahs.append(c)
+
+        # Environmental probes spread across the first cold aisle.
+        sen_tmpl = infra.get("sensor_tmpl")
+        if sen_tmpl is not None:
+            sy = round(0.6 + geo.ROW_PITCH, 4)
+            for i in range(self._HALL_SENSORS):
+                sx = round(width_m * (i + 0.5) / max(1, self._HALL_SENSORS), 4)
+                c = self._clone(sen_tmpl, dc, self._row_label(rk, "sen"), 300 + i,
+                                int(getattr(sen_tmpl, "rack_unit", 1) or 1),
+                                prefix="sen", floor=floor, room=room, fx=sx, fy=sy)
+                if c is not None:
+                    self._commission(c)
+
         self._fleet_halls.add(rk)
-        # Rows deep = compute rows + 1 RPP row + the network rows; +2 side lanes
-        # wide for the perimeter CRAHs.
-        self._register_hall_extent(dc, room, back_rows=1 + net_rows, side_lanes=2)
         self._log(f"[Fleet] opened new hall {dc}/F{floor}/{room} "
-                  f"(grid {R}x{W}, perimeter CRAH)")
-        return self._build_compute_rack(rk, self._row_label(rk, 0), 1, new_infra, summ, 0)
+                  f"(grid {rpr}x{comp_rows}, {len(new_crahs)} back-wall CRAH; "
+                  f"cloned from {src_rk[2]})")
+        coords = self._rack_coords(rk, 0, 1, first_row, n_rows)
+        return self._build_compute_rack(rk, self._row_label(rk, 0), 1, new_infra, summ, 0, coords)
+
+    def _register_hall_extent_copy(self, dc: str, room: str, src_ext: dict) -> None:
+        """Register a fleet hall's floor-plan extent as a COPY of the source
+        curated hall's, so the new hall has identical physical dimensions, rows
+        and aisles — only the datacenter/room labels change."""
+        fp = getattr(self.s.topology, "floorplan", None)
+        if not isinstance(fp, dict):
+            return
+        ext = {k: (list(v) if isinstance(v, list) else v) for k, v in src_ext.items()}
+        ext.update({"datacenter": dc, "room": room,
+                    "class": "white_space", "containment": "cold_aisle"})
+        fp.setdefault("rooms", {})[f"{dc}/{room}"] = ext
 
     def _register_hall_extent(self, dc: str, room: str, back_rows: int = 1,
                               side_lanes: int = 0) -> None:
@@ -780,11 +807,10 @@ class FleetLifecycleEngine:
         the template draws from, so downstream rack load reaches the UPS."""
         dc, floor, room = rk
         ups = self._neighbor(tmpl, "power", (DeviceType.UPS,))
-        off = self._hall_x_off.get(rk, 0)
         rpp = self._clone(tmpl, dc, self._row_label(rk, "rpp"),
                           1 if side == "A" else 2, PDU_UNIT,
                           prefix=f"rpp{side.lower()}", floor=floor, room=room,
-                          fx=geo.rack_x((1 if side == "A" else 2) + off), fy=y)
+                          fx=geo.rack_x(1 if side == "A" else 2), fy=y)
         if rpp is None:
             return None
         if ups is not None:
@@ -796,13 +822,15 @@ class FleetLifecycleEngine:
         return rpp
 
     def _build_compute_rack(self, rk: tuple, row: int, num: int, infra: dict,
-                            summ: DaySummary, vrow: int) -> Optional[dict]:
+                            summ: DaySummary, vrow: int,
+                            coords: Optional[tuple] = None) -> Optional[dict]:
         """Materialise a compute rack (leaf + dual rack PDUs) in hall *rk*, fully
         wired: leaf → every spine + the OOB switch; each PDU → an RPP feed so
-        server load reaches the UPS. Placed on the floor grid at virtual row
-        *vrow*. Returns the placement target for servers."""
+        server load reaches the UPS. Placed on the floor grid at *coords*
+        (fx, fy, hot, cold, facing) — precomputed by the caller from the hall's
+        extent; falls back to _rack_coords when not supplied."""
         dc, floor, room = rk
-        fx, fy, hot, cold, facing = self._rack_coords(rk, vrow, num)
+        fx, fy, hot, cold, facing = coords or self._rack_coords(rk, vrow, num)
         leaf = self._clone(infra["leaf_tmpl"], dc, row, num, TOR_A_UNIT,
                            prefix="tor", floor=floor, room=room,
                            fx=fx, fy=fy, hot=hot, cold=cold, facing=facing)
