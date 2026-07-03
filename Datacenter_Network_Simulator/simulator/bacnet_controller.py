@@ -88,6 +88,14 @@ class BACnetController:
         # Per-device telemetry engines
         self._telemetry: Dict[int, EV2TelemetryEngine]     = {}
 
+        # Guards the device/telemetry dicts against concurrent mutation: the recv
+        # thread and the ticker iterate them while fleet-lifecycle commissioning
+        # (add_plant_device / remove_plant_device) mutates them live.
+        self._dev_lock = threading.RLock()
+        # Set by a hot add/remove so the recv loop rebuilds its per-device socket
+        # select set to include/drop the changed device.
+        self._sockets_dirty = False
+
         # Shared receive socket (0.0.0.0:47808)
         self._recv_sock: Optional[socket.socket] = None
 
@@ -315,7 +323,9 @@ class BACnetController:
         """Flush every EV2 engine's kWh registers to disk atomically. Plant engines
         are skipped (they have no lifetime kWh register)."""
         out: Dict[str, dict] = {}
-        for ip, dev in self._devices_by_ip.items():
+        with self._dev_lock:
+            _by_ip = list(self._devices_by_ip.items())
+        for ip, dev in _by_ip:
             eng = self._telemetry.get(getattr(dev, "device_instance", None))
             if isinstance(eng, EV2TelemetryEngine):
                 out[ip] = eng.get_energy_state()
@@ -365,6 +375,66 @@ class BACnetController:
 
     def device_count(self) -> int:
         return len(self._devices)
+
+    # ─────────────────────────────────────────────────────────────
+    #  Hot add / remove (fleet lifecycle — commission new plant gear)
+    # ─────────────────────────────────────────────────────────────
+
+    def add_plant_device(self, ip: str, device_type: str,
+                         name: Optional[str] = None,
+                         rated_kw: float = 0.0) -> bool:
+        """Hot-add a chiller-plant BACnet device (chiller/pump/cooling_tower/valve/
+        crah/cdu) into a RUNNING controller — used when Fleet Lifecycle commissions
+        new cooling gear. Mirrors the plant block in start(): builds the type's
+        object tree + a live PlantTelemetryEngine and registers it, so it shows in
+        the panel's Active Devices and answers BACnet reads. The IP must already be
+        host-bound (fleet _commission binds it). Returns False if not running, the
+        IP is unknown/duplicate, or the type is unrecognised."""
+        if not self._running or not ip:
+            return False
+        with self._dev_lock:
+            if ip in self._devices_by_ip:
+                return False
+            inst = (max(self._devices) + 1) if self._devices else self._base_instance
+            name = name or f"{device_type}_{inst}"
+            try:
+                tree, n2k = build_plant_object_tree(device_type, float(rated_kw or 0.0))
+            except KeyError:
+                self._log(f"[BACnet] Unknown plant device_type '{device_type}' — skipped.",
+                          "warning")
+                return False
+            try:
+                dev = EV2BACnetDevice(
+                    device_ip=ip, device_instance=inst, device_name=name,
+                    log_cb=self._log_cb, port=self._port,
+                    object_tree=tree, name_to_key=n2k, kind=f"plant:{device_type}")
+            except Exception as exc:
+                self._log(f"[BACnet] hot-add {device_type} @ {ip} failed: {exc}", "warning")
+                return False
+            self._devices[inst]      = dev
+            self._devices_by_ip[ip]  = dev
+            self._telemetry[inst]    = PlantTelemetryEngine(
+                device_type, rated_kw=float(rated_kw or 0.0), seed=(hash(name) & 0xFFFFFFFF))
+            self._sockets_dirty = True
+        self._log(f"[BACnet] hot-added {device_type} {name} @ {ip} (instance {inst})",
+                  "success")
+        return True
+
+    def remove_plant_device(self, ip: str) -> None:
+        """Tear down a hot-added plant device (fleet decommission)."""
+        with self._dev_lock:
+            dev = self._devices_by_ip.pop(ip, None)
+            if dev is None:
+                return
+            inst = getattr(dev, "device_instance", None)
+            if inst is not None:
+                self._devices.pop(inst, None)
+                self._telemetry.pop(inst, None)
+            self._sockets_dirty = True
+        try:
+            dev.close()
+        except Exception:
+            pass
 
     # ─────────────────────────────────────────────────────────────
     #  Telemetry tick (called by DeviceStateStore)
@@ -441,7 +511,9 @@ class BACnetController:
         """
         if not self._running:
             return
-        for instance, engine in list(self._telemetry.items()):
+        with self._dev_lock:
+            _tel_items = list(self._telemetry.items())
+        for instance, engine in _tel_items:
             dev = self._devices.get(instance)
             if dev is None:
                 continue
@@ -522,15 +594,22 @@ class BACnetController:
         if wildcard is None:
             return
 
-        # Build socket → device map for per-device sockets
-        sock_to_dev: dict = {}
-        for dev in self._devices.values():
-            if dev._send_sock is not None:
-                sock_to_dev[dev._send_sock] = dev
+        # Build socket → device map for per-device sockets. Rebuilt whenever a
+        # fleet hot add/remove flips _sockets_dirty, so a newly commissioned
+        # device's socket joins the select set (and a removed one drops out).
+        def _build_sockmap():
+            with self._dev_lock:
+                self._sockets_dirty = False
+                s2d = {dev._send_sock: dev
+                       for dev in self._devices.values()
+                       if dev._send_sock is not None}
+            return s2d, [wildcard] + list(s2d.keys())
 
-        all_socks = [wildcard] + list(sock_to_dev.keys())
+        sock_to_dev, all_socks = _build_sockmap()
 
         while not self._stop_ev.is_set():
+            if self._sockets_dirty:
+                sock_to_dev, all_socks = _build_sockmap()
             try:
                 readable, _, _ = select.select(all_socks, [], [], 1.0)
             except OSError:
@@ -589,7 +668,9 @@ class BACnetController:
                 else:
                     # Broadcast Who-Is on wildcard socket — all matching
                     # devices reply (simulator convenience behaviour).
-                    for dev in list(self._devices.values()):
+                    with self._dev_lock:
+                        _devs = list(self._devices.values())
+                    for dev in _devs:
                         try:
                             dev.handle_whois(low, high, src_addr)
                         except Exception:
@@ -700,20 +781,26 @@ class BACnetController:
 
     def get_all_subscribers(self) -> List[dict]:
         result = []
-        for dev in self._devices.values():
+        with self._dev_lock:
+            _devs = list(self._devices.values())
+        for dev in _devs:
             result.extend(dev.get_all_subscribers())
         return result
 
     def get_cov_events(self) -> List[dict]:
         result = []
-        for dev in self._devices.values():
+        with self._dev_lock:
+            _devs = list(self._devices.values())
+        for dev in _devs:
             result.extend(dev.get_cov_events())
         return result[-100:]
 
     def get_device_summary(self) -> List[dict]:
         """Return list of {ip, instance, name, circuits} for the UI table."""
         result = []
-        for dev in self._devices.values():
+        with self._dev_lock:
+            _devs = list(self._devices.values())
+        for dev in _devs:
             result.append({
                 "ip":       dev.device_ip,
                 "instance": dev.device_instance,
@@ -733,7 +820,9 @@ class BACnetController:
         if not self._running:
             return []
         result = []
-        for instance, dev in self._devices.items():
+        with self._dev_lock:
+            _dev_items = list(self._devices.items())
+        for instance, dev in _dev_items:
             result.append({
                 "ip":       dev.device_ip,
                 "instance": instance,

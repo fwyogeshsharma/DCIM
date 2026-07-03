@@ -105,6 +105,12 @@ class FleetLifecycleEngine:
         # fleet fills — keeps (dc, row, num) rack keys from colliding across halls.
         self._row_labels: dict = {}
         self._row_label_seq = 1000
+        # Per fleet-hall compute-grid x-offset (columns). A new hall reserves a
+        # CRAH lane on each side wall (perimeter cooling), so its compute racks
+        # shift one column right; _rack_coords/_clone_rpp read this so later
+        # _fill_hall_grid racks land in the same offset grid. Curated halls (not
+        # in this map) stay at offset 0.
+        self._hall_x_off: dict = {}
         # Topology-graph layout for fleet nodes: each DC gets its own band (the
         # curated x-range, below the curated nodes) so DC1/DC2 fleet growth never
         # overlaps the other DC. Bounds snapshotted per DC; placed counter tiles.
@@ -492,7 +498,7 @@ class FleetLifecycleEngine:
         back = self._hall_back_y(rk)
         fy = round((back + geo.ROW_PITCH * (vrow + 1)) if back is not None
                    else geo.row_y(1) + geo.ROW_PITCH * vrow, 4)
-        fx = geo.rack_x(num)
+        fx = geo.rack_x(num + self._hall_x_off.get(rk, 0))
         i = max(1, int(round((fy - 1.8) / geo.ROW_PITCH)) + 1)
         hot, cold, facing = geo.row_aisles(i)
         return fx, fy, hot, cold, facing
@@ -594,85 +600,117 @@ class FleetLifecycleEngine:
         floor = self._next_floor(dc)
         room = self._next_hall_name(dc)
         rk = (dc, floor, room)
+        # Reserve a CRAH lane on each side wall (perimeter cooling): compute
+        # racks shift one column right, into cols 2..W+1, leaving col 1 (left
+        # wall) and col W+2 (right wall) for the air handlers. Recorded per-hall
+        # so later _fill_hall_grid racks land in the same offset grid.
+        self._hall_x_off[rk] = 1
+        W = max(1, self.cfg.max_racks_per_row)
+        R = max(1, self.cfg.compute_rows_per_room)
         # Fresh RPP pair fed by the same UPS units the source RPPs draw from, so
         # the new hall's load still reaches the UPS/generator in the power model.
-        # RPP/CRAH sit at the back wall, one row behind the last compute row.
-        back_y = round(geo.row_y(1) + geo.ROW_PITCH * self.cfg.compute_rows_per_room, 4)
+        # RPP sits at the back wall, one row behind the last compute row.
+        back_y = round(geo.row_y(1) + geo.ROW_PITCH * R, 4)
         new_infra = dict(infra)
         new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", back_y)
         new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", back_y) if infra["rpp_b"] else None
-        # A new hall is a new POD: give it its OWN spine set + OOB (cloned from the
-        # source hall, with their upstream core/mgmt links replicated) instead of
-        # cross-wiring its leaves into another hall's fabric. This is what makes the
-        # spine/OOB port caps meaningful — each pod has finite, dedicated fabric.
-        # Lay the pod fabric on dedicated NETWORK rows behind the RPP back row,
-        # wrapping across the hall width so it never spills past the room box, and
-        # extend the room extent to cover those rows.
-        # Pod fabric (spines/OOB) + hall cooling/env (CRAHs, sensors), laid on
-        # dedicated rows behind the RPP back row, wrapping across the hall width so
-        # nothing spills past the room box. A hall's CRAHs are its OWN air handlers
-        # (built with the hall, sized to it) fed from the shared, pre-installed
-        # chiller plant via the CHW loop (cooling-layer link) — no new chillers.
-        width = max(1, self.cfg.max_racks_per_row)
-        net_y0 = round(back_y + geo.ROW_PITCH, 4)
         chiller = infra.get("chiller")
-        gear = [(sp, "sp") for sp in (infra.get("spines") or [])]
-        if infra.get("oob") is not None:
-            gear.append((infra["oob"], "oob"))
-        gear += [(c, "crah") for c in (infra.get("crahs") or [])]
+
+        # ── Perimeter cooling: CRAHs on the side walls, sensors in the aisles ──
+        # Real halls line the perimeter with downflow CRAHs at the hot-aisle
+        # ends, not stacked in deep rows behind compute (that stretched the room
+        # into a thin strip). Each CRAH rides a side wall (right, then left) at a
+        # compute-row depth; environmental probes sit in the cold aisles. CRAHs
+        # and sensors reuse existing rows/aisles, so they add width, not depth —
+        # the hall stays wide-and-shallow like the curated halls. CRAHs still
+        # feed off the shared, pre-installed chiller via the CHW loop — no new
+        # chillers.
+        xL, xR = geo.rack_x(1), geo.rack_x(W + 2)
+        crah_slots = []
+        for r in range(1, R + 1):
+            y = geo.row_y(r)
+            crah_slots.append((xR, y))              # right wall
+            crah_slots.append((xL, y))              # left wall
+        cx = geo.rack_x(1 + (W + 1) // 2)           # aisle-centre column
+        sen_slots = [(cx, round(0.6 + geo.ROW_PITCH * j, 4)) for j in range(1, R + 2)]
+        new_crahs = []
+        for i, crah_tmpl in enumerate(infra.get("crahs") or []):
+            fx, fy = crah_slots[i % len(crah_slots)] if crah_slots else (xR, geo.row_y(1))
+            c = self._clone(crah_tmpl, dc, self._row_label(rk, "crah"), 200 + i,
+                            int(getattr(crah_tmpl, "rack_unit", 1) or 1),
+                            prefix="crah", floor=floor, room=room, fx=fx, fy=fy)
+            if c is None:
+                continue
+            if chiller is not None:
+                try:                                # CRAH drinks chilled water from a chiller
+                    self.s.topology.add_link(c.id, chiller.id, layer="cooling")
+                except Exception:
+                    pass
+            self._commission(c)
+            new_crahs.append(c)
         sen_tmpl = infra.get("sensor_tmpl")
         if sen_tmpl is not None:
-            gear += [(sen_tmpl, "sen")] * self._HALL_SENSORS
-        new_spines, new_oob, new_crahs = [], None, []
-        for i, (tmpl, pfx) in enumerate(gear):
-            fx = geo.rack_x(i % width + 1)
-            fy = round(net_y0 + geo.ROW_PITCH * (i // width), 4)
-            if pfx in ("sp", "oob"):
-                c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=fy)
-            else:                                  # CRAH / sensor — plain hall device
-                c = self._clone(tmpl, dc, self._row_label(rk, pfx), 100 + i,
-                                int(getattr(tmpl, "rack_unit", 1) or 1),
-                                prefix=pfx, floor=floor, room=room, fx=fx, fy=fy)
-                if c is not None and pfx == "crah" and chiller is not None:
-                    try:                           # CRAH drinks chilled water from a chiller
-                        self.s.topology.add_link(c.id, chiller.id, layer="cooling")
-                    except Exception:
-                        pass
+            for i in range(self._HALL_SENSORS):
+                fx, fy = sen_slots[i % len(sen_slots)] if sen_slots else (cx, geo.row_y(1))
+                c = self._clone(sen_tmpl, dc, self._row_label(rk, "sen"), 300 + i,
+                                int(getattr(sen_tmpl, "rack_unit", 1) or 1),
+                                prefix="sen", floor=floor, room=room, fx=fx, fy=fy)
+                if c is not None:
+                    self._commission(c)
+
+        # A new hall is a new POD: give it its OWN spine set + OOB (cloned from
+        # the source hall, upstream core/mgmt links replicated) instead of cross-
+        # wiring its leaves into another hall's fabric — this is what makes the
+        # spine/OOB port caps meaningful. Lay the fabric on ONE network row
+        # behind the RPP back wall, across the compute columns (offset grid) so
+        # it never spills past the side CRAH lanes.
+        net_y0 = round(back_y + geo.ROW_PITCH, 4)
+        fabric = [(sp, "sp") for sp in (infra.get("spines") or [])]
+        if infra.get("oob") is not None:
+            fabric.append((infra["oob"], "oob"))
+        new_spines, new_oob = [], None
+        for i, (tmpl, pfx) in enumerate(fabric):
+            fx = geo.rack_x(2 + i % W)              # compute columns (offset grid)
+            fy = round(net_y0 + geo.ROW_PITCH * (i // W), 4)
+            c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=fy)
             if c is None:
                 continue
             self._commission(c)
             if pfx == "sp":
                 new_spines.append(c)
-            elif pfx == "oob":
+            else:
                 new_oob = c
-            elif pfx == "crah":
-                new_crahs.append(c)
         if new_spines:
             new_infra["spines"] = new_spines
         if new_oob is not None:
             new_infra["oob"] = new_oob
-        net_rows = (len(gear) + width - 1) // width if gear else 0
+        net_rows = (len(fabric) + W - 1) // W if fabric else 0
+
         self._log(f"[Fleet] new pod: {len(new_spines)} spine(s), OOB, "
                   f"{len(new_crahs)} CRAH, {self._HALL_SENSORS} sensor(s)")
         self._fleet_halls.add(rk)
-        # Back rows = 1 RPP/power row + the network rows the fabric occupies.
-        self._register_hall_extent(dc, room, back_rows=1 + net_rows)
+        # Rows deep = compute rows + 1 RPP row + the network rows; +2 side lanes
+        # wide for the perimeter CRAHs.
+        self._register_hall_extent(dc, room, back_rows=1 + net_rows, side_lanes=2)
         self._log(f"[Fleet] opened new hall {dc}/F{floor}/{room} "
-                  f"(grid {self.cfg.compute_rows_per_room}x{self.cfg.max_racks_per_row})")
+                  f"(grid {R}x{W}, perimeter CRAH)")
         return self._build_compute_rack(rk, self._row_label(rk, 0), 1, new_infra, summ, 0)
 
-    def _register_hall_extent(self, dc: str, room: str, back_rows: int = 1) -> None:
+    def _register_hall_extent(self, dc: str, room: str, back_rows: int = 1,
+                              side_lanes: int = 0) -> None:
         """Add a floorplan room extent for a fleet-created hall so the static
         floor-plan (and Save Topology export) draws the room box + aisles, not just
         loose racks. Grid = compute_rows_per_room compute rows + *back_rows* rows for
-        the RPP/CRAH and the pod's network gear (spines/OOB), matching where
-        _build_compute_rack / _clone_rpp / the fabric clones place them. No-op if the
-        topology carries no floorplan block."""
+        the RPP and the pod's network gear (spines/OOB), matching where
+        _build_compute_rack / _clone_rpp / the fabric clones place them.
+        *side_lanes* widens the room by that many rack columns for the perimeter
+        CRAH lanes on the side walls. No-op if the topology carries no floorplan
+        block."""
         fp = getattr(self.s.topology, "floorplan", None)
         if not isinstance(fp, dict):
             return
         n_rows = max(1, self.cfg.compute_rows_per_room) + max(1, back_rows)
-        ext = geo.hall_extent(n_rows, max(1, self.cfg.max_racks_per_row))
+        ext = geo.hall_extent(n_rows, max(1, self.cfg.max_racks_per_row) + side_lanes)
         ext.update({"datacenter": dc, "room": room,
                     "class": "white_space", "containment": "cold_aisle"})
         fp.setdefault("rooms", {})[f"{dc}/{room}"] = ext
@@ -722,10 +760,11 @@ class FleetLifecycleEngine:
         the template draws from, so downstream rack load reaches the UPS."""
         dc, floor, room = rk
         ups = self._neighbor(tmpl, "power", (DeviceType.UPS,))
+        off = self._hall_x_off.get(rk, 0)
         rpp = self._clone(tmpl, dc, self._row_label(rk, "rpp"),
                           1 if side == "A" else 2, PDU_UNIT,
                           prefix=f"rpp{side.lower()}", floor=floor, room=room,
-                          fx=geo.rack_x(1 if side == "A" else 2), fy=y)
+                          fx=geo.rack_x((1 if side == "A" else 2) + off), fy=y)
         if rpp is None:
             return None
         if ups is not None:
@@ -1059,6 +1098,15 @@ class FleetLifecycleEngine:
         + host-binding the IP makes the device pollable without a restart, as long
         as snmpsim resolves recordings from the dir per request."""
         self._bind_ip(device.ip_address)
+        # The Redfish BMC and the gNMI target both live on the device's MGMT IP
+        # (_bmc_ip / gNMI bind_ip = mgmt_ip or ip_address). Bind it too, else the
+        # per-IP hot-add socket bind below fails on an unbound address and the
+        # device never joins the running server — so the panel's Active count
+        # never grows. Curated devices' mgmt IPs were bound by the bind panel;
+        # fleet devices need theirs bound here.
+        mgmt = getattr(device, "mgmt_ip", "") or ""
+        if mgmt and mgmt != device.ip_address:
+            self._bind_ip(mgmt)
         self._gen_datasets(device)
         g = getattr(self.s, "gnmi", None)
         if g is not None and getattr(g, "_running", False):
@@ -1069,6 +1117,24 @@ class FleetLifecycleEngine:
                 and getattr(r, "_running", False)):
             try: r.add_device(device)
             except Exception as e: self._log(f"[Fleet] Redfish commission {device.name}: {e}")
+        # Chiller-plant gear (a fleet hall's CRAHs, etc.) joins the running BACnet
+        # BMS. Same IP resolution as api/routers/bacnet.py: prod IP if present,
+        # else the mgmt IP (both bound above). Keeps the BACnet panel's Active
+        # Devices count in step with fleet-added cooling.
+        b = getattr(self.s, "bacnet", None)
+        if (device.device_type in self._BACNET_PLANT_TYPES and b is not None
+                and getattr(b, "_running", False)):
+            try:
+                b.add_plant_device(device.ip_address or mgmt, device.device_type.value,
+                                   name=device.name,
+                                   rated_kw=(getattr(device, "power_draw_w", 0) or 0) / 1000.0)
+            except Exception as e:
+                self._log(f"[Fleet] BACnet commission {device.name}: {e}")
+
+    # Chiller-plant device types exposed over BACnet (mirror api/routers/bacnet.py).
+    _BACNET_PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
+                           DeviceType.COOLING_TOWER, DeviceType.VALVE,
+                           DeviceType.CRAH, DeviceType.CDU}
 
     def _decommission_net(self, device: Device) -> None:
         """Undo _commission for a device about to be removed."""
@@ -1081,7 +1147,13 @@ class FleetLifecycleEngine:
         if r is not None:
             try: r.remove_device(bind_ip)
             except Exception: pass
+        b = getattr(self.s, "bacnet", None)
+        if b is not None and device.device_type in self._BACNET_PLANT_TYPES:
+            try: b.remove_plant_device(device.ip_address or bind_ip)
+            except Exception: pass
         self._unbind_ip(device.ip_address)
+        if bind_ip and bind_ip != device.ip_address:
+            self._unbind_ip(bind_ip)                 # the mgmt IP bound in _commission
 
     def _gen_datasets(self, device: Device) -> None:
         try:
