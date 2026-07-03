@@ -539,21 +539,32 @@ class FleetLifecycleEngine:
             rpp_a = rpps[0]
         if rpp_b is None and len(rpps) > 1:
             rpp_b = rpps[1]
-        # Hall cooling/env: the CRAHs that air-cool this hall and a sensor to clone,
-        # plus a DC chiller to hang new CRAHs' CHW loop off (cooling layer).
+        # Hall cooling/env: the CRAHs that air-cool this hall and a sensor to
+        # clone. A CRAH's chilled-water loop hangs off the DC-wide CHW headers,
+        # NOT the chiller directly: it draws cold water from the CHW SUPPLY header
+        # (SENS-<dc>-CHWS) and dumps warm water into the CHW RETURN header
+        # (SENS-<dc>-CHWR) — the same two nodes the curated CRAHs connect to. The
+        # chiller/pumps already sit behind those headers, so this is where a new
+        # CRAH joins the loop.
         _dc = srv_tmpl.datacenter or ""
         crahs = [d for d in self.s.device_manager.get_all_devices()
                  if d.device_type == DeviceType.CRAH and self._room_key(d) == rk]
         sensor_tmpl = next((d for d in self.s.device_manager.get_all_devices()
                             if d.device_type == DeviceType.SENSOR
                             and self._room_key(d) == rk), None)
-        chiller = next((d for d in self.s.device_manager.get_all_devices()
-                        if d.device_type == DeviceType.CHILLER
-                        and (d.datacenter or "") == _dc), None)
+
+        def _chw_header(suffix: str):
+            return next((d for d in self.s.device_manager.get_all_devices()
+                         if d.device_type == DeviceType.SENSOR
+                         and (d.datacenter or "") == _dc
+                         and (d.name or "").upper().endswith(suffix)), None)
+        chw_supply = _chw_header("CHWS")
+        chw_return = _chw_header("CHWR")
         return {"srv_tmpl": srv_tmpl, "leaf_tmpl": leaf, "oob": oob,
                 "spines": spines, "rpp_a": rpp_a, "rpp_b": rpp_b,
                 "pdu_tmpl": self._dc_pdu(_dc),
-                "crahs": crahs, "sensor_tmpl": sensor_tmpl, "chiller": chiller}
+                "crahs": crahs, "sensor_tmpl": sensor_tmpl,
+                "chw_supply": chw_supply, "chw_return": chw_return}
 
     def _fill_hall_grid(self, summ: DaySummary) -> Optional[dict]:
         """Add the next compute rack to a hall that's still under its grid cap.
@@ -614,7 +625,8 @@ class FleetLifecycleEngine:
         new_infra = dict(infra)
         new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", back_y)
         new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", back_y) if infra["rpp_b"] else None
-        chiller = infra.get("chiller")
+        chw_supply = infra.get("chw_supply")
+        chw_return = infra.get("chw_return")
 
         # ── Perimeter cooling: CRAHs on the side walls, sensors in the aisles ──
         # Real halls line the perimeter with downflow CRAHs at the hot-aisle
@@ -622,8 +634,8 @@ class FleetLifecycleEngine:
         # into a thin strip). Each CRAH rides a side wall (right, then left) at a
         # compute-row depth; environmental probes sit in the cold aisles. CRAHs
         # and sensors reuse existing rows/aisles, so they add width, not depth —
-        # the hall stays wide-and-shallow like the curated halls. CRAHs still
-        # feed off the shared, pre-installed chiller via the CHW loop — no new
+        # the hall stays wide-and-shallow like the curated halls. CRAHs join the
+        # shared, pre-installed CHW loop at the DC's supply/return headers — no new
         # chillers.
         xL, xR = geo.rack_x(1), geo.rack_x(W + 2)
         crah_slots = []
@@ -641,11 +653,19 @@ class FleetLifecycleEngine:
                             prefix="crah", floor=floor, room=room, fx=fx, fy=fy)
             if c is None:
                 continue
-            if chiller is not None:
-                try:                                # CRAH drinks chilled water from a chiller
-                    self.s.topology.add_link(c.id, chiller.id, layer="cooling")
-                except Exception:
-                    pass
+            # Join the CHW loop with the SAME two directional cooling edges the
+            # curated CRAHs use, so the viewer colours/animates them correctly:
+            #   • supply (cold): CHWS header → CRAH   (chilled water in)
+            #   • return (hot):  CRAH → CHWR header   (warm water out)
+            # One edge, or the wrong direction, mis-colours the link and leaves the
+            # supply/return pair incomplete.
+            try:
+                if chw_supply is not None:
+                    self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
+                if chw_return is not None:
+                    self.s.topology.add_link(c.id, chw_return.id, layer="cooling")
+            except Exception:
+                pass
             self._commission(c)
             new_crahs.append(c)
         sen_tmpl = infra.get("sensor_tmpl")
