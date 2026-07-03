@@ -4,6 +4,7 @@ Device Manager - Manages all simulated network devices.
 from __future__ import annotations
 import uuid
 import random
+import threading
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 from enum import Enum
@@ -789,22 +790,31 @@ class DeviceManager:
 
     def __init__(self):
         self._devices: Dict[str, Device] = {}
+        # Fleet Lifecycle mutates the registry from its scheduler thread while the
+        # API/ticker threads iterate it (to_list, get_all_devices). A reentrant
+        # lock serialises mutation against iteration so a live add/remove can't
+        # raise "dictionary changed size during iteration".
+        self._lock = threading.RLock()
 
     def add_device(self, device: Device) -> Device:
-        self._devices[device.id] = device
+        with self._lock:
+            self._devices[device.id] = device
         return device
 
     def remove_device(self, device_id: str) -> Optional[Device]:
-        return self._devices.pop(device_id, None)
+        with self._lock:
+            return self._devices.pop(device_id, None)
 
     def get_device(self, device_id: str) -> Optional[Device]:
         return self._devices.get(device_id)
 
     def get_all_devices(self) -> List[Device]:
-        return list(self._devices.values())
+        with self._lock:
+            return list(self._devices.values())
 
     def get_devices_by_type(self, device_type: DeviceType) -> List[Device]:
-        return [d for d in self._devices.values() if d.device_type == device_type]
+        with self._lock:
+            return [d for d in self._devices.values() if d.device_type == device_type]
 
     def update_device(self, device_id: str, **kwargs) -> Optional[Device]:
         device = self._devices.get(device_id)
@@ -818,13 +828,16 @@ class DeviceManager:
         return device
 
     def clear(self):
-        self._devices.clear()
+        with self._lock:
+            self._devices.clear()
 
     def count(self) -> int:
         return len(self._devices)
 
     def randomize_all_metrics(self):
-        for device in self._devices.values():
+        with self._lock:
+            devs = list(self._devices.values())
+        for device in devs:
             device.randomize_metrics()
 
     def bulk_add(self, device_type: DeviceType, vendor: Vendor,
@@ -851,10 +864,13 @@ class DeviceManager:
         return devices
 
     def to_list(self) -> List[dict]:
-        return [d.to_dict() for d in self._devices.values()]
+        with self._lock:
+            devs = list(self._devices.values())
+        return [d.to_dict() for d in devs]
 
     def load_list(self, data: List[dict]):
-        self._devices.clear()
-        for item in data:
-            device = Device.from_dict(item)
-            self._devices[device.id] = device
+        with self._lock:
+            self._devices.clear()
+            for item in data:
+                device = Device.from_dict(item)
+                self._devices[device.id] = device

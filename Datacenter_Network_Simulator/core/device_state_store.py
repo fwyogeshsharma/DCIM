@@ -1293,9 +1293,9 @@ class DeviceStateStore:
         """
         broke = []
         topo = self._topology
-        if topo is None or not topo.graph.has_node(device.id):
+        if topo is None:
             return broke
-        for peer_id, edges in list(topo.graph.adj[device.id].items()):
+        for peer_id, edges in topo.get_adjacency(device.id):
             prod = [e for e in edges.values()
                     if e.get("layer", "production") == "production"]
             if prod and not any(e.get("broken") for e in prod):
