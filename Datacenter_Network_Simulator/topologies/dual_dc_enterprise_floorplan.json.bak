@@ -397,34 +397,6 @@
         ],
         "racks_per_row": 2,
         "aisles": []
-      },
-      "DC1/Network Room": {
-        "datacenter": "DC1",
-        "room": "Network Room",
-        "class": "white_space",
-        "containment": "none",
-        "width_m": 2.4,
-        "depth_m": 5.4,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
-        "aisles": []
-      },
-      "DC2/Network Room": {
-        "datacenter": "DC2",
-        "room": "Network Room",
-        "class": "white_space",
-        "containment": "none",
-        "width_m": 2.4,
-        "depth_m": 5.4,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
-        "aisles": []
       }
     }
   },

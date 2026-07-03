@@ -159,7 +159,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -341,7 +341,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -583,7 +583,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -825,7 +825,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -1037,7 +1037,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -1249,7 +1249,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -32453,7 +32453,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -32635,7 +32635,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -32877,7 +32877,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -33119,7 +33119,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -33331,7 +33331,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -33543,7 +33543,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -74588,7 +74588,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC1-NET-R1-1-A",
+        "name": "PDU-DC1-SHA-R1-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -74630,7 +74630,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -74665,7 +74665,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC1-NET-R1-1-B",
+        "name": "PDU-DC1-SHA-R1-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -74707,7 +74707,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -74742,7 +74742,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC1-NET-R1-2-A",
+        "name": "PDU-DC1-SHA-R1-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -74784,7 +74784,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -74819,7 +74819,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC1-NET-R1-2-B",
+        "name": "PDU-DC1-SHA-R1-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -74861,7 +74861,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -74896,7 +74896,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC1-NET-R1-3-A",
+        "name": "PDU-DC1-SHA-R1-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -74938,7 +74938,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -74973,7 +74973,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC1-NET-R1-3-B",
+        "name": "PDU-DC1-SHA-R1-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75015,7 +75015,7 @@
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -77376,7 +77376,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC2-NET-R1-1-A",
+        "name": "PDU-DC2-SHA-R1-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77418,7 +77418,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -77453,7 +77453,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC2-NET-R1-1-B",
+        "name": "PDU-DC2-SHA-R1-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77495,7 +77495,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 1,
@@ -77530,7 +77530,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC2-NET-R1-2-A",
+        "name": "PDU-DC2-SHA-R1-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77572,7 +77572,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -77607,7 +77607,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC2-NET-R1-2-B",
+        "name": "PDU-DC2-SHA-R1-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77649,7 +77649,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 2,
@@ -77684,7 +77684,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC2-NET-R1-3-A",
+        "name": "PDU-DC2-SHA-R1-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77726,7 +77726,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -77761,7 +77761,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDU-DC2-NET-R1-3-B",
+        "name": "PDU-DC2-SHA-R1-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77803,7 +77803,7 @@
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
-        "room": "Network Room",
+        "room": "Server Hall A",
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
@@ -79539,594 +79539,6 @@
         "rack_facing": "S",
         "cold_aisle": "CA2",
         "hot_aisle": "HA1"
-      }
-    },
-    {
-      "id": "56fe0eac",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "RPP-NET-DC1-A",
-        "device_type": "rpp",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC Galaxy RPP 80A",
-        "metrics_enabled": true,
-        "id": "56fe0eac",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 551806057,
-            "out_octets": 699519712,
-            "in_errors": 32,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "94:5a:ff:7e:9a:bb",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 14,
-        "memory_total": 34359738368,
-        "memory_used": 24822060476,
-        "disk_total": 268435456000,
-        "disk_used": 97400338062,
-        "sys_uptime": 8216155,
-        "cpu_temp": 52.5,
-        "inlet_temp": 22.4,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 4.2
-      }
-    },
-    {
-      "id": "dba7d8bc",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "RPP-NET-DC1-B",
-        "device_type": "rpp",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC Galaxy RPP 80A",
-        "metrics_enabled": true,
-        "id": "dba7d8bc",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 105297531,
-            "out_octets": 94725116,
-            "in_errors": 10,
-            "out_errors": 27,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "bb:93:5c:a0:c3:f0",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 2,
-        "rack_unit": 0,
-        "cpu_usage": 89,
-        "memory_total": 17179869184,
-        "memory_used": 12947055113,
-        "disk_total": 1073741824000,
-        "disk_used": 427715794603,
-        "sys_uptime": 3300641,
-        "cpu_temp": 54.2,
-        "inlet_temp": 27.8,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 4.2
-      }
-    },
-    {
-      "id": "263fce5b",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "RPP-NET-DC2-A",
-        "device_type": "rpp",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC Galaxy RPP 80A",
-        "metrics_enabled": true,
-        "id": "263fce5b",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 954254186,
-            "out_octets": 98847629,
-            "in_errors": 82,
-            "out_errors": 34,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "21:1a:9f:b7:45:f1",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 16,
-        "memory_total": 8589934592,
-        "memory_used": 6894391967,
-        "disk_total": 536870912000,
-        "disk_used": 209336820943,
-        "sys_uptime": 4366267,
-        "cpu_temp": 55.3,
-        "inlet_temp": 29.4,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 4.2
-      }
-    },
-    {
-      "id": "14dc2836",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "RPP-NET-DC2-B",
-        "device_type": "rpp",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "APC Galaxy RPP 80A",
-        "metrics_enabled": true,
-        "id": "14dc2836",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 761032495,
-            "out_octets": 733803114,
-            "in_errors": 32,
-            "out_errors": 79,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "a4:4f:c2:0e:ab:37",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 2,
-        "rack_unit": 0,
-        "cpu_usage": 57,
-        "memory_total": 8589934592,
-        "memory_used": 7015239267,
-        "disk_total": 1073741824000,
-        "disk_used": 538899536531,
-        "sys_uptime": 8605747,
-        "cpu_temp": 60.6,
-        "inlet_temp": 22.3,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 4.2
-      }
-    },
-    {
-      "id": "1589ae3e",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "EV2-DC1-NET-A",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.229",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "1589ae3e",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 141826932,
-            "out_octets": 685595481,
-            "in_errors": 64,
-            "out_errors": 36,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "a5:62:3b:54:3f:de",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.210",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 42,
-        "memory_total": 34359738368,
-        "memory_used": 17745809697,
-        "disk_total": 1073741824000,
-        "disk_used": 691206596183,
-        "sys_uptime": 2844839,
-        "cpu_temp": 52.6,
-        "inlet_temp": 32.7,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_panel": "a528c3ab",
-        "floor_x": 0.3,
-        "floor_y": 4.2
-      }
-    },
-    {
-      "id": "45c9bdd3",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "EV2-DC1-NET-B",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.229",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "45c9bdd3",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 141826932,
-            "out_octets": 685595481,
-            "in_errors": 64,
-            "out_errors": 36,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "a5:62:3b:54:3f:de",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.0.211",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 2,
-        "rack_unit": 0,
-        "cpu_usage": 42,
-        "memory_total": 34359738368,
-        "memory_used": 17745809697,
-        "disk_total": 1073741824000,
-        "disk_used": 691206596183,
-        "sys_uptime": 2844839,
-        "cpu_temp": 52.6,
-        "inlet_temp": 32.7,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_panel": "a528c3ab",
-        "floor_x": 0.9,
-        "floor_y": 4.2
-      }
-    },
-    {
-      "id": "3438b97d",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "EV2-DC2-NET-A",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.171",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "3438b97d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 214927367,
-            "out_octets": 782737154,
-            "in_errors": 60,
-            "out_errors": 60,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "97:5c:50:d2:e2:20",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.154",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 66,
-        "memory_total": 17179869184,
-        "memory_used": 5530581439,
-        "disk_total": 536870912000,
-        "disk_used": 349777403429,
-        "sys_uptime": 9908996,
-        "cpu_temp": 45.7,
-        "inlet_temp": 33.4,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_panel": "b324209b",
-        "floor_x": 0.3,
-        "floor_y": 4.2
-      }
-    },
-    {
-      "id": "9ac4fbcb",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "device": {
-        "name": "EV2-DC2-NET-B",
-        "device_type": "energy_monitor",
-        "vendor": "Verdigris Technologies",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.171",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
-        "model_name": "Verdigris EV2-42",
-        "metrics_enabled": true,
-        "id": "9ac4fbcb",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 214927367,
-            "out_octets": 782737154,
-            "in_errors": 60,
-            "out_errors": 60,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "97:5c:50:d2:e2:20",
-            "connected_to_device": null,
-            "connected_to_iface": null
-          }
-        ],
-        "mgmt_ip": "192.168.4.155",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "power_source": "",
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Network Room",
-        "floor": "1",
-        "rack_row": 2,
-        "rack_num": 2,
-        "rack_unit": 0,
-        "cpu_usage": 66,
-        "memory_total": 17179869184,
-        "memory_used": 5530581439,
-        "disk_total": 536870912000,
-        "disk_used": 349777403429,
-        "sys_uptime": 9908996,
-        "cpu_temp": 45.7,
-        "inlet_temp": 33.4,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "monitored_panel": "b324209b",
-        "floor_x": 0.9,
-        "floor_y": 4.2
       }
     }
   ],
@@ -87797,11 +87209,25 @@
       "layer": "management"
     },
     {
+      "src": "a528c3ab",
+      "dst": "d58842de",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
       "src": "d58842de",
       "dst": "ffe07bcf",
       "src_iface": 0,
       "dst_iface": 21,
       "layer": "management"
+    },
+    {
+      "src": "5360689f",
+      "dst": "baa80dd4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
     },
     {
       "src": "baa80dd4",
@@ -87811,11 +87237,25 @@
       "layer": "management"
     },
     {
+      "src": "a528c3ab",
+      "dst": "c6a7ee39",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
       "src": "c6a7ee39",
       "dst": "46aac8d9",
       "src_iface": 0,
       "dst_iface": 22,
       "layer": "management"
+    },
+    {
+      "src": "5360689f",
+      "dst": "508ebad7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
     },
     {
       "src": "508ebad7",
@@ -87825,11 +87265,25 @@
       "layer": "management"
     },
     {
+      "src": "a528c3ab",
+      "dst": "95a76d79",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
       "src": "95a76d79",
       "dst": "54c037ab",
       "src_iface": 0,
       "dst_iface": 21,
       "layer": "management"
+    },
+    {
+      "src": "5360689f",
+      "dst": "c17af08a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
     },
     {
       "src": "c17af08a",
@@ -88259,11 +87713,25 @@
       "layer": "management"
     },
     {
+      "src": "b324209b",
+      "dst": "ce3714af",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
       "src": "ce3714af",
       "dst": "2067c82f",
       "src_iface": 0,
       "dst_iface": 21,
       "layer": "management"
+    },
+    {
+      "src": "72c0c547",
+      "dst": "7d7ddbed",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
     },
     {
       "src": "7d7ddbed",
@@ -88273,11 +87741,25 @@
       "layer": "management"
     },
     {
+      "src": "b324209b",
+      "dst": "7bc67e1f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
       "src": "7bc67e1f",
       "dst": "e14eb712",
       "src_iface": 0,
       "dst_iface": 22,
       "layer": "management"
+    },
+    {
+      "src": "72c0c547",
+      "dst": "e1b294de",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
     },
     {
       "src": "e1b294de",
@@ -88287,11 +87769,25 @@
       "layer": "management"
     },
     {
+      "src": "b324209b",
+      "dst": "d9d80b8d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
+    },
+    {
       "src": "d9d80b8d",
       "dst": "09e66792",
       "src_iface": 0,
       "dst_iface": 21,
       "layer": "management"
+    },
+    {
+      "src": "72c0c547",
+      "dst": "e14eb70d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "power"
     },
     {
       "src": "e14eb70d",
@@ -95439,146 +94935,6 @@
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "cooling"
-    },
-    {
-      "src": "0d1f9d35",
-      "dst": "56fe0eac",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b594e90b",
-      "dst": "dba7d8bc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "56fe0eac",
-      "dst": "95a76d79",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "56fe0eac",
-      "dst": "c6a7ee39",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "56fe0eac",
-      "dst": "d58842de",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "dba7d8bc",
-      "dst": "508ebad7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "dba7d8bc",
-      "dst": "c17af08a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "dba7d8bc",
-      "dst": "baa80dd4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "f336f4af",
-      "dst": "263fce5b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "1a03cc9e",
-      "dst": "14dc2836",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "263fce5b",
-      "dst": "d9d80b8d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "263fce5b",
-      "dst": "ce3714af",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "263fce5b",
-      "dst": "7bc67e1f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "14dc2836",
-      "dst": "e1b294de",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "14dc2836",
-      "dst": "7d7ddbed",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "14dc2836",
-      "dst": "e14eb70d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "56fe0eac",
-      "dst": "1589ae3e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "dba7d8bc",
-      "dst": "45c9bdd3",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "263fce5b",
-      "dst": "3438b97d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "14dc2836",
-      "dst": "9ac4fbcb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     }
   ],
   "floorplan": {
@@ -95972,34 +95328,6 @@
           1
         ],
         "racks_per_row": 2,
-        "aisles": []
-      },
-      "DC1/Network Room": {
-        "datacenter": "DC1",
-        "room": "Network Room",
-        "class": "white_space",
-        "containment": "none",
-        "width_m": 2.4,
-        "depth_m": 5.4,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
-        "aisles": []
-      },
-      "DC2/Network Room": {
-        "datacenter": "DC2",
-        "room": "Network Room",
-        "class": "white_space",
-        "containment": "none",
-        "width_m": 2.4,
-        "depth_m": 5.4,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
         "aisles": []
       }
     }
