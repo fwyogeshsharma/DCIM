@@ -1128,8 +1128,13 @@ class FleetLifecycleEngine:
         if mgmt and mgmt != device.ip_address:
             self._bind_ip(mgmt)
         self._gen_datasets(device)
+        # gNMI targets are the network fabric only (switches + routers), the same
+        # set api/routers/gnmi.py starts with. Gating here keeps servers/CRAHs/
+        # PDUs out of the gNMI target list (they'd otherwise register now that the
+        # dataset key is fixed to the mgmt IP).
         g = getattr(self.s, "gnmi", None)
-        if g is not None and getattr(g, "_running", False):
+        if (device.device_type in self._GNMI_TYPES and g is not None
+                and getattr(g, "_running", False)):
             try: g.add_device(device)
             except Exception as e: self._log(f"[Fleet] gNMI commission {device.name}: {e}")
         r = getattr(self.s, "redfish", None)
@@ -1155,6 +1160,8 @@ class FleetLifecycleEngine:
     _BACNET_PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
                            DeviceType.COOLING_TOWER, DeviceType.VALVE,
                            DeviceType.CRAH, DeviceType.CDU}
+    # Network fabric exposed over gNMI (mirror api/routers/gnmi.py's start filter).
+    _GNMI_TYPES = {DeviceType.SWITCH, DeviceType.ROUTER}
 
     def _decommission_net(self, device: Device) -> None:
         """Undo _commission for a device about to be removed."""
