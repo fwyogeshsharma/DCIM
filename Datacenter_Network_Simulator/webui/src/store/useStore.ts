@@ -158,8 +158,11 @@ interface Store {
   fetchHealth:  () => Promise<void>
   pollJob:      (id: string) => Promise<JobStatus>
 
-  startPolling: () => void
-  connectSSE:   () => void
+  // Both return a teardown fn — the caller MUST call it on unmount / re-auth,
+  // else intervals and EventSource streams stack up over a long session and
+  // eventually starve the renderer (blank tab).
+  startPolling: () => () => void
+  connectSSE:   () => () => void
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -400,7 +403,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchAdapters()
     s.fetchTraps()
     // Status-only refresh every 4 seconds — graph + devices excluded (driven by SSE sync events)
-    setInterval(() => {
+    const iv = setInterval(() => {
       const st = get()
       st.fetchSnmp()
       st.fetchGnmi()
@@ -412,15 +415,21 @@ export const useStore = create<Store>((set, get) => ({
       st.fetchTraps()
       st.fetchRules()
     }, 4000)
+    return () => clearInterval(iv)
   },
 
   connectSSE: () => {
+    // Track the live stream + any pending reconnect so teardown can cancel both.
+    let es: EventSource | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
     const connect = () => {
+      if (stopped) return
       const token = getToken()
-      if (!token) { setTimeout(connect, 3000); return }  // not logged in yet
+      if (!token) { reconnectTimer = setTimeout(connect, 3000); return }  // not logged in yet
       const sseUrl = (import.meta.env.DEV ? 'http://localhost:8000' : '')
         + '/api/events?token=' + encodeURIComponent(token)
-      const es = new EventSource(sseUrl)
+      es = new EventSource(sseUrl)
       es.onmessage = (e) => {
         try {
           const ev = JSON.parse(e.data) as Record<string, unknown>
@@ -453,10 +462,17 @@ export const useStore = create<Store>((set, get) => ({
         } catch { /* ignore parse errors */ }
       }
       es.onerror = () => {
-        es.close()
-        setTimeout(connect, 3000)
+        es?.close()
+        es = null
+        if (!stopped) reconnectTimer = setTimeout(connect, 3000)
       }
     }
     connect()
+    return () => {
+      stopped = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      es?.close()
+      es = null
+    }
   },
 }))

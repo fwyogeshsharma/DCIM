@@ -28,11 +28,14 @@ export default function App() {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired)
   }, [])
 
-  // Start polling + SSE only once authenticated.
+  // Start polling + SSE only once authenticated. Tear both down when auth flips
+  // away (e.g. token expiry → login) so a re-login doesn't stack a second
+  // interval + second SSE stream on top of the old ones.
   useEffect(() => {
     if (auth !== 'in') return
-    startPolling()
-    connectSSE()
+    const stopPolling = startPolling()
+    const stopSSE = connectSSE()
+    return () => { stopPolling(); stopSSE() }
   }, [auth])
 
   if (auth === 'checking') {
