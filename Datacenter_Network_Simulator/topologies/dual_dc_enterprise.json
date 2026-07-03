@@ -79544,8 +79544,8 @@
     {
       "id": "56fe0eac",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 390,
+        "y": 2440
       },
       "device": {
         "name": "RPP-NET-DC1-A",
@@ -79617,8 +79617,8 @@
     {
       "id": "dba7d8bc",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 550,
+        "y": 2440
       },
       "device": {
         "name": "RPP-NET-DC1-B",
@@ -79690,8 +79690,8 @@
     {
       "id": "263fce5b",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 3420,
+        "y": 2440
       },
       "device": {
         "name": "RPP-NET-DC2-A",
@@ -79763,8 +79763,8 @@
     {
       "id": "14dc2836",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 3580,
+        "y": 2440
       },
       "device": {
         "name": "RPP-NET-DC2-B",
@@ -79836,8 +79836,8 @@
     {
       "id": "1589ae3e",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 470,
+        "y": 2440
       },
       "device": {
         "name": "EV2-DC1-NET-A",
@@ -79910,8 +79910,8 @@
     {
       "id": "45c9bdd3",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 630,
+        "y": 2440
       },
       "device": {
         "name": "EV2-DC1-NET-B",
@@ -79984,8 +79984,8 @@
     {
       "id": "3438b97d",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 3500,
+        "y": 2440
       },
       "device": {
         "name": "EV2-DC2-NET-A",
@@ -80058,8 +80058,8 @@
     {
       "id": "9ac4fbcb",
       "position": {
-        "x": 0,
-        "y": 0
+        "x": 3660,
+        "y": 2440
       },
       "device": {
         "name": "EV2-DC2-NET-B",
