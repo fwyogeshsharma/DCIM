@@ -260,6 +260,11 @@ def bacnet_start(cfg: BACnetConfig):
     s.notify_ui("console_log",
                 f"[BACnet] Started — {len(device_ips)} EV2 device(s), "
                 f"{len(plant_devices)} chiller-plant device(s).", "success")
+    s.persist_simulator("bacnet", True, {
+        "base_instance": cfg.base_instance,
+        "frequency_hz": cfg.frequency_hz,
+        "port": cfg.port,
+    })
     s.notify_ui("sync_bacnet")
     return OkResponse(message="BACnet simulator started")
 
@@ -277,6 +282,7 @@ def bacnet_stop():
 
     s.bacnet.stop()
     s.stop_ticker_if_idle()
+    s.persist_simulator("bacnet", False)
     s.notify_ui("console_log", "[BACnet] Stopped.", "info")
     s.notify_ui("sync_bacnet")
     return OkResponse(message="BACnet simulator stopped")

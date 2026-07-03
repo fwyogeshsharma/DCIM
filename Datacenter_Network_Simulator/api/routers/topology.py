@@ -70,6 +70,7 @@ async def upload_topology(file: UploadFile = File(...)):
             if s.ip_manager:
                 s.ip_manager.reserve(device.ip_address)
         s.current_topology_path = file.filename
+        s.persist_topology()
         s.notify_ui("rebuild_topology_scene")
         devices = s.topology.get_all_devices()
         return TopologyInfoResponse(
@@ -190,6 +191,7 @@ def clear_topology():
     if s.ip_manager:
         s.ip_manager.reset()
     s.current_topology_path = ""
+    s.clear_persisted_topology()
     s.notify_ui("rebuild_topology_scene")
     return OkResponse(message="Topology cleared")
 
@@ -213,6 +215,7 @@ def break_link(req: LinkActionRequest):
             args=(s, req.src_id, req.dst_id),
             daemon=True,
         ).start()
+        s.persist_topology()
         return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] broken — LINK_DOWN traps sent")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -237,6 +240,7 @@ def restore_link(req: LinkActionRequest):
             args=(s, req.src_id, req.dst_id),
             daemon=True,
         ).start()
+        s.persist_topology()
         return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] restored — LINK_UP traps sent")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -252,6 +256,7 @@ def create_link(req: CreateLinkRequest):
     if not ok:
         raise HTTPException(status_code=409, detail="Link already exists or invalid devices")
     s.notify_ui("link_changed", req.src_id, req.dst_id, False)
+    s.persist_topology()
     return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] created")
 
 

@@ -591,6 +591,9 @@ class MainWindow(QMainWindow):
             self.state_store.set_tick_callback(lambda: api_state.notify_ui("sync_devices"))
             self.state_store.set_link_callback(
                 lambda src, dst, broken: api_state.notify_ui("link_changed", src, dst, broken))
+            # Replay persisted state from the previous run. Guarded: only fills
+            # in when nothing is loaded yet, so it never clobbers a live session.
+            api_state.restore()
         except Exception:
             pass  # API integration is non-critical — UI must not fail if it errors
 

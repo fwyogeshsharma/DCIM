@@ -32,6 +32,14 @@ async def event_stream():
     async def generate():
         try:
             yield f"data: {json.dumps({'type': 'connected'})}\n\n"
+            # Replay recent console logs so a reconnecting / freshly-loaded web
+            # client repopulates its console with history that survived a restart
+            # (the ring is restored from disk on boot).
+            try:
+                for entry in s.recent_logs():
+                    yield f"data: {json.dumps({'type': 'log', **entry})}\n\n"
+            except Exception:
+                pass
             idle_loops = 0
             while True:
                 batch = []

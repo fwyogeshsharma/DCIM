@@ -35,6 +35,10 @@ def redfish_status():
             "port": getattr(rf, "_port", 8443),
             "active_devices": 0,
             "sessions": 0,
+            # True when Redfish was running before a restart — its password
+            # isn't persisted, so the UI should prompt the operator to re-enter
+            # it and start Redfish again.
+            "needs_password": s.redfish_needs_password,
         }
     return {
         "running": True,
@@ -42,6 +46,7 @@ def redfish_status():
         "active_devices": rf.device_count(),
         "sessions": len(rf.get_sessions()),
         "devices": rf.get_device_summary(),
+        "needs_password": False,
     }
 
 
@@ -90,6 +95,10 @@ def redfish_start(cfg: RedfishConfig):
     if not ok:
         raise HTTPException(status_code=500, detail="Redfish failed to bind any BMC")
 
+    # Password is deliberately NOT persisted; a successful start clears the
+    # "needs password re-entry" flag raised by restore.
+    s.redfish_needs_password = False
+    s.persist_simulator("redfish", True, {"port": cfg.port, "username": cfg.username})
     s.notify_ui("console_log",
                 f"[Redfish] Started — {len(bound_servers)} BMC(s) on port {cfg.port}",
                 "success")
@@ -106,6 +115,8 @@ def redfish_stop():
         return OkResponse(message="Redfish was not running")
     s.redfish.stop()
     s.stop_ticker_if_idle()
+    s.redfish_needs_password = False
+    s.persist_simulator("redfish", False)
     s.notify_ui("console_log", "[Redfish] Stopped.", "info")
     s.notify_ui("sync_redfish")
     return OkResponse(message="Redfish stopped")

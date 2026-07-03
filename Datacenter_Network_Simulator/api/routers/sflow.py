@@ -75,6 +75,12 @@ def sflow_start(cfg: SFlowConfig):
         sample_rate=cfg.sample_rate,
     )
     s.notify_ui("console_log", f"[sFlow] Started — {len(device_ips)} agent(s) → {cfg.collector_ip}:{cfg.collector_port}", "success")
+    s.persist_simulator("sflow", True, {
+        "collector_ip": cfg.collector_ip,
+        "collector_port": cfg.collector_port,
+        "interval": cfg.interval,
+        "sample_rate": cfg.sample_rate,
+    })
     s.notify_ui("sync_sflow")
     return OkResponse(message="sFlow agent started")
 
@@ -88,6 +94,7 @@ def sflow_stop():
         return OkResponse(message="sFlow was not running")
     s.sflow.stop()
     s.stop_ticker_if_idle()
+    s.persist_simulator("sflow", False)
     s.notify_ui("console_log", "[sFlow] Stopped.", "info")
     s.notify_ui("sync_sflow")
     return OkResponse(message="sFlow agent stopped")

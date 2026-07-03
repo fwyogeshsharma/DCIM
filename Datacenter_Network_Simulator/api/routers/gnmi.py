@@ -157,6 +157,7 @@ def start_gnmi_simulator(req: GnmiStartRequest = None):
             s.start_ticker_if_needed()
             s.notify_ui("sync_gnmi")
             s.notify_ui("sync_binding")
+            s.persist_simulator("gnmi", True, {"port": gnmi_port})
             s.update_job(
                 job_id,
                 status="completed",
@@ -182,6 +183,7 @@ def stop_gnmi_simulator():
         return OkResponse(message="gNMI simulator was not running")
     s.gnmi.stop()
     s.stop_ticker_if_idle()
+    s.persist_simulator("gnmi", False, {"proxy_running": False})
     s.notify_ui("sync_gnmi")
     s.notify_ui("sync_binding")
     return OkResponse(message="gNMI simulator stopped")
@@ -266,6 +268,7 @@ def start_gnmi_proxy(req: GnmiStartRequest = None):
     ok = s.gnmi.start_proxy(port=proxy_port)
     if not ok:
         raise HTTPException(status_code=500, detail="Failed to start gNMI proxy")
+    s.persist_simulator("gnmi", True, {"proxy_running": True, "proxy_port": proxy_port})
     s.notify_ui("sync_gnmi")
     return OkResponse(message=f"gNMI proxy started on port {proxy_port}")
 
@@ -277,6 +280,7 @@ def stop_gnmi_proxy():
     if s.gnmi is None:
         raise HTTPException(status_code=503, detail="gNMI not initialized")
     s.gnmi.stop_proxy()
+    s.persist_simulator("gnmi", s.gnmi.is_running(), {"proxy_running": False})
     s.notify_ui("sync_gnmi")
     return OkResponse(message="gNMI proxy stopped")
 

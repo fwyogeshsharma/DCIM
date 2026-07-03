@@ -125,4 +125,6 @@ def clear_trap_history():
     s = _state()
     with s._state_lock:
         s.trap_history.clear()
+    if s.session_store:
+        s.session_store.clear_traps()
     return OkResponse(message="Trap history cleared")

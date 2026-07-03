@@ -247,6 +247,10 @@ def _run_headless():
     state_store.set_link_callback(
         lambda src, dst, broken: api_state.notify_ui("link_changed", src, dst, broken))
 
+    # Replay any persisted state (topology, …) from the previous run before the
+    # API starts serving, so web clients see restored state immediately.
+    api_state.restore()
+
     port = 8000
     for i, arg in enumerate(sys.argv):
         if arg == "--port" and i + 1 < len(sys.argv):
@@ -277,6 +281,14 @@ def _run_headless():
     log.info("Press Ctrl+C to stop.")
     rc = _app.exec()
     log.info("Shutting downâ€¦ releasing port %d.", port)
+    # Final runtime snapshot so energy meters persist right up to shutdown
+    # (GCP stop → SIGTERM → quit lands here with ~90s of grace).
+    try:
+        api_state.flush_runtime()
+        if api_state.session_store:
+            api_state.session_store.close()
+    except Exception:
+        pass
     sys.exit(rc)
 
 

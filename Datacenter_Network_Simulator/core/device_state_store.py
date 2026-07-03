@@ -64,6 +64,16 @@ _BGP_STATES = ("established", "idle", "active", "connect")
 # Module-level cache for snmprec_generator to read UPS/PDU states without a reference to DeviceStateStore.
 _ext_state_cache: Dict[str, dict] = {}
 
+# Cumulative "meter" fields that must survive a process restart. Real UPS/PDU
+# energy registers and generator run-hour counters are monotonic; resetting them
+# to zero on restart would show downstream as a huge negative delta. These are
+# snapshotted by AppState's runtime flush and re-seeded on startup.
+_MONOTONIC_METER_KEYS = (
+    "ups_energy_kwh", "ups_runtime_min",
+    "pdu_energy_kwh",
+    "gen_run_hours", "gen_runtime_min",
+)
+
 # Module-level cache of live chiller-plant BACnet telemetry (device name → {point: value}),
 # published each tick from the BACnet controller so snmprec_generator can patch the plant
 # SNMP OIDs with the SAME live values the BACnet plane serves.
@@ -351,6 +361,10 @@ class DeviceStateStore:
         # Simulated extended states per device (not stored on Device object)
         # device.name → {ups_status, bgp_sessions: [{peer, state}]}
         self._ext_states: Dict[str, dict] = {}
+        # Saved monotonic meter values awaiting re-seed on each device's first
+        # tick after a restart (device name → {meter_key: value}). Populated by
+        # seed_energy(); drained in _step_device.
+        self._restored_ext: Dict[str, dict] = {}
 
     # ------------------------------------------------------------------ #
     #  Configuration                                                       #
@@ -375,6 +389,23 @@ class DeviceStateStore:
         The rule engine evaluates the fact and fires appropriate traps.
         """
         self._rule_engine_cb = cb
+
+    # ── Persistence: monotonic energy/runtime meters ───────────────────────
+
+    def export_energy(self) -> Dict[str, dict]:
+        """Snapshot each device's cumulative meter values for persistence.
+        Returns {device_name: {meter_key: value}} for devices that have any."""
+        out: Dict[str, dict] = {}
+        for name, st in self._ext_states.items():
+            meters = {k: st[k] for k in _MONOTONIC_METER_KEYS if k in st}
+            if meters:
+                out[name] = meters
+        return out
+
+    def seed_energy(self, saved: Dict[str, dict]):
+        """Queue saved meter values to overlay on each device's first tick after
+        a restart (see _step_device). Safe to call before the ticker starts."""
+        self._restored_ext = dict(saved or {})
 
     # ── Tick runtime controls ──────────────────────────────────────────────
 
@@ -2032,6 +2063,14 @@ class DeviceStateStore:
             "cpu_sustained": False,
             "mem_sustained": False,
         })
+
+        # Persistence: overlay saved monotonic meters on this device's first
+        # tick after a restart, so energy/run-hour counters continue from their
+        # pre-restart value instead of resetting to zero. pop() = apply once.
+        if self._restored_ext:
+            _saved = self._restored_ext.pop(device.name, None)
+            if _saved:
+                ext.update(_saved)
 
         mf = self.metric_flags
         is_ups = device.device_type == DeviceType.UPS

@@ -58,6 +58,7 @@ def fleet_config(body: FleetConfigBody):
     picked up after the current wait completes)."""
     eng = _engine()
     _apply_config(eng, body)
+    _state().persist_fleet()
     return OkResponse(message="Fleet config updated")
 
 
@@ -71,6 +72,7 @@ def fleet_start(body: FleetConfigBody | None = None):
         eng.start()
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    _state().persist_fleet()
     return OkResponse(message=f"Fleet lifecycle started ({eng.cfg.minutes_per_day} min/day)")
 
 
@@ -78,6 +80,7 @@ def fleet_start(body: FleetConfigBody | None = None):
 def fleet_stop():
     """Stop the scheduler. The current fleet stays as-is (in-memory)."""
     _engine().stop()
+    _state().persist_fleet()
     return OkResponse(message="Fleet lifecycle stopped")
 
 

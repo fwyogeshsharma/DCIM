@@ -513,6 +513,7 @@ def add_device(req: AddDeviceRequest):
             s.ip_manager.reserve(req.ip_address)
         _invalidate_power(s)
         s.notify_ui("sync_devices")
+        s.persist_topology()
         return _device_to_info(device)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -552,6 +553,7 @@ def edit_device(device_id: str, req: EditDeviceRequest):
                 SNMPRecGenerator(s.snmp_datasets_dir).generate_device(device, s.topology)
             except Exception:
                 pass
+        s.persist_topology()
         return _device_to_info(device)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -575,6 +577,7 @@ def remove_device(device_id: str):
             s.ip_manager.release(ip)
         _invalidate_power(s)
         s.notify_ui("sync_devices")
+        s.persist_topology()
         return OkResponse(message=f"Device '{device.name}' removed")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

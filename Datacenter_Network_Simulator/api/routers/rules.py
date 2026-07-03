@@ -61,6 +61,7 @@ def set_autonomous_faults(body: AutonomousFaultsRequest):
     if s.state_store is None:
         raise HTTPException(status_code=503, detail="State store not initialized")
     s.state_store.autonomous_faults = bool(body.enabled)
+    s.persist_rules()
     s.notify_ui("sync_snmp")
     return OkResponse(message=f"Autonomous faults {'enabled' if body.enabled else 'disabled'}")
 
@@ -112,6 +113,7 @@ def enable_rule(rule_name: str):
     if s.rule_engine.get_rule(rule_name) is None:
         raise HTTPException(status_code=404, detail=f"Rule '{rule_name}' not found")
     s.rule_engine.enable_rule(rule_name, True)
+    s.persist_rules()
     s.notify_ui("sync_rules")
     return OkResponse(message=f"Rule '{rule_name}' enabled")
 
@@ -125,5 +127,6 @@ def disable_rule(rule_name: str):
     if s.rule_engine.get_rule(rule_name) is None:
         raise HTTPException(status_code=404, detail=f"Rule '{rule_name}' not found")
     s.rule_engine.enable_rule(rule_name, False)
+    s.persist_rules()
     s.notify_ui("sync_rules")
     return OkResponse(message=f"Rule '{rule_name}' disabled")

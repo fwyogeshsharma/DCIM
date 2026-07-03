@@ -83,6 +83,8 @@ def apply_tick_settings(body: TickUpdate):
             if v.get("lock") is not None:
                 lim["lock"] = str(v["lock"])
 
+    _state().persist_tick()
+
     return {
         "ok":      True,
         "running": store.is_running(),

@@ -132,6 +132,37 @@ class FleetLifecycleEngine:
         self._stop.set()
         self._log("[Fleet] lifecycle stopped")
 
+    # ── persistence ────────────────────────────────────────────────────────────
+    # The churned devices themselves survive via topology persistence; what we
+    # snapshot here is the engine's own state: config, the sim-day counter, the
+    # name-suffix seq (so resumed churn never reuses a name), the scheduler
+    # on/off flag, and the recent-days history for the UI activity log. Internal
+    # placement caches (halls/row-labels/dc-bounds) are intentionally NOT saved —
+    # they re-derive from the restored topology on the next day, and only affect
+    # where FUTURE churn lands, never existing data.
+    def export_state(self) -> dict:
+        from dataclasses import asdict
+        return {
+            "cfg": asdict(self.cfg),
+            "day": self.day,
+            "enabled": self.enabled,
+            "seq": self._seq,
+            "history": [asdict(s) for s in self.history[-60:]],
+        }
+
+    def import_state(self, d: dict) -> None:
+        """Apply a saved snapshot. Does NOT start the scheduler — the caller
+        resumes it via start() so the background thread launches correctly."""
+        for k, v in (d.get("cfg") or {}).items():
+            if hasattr(self.cfg, k):
+                setattr(self.cfg, k, v)
+        self.day = int(d.get("day", 0))
+        self._seq = int(d.get("seq", 0))
+        try:
+            self.history = [DaySummary(**h) for h in d.get("history", [])]
+        except Exception:
+            self.history = []
+
     def _run(self) -> None:
         # Interruptible sleep so a stop/interval change takes effect promptly.
         while not self._stop.is_set():
@@ -182,6 +213,15 @@ class FleetLifecycleEngine:
                         self._log(f"[Fleet] snmp reload submit: {e}")
             self._log(f"[Fleet] day {self.day}: +{len(summ.added)} -{len(summ.removed)} "
                       f"(servers={summ.total_servers})")
+            # Churn mutated the topology and advanced the sim-day — persist both
+            # so a restart resumes the fleet at the right day with the right
+            # devices (covers manual advance and the auto-scheduler thread).
+            if self.s is not None:
+                try:
+                    self.s.persist_topology()
+                    self.s.persist_fleet()
+                except Exception as e:
+                    self._log(f"[Fleet] persist after day: {e}")
             return summ
 
     # ── churn counts (lumpy, net-positive) ───────────────────────────────────

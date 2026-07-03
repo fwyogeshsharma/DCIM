@@ -102,6 +102,31 @@ class AppState:
         self._snmp_reload_lock = threading.Lock()
         self._snmp_reloading = False
 
+        # Durable session store (SQLite). Snapshots state on change so a host
+        # restart (the GCP VM reboots daily at 04:30) doesn't wipe everything.
+        # Never fatal: if the store can't open, the app runs stateless.
+        try:
+            from core.persistence import SessionStore
+            self.session_store = SessionStore()
+        except Exception:  # pragma: no cover — defensive, store self-guards too
+            self.session_store = None
+        # Set once startup re-binding has finished (or was skipped). Phase 3
+        # simulator restore waits on this so sims that need bound IPs (SNMP,
+        # gNMI) don't start before the addresses exist on the adapter.
+        self._binding_restored = threading.Event()
+        # True when Redfish was running before a restart but couldn't be
+        # auto-started because its password is deliberately NOT persisted — the
+        # UI surfaces this to prompt the operator to re-enter it. Surfaced via
+        # GET /redfish/status.
+        self.redfish_needs_password: bool = False
+        # In-memory ring of recent console log lines. Fed by notify_ui (cheap,
+        # in-process), snapshotted to disk by the periodic flush, restored on
+        # boot and replayed to SSE clients on connect. A ring + blob snapshot —
+        # not a per-line table — because logs are high-volume and ephemeral;
+        # a synchronous DB write per log line would stall the hot path.
+        import collections as _collections
+        self._log_ring = _collections.deque(maxlen=2000)
+
     @classmethod
     def get(cls) -> "AppState":
         with cls._lock:
@@ -185,12 +210,496 @@ class AppState:
             self.trap_history.append(record)
             if len(self.trap_history) > self._trap_history_limit:
                 self.trap_history = self.trap_history[-self._trap_history_limit:]
+        if self.session_store:
+            self.session_store.append_trap(record, keep=self._trap_history_limit)
         self.notify_ui("sync_traps")
 
     def require_core(self):
         """Raise RuntimeError if core objects not yet registered."""
         if self.device_manager is None:
             raise RuntimeError("App state not initialized — start the simulator first")
+
+    # ── persistence: topology (Phase 1) ──────────────────────────────────────
+    # Topology is not only set by upload — device add/edit/delete, link
+    # break/restore/create and fleet churn all mutate the live graph. So we
+    # persist the SERIALIZED live topology (to_dict), not the uploaded file, and
+    # call this after any structural change. Restore replays it via from_dict.
+    def persist_topology(self):
+        """Snapshot the current live topology to the session store. No-op if
+        persistence is unavailable or no topology is loaded."""
+        if not self.session_store or self.topology is None:
+            return
+        try:
+            self.session_store.set_blob("topology", {
+                "path": self.current_topology_path,
+                "data": self.topology.to_dict(),
+            })
+        except Exception:
+            # Persistence failures must never break the mutating request.
+            import logging
+            logging.getLogger("persistence").exception("persist_topology failed")
+
+    def clear_persisted_topology(self):
+        """Drop the saved topology (called when the topology is cleared)."""
+        if self.session_store:
+            self.session_store.delete_blob("topology")
+
+    def restore(self):
+        """Replay persisted state into the freshly-started process. Called once
+        at startup AFTER core objects are registered. Each slice is best-effort
+        and isolated — a failure in one never blocks the others or startup."""
+        if not self.session_store:
+            return
+        import logging
+        _log = logging.getLogger("persistence")
+        try:
+            self._restore_topology(_log)
+        except Exception:
+            _log.exception("topology restore failed")
+        try:
+            self._restore_bindings(_log)
+        except Exception:
+            _log.exception("binding restore failed")
+            self._binding_restored.set()  # never leave Phase-3 waiters hung
+        # Runtime meters + rules + tick must be restored BEFORE simulators — the
+        # sim restore starts the metric ticker, and energy re-seed has to be in
+        # place before the first tick runs.
+        try:
+            self._restore_runtime(_log)
+        except Exception:
+            _log.exception("runtime restore failed")
+        try:
+            self._restore_rules(_log)
+        except Exception:
+            _log.exception("rules restore failed")
+        try:
+            self._restore_tick(_log)
+        except Exception:
+            _log.exception("tick restore failed")
+        try:
+            self._restore_fleet(_log)
+        except Exception:
+            _log.exception("fleet restore failed")
+        try:
+            self._restore_traps(_log)
+        except Exception:
+            _log.exception("traps restore failed")
+        try:
+            self._restore_console(_log)
+        except Exception:
+            _log.exception("console restore failed")
+        try:
+            self._restore_simulators(_log)
+        except Exception:
+            _log.exception("simulator restore failed")
+        # Periodic snapshot of fast-changing runtime state (energy meters).
+        self._start_runtime_flusher()
+
+    def _restore_topology(self, _log):
+        """Rebuild the in-memory topology from the saved snapshot. Mirrors the
+        /topology/upload code path. Skips if core isn't ready or a topology is
+        already loaded (never clobber live state)."""
+        if self.topology is None or self.device_manager is None:
+            return
+        if self.topology.node_count() > 0:
+            return  # something already loaded a topology — leave it
+        blob = self.session_store.get_blob("topology")
+        if not blob:
+            return
+        data = blob.get("data")
+        if not data:
+            return
+        self.device_manager.clear()
+        if self.ip_manager:
+            self.ip_manager.reset()
+        self.topology.from_dict(data)
+        for device in self.topology.get_all_devices():
+            self.device_manager.add_device(device)
+            if self.ip_manager:
+                self.ip_manager.reserve(device.ip_address)
+        self.current_topology_path = blob.get("path", "") or ""
+        self.notify_ui("rebuild_topology_scene")
+        _log.info("restored topology — %d device(s), %d link(s)",
+                  self.topology.node_count(), self.topology.edge_count())
+
+    # ── persistence: bindings (Phase 2) ──────────────────────────────────────
+    # Host IP aliases (ip addr add / AddIPAddress) are kernel state — a reboot
+    # wipes them. We persist the adapter, mask and the exact bound-IP set, then
+    # re-apply them on startup (the boot-time network-config pattern). nte
+    # contexts are NOT persisted: they're handles into the running kernel that
+    # a fresh add_ips_fast() regenerates.
+    def persist_binding(self):
+        """Snapshot binding config + current bound-IP set."""
+        if not self.session_store:
+            return
+        try:
+            self.session_store.set_blob("binding", {
+                "adapter": self.selected_adapter,
+                "mask": self.subnet_mask,
+                "bound_ips": list(self.bound_ips),
+                "gnmi_bound_ips": list(self.gnmi_bound_ips),
+                "was_bound": bool(self.bound_ips or self.gnmi_bound_ips),
+            })
+        except Exception:
+            import logging
+            logging.getLogger("persistence").exception("persist_binding failed")
+
+    def _restore_bindings(self, _log):
+        """Restore adapter/mask always; re-bind the saved IP set in the
+        background (needs root/CAP_NET_ADMIN). Sets self._binding_restored when
+        binding is done or determined unnecessary/impossible."""
+        blob = self.session_store.get_blob("binding")
+        if not blob:
+            self._binding_restored.set()
+            return
+        # Config first — even if we can't re-bind, a later manual bind reuses it.
+        self.selected_adapter = blob.get("adapter", "") or ""
+        self.subnet_mask = blob.get("mask", self.subnet_mask) or self.subnet_mask
+
+        ips = blob.get("bound_ips") or []
+        if not (blob.get("was_bound") and ips and self.selected_adapter):
+            self._binding_restored.set()
+            return
+
+        from core.ip_binder import is_admin
+        if not is_admin():
+            _log.warning(
+                "saved bindings present (%d IP(s)) but process lacks root/"
+                "CAP_NET_ADMIN — skipping auto re-bind; bind manually from the UI",
+                len(ips))
+            self._binding_restored.set()
+            return
+
+        adapter, mask = self.selected_adapter, self.subnet_mask
+
+        def _rebind_worker():
+            try:
+                from core.ip_binder import add_ips_fast
+                _log.info("re-binding %d saved IP(s) to %s …", len(ips), adapter)
+                bound, contexts = add_ips_fast(
+                    adapter, ips, mask,
+                    log_cb=lambda m, l="info": self.notify_ui("log", m, l),
+                )
+                self.bound_ips = bound
+                self.nte_contexts = contexts
+                self.notify_ui("sync_binding")
+                _log.info("re-bound %d/%d IP(s)", len(bound), len(ips))
+            except Exception:
+                _log.exception("auto re-bind failed")
+            finally:
+                # Unblock Phase-3 sim restore regardless of outcome.
+                self._binding_restored.set()
+
+        # Background it: a large bind must not stall API/UI startup. Phase 3
+        # waits on self._binding_restored before starting IP-dependent sims.
+        threading.Thread(target=_rebind_worker, daemon=True,
+                         name="binding-restore").start()
+
+    # ── persistence: simulators (Phase 3) ────────────────────────────────────
+    # Each protocol simulator persists its on/off flag + the config it was
+    # started with. On restart we replay those starts (after bindings land) by
+    # calling the same router start functions a user's click would, so behaviour
+    # is identical. Redfish is the exception: its password is deliberately NOT
+    # stored, so a running Redfish is flagged for password re-entry, not
+    # auto-started.
+    def persist_simulator(self, name: str, running: bool, cfg: Optional[dict] = None):
+        """Update one simulator's persisted on/off + config (read-modify-write).
+        Also snapshots the generated dataset file lists, which the SNMP/gNMI
+        restart paths need and which are otherwise lost on restart."""
+        if not self.session_store:
+            return
+        try:
+            blob = self.session_store.get_blob("simulators") or {}
+            entry = blob.get(name) or {}
+            entry["running"] = running
+            if cfg:
+                entry.update(cfg)
+            blob[name] = entry
+            blob["generated_snmp_files"] = list(self.generated_snmp_files)
+            blob["generated_gnmi_files"] = list(self.generated_gnmi_files)
+            self.session_store.set_blob("simulators", blob)
+        except Exception:
+            import logging
+            logging.getLogger("persistence").exception("persist_simulator(%s) failed", name)
+
+    def _restore_simulators(self, _log):
+        """Replay simulator state. Backgrounded and gated on binding restore so
+        IP-dependent sims start only once their addresses exist."""
+        import os
+        blob = self.session_store.get_blob("simulators")
+        if not blob:
+            return
+        # Restore generated dataset lists (files persist on disk across reboot);
+        # drop any whose file is missing so the start guards behave correctly.
+        self.generated_snmp_files = [f for f in blob.get("generated_snmp_files", []) if os.path.exists(f)]
+        self.generated_gnmi_files = [f for f in blob.get("generated_gnmi_files", []) if os.path.exists(f)]
+
+        want = {n: (blob.get(n) or {}) for n in ("snmp", "gnmi", "sflow", "bacnet", "redfish")}
+        if not any(want[n].get("running") for n in want):
+            return  # nothing was running — nothing to restore
+
+        def _worker():
+            # SNMP/gNMI/Redfish need bound IPs; wait for the re-bind to finish.
+            self._binding_restored.wait(timeout=180)
+            self._restore_sims_ordered(want, _log)
+
+        threading.Thread(target=_worker, daemon=True, name="sim-restore").start()
+
+    def _restore_sims_ordered(self, want: dict, _log):
+        """Start previously-running sims in dependency order. Each is isolated —
+        one failure never blocks the rest."""
+        try:
+            from api.routers import snmp as snmp_r, gnmi as gnmi_r, sflow as sflow_r, bacnet as bacnet_r
+            from api.models.schemas import SnmpStartRequest, GnmiStartRequest
+            from api.routers.sflow import SFlowConfig
+            from api.routers.bacnet import BACnetConfig
+        except Exception:
+            _log.exception("simulator restore: router import failed")
+            return
+
+        c = want["snmp"]
+        if c.get("running"):
+            try:
+                _log.info("restoring SNMP simulator …")
+                r = snmp_r.start_snmp_simulator(
+                    SnmpStartRequest(port=c.get("port", 161), mgmt_port=c.get("mgmt_port", 1161)))
+                self._wait_job(getattr(r, "job_id", None), 120, _log)
+            except Exception as e:
+                _log.warning("SNMP restore failed: %s", e)
+
+        c = want["gnmi"]
+        if c.get("running"):
+            try:
+                _log.info("restoring gNMI simulator …")
+                r = gnmi_r.start_gnmi_simulator(GnmiStartRequest(port=c.get("port", 50051)))
+                self._wait_job(getattr(r, "job_id", None), 120, _log)
+                if c.get("proxy_running"):
+                    gnmi_r.start_gnmi_proxy(GnmiStartRequest(port=c.get("proxy_port", c.get("port", 50051))))
+            except Exception as e:
+                _log.warning("gNMI restore failed: %s", e)
+
+        c = want["sflow"]
+        if c.get("running"):
+            try:
+                _log.info("restoring sFlow …")
+                sflow_r.sflow_start(SFlowConfig(
+                    collector_ip=c.get("collector_ip", "127.0.0.1"),
+                    collector_port=c.get("collector_port", 6343),
+                    interval=c.get("interval", 30),
+                    sample_rate=c.get("sample_rate", 1000)))
+            except Exception as e:
+                _log.warning("sFlow restore failed: %s", e)
+
+        c = want["bacnet"]
+        if c.get("running"):
+            try:
+                _log.info("restoring BACnet …")
+                bacnet_r.bacnet_start(BACnetConfig(
+                    base_instance=c.get("base_instance", 40001),
+                    frequency_hz=c.get("frequency_hz", 50.0),
+                    port=c.get("port", 47808)))
+            except Exception as e:
+                _log.warning("BACnet restore failed: %s", e)
+
+        # Redfish: password not persisted — flag for re-entry, do not auto-start.
+        if want["redfish"].get("running"):
+            self.redfish_needs_password = True
+            self.notify_ui("log",
+                           "Redfish was running before restart — re-enter the password to start it.",
+                           "warning")
+            self.notify_ui("sync_redfish")
+            _log.info("Redfish was running — awaiting password re-entry (not auto-started)")
+
+    def _wait_job(self, job_id, timeout: float, _log):
+        """Block until a background job finishes or times out. Used to serialize
+        dependent restore steps (e.g. gNMI proxy after the gNMI sim)."""
+        import time
+        if not job_id or job_id == "none":
+            return
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            j = self.get_job(job_id)
+            if j and j.status in ("completed", "failed"):
+                if j.status == "failed":
+                    _log.warning("restore job %s failed: %s", j.operation, j.error)
+                return
+            time.sleep(0.5)
+        _log.warning("restore job %s did not finish within %ss", job_id, timeout)
+
+    # ── persistence: rules (Phase 4) ─────────────────────────────────────────
+    # Persists the rule-engine control state: master enable, autonomous-fault
+    # toggle, and which rules are disabled. Fire counts are NOT persisted — the
+    # engine exposes no count setter and they're session statistics, not config.
+    def persist_rules(self):
+        if not self.session_store:
+            return
+        try:
+            disabled = []
+            if self.rule_engine:
+                for r in self.rule_engine.get_rules():
+                    if not getattr(r, "enabled", True):
+                        disabled.append(r.rule_name)
+            self.session_store.set_blob("rules", {
+                "engine_enabled": self.rule_engine_enabled,
+                "autonomous_faults": bool(self.state_store.autonomous_faults) if self.state_store else False,
+                "disabled_rules": disabled,
+            })
+        except Exception:
+            import logging
+            logging.getLogger("persistence").exception("persist_rules failed")
+
+    def _restore_rules(self, _log):
+        blob = self.session_store.get_blob("rules")
+        if not blob:
+            return
+        self.rule_engine_enabled = bool(blob.get("engine_enabled", self.rule_engine_enabled))
+        if self.state_store is not None:
+            self.state_store.autonomous_faults = bool(blob.get("autonomous_faults", False))
+        if self.rule_engine is not None:
+            for name in blob.get("disabled_rules", []):
+                try:
+                    if self.rule_engine.get_rule(name) is not None:
+                        self.rule_engine.enable_rule(name, False)
+                except Exception:
+                    pass
+        _log.info("restored rules — autonomous_faults=%s, %d disabled",
+                  self.state_store.autonomous_faults if self.state_store else "?",
+                  len(blob.get("disabled_rules", [])))
+
+    # ── persistence: tick settings (Phase 4) ─────────────────────────────────
+    def persist_tick(self):
+        if not self.session_store or self.state_store is None:
+            return
+        try:
+            st = self.state_store
+            self.session_store.set_blob("tick", {
+                "interval": int(st._tick_interval),
+                "metric_flags": dict(st.metric_flags),
+                "metric_limits": {k: dict(v) for k, v in st.metric_limits.items()},
+            })
+        except Exception:
+            import logging
+            logging.getLogger("persistence").exception("persist_tick failed")
+
+    def _restore_tick(self, _log):
+        blob = self.session_store.get_blob("tick")
+        if not blob or self.state_store is None:
+            return
+        st = self.state_store
+        if blob.get("interval"):
+            st.set_tick_interval(max(1, int(blob["interval"])))
+        # Overlay only known keys — never replace the structure the store built.
+        for k, v in (blob.get("metric_flags") or {}).items():
+            if k in st.metric_flags:
+                st.metric_flags[k] = bool(v)
+        for k, v in (blob.get("metric_limits") or {}).items():
+            if k not in st.metric_limits:
+                continue
+            lim = st.metric_limits[k]
+            if "enabled" in v:
+                lim["enabled"] = bool(v["enabled"])
+            if v.get("min") is not None:
+                lim["min"] = float(v["min"])
+            if v.get("max") is not None:
+                lim["max"] = float(v["max"])
+            if v.get("lock") is not None:
+                lim["lock"] = str(v["lock"])
+        _log.info("restored tick settings — interval=%ss", int(st._tick_interval))
+
+    # ── persistence: runtime meters (Phase 4) ────────────────────────────────
+    # Fast-changing cumulative counters (energy kWh, run-hours) — snapshotted
+    # periodically and on shutdown, re-seeded on startup so meters stay
+    # monotonic across a restart.
+    def flush_runtime(self):
+        if not self.session_store:
+            return
+        try:
+            if self.state_store is not None:
+                self.session_store.set_blob("runtime", {
+                    "energy": self.state_store.export_energy(),
+                })
+            # Snapshot the console log ring (Phase 6) — high-volume, so it rides
+            # the periodic flush rather than a write-per-line.
+            self.session_store.set_blob("console", {"logs": list(self._log_ring)})
+        except Exception:
+            import logging
+            logging.getLogger("persistence").exception("flush_runtime failed")
+
+    def _restore_runtime(self, _log):
+        blob = self.session_store.get_blob("runtime")
+        if not blob or self.state_store is None:
+            return
+        energy = blob.get("energy") or {}
+        if energy:
+            self.state_store.seed_energy(energy)
+            _log.info("restored energy meters for %d device(s)", len(energy))
+
+    # ── persistence: traps + console logs (Phase 6) ──────────────────────────
+    def _restore_traps(self, _log):
+        traps = self.session_store.recent_traps(self._trap_history_limit)
+        if traps:
+            with self._state_lock:
+                self.trap_history = traps
+            _log.info("restored %d trap(s)", len(traps))
+
+    def _restore_console(self, _log):
+        blob = self.session_store.get_blob("console")
+        if not blob:
+            return
+        logs = blob.get("logs") or []
+        if logs:
+            self._log_ring.extend(logs)
+            _log.info("restored %d console log line(s)", len(logs))
+
+    def recent_logs(self) -> list:
+        """Snapshot of the console log ring for SSE replay on connect."""
+        return list(self._log_ring)
+
+    def _start_runtime_flusher(self):
+        """Daemon thread that snapshots runtime meters every 30s. Idempotent."""
+        if getattr(self, "_flusher_started", False):
+            return
+        self._flusher_started = True
+
+        def _loop():
+            import time
+            while True:
+                time.sleep(30)
+                self.flush_runtime()
+
+        threading.Thread(target=_loop, daemon=True, name="runtime-flush").start()
+
+    # ── persistence: fleet lifecycle (Phase 5) ───────────────────────────────
+    def persist_fleet(self):
+        eng = getattr(self, "fleet_engine", None)
+        if not self.session_store or eng is None:
+            return
+        try:
+            self.session_store.set_blob("fleet", eng.export_state())
+        except Exception:
+            import logging
+            logging.getLogger("persistence").exception("persist_fleet failed")
+
+    def _restore_fleet(self, _log):
+        blob = self.session_store.get_blob("fleet")
+        if not blob:
+            return
+        import logging
+        from core.fleet_lifecycle import FleetLifecycleEngine
+        eng = getattr(self, "fleet_engine", None)
+        if eng is None:
+            eng = FleetLifecycleEngine(self, log_cb=logging.getLogger("fleet").info)
+            self.fleet_engine = eng
+        eng.import_state(blob)
+        _log.info("restored fleet — day=%s", eng.day)
+        # Resume the day scheduler only if it was running (needs a topology,
+        # which was restored first). start() launches the background thread.
+        if blob.get("enabled"):
+            try:
+                eng.start()
+                _log.info("resumed fleet lifecycle scheduler")
+            except Exception as e:
+                _log.warning("fleet scheduler resume failed: %s", e)
 
     def start_ticker_if_needed(self):
         """Start the metrics ticker when any simulator becomes active."""
@@ -316,7 +825,18 @@ class AppState:
             except Exception:
                 pass
         # Also broadcast to SSE clients so the web UI reacts in real time
-        self._broadcast_sse(self._sse_event(event, *args))
+        payload = self._sse_event(event, *args)
+        # Capture console log lines into the ring for persistence + replay.
+        if payload.get("type") == "log":
+            try:
+                self._log_ring.append({
+                    "tab": payload.get("tab", "snmp"),
+                    "msg": payload.get("msg", ""),
+                    "level": payload.get("level", "info"),
+                })
+            except Exception:
+                pass
+        self._broadcast_sse(payload)
 
     @staticmethod
     def _sse_event(event: str, *args) -> dict:

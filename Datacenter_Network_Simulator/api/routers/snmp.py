@@ -209,6 +209,7 @@ def start_snmp_simulator(req: SnmpStartRequest = None):
 
             s.notify_ui("sync_snmp")
             s.notify_ui("sync_binding")
+            s.persist_simulator("snmp", True, {"port": snmp_port, "mgmt_port": mgmt_port})
             s.update_job(
                 job_id,
                 status="completed",
@@ -278,6 +279,7 @@ def stop_snmp_simulator():
         s.snmp_set_agent = None
     # Rule engine stays enabled (always on); stopping SNMP no longer disables it.
     s.stop_ticker_if_idle()
+    s.persist_simulator("snmp", False)
     s.notify_ui("sync_snmp")
     s.notify_ui("sync_binding")
     s.notify_ui("sync_rules")

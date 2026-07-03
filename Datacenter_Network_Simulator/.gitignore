@@ -28,6 +28,9 @@ dist/
 # ── Generated runtime data ───────────────────────────────────────────────────
 datasets/
 
+# Persisted session state (SQLite) — per-host runtime, never committed
+data/state/
+
 # ── Claude Code traces ───────────────────────────────────────────────────────
 .claude/
 .claude.json

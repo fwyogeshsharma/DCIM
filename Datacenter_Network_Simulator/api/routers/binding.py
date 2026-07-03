@@ -47,6 +47,7 @@ def select_adapter(req: AdapterSelectRequest):
     """Select the network adapter to use for IP binding."""
     s = _state()
     s.selected_adapter = req.adapter
+    s.persist_binding()
     s.notify_ui("sync_binding")
     return OkResponse(message=f"Adapter set to '{req.adapter}'")
 
@@ -56,6 +57,7 @@ def set_subnet_mask(req: SubnetMaskRequest):
     """Set the subnet mask used when binding IPs."""
     s = _state()
     s.subnet_mask = req.mask
+    s.persist_binding()
     s.notify_ui("sync_binding")
     return OkResponse(message=f"Subnet mask set to {req.mask}")
 
@@ -108,6 +110,7 @@ def bind_ips():
             s.notify_ui("log", f"Bound {len(bound)}/{total_ips} IPs", "success")
             s.bound_ips = bound
             s.nte_contexts = contexts
+            s.persist_binding()
             s.notify_ui("sync_binding")
             s.update_job(
                 job_id,
@@ -167,6 +170,7 @@ def unbind_ips():
             s.nte_contexts = {}
             s.gnmi_bound_ips = []
             s.gnmi_nte_contexts = {}
+            s.persist_binding()
             s.notify_ui("sync_binding")
             s.update_job(
                 job_id,
