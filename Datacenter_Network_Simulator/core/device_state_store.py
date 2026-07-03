@@ -668,8 +668,14 @@ class DeviceStateStore:
                     len(topo.get_edges_by_layer("power")) if topo else 0)
         except Exception:
             _sig = None
-        if self._power_ctx is not None and getattr(self, "_power_ctx_sig", None) == _sig:
-            return self._power_ctx
+        # Snapshot into a local before the check+return: the fleet thread can call
+        # invalidate_power_context() (sets self._power_ctx = None) between the guard
+        # and the return, which would otherwise hand the caller None mid-tick. A
+        # local read is atomic, so we return the (possibly just-superseded but
+        # non-None) dict and rebuild on the next tick.
+        _cached = self._power_ctx
+        if _cached is not None and getattr(self, "_power_ctx_sig", None) == _sig:
+            return _cached
         children: Dict[str, list] = {}
         parents: Dict[str, list] = {}
         rank: Dict[str, int] = {}
@@ -931,7 +937,7 @@ class DeviceStateStore:
         burns fuel proportional to that load, and accrues run-hours; the fuel
         level sets the remaining runtime. Written to the ext-state cache so
         snmprec serves the live OIDs."""
-        ctx = self._power_context()
+        ctx = self._power_context() or {}
         ups_names = ctx.get("gen_ups", {}).get(device.id, [])
         # Utility lost → any downstream UPS on battery → start.
         on_outage = any(
@@ -939,7 +945,7 @@ class DeviceStateStore:
             in ("on_battery", "low_battery")
             for n in ups_names
         )
-        rated = self._power_context()["rated_w"].get(device.id, 0.0)
+        rated = ctx.get("rated_w", {}).get(device.id, 0.0)
         thr   = self._through_live.get(device.id, 0.0)
         dt_h  = self._tick_interval / 3600.0
 
