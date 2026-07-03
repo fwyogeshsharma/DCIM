@@ -23,8 +23,22 @@ interface FleetStatus {
   day: number
   config: FleetConfig
   total_servers: number
+  total_devices?: number
+  device_counts?: Record<string, number>
   history: DayLog[]
 }
+
+// Pretty labels for the device-type keys the fleet grows (device_type.value).
+const TYPE_LABELS: Record<string, string> = {
+  server: 'Servers', switch: 'Switches', oob_switch: 'OOB switches',
+  router: 'Routers', firewall: 'Firewalls', load_balancer: 'Load balancers',
+  sensor: 'Sensors', crah: 'CRAHs', chiller: 'Chillers', pump: 'Pumps',
+  cooling_tower: 'Cooling towers', valve: 'Valves', cdu: 'CDUs',
+  pdu: 'PDUs', floor_pdu: 'Floor PDUs', rpp: 'RPPs', ups: 'UPS',
+  generator: 'Generators', energy_monitor: 'Energy monitors',
+}
+const prettyType = (k: string) =>
+  TYPE_LABELS[k] ?? k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
 const CFG_FIELDS: { key: keyof FleetConfig; label: string; step?: number; hint: string }[] = [
   { key: 'minutes_per_day',      label: 'Minutes / day',      step: 0.5, hint: 'wall-clock minutes that equal one sim-day' },
@@ -99,6 +113,33 @@ export default function FleetPanel() {
           <div className="field-row-split"><span className="label">Servers</span>
             <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{status?.total_servers ?? 0}</span>
           </div>
+          <div className="field-row-split"><span className="label">Total devices</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status?.total_devices ?? 0}</span>
+          </div>
+
+          {/* Full fleet composition — the fleet grows switches, OOB, RPPs,
+              PDUs, and (perimeter cooling) CRAHs + sensors alongside servers. */}
+          {status?.device_counts && Object.keys(status.device_counts).length > 0 && (
+            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                Composition
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto', columnGap: 8, rowGap: 2 }}>
+                {Object.entries(status.device_counts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([k, n]) => (
+                    <div key={k} style={{ display: 'contents' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {prettyType(k)}
+                      </span>
+                      <span style={{ fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)', textAlign: 'right' }}>
+                        {n}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Scheduler controls */}

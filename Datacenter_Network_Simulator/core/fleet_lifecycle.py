@@ -1197,6 +1197,16 @@ class FleetLifecycleEngine:
     # ── status ───────────────────────────────────────────────────────────────
 
     def status(self) -> dict:
+        # Whole-fleet composition by device type in one pass. The fleet doesn't
+        # only add servers — a new rack brings a leaf (+ its MLAG-ready peer),
+        # dual rack PDUs; a new hall/pod brings spines, an OOB switch, RPPs, and
+        # (perimeter cooling) CRAHs + environmental sensors. Surface all of them
+        # so the panel reflects the real fleet, not just the server count.
+        devs = self.s.device_manager.get_all_devices() if self.s.device_manager else []
+        device_counts: dict = {}
+        for d in devs:
+            k = d.device_type.value
+            device_counts[k] = device_counts.get(k, 0) + 1
         return {
             "enabled": self.enabled,
             "day": self.day,
@@ -1209,7 +1219,9 @@ class FleetLifecycleEngine:
                 "compute_rows_per_room": self.cfg.compute_rows_per_room,
                 "max_total_servers": self.cfg.max_total_servers,
             },
-            "total_servers": len(self._servers()) if self.s.device_manager else 0,
+            "total_servers": device_counts.get(DeviceType.SERVER.value, 0),
+            "total_devices": len(devs),
+            "device_counts": device_counts,
             "history": [
                 {"day": h.day, "added": h.added, "removed": h.removed,
                  "expanded_racks": h.expanded_racks, "total_servers": h.total_servers}
