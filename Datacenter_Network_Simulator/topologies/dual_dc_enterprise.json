@@ -65768,7 +65768,7 @@
             "count": 1
           }
         ],
-        "model_name": "Eaton 93E 40kVA",
+        "model_name": "Eaton 93PM 160",
         "metrics_enabled": true,
         "id": "0d1f9d35",
         "interfaces": [
@@ -65817,7 +65817,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -65841,7 +65842,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Symmetra PX 100",
+        "model_name": "APC Symmetra PX 160",
         "metrics_enabled": true,
         "id": "b594e90b",
         "interfaces": [
@@ -65890,7 +65891,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.9,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -65914,7 +65916,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 125A",
         "metrics_enabled": true,
         "id": "a528c3ab",
         "interfaces": [
@@ -65963,7 +65965,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.3,
-        "floor_y": 4.2
+        "floor_y": 4.2,
+        "rated_power_w": null
       }
     },
     {
@@ -65987,7 +65990,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 125A",
         "metrics_enabled": true,
         "id": "5360689f",
         "interfaces": [
@@ -66036,7 +66039,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.9,
-        "floor_y": 4.2
+        "floor_y": 4.2,
+        "rated_power_w": null
       }
     },
     {
@@ -66060,7 +66064,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 125A",
         "metrics_enabled": true,
         "id": "238d0922",
         "interfaces": [
@@ -66109,7 +66113,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.3,
-        "floor_y": 5.4
+        "floor_y": 5.4,
+        "rated_power_w": null
       }
     },
     {
@@ -66133,7 +66138,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 125A",
         "metrics_enabled": true,
         "id": "61b311bb",
         "interfaces": [
@@ -66182,7 +66187,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.9,
-        "floor_y": 5.4
+        "floor_y": 5.4,
+        "rated_power_w": null
       }
     },
     {
@@ -66194,7 +66200,7 @@
       "device": {
         "name": "GEN-DC2",
         "device_type": "generator",
-        "vendor": "Caterpillar",
+        "vendor": "Cummins",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -66255,7 +66261,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -66267,7 +66274,7 @@
       "device": {
         "name": "UPS-DC2-A",
         "device_type": "ups",
-        "vendor": "Vertiv (Liebert)",
+        "vendor": "Eaton",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -66279,7 +66286,7 @@
             "count": 1
           }
         ],
-        "model_name": "Eaton 93E 40kVA",
+        "model_name": "Eaton 93PM 120",
         "metrics_enabled": true,
         "id": "f336f4af",
         "interfaces": [
@@ -66328,7 +66335,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -66340,7 +66348,7 @@
       "device": {
         "name": "UPS-DC2-B",
         "device_type": "ups",
-        "vendor": "Eaton",
+        "vendor": "Vertiv (Liebert)",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -66352,7 +66360,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Symmetra PX 100",
+        "model_name": "Vertiv Liebert EXL S1 125kVA",
         "metrics_enabled": true,
         "id": "1a03cc9e",
         "interfaces": [
@@ -66401,7 +66409,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.9,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -66425,7 +66434,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 100A",
         "metrics_enabled": true,
         "id": "b324209b",
         "interfaces": [
@@ -66474,7 +66483,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 2.7,
-        "floor_y": 4.2
+        "floor_y": 4.2,
+        "rated_power_w": null
       }
     },
     {
@@ -66498,7 +66508,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 100A",
         "metrics_enabled": true,
         "id": "72c0c547",
         "interfaces": [
@@ -66547,7 +66557,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.3,
-        "floor_y": 4.2
+        "floor_y": 4.2,
+        "rated_power_w": null
       }
     },
     {
@@ -66571,7 +66582,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 100A",
         "metrics_enabled": true,
         "id": "a8e3601e",
         "interfaces": [
@@ -66620,7 +66631,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 2.7,
-        "floor_y": 5.4
+        "floor_y": 5.4,
+        "rated_power_w": null
       }
     },
     {
@@ -66644,7 +66656,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 80A",
+        "model_name": "APC Galaxy RPP 100A",
         "metrics_enabled": true,
         "id": "e48c0c95",
         "interfaces": [
@@ -66693,7 +66705,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.3,
-        "floor_y": 5.4
+        "floor_y": 5.4,
+        "rated_power_w": null
       }
     },
     {
@@ -67309,7 +67322,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 160A",
+        "model_name": "APC Galaxy RPP 80A",
         "metrics_enabled": true,
         "id": "be3c0680",
         "interfaces": [
@@ -67358,7 +67371,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.3,
-        "floor_y": 3.0
+        "floor_y": 3.0,
+        "rated_power_w": null
       }
     },
     {
@@ -67822,7 +67836,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC Galaxy RPP 160A",
+        "model_name": "APC Galaxy RPP 80A",
         "metrics_enabled": true,
         "id": "106516f1",
         "interfaces": [
@@ -67871,7 +67885,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.3,
-        "floor_y": 3.0
+        "floor_y": 3.0,
+        "rated_power_w": null
       }
     },
     {
@@ -68335,7 +68350,7 @@
             "count": 1
           }
         ],
-        "model_name": "Schneider PanelBoard 400A",
+        "model_name": "APC Galaxy RPP 80A",
         "metrics_enabled": true,
         "id": "6284bfa0",
         "interfaces": [
@@ -68384,7 +68399,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.3,
-        "floor_y": 3.0
+        "floor_y": 3.0,
+        "rated_power_w": null
       }
     },
     {
@@ -68482,7 +68498,7 @@
             "count": 1
           }
         ],
-        "model_name": "Schneider PanelBoard 400A",
+        "model_name": "APC Galaxy RPP 80A",
         "metrics_enabled": true,
         "id": "3dcdcb2a",
         "interfaces": [
@@ -68531,7 +68547,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.3,
-        "floor_y": 3.0
+        "floor_y": 3.0,
+        "rated_power_w": null
       }
     },
     {
@@ -74341,7 +74358,7 @@
             "count": 1
           }
         ],
-        "model_name": "Caterpillar 3516B",
+        "model_name": "Caterpillar XQ600",
         "metrics_enabled": true,
         "id": "f1e1dc00",
         "interfaces": [
@@ -74390,7 +74407,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.9,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -74402,7 +74420,7 @@
       "device": {
         "name": "GEN-DC2-2",
         "device_type": "generator",
-        "vendor": "Cummins",
+        "vendor": "Caterpillar",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -74414,7 +74432,7 @@
             "count": 1
           }
         ],
-        "model_name": "Cummins C500D5",
+        "model_name": "Caterpillar XQ600",
         "metrics_enabled": true,
         "id": "5c86d596",
         "interfaces": [
@@ -74463,7 +74481,8 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 0.9,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -74487,7 +74506,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "6b65a6a4",
         "interfaces": [
@@ -74538,7 +74557,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 5.1,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -74562,7 +74582,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "47229389",
         "interfaces": [
@@ -74613,7 +74633,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 5.1,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -74637,7 +74658,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "d58842de",
         "interfaces": [
@@ -74690,7 +74711,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -74714,7 +74736,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "baa80dd4",
         "interfaces": [
@@ -74767,7 +74789,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -74791,7 +74814,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "c6a7ee39",
         "interfaces": [
@@ -74844,7 +74867,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -74868,7 +74892,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "508ebad7",
         "interfaces": [
@@ -74921,7 +74945,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -74945,7 +74970,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "95a76d79",
         "interfaces": [
@@ -74998,7 +75023,8 @@
         "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75022,7 +75048,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "c17af08a",
         "interfaces": [
@@ -75075,7 +75101,8 @@
         "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75099,7 +75126,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "ff01cf99",
         "interfaces": [
@@ -75152,7 +75179,8 @@
         "floor_x": 2.1,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75176,7 +75204,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "4b22d308",
         "interfaces": [
@@ -75229,7 +75257,8 @@
         "floor_x": 2.1,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75253,7 +75282,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "9be578c7",
         "interfaces": [
@@ -75306,7 +75335,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75330,7 +75360,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "04fc6d82",
         "interfaces": [
@@ -75383,7 +75413,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75407,7 +75438,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "c40db9b4",
         "interfaces": [
@@ -75460,7 +75491,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75484,7 +75516,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "b09b2a5c",
         "interfaces": [
@@ -75537,7 +75569,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75561,7 +75594,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "1931e9ee",
         "interfaces": [
@@ -75614,7 +75647,8 @@
         "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75638,7 +75672,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "894a05e4",
         "interfaces": [
@@ -75691,7 +75725,8 @@
         "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75715,7 +75750,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "57c700aa",
         "interfaces": [
@@ -75769,7 +75804,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75793,7 +75829,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "d450281c",
         "interfaces": [
@@ -75847,7 +75883,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75871,7 +75908,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "bdc14f1f",
         "interfaces": [
@@ -75925,7 +75962,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -75949,7 +75987,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "d5a804eb",
         "interfaces": [
@@ -76003,7 +76041,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76027,7 +76066,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "dc570131",
         "interfaces": [
@@ -76081,7 +76120,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76105,7 +76145,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "bfddc3d9",
         "interfaces": [
@@ -76159,7 +76199,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76183,7 +76224,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "ee49f329",
         "interfaces": [
@@ -76237,7 +76278,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76261,7 +76303,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "dbccc477",
         "interfaces": [
@@ -76315,7 +76357,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76339,7 +76382,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "39118497",
         "interfaces": [
@@ -76393,7 +76436,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76417,7 +76461,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "8268690b",
         "interfaces": [
@@ -76471,7 +76515,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76495,7 +76540,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "09cb3942",
         "interfaces": [
@@ -76549,7 +76594,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76573,7 +76619,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "30a900ad",
         "interfaces": [
@@ -76627,7 +76673,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76651,7 +76698,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "d9178793",
         "interfaces": [
@@ -76705,7 +76752,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76729,7 +76777,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "8dedf9fb",
         "interfaces": [
@@ -76783,7 +76831,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76807,7 +76856,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "001a9a8b",
         "interfaces": [
@@ -76861,7 +76910,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76885,7 +76935,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "15b52908",
         "interfaces": [
@@ -76939,7 +76989,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -76963,7 +77014,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "25b8fd4b",
         "interfaces": [
@@ -77017,7 +77068,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77041,7 +77093,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "935f2b0a",
         "interfaces": [
@@ -77095,7 +77147,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77119,7 +77172,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "e2add909",
         "interfaces": [
@@ -77173,7 +77226,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77197,7 +77251,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "1f115b76",
         "interfaces": [
@@ -77251,7 +77305,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77275,7 +77330,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "8a175dfe",
         "interfaces": [
@@ -77326,7 +77381,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 5.1,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -77350,7 +77406,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "2702878b",
         "interfaces": [
@@ -77401,7 +77457,8 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 5.1,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -77425,7 +77482,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "ce3714af",
         "interfaces": [
@@ -77478,7 +77535,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77502,7 +77560,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "7d7ddbed",
         "interfaces": [
@@ -77555,7 +77613,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77579,7 +77638,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "7bc67e1f",
         "interfaces": [
@@ -77632,7 +77691,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77656,7 +77716,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "e1b294de",
         "interfaces": [
@@ -77709,7 +77769,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77733,7 +77794,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "d9d80b8d",
         "interfaces": [
@@ -77786,7 +77847,8 @@
         "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77810,7 +77872,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "e14eb70d",
         "interfaces": [
@@ -77863,7 +77925,8 @@
         "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77887,7 +77950,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "b63b4dc3",
         "interfaces": [
@@ -77940,7 +78003,8 @@
         "floor_x": 2.1,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -77964,7 +78028,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "b118f68d",
         "interfaces": [
@@ -78017,7 +78081,8 @@
         "floor_x": 2.1,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78041,7 +78106,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "7428a656",
         "interfaces": [
@@ -78094,7 +78159,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78118,7 +78184,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "2f65fafa",
         "interfaces": [
@@ -78171,7 +78237,8 @@
         "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78195,7 +78262,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "4bd6cee6",
         "interfaces": [
@@ -78248,7 +78315,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78272,7 +78340,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "f1afdb65",
         "interfaces": [
@@ -78325,7 +78393,8 @@
         "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA1"
+        "cold_aisle": "CA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78349,7 +78418,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "b194990b",
         "interfaces": [
@@ -78403,7 +78472,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78427,7 +78497,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "409d3602",
         "interfaces": [
@@ -78481,7 +78551,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78505,7 +78576,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "c1a6423b",
         "interfaces": [
@@ -78559,7 +78630,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78583,7 +78655,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "b2c08394",
         "interfaces": [
@@ -78637,7 +78709,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78661,7 +78734,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "8d605936",
         "interfaces": [
@@ -78715,7 +78788,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78739,7 +78813,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "b77350ca",
         "interfaces": [
@@ -78793,7 +78867,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78817,7 +78892,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "8d1fb540",
         "interfaces": [
@@ -78871,7 +78946,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78895,7 +78971,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "00a81de9",
         "interfaces": [
@@ -78949,7 +79025,8 @@
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -78973,7 +79050,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "6090d697",
         "interfaces": [
@@ -79027,7 +79104,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -79051,7 +79129,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "0b2c782a",
         "interfaces": [
@@ -79105,7 +79183,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -79129,7 +79208,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "d85480f0",
         "interfaces": [
@@ -79183,7 +79262,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -79207,7 +79287,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "1327f1bc",
         "interfaces": [
@@ -79261,7 +79341,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -79285,7 +79366,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "f4427e0b",
         "interfaces": [
@@ -79339,7 +79420,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -79363,7 +79445,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "bf2c14a0",
         "interfaces": [
@@ -79417,7 +79499,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -79441,7 +79524,7 @@
             "count": 1
           }
         ],
-        "model_name": "APC AP8681",
+        "model_name": "APC AP8865",
         "metrics_enabled": true,
         "id": "e746ccb9",
         "interfaces": [
@@ -79495,7 +79578,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {
@@ -79519,7 +79603,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan PX3-5190R",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "6e417d47",
         "interfaces": [
@@ -79573,7 +79657,8 @@
         "floor_y": 5.4,
         "rack_facing": "S",
         "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "hot_aisle": "HA1",
+        "rated_power_w": null
       }
     },
     {

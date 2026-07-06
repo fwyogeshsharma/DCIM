@@ -6,11 +6,16 @@ REST API treat Redfish like every other protocol.
 
 Architecture
 ------------
-• One stdlib ThreadingHTTPServer per server, bound to that server's IP on the
+• One non-blocking listen socket per server, bound to that server's IP on the
   configured port (default 8443).  Binding per-IP (not 0.0.0.0) means each BMC
   answers only on its own address, exactly like real hardware.
-• Each server serves the Redfish tree for ONE Device via a RedfishDevice
-  attached to the HTTPServer instance (``server.redfish_device``).
+• A SINGLE acceptor thread runs a selectors (epoll) loop over every BMC socket;
+  accepted connections are dispatched to a small bounded worker pool, one HTTP
+  request each.  This replaces the former one-serve_forever-thread-per-BMC model,
+  which at a few-thousand-server fleet spawned thousands of GIL-thrashing threads
+  that starved the API (~40 s responses).  Now 2000 idle BMCs cost ~0 CPU.
+• Each connection serves the Redfish tree for ONE Device via a RedfishDevice
+  carried on a lightweight _ConnServer handed to the request handler.
 • Resource bodies are built on demand from the live Device object, so values
   track the DeviceStateStore ticker — no per-tick push needed for MVP.
 
@@ -29,9 +34,11 @@ from __future__ import annotations
 
 import json
 import logging
-import socketserver
+import selectors
+import socket
 import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from concurrent.futures import ThreadPoolExecutor
+from http.server import BaseHTTPRequestHandler
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
 from simulator.redfish_device import RedfishDevice
@@ -56,21 +63,15 @@ def _bind_hint(exc: OSError) -> str:
 log = logging.getLogger(__name__)
 
 
-class _FastBindHTTPServer(ThreadingHTTPServer):
-    """ThreadingHTTPServer minus the reverse-DNS lookup.
+class _ConnServer:
+    """Minimal stand-in for the socketserver a BaseHTTPRequestHandler expects.
+    Carries the RedfishDevice the handler dispatches to; the acceptor pool
+    instantiates the handler directly on an accepted connection, so no
+    ThreadingHTTPServer (and no per-device serve_forever thread) is needed."""
+    __slots__ = ("redfish_device",)
 
-    Stock HTTPServer.server_bind() calls socket.getfqdn() on the bind
-    address, which does a reverse-DNS query per server — ~1.5 s each on
-    Windows for unresolvable simulator IPs. We bind hundreds of BMCs, so
-    use the IP string directly.
-    """
-
-    def server_bind(self):
-        # Skip HTTPServer.server_bind (the getfqdn caller); do the real bind.
-        socketserver.TCPServer.server_bind(self)
-        host, port = self.server_address[:2]
-        self.server_name = host
-        self.server_port = port
+    def __init__(self, rdev):
+        self.redfish_device = rdev
 
 
 class _RedfishHandler(BaseHTTPRequestHandler):
@@ -109,11 +110,16 @@ class _RedfishHandler(BaseHTTPRequestHandler):
                           "message": "Internal simulator error."}}
 
         data = b"" if payload is None else json.dumps(payload).encode("utf-8")
+        # One request per connection: the shared acceptor pool has a bounded set
+        # of workers, so a kept-alive connection would pin a worker idle. Close
+        # after each response (Content-Length is always set, so this is clean).
+        self.close_connection = True
         self.send_response(status)
         self.send_header("OData-Version", "4.0")
         if payload is not None:
             self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Connection", "close")
         for k, v in extra.items():
             self.send_header(k, v)
         self.end_headers()
@@ -142,9 +148,25 @@ class RedfishController:
         # cb(device, is_on, reset_type) — BMC power-transition trap hook.
         self._trap_cb = None
 
-        # ip -> (HTTPServer, thread, RedfishDevice)
+        # ip -> (listen_socket, None, RedfishDevice). One non-blocking listen
+        # socket per BMC (each answers on its own IP, like real hardware), all
+        # serviced by ONE selectors acceptor thread + a bounded worker pool —
+        # instead of one serve_forever thread per BMC (which, at a few-thousand-
+        # server fleet, spawned thousands of threads that thrashed the GIL and
+        # starved the API to ~40 s responses). See [[fleet-fd-scaling]] option B.
         self._servers: Dict[str, tuple] = {}
         self._running = False
+        self._srv_lock = threading.Lock()
+
+        # Shared acceptor: epoll over every BMC listen socket; accepted
+        # connections are handled on a small pool (one request each, no keep-
+        # alive), so 2000 idle BMCs cost ~0 CPU and only live requests use threads.
+        self._sel: Optional[selectors.BaseSelector] = None
+        self._sel_dirty = False
+        self._acceptor_thread: Optional[threading.Thread] = None
+        self._acceptor_stop = threading.Event()
+        self._pool: Optional[ThreadPoolExecutor] = None
+        self._ACCEPT_WORKERS = 32
 
         # Background health monitor: polls every BMC's telemetry against
         # thresholds and pushes Warning/Critical events on alarm transitions.
@@ -193,6 +215,97 @@ class RedfishController:
     def get_credentials(self) -> tuple[str, str]:
         return (self._username, self._password)
 
+    # ── shared acceptor (one thread + pool for every BMC socket) ─────────────
+    def _make_listener(self, ip: str) -> Optional[socket.socket]:
+        """Bind + listen a non-blocking TCP socket for one BMC IP. Binding the
+        raw socket avoids HTTPServer.server_bind's getfqdn() reverse-DNS (which
+        was ~1.5 s/BMC on Windows). Returns the socket, or None on bind failure."""
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind((ip, self._port))
+            s.listen(64)
+            s.setblocking(False)
+        except OSError:
+            try: s.close()
+            except OSError: pass
+            raise
+        return s
+
+    def _start_acceptor(self) -> None:
+        if self._acceptor_thread is not None:
+            return
+        self._sel = selectors.DefaultSelector()
+        self._pool = ThreadPoolExecutor(max_workers=self._ACCEPT_WORKERS,
+                                        thread_name_prefix="Redfish-req")
+        self._acceptor_stop.clear()
+        self._sel_dirty = True
+        self._acceptor_thread = threading.Thread(
+            target=self._acceptor_loop, daemon=True, name="Redfish-acceptor")
+        self._acceptor_thread.start()
+
+    def _reregister(self) -> None:
+        """Sync the selector to the current listen-socket set (called when a BMC
+        is hot-added/removed). Registers each socket with its IP as key data."""
+        sel = self._sel
+        if sel is None:
+            return
+        with self._srv_lock:
+            self._sel_dirty = False
+            want = {ip: entry[0] for ip, entry in self._servers.items()}
+        registered = {k.data: k.fileobj for k in list(sel.get_map().values())}
+        for ip, fileobj in registered.items():
+            if ip not in want or want[ip] is not fileobj:
+                try: sel.unregister(fileobj)
+                except (KeyError, ValueError): pass
+        for ip, sock in want.items():
+            if ip not in registered or registered[ip] is not sock:
+                try: sel.register(sock, selectors.EVENT_READ, data=ip)
+                except (KeyError, ValueError, OSError): pass
+
+    def _acceptor_loop(self) -> None:
+        sel = self._sel
+        while not self._acceptor_stop.is_set():
+            if self._sel_dirty:
+                self._reregister()
+            try:
+                events = sel.select(timeout=0.5)
+            except OSError:
+                if self._sel_dirty:
+                    continue
+                break
+            for key, _mask in events:
+                lsock = key.fileobj
+                try:
+                    conn, addr = lsock.accept()
+                except OSError:
+                    continue
+                entry = self._servers.get(key.data)
+                if entry is None:
+                    try: conn.close()
+                    except OSError: pass
+                    continue
+                rdev = entry[2]
+                conn.setblocking(True)
+                try:
+                    self._pool.submit(self._handle_conn, conn, addr, rdev)
+                except RuntimeError:                 # pool shutting down
+                    try: conn.close()
+                    except OSError: pass
+
+    @staticmethod
+    def _handle_conn(conn, addr, rdev) -> None:
+        """Serve one Redfish HTTP request on an accepted connection, then close.
+        Runs on a pool worker; _RedfishHandler drives request parse + dispatch."""
+        try:
+            conn.settimeout(15.0)            # a stalled client can't pin a worker
+            _RedfishHandler(conn, addr, _ConnServer(rdev))
+        except Exception:
+            log.exception("[Redfish] connection handler error from %s", addr)
+        finally:
+            try: conn.close()
+            except OSError: pass
+
     # ── lifecycle ──────────────────────────────────────────────────────────
     def start(
         self,
@@ -231,21 +344,13 @@ class RedfishController:
             rdev = RedfishDevice(dev, username=username, password=password,
                                  power_trap_cb=self._trap_cb)
             try:
-                httpd = _FastBindHTTPServer((ip, port), _RedfishHandler)
+                sock = self._make_listener(ip)
             except OSError as exc:
                 failed += 1
                 self._log(f"[Redfish] {ip}:{port} bind failed — {exc}{_bind_hint(exc)}", "warning")
                 continue
-            httpd.redfish_device = rdev          # type: ignore[attr-defined]
-            httpd.daemon_threads = True
-            t = threading.Thread(
-                target=httpd.serve_forever,
-                kwargs={"poll_interval": 0.5},
-                daemon=True,
-                name=f"Redfish-{ip}",
-            )
-            t.start()
-            self._servers[ip] = (httpd, t, rdev)
+            with self._srv_lock:
+                self._servers[ip] = (sock, None, rdev)
             started += 1
 
         if started == 0:
@@ -254,6 +359,7 @@ class RedfishController:
             return False
 
         self._running = True
+        self._start_acceptor()
         self._start_monitor()
         msg = (f"[Redfish] Started — {started} BMC endpoint(s) on port {port}"
                + (f" ({failed} bind failure(s))" if failed else "") + ".")
@@ -279,26 +385,30 @@ class RedfishController:
         rdev = RedfishDevice(device, username=self._username, password=self._password,
                              power_trap_cb=self._trap_cb)
         try:
-            httpd = _FastBindHTTPServer((ip, self._port), _RedfishHandler)
+            sock = self._make_listener(ip)
         except OSError as exc:
             self._log(f"[Redfish] hot-add {ip}:{self._port} bind failed — {exc}{_bind_hint(exc)}", "warning")
             return False
-        httpd.redfish_device = rdev          # type: ignore[attr-defined]
-        httpd.daemon_threads = True
-        t = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.5},
-                             daemon=True, name=f"Redfish-{ip}")
-        t.start()
-        self._servers[ip] = (httpd, t, rdev)
+        with self._srv_lock:
+            self._servers[ip] = (sock, None, rdev)
+        self._sel_dirty = True               # acceptor picks up the new socket
         self._log(f"[Redfish] hot-added BMC {ip}:{self._port}", "success")
         return True
 
     def remove_device(self, ip: str) -> None:
         """Tear down a decommissioned server's BMC."""
-        entry = self._servers.pop(ip, None)
+        with self._srv_lock:
+            entry = self._servers.pop(ip, None)
         if entry is not None:
+            self._sel_dirty = True           # acceptor unregisters the socket
             try:
-                entry[0].shutdown()
-            except Exception:
+                if self._sel is not None:
+                    self._sel.unregister(entry[0])
+            except (KeyError, ValueError):
+                pass
+            try:
+                entry[0].close()
+            except OSError:
                 pass
 
     # ── health monitor ──────────────────────────────────────────────────────
@@ -324,23 +434,27 @@ class RedfishController:
         if self._monitor_thread is not None:
             self._monitor_thread.join(timeout=2.0)
             self._monitor_thread = None
-        entries = list(self._servers.items())
-        # shutdown() blocks until the serve loop notices (up to poll_interval),
-        # so signal every server concurrently instead of one at a time.
-        shutdown_threads = []
-        for _ip, (httpd, _t, _rdev) in entries:
-            st = threading.Thread(target=httpd.shutdown, daemon=True)
-            st.start()
-            shutdown_threads.append(st)
-        for st in shutdown_threads:
-            st.join(timeout=2.0)
-        for _ip, (httpd, t, _rdev) in entries:
+        # Stop the single acceptor thread, then the worker pool, then close every
+        # listen socket — no per-BMC serve loops to shut down anymore.
+        self._acceptor_stop.set()
+        if self._acceptor_thread is not None:
+            self._acceptor_thread.join(timeout=2.0)
+            self._acceptor_thread = None
+        if self._pool is not None:
+            self._pool.shutdown(wait=False)
+            self._pool = None
+        if self._sel is not None:
+            try: self._sel.close()
+            except Exception: pass
+            self._sel = None
+        with self._srv_lock:
+            entries = list(self._servers.items())
+            self._servers.clear()
+        for _ip, (sock, _t, _rdev) in entries:
             try:
-                httpd.server_close()
-            except Exception:
+                sock.close()
+            except OSError:
                 pass
-            t.join(timeout=0.5)
-        self._servers.clear()
         self._running = False
         self._log("[Redfish] Stopped.", "info")
 

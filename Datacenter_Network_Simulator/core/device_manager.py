@@ -217,7 +217,9 @@ MODEL_SYSDESCR = {
     "APC AP8886":      "APC Rack PDU 2G, Metered, ZeroU, 20A, 208V, (21)C13&(3)C19, NMC3 fw v1.4.2",
     "APC AP8959":      "APC Rack PDU 2G, Switched, 1U, 30A, 208V, (12)C13&(4)C19, NMC3 fw v1.4.2",
     "APC AP8681":      "APC Rack PDU 2G, Metered-by-Outlet, 1U, 16A, 230V, (12)C13&(4)C19, NMC3 fw v1.4.2",
+    "APC AP8865":      "APC Rack PDU 2G, Metered, ZeroU, 32A, 415V 3-phase, (21)C13&(12)C19, NMC3 fw v1.4.2",
     # Raritan PX3
+    "Raritan PX3-5878":   "Raritan PX3 Rack PDU, 0U, 32A, 415V 3-phase, (24)C13&(12)C19, fw 3.7.0",
     "Raritan PX3-5190R":  "Raritan PX3 Rack PDU, 1U, 30A, 208V, (24)C13&(6)C19, fw 3.7.0",
     "Raritan PX3-5161R":  "Raritan PX3 Rack PDU, 1U, 16A, 208V, (12)C13&(4)C19, fw 3.7.0",
     "Raritan PX2-5170CR": "Raritan PX2 Rack PDU, 0U, 30A, 208V, (24)C13&(6)C19, fw 3.5.20",
@@ -283,7 +285,9 @@ MODEL_SYSOID = {
     "APC AP8886":      "1.3.6.1.4.1.318.1.3.5.4",
     "APC AP8959":      "1.3.6.1.4.1.318.1.3.5.8",
     "APC AP8681":      "1.3.6.1.4.1.318.1.3.5.16",
+    "APC AP8865":      "1.3.6.1.4.1.318.1.3.5.17",
     # Raritan PDU OIDs
+    "Raritan PX3-5878":   "1.3.6.1.4.1.13742.6.3.2.28",
     "Raritan PX3-5190R":  "1.3.6.1.4.1.13742.6.3.2.21",
     "Raritan PX3-5161R":  "1.3.6.1.4.1.13742.6.3.2.22",
     "Raritan PX2-5170CR": "1.3.6.1.4.1.13742.6.3.2.14",
@@ -435,6 +439,102 @@ def nameplate_power_w(device_type: "DeviceType", model_name: str = "") -> int:
     return DEFAULT_NAMEPLATE_W.get(device_type, 0)
 
 
+# ── Per-SKU THROUGHPUT rating (W) for power-distribution / backup gear ─────────
+# Distinct from the nameplate DRAW above: these nodes carry power, they don't
+# consume it. This is the device's rated continuous throughput — the value the
+# live power model divides downstream load by to get load% (a real rack PDU
+# breaker / UPS module rating / genset prime rating), so an undersized node in a
+# growing fleet can legitimately read OVERLOAD instead of the load÷0.8 self-
+# derivation that always sat at ~80%. Keyed by a distinctive lowercase substring
+# of the model string; first match wins (list more-specific keys first).
+#
+# Sizing basis (nameplate, not derated):
+#   • Rack PDU  : 3-phase input rating (17.3/22 kW = 415V 24/32A); single-phase
+#                 legacy units carry their true small rating so a mis-specced
+#                 small PDU on a big rack correctly reads overload.
+#   • RPP/panel : 3-phase kVA at 415V = A × 415 × √3 (80A≈57.5kVA, 400A≈287kVA).
+#   • UPS       : module real power (kW); "40kVA"→36kW at 0.9 PF, PX/93PM in kW.
+#   • Generator : prime/standby real power (kW), i.e. the ...D5/kW figure.
+_MODEL_RATED_W = {
+    # ── Rack PDU (0U/1U) ──
+    "ap8865":       22000,   # APC Metered ZeroU, 415V 32A 3-phase
+    "px3-5878":     22000,   # Raritan three-phase 32A
+    "ap8959":        8600,   # APC Switched 1U, 30A 3-phase 208V
+    "ap8941":        8600,   # APC Switched ZeroU, 30A 3-phase 208V
+    "ap8886":        7100,   # APC Metered ZeroU, 20A 3-phase 208V
+    "ap8681":        3700,   # APC Metered-by-Outlet 1U, 16A 230V single-phase
+    "px3-5190r":     8600,   # Raritan Switched 1U, 30A 208V
+    "px3-5161r":     5700,   # Raritan Switched 1U, 16A 208V
+    "px2-5170cr":    8600,   # Raritan Switched 0U, 30A 208V
+    "epdu g3 ma 1u 32a": 7400,
+    "epdu g3 mi 1u 32a": 7400,
+    "epdu g3 ma 1u 16a": 3700,
+    "geist rpdu2 30a":   5000,
+    "geist rpdu2 15a":   1800,
+    "sentry pt40":       5000,
+    "sentry 4805-xls":   5000,
+    # ── Floor PDU ──
+    "flexpdu 40kva":     40000,
+    "eaton pdu 80kva":   80000,
+    "eaton pdu 160kva": 160000,
+    "liebert mpx 60kva": 60000,
+    "liebert mph2 24kva":24000,
+    "px3-5000 floor":     8600,
+    # ── RPP / panelboard (415V 3-phase kVA) ──
+    "galaxy rpp 80a":    57500,
+    "galaxy rpp 100a":   71900,
+    "galaxy rpp 125a":   89800,
+    "galaxy rpp 150a":  107800,
+    "galaxy rpp 160a":  115000,
+    "panelboard 400a":  287500,
+    "eaton rpp 250a":   179700,
+    # ── UPS (real power, kW) ──
+    "symmetra px 250":  250000,
+    "symmetra px 160":  160000,
+    "symmetra px 100":  100000,
+    "93pm 200":         200000,
+    "93pm 160":         160000,
+    "93pm 120":         120000,
+    "93e 40kva":         36000,
+    "9e 20kva":          18000,
+    "exl s1 125":       125000,
+    "exl s1 20kva":      18000,
+    "liebert aps 20kva": 18000,
+    "srt 5000":           4500,
+    "smart-ups 3000":     2700,
+    "smart-ups 1500":     1000,
+    "9px 5000":           4500,
+    "5px 2200":           1980,
+    "gxt5 2000":          1800,
+    # ── Generator (prime/standby real power, kW) ──
+    "c1000d5":          800000,
+    "c500d5":           400000,
+    "c250d5":           200000,
+    "xq600":            480000,
+    "xq230":            184000,
+    "3516b":           2000000,
+    "600reozjb":        480000,
+    "250reozjb":        200000,
+}
+# Device types that carry power (rated by throughput) rather than draw it.
+_DIST_RATED_TYPES = {DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.RPP,
+                     DeviceType.UPS, DeviceType.GENERATOR}
+
+
+def rated_capacity_w(device_type: "DeviceType", model_name: str = "") -> int:
+    """Rated continuous THROUGHPUT (W) for a distribution/backup SKU, for filling
+    an unset rated_power_w. 0 if the type isn't a distribution node or the model
+    is unknown (caller then keeps the load÷0.8 self-derivation)."""
+    if device_type not in _DIST_RATED_TYPES:
+        return 0
+    m = (model_name or "").lower()
+    if m:
+        for key, w in _MODEL_RATED_W.items():
+            if key in m:
+                return w
+    return 0
+
+
 @dataclass
 class Device:
     name: str
@@ -527,6 +627,14 @@ class Device:
         # instead of reading 0 for devices the topology never sized.
         if not self.power_draw_w or self.power_draw_w <= 0:
             self.power_draw_w = nameplate_power_w(self.device_type, self.model_name)
+        # Fill an unset THROUGHPUT rating for distribution/backup gear from the
+        # real per-SKU catalog, so load% is measured against the device's true
+        # nameplate (breaker/module/genset rating) — an undersized SKU on a
+        # growing fleet then reads a real OVERLOAD instead of the load÷0.8 self-
+        # derivation that always sits at ~80%. Unknown SKUs keep rated_power_w=0
+        # and fall back to that self-derivation in the power model.
+        if (not self.rated_power_w or self.rated_power_w <= 0):
+            self.rated_power_w = rated_capacity_w(self.device_type, self.model_name)
         # Normalize interface_groups (str → InterfaceType)
         if self.interface_groups:
             normalized = []

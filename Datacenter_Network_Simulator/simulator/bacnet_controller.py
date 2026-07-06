@@ -28,7 +28,7 @@ then checked and notifications dispatched.
 from __future__ import annotations
 
 import logging
-import select
+import selectors
 import socket
 import threading
 import time
@@ -605,26 +605,46 @@ class BACnetController:
                        if dev._send_sock is not None}
             return s2d, [wildcard] + list(s2d.keys())
 
-        sock_to_dev, all_socks = _build_sockmap()
+        # Use a selectors poller (epoll/kqueue on POSIX) rather than select():
+        # a large fleet opens per-device sockets whose fd numbers exceed
+        # FD_SETSIZE (1024), which select() cannot represent — it raises
+        # "filedescriptor out of range in select()". epoll has no such ceiling.
+        sel = selectors.DefaultSelector()
 
-        while not self._stop_ev.is_set():
-            if self._sockets_dirty:
-                sock_to_dev, all_socks = _build_sockmap()
-            try:
-                readable, _, _ = select.select(all_socks, [], [], 1.0)
-            except OSError:
-                break
-            for sock in readable:
+        def _reregister(socks):
+            for key in list(sel.get_map().values()):
+                try: sel.unregister(key.fileobj)
+                except (KeyError, ValueError): pass
+            for s in socks:
+                try: sel.register(s, selectors.EVENT_READ)
+                except (KeyError, ValueError, OSError): pass
+
+        sock_to_dev, all_socks = _build_sockmap()
+        _reregister(all_socks)
+
+        try:
+            while not self._stop_ev.is_set():
+                if self._sockets_dirty:
+                    sock_to_dev, all_socks = _build_sockmap()
+                    _reregister(all_socks)
                 try:
-                    data, src_addr = sock.recvfrom(4096)
+                    events = sel.select(timeout=1.0)
                 except OSError:
-                    continue
-                try:
-                    # None → broadcast/wildcard path; Device → per-device path
-                    target_dev = sock_to_dev.get(sock)
-                    self._dispatch(data, src_addr, target_dev=target_dev)
-                except Exception:
-                    log.exception("[BACnet] dispatch error from %s", src_addr)
+                    break
+                for key, _mask in events:
+                    sock = key.fileobj
+                    try:
+                        data, src_addr = sock.recvfrom(4096)
+                    except OSError:
+                        continue
+                    try:
+                        # None → broadcast/wildcard path; Device → per-device path
+                        target_dev = sock_to_dev.get(sock)
+                        self._dispatch(data, src_addr, target_dev=target_dev)
+                    except Exception:
+                        log.exception("[BACnet] dispatch error from %s", src_addr)
+        finally:
+            sel.close()
 
     def _dispatch(self, data: bytes, src_addr,
                   target_dev: 'Optional[EV2BACnetDevice]' = None) -> None:
