@@ -48,6 +48,18 @@ from core import hall_geometry as geo
 if TYPE_CHECKING:
     from api.state import AppState
 
+# Resource-safety ceiling on the fleet server count. This is NOT the facility
+# limit (that is ~470 — the installed cooling plant; see FleetConfig below), but
+# a hard guard on host resources: every commissioned server is a Redfish BMC
+# socket and every new leaf a gNMI gRPC server (eventfds), so the process fd/
+# thread count scales with the fleet. Even with the startup fd bump
+# (core.resource_limits.raise_fd_limit), let the count run unbounded and the
+# process eventually starves its own API listener (Errno 24). 5000 sits well
+# under a 65536-fd budget while still allowing large demo fleets. The real fix
+# for hyperscale counts is a single wildcard listener that demuxes by dest IP
+# (as snmpsim does) — until then this ceiling stands.
+MAX_TOTAL_SERVERS_HARD_CAP = 5000
+
 # Rack geometry (shared contract — see core/rack_capacity.py):
 #   U42 = ToR-A (leaf)   U41 = reserved for future MLAG peer leaf (empty)
 #   PDUs = 0U vertical    servers fill U1..U40 from the bottom.

@@ -156,6 +156,10 @@ def _run_headless():
     log = logging.getLogger("headless")
     log.setLevel(logging.INFO)
 
+    # fd headroom for large fleets (see main()); must run before any bind.
+    from core.resource_limits import raise_fd_limit
+    raise_fd_limit()
+
     # Refuse a second instance (see main() — protocol ports are host singletons).
     if "--allow-multiple" not in sys.argv:
         from app.single_instance import acquire, hold
@@ -281,6 +285,12 @@ def _run_headless():
 
 
 def main():
+    # Give the process fd headroom before anything binds — a large in-memory
+    # fleet opens ~1 socket per Redfish BMC + gRPC eventfds per gNMI leaf, which
+    # exhausts the default Linux soft limit (1024) and aborts the API listener.
+    from core.resource_limits import raise_fd_limit
+    raise_fd_limit()
+
     print("[1] setting HighDPI policy", flush=True)
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough

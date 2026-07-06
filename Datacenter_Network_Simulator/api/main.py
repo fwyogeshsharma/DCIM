@@ -154,6 +154,11 @@ def start_api_server(host: str = "0.0.0.0", port: int = 8000):
 
     log = logging.getLogger("api.server")
 
+    # fd headroom for large fleets — covers the standalone `uvicorn api.main:app`
+    # launch path too (no-op if already raised by app/main.py).
+    from core.resource_limits import raise_fd_limit
+    raise_fd_limit()
+
     # Fail fast: never serve with authentication misconfigured. A missing secret
     # would make every token invalid (signing/verifying with ""). Refuse to start
     # the API thread, but leave the Qt GUI running so the desktop app still works.
