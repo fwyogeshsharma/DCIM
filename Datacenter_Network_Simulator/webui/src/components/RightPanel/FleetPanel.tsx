@@ -49,7 +49,7 @@ const CFG_FIELDS: { key: keyof FleetConfig; label: string; step?: number; hint: 
   { key: 'minutes_per_day',      label: 'Minutes / day',      step: 0.5, hint: 'wall-clock minutes that equal one sim-day' },
   { key: 'provision_lambda',     label: 'Provision / day',    hint: 'avg servers added on a normal day' },
   { key: 'decommission_lambda',  label: 'Decommission / day', hint: 'avg servers removed (kept below provision = net growth)' },
-  { key: 'rack_power_budget_w',  label: 'Power budget / rack (W)', step: 500, hint: 'per-rack power budget in watts (~15000 = 15 kW usable). A rack fills until summed server+ToR nameplate draw would exceed this, or the leaf runs out of downlink ports — whichever binds first' },
+  { key: 'rack_power_budget_w',  label: 'Power budget / rack (W)', step: 500, hint: 'per-rack power budget in watts (17600 = 17.6 kW usable = a 22 kW rack PDU at the NEC 80% derate, the A/B single-feed ceiling). A rack fills until summed server+ToR nameplate draw would exceed this, or the leaf runs out of downlink ports — whichever binds first' },
   { key: 'max_total_servers',    label: 'Max total servers',  hint: 'global ceiling — provisioning pauses here' },
 ]
 

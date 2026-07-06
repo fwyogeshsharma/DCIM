@@ -42,6 +42,7 @@ from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
     RACK_POWER_BUDGET_W_DEFAULT,
     TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
+    SERVER_U_HEIGHT,
 )
 from core import hall_geometry as geo
 
@@ -84,8 +85,9 @@ class FleetConfig:
     # Per-rack fill is bound by TWO real limits, whichever binds first:
     #   1. leaf downlink ports — physical, flip-invariant for dual-homing.
     #   2. rack_power_budget_w — summed nameplate draw of the rack's kit must stay
-    #      within its provisioned power budget (~15 kW usable). This is the usual
-    #      binding limit in an enterprise hall (power/thermal, not ports).
+    #      within its provisioned power budget (17.6 kW usable = a 22 kW rack PDU
+    #      at the NEC 80% derate, the A/B single-feed ceiling). The usual binding
+    #      limit in an enterprise hall (power/thermal, not ports).
     rack_power_budget_w: int = RACK_POWER_BUDGET_W_DEFAULT
     # Growth policy: each hall holds up to compute_rows_per_room x max_racks_per_row
     # compute racks. The fleet fills the racks already in a hall, then adds racks
@@ -320,6 +322,8 @@ class FleetLifecycleEngine:
                 continue
             if count >= self._port_cap(tor):
                 continue                       # leaf downlink ports exhausted
+            if self._next_free_unit(key) is None:
+                continue                       # rack U-space full (2U servers, ~20 max)
             pdus = self._neighbors(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
             add_w = float(getattr(tmpl, "power_draw_w", 0) or 0)
             if not rack_has_power_headroom(racks_w.get(key, 0.0), add_w,
@@ -1039,18 +1043,27 @@ class FleetLifecycleEngine:
             n += 1
         return f"{dc}-SRV{n:03d}"
 
-    def _next_free_unit(self, key: tuple) -> int:
-        # Servers occupy U1..U40; U41 (MLAG peer slot) and U42 (ToR) stay clear.
+    def _next_free_unit(self, key: tuple) -> Optional[int]:
+        """Next free rack unit for a SERVER_U_HEIGHT-U server, on the curated 2U
+        cadence (servers sit on odd units 1,3,5… and occupy U..U+1). Returns None
+        when the rack is space-full — all U1..U40 slots taken — so a rack fills to
+        its real physical U capacity (~20 servers) instead of the old 1U cadence
+        that packed to the power cap and stranded rack U. U41/U42 stay clear for
+        the ToR pair."""
         used = {d.rack_unit for d in self._rack_devices(key) if d.rack_unit}
         u = FIRST_SERVER_UNIT
-        while u in used and u < LAST_SERVER_UNIT:
-            u += 1
-        return u
+        while u <= LAST_SERVER_UNIT - (SERVER_U_HEIGHT - 1):
+            if u not in used:
+                return u
+            u += SERVER_U_HEIGHT
+        return None
 
     def _add_server(self, rack: dict) -> Optional[Device]:
         tmpl: Device = rack["server_tmpl"]
         dc, row, num = rack["key"]
         unit = self._next_free_unit(rack["key"])
+        if unit is None:
+            return None                       # rack U-space full (all 2U slots taken)
         # New halls/racks carry an explicit floor+room; filling an existing rack
         # leaves them None so the server inherits its same-rack template's hall.
         dev = self._clone(tmpl, dc, row, num, unit, prefix="srv",
