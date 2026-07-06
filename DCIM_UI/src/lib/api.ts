@@ -83,6 +83,28 @@ class APIClient {
     }
   }
 
+  // Like request(), but for paginated list endpoints — keeps `total`/`hasMore`
+  // instead of unwrapping just `data`. Must still attach the bearer token;
+  // a bare fetch() here would silently 401 for every user.
+  private async requestPaginated<T>(
+    endpoint: string
+  ): Promise<{ data: T[]; total: number; hasMore: boolean }> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      cache: 'no-store',
+      headers: {
+        ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }))
+      throw new Error(error.message || `API request failed: ${response.status}`)
+    }
+
+    const json = await response.json()
+    return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
+  }
+
   // Auth endpoints — credentials are stored/verified against the database
   // (users table) so an account works across browsers, devices and deployments.
   async register(
@@ -295,9 +317,7 @@ class APIClient {
     if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
 
     const queryString = params.toString()
-    const res = await fetch(`${this.baseURL}/alerts${queryString ? `?${queryString}` : ''}`, { cache: 'no-store' })
-    const json = await res.json()
-    return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
+    return this.requestPaginated<Alert>(`/alerts${queryString ? `?${queryString}` : ''}`)
   }
 
   async getAlertCounts(): Promise<{
@@ -326,9 +346,7 @@ class APIClient {
     if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
 
     const queryString = params.toString()
-    const res = await fetch(`${this.baseURL}/alerts/latest${queryString ? `?${queryString}` : ''}`, { cache: 'no-store' })
-    const json = await res.json()
-    return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
+    return this.requestPaginated<DeduplicatedAlert>(`/alerts/latest${queryString ? `?${queryString}` : ''}`)
   }
 
   async getAlert(alertId: number): Promise<Alert> {
@@ -497,7 +515,13 @@ class APIClient {
     if (certFiles.clientKey) formData.append('clientKey', certFiles.clientKey)
 
     const url = `${this.baseURL}${endpoint}`
-    const response = await fetch(url, { method, body: formData })
+    const response = await fetch(url, {
+      method,
+      body: formData,
+      headers: {
+        ...(this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {}),
+      },
+    })
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }))
@@ -642,9 +666,7 @@ class APIClient {
     if (filter?.limit !== undefined)  params.append('limit', String(filter.limit))
     if (filter?.offset !== undefined) params.append('offset', String(filter.offset))
     const qs = params.toString()
-    const res = await fetch(`${this.baseURL}/tickets${qs ? `?${qs}` : ''}`, { cache: 'no-store' })
-    const json = await res.json()
-    return { data: json.data || [], total: json.total || 0, hasMore: json.hasMore || false }
+    return this.requestPaginated<Ticket>(`/tickets${qs ? `?${qs}` : ''}`)
   }
 
   async getTicketStats(): Promise<{
