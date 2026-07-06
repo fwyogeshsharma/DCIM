@@ -8,10 +8,11 @@
 -- Dropping a continuous aggregate also removes its refresh and retention
 -- policies. Idempotent (IF EXISTS everywhere): a fresh database is a no-op.
 --
--- The single-tier 5-minute aggregates are intentionally KEPT:
---   metrics_5m        (001_init.sql,          6-month retention)
---   energy_metrics_5m (007_energy_metrics.sql, 2-year retention)
--- The API and the ML service read those.
+-- The single-tier 5-minute aggregates (metrics_5m, energy_metrics_5m) were
+-- kept at the time this file was written, but have since been retired too:
+-- their creation was removed from 001_init.sql / 007_energy_metrics.sql (never
+-- deployed anywhere, so no drop migration was needed). Metric summarization
+-- now lives in the metricsSummary worker → MongoDB.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DROP VIEW IF EXISTS metrics_rollup_5m_dt;

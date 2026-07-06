@@ -161,29 +161,10 @@ CREATE INDEX IF NOT EXISTS idx_metrics_collector  ON metrics (collector_agent, t
 
 SELECT add_retention_policy('metrics', INTERVAL '30 days', if_not_exists => TRUE);
 
--- 5-minute rollup aggregate
-CREATE MATERIALIZED VIEW IF NOT EXISTS metrics_5m
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('5 minutes', ts) AS bucket,
-    device_id,
-    metric_name,
-    tag,
-    avg(value)   AS avg_value,
-    max(value)   AS max_value,
-    min(value)   AS min_value,
-    count(*)     AS samples
-FROM metrics
-GROUP BY bucket, device_id, metric_name, tag
-WITH NO DATA;
-
-SELECT add_continuous_aggregate_policy('metrics_5m',
-    start_offset      => INTERVAL '1 hour',
-    end_offset        => INTERVAL '5 minutes',
-    schedule_interval => INTERVAL '5 minutes',
-    if_not_exists     => TRUE);
-
-SELECT add_retention_policy('metrics_5m', INTERVAL '6 months', if_not_exists => TRUE);
+-- NOTE: this file formerly created the metrics_5m continuous aggregate here.
+-- It was removed before any deployment ever created it — metric summarization
+-- now happens in the metricsSummary worker, which writes avg/min/max documents
+-- to MongoDB.
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Table: topology_links

@@ -4,10 +4,15 @@ Everything here is SELECT-only. Series are returned as pandas Series indexed by
 a daily DatetimeIndex so the forecasters can treat every target uniformly.
 
 Schema references (see DCIM_Aggregator/src/database/migrations):
-  - metrics / metrics_5m               (001_init.sql)
-  - energy_metrics / energy_metrics_5m (007_energy_metrics.sql)
-  - devices                            (001_init.sql, 003/011/013)
-  - dc_inventory_devices               (005_inventory.sql)
+  - metrics               (001_init.sql)
+  - energy_metrics        (007_energy_metrics.sql)
+  - devices               (001_init.sql, 003/011/013)
+  - dc_inventory_devices  (005_inventory.sql)
+
+The metrics_5m / energy_metrics_5m continuous aggregates these queries used to
+prefer were retired (001/007 no longer create them); everything reads the raw
+hypertables now, so usable history is bounded by raw retention (metrics 30d,
+energy_metrics 365d).
 """
 from __future__ import annotations
 
@@ -66,33 +71,12 @@ def fetch_metric_series(
 ) -> pd.Series:
     """Daily average of a utilization metric across (optionally one) datacenter.
 
-    Prefers the metrics_5m continuous aggregate (6-month retention) bucketed to
-    days; falls back to bucketing raw `metrics` when the aggregate has too few
-    points (typical on a young / shallow deployment).
+    Buckets the raw `metrics` hypertable to days (raw retention is ~30 days).
     """
     names = METRIC_GROUPS.get(target, [])
     if not names:
         return pd.Series(dtype="float64")
 
-    rollup = conn.execute(
-        text(
-            f"""
-            SELECT r.bucket::date AS bucket, avg(r.avg_value) AS value
-            FROM metrics_5m r
-            JOIN devices d ON d.id = r.device_id
-            WHERE r.metric_name = ANY(:names)
-              AND r.bucket >= now() - make_interval(days => :lb)
-              {_dc_clause('d', dc)}
-            GROUP BY 1 ORDER BY 1
-            """
-        ),
-        {"names": names, "lb": lookback_days, **({"dc": dc} if dc else {})},
-    ).fetchall()
-    s = _rows_to_series(rollup)
-    if len(s) >= 3:
-        return s
-
-    # Fallback: raw metrics bucketed to days (raw retention is ~30 days).
     raw = conn.execute(
         text(
             f"""
@@ -115,32 +99,10 @@ def fetch_power_series(
 ) -> pd.Series:
     """Daily total facility active power (kW).
 
-    Reads energy_metrics_5m (2-year retention) bucketed to days, using the
+    Reads raw `energy_metrics` (365-day retention) bucketed to days, using the
     panel scalar reading (empty circuit) per device to avoid double counting
-    per-circuit rows, then sums devices — mirroring energy.ts. Falls back to
-    raw energy_metrics on shallow history.
+    per-circuit rows, then sums devices — mirroring energy.ts.
     """
-    rollup = conn.execute(
-        text(
-            f"""
-            SELECT bucket::date AS bucket, sum(dev_avg) AS value FROM (
-                SELECT r.bucket::date AS bucket, r.device_id, avg(r.avg_value) AS dev_avg
-                FROM energy_metrics_5m r
-                JOIN devices d ON d.id = r.device_id
-                WHERE r.metric_name = 'energy.active_power_kw'
-                  AND coalesce(r.circuit, '') = ''
-                  AND r.bucket >= now() - make_interval(days => :lb)
-                  {_dc_clause('d', dc)}
-                GROUP BY 1, r.device_id
-            ) s GROUP BY 1 ORDER BY 1
-            """
-        ),
-        {"lb": lookback_days, **({"dc": dc} if dc else {})},
-    ).fetchall()
-    s = _rows_to_series(rollup)
-    if len(s) >= 3:
-        return s
-
     raw = conn.execute(
         text(
             f"""

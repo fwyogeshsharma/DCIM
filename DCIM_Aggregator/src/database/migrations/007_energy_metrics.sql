@@ -32,27 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_energy_circuit   ON energy_metrics (device_id, ci
 
 SELECT add_retention_policy('energy_metrics', INTERVAL '365 days', if_not_exists => TRUE);
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS energy_metrics_5m
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('5 minutes', ts) AS bucket,
-    device_id,
-    metric_name,
-    tag,
-    circuit,
-    phase,
-    avg(value) AS avg_value,
-    max(value) AS max_value,
-    min(value) AS min_value,
-    count(*)   AS samples
-FROM energy_metrics
-GROUP BY bucket, device_id, metric_name, tag, circuit, phase
-WITH NO DATA;
-
-SELECT add_continuous_aggregate_policy('energy_metrics_5m',
-    start_offset      => INTERVAL '1 hour',
-    end_offset        => INTERVAL '5 minutes',
-    schedule_interval => INTERVAL '5 minutes',
-    if_not_exists     => TRUE);
-
-SELECT add_retention_policy('energy_metrics_5m', INTERVAL '730 days', if_not_exists => TRUE);
+-- NOTE: this file formerly created the energy_metrics_5m continuous aggregate
+-- here. It was removed before any deployment ever created it — metric
+-- summarization now happens in the metricsSummary worker, which writes
+-- avg/min/max documents to MongoDB.

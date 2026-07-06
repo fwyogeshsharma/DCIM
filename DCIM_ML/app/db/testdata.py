@@ -2,8 +2,8 @@
 
 Each generator produces a pandas Series with a daily DatetimeIndex — the same
 shape that source_queries.py returns.  Schema reference:
-  - metrics / metrics_5m  (001_init.sql)
-  - energy_metrics / energy_metrics_5m  (007_energy_metrics.sql)
+  - metrics  (001_init.sql)
+  - energy_metrics  (007_energy_metrics.sql)
   - devices.created_at growth curve  (001_init.sql)
   - dc_inventory_devices snapshot  (005_inventory.sql)
 
@@ -44,7 +44,7 @@ def generate_cpu_series(n_days: int = 365, seed: int = 42) -> pd.Series:
       - Gaussian noise σ=2.5 %
 
     Mirrors metric_names ['system.cpu_utilization_percent', 'server.cpu_percent']
-    averaged daily from metrics_5m.
+    averaged daily from the raw metrics table.
     """
     rng = _rng(seed)
     idx = _daily_index(n_days)
@@ -84,7 +84,7 @@ def generate_temperature_series(n_days: int = 365, seed: int = 44) -> pd.Series:
 
     Slow rise 18 → 27 °C as the DC fills; annual seasonal summer peak.
     Mirrors metric_name 'system.temperature_celsius' from device_thresholds
-    (HighTemperature rule) and metrics_5m.
+    (HighTemperature rule) and the raw metrics table.
     """
     rng = _rng(seed)
     idx = _daily_index(n_days)
@@ -120,7 +120,7 @@ def generate_power_series(n_days: int = 365, seed: int = 46) -> pd.Series:
 
     Continuous growth 120 → 210 kW + step jumps when new racks come online
     (every ~90 days +15 kW).
-    Mirrors energy_metrics_5m metric_name 'energy.active_power_kw'.
+    Mirrors energy_metrics metric_name 'energy.active_power_kw'.
     """
     rng = _rng(seed)
     idx = _daily_index(n_days)

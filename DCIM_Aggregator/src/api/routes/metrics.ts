@@ -59,7 +59,7 @@ export function createMetricsRouter(dbPool: Pool, cacheService: CacheService): R
     }
   })
 
-  // Aggregated metrics (uses metrics_5m continuous aggregate)
+  // Aggregated metrics (time_bucket over the raw metrics hypertable)
   router.get('/aggregated', async (req, res) => {
     try {
       const { agent_id, metric_type, interval = '1 hour', time_range = '7 days' } = req.query
