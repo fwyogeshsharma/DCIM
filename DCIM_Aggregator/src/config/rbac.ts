@@ -167,3 +167,13 @@ export function isApprover(roles: string[]): boolean {
   const approverSet = new Set(cfg.approval.approver_roles)
   return roles.some((r) => approverSet.has(r) || cfg.roles[r]?.approves)
 }
+
+// True if every role this user holds is restricted to "assigned to me only"
+// (currently just `technician`). Holding ANY additional, unscoped role (e.g.
+// root, admin, or even viewer) grants that role's broader access instead, so
+// root/admin naturally see everything without needing a special case here —
+// resolvePermissions() already gives them `manage` on every feature.
+export function isAssignedOnlyScoped(roles: string[]): boolean {
+  const cfg = loadRbac()
+  return roles.length > 0 && roles.every((r) => cfg.roles[r]?.scope === 'assigned_only')
+}

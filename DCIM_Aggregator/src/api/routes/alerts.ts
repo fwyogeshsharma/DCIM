@@ -1,5 +1,11 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
+import { isAssignedOnlyScoped } from '../../config/rbac'
+
+// Technicians (assigned_only scope) only see alerts on devices they have an
+// open ticket assigned to — matches rbac.yml's "resolve alert tied to their
+// ticket". Root/admin/other roles are never scoped (see isAssignedOnlyScoped).
+const ASSIGNED_DEVICE_SUBQUERY = `SELECT device_id FROM critical_tickets WHERE assigned_to = `
 
 // Maps events row to the Alert shape the UI expects.
 // Resolution state is stored in event_payload->>'resolved'.
@@ -40,6 +46,11 @@ export function createAlertsRouter(dbPool: Pool): Router {
       const countParams: any[] = []
       let i = 1
 
+      if (isAssignedOnlyScoped(req.authUser!.roles)) {
+        params.push(req.authUser!.username);      query      += ` AND e.device_id IN (${ASSIGNED_DEVICE_SUBQUERY}$${i})`
+        countParams.push(req.authUser!.username);  countQuery += ` AND e.device_id IN (${ASSIGNED_DEVICE_SUBQUERY}$${i})`
+        i++
+      }
       if (agent_id) {
         params.push(agent_id);      query      += ` AND e.device_id = $${i}::uuid`
         countParams.push(agent_id); countQuery += ` AND e.device_id = $${i}::uuid`
@@ -165,6 +176,9 @@ export function createAlertsRouter(dbPool: Pool): Router {
       const params: any[] = []
       let i = 1
 
+      if (isAssignedOnlyScoped(req.authUser!.roles)) {
+        params.push(req.authUser!.username); whereClause += ` AND e.device_id IN (${ASSIGNED_DEVICE_SUBQUERY}$${i++})`
+      }
       if (agent_id) { params.push(agent_id); whereClause += ` AND e.device_id = $${i++}::uuid` }
       if (severity) { params.push(String(severity).toLowerCase()); whereClause += ` AND LOWER(e.severity) = $${i++}` }
 

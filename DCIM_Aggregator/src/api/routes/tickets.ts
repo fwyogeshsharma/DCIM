@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { Pool } from 'pg'
+import { isAssignedOnlyScoped } from '../../config/rbac'
 
 // Maps a critical_tickets row (+ joined device hostname) to the shape the UI reads.
 const TICKET_SELECT = `
@@ -66,7 +67,14 @@ export function createTicketsRouter(dbPool: Pool): Router {
         params.push(status); where += ` AND t.status = $${i++}`
       }
       if (priority)    { params.push(priority);    where += ` AND t.priority = $${i++}` }
-      if (assigned_to) { params.push(assigned_to); where += ` AND t.assigned_to = $${i++}` }
+      // Technicians (assigned_only scope) can only ever see their own tickets —
+      // this overrides any assigned_to the client tries to pass. Everyone else
+      // (root/admin/other roles) keeps the requested filter, if any.
+      if (isAssignedOnlyScoped(req.authUser!.roles)) {
+        params.push(req.authUser!.username); where += ` AND t.assigned_to = $${i++}`
+      } else if (assigned_to) {
+        params.push(assigned_to); where += ` AND t.assigned_to = $${i++}`
+      }
       if (category)    { params.push(category);    where += ` AND t.category = $${i++}` }
       if (q) {
         params.push(`%${q}%`)
@@ -152,7 +160,11 @@ export function createTicketsRouter(dbPool: Pool): Router {
       if (ticketResult.rows.length === 0) {
         return res.status(404).json({ success: false, error: 'Ticket not found' })
       }
-      res.json({ success: true, data: { ...ticketResult.rows[0], activity: activityResult.rows } })
+      const ticket = ticketResult.rows[0]
+      if (isAssignedOnlyScoped(req.authUser!.roles) && ticket.assigned_to !== req.authUser!.username) {
+        return res.status(403).json({ success: false, error: 'This ticket is not assigned to you' })
+      }
+      res.json({ success: true, data: { ...ticket, activity: activityResult.rows } })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }
