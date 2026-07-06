@@ -56,6 +56,60 @@ def live_floorplan():
         return _CACHE["doc"]
 
 
+@router.get("/telemetry")
+def floorplan_telemetry():
+    """Slim live-telemetry feed for the floor-plan viewer's heatmap join.
+
+    The viewer polls this every ~5s and joins it to static placement (from
+    /floorplan) by device id/name. It needs ONLY the handful of fields the
+    heatmap metrics read — power, inlet/outlet temp, humidity — not the full
+    /devices document (85 fields/device incl. interface arrays, ~5 MB at a few
+    thousand devices). Emitting just those fields (and omitting null/zero) keeps
+    the payload tiny so the browser isn't parsing megabytes every poll while the
+    fleet grows. Fields mirror the same sources as /devices' DeviceInfo."""
+    s = AppState.get()
+    dm = getattr(s, "device_manager", None)
+    if dm is None:
+        return {"devices": []}
+    from core.device_state_store import _get_ext_state
+    from core.redfish_data_generator import _live_watts
+    out = []
+    for d in dm.get_all_devices():
+        dt = d.device_type.value
+        row = {"id": d.id, "name": d.name}
+        it = getattr(d, "inlet_temp", None)         # all types report inlet (like /devices)
+        if it:
+            row["inlet_temp"] = it
+        if dt == "server":
+            try:
+                w = float(_live_watts(d))
+            except Exception:
+                w = 0.0
+            if w:
+                row["power_watts"] = w
+            ot = getattr(d, "outlet_temp", None)
+            if ot:
+                row["outlet_temp"] = ot
+        elif dt == "sensor":
+            if getattr(d, "model_name", "") == "Raritan DPX2-T3H1":
+                ot = getattr(d, "outlet_temp", None)
+                if ot:
+                    row["outlet_temp"] = ot
+            h = getattr(d, "humidity", None)
+            if h:
+                row["humidity"] = h
+        elif dt in ("pdu", "floor_pdu"):
+            ext = _get_ext_state(d.name)
+            pt = ext.get("pdu_temperature")
+            if pt is not None:
+                row["pdu_temperature"] = pt
+            ph = ext.get("pdu_humidity")
+            if ph is not None:
+                row["pdu_humidity"] = ph
+        out.append(row)
+    return {"devices": out}
+
+
 @router.post("/upload", response_model=OkResponse)
 async def upload_floorplan(file: UploadFile = File(...)):
     """Upload a floor-plan JSON to drive the Floor Plan view, overriding the live

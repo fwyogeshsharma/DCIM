@@ -11,6 +11,11 @@ interface FleetConfig {
   max_racks_per_row:    number
   compute_rows_per_room: number
   max_total_servers:    number
+  // Read-only power-budget hints (server-computed; not user-editable). The
+  // budget is physically capped by what one rack PDU delivers on A/B failover.
+  rack_pdu_capacity_w?:           number   // compute-rack PDU nameplate (e.g. 22000)
+  rack_power_budget_cap_w?:       number   // = rack_pdu_capacity_w × 0.8 (ceiling)
+  rack_power_budget_effective_w?: number   // = min(configured, cap) actually enforced
 }
 interface FleetDevice {
   name: string; vendor: string; mgmt_ip: string; ip: string
@@ -179,20 +184,34 @@ export default function FleetPanel() {
         {cfg && (
           <div className="group-box">
             <span className="group-box-label">Cadence &amp; Caps</span>
-            {CFG_FIELDS.map(f => (
-              <div key={f.key} className="field-row-split" title={f.hint} style={{ marginBottom: 5 }}>
-                <span className="label">{f.label}</span>
-                <input
-                  type="number" min={0} step={f.step ?? 1}
-                  value={cfg[f.key]}
-                  onChange={e => setField(f.key, parseFloat(e.target.value) || 0)}
-                  style={{
-                    width: 72, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 4,
-                    color: 'var(--text)', fontSize: 12, fontFamily: 'monospace', padding: '3px 7px', outline: 'none',
-                  }}
-                />
+            {CFG_FIELDS.map(f => {
+              // Per-rack budget is physically capped by one PDU on A/B failover.
+              const cap = status?.config?.rack_power_budget_cap_w ?? 0
+              const pduW = status?.config?.rack_pdu_capacity_w ?? 0
+              const showHint = f.key === 'rack_power_budget_w' && cap > 0
+              const overCap = showHint && cfg.rack_power_budget_w > cap
+              return (
+              <div key={f.key} style={{ marginBottom: 5 }}>
+                <div className="field-row-split" title={f.hint}>
+                  <span className="label">{f.label}</span>
+                  <input
+                    type="number" min={0} step={f.step ?? 1}
+                    value={cfg[f.key]}
+                    onChange={e => setField(f.key, parseFloat(e.target.value) || 0)}
+                    style={{
+                      width: 72, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 4,
+                      color: 'var(--text)', fontSize: 12, fontFamily: 'monospace', padding: '3px 7px', outline: 'none',
+                    }}
+                  />
+                </div>
+                {showHint && (
+                  <div style={{ fontSize: 10, color: overCap ? '#f59e0b' : 'var(--text-dim)', marginTop: 2, lineHeight: 1.3 }}>
+                    rack PDU delivers {(pduW / 1000).toFixed(1)} kW → max {(cap / 1000).toFixed(1)} kW/rack (A/B failover)
+                    {overCap && ` — clamped to ${(cap / 1000).toFixed(1)} kW`}
+                  </div>
+                )}
               </div>
-            ))}
+            )})}
             <button
               className="btn-action"
               disabled={busy !== null}

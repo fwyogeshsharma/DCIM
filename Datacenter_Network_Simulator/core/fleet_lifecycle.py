@@ -320,13 +320,28 @@ class FleetLifecycleEngine:
                 continue
             if count >= self._port_cap(tor):
                 continue                       # leaf downlink ports exhausted
+            pdus = self._neighbors(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
             add_w = float(getattr(tmpl, "power_draw_w", 0) or 0)
             if not rack_has_power_headroom(racks_w.get(key, 0.0), add_w,
-                                           self.cfg.rack_power_budget_w):
+                                           self._rack_budget_w(pdus)):
                 continue                       # would exceed the rack power budget
-            pdus = self._neighbors(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
             return {"key": key, "tor": tor, "pdus": pdus, "server_tmpl": tmpl}
         return None
+
+    def _rack_budget_w(self, pdus: list) -> int:
+        """Usable per-rack power budget: the operator's configured budget, capped
+        by what a SINGLE rack PDU can actually deliver on A/B failover (its real
+        nameplate × 0.8 NEC continuous-load derate). The PDU is the physical
+        ceiling — you cannot provision a rack past what one feed carries when its
+        pair fails — while the configured budget models a smaller branch-circuit
+        or per-rack cooling limit BELOW that ceiling. Falls back to the configured
+        budget when the rack's PDUs carry no rating."""
+        cap = int(self.cfg.rack_power_budget_w)
+        rated = [int(getattr(p, "rated_power_w", 0) or 0) for p in pdus]
+        rated = [r for r in rated if r > 0]
+        if rated:
+            cap = min(cap, int(min(rated) * 0.8))
+        return cap
 
     def _port_cap(self, tor: Device) -> int:
         """Physical per-rack server ceiling: the leaf's server-facing downlink
@@ -872,14 +887,12 @@ class FleetLifecycleEngine:
                               fx=fx, fy=fy, hot=hot, cold=cold, facing=facing)
             if pdu is None:
                 continue
-            # A rack PDU is sized to the rack's power FEED, not whatever load
-            # happens to exist the instant it's created. Without this the fixed-
-            # rating model would freeze it near-empty (only the ToR under it) and
-            # then read a false 1000 %+ overload as the rack fills. Rate it to the
-            # rack power budget with breaker headroom (÷0.8), and full budget per
-            # side so an A/B PDU can carry the whole rack on failover.
-            self.s.device_manager.update_device(
-                pdu.id, rated_power_w=int(self.cfg.rack_power_budget_w / 0.8))
+            # The cloned PDU inherits the curated DC rack-PDU's real nameplate
+            # rating (via _clone → the SKU catalog, e.g. 22 kW for an AP8865), so
+            # fleet racks and curated racks agree on PDU capacity. That fixed
+            # nameplate is what the live power model measures load% against — no
+            # per-rack override needed (the old budget÷0.8 override made fleet
+            # racks disagree with curated ones and inverted the budget→PDU link).
             if rpp is not None:                       # PDU drinks from the RPP feed
                 try:
                     self.s.topology.add_link(rpp.id, pdu.id, layer="power")
@@ -896,10 +909,22 @@ class FleetLifecycleEngine:
                 "fx": fx, "fy": fy, "hot": hot, "cold": cold, "facing": facing}
 
     def _dc_pdu(self, dc: str) -> Optional[Device]:
-        """A rack PDU in *dc* to clone the new rack's PDU from (vendor-consistent
-        with that DC's power kit). Falls back to any PDU if the DC has none."""
+        """A rack PDU in *dc* to clone the new COMPUTE rack's PDU from. Must be a
+        compute-rack PDU (one feeding a server), not a lightly-rated network/OOB-
+        rack PDU — otherwise the fleet clones an undersized PDU (e.g. an 8.6 kW
+        AP8941) and every fleet rack inherits that low nameplate, collapsing the
+        per-rack power budget. Picks the highest-rated compute-rack PDU in the DC;
+        falls back to any PDU if the DC has no compute rack yet."""
+        pdu_types = (DeviceType.PDU, DeviceType.FLOOR_PDU)
+        server_racks = {self._rack_key(d) for d in self._servers()
+                        if (d.datacenter or "") == dc}
+        cands = [d for d in self.s.device_manager.get_all_devices()
+                 if d.device_type in pdu_types and (d.datacenter or "") == dc
+                 and self._rack_key(d) in server_racks]
+        if cands:
+            return max(cands, key=lambda p: int(getattr(p, "rated_power_w", 0) or 0))
         for d in self.s.device_manager.get_all_devices():
-            if d.datacenter == dc and d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            if (d.datacenter or "") == dc and d.device_type in pdu_types:
                 return d
         pd = self._by_type(DeviceType.PDU) or self._by_type(DeviceType.FLOOR_PDU)
         return pd[0] if pd else None
@@ -1104,11 +1129,12 @@ class FleetLifecycleEngine:
                 # the live power cascade consistently. (0 lets Device fill a
                 # type/model default in __post_init__.)
                 power_draw_w=int(getattr(tmpl, "power_draw_w", 0) or 0),
-                # Inherit the template's install rating. A hall feed (RPP) is rated
-                # for the whole hall, so a cloned RPP must NOT re-derive from the one
-                # rack it opens with (that would peg it at overload immediately) — it
-                # copies the curated hall RPP's frozen nameplate. Rack PDUs/servers
-                # carry no rating (0) and derive fresh, which is correct per-rack.
+                # Inherit the template's rating. A hall feed (RPP) is rated for the
+                # whole hall, so a cloned RPP must NOT re-derive from the one rack it
+                # opens with (that would peg it at overload immediately) — it copies
+                # the curated hall RPP's frozen nameplate. A rack PDU copies the
+                # curated rack PDU's real SKU nameplate (e.g. 22 kW), so fleet racks
+                # match curated racks. Servers carry 0 (they are loads, not feeds).
                 rated_power_w=int(getattr(tmpl, "rated_power_w", 0) or 0),
                 metrics_enabled=True,
                 country=getattr(tmpl, "country", ""),
@@ -1271,9 +1297,22 @@ class FleetLifecycleEngine:
         # so the panel reflects the real fleet, not just the server count.
         devs = self.s.device_manager.get_all_devices() if self.s.device_manager else []
         device_counts: dict = {}
+        rack_pdu_w = 0
         for d in devs:
             k = d.device_type.value
             device_counts[k] = device_counts.get(k, 0) + 1
+            # Representative COMPUTE-rack-PDU nameplate (the largest rack PDU) — the
+            # per-rack budget knob governs compute racks, whose PDUs are the big
+            # 3-phase units (network/OOB racks carry small PDUs and aren't budget-
+            # provisioned). This is the physical ceiling on the budget: one PDU
+            # carries the rack on A/B failover. Lets the panel show "budget X —
+            # PDU delivers Y". (Per-rack enforcement uses each rack's own PDUs.)
+            if d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+                rack_pdu_w = max(rack_pdu_w, int(getattr(d, "rated_power_w", 0) or 0))
+        # Usable ceiling for the per-rack budget = single PDU × 0.8 (NEC derate).
+        budget_cap_w = int(rack_pdu_w * 0.8) if rack_pdu_w else 0
+        effective_budget_w = (min(self.cfg.rack_power_budget_w, budget_cap_w)
+                              if budget_cap_w else self.cfg.rack_power_budget_w)
         return {
             "enabled": self.enabled,
             "day": self.day,
@@ -1282,6 +1321,12 @@ class FleetLifecycleEngine:
                 "provision_lambda": self.cfg.provision_lambda,
                 "decommission_lambda": self.cfg.decommission_lambda,
                 "rack_power_budget_w": self.cfg.rack_power_budget_w,
+                # Panel hint: the configured budget is capped at what one rack PDU
+                # delivers on A/B failover. effective = the value the fleet
+                # actually enforces per rack (see _rack_budget_w).
+                "rack_pdu_capacity_w": rack_pdu_w,
+                "rack_power_budget_cap_w": budget_cap_w,
+                "rack_power_budget_effective_w": effective_budget_w,
                 "max_racks_per_row": self.cfg.max_racks_per_row,
                 "compute_rows_per_room": self.cfg.compute_rows_per_room,
                 "max_total_servers": self.cfg.max_total_servers,
