@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../../api/client'
+import NumberInput from '../NumberInput'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -194,10 +195,10 @@ export default function FleetPanel() {
               <div key={f.key} style={{ marginBottom: 5 }}>
                 <div className="field-row-split" title={f.hint}>
                   <span className="label">{f.label}</span>
-                  <input
-                    type="number" min={0} step={f.step ?? 1}
-                    value={cfg[f.key]}
-                    onChange={e => setField(f.key, parseFloat(e.target.value) || 0)}
+                  <NumberInput
+                    min={0} step={f.step ?? 1}
+                    value={cfg[f.key] ?? 0}
+                    onChange={n => setField(f.key, n)}
                     style={{
                       width: 72, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 4,
                       color: 'var(--text)', fontSize: 12, fontFamily: 'monospace', padding: '3px 7px', outline: 'none',

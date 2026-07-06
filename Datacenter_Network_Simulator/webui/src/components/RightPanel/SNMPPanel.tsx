@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import TargetsBox from './TargetsBox'
+import NumberInput from '../NumberInput'
 
 // Per-type rows for the Targets box, in display order.
 const SNMP_TARGET_ORDER: [string, string][] = [
@@ -75,8 +76,6 @@ export default function SNMPPanel() {
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
   const [linkCounts, setLinkCounts] = useState({ production: 0, management: 0, power: 0 })
-  const [portFocused,    setPortFocused]    = useState(false)
-  const [mgmtPortFocused,setMgmtPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 
   const running = snmp?.running ?? false
@@ -278,20 +277,19 @@ export default function SNMPPanel() {
           {/* SNMP Port row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <label style={{ fontSize: 10, color: 'var(--text)', whiteSpace: 'nowrap' }}>SNMP Port</label>
-            <input
-              type="number"
+            <NumberInput
+              int
               min={1} max={65535}
               value={snmpPort}
-              onChange={e => setSnmpPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 161)))}
-              onFocus={() => setPortFocused(true)}
-              onBlur={() => setPortFocused(false)}
+              onChange={n => setSnmpPort(n)}
+              fallback={161}
               disabled={busy || running}
               style={{
                 width: 72,
                 background: '#0d1117',
-                border: `1px solid ${portFocused ? '#58a6ff' : 'var(--border)'}`,
+                border: '1px solid var(--border)',
                 borderRadius: 4,
-                color: portFocused ? '#58a6ff' : 'var(--text)',
+                color: 'var(--text)',
                 fontSize: 12,
                 fontFamily: 'monospace',
                 fontWeight: 700,
@@ -312,20 +310,19 @@ export default function SNMPPanel() {
           {/* Mgmt Port row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
             <label style={{ fontSize: 10, color: 'var(--text)', whiteSpace: 'nowrap' }}>Mgmt Port</label>
-            <input
-              type="number"
+            <NumberInput
+              int
               min={1} max={65535}
               value={mgmtPort}
-              onChange={e => setMgmtPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 1161)))}
-              onFocus={() => setMgmtPortFocused(true)}
-              onBlur={() => setMgmtPortFocused(false)}
+              onChange={n => setMgmtPort(n)}
+              fallback={1161}
               disabled={busy || running}
               style={{
                 width: 72,
                 background: '#0d1117',
-                border: `1px solid ${mgmtPortFocused ? '#58a6ff' : 'var(--border)'}`,
+                border: '1px solid var(--border)',
                 borderRadius: 4,
-                color: mgmtPortFocused ? '#58a6ff' : 'var(--text)',
+                color: 'var(--text)',
                 fontSize: 12,
                 fontFamily: 'monospace',
                 fontWeight: 700,

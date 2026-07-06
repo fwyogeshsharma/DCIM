@@ -4,6 +4,7 @@ import { api, errorMessage } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { DeviceInfo } from '../../api/types'
 import { VENDORS, MODELS, deviceTypeLabel } from '../../data/deviceConstants'
+import NumberInput from '../NumberInput'
 
 // ── Applicable traps per device_type (mirrors Python APPLICABLE_TRAPS, LINK_DOWN/LINK_UP excluded) ──
 
@@ -341,13 +342,13 @@ export function EditDeviceDialog({ deviceId, onClose }: { deviceId: string; onCl
           {/* Network Settings */}
           <div style={SEC}>Network Settings</div>
           <ERow label="SNMP Port">
-            <input type="number" style={spinW} value={form.snmp_port}
-              onChange={e => set('snmp_port', parseInt(e.target.value) || 161)} />
+            <NumberInput style={spinW} value={form.snmp_port}
+              onChange={n => set('snmp_port', n)} fallback={161} int />
           </ERow>
           {['router', 'switch'].includes(form.device_type) && (
           <ERow label="gNMI Port">
-            <input type="number" style={spinW} value={form.gnmi_port}
-              onChange={e => set('gnmi_port', parseInt(e.target.value) || 57400)} />
+            <NumberInput style={spinW} value={form.gnmi_port}
+              onChange={n => set('gnmi_port', n)} fallback={57400} int />
           </ERow>
           )}
           <ERow label="Contact">

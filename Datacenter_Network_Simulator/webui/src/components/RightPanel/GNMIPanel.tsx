@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import TargetsBox from './TargetsBox'
+import NumberInput from '../NumberInput'
 
 function formatUptime(connectedAt: number): string {
   if (!connectedAt) return '—'
@@ -81,8 +82,6 @@ export default function GNMIPanel() {
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | 'proxy' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
-  const [portFocused, setPortFocused] = useState(false)
-  const [proxyPortFocused, setProxyPortFocused] = useState(false)
   const resumedJob = useRef<string | null>(null)
 
   const running       = gnmi?.running            ?? false
@@ -274,20 +273,19 @@ export default function GNMIPanel() {
           <label style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             gNMI Port
           </label>
-          <input
-            type="number"
+          <NumberInput
+            int
             min={1} max={65535}
             value={gnmiPort}
-            onChange={e => setGnmiPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 50051)))}
-            onFocus={() => setPortFocused(true)}
-            onBlur={() => setPortFocused(false)}
+            onChange={n => setGnmiPort(n)}
+            fallback={50051}
             disabled={busy || running}
             style={{
               width: 90,
               background: '#0d1117',
-              border: `1px solid ${portFocused ? '#58a6ff' : 'var(--border)'}`,
+              border: '1px solid var(--border)',
               borderRadius: 4,
-              color: portFocused ? '#58a6ff' : 'var(--text)',
+              color: 'var(--text)',
               fontSize: 13,
               fontFamily: 'monospace',
               fontWeight: 700,
@@ -365,20 +363,19 @@ export default function GNMIPanel() {
                 color: 'var(--green)', fontVariantNumeric: 'tabular-nums',
               }}>{port}</span>
             ) : (
-              <input
-                type="number"
+              <NumberInput
+                int
                 min={1} max={65535}
                 value={gnmiProxyPort}
-                onChange={e => setGnmiProxyPort(Math.max(1, Math.min(65535, parseInt(e.target.value) || 50051)))}
-                onFocus={() => setProxyPortFocused(true)}
-                onBlur={() => setProxyPortFocused(false)}
+                onChange={n => setGnmiProxyPort(n)}
+                fallback={50051}
                 disabled={busy || !running}
                 style={{
                   width: 90,
                   background: '#0d1117',
-                  border: `1px solid ${proxyPortFocused ? '#58a6ff' : 'var(--border)'}`,
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
-                  color: proxyPortFocused ? '#58a6ff' : 'var(--text)',
+                  color: 'var(--text)',
                   fontSize: 13,
                   fontFamily: 'monospace',
                   fontWeight: 700,

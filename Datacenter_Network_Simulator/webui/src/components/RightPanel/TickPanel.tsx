@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../../api/client'
+import NumberInput from '../NumberInput'
 
 // ── Static metadata ──────────────────────────────────────────────────────────
 
@@ -494,9 +495,10 @@ export default function TickPanel() {
             <div className="field-row-split">
               <span className="label">Interval</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="number" min={1} max={3600} value={interval}
-                  onChange={e => setIv(Math.max(1, parseInt(e.target.value) || 1))}
+                <NumberInput
+                  int min={1} max={3600} value={interval}
+                  onChange={n => setIv(Math.max(1, n))}
+                  fallback={1}
                   onFocus={() => setIvFocused(true)}
                   onBlur={() => setIvFocused(false)}
                   style={{
@@ -582,17 +584,17 @@ export default function TickPanel() {
 
                     {row.kind === 'num' ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1, minWidth: 0 }}>
-                        <input
-                          type="number" min={row.absMin} max={row.absMax} step={row.step}
-                          value={lim.min} disabled={!lim.enabled}
-                          onChange={e => setLimitField(row.key, 'min', parseFloat(e.target.value) || 0)}
+                        <NumberInput
+                          min={row.absMin} max={row.absMax} step={row.step}
+                          value={lim.min} disabled={!lim.enabled} fallback={0}
+                          onChange={n => setLimitField(row.key, 'min', n)}
                           style={{ ...INPUT_BASE, width: 46, opacity: lim.enabled ? 1 : 0.5 }}
                         />
                         <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>→</span>
-                        <input
-                          type="number" min={row.absMin} max={row.absMax} step={row.step}
-                          value={lim.max} disabled={!lim.enabled}
-                          onChange={e => setLimitField(row.key, 'max', parseFloat(e.target.value) || 0)}
+                        <NumberInput
+                          min={row.absMin} max={row.absMax} step={row.step}
+                          value={lim.max} disabled={!lim.enabled} fallback={0}
+                          onChange={n => setLimitField(row.key, 'max', n)}
                           style={{ ...INPUT_BASE, width: 46, opacity: lim.enabled ? 1 : 0.5 }}
                         />
                         <span style={{ fontSize: 9, color: 'var(--text-muted)', flexShrink: 0 }}>{row.suffix}</span>

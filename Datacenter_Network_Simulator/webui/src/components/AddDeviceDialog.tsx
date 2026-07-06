@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useStore } from '../store/useStore'
 import { DEVICE_TYPES, VENDORS, MODELS } from '../data/deviceConstants'
+import NumberInput from './NumberInput'
 
 // port config lines per model name
 const MODEL_PORTS: Record<string, string[]> = {
@@ -329,13 +330,13 @@ export default function AddDeviceDialog({ onClose }: Props) {
               placeholder="assigned by OOB management network" />
           </FormRow>
           <FormRow label="SNMP Port">
-            <input type="number" style={spinnerStyle} value={form.snmp_port}
-              onChange={e => set('snmp_port', parseInt(e.target.value) || 161)} />
+            <NumberInput style={spinnerStyle} value={form.snmp_port}
+              onChange={n => set('snmp_port', n)} fallback={161} int />
           </FormRow>
           {['router', 'switch'].includes(form.device_type) && (
           <FormRow label="gNMI Port">
-            <input type="number" style={spinnerStyle} value={form.gnmi_port}
-              onChange={e => set('gnmi_port', parseInt(e.target.value) || 57400)} />
+            <NumberInput style={spinnerStyle} value={form.gnmi_port}
+              onChange={n => set('gnmi_port', n)} fallback={57400} int />
           </FormRow>
           )}
           <FormRow label="Community">
