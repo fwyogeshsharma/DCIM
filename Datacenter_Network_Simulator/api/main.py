@@ -146,6 +146,38 @@ async def health():
     }
 
 
+def _dual_stack_socket(host: str, port: int):
+    """A listening socket that serves BOTH IPv4 and IPv6 on a wildcard host.
+
+    Binds `::` with IPV6_V6ONLY=0, so one socket accepts IPv6 (::1) AND IPv4
+    (127.0.0.1 via v4-mapped). Without this we bound IPv4-only (0.0.0.0), and a
+    client resolving `localhost` — which yields `::1` first on Windows/modern
+    resolvers — would try the (unlistened) IPv6 address, stall ~20 s on the TCP
+    timeout, then fall back to IPv4. Dual-stack makes `localhost` connect
+    instantly for browsers and CLI tools alike.
+
+    Only wildcard hosts are upgraded; an explicit IPv4 host is bound as-is.
+    Returns None if IPv6/dual-stack is unavailable, so the caller falls back to
+    uvicorn's default bind.
+    """
+    import socket
+    if host not in ("0.0.0.0", "::", ""):
+        return None                       # explicit host — respect it verbatim
+    try:
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        try:
+            sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (OSError, AttributeError):
+            pass                          # platform default may already be dual-stack
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("::", port))
+        sock.listen(2048)
+        sock.setblocking(False)
+        return sock
+    except OSError:
+        return None                       # IPv6 disabled — caller uses the v4 default
+
+
 def start_api_server(host: str = "0.0.0.0", port: int = 8000):
     """Start uvicorn in the current thread (blocking). Call from a daemon thread."""
     import asyncio
@@ -207,6 +239,15 @@ def start_api_server(host: str = "0.0.0.0", port: int = 8000):
             timeout_keep_alive=0,  # disable HTTP keep-alive — close socket after each response
         )
         server = uvicorn.Server(config)
-        asyncio.get_event_loop().run_until_complete(server.serve())
+        # Prefer a dual-stack socket so `localhost` (→ ::1 first) connects without
+        # the ~20s IPv6-timeout-then-IPv4-fallback. Fall back to uvicorn's own
+        # bind if IPv6 isn't available.
+        _sock = _dual_stack_socket(host, port)
+        _loop = asyncio.get_event_loop()
+        if _sock is not None:
+            log.info("REST API dual-stack listening on [::]:%d (IPv4+IPv6)", port)
+            _loop.run_until_complete(server.serve(sockets=[_sock]))
+        else:
+            _loop.run_until_complete(server.serve())
     except Exception as exc:
         log.exception("REST API server failed to start: %s", exc)
