@@ -6,23 +6,26 @@ import { logger } from '../utils/logger'
 
 // Replaces the retired TimescaleDB continuous aggregates (metrics_5m /
 // energy_metrics_5m, formerly created by 001/007). Every interval this worker
-// summarizes the previous complete window across ALL metric names — from both
-// the `metrics` and `energy_metrics` hypertables — and writes ONE document per
-// window to the MongoDB `metric_summaries` collection:
+// summarizes the previous complete window — from both the `metrics` and
+// `energy_metrics` hypertables — and writes ONE document per (window, device)
+// to the MongoDB `metric_summaries` collection:
 //
 //   {
 //     window_start, window_end, generated_at, interval_minutes,
+//     device_id,
 //     metric_count, total_samples,
 //     metrics: [
-//       { name, source: 'metrics'|'energy_metrics',
-//         avg, min, max, samples, devices },
-//       …one entry per metric name (40+)…
+//       { name, source: 'metrics'|'energy_metrics', avg, min, max, samples },
+//       …one entry per metric name reported by this device…
 //     ]
 //   }
 //
 // Metric names are kept in an array (not as document keys) because they
 // contain dots (e.g. system.cpu_utilization_percent), which MongoDB path
 // queries cannot address as field names.
+//
+// All devices for a window are written in a single bulkWrite — one round
+// trip regardless of fleet size — instead of one updateOne per device.
 
 const COLLECTION = 'metric_summaries'
 
@@ -35,27 +38,36 @@ export function initMetricsSummaryWorker(pool: Pool) {
 
 const SUMMARY_SQL = (table: 'metrics' | 'energy_metrics') => `
   SELECT
+    device_id,
     metric_name,
-    AVG(value)                AS avg,
-    MIN(value)                AS min,
-    MAX(value)                AS max,
-    COUNT(*)::bigint          AS samples,
-    COUNT(DISTINCT device_id) AS devices
+    AVG(value)       AS avg,
+    MIN(value)       AS min,
+    MAX(value)       AS max,
+    COUNT(*)::bigint AS samples
   FROM ${table}
   WHERE ts >= $1 AND ts < $2
-  GROUP BY metric_name
-  ORDER BY metric_name
+  GROUP BY device_id, metric_name
 `
+// device_id + metric_name are the leading columns of idx_metrics_device /
+// idx_energy_device, and ts is the hypertable partition key, so the ts range
+// filter above prunes to a single chunk before the GROUP BY runs — grouping
+// by device adds no extra scan cost over the old metric-only grouping.
 
 async function ensureIndexes() {
   if (indexesReady) return
   const db = await getMongoDb()
   const col = db.collection(COLLECTION)
 
-  // One document per (window, interval); upserts make restarts idempotent.
+  // One document per (window, interval, device); upserts make restarts idempotent.
   await col.createIndex(
-    { window_start: 1, interval_minutes: 1 },
-    { unique: true, name: 'uix_window' }
+    { window_start: 1, interval_minutes: 1, device_id: 1 },
+    { unique: true, name: 'uix_window_device' }
+  )
+
+  // Fast lookups of a single device's recent summary history.
+  await col.createIndex(
+    { device_id: 1, window_start: -1 },
+    { name: 'ix_device_window' }
   )
 
   const expireAfterSeconds = config.metricsSummary.retentionDays * 86400
@@ -75,7 +87,25 @@ async function ensureIndexes() {
       throw err
     }
   }
+
+  // Drop the old per-window-only unique index from the previous schema (one
+  // doc per window across all devices combined) if it's still present.
+  try {
+    await col.dropIndex('uix_window')
+  } catch (err: any) {
+    if (err.codeName !== 'IndexNotFound' && err.codeName !== 'NamespaceNotFound') throw err
+  }
+
   indexesReady = true
+}
+
+type MetricEntry = {
+  name: string
+  source: 'metrics' | 'energy_metrics'
+  avg: number
+  min: number
+  max: number
+  samples: number
 }
 
 export async function summarizeWindow(windowStart: Date, windowEnd: Date) {
@@ -84,45 +114,63 @@ export async function summarizeWindow(windowStart: Date, windowEnd: Date) {
     dbPool.query(SUMMARY_SQL('energy_metrics'), [windowStart, windowEnd]),
   ])
 
-  const entries = [
-    ...metricRows.rows.map((r) => ({ source: 'metrics', ...toEntry(r) })),
-    ...energyRows.rows.map((r) => ({ source: 'energy_metrics', ...toEntry(r) })),
-  ]
+  // Group rows by device so each device gets exactly one summary document.
+  const byDevice = new Map<string, MetricEntry[]>()
+  collectEntries(byDevice, metricRows.rows, 'metrics')
+  collectEntries(byDevice, energyRows.rows, 'energy_metrics')
 
-  if (entries.length === 0) {
+  if (byDevice.size === 0) {
     logger.debug(`Metrics summary: no samples in window ${windowStart.toISOString()} — skipped`)
     return
   }
 
   await ensureIndexes()
   const db = await getMongoDb()
-  await db.collection(COLLECTION).updateOne(
-    { window_start: windowStart, interval_minutes: config.metricsSummary.intervalMinutes },
-    {
-      $set: {
-        window_end: windowEnd,
-        generated_at: new Date(),
-        metric_count: entries.length,
-        total_samples: entries.reduce((n, e) => n + e.samples, 0),
-        metrics: entries,
+  const generatedAt = new Date()
+  const interval = config.metricsSummary.intervalMinutes
+
+  const ops = Array.from(byDevice.entries()).map(([device_id, metrics]) => ({
+    updateOne: {
+      filter: { window_start: windowStart, interval_minutes: interval, device_id },
+      update: {
+        $set: {
+          window_end: windowEnd,
+          generated_at: generatedAt,
+          metric_count: metrics.length,
+          total_samples: metrics.reduce((n, e) => n + e.samples, 0),
+          metrics,
+        },
       },
+      upsert: true,
     },
-    { upsert: true }
-  )
+  }))
+
+  // Single round trip for every device in this window — keeps write overhead
+  // flat as the fleet grows, unlike N sequential updateOne calls. Unordered
+  // so one bad doc can't block the rest of the batch.
+  await db.collection(COLLECTION).bulkWrite(ops, { ordered: false })
 
   logger.info(
-    `Metrics summary written: ${entries.length} metrics, window ${windowStart.toISOString()} → ${windowEnd.toISOString()}`
+    `Metrics summary written: ${byDevice.size} devices, window ${windowStart.toISOString()} → ${windowEnd.toISOString()}`
   )
 }
 
-function toEntry(r: any) {
-  return {
-    name: r.metric_name as string,
-    avg: Number(r.avg),
-    min: Number(r.min),
-    max: Number(r.max),
-    samples: Number(r.samples),
-    devices: Number(r.devices),
+function collectEntries(byDevice: Map<string, MetricEntry[]>, rows: any[], source: 'metrics' | 'energy_metrics') {
+  for (const r of rows) {
+    const deviceId = String(r.device_id)
+    let list = byDevice.get(deviceId)
+    if (!list) {
+      list = []
+      byDevice.set(deviceId, list)
+    }
+    list.push({
+      name: r.metric_name as string,
+      source,
+      avg: Number(r.avg),
+      min: Number(r.min),
+      max: Number(r.max),
+      samples: Number(r.samples),
+    })
   }
 }
 
