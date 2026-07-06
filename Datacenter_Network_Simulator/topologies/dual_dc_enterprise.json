@@ -12030,7 +12030,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 42,
         "cpu_usage": 8,
@@ -12051,10 +12051,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -12905,7 +12905,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 42,
         "cpu_usage": 72,
@@ -12926,10 +12926,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -13780,7 +13780,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 42,
         "cpu_usage": 24,
@@ -13801,10 +13801,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -14655,7 +14655,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 42,
         "cpu_usage": 80,
@@ -14676,10 +14676,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -15530,7 +15530,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 42,
         "cpu_usage": 45,
@@ -15551,10 +15551,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -23530,7 +23530,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 1,
         "cpu_usage": 33,
@@ -23551,10 +23551,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -23623,7 +23623,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 3,
         "cpu_usage": 70,
@@ -23644,10 +23644,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -23716,7 +23716,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 5,
         "cpu_usage": 37,
@@ -23737,10 +23737,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -23809,7 +23809,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 7,
         "cpu_usage": 67,
@@ -23830,10 +23830,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -23902,7 +23902,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 9,
         "cpu_usage": 45,
@@ -23923,10 +23923,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -23995,7 +23995,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 11,
         "cpu_usage": 67,
@@ -24016,10 +24016,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24088,7 +24088,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 13,
         "cpu_usage": 28,
@@ -24109,10 +24109,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24181,7 +24181,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 15,
         "cpu_usage": 51,
@@ -24202,10 +24202,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24274,7 +24274,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 17,
         "cpu_usage": 87,
@@ -24295,10 +24295,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24367,7 +24367,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 19,
         "cpu_usage": 30,
@@ -24388,10 +24388,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24460,7 +24460,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 21,
         "cpu_usage": 51,
@@ -24481,10 +24481,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24553,7 +24553,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 23,
         "cpu_usage": 77,
@@ -24574,10 +24574,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24646,7 +24646,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 25,
         "cpu_usage": 48,
@@ -24667,10 +24667,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24739,7 +24739,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 27,
         "cpu_usage": 27,
@@ -24760,10 +24760,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24832,7 +24832,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 29,
         "cpu_usage": 76,
@@ -24853,10 +24853,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -24925,7 +24925,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 31,
         "cpu_usage": 50,
@@ -24946,10 +24946,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25018,7 +25018,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 33,
         "cpu_usage": 42,
@@ -25039,10 +25039,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25111,7 +25111,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 1,
         "cpu_usage": 18,
@@ -25132,10 +25132,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25204,7 +25204,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 3,
         "cpu_usage": 72,
@@ -25225,10 +25225,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25297,7 +25297,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 5,
         "cpu_usage": 72,
@@ -25318,10 +25318,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25390,7 +25390,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 7,
         "cpu_usage": 18,
@@ -25411,10 +25411,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25483,7 +25483,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 9,
         "cpu_usage": 76,
@@ -25504,10 +25504,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25576,7 +25576,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 11,
         "cpu_usage": 68,
@@ -25597,10 +25597,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25669,7 +25669,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 13,
         "cpu_usage": 57,
@@ -25690,10 +25690,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25762,7 +25762,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 15,
         "cpu_usage": 11,
@@ -25783,10 +25783,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25855,7 +25855,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 17,
         "cpu_usage": 24,
@@ -25876,10 +25876,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -25948,7 +25948,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 19,
         "cpu_usage": 13,
@@ -25969,10 +25969,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26041,7 +26041,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 21,
         "cpu_usage": 13,
@@ -26062,10 +26062,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26134,7 +26134,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 23,
         "cpu_usage": 26,
@@ -26155,10 +26155,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26227,7 +26227,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 25,
         "cpu_usage": 83,
@@ -26248,10 +26248,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26320,7 +26320,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 27,
         "cpu_usage": 58,
@@ -26341,10 +26341,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26413,7 +26413,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 29,
         "cpu_usage": 64,
@@ -26434,10 +26434,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26506,7 +26506,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 31,
         "cpu_usage": 44,
@@ -26527,10 +26527,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26599,7 +26599,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 33,
         "cpu_usage": 36,
@@ -26620,10 +26620,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26692,7 +26692,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 1,
         "cpu_usage": 14,
@@ -26713,10 +26713,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26785,7 +26785,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 3,
         "cpu_usage": 48,
@@ -26806,10 +26806,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26878,7 +26878,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 5,
         "cpu_usage": 63,
@@ -26899,10 +26899,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -26971,7 +26971,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 7,
         "cpu_usage": 12,
@@ -26992,10 +26992,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27064,7 +27064,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 9,
         "cpu_usage": 57,
@@ -27085,10 +27085,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27157,7 +27157,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 11,
         "cpu_usage": 28,
@@ -27178,10 +27178,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27250,7 +27250,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 13,
         "cpu_usage": 21,
@@ -27271,10 +27271,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27343,7 +27343,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 15,
         "cpu_usage": 50,
@@ -27364,10 +27364,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27436,7 +27436,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 17,
         "cpu_usage": 48,
@@ -27457,10 +27457,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27529,7 +27529,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 19,
         "cpu_usage": 83,
@@ -27550,10 +27550,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27622,7 +27622,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 21,
         "cpu_usage": 50,
@@ -27643,10 +27643,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27715,7 +27715,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 23,
         "cpu_usage": 86,
@@ -27736,10 +27736,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27808,7 +27808,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 25,
         "cpu_usage": 56,
@@ -27829,10 +27829,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27901,7 +27901,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 27,
         "cpu_usage": 20,
@@ -27922,10 +27922,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -27994,7 +27994,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 29,
         "cpu_usage": 48,
@@ -28015,10 +28015,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28087,7 +28087,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 31,
         "cpu_usage": 88,
@@ -28108,10 +28108,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28180,7 +28180,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 33,
         "cpu_usage": 72,
@@ -28201,10 +28201,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28273,7 +28273,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 1,
         "cpu_usage": 18,
@@ -28294,10 +28294,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28366,7 +28366,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 3,
         "cpu_usage": 31,
@@ -28387,10 +28387,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28459,7 +28459,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 5,
         "cpu_usage": 19,
@@ -28480,10 +28480,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28552,7 +28552,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 7,
         "cpu_usage": 46,
@@ -28573,10 +28573,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28645,7 +28645,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 9,
         "cpu_usage": 31,
@@ -28666,10 +28666,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28738,7 +28738,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 11,
         "cpu_usage": 8,
@@ -28759,10 +28759,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28831,7 +28831,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 13,
         "cpu_usage": 37,
@@ -28852,10 +28852,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -28924,7 +28924,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 15,
         "cpu_usage": 92,
@@ -28945,10 +28945,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29017,7 +29017,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 17,
         "cpu_usage": 42,
@@ -29038,10 +29038,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29110,7 +29110,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 19,
         "cpu_usage": 7,
@@ -29131,10 +29131,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29203,7 +29203,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 21,
         "cpu_usage": 60,
@@ -29224,10 +29224,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29296,7 +29296,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 23,
         "cpu_usage": 53,
@@ -29317,10 +29317,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29389,7 +29389,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 25,
         "cpu_usage": 27,
@@ -29410,10 +29410,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29482,7 +29482,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 27,
         "cpu_usage": 65,
@@ -29503,10 +29503,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29575,7 +29575,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 29,
         "cpu_usage": 40,
@@ -29596,10 +29596,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29668,7 +29668,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 31,
         "cpu_usage": 70,
@@ -29689,10 +29689,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29761,7 +29761,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 33,
         "cpu_usage": 48,
@@ -29782,10 +29782,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29854,7 +29854,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 1,
         "cpu_usage": 94,
@@ -29875,10 +29875,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -29947,7 +29947,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 3,
         "cpu_usage": 38,
@@ -29968,10 +29968,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30040,7 +30040,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 5,
         "cpu_usage": 34,
@@ -30061,10 +30061,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30133,7 +30133,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 7,
         "cpu_usage": 88,
@@ -30154,10 +30154,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30226,7 +30226,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 9,
         "cpu_usage": 76,
@@ -30247,10 +30247,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30319,7 +30319,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 11,
         "cpu_usage": 31,
@@ -30340,10 +30340,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30412,7 +30412,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 13,
         "cpu_usage": 82,
@@ -30433,10 +30433,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30505,7 +30505,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 15,
         "cpu_usage": 24,
@@ -30526,10 +30526,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30598,7 +30598,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 17,
         "cpu_usage": 81,
@@ -30619,10 +30619,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30691,7 +30691,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 19,
         "cpu_usage": 39,
@@ -30712,10 +30712,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30784,7 +30784,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 21,
         "cpu_usage": 23,
@@ -30805,10 +30805,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30877,7 +30877,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 23,
         "cpu_usage": 37,
@@ -30898,10 +30898,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -30970,7 +30970,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 25,
         "cpu_usage": 23,
@@ -30991,10 +30991,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -31063,7 +31063,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 27,
         "cpu_usage": 60,
@@ -31084,10 +31084,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -31156,7 +31156,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 29,
         "cpu_usage": 29,
@@ -31177,10 +31177,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -31249,7 +31249,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 31,
         "cpu_usage": 18,
@@ -31270,10 +31270,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -31342,7 +31342,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 33,
         "cpu_usage": 68,
@@ -31363,10 +31363,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -31900,7 +31900,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 37,
         "cpu_usage": 39,
@@ -31921,10 +31921,10 @@
         "power_source_a": "09cb3942",
         "power_source_b": "30a900ad",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -31993,7 +31993,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 35,
         "cpu_usage": 68,
@@ -32014,10 +32014,10 @@
         "power_source_a": "d9178793",
         "power_source_b": "8dedf9fb",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -32086,7 +32086,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 37,
         "cpu_usage": 25,
@@ -32107,10 +32107,10 @@
         "power_source_a": "001a9a8b",
         "power_source_b": "15b52908",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -32179,7 +32179,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 35,
         "cpu_usage": 43,
@@ -32200,10 +32200,10 @@
         "power_source_a": "25b8fd4b",
         "power_source_b": "935f2b0a",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -32272,7 +32272,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 37,
         "cpu_usage": 43,
@@ -32293,10 +32293,10 @@
         "power_source_a": "e2add909",
         "power_source_b": "1f115b76",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -42577,7 +42577,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 42,
         "cpu_usage": 51,
@@ -42598,10 +42598,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -43452,7 +43452,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 42,
         "cpu_usage": 87,
@@ -43473,10 +43473,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -44327,7 +44327,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 42,
         "cpu_usage": 89,
@@ -44348,10 +44348,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -45202,7 +45202,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 42,
         "cpu_usage": 87,
@@ -45223,10 +45223,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mlag_ready": true,
         "mlag_peer_unit": 41
       }
@@ -50877,7 +50877,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 1,
         "cpu_usage": 41,
@@ -50898,10 +50898,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -50970,7 +50970,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 3,
         "cpu_usage": 30,
@@ -50991,10 +50991,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51063,7 +51063,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 5,
         "cpu_usage": 40,
@@ -51084,10 +51084,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51156,7 +51156,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 7,
         "cpu_usage": 45,
@@ -51177,10 +51177,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51249,7 +51249,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 9,
         "cpu_usage": 25,
@@ -51270,10 +51270,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51342,7 +51342,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 11,
         "cpu_usage": 90,
@@ -51363,10 +51363,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51435,7 +51435,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 13,
         "cpu_usage": 50,
@@ -51456,10 +51456,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51528,7 +51528,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 15,
         "cpu_usage": 85,
@@ -51549,10 +51549,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51621,7 +51621,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 17,
         "cpu_usage": 53,
@@ -51642,10 +51642,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51714,7 +51714,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 19,
         "cpu_usage": 36,
@@ -51735,10 +51735,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51807,7 +51807,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 21,
         "cpu_usage": 22,
@@ -51828,10 +51828,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51900,7 +51900,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 23,
         "cpu_usage": 15,
@@ -51921,10 +51921,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -51993,7 +51993,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 25,
         "cpu_usage": 52,
@@ -52014,10 +52014,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52086,7 +52086,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 27,
         "cpu_usage": 64,
@@ -52107,10 +52107,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52179,7 +52179,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 29,
         "cpu_usage": 17,
@@ -52200,10 +52200,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52272,7 +52272,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 1,
         "cpu_usage": 10,
@@ -52293,10 +52293,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52365,7 +52365,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 3,
         "cpu_usage": 42,
@@ -52386,10 +52386,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52458,7 +52458,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 5,
         "cpu_usage": 94,
@@ -52479,10 +52479,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52551,7 +52551,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 7,
         "cpu_usage": 37,
@@ -52572,10 +52572,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52644,7 +52644,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 9,
         "cpu_usage": 80,
@@ -52665,10 +52665,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52737,7 +52737,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 11,
         "cpu_usage": 44,
@@ -52758,10 +52758,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52830,7 +52830,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 13,
         "cpu_usage": 58,
@@ -52851,10 +52851,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -52923,7 +52923,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 15,
         "cpu_usage": 75,
@@ -52944,10 +52944,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53016,7 +53016,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 17,
         "cpu_usage": 44,
@@ -53037,10 +53037,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53109,7 +53109,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 19,
         "cpu_usage": 7,
@@ -53130,10 +53130,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53202,7 +53202,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 21,
         "cpu_usage": 91,
@@ -53223,10 +53223,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53295,7 +53295,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 23,
         "cpu_usage": 38,
@@ -53316,10 +53316,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53388,7 +53388,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 25,
         "cpu_usage": 44,
@@ -53409,10 +53409,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53481,7 +53481,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 27,
         "cpu_usage": 17,
@@ -53502,10 +53502,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53574,7 +53574,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 29,
         "cpu_usage": 13,
@@ -53595,10 +53595,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53667,7 +53667,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 1,
         "cpu_usage": 82,
@@ -53688,10 +53688,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53760,7 +53760,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 3,
         "cpu_usage": 38,
@@ -53781,10 +53781,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53853,7 +53853,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 5,
         "cpu_usage": 34,
@@ -53874,10 +53874,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -53946,7 +53946,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 7,
         "cpu_usage": 65,
@@ -53967,10 +53967,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54039,7 +54039,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 9,
         "cpu_usage": 69,
@@ -54060,10 +54060,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54132,7 +54132,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 11,
         "cpu_usage": 43,
@@ -54153,10 +54153,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54225,7 +54225,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 13,
         "cpu_usage": 33,
@@ -54246,10 +54246,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54318,7 +54318,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 15,
         "cpu_usage": 93,
@@ -54339,10 +54339,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54411,7 +54411,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 17,
         "cpu_usage": 13,
@@ -54432,10 +54432,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54504,7 +54504,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 19,
         "cpu_usage": 52,
@@ -54525,10 +54525,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54597,7 +54597,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 21,
         "cpu_usage": 75,
@@ -54618,10 +54618,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54690,7 +54690,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 23,
         "cpu_usage": 77,
@@ -54711,10 +54711,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54783,7 +54783,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 25,
         "cpu_usage": 51,
@@ -54804,10 +54804,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54876,7 +54876,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 27,
         "cpu_usage": 62,
@@ -54897,10 +54897,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -54969,7 +54969,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 29,
         "cpu_usage": 65,
@@ -54990,10 +54990,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55062,7 +55062,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 1,
         "cpu_usage": 23,
@@ -55083,10 +55083,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55155,7 +55155,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 3,
         "cpu_usage": 75,
@@ -55176,10 +55176,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55248,7 +55248,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 5,
         "cpu_usage": 6,
@@ -55269,10 +55269,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55341,7 +55341,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 7,
         "cpu_usage": 90,
@@ -55362,10 +55362,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55434,7 +55434,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 9,
         "cpu_usage": 65,
@@ -55455,10 +55455,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55527,7 +55527,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 11,
         "cpu_usage": 27,
@@ -55548,10 +55548,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55620,7 +55620,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 13,
         "cpu_usage": 30,
@@ -55641,10 +55641,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55713,7 +55713,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 15,
         "cpu_usage": 38,
@@ -55734,10 +55734,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55806,7 +55806,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 17,
         "cpu_usage": 86,
@@ -55827,10 +55827,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55899,7 +55899,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 19,
         "cpu_usage": 50,
@@ -55920,10 +55920,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -55992,7 +55992,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 21,
         "cpu_usage": 30,
@@ -56013,10 +56013,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -56085,7 +56085,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 23,
         "cpu_usage": 46,
@@ -56106,10 +56106,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -56178,7 +56178,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 25,
         "cpu_usage": 52,
@@ -56199,10 +56199,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -56271,7 +56271,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 27,
         "cpu_usage": 39,
@@ -56292,10 +56292,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -56364,7 +56364,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 29,
         "cpu_usage": 41,
@@ -56385,10 +56385,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -56829,7 +56829,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 31,
         "cpu_usage": 77,
@@ -56850,10 +56850,10 @@
         "power_source_a": "6090d697",
         "power_source_b": "0b2c782a",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -56922,7 +56922,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 33,
         "cpu_usage": 95,
@@ -56943,10 +56943,10 @@
         "power_source_a": "d85480f0",
         "power_source_b": "1327f1bc",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -57015,7 +57015,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 31,
         "cpu_usage": 54,
@@ -57036,10 +57036,10 @@
         "power_source_a": "f4427e0b",
         "power_source_b": "bf2c14a0",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -57108,7 +57108,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 33,
         "cpu_usage": 59,
@@ -57129,10 +57129,10 @@
         "power_source_a": "e746ccb9",
         "power_source_b": "6e417d47",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -61840,7 +61840,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 68,
@@ -61861,11 +61861,11 @@
         "power_source_a": "30a900ad",
         "power_source_b": null,
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "mounting": "rack_front",
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -65646,7 +65646,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 42,
@@ -65667,11 +65667,11 @@
         "power_source_a": "0b2c782a",
         "power_source_b": null,
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "mounting": "rack_front",
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -65946,8 +65946,8 @@
         "datacenter": "DC1",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 6,
+        "rack_row": 1,
+        "rack_num": 4,
         "rack_unit": 0,
         "cpu_usage": 14,
         "memory_total": 34359738368,
@@ -65964,9 +65964,12 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.3,
-        "floor_y": 4.2,
-        "rated_power_w": null
+        "floor_x": 2.1,
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -66020,8 +66023,8 @@
         "datacenter": "DC1",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 7,
+        "rack_row": 1,
+        "rack_num": 9,
         "rack_unit": 0,
         "cpu_usage": 89,
         "memory_total": 17179869184,
@@ -66038,9 +66041,12 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.9,
-        "floor_y": 4.2,
-        "rated_power_w": null
+        "floor_x": 5.1,
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -66094,7 +66100,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 6,
         "rack_unit": 0,
         "cpu_usage": 40,
@@ -66113,8 +66119,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.3,
-        "floor_y": 5.4,
-        "rated_power_w": null
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -66168,7 +66177,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 7,
         "rack_unit": 0,
         "cpu_usage": 35,
@@ -66187,8 +66196,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.9,
-        "floor_y": 5.4,
-        "rated_power_w": null
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -66464,8 +66476,8 @@
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 5,
+        "rack_row": 1,
+        "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 16,
         "memory_total": 8589934592,
@@ -66482,9 +66494,12 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.7,
-        "floor_y": 4.2,
-        "rated_power_w": null
+        "floor_x": 1.5,
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -66538,8 +66553,8 @@
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 6,
+        "rack_row": 1,
+        "rack_num": 13,
         "rack_unit": 0,
         "cpu_usage": 57,
         "memory_total": 8589934592,
@@ -66556,9 +66571,12 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.3,
-        "floor_y": 4.2,
-        "rated_power_w": null
+        "floor_x": 7.5,
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -66612,7 +66630,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 0,
         "cpu_usage": 69,
@@ -66631,8 +66649,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 2.7,
-        "floor_y": 5.4,
-        "rated_power_w": null
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -66686,7 +66707,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 6,
         "rack_unit": 0,
         "cpu_usage": 76,
@@ -66705,8 +66726,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 3.3,
-        "floor_y": 5.4,
-        "rated_power_w": null
+        "floor_y": 1.8,
+        "rated_power_w": null,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -66760,8 +66784,8 @@
         "datacenter": "DC1",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 6,
+        "rack_row": 1,
+        "rack_num": 4,
         "rack_unit": 0,
         "cpu_usage": 42,
         "memory_total": 34359738368,
@@ -66779,8 +66803,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "a528c3ab",
-        "floor_x": 3.3,
-        "floor_y": 4.2
+        "floor_x": 2.1,
+        "floor_y": 1.8,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -66834,7 +66861,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 6,
         "rack_unit": 0,
         "cpu_usage": 60,
@@ -66854,7 +66881,10 @@
         "sys_location_override": "",
         "monitored_panel": "238d0922",
         "floor_x": 3.3,
-        "floor_y": 5.4
+        "floor_y": 1.8,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -66908,8 +66938,8 @@
         "datacenter": "DC1",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 7,
+        "rack_row": 1,
+        "rack_num": 9,
         "rack_unit": 0,
         "cpu_usage": 14,
         "memory_total": 8589934592,
@@ -66927,8 +66957,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "5360689f",
-        "floor_x": 3.9,
-        "floor_y": 4.2
+        "floor_x": 5.1,
+        "floor_y": 1.8,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -66982,7 +67015,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 7,
         "rack_unit": 0,
         "cpu_usage": 90,
@@ -67002,7 +67035,10 @@
         "sys_location_override": "",
         "monitored_panel": "61b311bb",
         "floor_x": 3.9,
-        "floor_y": 5.4
+        "floor_y": 1.8,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -67056,8 +67092,8 @@
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 5,
+        "rack_row": 1,
+        "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 66,
         "memory_total": 17179869184,
@@ -67075,8 +67111,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "b324209b",
-        "floor_x": 2.7,
-        "floor_y": 4.2
+        "floor_x": 1.5,
+        "floor_y": 1.8,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -67130,7 +67169,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 0,
         "cpu_usage": 53,
@@ -67150,7 +67189,10 @@
         "sys_location_override": "",
         "monitored_panel": "a8e3601e",
         "floor_x": 2.7,
-        "floor_y": 5.4
+        "floor_y": 1.8,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -67204,8 +67246,8 @@
         "datacenter": "DC2",
         "room": "Server Hall A",
         "floor": "1",
-        "rack_row": 2,
-        "rack_num": 6,
+        "rack_row": 1,
+        "rack_num": 13,
         "rack_unit": 0,
         "cpu_usage": 49,
         "memory_total": 34359738368,
@@ -67223,8 +67265,11 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "72c0c547",
-        "floor_x": 3.3,
-        "floor_y": 4.2
+        "floor_x": 7.5,
+        "floor_y": 1.8,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
       }
     },
     {
@@ -67278,7 +67323,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 6,
         "rack_unit": 0,
         "cpu_usage": 76,
@@ -67298,7 +67343,10 @@
         "sys_location_override": "",
         "monitored_panel": "e48c0c95",
         "floor_x": 3.3,
-        "floor_y": 5.4
+        "floor_y": 1.8,
+        "hot_aisle": "HA0",
+        "cold_aisle": "CA1",
+        "rack_facing": "S"
       }
     },
     {
@@ -72090,7 +72138,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 1,
         "cpu_usage": 78,
@@ -72111,10 +72159,10 @@
         "power_source_a": "30a900ad",
         "power_source_b": null,
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mounting": "rack_front"
       }
     },
@@ -72169,7 +72217,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 54,
@@ -72190,11 +72238,11 @@
         "power_source_a": "8dedf9fb",
         "power_source_b": null,
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "mounting": "rack_front",
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -72248,7 +72296,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 1,
         "cpu_usage": 78,
@@ -72269,10 +72317,10 @@
         "power_source_a": "0b2c782a",
         "power_source_b": null,
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "mounting": "rack_front"
       }
     },
@@ -72327,7 +72375,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 54,
@@ -72348,11 +72396,11 @@
         "power_source_a": "1327f1bc",
         "power_source_b": null,
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "mounting": "rack_front",
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -73628,7 +73676,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 38,
         "cpu_usage": 66,
@@ -73649,10 +73697,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -73706,7 +73754,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 38,
         "cpu_usage": 66,
@@ -73727,10 +73775,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -73784,7 +73832,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 38,
         "cpu_usage": 66,
@@ -73805,10 +73853,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -74154,7 +74202,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 38,
         "cpu_usage": 66,
@@ -74175,10 +74223,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -74232,7 +74280,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 38,
         "cpu_usage": 66,
@@ -74253,10 +74301,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -74310,7 +74358,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 38,
         "cpu_usage": 66,
@@ -74331,10 +74379,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1"
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0"
       }
     },
     {
@@ -76570,7 +76618,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -76591,10 +76639,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -76649,7 +76697,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -76670,10 +76718,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -76728,7 +76776,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -76749,10 +76797,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -76807,7 +76855,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -76828,10 +76876,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -76886,7 +76934,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -76907,10 +76955,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -76965,7 +77013,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -76986,10 +77034,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -77044,7 +77092,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -77065,10 +77113,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -77123,7 +77171,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -77144,10 +77192,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -77202,7 +77250,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -77223,10 +77271,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -77281,7 +77329,7 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -77302,10 +77350,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 2.7,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79080,7 +79128,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79101,10 +79149,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79159,7 +79207,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79180,10 +79228,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.3,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79238,7 +79286,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79259,10 +79307,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79317,7 +79365,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79338,10 +79386,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 0.9,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79396,7 +79444,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79417,10 +79465,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79475,7 +79523,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79496,10 +79544,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 1.5,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79554,7 +79602,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79575,10 +79623,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -79633,7 +79681,7 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "floor": "2",
-        "rack_row": 3,
+        "rack_row": 1,
         "rack_num": 4,
         "rack_unit": 0,
         "cpu_usage": 95,
@@ -79654,10 +79702,10 @@
         "power_source_a": "",
         "power_source_b": "",
         "floor_x": 2.1,
-        "floor_y": 5.4,
+        "floor_y": 1.8,
         "rack_facing": "S",
-        "cold_aisle": "CA2",
-        "hot_aisle": "HA1",
+        "cold_aisle": "CA1",
+        "hot_aisle": "HA0",
         "rated_power_w": null
       }
     },
@@ -97369,13 +97417,11 @@
         ]
       },
       "DC1/Server Hall B": {
-        "datacenter": "DC1",
-        "room": "Server Hall B",
-        "class": "white_space",
-        "containment": "cold_aisle",
         "width_m": 4.8,
         "depth_m": 13.5,
         "rows": [
+          1,
+          2,
           3,
           4,
           5
@@ -97383,13 +97429,33 @@
         "racks_per_row": 8,
         "aisles": [
           {
+            "id": "HA0",
+            "type": "hot",
+            "between_rows": [
+              0,
+              1
+            ],
+            "y": 0.6,
+            "width": 1.2
+          },
+          {
+            "id": "CA1",
+            "type": "cold",
+            "between_rows": [
+              1,
+              2
+            ],
+            "y": 3.0,
+            "width": 1.2
+          },
+          {
             "id": "HA1",
             "type": "hot",
             "between_rows": [
               2,
               3
             ],
-            "y": 4.2,
+            "y": 5.4,
             "width": 1.2
           },
           {
@@ -97399,30 +97465,34 @@
               3,
               4
             ],
-            "y": 6.6,
+            "y": 7.8,
             "width": 1.2
           },
           {
             "id": "HA2",
             "type": "hot",
             "between_rows": [
-              3,
-              4
+              4,
+              5
             ],
-            "y": 9.0,
+            "y": 10.2,
             "width": 1.2
           },
           {
             "id": "CA3",
             "type": "cold",
             "between_rows": [
-              4,
-              5
+              5,
+              6
             ],
-            "y": 11.4,
+            "y": 12.6,
             "width": 1.2
           }
-        ]
+        ],
+        "datacenter": "DC1",
+        "room": "Server Hall B",
+        "class": "white_space",
+        "containment": "cold_aisle"
       },
       "DC1/UPS Room": {
         "datacenter": "DC1",
@@ -97560,13 +97630,11 @@
         ]
       },
       "DC2/Server Hall B": {
-        "datacenter": "DC2",
-        "room": "Server Hall B",
-        "class": "white_space",
-        "containment": "cold_aisle",
         "width_m": 4.8,
         "depth_m": 13.5,
         "rows": [
+          1,
+          2,
           3,
           4,
           5
@@ -97574,13 +97642,33 @@
         "racks_per_row": 8,
         "aisles": [
           {
+            "id": "HA0",
+            "type": "hot",
+            "between_rows": [
+              0,
+              1
+            ],
+            "y": 0.6,
+            "width": 1.2
+          },
+          {
+            "id": "CA1",
+            "type": "cold",
+            "between_rows": [
+              1,
+              2
+            ],
+            "y": 3.0,
+            "width": 1.2
+          },
+          {
             "id": "HA1",
             "type": "hot",
             "between_rows": [
               2,
               3
             ],
-            "y": 4.2,
+            "y": 5.4,
             "width": 1.2
           },
           {
@@ -97590,30 +97678,34 @@
               3,
               4
             ],
-            "y": 6.6,
+            "y": 7.8,
             "width": 1.2
           },
           {
             "id": "HA2",
             "type": "hot",
             "between_rows": [
-              3,
-              4
+              4,
+              5
             ],
-            "y": 9.0,
+            "y": 10.2,
             "width": 1.2
           },
           {
             "id": "CA3",
             "type": "cold",
             "between_rows": [
-              4,
-              5
+              5,
+              6
             ],
-            "y": 11.4,
+            "y": 12.6,
             "width": 1.2
           }
-        ]
+        ],
+        "datacenter": "DC2",
+        "room": "Server Hall B",
+        "class": "white_space",
+        "containment": "cold_aisle"
       },
       "DC2/UPS Room": {
         "datacenter": "DC2",

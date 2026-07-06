@@ -526,19 +526,30 @@ class FleetLifecycleEngine:
             return None
         return (fp.get("rooms") or {}).get(f"{dc}/{room}")
 
+    def _hall_has_local_spine(self, rk: tuple) -> bool:
+        """True if a spine switch physically lives in hall *rk* (a network hall /
+        pod), False for a compute ANNEX that shares the DC's spines in another
+        hall. Determines whether row 1 is reserved for the network/MDA."""
+        return any(self._is_spine(d) and self._room_key(d) == rk
+                   for d in self.s.device_manager.get_all_devices())
+
     def _hall_grid(self, rk: tuple):
         """(racks_per_row, compute_rows, first_compute_row, n_rows) for hall *rk*,
         derived from its PHYSICAL floor-plan extent so a hall fills to its real
         rack capacity before a new hall opens — instead of a fixed config box.
-        The front row (row 1) is the network/edge row and the back row (row
-        n_rows) is the CRAH perimeter, exactly like the curated halls, so compute
-        occupies the (n_rows - 2) middle rows starting at row 2. Falls back to the
+        The back row (row n_rows) is the CRAH perimeter. A NETWORK hall reserves
+        the front row (row 1) for spines/OOB, so compute occupies rows 2..n_rows-1.
+        A compute ANNEX (no local spine — shares the DC's fabric) has no network
+        row, so compute fills from row 1 (rows 1..n_rows-1). Falls back to the
         config grid for a hall with no extent."""
         ext = self._hall_extent(rk)
         rows = ext.get("rows") if ext else None
         rpr = ext.get("racks_per_row") if ext else None
         if ext and rpr and rows:
             rpr = max(1, int(rpr))
+            if not self._hall_has_local_spine(rk):        # compute annex
+                n_rows = max(2, len(rows))
+                return rpr, max(1, n_rows - 1), 1, n_rows
             n_rows = max(3, len(rows))
             return rpr, max(1, n_rows - 2), 2, n_rows
         cr = max(1, self.cfg.compute_rows_per_room)
@@ -623,23 +634,69 @@ class FleetLifecycleEngine:
                 "crahs": crahs, "sensor_tmpl": sensor_tmpl,
                 "chw_supply": chw_supply, "chw_return": chw_return}
 
+    @staticmethod
+    def _yk(y) -> float:
+        """Row-position key: round floor_y so curated and fleet racks on the same
+        physical row hash to one slot regardless of tiny float differences."""
+        return round(float(y), 2)
+
+    def _next_compute_slot(self, rk: tuple):
+        """The next free compute slot in hall *rk*, scanned ROW-MAJOR: fill every
+        free rack in a compute row (front to back) BEFORE opening the next row —
+        so freed in-row gaps (e.g. the slots vacated by moving RPPs to the network
+        row) fill first, like a real hall packs a row before starting the next.
+        Returns (rack_row_label, rack_num, coords) or None when the compute grid
+        is full. Placing into a curated row uses that row's real rack_row; a new
+        row behind gets a stable synthetic label."""
+        rpr, comp_rows, _first_row, n_rows = self._hall_grid(rk)
+        servers = [s for s in self._servers() if self._room_key(s) == rk]
+        if not servers:
+            return None
+        # Occupied physical slots — ANY rack-occupying device (server, leaf, and
+        # crucially RPP/EV2 racks so a compute rack is never placed on top of a
+        # power rack), keyed by (row, num).
+        occ = {(self._yk(d.floor_y), d.rack_num or 0)
+               for d in self.s.device_manager.get_all_devices()
+               if self._room_key(d) == rk and d.floor_y is not None
+               and (d.rack_num or 0) >= 1}
+        # Curated compute rows first (their real rack_row + floor_y), front to back.
+        cur_rows: dict = {}
+        for s in servers:
+            if (s.rack_row or 0) < self._FLEET_ROW_BASE and s.floor_y is not None:
+                cur_rows.setdefault(self._yk(s.floor_y), s.rack_row)
+        rows: list = sorted(cur_rows.items())        # [(fy, rack_row)]
+        # Then extend behind the back-most curated row with new fleet rows, up to
+        # the hall's compute-row count (stop before the CRAH back wall).
+        back = max(cur_rows) if cur_rows else None
+        if back is not None:
+            for k in range(1, comp_rows - len(rows) + 1):
+                fy = round(back + geo.ROW_PITCH * k, 4)
+                if fy >= geo.row_y(n_rows) - 1e-6:
+                    break                            # would hit the CRAH perimeter
+                rows.append((fy, None))              # synthetic label assigned on use
+        for fy, rack_row in rows:
+            for num in range(1, rpr + 1):
+                if (self._yk(fy), num) in occ:
+                    continue                         # slot taken
+                i = max(1, int(round((fy - geo.row_y(1)) / geo.ROW_PITCH)) + 1)
+                hot, cold, facing = geo.row_aisles(i)
+                if rack_row is None:                 # new row behind curated compute
+                    rack_row = self._row_label(rk, ("y", self._yk(fy)))
+                return rack_row, num, (geo.rack_x(num), round(fy, 4), hot, cold, facing)
+        return None
+
     def _fill_hall_grid(self, summ: DaySummary) -> Optional[dict]:
         """Add the next compute rack to a hall that's still under its grid cap.
         Most-occupied hall first, so one hall fills before the next is touched.
-        The cap (racks_per_row x compute_rows) and row width come from each hall's
-        PHYSICAL extent, so a hall fills to its real floor capacity before a new
-        hall opens."""
+        Racks fill ROW-MAJOR (each compute row packs full before the next opens),
+        so freed in-row gaps are used before a new row is started. The cap
+        (racks_per_row x compute_rows) and row width come from each hall's PHYSICAL
+        extent, so a hall fills to its real floor capacity before a new hall opens."""
         racks = self._hall_compute_racks()
         for rk in sorted(racks, key=lambda k: (-len(racks[k]), tuple(map(str, k)))):
-            used = racks[rk]
-            rpr, comp_rows, first_row, n_rows = self._hall_grid(rk)
-            cap = rpr * comp_rows
-            if len(used) >= cap:
+            rpr, comp_rows, _first_row, _n_rows = self._hall_grid(rk)
+            if len(racks[rk]) >= rpr * comp_rows:
                 continue                              # hall full to its cap
-            curated = sum(1 for (rr, _n) in used if rr < self._FLEET_ROW_BASE)
-            fleet_used = sum(1 for (rr, _n) in used if rr >= self._FLEET_ROW_BASE)
-            if fleet_used >= max(0, cap - curated):
-                continue                              # no fleet room left in cap
             infra = self._hall_infra(rk)
             if infra is None:
                 continue
@@ -648,13 +705,11 @@ class FleetLifecycleEngine:
             # skip it so a new hall (its own pod) is opened instead.
             if not self._spines_have_room(infra.get("spines")):
                 continue
-            vrow = fleet_used // rpr                   # next fleet slot, in order
-            num = fleet_used % rpr + 1
-            coords = self._rack_coords(rk, vrow, num, first_row, n_rows)
-            if coords is None:
-                continue                              # rows exhausted (hit CRAH wall)
-            row = self._row_label(rk, vrow)
-            return self._build_compute_rack(rk, row, num, infra, summ, vrow, coords)
+            slot = self._next_compute_slot(rk)
+            if slot is None:
+                continue                              # grid full (hit CRAH wall)
+            rack_row, num, coords = slot
+            return self._build_compute_rack(rk, rack_row, num, infra, summ, 0, coords)
         return None
 
     def _open_new_hall(self, summ: DaySummary) -> Optional[dict]:
