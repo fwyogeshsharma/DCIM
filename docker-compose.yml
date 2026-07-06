@@ -403,6 +403,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ── Mongo Express (web GUI for the mongo container) ─────────────────────────
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    ports:
+      - "8085:8081"
+    networks: [dcim-backend]
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ── Certbot (auto-renews Let's Encrypt cert every 12h) ────────────────────────
   certbot:
     image: certbot/certbot:latest
