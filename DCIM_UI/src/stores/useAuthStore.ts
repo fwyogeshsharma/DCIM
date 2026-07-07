@@ -90,3 +90,15 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 )
+
+// Any 401 from the API (missing / expired / invalid session) tears down local
+// auth state. ProtectedRoute then redirects to /login reactively — no full
+// reload, no page left firing failed requests on its polling interval. Guarded
+// so an already-logged-out 401 (e.g. a bad-credentials login attempt) is a no-op.
+api.setUnauthorizedHandler(() => {
+  const { currentUser, token } = useAuthStore.getState()
+  if (currentUser || token) {
+    api.setAuthToken(null)
+    useAuthStore.setState({ currentUser: null, token: null })
+  }
+})

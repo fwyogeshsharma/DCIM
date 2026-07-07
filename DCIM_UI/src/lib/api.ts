@@ -27,6 +27,7 @@ const API_BASE_URL = import.meta.env.VITE_AGGREGATOR_URL || import.meta.env.VITE
 class APIClient {
   private baseURL: string
   private authToken: string | null = null
+  private onUnauthorized: (() => void) | null = null
 
   constructor(baseURL: string) {
     this.baseURL = baseURL
@@ -36,6 +37,18 @@ class APIClient {
   // every request so the aggregator can enforce RBAC.
   setAuthToken(token: string | null) {
     this.authToken = token
+  }
+
+  // Registered once by the auth store. Invoked on ANY 401 (missing/expired/invalid
+  // session) so local auth state is torn down and ProtectedRoute bounces the user
+  // to /login — instead of leaving a page firing failed requests on a loop.
+  setUnauthorizedHandler(handler: (() => void) | null) {
+    this.onUnauthorized = handler
+  }
+
+  private handleUnauthorized() {
+    this.authToken = null
+    this.onUnauthorized?.()
   }
 
   private async request<T>(
@@ -65,6 +78,7 @@ class APIClient {
       })
 
       if (!response.ok) {
+        if (response.status === 401) this.handleUnauthorized()
         const error = await response.json().catch(() => ({ message: response.statusText }))
         throw new Error(error.message || `API request failed: ${response.status}`)
       }
@@ -97,6 +111,7 @@ class APIClient {
     })
 
     if (!response.ok) {
+      if (response.status === 401) this.handleUnauthorized()
       const error = await response.json().catch(() => ({ message: response.statusText }))
       throw new Error(error.message || `API request failed: ${response.status}`)
     }
@@ -524,6 +539,7 @@ class APIClient {
     })
 
     if (!response.ok) {
+      if (response.status === 401) this.handleUnauthorized()
       const error = await response.json().catch(() => ({ message: response.statusText }))
       throw new Error(error.message || `API request failed: ${response.status}`)
     }
