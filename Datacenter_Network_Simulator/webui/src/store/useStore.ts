@@ -66,6 +66,10 @@ interface Store {
   // topology UI state
   linkMode:        boolean
   fitViewTrigger:  number
+  // focus-single-node: id to pan/zoom the canvas to. nonce bumps on every request
+  // so re-focusing the same node still fires (a bare id wouldn't re-trigger).
+  focusNodeId:     string | null
+  focusNodeNonce:  number
   layoutAlgo:      string | null
 
   // right panel
@@ -139,6 +143,7 @@ interface Store {
   setSelectedDevice: (id: string | null) => void
   setLinkMode:       (v: boolean) => void
   triggerFitView:    () => void
+  focusNode:         (id: string) => void
   setLayoutAlgo:     (algo: string | null) => void
   appendLog:    (tab: LogEntry['tab'], msg: string, level: string) => void
 
@@ -188,6 +193,8 @@ export const useStore = create<Store>((set, get) => ({
   selectedDeviceId: null,
   linkMode:         false,
   fitViewTrigger:   0,
+  focusNodeId:      null,
+  focusNodeNonce:   0,
   layoutAlgo:       null,
   rightTab:         'binding',
   activeView:       'main',
@@ -302,6 +309,7 @@ export const useStore = create<Store>((set, get) => ({
   setSelectedDevice: (id) => set({ selectedDeviceId: id }),
   setLinkMode:       (v) => set({ linkMode: v }),
   triggerFitView:    () => set(s => ({ fitViewTrigger: s.fitViewTrigger + 1 })),
+  focusNode:         (id) => set(s => ({ focusNodeId: id, focusNodeNonce: s.focusNodeNonce + 1 })),
   setLayoutAlgo:     (algo) => set({ layoutAlgo: algo }),
 
   appendLog: (tab, msg, level) => {

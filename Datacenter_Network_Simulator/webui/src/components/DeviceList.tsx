@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useStore } from '../store/useStore'
 import type { DeviceInfo } from '../api/types'
+import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './TopologyCanvas/NodeContextMenu'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 900
@@ -76,7 +77,13 @@ const IconSearch = () => (
 )
 
 export default function DeviceList() {
-  const { devices, selectedDeviceId, setSelectedDevice } = useStore()
+  const { devices, selectedDeviceId, setSelectedDevice, focusNode } = useStore()
+  // Right-click context menu — reuses the topology-canvas NodeContextMenu so the
+  // device list offers the same actions (Edit / Remove / Show Info / Simulate Fault)
+  // as the graph, instead of falling through to the native browser menu.
+  const [ctxMenu,     setCtxMenu]     = useState<{ nodeId: string; deviceType: string; deviceName: string; modelName: string; x: number; y: number } | null>(null)
+  const [editDeviceId, setEditDeviceId] = useState<string | null>(null)
+  const [infoDeviceId, setInfoDeviceId] = useState<string | null>(null)
   const [q,        setQ]        = useState('')
   const [typeFilt, setTypeFilt] = useState('')
   const [sortKey,  setSortKey]  = useState<SortKey>('name')
@@ -252,6 +259,17 @@ export default function DeviceList() {
                 <tr
                   key={d.id}
                   onClick={() => setSelectedDevice(selected ? null : d.id)}
+                  onContextMenu={e => {
+                    e.preventDefault()
+                    setCtxMenu({
+                      nodeId: d.id,
+                      deviceType: d.device_type,
+                      deviceName: d.name,
+                      modelName: d.model_name || '',
+                      x: e.clientX,
+                      y: e.clientY,
+                    })
+                  }}
                   className={selected ? 'selected' : undefined}
                 >
                   <td title={d.name}>
@@ -289,6 +307,28 @@ export default function DeviceList() {
           </div>
         )}
       </div>
+
+      {/* ── Right-click context menu + its dialogs (portaled to body) ── */}
+      {ctxMenu && (
+        <NodeContextMenu
+          nodeId={ctxMenu.nodeId}
+          deviceType={ctxMenu.deviceType}
+          deviceName={ctxMenu.deviceName}
+          modelName={ctxMenu.modelName}
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          onLocate={() => { setSelectedDevice(ctxMenu.nodeId); focusNode(ctxMenu.nodeId) }}
+          onEditDevice={() => setEditDeviceId(ctxMenu.nodeId)}
+          onShowInfo={() => setInfoDeviceId(ctxMenu.nodeId)}
+        />
+      )}
+      {editDeviceId && (
+        <EditDeviceDialog deviceId={editDeviceId} onClose={() => setEditDeviceId(null)} />
+      )}
+      {infoDeviceId && (
+        <DeviceInfoModal deviceId={infoDeviceId} onClose={() => setInfoDeviceId(null)} />
+      )}
 
       {/* ── Resize handle ─────────────────────────────────────── */}
       <div

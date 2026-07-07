@@ -1112,6 +1112,12 @@ if(HASH.get('api')) $('#api').value=HASH.get('api');           // host-supplied 
 // Live input + toggle (only the status indicator remains). Standalone keeps them.
 const EMBED = !!(HASH.get('api')||HASH.get('token'));
 if(EMBED){ for(const id of ['livelbl','api','live','lstat']) $('#'+id).style.display='none'; }
+// Auto-connect embeds drive structure from the API. pollLive() awaits the telemetry
+// feed BEFORE it flips LIVE.loading on, so without this the empty "undefined 6m x 6m"
+// box paints first and flashes until that fetch returns. Arm the spinner now so the
+// very first render covers the empty box; pollLive()'s finally clears it once the
+// /floorplan structure lands.
+if(HASH.get('live')==='1'){ LIVE.loading=true; }
 render();
 if(HASH.get('live')==='1'){ $('#live').click(); }              // auto-connect when embedded
 </script>
