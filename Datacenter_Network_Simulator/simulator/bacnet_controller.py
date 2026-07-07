@@ -44,7 +44,7 @@ from core.bacnet_object_model import (
     SVC_SUBSCRIBE_COV,
     decode_whois,
 )
-from core.bacnet_ev2_generator import DEFAULT_CIRCUITS
+from core.bacnet_ev2_generator import DEFAULT_CIRCUITS, MAX_CIRCUITS, clamp_circuit_count
 from core.bacnet_telemetry import EV2TelemetryEngine
 from core.bacnet_plant_generator import build_plant_object_tree, PlantTelemetryEngine
 from simulator.bacnet_device import EV2BACnetDevice
@@ -219,15 +219,16 @@ class BACnetController:
             else:
                 capacity = active_circuits = _entry  # legacy: all circuits active
 
-            # Capacity = EV2 model size (e.g. EV2-240). The BACnet object tree and
-            # per-circuit displays are capped at a real panel's breaker count
-            # (NOMINAL_CIRCUITS), but the *electrical* size drives load_scale so a
-            # large facility/main meter reports proportionally higher kW than the
-            # downstream IT sub-meters — making PUE = facility / IT come out > 1.
-            NOMINAL_CIRCUITS = 42
-            circuits         = min(capacity, NOMINAL_CIRCUITS)
+            # capacity = the meter's physical CT-channel count (Verdigris EV2 ships
+            # 24/42/84). Honor it up to the largest real model (84) rather than a
+            # hard 42 cap, so an 84-channel meter on a large RPP builds an 84-circuit
+            # object tree and meters every branch. Branches beyond the channel count
+            # can't be clamped (physical limit) — the fleet spills them to a second
+            # RPP+meter instead. load_scale keeps the synthetic/unpopulated fallback
+            # proportional to a nominal 42-channel panel (unused once rated_kw lands).
+            circuits         = clamp_circuit_count(min(capacity, MAX_CIRCUITS))
             active_circuits  = min(active_circuits, circuits)
-            load_scale       = capacity / float(NOMINAL_CIRCUITS)
+            load_scale       = circuits / float(DEFAULT_CIRCUITS)
             dev = EV2BACnetDevice(
                 device_ip=ip,
                 device_instance=instance,
@@ -420,6 +421,47 @@ class BACnetController:
                   "success")
         return True
 
+    def add_ev2_device(self, ip: str, name: Optional[str] = None,
+                       circuits: int = DEFAULT_CIRCUITS,
+                       active_circuits: int = 0,
+                       rated_kw: float = 0.0) -> bool:
+        """Hot-add a Verdigris EV2 energy meter into a RUNNING controller — used when
+        Fleet Lifecycle provisions a new RPP (+meter) as a panel fills or a hall
+        opens. Mirrors the EV2 block in start(): builds the meter's object tree + a
+        live EV2TelemetryEngine and registers it, so it shows in Active Devices and
+        answers BACnet reads. active_circuits self-corrects each tick from the live
+        branch map (see EV2TelemetryEngine.tick), so 0 at creation is fine — the
+        panel starts empty and fills as rack PDUs wire onto it. The IP must already
+        be host-bound (fleet _commission binds it). Returns False if not running, the
+        IP is unknown/duplicate."""
+        if not self._running or not ip:
+            return False
+        with self._dev_lock:
+            if ip in self._devices_by_ip:
+                return False
+            inst = (max(self._devices) + 1) if self._devices else self._base_instance
+            name = name or f"Verdigris_EV2_{inst}"
+            circuits = clamp_circuit_count(min(circuits, MAX_CIRCUITS))
+            active_circuits = min(active_circuits, circuits)
+            try:
+                dev = EV2BACnetDevice(
+                    device_ip=ip, device_instance=inst, device_name=name,
+                    circuits=circuits, log_cb=self._log_cb, port=self._port)
+            except Exception as exc:
+                self._log(f"[BACnet] hot-add EV2 @ {ip} failed: {exc}", "warning")
+                return False
+            self._devices[inst]      = dev
+            self._devices_by_ip[ip]  = dev
+            self._telemetry[inst]    = EV2TelemetryEngine(
+                circuits=circuits, frequency_hz=self._frequency_hz,
+                active_circuits=active_circuits,
+                load_scale=circuits / float(DEFAULT_CIRCUITS),
+                rated_kw=(rated_kw or None))
+            self._sockets_dirty = True
+        self._log(f"[BACnet] hot-added EV2 {name} @ {ip} "
+                  f"(instance {inst}, {circuits}ch)", "success")
+        return True
+
     def remove_plant_device(self, ip: str) -> None:
         """Tear down a hot-added plant device (fleet decommission)."""
         with self._dev_lock:
@@ -435,6 +477,9 @@ class BACnetController:
             dev.close()
         except Exception:
             pass
+
+    # EV2 teardown is the same IP-keyed removal as a plant device.
+    remove_ev2_device = remove_plant_device
 
     # ─────────────────────────────────────────────────────────────
     #  Telemetry tick (called by DeviceStateStore)

@@ -262,6 +262,12 @@ class DeviceStateStore:
         self._through_live: Dict[str, float] = {}
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
+        # Persistent circuit→branch slot order per EV2 IP. Real EV2 CT channels are
+        # physical: a branch keeps its slot for the meter's life and a new PDU takes
+        # the next free channel — existing branches never reshuffle (that would
+        # silently reassign per-slot kWh accumulators to other devices). Survives
+        # power-context rebuilds so fleet churn appends rather than re-sorts.
+        self._ev2_circuit_order: Dict[str, list] = {}  # {ev2_ip: [branch device_id]}
         self._plant_power_by_name: Dict[str, float] = {}  # {plant_name: live cooling kW}
         self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
         # Frozen per-DC design cooling nameplate (first-seen), so IT_design stays a
@@ -795,8 +801,35 @@ class DeviceStateStore:
                 brs = [id_dev.get(nid) for nid in nbr_ids]
                 brs = [b for b in brs if b is not None
                        and id_type.get(b.id) not in _up_types]
-                brs.sort(key=lambda b: b.name or "")
-                ev2_circuit_pdus[ip] = [b.id for b in brs]
+                # Stable CT-channel assignment (see _ev2_circuit_order). Real EV2 CT
+                # channels are physical, so:
+                #   • a surviving branch keeps the exact slot it already holds;
+                #   • a REMOVED branch leaves a hole (None) — the freed channel stays
+                #     spare and reads 0, rather than pulling later branches up (which
+                #     would reassign their per-slot kWh registers to other devices);
+                #   • a NEW PDU fills the earliest hole first, then extends onto fresh
+                #     channels (name-sorted for a deterministic first placement).
+                # A fleet add/remove therefore never disturbs the other branches'
+                # circuit numbers, live load, or energy accumulators.
+                cur_ids = {b.id for b in brs}
+                by_name = {b.id: (b.name or "") for b in brs}
+                prev    = self._ev2_circuit_order.get(ip, [])
+                slots   = [pid if pid in cur_ids else None for pid in prev]
+                placed  = {pid for pid in slots if pid is not None}
+                newcomers = sorted((b.id for b in brs if b.id not in placed),
+                                   key=lambda bid: by_name.get(bid, ""))
+                ni = 0
+                for idx in range(len(slots)):        # fill freed holes first
+                    if ni >= len(newcomers):
+                        break
+                    if slots[idx] is None:
+                        slots[idx] = newcomers[ni]
+                        ni += 1
+                slots += newcomers[ni:]              # then extend onto new channels
+                while slots and slots[-1] is None:   # don't grow with trailing spares
+                    slots.pop()
+                self._ev2_circuit_order[ip] = slots
+                ev2_circuit_pdus[ip] = slots
 
             # Classify each EV2 meter by what its panel's subtree contains:
             #   • "main" (building feed): sees BOTH IT load and central cooling
@@ -865,6 +898,17 @@ class DeviceStateStore:
         breaker's rating is fixed at install, so as the rebuilt graph carries more
         fleet load each node's load% climbs toward overload instead of re-sizing."""
         self._power_ctx = None
+
+    def get_ev2_circuit_pdus(self) -> Dict[str, list]:
+        """Public: {ev2_ip: [branch device_id per CT slot]} in the authoritative,
+        slot-stable order (None entries mark spare/freed channels). The API uses
+        this for the per-circuit device-name column so the names line up with the
+        live values, which meter this same ordered branch list.
+
+        Reads the slot map maintained by the tick thread's power-context build
+        directly (a cheap dict read) rather than calling _power_context(), so an
+        API-thread read never forces a rebuild racing the tick thread."""
+        return {ip: list(slots) for ip, slots in self._ev2_circuit_order.items()}
 
     def _server_live_watts(self, device: "Device") -> float:
         """Per-leaf live draw: nameplate scaled by CPU load (idle ~55 %, full
@@ -1120,8 +1164,12 @@ class DeviceStateStore:
                              for ip, panel in ctx.get("ev2_ip_panel", {}).items()}
         # Live kW per branch circuit (ordered), so each EV2 circuit meters the real
         # load of the PDU it clamps instead of a synthetic per-circuit random walk.
+        # A None slot is a freed/spare CT channel (branch removed) — passed through
+        # as None (not 0.0) so the engine can tell it apart from a real 0-load branch
+        # and zero that channel's energy register.
         self._ev2_circuit_kw = {
-            ip: [through.get(pid, 0.0) / 1000.0 for pid in pids]
+            ip: [None if pid is None else through.get(pid, 0.0) / 1000.0
+                 for pid in pids]
             for ip, pids in ctx.get("ev2_circuit_pdus", {}).items()}
 
     @staticmethod

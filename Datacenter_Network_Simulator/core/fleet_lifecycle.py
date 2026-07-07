@@ -166,8 +166,17 @@ class FleetLifecycleEngine:
         with self._lock:
             self.day += 1
             summ = DaySummary(day=self.day)
+            # Snapshot EVERY device id before the day so ACTIVITY's +/- reflects the
+            # true device delta, not just servers: provisioning a rack/hall also adds
+            # leaf/OOB/RPP/EV2/CRAH/PDU infra, and decommission drops a server's kit.
+            # A full-device id diff below counts them all (the "srv" figure stays the
+            # server subtotal).
+            before = {d.id: d for d in self.s.device_manager.get_all_devices()}
             self._decommission(summ)
             self._provision(summ)
+            after = {d.id: d for d in self.s.device_manager.get_all_devices()}
+            summ.added   = [self._dev_info(after[i])  for i in (after.keys()  - before.keys())]
+            summ.removed = [self._dev_info(before[i]) for i in (before.keys() - after.keys())]
             summ.total_servers = len(self._servers())
             self.history.append(summ)
             self.history = self.history[-60:]
@@ -228,7 +237,7 @@ class FleetLifecycleEngine:
                 self.s.topology.remove_device(dev.id)   # also drops incident links
                 if self.s.ip_manager and ip:
                     self.s.ip_manager.release(ip)
-                summ.removed.append(self._dev_info(dev))
+                # (Counted by advance_day's full-device diff, not here.)
             except Exception as e:
                 self._log(f"[Fleet] decom {dev.name} failed: {e}")
 
@@ -251,8 +260,10 @@ class FleetLifecycleEngine:
                     self._log("[Fleet] no capacity to expand — provisioning paused")
                     break
             dev = self._add_server(rack)
-            if dev is not None:
-                summ.added.append(self._dev_info(dev))
+            # (Added devices — server + any new rack/hall infra — are counted by
+            # advance_day's full-device diff, not appended here.)
+            if dev is None:
+                continue
 
     # ── placement helpers ────────────────────────────────────────────────────
 
@@ -281,9 +292,10 @@ class FleetLifecycleEngine:
 
     @staticmethod
     def _dev_info(dev: Device) -> dict:
-        """Compact device descriptor for the Activity log (name/vendor/IPs)."""
+        """Compact device descriptor for the Activity log (name/type/vendor/IPs)."""
         return {
             "name": dev.name,
+            "device_type": getattr(dev.device_type, "value", str(dev.device_type or "")),
             "vendor": getattr(dev.vendor, "value", str(dev.vendor or "")),
             "mgmt_ip": getattr(dev, "mgmt_ip", "") or "",
             "ip": getattr(dev, "ip_address", "") or "",
@@ -559,10 +571,16 @@ class FleetLifecycleEngine:
         if ext and rpr and rows:
             rpr = max(1, int(rpr))
             if not self._hall_has_local_spine(rk):        # compute annex
-                n_rows = max(2, len(rows))
-                return rpr, max(1, n_rows - 1), 1, n_rows
-            n_rows = max(3, len(rows))
-            return rpr, max(1, n_rows - 2), 2, n_rows
+                n_rows = max(2, len(rows)); compute_rows = max(1, n_rows - 1); first = 1
+            else:
+                n_rows = max(3, len(rows)); compute_rows = max(1, n_rows - 2); first = 2
+            # Keep a hall's compute grid UNDER one 42-pole RPP per side (_RPP_POLES):
+            # each rack draws one branch PDU per side, so ≤ 41 racks means rpp_a/rpp_b
+            # each carry < 42 branches — the hall is powered by its OWN single RPP
+            # pair, never a shared or spilled panel across halls. When the grid fills
+            # the fleet opens a NEW hall (with its own RPPs) instead of overflowing.
+            rpr = max(1, min(rpr, (self._RPP_POLES - 1) // compute_rows))
+            return rpr, compute_rows, first, n_rows
         cr = max(1, self.cfg.compute_rows_per_room)
         return max(1, self.cfg.max_racks_per_row), cr, 1, cr + 1
 
@@ -918,6 +936,107 @@ class FleetLifecycleEngine:
         self._commission(rpp)
         return rpp
 
+    # ── RPP pole capacity + spill ────────────────────────────────────────────
+    # A real RPP is a panelboard with a FIXED pole count — you cannot clamp more
+    # branch PDUs onto it than it has poles (and its EV2 has one CT per pole). When
+    # a panel fills, the datacenter adds ANOTHER RPP (+ its own EV2-42) rather than
+    # overloading one. _RPP_POLES matches the curated 42-circuit RPP class.
+    _RPP_POLES = 42
+
+    @staticmethod
+    def _rpp_side(rpp: Device) -> str:
+        """A- or B-side of a dual-corded feed, from the RPP name (curated
+        'RPP-IT-DC1-A1' / fleet 'DC1-RPPA…')."""
+        nm = (rpp.name or "").upper()
+        if "RPPB" in nm or "-B" in nm:
+            return "B"
+        return "A"
+
+    def _pdus_on_rpp(self, rpp: Device) -> int:
+        """Branch rack-PDUs already fed from this RPP over the power layer."""
+        n = 0
+        try:
+            for nbr in self.s.topology.graph.neighbors(rpp.id):
+                d = self.s.device_manager.get_device(nbr)
+                if d and d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+                    n += 1
+        except Exception:
+            pass
+        return n
+
+    def _side_rpps(self, rk: tuple, side: str, primary: Device) -> list:
+        """Every RPP on *side* in hall *rk* (primary first, then any spills)."""
+        out = [primary]
+        for d in self.s.device_manager.get_all_devices():
+            if (d.device_type == DeviceType.RPP and d.id != primary.id
+                    and self._room_key(d) == rk and self._rpp_side(d) == side):
+                out.append(d)
+        return out
+
+    def _rpp_with_capacity(self, rk: tuple, side: str, rpp: Device) -> Device:
+        """Return an RPP on *side* that still has a free pole. If every existing
+        panel is full (>= _RPP_POLES branch PDUs), provision a spill RPP + EV2-42
+        and return that — the physical 'add another panel' path."""
+        for r in self._side_rpps(rk, side, rpp):
+            if self._pdus_on_rpp(r) < self._RPP_POLES:
+                return r
+        return self._spill_rpp(rk, side, rpp) or rpp
+
+    def _spill_rpp(self, rk: tuple, side: str, tmpl_rpp: Device) -> Optional[Device]:
+        """Clone a new RPP on *side* (fed from the same UPS as the full panel),
+        provision its EV2-42 meter, and return it. Co-located with the template in
+        the power room (0U panels — no compute-grid placement to collide with)."""
+        dc, floor, _room = rk
+        ups = self._neighbor(tmpl_rpp, "power", (DeviceType.UPS,))
+        rpp = self._clone(tmpl_rpp, dc, getattr(tmpl_rpp, "rack_row", 1) or 1,
+                          1 if side == "A" else 2, PDU_UNIT,
+                          prefix=f"rpp{side.lower()}", floor=floor,
+                          room=getattr(tmpl_rpp, "room", None),
+                          fx=getattr(tmpl_rpp, "floor_x", None),
+                          fy=getattr(tmpl_rpp, "floor_y", None))
+        if rpp is None:
+            return None
+        if ups is not None:
+            try:
+                self.s.topology.add_link(ups.id, rpp.id, layer="power")
+            except Exception:
+                pass
+        self._commission(rpp)
+        self._provision_ev2_for_rpp(rpp, rk)
+        self._log(f"[Fleet] RPP {tmpl_rpp.name} full ({self._RPP_POLES} poles) — "
+                  f"spilled {rpp.name} (+EV2) in {dc}/{getattr(tmpl_rpp,'room','')}")
+        return rpp
+
+    def _provision_ev2_for_rpp(self, rpp: Device, rk: tuple) -> Optional[Device]:
+        """Clone an EV2-42 meter, clamp it onto *rpp* over the power layer (one CT
+        per branch, exactly as curated add_ev2_monitors wires it), size the model to
+        the panel's poles, and commission it (hot-adds to a running BACnet BMS)."""
+        tmpl = next((d for d in self.s.device_manager.get_all_devices()
+                     if d.device_type == DeviceType.ENERGY_MONITOR), None)
+        if tmpl is None:
+            self._log("[Fleet] no EV2 template to clone — spill RPP has no meter")
+            return None
+        dc, floor, _room = rk
+        ev2 = self._clone(tmpl, dc, getattr(rpp, "rack_row", 1) or 1,
+                          getattr(rpp, "rack_num", 1) or 1, 0,
+                          prefix="ev2", floor=floor,
+                          room=getattr(rpp, "room", None),
+                          fx=getattr(rpp, "floor_x", None),
+                          fy=getattr(rpp, "floor_y", None))
+        if ev2 is None:
+            return None
+        try:
+            self.s.topology.add_link(ev2.id, rpp.id, layer="power")
+        except Exception:
+            pass
+        try:
+            self.s.device_manager.update_device(
+                ev2.id, model_name=f"Verdigris EV2-{self._RPP_POLES}")
+        except Exception:
+            pass
+        self._commission(ev2)
+        return ev2
+
     def _build_compute_rack(self, rk: tuple, row: int, num: int, infra: dict,
                             summ: DaySummary, vrow: int,
                             coords: Optional[tuple] = None) -> Optional[dict]:
@@ -964,6 +1083,9 @@ class FleetLifecycleEngine:
             # per-rack override needed (the old budget÷0.8 override made fleet
             # racks disagree with curated ones and inverted the budget→PDU link).
             if rpp is not None:                       # PDU drinks from the RPP feed
+                # Honour the panel's pole limit: if this RPP is full, spill onto a
+                # fresh RPP (+its own EV2-42) instead of overloading it.
+                rpp = self._rpp_with_capacity(rk, side, rpp)
                 try:
                     self.s.topology.add_link(rpp.id, pdu.id, layer="power")
                 except Exception:
@@ -1355,6 +1477,16 @@ class FleetLifecycleEngine:
                                    rated_kw=(getattr(device, "power_draw_w", 0) or 0) / 1000.0)
             except Exception as e:
                 self._log(f"[Fleet] BACnet commission {device.name}: {e}")
+        # An EV2 energy meter (a fleet-provisioned RPP's panel meter) joins the
+        # running BACnet BMS the same way. active_circuits self-corrects from the
+        # live branch map, so the meter starts empty and fills as PDUs wire on.
+        if (device.device_type == DeviceType.ENERGY_MONITOR and b is not None
+                and getattr(b, "_running", False)):
+            try:
+                b.add_ev2_device(device.ip_address or mgmt, name=device.name,
+                                 circuits=self._RPP_POLES)
+            except Exception as e:
+                self._log(f"[Fleet] BACnet EV2 commission {device.name}: {e}")
 
     # Chiller-plant device types exposed over BACnet (mirror api/routers/bacnet.py).
     _BACNET_PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
@@ -1377,6 +1509,9 @@ class FleetLifecycleEngine:
         b = getattr(self.s, "bacnet", None)
         if b is not None and device.device_type in self._BACNET_PLANT_TYPES:
             try: b.remove_plant_device(device.ip_address or bind_ip)
+            except Exception: pass
+        if b is not None and device.device_type == DeviceType.ENERGY_MONITOR:
+            try: b.remove_ev2_device(device.ip_address or bind_ip)
             except Exception: pass
         self._unbind_ip(device.ip_address)
         if bind_ip and bind_ip != device.ip_address:

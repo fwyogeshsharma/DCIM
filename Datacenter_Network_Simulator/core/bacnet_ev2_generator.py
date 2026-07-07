@@ -46,9 +46,20 @@ from core.bacnet_object_model import (
     UNIT_PERCENT, UNIT_NO_UNITS,
 )
 
-# Supported circuit counts
+# Supported circuit counts — real Verdigris EV2 ships as 24-, 42- or 84-channel.
 CIRCUIT_COUNT_OPTIONS = (24, 42, 84)
 DEFAULT_CIRCUITS      = 42
+MAX_CIRCUITS          = CIRCUIT_COUNT_OPTIONS[-1]   # 84 — largest physical meter
+
+
+def clamp_circuit_count(n: int) -> int:
+    """Snap a requested branch/channel count up to the smallest real EV2 model that
+    covers it (24 → 42 → 84). Anything above 84 caps at 84, the largest meter that
+    physically exists — a panel needing more branches must use a second RPP+meter."""
+    for opt in CIRCUIT_COUNT_OPTIONS:          # ascending
+        if n <= opt:
+            return opt
+    return MAX_CIRCUITS
 
 
 # ─────────────────────────────────────────────────────────────────

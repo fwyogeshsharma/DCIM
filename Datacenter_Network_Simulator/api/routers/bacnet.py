@@ -56,6 +56,7 @@ def bacnet_status():
 @router.post("/start", response_model=OkResponse)
 def bacnet_start(cfg: BACnetConfig):
     import re as _re
+    from core.bacnet_ev2_generator import clamp_circuit_count as _clamp_circuit_count
     s = _state()
     if s.bacnet is None:
         raise HTTPException(status_code=503, detail="BACnet controller not initialised")
@@ -183,15 +184,20 @@ def bacnet_start(cfg: BACnetConfig):
                     ]
                     active = len(downstream)
                     if active > 0:
-                        # capacity = model name (e.g. "EV2-42" → 42), active = downstream count
+                        # capacity = the meter's CT-channel count from its model name
+                        # (e.g. "EV2-84" → 84), snapped to a real EV2 size (24/42/84).
+                        # A branch can only be metered if there's a channel for it, so
+                        # active is capped at the channel count — the fleet is expected
+                        # to size the meter (and spill to a new RPP) so this rarely binds.
                         m = _re.search(r"EV2-(\d+)", d.model_name or "")
-                        capacity = int(m.group(1)) if m else active
-                        circuits_map[ip] = (max(capacity, active), active)
+                        channels = _clamp_circuit_count(int(m.group(1))) if m \
+                            else _clamp_circuit_count(active)
+                        circuits_map[ip] = (channels, min(active, channels))
                         continue
 
             # Fallback: derive from model name — all circuits active
             m = _re.search(r"EV2-(\d+)", d.model_name or "")
-            cap = int(m.group(1)) if m else 42
+            cap = _clamp_circuit_count(int(m.group(1))) if m else 42
             circuits_map[ip] = (cap, cap)
 
     unbound = len(ev2_devices) - len(bound_devices)
@@ -338,23 +344,19 @@ def ev2_metrics():
                 pdu_dev = _dm.get_device(pdu_id)
                 pdu_name = pdu_dev.name if pdu_dev else None
 
-                # Step 2: collect DOWNSTREAM power neighbours only (exclude upstream UPS/generator)
-                _upstream_types = {"ups", "generator"}
-                neighbor_ids = [
-                    (v2 if u == pdu_id else u)
-                    for u, v2, _ in _power_edges
-                    if pdu_id in (u, v2) and ev2_id not in (u, v2)
-                ]
-                neighbors = [
-                    _dm.get_device(nid) for nid in neighbor_ids
-                ]
-                neighbors = [
-                    n for n in neighbors
-                    if n is not None
-                    and getattr(n, 'device_type', None) not in _upstream_types
-                ]
-                neighbors.sort(key=lambda d: d.name)
-                circuit_names = {i + 1: d.name for i, d in enumerate(neighbors)}
+                # Step 2: circuit→device names come from the store's authoritative,
+                # slot-stable branch order (get_ev2_circuit_pdus) — NOT a fresh
+                # name-sort here, which would drift out of step with the live values
+                # (those meter that same ordered list). None slots are spare/freed CT
+                # channels and get no device name.
+                order = (s.state_store.get_ev2_circuit_pdus().get(snap["ip"], [])
+                         if s.state_store else [])
+                for i, did in enumerate(order):
+                    if did is None:
+                        continue
+                    bd = _dm.get_device(did)
+                    if bd is not None:
+                        circuit_names[i + 1] = bd.name
 
         # ── Build panel metrics ────────────────────────────────────────
         panel = EV2PanelMetrics(

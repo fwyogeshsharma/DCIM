@@ -238,6 +238,14 @@ class EV2TelemetryEngine:
         self._step_pf()
 
         live_circuits = circuit_kw is not None
+        if live_circuits:
+            # The live branch map is the authority on how many CTs are clamped.
+            # The fleet can add/remove downstream PDUs long after this engine was
+            # built, so the active-circuit count must track the current list
+            # length — NOT the value frozen at construction. Without this, any
+            # branch added past the original active count trips the spare-CT gate
+            # (i >= self._active) and reads 0 even though it carries real load.
+            self._active = min(len(circuit_kw), self._circuits)
         if not live_circuits:
             # Legacy/unpopulated mode: the panel current is the driver and the
             # circuits are a panel-scaled random walk beneath it. Step the panel
@@ -270,7 +278,9 @@ class EV2TelemetryEngine:
         if not self._kwh_seeded:
             for i, cs in enumerate(self._circuits_state):
                 if live_circuits and circuit_kw is not None:
-                    base_kw = circuit_kw[i] if (i < len(circuit_kw) and i < self._active) else 0.0
+                    _ck = circuit_kw[i] if i < len(circuit_kw) else None
+                    # None = freed/spare channel → no seed energy.
+                    base_kw = _ck if (_ck is not None and i < self._active) else 0.0
                 else:
                     base_kw = cs.kw if i < self._active else 0.0
                 cs.kwh = max(0.0, base_kw) * self._install_age_h
@@ -281,15 +291,16 @@ class EV2TelemetryEngine:
             self._kwh_seeded = True
 
         # ── Panel kWh ──────────────────────────────────────────────
-        if live_circuits:
-            # Main register = Σ branch registers exactly. The branches already
-            # accrued this tick's energy in _step_circuits, so summing them keeps
-            # the panel kWh identical to the circuit total (no rounding drift from
-            # accumulating the rounded panel kW separately). Spare breakers carry
-            # no energy, so only the active branches contribute.
-            self._panel_kwh = sum(cs.kwh for cs in self._circuits_state[:self._active])
-        else:
-            self._panel_kwh += panel_kw * dt / 3600.0
+        # MONOTONIC mains register: accrue from the live panel kW (both modes),
+        # exactly like a real Verdigris main CT whose non-volatile counter only
+        # ever climbs. It is deliberately NOT re-derived as Σ branch registers —
+        # that tied the mains total to the branches, so removing a branch PDU (its
+        # freed channel zeros) made the lifetime kWh step BACKWARD. Branch registers
+        # still track their own energy in _step_circuits; the mains just isn't their
+        # sum, so a removal lowers instantaneous kW but never the lifetime kWh. (Seed
+        # baseline above still sets panel == Σ branch seeds at commissioning; the two
+        # then drift only by sub-Wh rounding, as real independent CTs do.)
+        self._panel_kwh += max(0.0, panel_kw) * dt / 3600.0
 
         values: Dict[str, float] = {
             "Panel_Total_kW":     max(0.0, panel_kw),
@@ -514,6 +525,19 @@ class EV2TelemetryEngine:
                 cs.current = 0.0
                 cs.kw      = 0.0
                 cs.thd     = 0.0
+                continue
+            if circuit_kw is not None and (i >= len(circuit_kw) or circuit_kw[i] is None):
+                # Freed/spare CT channel — the branch on this slot was removed (None
+                # hole) or is unmapped. Zero the live signals AND the energy register
+                # so a vacated channel reads 0 kWh; a future branch that fills this
+                # slot starts its accumulator fresh instead of inheriting the old
+                # branch's lifetime energy. (A real 0-load branch stays 0.0, not None,
+                # so it keeps its accumulator — only true holes are wiped.)
+                cs.current = 0.0
+                cs.kw      = 0.0
+                cs.thd     = 0.0
+                cs.pf      = 0.0
+                cs.kwh     = 0.0
                 continue
             # Power factor: real active-PFC IT loads improve PF as they load up
             # (poor at light load, ~unity near full), so drive it from the branch

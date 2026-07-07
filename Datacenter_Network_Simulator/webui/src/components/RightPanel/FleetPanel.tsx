@@ -19,7 +19,7 @@ interface FleetConfig {
   rack_power_budget_effective_w?: number   // = min(configured, cap) actually enforced
 }
 interface FleetDevice {
-  name: string; vendor: string; mgmt_ip: string; ip: string
+  name: string; device_type?: string; vendor: string; mgmt_ip: string; ip: string
 }
 interface DayLog {
   day: number; added: FleetDevice[]; removed: FleetDevice[]; expanded_racks: string[]; total_servers: number
@@ -319,6 +319,7 @@ export default function FleetPanel() {
                     }}>
                       <span style={{ color: x.op === '+' ? '#3fb950' : '#f87171' }}>{x.op}</span>
                       <span style={{ color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {x.device_type && <span style={{ color: 'var(--text-dim)' }}>{x.device_type} </span>}
                         {x.name} <span style={{ color: 'var(--text-dim)' }}>· {x.vendor || '—'}</span>
                       </span>
                       <span style={{ textAlign: 'right' }}>
