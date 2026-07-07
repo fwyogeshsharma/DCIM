@@ -642,6 +642,12 @@ class DeviceStateStore:
                       "load_balancer", "oob_switch"}
     # Cooling-plant types — electrical loads counted toward facility / PUE.
     _COOLING_TYPES = {"crah", "chiller", "pump", "cooling_tower", "cdu"}
+    # Device types with a real CPU/ASIC die-temperature sensor. ONLY these carry a
+    # cpu_temp and are eligible for the HighTemperature (CPU over-temp) trap —
+    # power/cooling gear (RPP/PDU/UPS/CRAH/chiller/pump) has no CPU. Mirrors the
+    # device_types scoping on trap_rules.HighTemperature.
+    _CPU_BEARING_TYPES = (DeviceType.SERVER, DeviceType.SWITCH, DeviceType.ROUTER,
+                          DeviceType.FIREWALL, DeviceType.LOAD_BALANCER)
     # Per-plant-type BACnet point that reports its live electrical draw (kW).
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
     _UPS_DESIGN_MIN  = 8.0      # UPS autonomy (min) at full load, healthy battery
@@ -1500,8 +1506,11 @@ class DeviceStateStore:
         if mf["sys_uptime"]:
             device.sys_uptime += int(self._tick_interval * 100)
 
-        # CPU/ASIC temperature
-        if mf["cpu_temp"]:
+        # CPU/ASIC temperature — IT gear only (real die/ASIC sensor). Power and
+        # cooling devices (RPP/PDU/UPS/CRAH/chiller/pump) have no CPU, so they must
+        # not carry a synthetic cpu_temp: it would surface over SNMP/Redfish and
+        # previously drove a false HighTemperature trap (see trap_rules.HighTemperature).
+        if mf["cpu_temp"] and device.device_type in self._CPU_BEARING_TYPES:
             # Realistic CPU die temps: air-cooled idles ~40 °C and reaches ~83 °C
             # at 100 % load (Tjmax ~95–100 °C; Warning 85 / Critical 90). The load
             # slope is tuned so a fully-loaded server peaks below 90 — so it never

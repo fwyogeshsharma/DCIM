@@ -197,7 +197,11 @@ function fillSelect(el, items, val){ el.innerHTML=''; for(const it of items){
 // token via the URL hash (#api=...&token=...&live=1); hash never hits the server.
 const HASH = new URLSearchParams(location.hash.slice(1));
 const AUTH_TOKEN = HASH.get('token') || '';
-const LIVE = { on:false, ok:false, byId:{}, byName:{}, timer:null, count:0 };
+const LIVE = { on:false, ok:false, byId:{}, byName:{}, timer:null, count:0,
+               // structLoaded: have we ever pulled the heavy /floorplan doc?
+               // sig: the churn signature of the structure we currently hold, so
+               // we only refetch /floorplan when the fleet actually changes.
+               structLoaded:false, sig:null };
 // Re-fill the DC/room pickers after the structure changes, keeping the current
 // selection when it still exists (so a live refresh doesn't snap the view away).
 function refreshSelectors(){
@@ -210,27 +214,34 @@ function refreshSelectors(){
 async function pollLive(){
   const base=$('#api').value.replace(/\/+$/,'');
   const headers = AUTH_TOKEN ? {Authorization:'Bearer '+AUTH_TOKEN} : {};
-  // 1. Refresh the floor-plan STRUCTURE from the live simulator so racks the
-  // fleet engine added after load (new rows, new halls) appear; fall back to the
-  // embedded snapshot if the API is unreachable.
-  try{
-    const fr=await fetch(base+'/floorplan',{cache:'no-store',headers});
-    if(fr.ok){ applyFloorplan(await fr.json()); refreshSelectors(); }
-  }catch(e){ /* keep the last good structure */ }
-  LIVE.fetched=true;   // only now is the "no floor-plan" state meaningful
-  // 2. Overlay live telemetry (joined to placement by device identity). Use the
-  // slim /floorplan/telemetry feed (only the heatmap fields, null/zero omitted),
-  // not /devices (85 fields/device incl. interfaces, ~5 MB at scale) — so the
-  // browser isn't parsing megabytes every 5s poll while the fleet grows.
+  // 1. Poll the slim /floorplan/telemetry feed every cycle (only heatmap fields,
+  // null/zero omitted — not /devices' ~5 MB at scale). It also carries a churn
+  // `sig` (device+room count) telling us when the floor-plan STRUCTURE changed.
+  let sig=null;
   try{
     const res=await fetch(base+'/floorplan/telemetry',{cache:'no-store',headers});
     if(!res.ok) throw new Error('HTTP '+res.status);
-    const j=await res.json(); const list=j.devices||j; LIVE.byId={}; LIVE.byName={};
+    const j=await res.json(); const list=j.devices||j; sig=(j.sig!=null?j.sig:null);
+    LIVE.byId={}; LIVE.byName={};
     for(const d of list){ LIVE.byId[d.id]=d; if(d.name) LIVE.byName[d.name]=d; }
     LIVE.ok=true; LIVE.count=list.length;
     setLstat('connected - '+list.length+' devices', '#34d399');
   }catch(e){ LIVE.ok=false;
     setLstat('offline ('+e.message+') - start the simulator API', '#f59e0b'); }
+  // 2. Refetch the HEAVY /floorplan structure only on first load or when the churn
+  // sig changed (fleet added/removed racks or halls) — NOT every poll. Server-side
+  // this is the full asset-doc rebuild (reserializes every device), so skipping it
+  // when nothing moved is what keeps the viewer smooth as the fleet grows.
+  const firstLoad = !LIVE.structLoaded;
+  const churned   = (sig!=null && sig!==LIVE.sig);
+  if(firstLoad || churned){
+    try{
+      const fr=await fetch(base+'/floorplan',{cache:'no-store',headers});
+      if(fr.ok){ applyFloorplan(await fr.json()); refreshSelectors();
+                 LIVE.structLoaded=true; if(sig!=null) LIVE.sig=sig; }
+    }catch(e){ /* keep the last good structure */ }
+  }
+  LIVE.fetched=true;   // only now is the "no floor-plan" state meaningful
   render();
 }
 function setLstat(t,c){ const el=$('#lstat'); el.textContent='● '+t; el.style.color=c; }

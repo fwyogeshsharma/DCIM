@@ -61,6 +61,11 @@ export default function FleetPanel() {
   const [cfg, setCfg]       = useState<FleetConfig | null>(null)
   const [busy, setBusy]     = useState<string | null>(null)
   const [err, setErr]       = useState('')
+  // Connection error from the /fleet/status poll. Kept SEPARATE from status so a
+  // failed poll doesn't masquerade as a stopped scheduler: the panel remounts
+  // with status=null on every tab switch, and a silently-swallowed fetch error
+  // would leave it stuck showing a fake "Idle / Start" (see connErr rendering).
+  const [connErr, setConnErr] = useState('')
   const [openDays, setOpenDays] = useState<Set<number>>(new Set())
   const seeded = useRef(false)
 
@@ -75,9 +80,13 @@ export default function FleetPanel() {
       .then(s => {
         const st = s as FleetStatus
         setStatus(st)
+        setConnErr('')
         if (!seeded.current) { setCfg(st.config); seeded.current = true }
       })
-      .catch(() => {})
+      // Don't swallow: surface the failure so a dead/unreachable backend shows as
+      // "unreachable", not as a stopped scheduler. Keep the last-known status so
+      // an intermittent blip doesn't blank an otherwise-good panel.
+      .catch(e => setConnErr(e instanceof Error ? e.message : String(e)))
   }, [])
 
   useEffect(() => {
@@ -94,21 +103,48 @@ export default function FleetPanel() {
   }
 
   const running = status?.enabled ?? false
+  // Poll failing with no fresh status: can't trust the Start/Stop state, so block
+  // the scheduler toggle (a "start" here could double-start an already-running
+  // engine the panel just can't see).
+  const unreachable = !!connErr && !status
   const setField = (k: keyof FleetConfig, v: number) => setCfg(c => c ? { ...c, [k]: v } : c)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* Header */}
+      {/* Header — an unreachable backend must NOT read as a stopped scheduler,
+          so when the poll is failing (and we have no fresh status) show an amber
+          "Unreachable" badge rather than the grey "Idle". */}
       <div className="panel-header">
         <span className="title">Fleet Lifecycle</span>
-        <span className={`badge ${running ? 'running' : 'stopped'}`}>
-          <span className={`status-dot ${running ? 'green' : 'grey'}`} />
-          {running ? 'Running' : 'Idle'}
-        </span>
+        {connErr && !status
+          ? <span className="badge stopped" title={connErr}>
+              <span className="status-dot" style={{ background: '#f59e0b', boxShadow: '0 0 4px #f59e0b' }} />
+              Unreachable
+            </span>
+          : <span className={`badge ${running ? 'running' : 'stopped'}`} title={connErr || undefined}>
+              <span className={`status-dot ${running ? 'green' : 'grey'}`} />
+              {running ? 'Running' : 'Idle'}
+            </span>}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Connection banner — the /fleet/status poll is failing. When the fleet
+            is large this is usually the backend under fd pressure (each server =
+            a Redfish socket + gNMI eventfds); the scheduler is likely still
+            running, the panel just can't read it. */}
+        {connErr && (
+          <div style={{
+            background: 'rgba(245,158,11,0.12)', border: '1px solid #f59e0b',
+            borderRadius: 5, padding: '7px 9px', fontSize: 10, lineHeight: 1.5,
+            color: '#f59e0b',
+          }}>
+            <strong>Can't reach the fleet backend.</strong> Status below may be stale or unknown —
+            this is not the same as the scheduler being stopped.
+            <div style={{ marginTop: 3, color: 'var(--text-muted)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{connErr}</div>
+          </div>
+        )}
 
         {/* Day + fleet size */}
         <div className="group-box" style={{ marginTop: 6 }}>
@@ -154,11 +190,12 @@ export default function FleetPanel() {
           <div className="snmp-actions" style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             <button
               className={`btn-action ${running ? 'btn-stop' : 'btn-start'}`}
-              disabled={busy !== null}
+              disabled={busy !== null || unreachable}
+              title={unreachable ? "Backend unreachable — can't confirm scheduler state" : undefined}
               onClick={() => running
                 ? act('stop', () => api.fleetStop())
                 : act('start', () => api.fleetStart(cfg ?? {}))}
-              style={{ flex: 1 }}
+              style={{ flex: 1, ...(unreachable ? { opacity: 0.5, cursor: 'not-allowed' } : null) }}
             >{busy === 'start' || busy === 'stop' ? '…' : running ? 'Stop' : 'Start'}</button>
             <button
               className="btn-action"
@@ -228,7 +265,10 @@ export default function FleetPanel() {
         {/* Day log */}
         <div className="group-box">
           <span className="group-box-label">Activity</span>
-          {(!status || status.history.length === 0) && (
+          {!status && connErr && (
+            <div style={{ fontSize: 10, color: '#f59e0b' }}>Backend unreachable — activity unknown.</div>
+          )}
+          {status && status.history.length === 0 && (
             <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No days elapsed yet.</div>
           )}
           {status && [...status.history].reverse().map(d => {

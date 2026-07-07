@@ -99,10 +99,16 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.2",
           severity="major", priority=150),
 
+    # CPU/ASIC die temperature — IT gear only. `temperature` maps to device.cpu_temp
+    # (a silicon die/ASIC sensor), so this must NOT evaluate on power/cooling gear
+    # (RPP/PDU/UPS/CRAH/chiller): those have no CPU and would emit a nonsensical
+    # "CPU over-temperature" trap. Thermal alarms on power kit use their own metric
+    # (e.g. the rack-PDU intake probe → pdu_temperature), not this rule.
     _rule("HighTemperature",
           _threshold("temperature", ">", 90.0),
           "1.3.6.1.4.1.99999.1.3",
-          severity="critical", priority=180),
+          severity="critical", priority=180,
+          device_types=["server", "switch", "router", "firewall", "load_balancer"]),
 
     # ── Enterprise: link flap (temporal) ─────────────────────────────────────
 
@@ -313,7 +319,8 @@ DEFAULT_RULES: List[Rule] = [
               logic="AND",
           ),
           "1.3.6.1.4.1.99999.1.21",
-          severity="critical", priority=200),
+          severity="critical", priority=200,
+          device_types=["server", "switch", "router", "firewall", "load_balancer"]),
 
     # ── Recovery rules ────────────────────────────────────────────────────────
 
@@ -333,6 +340,7 @@ DEFAULT_RULES: List[Rule] = [
           _threshold("temperature", "<", 85.0),
           "1.3.6.1.4.1.99999.1.15",
           severity="informational", priority=100,
+          device_types=["server", "switch", "router", "firewall", "load_balancer"],
           recovery=True, recovery_of="HighTemperature"),
 
     # ── Management layer: OOB switch link events ──────────────────────────────
