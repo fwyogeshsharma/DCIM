@@ -160,6 +160,11 @@ const FLOORPLAN_EMBEDDED = {"floorplan":{"units":"meters","origin":"per-room loc
 /* ===================== data indexing (rebuilt on live refresh) ===================== */
 let FLOORPLAN = FLOORPLAN_EMBEDDED;
 let FP, ROOMS, RACKS, DEVS, FOOT, devByRack = {}, rackById = {}, racksByRoom = {}, DCs = [];
+// Declared here (not at the 3D block below) so the top-level applyFloorplan() call
+// can safely read `typeof three` -- a `let` declared later sits in the temporal
+// dead zone, where `typeof` THROWS rather than returning "undefined", which aborted
+// the whole script on load.
+let three=null;
 const TYPE = {
   router:['router','#ff66b3'], firewall:['firewall','#ef4444'], load_balancer:['LB','#fb923c'],
   switch:['switch','#3b82f6'], server:['server','#4f9dff'], oob_switch:['OOB','#7aa2ff'],
@@ -476,7 +481,6 @@ function draw2D(){
 /* ===================== 3D render (Three.js) — realistic raised-floor hall ===================== */
 const U_M=0.0445, RF=0.5, RACK_U=42, RACK_H=RACK_U*U_M;   // 1U, raised-floor/plenum height, 42U cabinet
 const DEV_U={server:2,switch:1,router:1,firewall:2,load_balancer:1,oob_switch:1,cdu:4,energy_monitor:1};
-let three=null;
 function mat3(color,opts){ return new THREE.MeshStandardMaterial(Object.assign({color,metalness:0.35,roughness:0.6},opts||{})); }
 function box3(parent,w,h,d,x,y,z,material){ const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material); me.position.set(x,y,z); parent.add(me); return me; }
 function emi(col,k){ return new THREE.Color(col).multiplyScalar(k); }
