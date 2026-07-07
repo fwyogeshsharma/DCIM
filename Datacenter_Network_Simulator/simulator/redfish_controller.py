@@ -190,8 +190,11 @@ class RedfishController:
         """cb(device, is_on: bool, reset_type: str) — fired by each BMC on a
         chassis power transition (wire to TrapEngine for SNMP platform traps)."""
         self._trap_cb = cb
-        # Propagate to BMCs that are already running.
-        for _ip, (_httpd, _t, rdev) in self._servers.items():
+        # Propagate to BMCs that are already running. Snapshot under the lock —
+        # churn mutates self._servers concurrently.
+        with self._srv_lock:
+            rdevs = [entry[2] for entry in self._servers.values()]
+        for rdev in rdevs:
             rdev._power_trap_cb = cb
 
     def _log(self, msg: str, level: str = "info"):
@@ -421,7 +424,9 @@ class RedfishController:
     def _monitor_loop(self):
         # wait() returns True when signalled to stop → exit promptly.
         while not self._monitor_stop.wait(self.MONITOR_INTERVAL):
-            for _ip, (_httpd, _t, rdev) in list(self._servers.items()):
+            with self._srv_lock:                   # snapshot — churn mutates concurrently
+                entries = list(self._servers.items())
+            for _ip, (_httpd, _t, rdev) in entries:
                 try:
                     rdev.evaluate_alerts()
                 except Exception:
@@ -461,8 +466,14 @@ class RedfishController:
     # ── reporting ──────────────────────────────────────────────────────────
     def get_device_summary(self) -> List[dict]:
         """Per-BMC rows for the UI table."""
+        # Snapshot under the lock: fleet-lifecycle churn hot-adds/removes BMCs in
+        # self._servers on another thread, so iterating it live races (RuntimeError:
+        # dictionary changed size during iteration). Copy the entries, then build
+        # rows off the stable snapshot.
+        with self._srv_lock:
+            entries = list(self._servers.items())
         rows = []
-        for ip, (_httpd, _t, rdev) in self._servers.items():
+        for ip, (_httpd, _t, rdev) in entries:
             d = rdev.device
             rows.append({
                 "name":    d.name,
@@ -482,8 +493,10 @@ class RedfishController:
 
     def get_sessions(self) -> List[dict]:
         """All active sessions across every BMC."""
+        with self._srv_lock:                       # snapshot — churn mutates concurrently
+            entries = list(self._servers.items())
         out = []
-        for ip, (_httpd, _t, rdev) in self._servers.items():
+        for ip, (_httpd, _t, rdev) in entries:
             for s in rdev.session_list():
                 out.append({"ip": ip, "device": rdev.device.name, **s})
         return out
@@ -522,8 +535,10 @@ class RedfishController:
     # ── push-model event subscriptions ──────────────────────────────────────
     def get_subscriptions(self) -> List[dict]:
         """All push subscriptions across every BMC (for the REST/UI status)."""
+        with self._srv_lock:                       # snapshot — churn mutates concurrently
+            entries = list(self._servers.items())
         out = []
-        for ip, (_httpd, _t, rdev) in self._servers.items():
+        for ip, (_httpd, _t, rdev) in entries:
             for sub in rdev._subs.values():
                 out.append({
                     "ip": ip,

@@ -94,6 +94,18 @@ def aisles_for_rows(n_rows: int) -> list[dict]:
     return out
 
 
+def racks_for_width(width_m: float) -> int:
+    """How many racks physically fit across a row of a *width_m*-wide hall — the
+    inverse of hall_extent's width formula (width = racks_per_row·RACK_PITCH +
+    2·margin). This is the SINGLE SOURCE OF TRUTH for row capacity: a separately
+    stored racks_per_row can drift from width_m (the curated extents disagreed —
+    an 8.4 m hall stored racks_per_row=9 but physically fits 13, leaving a dead
+    strip), so callers should derive capacity from the physical width instead."""
+    if not width_m or width_m <= 0:
+        return 0
+    return max(1, int(round((float(width_m) - 2 * _X0) / RACK_PITCH)))
+
+
 def hall_extent(n_rows: int, racks_per_row: int) -> dict:
     """Room width_m/depth_m + rows/racks_per_row/aisles for an *n_rows* ×
     *racks_per_row* hall, sized to the grid plus the standard wall margins."""

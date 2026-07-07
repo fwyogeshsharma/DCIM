@@ -544,7 +544,15 @@ class FleetLifecycleEngine:
         config grid for a hall with no extent."""
         ext = self._hall_extent(rk)
         rows = ext.get("rows") if ext else None
-        rpr = ext.get("racks_per_row") if ext else None
+        # Row capacity is the LARGER of the stored racks_per_row and what the hall's
+        # physical width actually fits — so a hall whose width_m outgrew its stored
+        # racks_per_row (the curated extents disagreed: an 8.4 m hall stored 9 but
+        # fits 13) packs the real floor width instead of leaving a dead strip, while
+        # a hall already sized tight is never shrunk below its authored count. Falls
+        # back to the stored value when the hall carries no width.
+        w = ext.get("width_m") if ext else None
+        stored = (ext.get("racks_per_row") if ext else None) or 0
+        rpr = max(stored, geo.racks_for_width(w) if w else 0) or None
         if ext and rpr and rows:
             rpr = max(1, int(rpr))
             if not self._hall_has_local_spine(rk):        # compute annex

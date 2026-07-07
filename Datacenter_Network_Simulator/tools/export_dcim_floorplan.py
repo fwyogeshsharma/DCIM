@@ -63,6 +63,39 @@ def build(topology: dict) -> "OrderedDict":
             return None
         return id_to_name.get(ref, ref)
 
+    # Fleet-added rows carry synthetic rack_row labels >= _FLEET_ROW_BASE (chosen
+    # globally-unique so a rack's internal (dc, row, num) key never collides across
+    # halls — see core/fleet_lifecycle.py). Those labels are an internal detail and
+    # must NOT leak to the floor plan (they read as "Row 1001" next to "Row 1/2").
+    # Remap them PER ROOM to sequential numbers continuing the room's curated rows,
+    # so the viewer shows Row 1,2,3,4 instead of 1,2,1001,1002. Display-only: the
+    # devices' real rack_row is untouched; only this exported doc is renumbered
+    # (self-consistent — racks + device.rack_id use the same remapped value, and
+    # telemetry joins by device identity, not rack_id).
+    _FLEET_ROW_BASE = 1000
+    _per_room_rows: dict = {}
+    for n in nodes:
+        d = n["device"]
+        rr = d.get("rack_row")
+        if rr is None:
+            continue
+        _per_room_rows.setdefault(
+            (d.get("datacenter"), d.get("room"), str(d.get("floor"))), set()).add(rr)
+    row_remap: dict = {}
+    for key, rowset in _per_room_rows.items():
+        nums = [r for r in rowset if isinstance(r, (int, float))]
+        curated = sorted(r for r in nums if r < _FLEET_ROW_BASE)
+        fleet   = sorted(r for r in nums if r >= _FLEET_ROW_BASE)
+        m = {r: r for r in curated}
+        nxt = (max(curated) if curated else 0) + 1
+        for r in fleet:
+            m[r] = nxt
+            nxt += 1
+        row_remap[key] = m
+
+    def disp_row(dc, room, floor, rr):
+        return row_remap.get((dc, room, str(floor)), {}).get(rr, rr)
+
     racks: "OrderedDict[str, dict]" = OrderedDict()
     devices = []
 
@@ -71,7 +104,7 @@ def build(topology: dict) -> "OrderedDict":
         dc = dev.get("datacenter")
         room = dev.get("room")
         floor = str(dev.get("floor"))
-        row = dev.get("rack_row")
+        row = disp_row(dc, room, floor, dev.get("rack_row"))
         num = dev.get("rack_num")
         rid = rack_id(dc, room, floor, row, num)
 
