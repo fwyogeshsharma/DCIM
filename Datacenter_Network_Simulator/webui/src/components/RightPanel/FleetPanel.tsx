@@ -107,6 +107,11 @@ export default function FleetPanel() {
   // the scheduler toggle (a "start" here could double-start an already-running
   // engine the panel just can't see).
   const unreachable = !!connErr && !status
+  // First fetch after a (re)mount hasn't returned yet — the panel remounts with
+  // status=null on every tab switch. Show a neutral "Loading…" for that ~1s
+  // instead of the null-defaults (Idle / Start / 0), which falsely read as a
+  // stopped, empty scheduler.
+  const loading = status === null && !connErr
   const setField = (k: keyof FleetConfig, v: number) => setCfg(c => c ? { ...c, [k]: v } : c)
 
   return (
@@ -117,7 +122,12 @@ export default function FleetPanel() {
           "Unreachable" badge rather than the grey "Idle". */}
       <div className="panel-header">
         <span className="title">Fleet Lifecycle</span>
-        {connErr && !status
+        {loading
+          ? <span className="badge stopped">
+              <span className="status-dot grey" />
+              Loading…
+            </span>
+          : connErr && !status
           ? <span className="badge stopped" title={connErr}>
               <span className="status-dot" style={{ background: '#f59e0b', boxShadow: '0 0 4px #f59e0b' }} />
               Unreachable
@@ -150,13 +160,13 @@ export default function FleetPanel() {
         <div className="group-box" style={{ marginTop: 6 }}>
           <span className="group-box-label">Status</span>
           <div className="field-row-split"><span className="label">Sim-day</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status?.day ?? 0}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status ? status.day : '—'}</span>
           </div>
           <div className="field-row-split"><span className="label">Servers</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{status?.total_servers ?? 0}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{status ? status.total_servers : '—'}</span>
           </div>
           <div className="field-row-split"><span className="label">Total devices</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status?.total_devices ?? 0}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status ? (status.total_devices ?? 0) : '—'}</span>
           </div>
 
           {/* Full fleet composition — the fleet grows switches, OOB, RPPs,
@@ -190,13 +200,14 @@ export default function FleetPanel() {
           <div className="snmp-actions" style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             <button
               className={`btn-action ${running ? 'btn-stop' : 'btn-start'}`}
-              disabled={busy !== null || unreachable}
-              title={unreachable ? "Backend unreachable — can't confirm scheduler state" : undefined}
+              disabled={busy !== null || unreachable || loading}
+              title={unreachable ? "Backend unreachable — can't confirm scheduler state"
+                   : loading ? 'Reading scheduler state…' : undefined}
               onClick={() => running
                 ? act('stop', () => api.fleetStop())
                 : act('start', () => api.fleetStart(cfg ?? {}))}
-              style={{ flex: 1, ...(unreachable ? { opacity: 0.5, cursor: 'not-allowed' } : null) }}
-            >{busy === 'start' || busy === 'stop' ? '…' : running ? 'Stop' : 'Start'}</button>
+              style={{ flex: 1, ...(unreachable || loading ? { opacity: 0.5, cursor: 'not-allowed' } : null) }}
+            >{busy === 'start' || busy === 'stop' ? '…' : loading ? '…' : running ? 'Stop' : 'Start'}</button>
             <button
               className="btn-action"
               disabled={busy !== null}
@@ -265,6 +276,9 @@ export default function FleetPanel() {
         {/* Day log */}
         <div className="group-box">
           <span className="group-box-label">Activity</span>
+          {loading && (
+            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Loading…</div>
+          )}
           {!status && connErr && (
             <div style={{ fontSize: 10, color: '#f59e0b' }}>Backend unreachable — activity unknown.</div>
           )}

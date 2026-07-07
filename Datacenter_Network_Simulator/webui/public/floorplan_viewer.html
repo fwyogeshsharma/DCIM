@@ -8,6 +8,10 @@
   :root{ --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340;
          --fg:#e6edf3; --muted:#8b97a7; --accent:#4f9dff; }
   *{box-sizing:border-box}
+  .fp-spinner{width:40px;height:40px;border-radius:50%;
+    border:3px solid rgba(255,255,255,0.14);border-top-color:var(--accent);
+    animation:fpspin .8s linear infinite}
+  @keyframes fpspin{to{transform:rotate(360deg)}}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
     font:13px/1.45 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
   #app{display:grid;grid-template-rows:auto 1fr;height:100%}
@@ -95,6 +99,16 @@
   <div style="font-size:46px;margin-bottom:12px;opacity:.6">▦</div>
   <div style="color:var(--fg);font-weight:600">No floor-plan loaded</div>
   <div style="margin-top:6px">Use <b>File ▸ Upload Floorplan…</b> to load a floor-plan JSON</div>
+</div>
+<!-- First live structure fetch is in flight (the /floorplan build is heavy at a
+     large fleet). Show a spinner instead of the empty "undefined 6m x 6m" box. -->
+<div id="fpLoading" style="display:none;position:fixed;inset:0;z-index:60;
+  flex-direction:column;align-items:center;justify-content:center;
+  background:var(--bg);color:var(--muted);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;
+  text-align:center;pointer-events:none">
+  <div class="fp-spinner"></div>
+  <div style="margin-top:14px;color:var(--fg);font-weight:600">Loading floor plan…</div>
+  <div style="margin-top:4px;font-size:12px">Building placement for the live fleet</div>
 </div>
 <div id="app">
   <header>
@@ -201,7 +215,8 @@ const LIVE = { on:false, ok:false, byId:{}, byName:{}, timer:null, count:0,
                // structLoaded: have we ever pulled the heavy /floorplan doc?
                // sig: the churn signature of the structure we currently hold, so
                // we only refetch /floorplan when the fleet actually changes.
-               structLoaded:false, sig:null };
+               // loading: the FIRST structure fetch is in flight (drives the spinner).
+               structLoaded:false, sig:null, loading:false };
 // Re-fill the DC/room pickers after the structure changes, keeping the current
 // selection when it still exists (so a live refresh doesn't snap the view away).
 function refreshSelectors(){
@@ -235,11 +250,13 @@ async function pollLive(){
   const firstLoad = !LIVE.structLoaded;
   const churned   = (sig!=null && sig!==LIVE.sig);
   if(firstLoad || churned){
+    if(firstLoad){ LIVE.loading=true; render(); }   // spinner for the initial heavy build
     try{
       const fr=await fetch(base+'/floorplan',{cache:'no-store',headers});
       if(fr.ok){ applyFloorplan(await fr.json()); refreshSelectors();
                  LIVE.structLoaded=true; if(sig!=null) LIVE.sig=sig; }
     }catch(e){ /* keep the last good structure */ }
+    finally{ LIVE.loading=false; }
   }
   LIVE.fetched=true;   // only now is the "no floor-plan" state meaningful
   render();
@@ -1010,10 +1027,14 @@ function buildSidebar(){ const racks=racksByRoom[S.dc+' / '+S.room]||[];
 
 /* ===================== render dispatch ===================== */
 function render(){
-  // Empty-state: nothing to draw until a floor-plan is loaded/uploaded.
-  // Only show "no floor-plan loaded" once a live fetch has actually completed —
-  // otherwise it flashes for a moment on open before the upload/live data lands.
-  $('#fpEmpty').style.display = (LIVE.fetched && !(RACKS && RACKS.length)) ? 'flex' : 'none';
+  const hasRacks = !!(RACKS && RACKS.length);
+  // Loading-state: the first live /floorplan build is in flight (heavy at a large
+  // fleet). Show a spinner instead of the empty "undefined 6m x 6m" box.
+  $('#fpLoading').style.display = (LIVE.loading && !hasRacks) ? 'flex' : 'none';
+  // Empty-state: nothing to draw until a floor-plan is loaded/uploaded. Only once a
+  // live fetch has completed (and we're not mid-load) — otherwise it flashes on open
+  // before the upload/live data lands.
+  $('#fpEmpty').style.display = (!LIVE.loading && LIVE.fetched && !hasRacks) ? 'flex' : 'none';
   const m=METRIC[S.metric], note=$('#note');
   $('#metricwrap').style.display = S.heat ? '' : 'none';   // metric only matters with the heatmap on
   if(S.heat && !heatReady(m)){ note.style.display='block';
