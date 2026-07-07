@@ -189,6 +189,10 @@ function applyFloorplan(data){
   racksByRoom = {};
   for(const r of RACKS){ (racksByRoom[roomKey(r)]=racksByRoom[roomKey(r)]||[]).push(r); }
   DCs = [...new Set(RACKS.map(r=>r.datacenter))].sort();
+  // Invalidate the cached 3D structure so it rebuilds against the new data. draw3D
+  // otherwise reuses its meshes across telemetry polls (structure-gating), and only
+  // a genuine data change (first load / churn refresh / upload) lands here.
+  if(typeof three!=='undefined' && three) three.builtKey=null;
 }
 // Empty plan — shown until the user uploads/loads one (live=1 host embeds drive
 // the structure from the API, so don't flash the baked-in snapshot there).
@@ -790,7 +794,10 @@ function draw3D(){
     sc.add(new THREE.AmbientLight(0xffffff,0.3));
     const dl=new THREE.DirectionalLight(0xffffff,0.9); dl.position.set(8,18,10); sc.add(dl);
     const root=new THREE.Group(); sc.add(root);
-    three={sc,cam,rn,ctr,root,ray:new THREE.Raycaster(),mouse:new THREE.Vector2()};
+    // Live heat overlay lives in its own group so it can be rebuilt every poll
+    // without touching the cached structural meshes in `root` (structure-gating).
+    const heat=new THREE.Group(); sc.add(heat);
+    three={sc,cam,rn,ctr,root,heat,ray:new THREE.Raycaster(),mouse:new THREE.Vector2()};
     rn.domElement.addEventListener('click',on3dClick);
     (function loop(){ requestAnimationFrame(loop);
       if(S.view!=='3d') return;   // don't burn GPU rendering the hidden canvas while on 2D
@@ -799,68 +806,76 @@ function draw3D(){
         if(a.t>=a.dur) three.anim=null; }
       three.ctr.update(); three.rn.render(three.sc,three.cam); })();
   }
-  const {cam,rn,ctr,root}=three; rn.setSize(W,H); cam.aspect=W/H; cam.updateProjectionMatrix();
-  // Free GPU memory from the previous build before rebuilding. Three.js does NOT
-  // auto-dispose geometries/materials/textures; without this, a live poll every
-  // 5s leaks the whole scene each time -> hundreds of MB after ~20 min -> the
-  // browser stalls when the iframe is torn down on 'Back'. Cached, reused
-  // resources are tagged ._keep and skipped.
-  disposeGroup(root);
+  const {cam,rn,ctr,root,heat}=three; rn.setSize(W,H); cam.aspect=W/H; cam.updateProjectionMatrix();
   const cx=g.width_m/2, cz=g.depth_m/2;
-  // Cutaway fades the plenum perimeter walls too, else they hide the void from the side.
-  const wmat = S.cut ? mat3(0x0f141b,{roughness:1,transparent:true,opacity:0.12})
-                     : mat3(0x0f141b,{roughness:1});
   three.cx=cx; three.cz=cz;                                   // room offset for focus()
-
   // Facility rooms (generator/UPS/mechanical/plant/roof) sit on a poured
   // concrete slab on grade -- no raised access floor, no plenum, no vent tiles.
   // White-space halls keep the raised floor + plenum. FLR = height devices sit at.
   const slab = g.class==='facility';
   const FLR = slab ? 0.08 : RF;
   three.flr = FLR;
-  if(slab){
-    const cmat=mat3(0x44484f,{roughness:0.97,metalness:0.04});                 // concrete slab
-    box3(root,g.width_m,FLR,g.depth_m,0,FLR/2,0, cmat);
-    const curb=mat3(0x33373d,{roughness:0.95});                                // low perimeter curb
-    box3(root,g.width_m,0.06,0.04,0,FLR+0.03,-cz,curb); box3(root,g.width_m,0.06,0.04,0,FLR+0.03,cz,curb);
-    box3(root,0.04,0.06,g.depth_m,-cx,FLR+0.03,0,curb); box3(root,0.04,0.06,g.depth_m,cx,FLR+0.03,0,curb);
-  } else {
-    // plenum base + perimeter walls + raised-floor tile slab
-    box3(root,g.width_m,0.04,g.depth_m,0,0.02,0, mat3(0x080b10,{roughness:1}));
-    box3(root,g.width_m,RF,0.05,0,RF/2,-cz,wmat); box3(root,g.width_m,RF,0.05,0,RF/2,cz,wmat);
-    box3(root,0.05,RF,g.depth_m,-cx,RF/2,0,wmat); box3(root,0.05,RF,g.depth_m,cx,RF/2,0,wmat);
-    const tt=tileTexture(); tt.repeat.set(Math.max(1,Math.round(g.width_m/0.6)),Math.max(1,Math.round(g.depth_m/0.6)));
-    // Cutaway: fade the tile slab so the plenum void (underfloor sensors) is visible.
-    const tileMat=new THREE.MeshStandardMaterial({map:tt,metalness:0.2,roughness:0.85,
-      transparent:S.cut, opacity:S.cut?0.16:1});
-    box3(root,g.width_m,0.04,g.depth_m,0,RF,0, tileMat);
-    // aisles on the raised floor: cold = perforated vent tiles (cyan glow), hot = warm tint
-    for(const a of (g.aisles||[])){ const pl=new THREE.PlaneGeometry(g.width_m,a.width); let mt;
-      if(a.type==='cold'){ const pt=perfTexture(); pt.repeat.set(Math.max(1,Math.round(g.width_m/0.6)),Math.max(1,Math.round(a.width/0.6)));
-        mt=new THREE.MeshStandardMaterial({map:pt,emissive:0x0c4a66,emissiveIntensity:0.6,roughness:0.8}); }
-      else mt=new THREE.MeshBasicMaterial({color:0x5a1a1a,transparent:true,opacity:0.16});
-      const tile=new THREE.Mesh(pl,mt); tile.rotation.x=-Math.PI/2; tile.position.set(0,RF+0.025,a.y-cz); root.add(tile); }
+
+  // Structure-gating: the room shell + all device meshes are EXPENSIVE to rebuild
+  // and only change when the room, the fleet structure (a data change nulls
+  // three.builtKey in applyFloorplan), or a geometry toggle (cutaway / heat-glow /
+  // metric) changes -- NOT on every 5s telemetry poll. Reuse the cached scene when
+  // this key is unchanged; that removes the per-poll dispose+rebuild stutter.
+  const structKey=[S.dc,S.room,S.cut,S.heat,S.metric].join('|');
+  if(three.builtKey!==structKey){
+    // Free GPU memory from the previous build before rebuilding (three.js does NOT
+    // auto-dispose geometries/materials/textures). Cached, reused resources are
+    // tagged ._keep and skipped.
+    disposeGroup(root);
+    // Cutaway fades the plenum perimeter walls too, else they hide the void from the side.
+    const wmat = S.cut ? mat3(0x0f141b,{roughness:1,transparent:true,opacity:0.12})
+                       : mat3(0x0f141b,{roughness:1});
+    if(slab){
+      const cmat=mat3(0x44484f,{roughness:0.97,metalness:0.04});                 // concrete slab
+      box3(root,g.width_m,FLR,g.depth_m,0,FLR/2,0, cmat);
+      const curb=mat3(0x33373d,{roughness:0.95});                                // low perimeter curb
+      box3(root,g.width_m,0.06,0.04,0,FLR+0.03,-cz,curb); box3(root,g.width_m,0.06,0.04,0,FLR+0.03,cz,curb);
+      box3(root,0.04,0.06,g.depth_m,-cx,FLR+0.03,0,curb); box3(root,0.04,0.06,g.depth_m,cx,FLR+0.03,0,curb);
+    } else {
+      // plenum base + perimeter walls + raised-floor tile slab
+      box3(root,g.width_m,0.04,g.depth_m,0,0.02,0, mat3(0x080b10,{roughness:1}));
+      box3(root,g.width_m,RF,0.05,0,RF/2,-cz,wmat); box3(root,g.width_m,RF,0.05,0,RF/2,cz,wmat);
+      box3(root,0.05,RF,g.depth_m,-cx,RF/2,0,wmat); box3(root,0.05,RF,g.depth_m,cx,RF/2,0,wmat);
+      const tt=tileTexture(); tt.repeat.set(Math.max(1,Math.round(g.width_m/0.6)),Math.max(1,Math.round(g.depth_m/0.6)));
+      // Cutaway: fade the tile slab so the plenum void (underfloor sensors) is visible.
+      const tileMat=new THREE.MeshStandardMaterial({map:tt,metalness:0.2,roughness:0.85,
+        transparent:S.cut, opacity:S.cut?0.16:1});
+      box3(root,g.width_m,0.04,g.depth_m,0,RF,0, tileMat);
+      // aisles on the raised floor: cold = perforated vent tiles (cyan glow), hot = warm tint
+      for(const a of (g.aisles||[])){ const pl=new THREE.PlaneGeometry(g.width_m,a.width); let mt;
+        if(a.type==='cold'){ const pt=perfTexture(); pt.repeat.set(Math.max(1,Math.round(g.width_m/0.6)),Math.max(1,Math.round(a.width/0.6)));
+          mt=new THREE.MeshStandardMaterial({map:pt,emissive:0x0c4a66,emissiveIntensity:0.6,roughness:0.8}); }
+        else mt=new THREE.MeshBasicMaterial({color:0x5a1a1a,transparent:true,opacity:0.16});
+        const tile=new THREE.Mesh(pl,mt); tile.rotation.x=-Math.PI/2; tile.position.set(0,RF+0.025,a.y-cz); root.add(tile); }
+    }
+    // cells: CRAH unit / power panel / populated rack
+    three.pick=[];
+    for(const r of racks){ const ds=devByRack[r.rack_id]||[]; const ts=new Set(ds.map(d=>d.device_type));
+      const grp = ts.has('generator') ? makeGenerator(r,ds)
+                : ts.has('ups') ? makeUPS(r,ds)
+                : ts.has('chiller') ? makePlant(r,ds)
+                : ts.has('cooling_tower') ? makeRoof(r,ds)
+                : ts.has('crah') ? makeCRAH(r,ds)
+                : (!ts.has('server')&&ts.has('rpp')) ? makeRPP(r,ds)
+                : (!ts.has('server')&&ts.has('energy_monitor')) ? makePanel(r,ds)
+                : makeRack(r,ds,m);
+      grp.position.set(r.floor_x-cx, FLR, r.floor_y-cz);
+      if(r.rack_facing==='N') grp.rotation.y=Math.PI;             // face intake (front) toward the cold aisle
+      grp.traverse(o=>{ o.userData.rack=r; }); root.add(grp); three.pick.push(grp); }
+    three.builtKey=structKey;
   }
 
-  // heat field overlay when ON (and live data is available)
+  // Live heat overlay -- one plane, cheap; its own group so it refreshes every poll
+  // (fresh telemetry) without disturbing the cached structural meshes above.
+  disposeGroup(heat);
   if(S.heat && heatReady(m)){ const hp=new THREE.Mesh(new THREE.PlaneGeometry(g.width_m,g.depth_m),
       new THREE.MeshBasicMaterial({map:heatTexture(g,racks,m),transparent:true,opacity:0.6}));
-    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.05,0); root.add(hp); }
-
-  // cells: CRAH unit / power panel / populated rack
-  three.pick=[];
-  for(const r of racks){ const ds=devByRack[r.rack_id]||[]; const ts=new Set(ds.map(d=>d.device_type));
-    const grp = ts.has('generator') ? makeGenerator(r,ds)
-              : ts.has('ups') ? makeUPS(r,ds)
-              : ts.has('chiller') ? makePlant(r,ds)
-              : ts.has('cooling_tower') ? makeRoof(r,ds)
-              : ts.has('crah') ? makeCRAH(r,ds)
-              : (!ts.has('server')&&ts.has('rpp')) ? makeRPP(r,ds)
-              : (!ts.has('server')&&ts.has('energy_monitor')) ? makePanel(r,ds)
-              : makeRack(r,ds,m);
-    grp.position.set(r.floor_x-cx, FLR, r.floor_y-cz);
-    if(r.rack_facing==='N') grp.rotation.y=Math.PI;             // face intake (front) toward the cold aisle
-    grp.traverse(o=>{ o.userData.rack=r; }); root.add(grp); three.pick.push(grp); }
+    hp.rotation.x=-Math.PI/2; hp.position.set(0,FLR+0.05,0); heat.add(hp); }
 
   if(!three.posed){ const span=Math.max(g.width_m,g.depth_m); three.span=span; three.homeY=FLR+0.7;
     cam.position.set(span*0.72, span*0.8+3.5, span*1.05); ctr.target.set(0,FLR+0.7,0); three.posed=true; }
@@ -1078,7 +1093,7 @@ window.addEventListener('resize',()=>render());
 // session. Idempotent and guarded so a failure here never blocks navigation.
 window.addEventListener('pagehide',()=>{ try{
   if(LIVE.timer){ clearInterval(LIVE.timer); LIVE.timer=null; LIVE.on=false; }
-  if(three){ disposeGroup(three.root);
+  if(three){ disposeGroup(three.root); if(three.heat) disposeGroup(three.heat);
     if(three.ctr&&three.ctr.dispose) three.ctr.dispose();
     three.rn.dispose(); if(three.rn.forceContextLoss) three.rn.forceContextLoss();
     const el=three.rn.domElement; if(el&&el.parentNode) el.parentNode.removeChild(el);
