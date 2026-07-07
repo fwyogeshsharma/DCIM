@@ -127,6 +127,9 @@ class FleetLifecycleEngine:
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
+        # Latch so the "mgmt /22 base full — spilling to overflow" note is logged
+        # once per session, not once per device past the cliff.
+        self._mgmt_overflow_warned = False
 
     # ── lifecycle ────────────────────────────────────────────────────────────
 
@@ -1063,7 +1066,17 @@ class FleetLifecycleEngine:
         return used
 
     @staticmethod
-    def _alloc_in_subnet(ref_ip: str, prefix: int, used: set) -> str:
+    def _first_free_host(net, used: set) -> str:
+        """Lowest host address in *net* not already in *used*. '' if the subnet is
+        fully consumed."""
+        for host in net.hosts():
+            s = str(host)
+            if s not in used:
+                return s
+        return ""
+
+    @classmethod
+    def _alloc_in_subnet(cls, ref_ip: str, prefix: int, used: set) -> str:
         """Lowest free host in the subnet that *ref_ip* belongs to (e.g. the prod
         10.50.0.0/16 or a DC's mgmt 192.168.4.0/22). Derives the network from a
         template peer so fleet devices share the curated addressing — not a
@@ -1075,11 +1088,48 @@ class FleetLifecycleEngine:
             net = ipaddress.ip_network(f"{ref_ip}/{prefix}", strict=False)
         except ValueError:
             return ""
-        for host in net.hosts():
-            s = str(host)
-            if s not in used:
-                return s
-        return ""
+        return cls._first_free_host(net, used)
+
+    # Fleet mgmt addressing. Each DC's curated mgmt pool is a /22 (1022 hosts:
+    # e.g. DC1 192.168.0.0/22, DC2 192.168.4.0/22) — undersized for a fleet that
+    # grows past ~1000 devices. When a DC's base /22 fills, spill into overflow
+    # /22 blocks higher in the enclosing /16. Blocks are striped by lane so two
+    # DCs' overflow pools never interleave into the same /22.
+    _MGMT_PREFIX = 22
+    _MGMT_LANES  = 8          # supports up to 8 curated DC mgmt bases (idx 0..7)
+
+    @classmethod
+    def _alloc_mgmt(cls, ref_ip: str, used: set) -> tuple:
+        """Allocate a mgmt IP for a fleet device from the same /22 as its template
+        peer; on exhaustion, spill into that DC's overflow lane in free space
+        higher in the /16. Returns (ip, note): note is 'primary' (base /22),
+        'overflow' (spilled block), or '' (ref_ip blank / /16 fully consumed)."""
+        if not ref_ip:
+            return "", ""
+        import ipaddress
+        try:
+            base = ipaddress.ip_network(f"{ref_ip}/{cls._MGMT_PREFIX}", strict=False)
+            sup  = ipaddress.ip_network(f"{ref_ip}/16", strict=False)
+        except ValueError:
+            return "", ""
+        # 1) Base /22 — the curated pool this DC's peers already use.
+        ip = cls._first_free_host(base, used)
+        if ip:
+            return ip, "primary"
+        # 2) Overflow. Stripe /22 blocks in the /16 by lane: the first _MGMT_LANES
+        #    blocks (idx 0..7) are reserved as DC bases; overflow starts past them.
+        block   = 1 << (32 - cls._MGMT_PREFIX)          # hosts per /22 = 1024
+        blocks  = 1 << (cls._MGMT_PREFIX - 16)          # /22 blocks per /16 = 64
+        sup_a   = int(sup.network_address)
+        lane    = ((int(base.network_address) - sup_a) // block) % cls._MGMT_LANES
+        idx     = cls._MGMT_LANES + lane
+        while idx < blocks:
+            net = ipaddress.ip_network((sup_a + idx * block, cls._MGMT_PREFIX))
+            ip  = cls._first_free_host(net, used)
+            if ip:
+                return ip, "overflow"
+            idx += cls._MGMT_LANES
+        return "", ""      # /16 fully consumed — genuinely out of mgmt space
 
     def _unique_name(self, base: str) -> str:
         names = {d.name for d in self.s.device_manager.get_all_devices()}
@@ -1181,7 +1231,15 @@ class FleetLifecycleEngine:
             return None
         if ip:
             used.add(ip)
-        mgmt_ip = self._alloc_in_subnet(getattr(tmpl, "mgmt_ip", "") or "", 22, used)
+        tmpl_mgmt = getattr(tmpl, "mgmt_ip", "") or ""
+        mgmt_ip, mnote = self._alloc_mgmt(tmpl_mgmt, used)
+        if tmpl_mgmt and not mgmt_ip:
+            # /16 fully consumed — surface it instead of silently shipping a device
+            # with no mgmt IP (which then loses its Redfish/gNMI OOB bind).
+            self._log("[Fleet] mgmt IP space exhausted — new device has no mgmt IP")
+        elif mnote == "overflow" and not self._mgmt_overflow_warned:
+            self._mgmt_overflow_warned = True
+            self._log("[Fleet] mgmt base /22 full — spilling into overflow blocks")
         # Match the curated naming style: servers are DC2-SRV027 (continue the
         # sequence, no dash); other fleet kit keeps DC2-TOR-0007 style.
         if prefix == "srv":
