@@ -116,6 +116,9 @@ class FleetLifecycleEngine:
         self.day = 0
         self.history: list[DaySummary] = []
         self._seq = 0                  # monotonic suffix for generated names
+        # Halls whose full CRAH complement has been installed (sized to ultimate rack
+        # load + N+1), so we top a hall up to its cooling capacity exactly once.
+        self._crah_ensured: set = set()
         # Halls the fleet has opened, so they're counted/filled like curated ones.
         self._fleet_halls: set = set()
         # Stable, DC-globally-unique rack_row label per (hall, virtual-row) the
@@ -247,6 +250,10 @@ class FleetLifecycleEngine:
     # ── provision ────────────────────────────────────────────────────────────
 
     def _provision(self, summ: DaySummary) -> None:
+        # Bring every populated hall up to its full CRAH complement (curated halls
+        # the fleet packs beyond their original 4 CRAHs, plus any fleet halls). Once
+        # per hall — cheap after the first pass.
+        self._ensure_all_hall_crahs()
         want = self._lumpy(self.cfg.provision_lambda)
         for _ in range(want):
             if len(self._servers()) >= self.cfg.max_total_servers:
@@ -510,6 +517,7 @@ class FleetLifecycleEngine:
 
     _FLEET_ROW_BASE = 1000
     _HALL_SENSORS   = 3      # environmental probes (temp/RH/airflow) per new hall
+    _DESIGN_RACK_KW = 12.0   # design per-rack IT the hall's CRAHs are sized to
 
     def _expand_capacity(self, summ: DaySummary) -> Optional[dict]:
         """Add a compute rack. First fill a hall (curated or fleet) that still has
@@ -744,6 +752,75 @@ class FleetLifecycleEngine:
             return self._build_compute_rack(rk, rack_row, num, infra, summ, 0, coords)
         return None
 
+    # ── CRAH provisioning (install a hall's full complement, sized to load) ──────
+    def _hall_crah_target(self, rk: tuple) -> int:
+        """How many CRAHs a hall needs for its ULTIMATE rack load (grid capacity ×
+        design rack kW) at N+1 — the count installed up front so the hall is cooled
+        for capacity, not just its current occupancy."""
+        from core.cooling_model import crah_count_for
+        rpr, comp_rows, _first, _n = self._hall_grid(rk)
+        ult_it_kw = max(1, rpr) * max(1, comp_rows) * self._DESIGN_RACK_KW
+        return crah_count_for(ult_it_kw)
+
+    def _ensure_hall_crahs(self, rk: tuple, infra: Optional[dict] = None) -> list:
+        """Install the hall's FULL CRAH complement (top up to _hall_crah_target),
+        spread along the back wall and wired into the CHW loop like the curated
+        CRAHs. Idempotent — adds only the shortfall. All CRAHs run (VFD-modulated on
+        each hall's own inlet temp); none are staged off, so coverage is even and the
+        many-slow-fans cube-law keeps part-load fan energy low."""
+        dc, floor, room = rk
+        infra = infra or self._hall_infra(rk)
+        if infra is None:
+            return []
+        existing = [d for d in self.s.device_manager.get_all_devices()
+                    if d.device_type == DeviceType.CRAH and self._room_key(d) == rk]
+        target = self._hall_crah_target(rk)
+        if len(existing) >= target:
+            return existing
+        tmpls = (infra.get("crahs") or existing
+                 or self._by_type(DeviceType.CRAH))
+        if not tmpls:
+            return existing
+        rpr, _cr, _first, n_rows = self._hall_grid(rk)
+        ext = self._hall_extent(rk) or {}
+        width_m = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
+        crah_y = round(geo.row_y(n_rows), 4)
+        chw_supply = infra.get("chw_supply")
+        chw_return = infra.get("chw_return")
+        unit = int(getattr(tmpls[0], "rack_unit", 1) or 1)
+        added = list(existing)
+        for i in range(len(existing), target):
+            cx = round(width_m * (i + 0.5) / target, 4)
+            c = self._clone(tmpls[i % len(tmpls)], dc, self._row_label(rk, "crah"),
+                            200 + i, unit, prefix="crah", floor=floor, room=room,
+                            fx=cx, fy=crah_y)
+            if c is None:
+                continue
+            try:
+                if chw_supply is not None:
+                    self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
+                if chw_return is not None:
+                    self.s.topology.add_link(c.id, chw_return.id, layer="cooling")
+            except Exception:
+                pass
+            self._commission(c)
+            added.append(c)
+        if added != existing:
+            self._log(f"[Fleet] hall {dc}/{room} CRAHs {len(existing)}→{len(added)} "
+                      f"(sized to ~{self._hall_crah_target(rk)} for capacity)")
+        return added
+
+    def _ensure_all_hall_crahs(self) -> None:
+        """Top every hall that holds servers up to its full CRAH complement, once."""
+        for rk in {self._room_key(d) for d in self._servers()}:
+            if rk in self._crah_ensured:
+                continue
+            try:
+                self._ensure_hall_crahs(rk)
+            except Exception as e:
+                self._log(f"[Fleet] CRAH provision {rk}: {e}")
+            self._crah_ensured.add(rk)
+
     def _open_new_hall(self, summ: DaySummary) -> Optional[dict]:
         """Commission a brand-new server hall in the busiest DC, built to look
         like the curated halls: it CLONES the source hall's floor-plan extent (so
@@ -810,30 +887,11 @@ class FleetLifecycleEngine:
         if new_oob is not None:
             new_infra["oob"] = new_oob
 
-        # ── Back wall (row n_rows): CRAHs spread evenly across the width, the
-        # curated perimeter-cooling layout. Each joins the CHW loop with the same
-        # two directional edges the curated CRAHs use so the viewer colours them
-        # right: supply CHWS→CRAH (cold) and return CRAH→CHWR (hot).
-        crahs = infra.get("crahs") or []
-        ncr = max(1, len(crahs))
-        crah_y = round(geo.row_y(n_rows), 4)
-        new_crahs = []
-        for i, crah_tmpl in enumerate(crahs):
-            cx = round(width_m * (i + 0.5) / ncr, 4)
-            c = self._clone(crah_tmpl, dc, self._row_label(rk, "crah"), 200 + i,
-                            int(getattr(crah_tmpl, "rack_unit", 1) or 1),
-                            prefix="crah", floor=floor, room=room, fx=cx, fy=crah_y)
-            if c is None:
-                continue
-            try:
-                if chw_supply is not None:
-                    self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
-                if chw_return is not None:
-                    self.s.topology.add_link(c.id, chw_return.id, layer="cooling")
-            except Exception:
-                pass
-            self._commission(c)
-            new_crahs.append(c)
+        # ── Back wall (row n_rows): install the hall's FULL CRAH complement, sized
+        # to its ULTIMATE rack load (N+1) — not a fixed clone count — spread along
+        # the back wall and wired into the CHW loop. All run VFD-modulated.
+        new_crahs = self._ensure_hall_crahs(rk, infra=infra)
+        self._crah_ensured.add(rk)
 
         # Environmental probes spread across the first cold aisle.
         sen_tmpl = infra.get("sensor_tmpl")

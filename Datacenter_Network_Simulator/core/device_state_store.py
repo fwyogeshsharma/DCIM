@@ -1169,19 +1169,29 @@ class DeviceStateStore:
                     _n_run = max(1, min(len(_chillers),
                                         math.ceil(on / inst_mods * len(_chillers))))
                     self._plant_standby_names |= set(_chillers[_n_run:])
-                # Paired condenser/chilled-water pumps and tower cells SEQUENCE WITH
-                # the chillers (lead/lag) — a chiller that's off doesn't need its pump
-                # spinning or its tower cell rejecting heat. Run the same fraction as
-                # the chillers, standby the rest, so DCIM shows the whole loop staging
-                # (not just chillers). Always ≥1 (a running plant needs a lead pump +
-                # tower); standby units read run-status 0 / ~0 draw and are excluded
-                # from the cooling-loss calc like the chillers.
+                # Paired pumps and tower cells SEQUENCE WITH the chillers (lead/lag) —
+                # a chiller that's off doesn't need its pumps spinning or its tower
+                # rejecting heat. Run the same fraction as the chillers, standby the
+                # rest, so DCIM shows the whole loop staging. Always ≥1 (a running
+                # plant needs a lead of each); standby units read run-status 0 / ~0 draw
+                # and are excluded from the cooling-loss calc like the chillers.
                 _frac = (_n_run / len(_chillers)) if _chillers else 1.0
-                for _kind in ("pump", "cooling_tower"):
-                    _u = [_n for _n, _w, _t in units if _t == _kind]
-                    if _u:
-                        _run = max(1, min(len(_u), math.ceil(_frac * len(_u))))
-                        self._plant_standby_names |= set(_u[_run:])
+
+                def _stage_pool(_names: list) -> None:
+                    if _names:
+                        _run = max(1, min(len(_names), math.ceil(_frac * len(_names))))
+                        self._plant_standby_names |= set(_names[_run:])
+
+                # Pumps: stage the CHILLED-water (CHWP, evaporator) and CONDENSER-water
+                # (CWP) loops as SEPARATE lead/lag pools — a running chiller needs one
+                # of EACH (evap flow AND condenser flow to the tower), so both loops
+                # must keep a pump on, not just the first N of the combined pump list.
+                _pumps = [_n for _n, _w, _t in units if _t == "pump"]
+                _cwp  = [n for n in _pumps if "CWP" in n.upper() or "COND" in n.upper()]
+                _chwp = [n for n in _pumps if n not in _cwp]
+                _stage_pool(_chwp)
+                _stage_pool(_cwp)
+                _stage_pool([_n for _n, _w, _t in units if _t == "cooling_tower"])
                 # Plant-wide duty fraction: how hard the RUNNING plant works vs its
                 # nameplate. Drives the VFD speed of every pump/fan in the DC.
                 lf = min(1.0, total_w / np_sum)

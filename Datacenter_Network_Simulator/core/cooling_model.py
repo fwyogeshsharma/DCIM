@@ -299,6 +299,17 @@ def installed_modules_for(design_servers_dc: float,
     return max(1, math.ceil(peak_kw / max(1e-6, module_kw)))
 
 
+CRAH_COOL_KW = 80.0    # per-CRAH sensible cooling capacity (mid-size chilled-water)
+
+
+def crah_count_for(it_kw: float, per_crah_kw: float = CRAH_COOL_KW) -> int:
+    """CRAHs a hall needs for *it_kw* of IT heat: ceil(load / per-unit) + 1 spare
+    (N+1). A hall installs this many up front (sized to its ULTIMATE rack load) and
+    runs them all VFD-modulated — cube-law cheap to run many fans slow, and no hot
+    spots from staged-off units."""
+    return max(1, math.ceil(max(0.0, it_kw) / max(1e-6, per_crah_kw)) + 1)
+
+
 def stage_modules(it_live_kw: float, installed_modules: int, prev_on: int,
                   module_kw: float = PLANT_MODULE_KW, min_on: int = 1) -> int:
     """Number of cooling modules to run for *it_live_kw*, with HYSTERESIS to avoid

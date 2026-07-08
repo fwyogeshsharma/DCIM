@@ -250,6 +250,12 @@ class PlantTelemetryEngine:
                 out[name] = round(max(0.0, self._values[name]), 2)
                 _pwr_out = out[name]
                 continue
+            if live_power is not None and name == self._speed_point:
+                # Speed is driven PURELY by the affinity coupling below (from the
+                # metered power) — don't also random-walk it here, or the walk
+                # (base × diurnal) dominates and the published Speed stops tracking
+                # the actual draw (a 16 kW and a 6 kW fan both reading ~82 %).
+                continue
             if amp == 0.0:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
                 continue
@@ -262,7 +268,7 @@ class PlantTelemetryEngine:
         # Couple the VFD speed point to the metered affinity power (inverse of
         # P ∝ speed³) so a throttled pump/fan reports the matching speed, not an
         # independent random walk. VFD_Frequency (Hz) follows the same speed.
-        if _pwr_out is not None and self._speed_point and self._speed_point in out:
+        if _pwr_out is not None and self._speed_point:
             from core.cooling_model import affinity_speed_frac
             spd = affinity_speed_frac(_pwr_out, self._nameplate_kw)
             self._values[self._speed_point] = self._ema(
