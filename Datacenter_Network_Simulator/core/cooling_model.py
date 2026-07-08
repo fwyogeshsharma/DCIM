@@ -270,3 +270,46 @@ def pue_estimate(it_live_w: float, it_design_w: float,
     if it_live_w <= 0.0:
         return float("inf")
     return 1.0 + cooling_electrical_w(it_live_w, it_design_w, city, now) / it_live_w
+
+
+# ── Chiller-plant staging (sequence modules on with load) ─────────────────────
+# Real plants INSTALL for ultimate capacity but SEQUENCE units on as load climbs
+# (BMS chiller staging), so the part-load overhead — and the PUE anchor it_design
+# — tracks the RUNNING set, not the full installed plant. Without staging, either
+# the design floor is frozen tiny (fleet overload → fake-low PUE, the bug) or it is
+# sized to the full plant (huge floor at low load → PUE spikes). Staging keeps
+# enabled ≈ load, so PUE holds ~1.47 across the whole growth curve.
+#
+# Modules are ~110 kW-IT (the curated baseline block, ~31 ton) so enabled capacity
+# follows load closely; the enabled count also drives how many physical chillers
+# report "running" in DCIM/BACnet.
+PLANT_MODULE_KW    = 110.0     # per staged cooling module (IT-cooling, kW)
+STAGE_UP_FRAC      = 0.90      # add a module when live load > this × enabled capacity
+STAGE_DOWN_FRAC    = 0.60      # drop a module when live load < this × the smaller cap
+DESIGN_W_PER_SERVER = 714.0    # design (peak) IT heat per server the plant is sized to
+
+
+def installed_modules_for(design_servers_dc: float,
+                          module_kw: float = PLANT_MODULE_KW,
+                          margin: float = 1.15) -> int:
+    """How many cooling modules a DC must install to cover *design_servers_dc*
+    servers at their design (peak) heat, with headroom/N+1 margin. e.g. 1500
+    servers/DC → ~1.23 MW-IT → ~12 modules of 110 kW."""
+    peak_kw = max(0.0, design_servers_dc) * DESIGN_W_PER_SERVER / 1000.0 * margin
+    return max(1, math.ceil(peak_kw / max(1e-6, module_kw)))
+
+
+def stage_modules(it_live_kw: float, installed_modules: int, prev_on: int,
+                  module_kw: float = PLANT_MODULE_KW, min_on: int = 1) -> int:
+    """Number of cooling modules to run for *it_live_kw*, with HYSTERESIS to avoid
+    short-cycling at a stage boundary: add a module when load exceeds 90 % of the
+    running capacity, drop one only when load falls below 60 % of the next-smaller
+    capacity. Bounded to [min_on, installed_modules]."""
+    installed_modules = max(min_on, int(installed_modules))
+    prev_on = max(min_on, min(installed_modules, int(prev_on or min_on)))
+    on = prev_on
+    if prev_on < installed_modules and it_live_kw > STAGE_UP_FRAC * prev_on * module_kw:
+        on = prev_on + 1
+    elif prev_on > min_on and it_live_kw < STAGE_DOWN_FRAC * (prev_on - 1) * module_kw:
+        on = prev_on - 1
+    return max(min_on, min(installed_modules, on))

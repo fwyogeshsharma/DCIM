@@ -24,6 +24,7 @@ Tick behaviour (every `tick_interval` seconds, random-walk):
 from __future__ import annotations
 
 import logging
+import math
 import random
 import threading
 import time
@@ -274,6 +275,19 @@ class DeviceStateStore:
         # fixed capacity ceiling even when the fleet adds CRAHs to new halls — those
         # are air distribution, not extra chiller/plant capacity.
         self._plant_np0_by_dc: Dict[str, float] = {}
+        # ── Chiller-plant STAGING state ───────────────────────────────
+        # The plant is installed for the fleet's ultimate capacity but SEQUENCES
+        # modules on as live IT load climbs (BMS staging). it_design tracks the
+        # ENABLED (staged) capacity, so part-load overhead — and PUE — follows the
+        # running set instead of collapsing (fleet overload → fake-low PUE) or
+        # spiking (full plant floor at low load). See core/cooling_model.stage_modules.
+        self._plant_stage_on: Dict[str, int] = {}     # DC → modules currently running
+        self._plant_standby_names: set = set()        # chiller names staged OFF (not faulted)
+        self._plant_overload_kw: Dict[str, float] = {} # DC → IT beyond full installed plant
+        # Per-DC installed module count is sized to the fleet server cap so the plant
+        # never truly runs out until the cap; recomputed lazily from the live cap.
+        self._plant_installed_mods: Dict[str, int] = {}
+        self._cool_model_w: float = 0.0  # staged-model cooling electrical (all DCs), for PUE
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
@@ -964,7 +978,14 @@ class DeviceStateStore:
         # a redundant A/B feed a single metered main reads just its side (which can
         # be LESS than the full sub-meter sum), so take the larger of the two
         # rather than trusting an under-metered main alone.
-        sub_fac = it_m + cool_m
+        # Cooling for PUE uses the STAGED-MODEL cooling electrical (the plant sized
+        # to the fleet and sequenced with load), not the metered plant draw — the
+        # latter is capped by the small curated device nameplates, which understates
+        # cooling and collapses PUE toward 1.0 as the fleet outgrows the curated
+        # plant. Take the larger so a genuinely higher metered draw still wins.
+        cool_model_kw = max(0.0, self._cool_model_w) / 1000.0
+        cool_for_pue = max(cool_m, cool_model_kw)
+        sub_fac = it_m + cool_for_pue
         fac_m = max(sub_fac, main_m)
         # A trustworthy facility reading must be ≥ IT (the facility carries IT +
         # cooling). If it isn't, metering is incomplete → fall back to computed.
@@ -1097,30 +1118,51 @@ class DeviceStateStore:
             from core.cooling_model import (
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
                 affinity_power_kw, chiller_electrical_w, chiller_cop,
+                stage_modules, installed_modules_for, PLANT_MODULE_KW,
                 PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR)
             _oh_design = (OH_FLOOR + OH_VAR) or 0.47
             _VFD_FAN  = ("crah", "cooling_tower")   # centrifugal fans
             _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
             plant_power: Dict[str, float] = {}
             plant_cop: Dict[str, float] = {}
+            self._plant_standby_names = set()
+            _cool_model_w = 0.0
             for _dc, units in plant_dc.items():
-                itl = it_live_dc.get(_dc, 0.0)
+                itl = it_live_dc.get(_dc, 0.0)          # live IT heat (W)
                 np_sum = sum(w for _n, w, _t in units) or 1.0
-                # Design IT capacity is set by the INSTALLED cooling plant (fixed),
-                # not the live server population: a plant of nameplate P cools
-                # IT_design = P / 0.47 at design PUE. So adding IT raises load toward
-                # this fixed ceiling (PUE → 1.47), and cooling caps at P. FROZEN at
-                # the first-seen (curated) plant nameplate so fleet-added hall CRAHs —
-                # air distribution, not new chiller capacity — don't inflate it.
-                np0 = self._plant_np0_by_dc.setdefault(_dc, np_sum)
-                itd = np0 / _oh_design
+                # ── STAGING: install for the fleet cap, sequence modules on with
+                # live load. it_design tracks the ENABLED (running) capacity, so the
+                # fixed cooling floor scales with the plant that's actually on — the
+                # part-load overhead follows load and PUE holds ~1.5 instead of
+                # collapsing (fleet overload → fake-low PUE) or spiking (full plant
+                # floor at light load). See core/cooling_model.stage_modules.
+                inst_mods = self._installed_modules(_dc)
+                on = stage_modules(itl / 1000.0, inst_mods,
+                                   self._plant_stage_on.get(_dc, 1))
+                self._plant_stage_on[_dc] = on
+                enabled_kw   = on * PLANT_MODULE_KW
+                installed_kw = inst_mods * PLANT_MODULE_KW
+                itd = enabled_kw * 1000.0               # W the enabled plant cools
+                # Overload: live IT beyond the FULL installed plant — every module is
+                # on and cooling still can't keep up (feeds the thermal backstop).
+                self._plant_overload_kw[_dc] = max(0.0, itl / 1000.0 - installed_kw)
                 total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc))
-                # Plant-wide duty fraction: how hard the plant works vs its installed
-                # nameplate. 1.0 at design (total_w == np_sum), <1 at part load. Sets
-                # the VFD speed of every pump/fan in the DC.
+                _cool_model_w += total_w
+                # Physical chillers to RUN = staged fraction mapped onto this DC's
+                # chiller units; the rest are STANDBY (run-status 0, ~0 draw, and NOT
+                # counted as a cooling loss). Fewer physical units than modeled modules
+                # → coarse but honest "N of M running".
+                _chillers = [_n for _n, _w, _t in units if _t == "chiller"]
+                if _chillers:
+                    _n_run = max(1, min(len(_chillers),
+                                        math.ceil(on / inst_mods * len(_chillers))))
+                    self._plant_standby_names |= set(_chillers[_n_run:])
+                # Plant-wide duty fraction: how hard the RUNNING plant works vs its
+                # nameplate. Drives the VFD speed of every pump/fan in the DC.
                 lf = min(1.0, total_w / np_sum)
-                # Thermal part-load ratio (ambient-free) for the chiller kW/ton
-                # curve: live IT heat vs the design IT the plant is sized to reject.
+                # Thermal part-load ratio for the chiller kW/ton curve: live IT heat
+                # vs the enabled IT the running plant is sized to reject (≈1 by design,
+                # so staged chillers sit near their efficient part-load point).
                 plr = (itl / itd) if itd > 0 else 0.0
                 _city = dc_city.get(_dc)
                 # Hall inlet/return air temp → CRAH fan SPEED ramp (more airflow when
@@ -1140,6 +1182,12 @@ class DeviceStateStore:
                         spd  = vfd_speed_frac(duty, _min)
                         tgt_w = affinity_power_kw(w, spd)
                     elif _t == "chiller":
+                        # Staged-off chiller: standby, drawing ~0 (its load is carried
+                        # by the running units). NOT a cooling loss — excluded from the
+                        # thermal-penalty fault calc.
+                        if _n in self._plant_standby_names:
+                            plant_power[_n] = 0.0
+                            continue
                         # Chiller — part-load kW/ton curve × ambient/condenser
                         # factor. Compressor power is U-shaped in efficiency, not
                         # linear: nameplate at design, cheaper mid-load, penalised at
@@ -1152,8 +1200,23 @@ class DeviceStateStore:
                         base = total_w * (w / np_sum)
                         tgt_w = min(base, w if w > 0 else base)
                     plant_power[_n] = tgt_w / 1000.0   # kW
+                # Normalise this DC's RUNNING plant draws so the metered cooling equals
+                # the staged-model demand (total_w). This gives realistic per-unit kW
+                # (a chiller reads its real ~100 kW, not the tiny curated nameplate) AND
+                # a meter-derived PUE that matches the model — the mech RPP, rated from
+                # downstream nameplate ÷ 0.8, is sized to carry it (~80 % at peak). The
+                # per-device physics above set the SHAPE (chiller-heavy, VFD pumps/fans);
+                # this scales the SUM. Standby chillers are 0 and stay 0.
+                _dc_names = [_n2 for _n2, _w2, _t2 in units]
+                _sum_kw = sum(plant_power.get(_x, 0.0) for _x in _dc_names)
+                if _sum_kw > 1e-6:
+                    _scale = (total_w / 1000.0) / _sum_kw
+                    for _x in _dc_names:
+                        if _x in plant_power:
+                            plant_power[_x] *= _scale
             self._plant_power_by_name = plant_power
             self._plant_cop_by_name = plant_cop
+            self._cool_model_w = _cool_model_w
         except Exception:
             log.exception("[StateStore] power flow error")
         self._through_live = through
@@ -1171,6 +1234,27 @@ class DeviceStateStore:
             ip: [None if pid is None else through.get(pid, 0.0) / 1000.0
                  for pid in pids]
             for ip, pids in ctx.get("ev2_circuit_pdus", {}).items()}
+
+    # The plant is installed for the fleet's ULTIMATE server cap and staged; sized
+    # here so it never truly runs out of modules before the cap is hit.
+    _PLANT_DESIGN_SERVER_CAP = 3000
+
+    def _installed_modules(self, dc: str) -> int:
+        """Installed cooling modules for datacenter *dc* — sized to the fleet's
+        ultimate server cap split across the datacenters present. Oversizing the
+        INSTALLED plant is harmless (staging only runs what the load needs); it just
+        sets how far the fleet can grow before genuine overload."""
+        if dc not in self._plant_installed_mods:
+            from core.cooling_model import installed_modules_for
+            try:
+                n_dc = len({(getattr(d, "datacenter", None) or "")
+                            for d in self._dm.get_all_devices()
+                            if getattr(d, "datacenter", None)}) or 1
+            except Exception:
+                n_dc = 2
+            self._plant_installed_mods[dc] = installed_modules_for(
+                self._PLANT_DESIGN_SERVER_CAP / max(1, n_dc))
+        return self._plant_installed_mods[dc]
 
     @staticmethod
     def _is_faulted(name: str) -> bool:
@@ -1209,14 +1293,26 @@ class DeviceStateStore:
         chiller (or pump) stage runs the room away toward shutdown temperatures.
         Clearing the fault drops L below tolerance and the penalty decays back."""
         ctx = self._cooling_context()
+        from core.cooling_model import PLANT_MODULE_KW
         for dc, kinds in ctx["plant_by_dc"].items():
             def frac(kind: str) -> float:
                 names = kinds.get(kind) or []
+                # A STAGED-OFF chiller is standby, not a loss — exclude it (only
+                # faulted / unexpectedly-stopped units count against cooling).
+                names = [n for n in names if n not in self._plant_standby_names]
                 return (sum(1 for n in names if self._is_faulted(n)) / len(names)) if names else 0.0
             # surviving cooling capacity (series chain); towers/valves throttle partially
             avail = ((1.0 - frac("chiller")) * (1.0 - frac("pump"))
                      * (1.0 - 0.6 * frac("cooling_tower")) * (1.0 - 0.5 * frac("valve")))
             loss = max(0.0, 1.0 - avail)                  # 0 = full cooling, 1 = none
+            # PLANT OVERLOAD: live IT beyond the FULL installed plant is heat nothing
+            # can reject (every module already on) — treat the excess as a cooling
+            # loss so the room heats and PUE degrades, instead of a silent fake-good
+            # reading. Expressed as a fraction of installed capacity.
+            _ovl = self._plant_overload_kw.get(dc, 0.0)
+            if _ovl > 0.0:
+                _inst_kw = self._plant_installed_mods.get(dc, 1) * PLANT_MODULE_KW
+                loss = min(1.0, loss + _ovl / max(1.0, _inst_kw))
             cur = self._chw_pen.get(dc, 0.0)
             deficit = loss - self._COOL_TOL
             if deficit <= 0.0:
@@ -1300,7 +1396,8 @@ class DeviceStateStore:
                                        self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
                                        plant_power_by_name=self._plant_power_by_name,
-                                       plant_cop_by_name=self._plant_cop_by_name)
+                                       plant_cop_by_name=self._plant_cop_by_name,
+                                       plant_standby_names=self._plant_standby_names)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")

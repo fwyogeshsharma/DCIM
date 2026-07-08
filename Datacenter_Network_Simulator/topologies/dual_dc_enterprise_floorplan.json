@@ -7474,7 +7474,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7486,7 +7486,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 1831,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7498,7 +7498,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 1886,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7510,7 +7510,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 1642,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7558,7 +7558,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7570,7 +7570,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 1770,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7582,7 +7582,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 1615,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7594,7 +7594,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 1630,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -7690,7 +7690,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7335,
+      "power_draw_w": 110000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -7702,7 +7702,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7299,
+      "power_draw_w": 110000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -7714,7 +7714,7 @@
       "model": "Grundfos NB 65-200",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1242,
+      "power_draw_w": 15000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -7726,7 +7726,7 @@
       "model": "Grundfos NB 65-200",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1548,
+      "power_draw_w": 15000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -7738,7 +7738,7 @@
       "model": "Grundfos NB 65-200",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1732,
+      "power_draw_w": 15000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -7750,7 +7750,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1359,
+      "power_draw_w": 15000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -7762,7 +7762,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1743,
+      "power_draw_w": 15000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -7774,7 +7774,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC1:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 733,
+      "power_draw_w": 30000,
       "feed_a": "ec1b8ca1",
       "feed_b": "a9488d99"
     },
@@ -7786,7 +7786,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC1:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 942,
+      "power_draw_w": 30000,
       "feed_a": "ec1b8ca1",
       "feed_b": "a9488d99"
     },
@@ -7870,7 +7870,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7871,
+      "power_draw_w": 110000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -7882,7 +7882,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7624,
+      "power_draw_w": 110000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -7894,7 +7894,7 @@
       "model": "Grundfos NB 65-200",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1498,
+      "power_draw_w": 15000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -7906,7 +7906,7 @@
       "model": "Grundfos NB 65-200",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1456,
+      "power_draw_w": 15000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -7918,7 +7918,7 @@
       "model": "Grundfos NB 65-200",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1633,
+      "power_draw_w": 15000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -7930,7 +7930,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1134,
+      "power_draw_w": 15000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -7942,7 +7942,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1413,
+      "power_draw_w": 15000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -7954,7 +7954,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC2:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 802,
+      "power_draw_w": 30000,
       "feed_a": "c4536f1d",
       "feed_b": "edcb8cb6"
     },
@@ -7966,7 +7966,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC2:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 652,
+      "power_draw_w": 30000,
       "feed_a": "c4536f1d",
       "feed_b": "edcb8cb6"
     },
@@ -8038,7 +8038,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7621,
+      "power_draw_w": 110000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8050,7 +8050,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1104,
+      "power_draw_w": 15000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8062,7 +8062,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7759,
+      "power_draw_w": 110000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8074,7 +8074,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1462,
+      "power_draw_w": 15000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8086,7 +8086,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": "PDU-DC1-SHA-R2-1-A",
       "feed_b": "PDU-DC1-SHA-R2-1-B"
     },
@@ -8098,7 +8098,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": "PDU-DC1-SHA-R2-2-A",
       "feed_b": "PDU-DC1-SHA-R2-2-B"
     },
@@ -8110,7 +8110,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": "PDU-DC1-SHA-R2-3-A",
       "feed_b": "PDU-DC1-SHA-R2-3-B"
     },
@@ -8122,7 +8122,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": "PDU-DC2-SHA-R2-1-A",
       "feed_b": "PDU-DC2-SHA-R2-1-B"
     },
@@ -8134,7 +8134,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": "PDU-DC2-SHA-R2-2-A",
       "feed_b": "PDU-DC2-SHA-R2-2-B"
     },
@@ -8146,7 +8146,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": "PDU-DC2-SHA-R2-3-A",
       "feed_b": "PDU-DC2-SHA-R2-3-B"
     },
@@ -8350,7 +8350,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8362,7 +8362,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8374,7 +8374,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8386,7 +8386,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8398,7 +8398,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R3:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8410,7 +8410,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R3:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8422,7 +8422,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R3:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8434,7 +8434,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8446,7 +8446,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8458,7 +8458,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8470,7 +8470,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8482,7 +8482,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R3:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8494,7 +8494,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R3:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },
@@ -8506,7 +8506,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R3:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 4000,
       "feed_a": null,
       "feed_b": null
     },

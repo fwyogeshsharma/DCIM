@@ -541,7 +541,8 @@ class BACnetController:
              live_kw_by_ip: dict | None = None,
              circuit_kw_by_ip: dict | None = None,
              plant_power_by_name: dict | None = None,
-             plant_cop_by_name: dict | None = None) -> None:
+             plant_cop_by_name: dict | None = None,
+             plant_standby_names: set | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -586,6 +587,18 @@ class BACnetController:
                     _pw = (plant_power_by_name or {}).get(_nm)
                     _cop = (plant_cop_by_name or {}).get(_nm)
                     values = engine.tick(dt, forced=forced, live_power=_pw, live_cop=_cop)
+                    # Staged-OFF (standby) chiller: sequenced down by the BMS, not
+                    # faulted. Report it stopped (Chiller_Running=0) and drawing ~0 so
+                    # DCIM shows "N of M running" without tripping the cooling-loss
+                    # penalty (the store excludes standby names from that calc).
+                    if plant_standby_names and _nm in plant_standby_names:
+                        for _rp in ("Chiller_Running", "Run_Status",
+                                    "Fan_Status", "Unit_Running"):
+                            if _rp in values:
+                                values[_rp] = 0.0
+                        for _lp in ("Chiller_Power", "Cooling_Power", "Compressor_Load"):
+                            if _lp in values:
+                                values[_lp] = 0.0
                 else:
                     # EV2 energy meter: drive the panel from the live downstream
                     # load (server→PDU→panel) when available, else its own curve.

@@ -96,11 +96,13 @@ class FleetConfig:
     # full opens a brand-new hall — matching the enlarged halls' headroom.
     max_racks_per_row: int = 5         # compute racks per row in a hall's grid
     compute_rows_per_room: int = 3     # compute rows per hall -> grid = rows x width
-    # Default sized to the installed cooling plant, which Fleet lifecycle never
-    # grows: ~104 kW of plant cools ~221 kW IT (÷0.47) ≈ 470 servers at typical
-    # CPU, so a full fleet sits at design PUE (~1.47). User-editable in the Fleet
-    # panel — raise it only if the topology's cooling plant is scaled up too.
-    max_total_servers: int = 470
+    # Sized to the STAGED cooling plant's ultimate capacity. The plant is installed
+    # for this cap and sequences chiller modules on as load grows (see
+    # core/cooling_model.stage_modules + DeviceStateStore._installed_modules), so the
+    # fleet can grow to 3000 servers at design PUE (~1.5) instead of overloading a
+    # frozen plant. Keep this in step with _PLANT_DESIGN_SERVER_CAP. User-editable in
+    # the Fleet panel (bounded by the resource-safety hard cap).
+    max_total_servers: int = 3000
 
 
 class FleetLifecycleEngine:
