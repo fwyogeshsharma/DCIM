@@ -895,5 +895,10 @@ class BACnetController:
                 "circuits": dev.circuits,
                 "kind":     getattr(dev, "kind", "ev2"),
                 "values":   dev.get_snapshot(),
+                # Static nameplate — the panel's rated per-phase current + rated kW,
+                # so the UI can colour phase currents and Total kW relative to panel
+                # size (not a flat limit). None for plant devices (no EV2 engine).
+                "rated_current": getattr(self._telemetry.get(instance), "_rated_phase_current", None),
+                "rated_kw":      getattr(self._telemetry.get(instance), "_rated_capacity_kw", None),
             })
         return result

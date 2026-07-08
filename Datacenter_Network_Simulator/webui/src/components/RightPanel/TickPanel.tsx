@@ -181,6 +181,7 @@ const PLANT_LIMIT_SPEC: Record<string, { title: string; num: PNum[]; bin: [strin
     ['Alarm_Overcurrent', 'Alarm: Overcurrent'], ['Alarm_VoltageImbalance', 'Alarm: V Imbalance'],
     ['Alarm_HighTHD', 'Alarm: High THD'], ['Alarm_PhaseLoss', 'Alarm: Phase Loss'],
     ['Alarm_SensorFault', 'Alarm: Sensor Fault'],
+    ['Alarm_Undervoltage', 'Alarm: Undervoltage'], ['Alarm_UnderFrequency', 'Alarm: Under-Freq'],
   ]},
   crah: { title: 'CRAH', num: [
     ['Supply_Air_Temp', 'Supply Air Temp', '°C', 0, 40, 0.5, 1],

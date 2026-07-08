@@ -873,10 +873,12 @@ function AlarmPill({ label, active }: { label: string; active: boolean }) {
   )
 }
 
-function StatCell({ label, value, unit, warn, crit }: { label: string; value?: number; unit: string; warn?: number; crit?: number }) {
+function StatCell({ label, value, unit, warn, crit, loWarn, loCrit }: { label: string; value?: number; unit: string; warn?: number; crit?: number; loWarn?: number; loCrit?: number }) {
+  // Two-sided: red/orange when the value runs ABOVE warn/crit OR (for voltage &
+  // frequency) BELOW loWarn/loCrit — real power quality flags sag/under-freq too.
   const color = value == null ? 'var(--text-muted)'
-    : crit != null && value >= crit ? '#e74c3c'
-    : warn != null && value >= warn ? '#f39c12'
+    : (crit != null && value >= crit) || (loCrit != null && value <= loCrit) ? '#e74c3c'
+    : (warn != null && value >= warn) || (loWarn != null && value <= loWarn) ? '#f39c12'
     : 'var(--text)'
   return (
     <div style={{ minWidth: 80, padding: '6px 10px', borderRight: '1px solid var(--border)' }}>
@@ -887,6 +889,13 @@ function StatCell({ label, value, unit, warn, crit }: { label: string; value?: n
     </div>
   )
 }
+
+// A rack-PDU branch sits on a fixed 32 A / 7.36 kW breaker (BRANCH_BREAKER_KW in
+// core/bacnet_telemetry.py). Colour each circuit relative to THAT breaker — warn
+// at NEC 80% continuous, red at the breaker rating — so a normally-loaded rack
+// (~22 A / ~5 kW) reads plain instead of red against a flat half-breaker limit.
+const BRANCH_A_WARN = 25.6, BRANCH_A_CRIT = 32      // 32 A branch breaker
+const BRANCH_KW_WARN = 5.9, BRANCH_KW_CRIT = 7.36   // 7.36 kW at 32 A / 230 V
 
 function EV2CircuitTable({ circuits }: { circuits: EV2CircuitMetrics[] }) {
   const [sortCol, setSortCol] = useState<string>('circuit')
@@ -934,11 +943,13 @@ function EV2CircuitTable({ circuits }: { circuits: EV2CircuitMetrics[] }) {
           <tr key={c.circuit} style={{ background: i % 2 === 0 ? 'transparent' : 'var(--bg-stripe, rgba(255,255,255,0.02))' }}>
             <td style={{ padding: '3px 8px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>{c.label}</td>
             <td style={{ padding: '3px 8px', color: 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.device_name ?? '—'}</td>
-            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.current} unit=" A"  decimals={2} warn={16} crit={20} /></td>
-            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.kw}      unit=" kW" decimals={3} warn={3}  crit={4}  /></td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.current} unit=" A"  decimals={2} warn={BRANCH_A_WARN}  crit={BRANCH_A_CRIT}  /></td>
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.kw}      unit=" kW" decimals={3} warn={BRANCH_KW_WARN} crit={BRANCH_KW_CRIT} /></td>
             <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{fmtVal(c.kwh, 1)}</td>
-            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.pf}      unit=""    warn={0}  crit={0}  /></td>
-            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.thd}     unit="%"   warn={5}  crit={7}  /></td>
+            {/* PF is load-dependent — poor at idle is NORMAL for IT SMPS, so don't colour it (the old warn0/crit0 turned every circuit red). */}
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.pf}      unit=""    /></td>
+            {/* THD% inflates against a tiny fundamental at light load (why IEEE 519 uses TDD, not THD, there) — only colour a branch actually carrying load (>=8 A, ~25% of a 32 A breaker). */}
+            <td style={{ padding: '3px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><NumCell val={c.thd}     unit="%"   warn={(c.current ?? 0) >= 8 ? 8 : undefined}  crit={(c.current ?? 0) >= 8 ? 12 : undefined} /></td>
           </tr>
         ))}
       </tbody>
@@ -961,8 +972,18 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
     <div>
       {snapshots.map((snap) => {
         const p = snap.panel
+        // Colour phase currents relative to the panel's rated per-phase current
+        // (nameplate) so a healthy, fully-loaded RPP carrying its normal hundreds
+        // of amps doesn't read red against a flat limit. warn at 80% of rated, red
+        // at 100%. Falls back to the old fixed 70/85 A when rated is unavailable.
+        const iWarn = p.rated_current ? p.rated_current * 0.8 : 70
+        const iCrit = p.rated_current ? p.rated_current       : 85
+        // Same panel-relative basis for Total kW (warn 80% / red 100% of rated),
+        // falling back to the old fixed 150/180 kW when rated is unavailable.
+        const kwWarn = p.rated_kw ? p.rated_kw * 0.8 : 150
+        const kwCrit = p.rated_kw ? p.rated_kw       : 180
         const isExpanded = expanded.has(snap.instance)
-        const anyAlarm = p.alarm_overcurrent || p.alarm_voltage_imbalance || p.alarm_high_thd || p.alarm_phase_loss || p.alarm_sensor_fault
+        const anyAlarm = p.alarm_overcurrent || p.alarm_voltage_imbalance || p.alarm_high_thd || p.alarm_phase_loss || p.alarm_sensor_fault || p.alarm_undervoltage || p.alarm_underfrequency
         const activeCircuits = snap.circuit_list.filter(c => (c.current ?? 0) > 0 || (c.device_name ?? '').length > 0)
         return (
           <div key={snap.instance} style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
@@ -982,22 +1003,22 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
 
             {/* Panel summary */}
             <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', background: 'var(--bg-base)' }}>
-              <StatCell label="Total kW"  value={p.total_kw}     unit=" kW"  warn={150} crit={180} />
+              <StatCell label="Total kW"  value={p.total_kw}     unit=" kW"  warn={kwWarn} crit={kwCrit} />
               <StatCell label="Total kWh" value={p.total_kwh}    unit=" kWh" />
-              <StatCell label="V Phase A" value={p.voltage_pha}  unit=" V"   warn={245} crit={255} />
-              <StatCell label="V Phase B" value={p.voltage_phb}  unit=" V"   warn={245} crit={255} />
-              <StatCell label="V Phase C" value={p.voltage_phc}  unit=" V"   warn={245} crit={255} />
-              <StatCell label="I Phase A" value={p.current_pha}  unit=" A"   warn={70}  crit={85}  />
-              <StatCell label="I Phase B" value={p.current_phb}  unit=" A"   warn={70}  crit={85}  />
-              <StatCell label="I Phase C" value={p.current_phc}  unit=" A"   warn={70}  crit={85}  />
-              <StatCell label="Frequency" value={p.frequency}    unit=" Hz"  warn={51}  crit={52}  />
+              <StatCell label="V Phase A" value={p.voltage_pha}  unit=" V"   warn={244} crit={253} loWarn={216} loCrit={207} />
+              <StatCell label="V Phase B" value={p.voltage_phb}  unit=" V"   warn={244} crit={253} loWarn={216} loCrit={207} />
+              <StatCell label="V Phase C" value={p.voltage_phc}  unit=" V"   warn={244} crit={253} loWarn={216} loCrit={207} />
+              <StatCell label="I Phase A" value={p.current_pha}  unit=" A"   warn={iWarn} crit={iCrit} />
+              <StatCell label="I Phase B" value={p.current_phb}  unit=" A"   warn={iWarn} crit={iCrit} />
+              <StatCell label="I Phase C" value={p.current_phc}  unit=" A"   warn={iWarn} crit={iCrit} />
+              <StatCell label="Frequency" value={p.frequency}    unit=" Hz"  warn={51}  crit={52} loWarn={49} loCrit={48} />
               <StatCell label="Power Factor" value={p.power_factor} unit=" PF" />
             </div>
 
             {/* Power quality */}
             <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', background: 'var(--bg-base)' }}>
               <StatCell label="V THD"  value={p.voltage_thd} unit="%" warn={5}  crit={8}  />
-              <StatCell label="I THD"  value={p.current_thd} unit="%" warn={5}  crit={7}  />
+              <StatCell label="I THD"  value={p.current_thd} unit="%" warn={8}  crit={12} />
               <StatCell label="H3 %" value={p.harmonic_3}    unit="%" warn={10} crit={15} />
               <StatCell label="H5 %" value={p.harmonic_5}    unit="%" warn={10} crit={15} />
               <StatCell label="H7 %" value={p.harmonic_7}    unit="%" warn={10} crit={15} />
@@ -1013,6 +1034,8 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
                   {p.alarm_high_thd          && <AlarmPill label="High THD"          active />}
                   {p.alarm_phase_loss        && <AlarmPill label="Phase Loss"        active />}
                   {p.alarm_sensor_fault      && <AlarmPill label="Sensor Fault"      active />}
+                  {p.alarm_undervoltage      && <AlarmPill label="Undervoltage"      active />}
+                  {p.alarm_underfrequency    && <AlarmPill label="Under-Frequency"   active />}
                 </>
               ) : (
                 <span style={{ fontSize: 9, padding: '2px 7px', borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>

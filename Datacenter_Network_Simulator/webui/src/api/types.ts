@@ -318,12 +318,14 @@ export interface EV2CircuitMetrics {
 export interface EV2PanelMetrics {
   total_kw?:    number
   total_kwh?:   number
+  rated_kw?:    number
   voltage_pha?: number
   voltage_phb?: number
   voltage_phc?: number
   current_pha?: number
   current_phb?: number
   current_phc?: number
+  rated_current?: number
   frequency?:   number
   power_factor?: number
   voltage_thd?: number
@@ -337,6 +339,8 @@ export interface EV2PanelMetrics {
   alarm_high_thd:          boolean
   alarm_phase_loss:        boolean
   alarm_sensor_fault:      boolean
+  alarm_undervoltage?:     boolean
+  alarm_underfrequency?:   boolean
 }
 
 export interface EV2DeviceSnapshot {

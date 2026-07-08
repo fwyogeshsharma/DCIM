@@ -362,12 +362,16 @@ def ev2_metrics():
         panel = EV2PanelMetrics(
             total_kw=_f("Panel_Total_kW"),
             total_kwh=_f("Panel_Total_kWh"),
+            rated_kw=(float(snap["rated_kw"])
+                      if snap.get("rated_kw") is not None else None),
             voltage_pha=_f("Voltage_PhA"),
             voltage_phb=_f("Voltage_PhB"),
             voltage_phc=_f("Voltage_PhC"),
             current_pha=_f("Current_PhA"),
             current_phb=_f("Current_PhB"),
             current_phc=_f("Current_PhC"),
+            rated_current=(float(snap["rated_current"])
+                           if snap.get("rated_current") is not None else None),
             frequency=_f("Line_Frequency"),
             power_factor=_f("Panel_PF"),
             voltage_thd=_f("Voltage_THD"),
@@ -381,6 +385,8 @@ def ev2_metrics():
             alarm_high_thd=          bool(v.get("Alarm_HighTHD",          0)),
             alarm_phase_loss=        bool(v.get("Alarm_PhaseLoss",        0)),
             alarm_sensor_fault=      bool(v.get("Alarm_SensorFault",      0)),
+            alarm_undervoltage=      bool(v.get("Alarm_Undervoltage",     0)),
+            alarm_underfrequency=    bool(v.get("Alarm_UnderFrequency",   0)),
         )
 
         # ── Build circuit list ─────────────────────────────────────────

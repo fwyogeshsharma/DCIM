@@ -30,6 +30,8 @@ Example (42-circuit EV2):
   1022  Alarm_HighTHD        (BI)
   1023  Alarm_PhaseLoss      (BI)
   1024  Alarm_SensorFault    (BI)
+  1025  Alarm_Undervoltage   (BI)
+  1026  Alarm_UnderFrequency (BI)
   2001–2005  Ckt01: Current, kW, kWh, PF, THD
   3001–3005  Ckt02 …
   …
@@ -100,6 +102,8 @@ _PANEL_BI = [
     (1022, "Alarm_HighTHD",           "High THD Alarm — current THD exceeds 7%"),
     (1023, "Alarm_PhaseLoss",         "Phase Loss Alarm — any phase voltage < 10 V"),
     (1024, "Alarm_SensorFault",       "Sensor Fault — internal measurement error"),
+    (1025, "Alarm_Undervoltage",      "Undervoltage / Sag Alarm — any phase < 90% of nominal"),
+    (1026, "Alarm_UnderFrequency",    "Under-Frequency Alarm — line frequency < 98% of nominal"),
 ]
 
 _CKT_AI_OFFSETS = [

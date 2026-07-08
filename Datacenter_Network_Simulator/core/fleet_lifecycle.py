@@ -994,8 +994,14 @@ class FleetLifecycleEngine:
         the power room (0U panels — no compute-grid placement to collide with)."""
         dc, floor, _room = rk
         ups = self._neighbor(tmpl_rpp, "power", (DeviceType.UPS,))
+        # Co-locate the spill with its TEMPLATE panel (same row AND rack), not a
+        # hardcoded rack 1/2 — a curated hall's IT RPP sits at e.g. rack 4 (A) / 9
+        # (B) in the network row, so stamping the spill at rack 1/2 dropped a 0U
+        # panel onto the front-of-row compute/spine grid cells and the floorplan
+        # then drew Rack 1/Rack 2 as RPP. Inheriting the template's rack_num keeps
+        # the spill stacked with the panel it relieves, off the compute racks.
         rpp = self._clone(tmpl_rpp, dc, getattr(tmpl_rpp, "rack_row", 1) or 1,
-                          1 if side == "A" else 2, PDU_UNIT,
+                          getattr(tmpl_rpp, "rack_num", 1) or 1, PDU_UNIT,
                           prefix=f"rpp{side.lower()}", floor=floor,
                           room=getattr(tmpl_rpp, "room", None),
                           fx=getattr(tmpl_rpp, "floor_x", None),
