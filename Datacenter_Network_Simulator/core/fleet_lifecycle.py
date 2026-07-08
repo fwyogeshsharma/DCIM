@@ -783,6 +783,11 @@ class FleetLifecycleEngine:
         front_y = round(geo.row_y(1), 4)
         new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", front_y)
         new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", front_y) if infra["rpp_b"] else None
+        # Every RPP gets its OWN EV2-42 meter (like the curated halls), so a new
+        # hall's power is monitored from day one — not only spill panels.
+        for _rpp in (new_infra["rpp_a"], new_infra["rpp_b"]):
+            if _rpp is not None:
+                self._provision_ev2_for_rpp(_rpp, rk)
         fabric = [(sp, "sp") for sp in (infra.get("spines") or [])]
         if infra.get("oob") is not None:
             fabric.append((infra["oob"], "oob"))
