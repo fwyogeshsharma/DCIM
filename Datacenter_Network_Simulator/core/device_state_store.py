@@ -1075,6 +1075,12 @@ class DeviceStateStore:
             it_live_dc: Dict[str, float] = _dd(float)   # live IT heat per DC
             inlet_sum_dc: Dict[str, float] = _dd(float) # Σ server inlet temp per DC
             inlet_n_dc: Dict[str, int] = _dd(int)       # server count per DC (for avg)
+            # Per-HALL inlet tallies so each room's CRAHs ramp on ITS air temp (local
+            # return-air control), not a DC-wide average — a hot hall speeds up its own
+            # fans while a cool hall stays quiet.
+            inlet_sum_room: Dict[tuple, float] = _dd(float)  # Σ inlet per (dc, room)
+            inlet_n_room: Dict[tuple, int] = _dd(int)        # server count per (dc, room)
+            crah_room: Dict[str, tuple] = {}                 # CRAH name → (dc, room)
             dc_city: Dict[str, str] = {}
             plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
             for d in devices:
@@ -1091,6 +1097,9 @@ class DeviceStateStore:
                     if _inl is not None:
                         inlet_sum_dc[_dc] += float(_inl)
                         inlet_n_dc[_dc] += 1
+                        _rk = (_dc, getattr(d, "room", "") or "")
+                        inlet_sum_room[_rk] += float(_inl)
+                        inlet_n_room[_rk] += 1
                 elif dtv in self._COOLING_TYPES:
                     # Cooling plant is also an electrical load on the power graph,
                     # so a facility meter downstream reads IT + cooling → PUE > 1.
@@ -1100,6 +1109,8 @@ class DeviceStateStore:
                         cool_w += w
                     plant_dc[_dc].append(
                         (d.name, float(getattr(d, "power_draw_w", 0) or 0), dtv))
+                    if dtv == "crah":
+                        crah_room[d.name] = (_dc, getattr(d, "room", "") or "")
             for nid in sorted(rank, key=lambda x: rank.get(x, 4), reverse=True):
                 thr = own.get(nid, 0.0) + incoming.get(nid, 0.0)
                 through[nid] = thr
@@ -1180,11 +1191,11 @@ class DeviceStateStore:
                 plr = (itl / itd) if itd > 0 else 0.0
                 _city = dc_city.get(_dc)
                 # Hall inlet/return air temp → CRAH fan SPEED ramp (more airflow when
-                # hot). The cube-law POWER cost is applied once, by affinity_power_kw
-                # below — no double-cube.
+                # hot). Per-hall (below): each CRAH ramps on ITS room's inlet temp; the
+                # DC average is the fallback for a room with no servers yet. The cube-law
+                # POWER cost is applied once, by affinity_power_kw below — no double-cube.
                 avg_inlet = (inlet_sum_dc.get(_dc, 0.0) / inlet_n_dc[_dc]
                              if inlet_n_dc.get(_dc) else 24.0)
-                fan_spd_ratio = crah_fan_speed_ratio(avg_inlet)
                 for _n, w, _t in units:
                     if _t in _VFD_FAN or _t in _VFD_PUMP:
                         # Staged-off pump / tower cell (sequenced down with its chiller):
@@ -1195,9 +1206,19 @@ class DeviceStateStore:
                             continue
                         # VFD centrifugal pump/fan — affinity law P ∝ speed³. Speed
                         # tracks the thermal duty (flow ∝ speed), floored at the drive
-                        # turndown; CRAHs push extra airflow when the hall is hot. Draw
-                        # equals nameplate only at full speed, far less when throttled.
-                        duty = lf * fan_spd_ratio if _t == "crah" else lf
+                        # turndown; draw equals nameplate only at full speed, far less
+                        # when throttled.
+                        if _t == "crah":
+                            # Per-hall control: this CRAH ramps on its OWN room's average
+                            # inlet temp (local return-air sensor), so a hot hall speeds
+                            # up its fans while a cool hall stays quiet. DC-average
+                            # fallback for a room with no servers.
+                            _rk = crah_room.get(_n)
+                            _rn = inlet_n_room.get(_rk, 0)
+                            _rinl = (inlet_sum_room[_rk] / _rn) if _rn else avg_inlet
+                            duty = lf * crah_fan_speed_ratio(_rinl)
+                        else:
+                            duty = lf
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
                         spd  = vfd_speed_frac(duty, _min)
                         tgt_w = affinity_power_kw(w, spd)
