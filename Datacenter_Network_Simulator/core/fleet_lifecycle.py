@@ -32,6 +32,7 @@ polling on its fresh IP needs a rebind/restart.
 from __future__ import annotations
 
 import random
+import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -1283,6 +1284,79 @@ class FleetLifecycleEngine:
             n += 1
         return f"{dc}-SRV{n:03d}"
 
+    def _seq_name(self, tmpl_name: str, dc: str) -> Optional[str]:
+        """Continue a curated device's numbering so a fleet clone reads like its
+        peers. Splits *tmpl_name* into a stem + trailing counter ('DC1-LF01' ->
+        stem 'DC1-LF', width 2), rewrites the DC token to *dc* (so a cross-DC
+        fallback template still lands in the right DC), then returns the stem +
+        (highest existing counter with that stem + 1), zero-padded to the
+        template's width. Returns None when the name has no continuable counter —
+        a singleton like 'RPP-MECH-DC1' or 'EV2-COOL-DC1' whose only digits are
+        the DC id — so the caller can fall back."""
+        m = re.match(r"^(.*?)(\d+)$", tmpl_name or "")
+        if not m:
+            return None
+        stem, num = m.group(1), m.group(2)
+        if dc and re.search(r"DC\d+", stem):
+            stem = re.sub(r"DC\d+", dc, stem, count=1)
+        if stem.endswith("DC"):        # the trailing number WAS the DC ordinal
+            return None
+        width = len(num)
+        pat = re.compile(r"^" + re.escape(stem) + r"0*(\d+)$")
+        mx, names = 0, set()
+        for d in self.s.device_manager.get_all_devices():
+            nm = d.name or ""
+            names.add(nm)
+            mm = pat.match(nm)
+            if mm:
+                mx = max(mx, int(mm.group(1)))
+        n = mx + 1
+        cand = f"{stem}{n:0{width}d}"
+        while cand in names:
+            n += 1
+            cand = f"{stem}{n:0{width}d}"
+        return cand
+
+    @staticmethod
+    def _hall_code(room: Optional[str]) -> str:
+        """DCIM hall abbreviation used in rack-PDU names: 'Server Hall C' -> 'SHC'
+        (matches the curated 'PDU-DC1-SHA-…' style). Falls back to the room's word
+        initials for any non-'Server Hall' room."""
+        r = (room or "").strip()
+        parts = r.split()
+        if r.lower().startswith("server hall ") and len(parts) >= 3:
+            return "SH" + parts[-1].upper()
+        letters = "".join(w[0] for w in re.findall(r"[A-Za-z]+", r))[:4].upper()
+        return letters or "HALL"
+
+    def _row_rank(self, dc: str, floor, room: Optional[str], row: int) -> int:
+        """1-based physical row index of rack_row *row* within hall (dc, floor,
+        room), ordered front-to-back. Curated rows (small ints) rank ahead of
+        fleet rows (synthetic >= _FLEET_ROW_BASE), matching the fleet-lays-behind-
+        curated floor layout — so a fleet rack's PDU name carries a sensible R#."""
+        key = (dc or "", str(floor or ""), room or "")
+        rows = {int(row)}
+        for d in self.s.device_manager.get_all_devices():
+            if (d.datacenter or "", str(d.floor or ""), d.room or "") == key:
+                rr = d.rack_row
+                if rr is not None:
+                    rows.add(int(rr))
+        return sorted(rows).index(int(row)) + 1
+
+    def _pdu_name(self, dc: str, floor, room: Optional[str], row: int,
+                  num: int, side: str) -> str:
+        """Curated rack-PDU name for a fleet PDU: PDU-<DC>-<HALL>-R<row>-<rack>-<A|B>
+        (e.g. 'PDU-DC2-SHC-R1-3-A'), where the row is the rack's physical row rank
+        in the hall and the rack ordinal is its position within that row — the same
+        location encoding the curated 'PDU-DC1-SHA-R1-5-A' names use."""
+        hall = self._hall_code(room)
+        rrank = self._row_rank(dc, floor, room, row)
+        names = {d.name for d in self.s.device_manager.get_all_devices()}
+        n = int(num)
+        while f"PDU-{dc}-{hall}-R{rrank}-{n}-{side}" in names:
+            n += 1
+        return f"PDU-{dc}-{hall}-R{rrank}-{n}-{side}"
+
     def _next_free_unit(self, key: tuple) -> Optional[int]:
         """Next free rack unit for a SERVER_U_HEIGHT-U server, on the curated 2U
         cadence (servers sit on odd units 1,3,5… and occupy U..U+1). Returns None
@@ -1367,13 +1441,26 @@ class FleetLifecycleEngine:
         elif mnote == "overflow" and not self._mgmt_overflow_warned:
             self._mgmt_overflow_warned = True
             self._log("[Fleet] mgmt base /22 full — spilling into overflow blocks")
-        # Match the curated naming style: servers are DC2-SRV027 (continue the
-        # sequence, no dash); other fleet kit keeps DC2-TOR-0007 style.
+        # Match the curated naming style so a fleet device is indistinguishable
+        # from a hand-authored peer:
+        #   • servers      → DC2-SRV027 (continue the curated SRV sequence)
+        #   • rack PDUs    → PDU-DC2-SHC-R1-3-A (hall + physical row/rack + side)
+        #   • EV2 meters   → EV2-DC2-RPP05 (follow the per-DC RPP-meter counter,
+        #     not the arbitrary first-found ENERGY_MONITOR template name)
+        #   • everything else (LF/SP/OOB-SW/RPP-IT/CRAH/SENSOR…) → continue the
+        #     clone template's own curated numbering (DC1-LF01 → DC2-LF19)
+        # Only fall back to the old generic DC2-PREFIX-0007 form when a template
+        # carries no continuable counter.
+        dcn = dc or "DC"
         if prefix == "srv":
-            name = self._next_srv_name(dc or "DC")
+            name = self._next_srv_name(dcn)
+        elif prefix.startswith("pdu"):
+            side = "B" if prefix.endswith("b") else "A"
+            name = self._pdu_name(dcn, floor, room, row, num, side)
         else:
-            base = f"{(dc or 'DC')}-{prefix.upper()}".replace(" ", "-")
-            name = self._unique_name(base)
+            tname = f"EV2-{dcn}-RPP01" if prefix == "ev2" else (getattr(tmpl, "name", "") or "")
+            name = (self._seq_name(tname, dcn)
+                    or self._unique_name(f"{dcn}-{prefix.upper()}".replace(" ", "-")))
         try:
             dev = Device(
                 name=name,

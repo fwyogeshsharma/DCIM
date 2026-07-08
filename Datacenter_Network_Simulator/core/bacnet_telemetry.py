@@ -119,11 +119,21 @@ class EV2TelemetryEngine:
         # breaker is the 0..1 load fraction driving its PF and current-THD, matching
         # the PDU's own basis so the two agree.
         self._branch_rated_kw = BRANCH_BREAKER_KW
-        # Phase-current ceiling and overcurrent trip both follow the panel size
-        # so a large facility meter is not clipped and does not alarm constantly.
+        # Phase-current ceiling and overcurrent trip reference the panel MAIN
+        # BREAKER — a FIXED hardware limit, not the load present when the meter was
+        # commissioned. A branch-metering RPP is a `circuits`-pole panel of 32 A
+        # (BRANCH_BREAKER_KW) branches, so its main is on the order of its pole
+        # capacity. Sizing the trip off the start-time downstream load instead (the
+        # old behaviour) made ANY post-commission growth — the fleet clamping more
+        # rack PDUs onto a curated RPP as a hall fills — drive the live current past
+        # a threshold frozen to the smaller original load, false-tripping a healthy,
+        # fully-populated panel. max() keeps aggregate/facility meters (huge
+        # rated_kw, few real branches) sized by their real load, not the pole count.
         # 85/60 keeps the legacy trip-to-nominal ratio for standard panels.
-        self._i_clamp            = max(200.0, self._i_nominal * 1.6)
-        self._overcurrent_thresh = self._i_nominal * (self.OVERCURRENT_THRESHOLD / 60.0)
+        panel_i = (circuits * self._branch_rated_kw * 1000.0) / (nominal_voltage * 0.90 * math.sqrt(3))
+        i_cap   = max(self._i_nominal, panel_i)
+        self._i_clamp            = max(200.0, i_cap * 1.6)
+        self._overcurrent_thresh = i_cap * (self.OVERCURRENT_THRESHOLD / 60.0)
         self._freq_nominal   = frequency_hz
         self._v_nominal      = nominal_voltage
 
