@@ -1500,8 +1500,16 @@ if __name__ == "__main__":
         ("dual_dc_enterprise.json",          build_dual_dc_enterprise),
     ]
 
+    from core.power_sizing import rightsize_nodes
+
     for filename, fn in builders:
         t = fn()
+        # Right-size PDU/RPP/UPS/generator SKUs to each node's computed downstream
+        # load (the hardcoded build-time labels are placeholders), so model labels
+        # match real capacity and load% reads true against the rating catalog.
+        changes = rightsize_nodes(t.nodes, t.edges)
+        if changes:
+            print(f"  [{filename}] right-sized {len(changes)} power SKU(s) to load")
         t.save(filename)
 
     print()

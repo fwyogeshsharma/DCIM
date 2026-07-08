@@ -28,7 +28,7 @@ then checked and notifications dispatched.
 from __future__ import annotations
 
 import logging
-import select
+import selectors
 import socket
 import threading
 import time
@@ -44,7 +44,7 @@ from core.bacnet_object_model import (
     SVC_SUBSCRIBE_COV,
     decode_whois,
 )
-from core.bacnet_ev2_generator import DEFAULT_CIRCUITS
+from core.bacnet_ev2_generator import DEFAULT_CIRCUITS, MAX_CIRCUITS, clamp_circuit_count
 from core.bacnet_telemetry import EV2TelemetryEngine
 from core.bacnet_plant_generator import build_plant_object_tree, PlantTelemetryEngine
 from simulator.bacnet_device import EV2BACnetDevice
@@ -88,6 +88,14 @@ class BACnetController:
         # Per-device telemetry engines
         self._telemetry: Dict[int, EV2TelemetryEngine]     = {}
 
+        # Guards the device/telemetry dicts against concurrent mutation: the recv
+        # thread and the ticker iterate them while fleet-lifecycle commissioning
+        # (add_plant_device / remove_plant_device) mutates them live.
+        self._dev_lock = threading.RLock()
+        # Set by a hot add/remove so the recv loop rebuilds its per-device socket
+        # select set to include/drop the changed device.
+        self._sockets_dirty = False
+
         # Shared receive socket (0.0.0.0:47808)
         self._recv_sock: Optional[socket.socket] = None
 
@@ -101,6 +109,13 @@ class BACnetController:
         self._base_instance: int   = 40001
         self._frequency_hz:  float = 50.0
         self._port:          int   = 47808
+
+        # kWh register persistence — EV2 energy accumulators survive restarts the
+        # way a real meter's non-volatile register does. Flushed periodically and
+        # on stop(); restored (keyed by device IP) at start().
+        self._energy_path = Path(self._datasets_dir) / "ev2_energy.json"
+        self._tick_count = 0
+        self._energy_save_every = 300   # ticks (~5 min at the 1 s tick interval)
 
     # ─────────────────────────────────────────────────────────────
     #  Callbacks
@@ -190,6 +205,10 @@ class BACnetController:
                 "error")
             return False
 
+        # Restore persisted kWh registers (keyed by device IP) so lifetime energy
+        # continues across restarts instead of reseeding.
+        saved_energy = self._load_energy()
+
         # Build devices (each device binds device_ip:BACNET_PORT with SO_REUSEADDR)
         for i, ip in enumerate(device_ips):
             instance    = base_instance + i
@@ -200,15 +219,16 @@ class BACnetController:
             else:
                 capacity = active_circuits = _entry  # legacy: all circuits active
 
-            # Capacity = EV2 model size (e.g. EV2-240). The BACnet object tree and
-            # per-circuit displays are capped at a real panel's breaker count
-            # (NOMINAL_CIRCUITS), but the *electrical* size drives load_scale so a
-            # large facility/main meter reports proportionally higher kW than the
-            # downstream IT sub-meters — making PUE = facility / IT come out > 1.
-            NOMINAL_CIRCUITS = 42
-            circuits         = min(capacity, NOMINAL_CIRCUITS)
+            # capacity = the meter's physical CT-channel count (Verdigris EV2 ships
+            # 24/42/84). Honor it up to the largest real model (84) rather than a
+            # hard 42 cap, so an 84-channel meter on a large RPP builds an 84-circuit
+            # object tree and meters every branch. Branches beyond the channel count
+            # can't be clamped (physical limit) — the fleet spills them to a second
+            # RPP+meter instead. load_scale keeps the synthetic/unpopulated fallback
+            # proportional to a nominal 42-channel panel (unused once rated_kw lands).
+            circuits         = clamp_circuit_count(min(capacity, MAX_CIRCUITS))
             active_circuits  = min(active_circuits, circuits)
-            load_scale       = capacity / float(NOMINAL_CIRCUITS)
+            load_scale       = circuits / float(DEFAULT_CIRCUITS)
             dev = EV2BACnetDevice(
                 device_ip=ip,
                 device_instance=instance,
@@ -219,13 +239,16 @@ class BACnetController:
             )
             self._devices[instance]  = dev
             self._devices_by_ip[ip]  = dev
-            self._telemetry[instance] = EV2TelemetryEngine(
+            _eng = EV2TelemetryEngine(
                 circuits=circuits,
                 frequency_hz=frequency_hz,
                 active_circuits=active_circuits,
                 load_scale=load_scale,
                 rated_kw=_kwmap.get(ip),
             )
+            if ip in saved_energy:
+                _eng.set_energy_state(saved_energy[ip])
+            self._telemetry[instance] = _eng
 
         # ── Chiller-plant BACnet devices (chiller/pump/cooling_tower/valve) ──
         # Instances continue after the EV2 block. Each gets its type-specific
@@ -283,10 +306,48 @@ class BACnetController:
 
         return True
 
+    def _load_energy(self) -> Dict[str, dict]:
+        """Read persisted per-EV2 kWh registers ({ip: {panel_kwh, circuit_kwh}})."""
+        try:
+            import json
+            if self._energy_path.exists():
+                with open(self._energy_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception as exc:
+            self._log(f"[BACnet] Could not load kWh state ({exc}); starting fresh.",
+                      "warning")
+        return {}
+
+    def _save_energy(self) -> None:
+        """Flush every EV2 engine's kWh registers to disk atomically. Plant engines
+        are skipped (they have no lifetime kWh register)."""
+        out: Dict[str, dict] = {}
+        with self._dev_lock:
+            _by_ip = list(self._devices_by_ip.items())
+        for ip, dev in _by_ip:
+            eng = self._telemetry.get(getattr(dev, "device_instance", None))
+            if isinstance(eng, EV2TelemetryEngine):
+                out[ip] = eng.get_energy_state()
+        if not out:
+            return
+        try:
+            import json, os
+            tmp = str(self._energy_path) + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(out, f)
+            os.replace(tmp, str(self._energy_path))
+        except Exception as exc:
+            self._log(f"[BACnet] Could not save kWh state: {exc}", "warning")
+
     def stop(self) -> None:
         """Graceful shutdown: stop recv thread, close all sockets."""
         if not self._running:
             return
+
+        # Final flush so the lifetime kWh registers survive this shutdown.
+        self._save_energy()
 
         self._stop_ev.set()
 
@@ -315,6 +376,110 @@ class BACnetController:
 
     def device_count(self) -> int:
         return len(self._devices)
+
+    # ─────────────────────────────────────────────────────────────
+    #  Hot add / remove (fleet lifecycle — commission new plant gear)
+    # ─────────────────────────────────────────────────────────────
+
+    def add_plant_device(self, ip: str, device_type: str,
+                         name: Optional[str] = None,
+                         rated_kw: float = 0.0) -> bool:
+        """Hot-add a chiller-plant BACnet device (chiller/pump/cooling_tower/valve/
+        crah/cdu) into a RUNNING controller — used when Fleet Lifecycle commissions
+        new cooling gear. Mirrors the plant block in start(): builds the type's
+        object tree + a live PlantTelemetryEngine and registers it, so it shows in
+        the panel's Active Devices and answers BACnet reads. The IP must already be
+        host-bound (fleet _commission binds it). Returns False if not running, the
+        IP is unknown/duplicate, or the type is unrecognised."""
+        if not self._running or not ip:
+            return False
+        with self._dev_lock:
+            if ip in self._devices_by_ip:
+                return False
+            inst = (max(self._devices) + 1) if self._devices else self._base_instance
+            name = name or f"{device_type}_{inst}"
+            try:
+                tree, n2k = build_plant_object_tree(device_type, float(rated_kw or 0.0))
+            except KeyError:
+                self._log(f"[BACnet] Unknown plant device_type '{device_type}' — skipped.",
+                          "warning")
+                return False
+            try:
+                dev = EV2BACnetDevice(
+                    device_ip=ip, device_instance=inst, device_name=name,
+                    log_cb=self._log_cb, port=self._port,
+                    object_tree=tree, name_to_key=n2k, kind=f"plant:{device_type}")
+            except Exception as exc:
+                self._log(f"[BACnet] hot-add {device_type} @ {ip} failed: {exc}", "warning")
+                return False
+            self._devices[inst]      = dev
+            self._devices_by_ip[ip]  = dev
+            self._telemetry[inst]    = PlantTelemetryEngine(
+                device_type, rated_kw=float(rated_kw or 0.0), seed=(hash(name) & 0xFFFFFFFF))
+            self._sockets_dirty = True
+        self._log(f"[BACnet] hot-added {device_type} {name} @ {ip} (instance {inst})",
+                  "success")
+        return True
+
+    def add_ev2_device(self, ip: str, name: Optional[str] = None,
+                       circuits: int = DEFAULT_CIRCUITS,
+                       active_circuits: int = 0,
+                       rated_kw: float = 0.0) -> bool:
+        """Hot-add a Verdigris EV2 energy meter into a RUNNING controller — used when
+        Fleet Lifecycle provisions a new RPP (+meter) as a panel fills or a hall
+        opens. Mirrors the EV2 block in start(): builds the meter's object tree + a
+        live EV2TelemetryEngine and registers it, so it shows in Active Devices and
+        answers BACnet reads. active_circuits self-corrects each tick from the live
+        branch map (see EV2TelemetryEngine.tick), so 0 at creation is fine — the
+        panel starts empty and fills as rack PDUs wire onto it. The IP must already
+        be host-bound (fleet _commission binds it). Returns False if not running, the
+        IP is unknown/duplicate."""
+        if not self._running or not ip:
+            return False
+        with self._dev_lock:
+            if ip in self._devices_by_ip:
+                return False
+            inst = (max(self._devices) + 1) if self._devices else self._base_instance
+            name = name or f"Verdigris_EV2_{inst}"
+            circuits = clamp_circuit_count(min(circuits, MAX_CIRCUITS))
+            active_circuits = min(active_circuits, circuits)
+            try:
+                dev = EV2BACnetDevice(
+                    device_ip=ip, device_instance=inst, device_name=name,
+                    circuits=circuits, log_cb=self._log_cb, port=self._port)
+            except Exception as exc:
+                self._log(f"[BACnet] hot-add EV2 @ {ip} failed: {exc}", "warning")
+                return False
+            self._devices[inst]      = dev
+            self._devices_by_ip[ip]  = dev
+            self._telemetry[inst]    = EV2TelemetryEngine(
+                circuits=circuits, frequency_hz=self._frequency_hz,
+                active_circuits=active_circuits,
+                load_scale=circuits / float(DEFAULT_CIRCUITS),
+                rated_kw=(rated_kw or None))
+            self._sockets_dirty = True
+        self._log(f"[BACnet] hot-added EV2 {name} @ {ip} "
+                  f"(instance {inst}, {circuits}ch)", "success")
+        return True
+
+    def remove_plant_device(self, ip: str) -> None:
+        """Tear down a hot-added plant device (fleet decommission)."""
+        with self._dev_lock:
+            dev = self._devices_by_ip.pop(ip, None)
+            if dev is None:
+                return
+            inst = getattr(dev, "device_instance", None)
+            if inst is not None:
+                self._devices.pop(inst, None)
+                self._telemetry.pop(inst, None)
+            self._sockets_dirty = True
+        try:
+            dev.close()
+        except Exception:
+            pass
+
+    # EV2 teardown is the same IP-keyed removal as a plant device.
+    remove_ev2_device = remove_plant_device
 
     # ─────────────────────────────────────────────────────────────
     #  Telemetry tick (called by DeviceStateStore)
@@ -374,7 +539,9 @@ class BACnetController:
              metric_limits: dict | None = None,
              plant_overrides: dict | None = None,
              live_kw_by_ip: dict | None = None,
-             circuit_kw_by_ip: dict | None = None) -> None:
+             circuit_kw_by_ip: dict | None = None,
+             plant_power_by_name: dict | None = None,
+             plant_cop_by_name: dict | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -389,7 +556,9 @@ class BACnetController:
         """
         if not self._running:
             return
-        for instance, engine in list(self._telemetry.items()):
+        with self._dev_lock:
+            _tel_items = list(self._telemetry.items())
+        for instance, engine in _tel_items:
             dev = self._devices.get(instance)
             if dev is None:
                 continue
@@ -413,7 +582,10 @@ class BACnetController:
                                 forced.add(_k[len(pref):])
                     forced |= {p for p, v in ovr.items()
                                if p.startswith("Alarm_") and float(v) >= 0.5}
-                    values = engine.tick(dt, forced=forced)
+                    _nm = getattr(dev, "device_name", "")
+                    _pw = (plant_power_by_name or {}).get(_nm)
+                    _cop = (plant_cop_by_name or {}).get(_nm)
+                    values = engine.tick(dt, forced=forced, live_power=_pw, live_cop=_cop)
                 else:
                     # EV2 energy meter: drive the panel from the live downstream
                     # load (server→PDU→panel) when available, else its own curve.
@@ -441,6 +613,11 @@ class BACnetController:
             except Exception:
                 log.exception("[BACnet] tick error for instance %d", instance)
 
+        # Periodic kWh flush so the lifetime registers survive an unclean exit.
+        self._tick_count += 1
+        if self._energy_save_every and self._tick_count % self._energy_save_every == 0:
+            self._save_energy()
+
     # ─────────────────────────────────────────────────────────────
     #  Receive loop
     # ─────────────────────────────────────────────────────────────
@@ -462,30 +639,57 @@ class BACnetController:
         if wildcard is None:
             return
 
-        # Build socket → device map for per-device sockets
-        sock_to_dev: dict = {}
-        for dev in self._devices.values():
-            if dev._send_sock is not None:
-                sock_to_dev[dev._send_sock] = dev
+        # Build socket → device map for per-device sockets. Rebuilt whenever a
+        # fleet hot add/remove flips _sockets_dirty, so a newly commissioned
+        # device's socket joins the select set (and a removed one drops out).
+        def _build_sockmap():
+            with self._dev_lock:
+                self._sockets_dirty = False
+                s2d = {dev._send_sock: dev
+                       for dev in self._devices.values()
+                       if dev._send_sock is not None}
+            return s2d, [wildcard] + list(s2d.keys())
 
-        all_socks = [wildcard] + list(sock_to_dev.keys())
+        # Use a selectors poller (epoll/kqueue on POSIX) rather than select():
+        # a large fleet opens per-device sockets whose fd numbers exceed
+        # FD_SETSIZE (1024), which select() cannot represent — it raises
+        # "filedescriptor out of range in select()". epoll has no such ceiling.
+        sel = selectors.DefaultSelector()
 
-        while not self._stop_ev.is_set():
-            try:
-                readable, _, _ = select.select(all_socks, [], [], 1.0)
-            except OSError:
-                break
-            for sock in readable:
+        def _reregister(socks):
+            for key in list(sel.get_map().values()):
+                try: sel.unregister(key.fileobj)
+                except (KeyError, ValueError): pass
+            for s in socks:
+                try: sel.register(s, selectors.EVENT_READ)
+                except (KeyError, ValueError, OSError): pass
+
+        sock_to_dev, all_socks = _build_sockmap()
+        _reregister(all_socks)
+
+        try:
+            while not self._stop_ev.is_set():
+                if self._sockets_dirty:
+                    sock_to_dev, all_socks = _build_sockmap()
+                    _reregister(all_socks)
                 try:
-                    data, src_addr = sock.recvfrom(4096)
+                    events = sel.select(timeout=1.0)
                 except OSError:
-                    continue
-                try:
-                    # None → broadcast/wildcard path; Device → per-device path
-                    target_dev = sock_to_dev.get(sock)
-                    self._dispatch(data, src_addr, target_dev=target_dev)
-                except Exception:
-                    log.exception("[BACnet] dispatch error from %s", src_addr)
+                    break
+                for key, _mask in events:
+                    sock = key.fileobj
+                    try:
+                        data, src_addr = sock.recvfrom(4096)
+                    except OSError:
+                        continue
+                    try:
+                        # None → broadcast/wildcard path; Device → per-device path
+                        target_dev = sock_to_dev.get(sock)
+                        self._dispatch(data, src_addr, target_dev=target_dev)
+                    except Exception:
+                        log.exception("[BACnet] dispatch error from %s", src_addr)
+        finally:
+            sel.close()
 
     def _dispatch(self, data: bytes, src_addr,
                   target_dev: 'Optional[EV2BACnetDevice]' = None) -> None:
@@ -529,7 +733,9 @@ class BACnetController:
                 else:
                     # Broadcast Who-Is on wildcard socket — all matching
                     # devices reply (simulator convenience behaviour).
-                    for dev in list(self._devices.values()):
+                    with self._dev_lock:
+                        _devs = list(self._devices.values())
+                    for dev in _devs:
                         try:
                             dev.handle_whois(low, high, src_addr)
                         except Exception:
@@ -640,20 +846,26 @@ class BACnetController:
 
     def get_all_subscribers(self) -> List[dict]:
         result = []
-        for dev in self._devices.values():
+        with self._dev_lock:
+            _devs = list(self._devices.values())
+        for dev in _devs:
             result.extend(dev.get_all_subscribers())
         return result
 
     def get_cov_events(self) -> List[dict]:
         result = []
-        for dev in self._devices.values():
+        with self._dev_lock:
+            _devs = list(self._devices.values())
+        for dev in _devs:
             result.extend(dev.get_cov_events())
         return result[-100:]
 
     def get_device_summary(self) -> List[dict]:
         """Return list of {ip, instance, name, circuits} for the UI table."""
         result = []
-        for dev in self._devices.values():
+        with self._dev_lock:
+            _devs = list(self._devices.values())
+        for dev in _devs:
             result.append({
                 "ip":       dev.device_ip,
                 "instance": dev.device_instance,
@@ -673,7 +885,9 @@ class BACnetController:
         if not self._running:
             return []
         result = []
-        for instance, dev in self._devices.items():
+        with self._dev_lock:
+            _dev_items = list(self._devices.items())
+        for instance, dev in _dev_items:
             result.append({
                 "ip":       dev.device_ip,
                 "instance": instance,
@@ -681,5 +895,10 @@ class BACnetController:
                 "circuits": dev.circuits,
                 "kind":     getattr(dev, "kind", "ev2"),
                 "values":   dev.get_snapshot(),
+                # Static nameplate — the panel's rated per-phase current + rated kW,
+                # so the UI can colour phase currents and Total kW relative to panel
+                # size (not a flat limit). None for plant devices (no EV2 engine).
+                "rated_current": getattr(self._telemetry.get(instance), "_rated_phase_current", None),
+                "rated_kw":      getattr(self._telemetry.get(instance), "_rated_capacity_kw", None),
             })
         return result

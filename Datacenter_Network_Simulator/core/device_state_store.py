@@ -262,6 +262,18 @@ class DeviceStateStore:
         self._through_live: Dict[str, float] = {}
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
+        # Persistent circuit→branch slot order per EV2 IP. Real EV2 CT channels are
+        # physical: a branch keeps its slot for the meter's life and a new PDU takes
+        # the next free channel — existing branches never reshuffle (that would
+        # silently reassign per-slot kWh accumulators to other devices). Survives
+        # power-context rebuilds so fleet churn appends rather than re-sorts.
+        self._ev2_circuit_order: Dict[str, list] = {}  # {ev2_ip: [branch device_id]}
+        self._plant_power_by_name: Dict[str, float] = {}  # {plant_name: live cooling kW}
+        self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
+        # Frozen per-DC design cooling nameplate (first-seen), so IT_design stays a
+        # fixed capacity ceiling even when the fleet adds CRAHs to new halls — those
+        # are air distribution, not extra chiller/plant capacity.
+        self._plant_np0_by_dc: Dict[str, float] = {}
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
@@ -294,7 +306,7 @@ class DeviceStateStore:
             "ups_battery_health":  {"enabled": False, "min": 0.0,   "max": 100.0},
             "pdu_load":            {"enabled": False, "min": 0.0,   "max": 100.0},
             "pdu_voltage":         {"enabled": False, "min": 205.0, "max": 235.0},
-            "pdu_outlet_current":  {"enabled": False, "min": 0.0,   "max": 20.0},
+            "pdu_outlet_current":  {"enabled": False, "min": 0.0,   "max": 40.0},
             "pdu_frequency":       {"enabled": False, "min": 49.5,  "max": 50.5},
             "pdu_temperature":     {"enabled": False, "min": 15.0,  "max": 45.0},
             "pdu_humidity":        {"enabled": False, "min": 10.0,  "max": 90.0},
@@ -636,10 +648,17 @@ class DeviceStateStore:
                       "load_balancer", "oob_switch"}
     # Cooling-plant types — electrical loads counted toward facility / PUE.
     _COOLING_TYPES = {"crah", "chiller", "pump", "cooling_tower", "cdu"}
+    # Device types with a real CPU/ASIC die-temperature sensor. ONLY these carry a
+    # cpu_temp and are eligible for the HighTemperature (CPU over-temp) trap —
+    # power/cooling gear (RPP/PDU/UPS/CRAH/chiller/pump) has no CPU. Mirrors the
+    # device_types scoping on trap_rules.HighTemperature.
+    _CPU_BEARING_TYPES = (DeviceType.SERVER, DeviceType.SWITCH, DeviceType.ROUTER,
+                          DeviceType.FIREWALL, DeviceType.LOAD_BALANCER)
     # Per-plant-type BACnet point that reports its live electrical draw (kW).
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
     _UPS_DESIGN_MIN  = 8.0      # UPS autonomy (min) at full load, healthy battery
     _GEN_FULL_HOURS  = 24.0     # genset full-tank runtime (h) at full load
+    _DEFAULT_PDU_RATED_W = 7360.0   # rack-PDU breaker default: 32 A @ 230 V single-phase
 
     def _power_context(self) -> dict:
         """Cached power-graph structure + per-node rated capacity, built once.
@@ -651,9 +670,24 @@ class DeviceStateStore:
         Redundant feeds split a load equally among parents, so summing both A/B
         meters recovers the full load instead of double-counting (matches bacnet.py).
         """
-        if self._power_ctx is not None:
-            return self._power_ctx
+        # Self-healing cache: rebuild whenever the device set or the power-edge
+        # count changes, so a topology load / device add / feed edit ripples into
+        # the cascade even if the caller forgot to invalidate. Explicit
+        # invalidate_power_context() still forces a rebuild (sets _power_ctx None).
         topo = self._topology
+        try:
+            _sig = (len(self._dm.get_all_devices()),
+                    len(topo.get_edges_by_layer("power")) if topo else 0)
+        except Exception:
+            _sig = None
+        # Snapshot into a local before the check+return: the fleet thread can call
+        # invalidate_power_context() (sets self._power_ctx = None) between the guard
+        # and the return, which would otherwise hand the caller None mid-tick. A
+        # local read is atomic, so we return the (possibly just-superseded but
+        # non-None) dict and rebuild on the next tick.
+        _cached = self._power_ctx
+        if _cached is not None and getattr(self, "_power_ctx_sig", None) == _sig:
+            return _cached
         children: Dict[str, list] = {}
         parents: Dict[str, list] = {}
         rank: Dict[str, int] = {}
@@ -721,6 +755,13 @@ class DeviceStateStore:
                     rated_w[nid] = frozen
                     continue
                 r = (pk / 0.8) if pk > 0 else 0.0
+                # A rack PDU's breaker is FIXED hardware, not sized to how many
+                # servers are currently installed. Floor its rating at the breaker
+                # so a near-empty rack reads ~0 % from its live draw (not a phantom
+                # high % from a rating shrunk to the tiny occupancy). A fuller rack
+                # whose nameplate exceeds the default keeps the larger derived value.
+                if id_type.get(nid) in ("pdu", "floor_pdu"):
+                    r = max(r, self._DEFAULT_PDU_RATED_W)
                 rated_w[nid] = r
                 # Freeze only once a power node actually carries load, so a node
                 # seen before its downstream is wired doesn't lock in a 0 rating.
@@ -760,14 +801,50 @@ class DeviceStateStore:
                 brs = [id_dev.get(nid) for nid in nbr_ids]
                 brs = [b for b in brs if b is not None
                        and id_type.get(b.id) not in _up_types]
-                brs.sort(key=lambda b: b.name or "")
-                ev2_circuit_pdus[ip] = [b.id for b in brs]
+                # Stable CT-channel assignment (see _ev2_circuit_order). Real EV2 CT
+                # channels are physical, so:
+                #   • a surviving branch keeps the exact slot it already holds;
+                #   • a REMOVED branch leaves a hole (None) — the freed channel stays
+                #     spare and reads 0, rather than pulling later branches up (which
+                #     would reassign their per-slot kWh registers to other devices);
+                #   • a NEW PDU fills the earliest hole first, then extends onto fresh
+                #     channels (name-sorted for a deterministic first placement).
+                # A fleet add/remove therefore never disturbs the other branches'
+                # circuit numbers, live load, or energy accumulators.
+                cur_ids = {b.id for b in brs}
+                by_name = {b.id: (b.name or "") for b in brs}
+                prev    = self._ev2_circuit_order.get(ip, [])
+                slots   = [pid if pid in cur_ids else None for pid in prev]
+                placed  = {pid for pid in slots if pid is not None}
+                newcomers = sorted((b.id for b in brs if b.id not in placed),
+                                   key=lambda bid: by_name.get(bid, ""))
+                ni = 0
+                for idx in range(len(slots)):        # fill freed holes first
+                    if ni >= len(newcomers):
+                        break
+                    if slots[idx] is None:
+                        slots[idx] = newcomers[ni]
+                        ni += 1
+                slots += newcomers[ni:]              # then extend onto new channels
+                while slots and slots[-1] is None:   # don't grow with trailing spares
+                    slots.pop()
+                self._ev2_circuit_order[ip] = slots
+                ev2_circuit_pdus[ip] = slots
 
-            # Classify each EV2 meter: a FACILITY meter (its panel's subtree
-            # includes cooling plant — i.e. it's on the building feed) vs an IT
-            # SUB-METER (subtree is IT only). PUE = Σ facility-meter kW ÷ Σ IT-meter
-            # kW, exactly how a DCIM derives it from physical meter readings.
-            cooling_ids = {i for i, t in id_type.items() if t in self._COOLING_TYPES}
+            # Classify each EV2 meter by what its panel's subtree contains:
+            #   • "main" (building feed): sees BOTH IT load and central cooling
+            #     plant — a whole-facility meter (e.g. on the generator/utility
+            #     feed). Its reading = total facility power.
+            #   • "it" sub-meter: IT load, no central plant.
+            #   • "cool" sub-meter: central plant, no IT.
+            # PUE = Σ main ÷ Σ IT when a whole-facility meter exists; otherwise
+            # facility = Σ(IT)+Σ(cool) from the non-overlapping branch sub-meters
+            # (see get_power_summary). Central plant is BULK mechanical only
+            # (chiller/tower/pump/CRAH); a CDU is in-rack direct-to-chip cooling fed
+            # from the IT PDU, so it must NOT flag an IT branch as a facility meter.
+            _central_ids = {i for i, t in id_type.items()
+                            if t in ("crah", "chiller", "pump", "cooling_tower")}
+            _it_ids = {i for i, t in id_type.items() if t in self._IT_LEAF_TYPES}
 
             def _subtree(root):
                 seen, stack = set(), [root]
@@ -780,8 +857,16 @@ class DeviceStateStore:
                 return seen
 
             for ip, panel in ev2_ip_panel.items():
-                is_fac = bool(_subtree(panel) & cooling_ids)
-                ev2_meters.append({"ip": ip, "panel": panel, "facility": is_fac})
+                sub = _subtree(panel)
+                has_it    = bool(sub & _it_ids)
+                has_plant = bool(sub & _central_ids)
+                role = ("main" if (has_it and has_plant)
+                        else "it" if has_it
+                        else "cool" if has_plant else "other")
+                ev2_meters.append({
+                    "ip": ip, "panel": panel, "role": role,
+                    "facility": role in ("main", "cool"),   # legacy key
+                })
 
             # Generator → names of the UPS units downstream of it. A genset starts
             # when utility is lost, which the sim sees as a downstream UPS going
@@ -799,6 +884,7 @@ class DeviceStateStore:
                            "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
                            "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters,
                            "ev2_circuit_pdus": ev2_circuit_pdus, "gen_ups": gen_ups}
+        self._power_ctx_sig = _sig
         return self._power_ctx
 
     def invalidate_power_context(self) -> None:
@@ -812,6 +898,17 @@ class DeviceStateStore:
         breaker's rating is fixed at install, so as the rebuilt graph carries more
         fleet load each node's load% climbs toward overload instead of re-sizing."""
         self._power_ctx = None
+
+    def get_ev2_circuit_pdus(self) -> Dict[str, list]:
+        """Public: {ev2_ip: [branch device_id per CT slot]} in the authoritative,
+        slot-stable order (None entries mark spare/freed channels). The API uses
+        this for the per-circuit device-name column so the names line up with the
+        live values, which meter this same ordered branch list.
+
+        Reads the slot map maintained by the tick thread's power-context build
+        directly (a cheap dict read) rather than calling _power_context(), so an
+        API-thread read never forces a rebuild racing the tick thread."""
+        return {ip: list(slots) for ip, slots in self._ev2_circuit_order.items()}
 
     def _server_live_watts(self, device: "Device") -> float:
         """Per-leaf live draw: nameplate scaled by CPU load (idle ~55 %, full
@@ -832,16 +929,46 @@ class DeviceStateStore:
         IT/facility power sums so the value is still populated."""
         ctx = self._power_context()
         through = self._through_live
-        it_m = 0.0
-        fac_m = 0.0
+        it_m = main_m = cool_m = 0.0
         for m in ctx.get("ev2_meters", []):
             kw = through.get(m["panel"], 0.0) / 1000.0
-            if m["facility"]:
-                fac_m += kw          # building-feed meter — sees IT + cooling
-            else:
+            role = m.get("role") or ("main" if m.get("facility") else "it")
+            if role == "it":
                 it_m += kw           # IT branch sub-meter
+            elif role == "main":
+                main_m += kw         # building-feed meter — whole facility (IT+cooling)
+            elif role == "cool":
+                cool_m += kw         # cooling-plant sub-meter
 
-        metered = it_m > 0 and fac_m > 0
+        # CDU reclassification. A CDU (in-rack coolant distribution) is fed from the
+        # IT PDU, so its pump draw rides an IT-role sub-meter and would be counted as
+        # IT load — understating PUE. Its work is mechanical cooling overhead (Green
+        # Grid/ASHRAE put it in the numerator), and the computed path (_COOLING_TYPES)
+        # already treats it as cooling. Shift live CDU watts IT→cool so the meter PUE
+        # matches: facility is unchanged (sub-meter sum is conserved), only the IT
+        # denominator drops. Bounded by the metered IT so we never go negative.
+        cdu_kw = 0.0
+        try:
+            for d in self._dm.get_all_devices():
+                if d.device_type.value == "cdu":
+                    cdu_kw += self._plant_watts(d.name) / 1000.0
+        except Exception:
+            log.exception("[StateStore] CDU reclassification error")
+        cdu_kw = max(0.0, min(cdu_kw, it_m))
+        it_m   -= cdu_kw
+        cool_m += cdu_kw
+
+        # Facility power from meters. The branch sub-meters (IT + cooling) are
+        # non-overlapping and together cover the whole load, so their sum is the
+        # primary facility figure. A building-main meter is only a cross-check: on
+        # a redundant A/B feed a single metered main reads just its side (which can
+        # be LESS than the full sub-meter sum), so take the larger of the two
+        # rather than trusting an under-metered main alone.
+        sub_fac = it_m + cool_m
+        fac_m = max(sub_fac, main_m)
+        # A trustworthy facility reading must be ≥ IT (the facility carries IT +
+        # cooling). If it isn't, metering is incomplete → fall back to computed.
+        metered = it_m > 0 and fac_m >= it_m
         it_w  = it_m * 1000.0 if it_m > 0 else self._it_w
         fac_w = fac_m * 1000.0 if fac_m > 0 else self._facility_w
         pue = (fac_w / it_w) if it_w > 0 else 0.0
@@ -860,7 +987,7 @@ class DeviceStateStore:
         burns fuel proportional to that load, and accrues run-hours; the fuel
         level sets the remaining runtime. Written to the ext-state cache so
         snmprec serves the live OIDs."""
-        ctx = self._power_context()
+        ctx = self._power_context() or {}
         ups_names = ctx.get("gen_ups", {}).get(device.id, [])
         # Utility lost → any downstream UPS on battery → start.
         on_outage = any(
@@ -868,7 +995,7 @@ class DeviceStateStore:
             in ("on_battery", "low_battery")
             for n in ups_names
         )
-        rated = self._power_context()["rated_w"].get(device.id, 0.0)
+        rated = ctx.get("rated_w", {}).get(device.id, 0.0)
         thr   = self._through_live.get(device.id, 0.0)
         dt_h  = self._tick_interval / 3600.0
 
@@ -920,14 +1047,29 @@ class DeviceStateStore:
         it_w = 0.0
         cool_w = 0.0
         try:
+            from collections import defaultdict as _dd
             devices = self._dm.get_all_devices()
             own: Dict[str, float] = {}
+            # Per-datacenter tallies for the load-/weather-coupled cooling model.
+            it_live_dc: Dict[str, float] = _dd(float)   # live IT heat per DC
+            inlet_sum_dc: Dict[str, float] = _dd(float) # Σ server inlet temp per DC
+            inlet_n_dc: Dict[str, int] = _dd(int)       # server count per DC (for avg)
+            dc_city: Dict[str, str] = {}
+            plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
             for d in devices:
                 dtv = d.device_type.value
+                _dc = getattr(d, "datacenter", None) or "?"
+                if _dc not in dc_city:
+                    dc_city[_dc] = getattr(d, "datacenter_city", None)
                 if dtv in self._IT_LEAF_TYPES:
                     w = self._server_live_watts(d)
                     own[d.id] = w
                     it_w += w
+                    it_live_dc[_dc] += w
+                    _inl = getattr(d, "inlet_temp", None)
+                    if _inl is not None:
+                        inlet_sum_dc[_dc] += float(_inl)
+                        inlet_n_dc[_dc] += 1
                 elif dtv in self._COOLING_TYPES:
                     # Cooling plant is also an electrical load on the power graph,
                     # so a facility meter downstream reads IT + cooling → PUE > 1.
@@ -935,6 +1077,8 @@ class DeviceStateStore:
                     if w > 0:
                         own[d.id] = w
                         cool_w += w
+                    plant_dc[_dc].append(
+                        (d.name, float(getattr(d, "power_draw_w", 0) or 0), dtv))
             for nid in sorted(rank, key=lambda x: rank.get(x, 4), reverse=True):
                 thr = own.get(nid, 0.0) + incoming.get(nid, 0.0)
                 through[nid] = thr
@@ -943,6 +1087,73 @@ class DeviceStateStore:
                     share = thr / len(ps)
                     for p in ps:
                         incoming[p] = incoming.get(p, 0.0) + share
+
+            # ── Load-/weather-coupled cooling power ──────────────────────────
+            # Size each DC's total cooling electrical from its live IT heat + site
+            # ambient (cooling_model), then split across the DC's plant units by
+            # nameplate share. Fed to the plant engines next tick, so cooling draw
+            # tracks the real IT load and the location's weather instead of a fixed
+            # nameplate × clock curve.
+            from core.cooling_model import (
+                cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
+                affinity_power_kw, chiller_electrical_w, chiller_cop,
+                PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR)
+            _oh_design = (OH_FLOOR + OH_VAR) or 0.47
+            _VFD_FAN  = ("crah", "cooling_tower")   # centrifugal fans
+            _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
+            plant_power: Dict[str, float] = {}
+            plant_cop: Dict[str, float] = {}
+            for _dc, units in plant_dc.items():
+                itl = it_live_dc.get(_dc, 0.0)
+                np_sum = sum(w for _n, w, _t in units) or 1.0
+                # Design IT capacity is set by the INSTALLED cooling plant (fixed),
+                # not the live server population: a plant of nameplate P cools
+                # IT_design = P / 0.47 at design PUE. So adding IT raises load toward
+                # this fixed ceiling (PUE → 1.47), and cooling caps at P. FROZEN at
+                # the first-seen (curated) plant nameplate so fleet-added hall CRAHs —
+                # air distribution, not new chiller capacity — don't inflate it.
+                np0 = self._plant_np0_by_dc.setdefault(_dc, np_sum)
+                itd = np0 / _oh_design
+                total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc))
+                # Plant-wide duty fraction: how hard the plant works vs its installed
+                # nameplate. 1.0 at design (total_w == np_sum), <1 at part load. Sets
+                # the VFD speed of every pump/fan in the DC.
+                lf = min(1.0, total_w / np_sum)
+                # Thermal part-load ratio (ambient-free) for the chiller kW/ton
+                # curve: live IT heat vs the design IT the plant is sized to reject.
+                plr = (itl / itd) if itd > 0 else 0.0
+                _city = dc_city.get(_dc)
+                # Hall inlet/return air temp → CRAH fan SPEED ramp (more airflow when
+                # hot). The cube-law POWER cost is applied once, by affinity_power_kw
+                # below — no double-cube.
+                avg_inlet = (inlet_sum_dc.get(_dc, 0.0) / inlet_n_dc[_dc]
+                             if inlet_n_dc.get(_dc) else 24.0)
+                fan_spd_ratio = crah_fan_speed_ratio(avg_inlet)
+                for _n, w, _t in units:
+                    if _t in _VFD_FAN or _t in _VFD_PUMP:
+                        # VFD centrifugal pump/fan — affinity law P ∝ speed³. Speed
+                        # tracks the thermal duty (flow ∝ speed), floored at the drive
+                        # turndown; CRAHs push extra airflow when the hall is hot. Draw
+                        # equals nameplate only at full speed, far less when throttled.
+                        duty = lf * fan_spd_ratio if _t == "crah" else lf
+                        _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
+                        spd  = vfd_speed_frac(duty, _min)
+                        tgt_w = affinity_power_kw(w, spd)
+                    elif _t == "chiller":
+                        # Chiller — part-load kW/ton curve × ambient/condenser
+                        # factor. Compressor power is U-shaped in efficiency, not
+                        # linear: nameplate at design, cheaper mid-load, penalised at
+                        # very low PLR (fixed losses dominate). COP is the inverse —
+                        # peaks mid-load, droops with a hot condenser.
+                        tgt_w = chiller_electrical_w(w, plr, _city)
+                        plant_cop[_n] = chiller_cop(plr, _city)
+                    else:
+                        # Valve / other: negligible actuator draw — nameplate share.
+                        base = total_w * (w / np_sum)
+                        tgt_w = min(base, w if w > 0 else base)
+                    plant_power[_n] = tgt_w / 1000.0   # kW
+            self._plant_power_by_name = plant_power
+            self._plant_cop_by_name = plant_cop
         except Exception:
             log.exception("[StateStore] power flow error")
         self._through_live = through
@@ -953,8 +1164,12 @@ class DeviceStateStore:
                              for ip, panel in ctx.get("ev2_ip_panel", {}).items()}
         # Live kW per branch circuit (ordered), so each EV2 circuit meters the real
         # load of the PDU it clamps instead of a synthetic per-circuit random walk.
+        # A None slot is a freed/spare CT channel (branch removed) — passed through
+        # as None (not 0.0) so the engine can tell it apart from a real 0-load branch
+        # and zero that channel's energy register.
         self._ev2_circuit_kw = {
-            ip: [through.get(pid, 0.0) / 1000.0 for pid in pids]
+            ip: [None if pid is None else through.get(pid, 0.0) / 1000.0
+                 for pid in pids]
             for ip, pids in ctx.get("ev2_circuit_pdus", {}).items()}
 
     @staticmethod
@@ -1083,7 +1298,9 @@ class DeviceStateStore:
             try:
                 self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
                                        self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw,
-                                       circuit_kw_by_ip=self._ev2_circuit_kw)
+                                       circuit_kw_by_ip=self._ev2_circuit_kw,
+                                       plant_power_by_name=self._plant_power_by_name,
+                                       plant_cop_by_name=self._plant_cop_by_name)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
@@ -1136,9 +1353,9 @@ class DeviceStateStore:
         """
         broke = []
         topo = self._topology
-        if topo is None or not topo.graph.has_node(device.id):
+        if topo is None:
             return broke
-        for peer_id, edges in list(topo.graph.adj[device.id].items()):
+        for peer_id, edges in topo.get_adjacency(device.id):
             prod = [e for e in edges.values()
                     if e.get("layer", "production") == "production"]
             if prod and not any(e.get("broken") for e in prod):
@@ -1187,7 +1404,7 @@ class DeviceStateStore:
             "gen_start_attempts": 0,
             "gen_was_running": False,
             "pdu_load": random.uniform(30.0, 60.0),
-            "pdu_voltage": random.uniform(216.0, 224.0),
+            "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
             "pdu_phase_imbalance": random.uniform(0.0, 5.0),
             "pdu_outlet_status": "on",
@@ -1337,8 +1554,11 @@ class DeviceStateStore:
         if mf["sys_uptime"]:
             device.sys_uptime += int(self._tick_interval * 100)
 
-        # CPU/ASIC temperature
-        if mf["cpu_temp"]:
+        # CPU/ASIC temperature — IT gear only (real die/ASIC sensor). Power and
+        # cooling devices (RPP/PDU/UPS/CRAH/chiller/pump) have no CPU, so they must
+        # not carry a synthetic cpu_temp: it would surface over SNMP/Redfish and
+        # previously drove a false HighTemperature trap (see trap_rules.HighTemperature).
+        if mf["cpu_temp"] and device.device_type in self._CPU_BEARING_TYPES:
             # Realistic CPU die temps: air-cooled idles ~40 °C and reaches ~83 °C
             # at 100 % load (Tjmax ~95–100 °C; Warning 85 / Critical 90). The load
             # slope is tuned so a fully-loaded server peaks below 90 — so it never
@@ -1759,10 +1979,18 @@ class DeviceStateStore:
         therefore still win)."""
         dt = device.device_type
 
-        if getattr(device, "cpu_usage", 0) > 89:                  # HighCPU > 90
+        # An explicit, enabled Metric-Tick limit is deliberate operator intent and
+        # must win over the quiet-baseline scrub (same as overrides/ramps). Only skip
+        # the scrub cap when the user's floor sits above it — otherwise the organic
+        # walk is still tamed as before.
+        _cl = self.metric_limits.get("cpu_usage")
+        _cpu_forced = bool(_cl and _cl["enabled"] and _cl["min"] > 89)
+        if getattr(device, "cpu_usage", 0) > 89 and not _cpu_forced:   # HighCPU > 90
             device.cpu_usage = 89
         mtot = getattr(device, "memory_total", 0)
-        if mtot and device.memory_used > int(mtot * 0.849):       # HighMemory > 85 %
+        _ml = self.metric_limits.get("memory_pct")
+        _mem_forced = bool(_ml and _ml["enabled"] and _ml["min"] > 84.9)
+        if mtot and device.memory_used > int(mtot * 0.849) and not _mem_forced:  # HighMemory > 85 %
             device.memory_used = int(mtot * 0.849)
         # cpu_temp is NOT clamped: even at 100 % load the walk peaks ~84 °C (plus a
         # few °C of intake coupling), staying below the 90 °C HighTemperature
@@ -1801,13 +2029,13 @@ class DeviceStateStore:
         if dt in (DeviceType.PDU, DeviceType.FLOOR_PDU):
             if st.get("pdu_load", 0.0) > 79.9:                     # load high > 80
                 st["pdu_load"] = 79.9; changed = True
-            clamp("pdu_voltage", 200.1, 239.9, 220.0)              # >240 / <200
+            clamp("pdu_voltage", 200.1, 239.9, 230.0)              # >240 / <200
             if st.get("pdu_power_factor", 1.0) < 0.701:            # PF low < 0.70
                 st["pdu_power_factor"] = 0.701; changed = True
             if st.get("pdu_phase_imbalance", 0.0) > 19.9:          # imbalance > 20
                 st["pdu_phase_imbalance"] = 19.9; changed = True
-            if st.get("pdu_outlet_current", 0.0) > 19.9:           # current > 20
-                st["pdu_outlet_current"] = 19.9; changed = True
+            if st.get("pdu_outlet_current", 0.0) > 31.9:           # current > 32A breaker
+                st["pdu_outlet_current"] = 31.9; changed = True
             clamp("pdu_frequency", 49.6, 50.9, 50.0)               # fault < 49.5
             if st.get("pdu_temperature", 0.0) > 34.9:              # temp > 35
                 st["pdu_temperature"] = 34.9; changed = True
@@ -1849,7 +2077,7 @@ class DeviceStateStore:
             "gen_start_attempts": 0,
             "gen_was_running": False,
             "pdu_load": random.uniform(30.0, 60.0),
-            "pdu_voltage": random.uniform(216.0, 224.0),
+            "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
             "pdu_phase_imbalance": random.uniform(0.0, 5.0),
             "pdu_outlet_status": "on",
@@ -2007,18 +2235,33 @@ class DeviceStateStore:
                 st["pdu_load"] = round(self._num_limit("pdu_load", ld), 1)
 
             if mf["pdu_voltage"]:
-                pv = st.get("pdu_voltage", 220.0)
-                pv = max(205.0, min(235.0, pv + random.uniform(-2.0, 2.0)))
+                # Mean-revert to 230 V nominal (matches the EV2 clamp's nominal) so
+                # the rack bus doesn't drift; occasional transient sag/swell still
+                # passes through for the over/under-voltage alarms.
+                pv = st.get("pdu_voltage", 230.0)
+                pv += (230.0 - pv) * 0.05 + random.uniform(-0.8, 0.8)
+                pv = max(223.0, min(237.0, pv))
                 if random.random() < 0.003:
                     pv = random.choice([random.uniform(241.0, 250.0),
                                         random.uniform(190.0, 199.0)])
                 st["pdu_voltage"] = round(self._num_limit("pdu_voltage", pv), 1)
 
             if mf["pdu_power_factor"]:
-                pf = st.get("pdu_power_factor", 0.95)
-                pf = max(0.60, min(0.99, pf + random.uniform(-0.02, 0.02)))
-                if random.random() < 0.003:
-                    pf = random.uniform(0.50, 0.69)
+                if _pdu_rated > 0:
+                    # Active-PFC IT load: PF tracks load (poor light, ~unity full),
+                    # the same curve the EV2 branch uses, so the PDU and its EV2
+                    # clamp report a consistent power factor.
+                    from core.bacnet_telemetry import _pf_from_load
+                    _lf = _pdu_thr / _pdu_rated
+                    pf = _pf_from_load(_lf) + random.uniform(-0.004, 0.004)
+                    if random.random() < 0.003:
+                        pf = random.uniform(0.50, 0.69)   # occasional bad-PSU event
+                    pf = max(0.50, min(0.99, pf))
+                else:
+                    pf = st.get("pdu_power_factor", 0.95)
+                    pf = max(0.60, min(0.99, pf + random.uniform(-0.02, 0.02)))
+                    if random.random() < 0.003:
+                        pf = random.uniform(0.50, 0.69)
                 st["pdu_power_factor"] = round(pf, 3)
 
             if mf["pdu_phase_imbalance"]:
@@ -2063,10 +2306,12 @@ class DeviceStateStore:
 
             if mf["pdu_outlet_current"]:
                 if _pdu_rated > 0:
-                    # Live: phase current I = P / (V·√3·PF) for a 3-phase PDU.
-                    _v = st.get("pdu_voltage", 220.0)
+                    # Live: single-phase equivalent I = P / (V·PF), matching the EV2
+                    # branch CT model (one CT per rack PDU) so the PDU's own current
+                    # and the EV2 clamp agree, and V·I·PF reconciles to the real draw.
+                    _v = st.get("pdu_voltage", 230.0)
                     _pf = st.get("pdu_power_factor", 0.95)
-                    oc = max(0.0, _pdu_thr / max(1.0, _v * 1.732 * _pf)
+                    oc = max(0.0, _pdu_thr / max(1.0, _v * _pf)
                              + random.uniform(-0.2, 0.2))
                 else:
                     oc = st.get("pdu_outlet_current", 10.0)
@@ -2110,7 +2355,7 @@ class DeviceStateStore:
                 if _pdu_rated > 0:
                     real_kw = _pdu_thr / 1000.0          # live draw through the PDU
                 else:
-                    volt_now = st.get("pdu_voltage", 220.0)
+                    volt_now = st.get("pdu_voltage", 230.0)
                     cur_now  = st.get("pdu_outlet_current", 10.0)
                     pf_now   = st.get("pdu_power_factor", 0.95)
                     real_kw  = (volt_now * cur_now * pf_now) / 1000.0
@@ -2216,7 +2461,7 @@ class DeviceStateStore:
                     ups_output_apparent_power=float(ext.get("ups_output_load", 0.0)) * 30.0,
                     ups_energy_kwh=float(ext.get("ups_energy_kwh", 0.0)),
                     pdu_load=float(ext.get("pdu_load", 0.0)),
-                    pdu_voltage=float(ext.get("pdu_voltage", 220.0)),
+                    pdu_voltage=float(ext.get("pdu_voltage", 230.0)),
                     pdu_power_factor=float(ext.get("pdu_power_factor", 0.95)),
                     pdu_phase_imbalance=float(ext.get("pdu_phase_imbalance", 0.0)),
                     pdu_outlet_status=ext.get("pdu_outlet_status", "on"),

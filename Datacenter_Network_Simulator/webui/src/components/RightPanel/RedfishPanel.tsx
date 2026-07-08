@@ -3,6 +3,7 @@ import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { RedfishDevice, RedfishLogEntry, RedfishSubscription } from '../../api/types'
 import TargetsBox from './TargetsBox'
+import NumberInput from '../NumberInput'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -41,13 +42,20 @@ function StatRow({ label, value, labelColor, valueColor }: {
   )
 }
 
-function Field({ label, type, value, onChange, disabled, rightSlot }: {
+function Field({ label, type, value, onChange, onChangeNum, fallback, disabled, rightSlot }: {
   label: string; type: 'text' | 'number' | 'password'
   value: string | number
-  onChange: (v: string) => void
+  onChange?: (v: string) => void
+  onChangeNum?: (n: number) => void
+  fallback?: number
   disabled: boolean
   rightSlot?: React.ReactNode
 }) {
+  const inputStyle: React.CSSProperties = {
+    flex: 1, minWidth: 0, background: 'transparent', border: 'none',
+    outline: 'none', color: 'var(--text)', fontSize: 10,
+    fontFamily: 'Consolas, monospace', padding: '4px 0',
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
       <span style={{ width: 80, fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
@@ -57,17 +65,24 @@ function Field({ label, type, value, onChange, disabled, rightSlot }: {
         border: '1px solid var(--border)', borderRadius: 4,
         padding: '0 6px', opacity: disabled ? 0.6 : 1,
       }}>
-        <input
-          type={type}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          disabled={disabled}
-          style={{
-            flex: 1, minWidth: 0, background: 'transparent', border: 'none',
-            outline: 'none', color: 'var(--text)', fontSize: 10,
-            fontFamily: 'Consolas, monospace', padding: '4px 0',
-          }}
-        />
+        {type === 'number' ? (
+          <NumberInput
+            value={Number(value)}
+            onChange={n => onChangeNum?.(n)}
+            fallback={fallback}
+            int
+            disabled={disabled}
+            style={inputStyle}
+          />
+        ) : (
+          <input
+            type={type}
+            value={value}
+            onChange={e => onChange?.(e.target.value)}
+            disabled={disabled}
+            style={inputStyle}
+          />
+        )}
         {rightSlot}
       </div>
     </div>
@@ -452,7 +467,7 @@ export default function RedfishPanel() {
         <div className="group-box" style={{ marginTop: 6, flexShrink: 0 }}>
           <span className="group-box-label">BMC Service</span>
           <Field label="HTTP Port" type="number" value={port}
-                 onChange={v => setPort(parseInt(v) || 443)} disabled={running || busy} />
+                 onChangeNum={setPort} fallback={443} disabled={running || busy} />
           <Field label="Username" type="text" value={username}
                  onChange={setUsername} disabled={running || busy} />
           <Field label="Password" type={showPass ? 'text' : 'password'} value={password}

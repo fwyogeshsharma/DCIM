@@ -303,12 +303,17 @@ class EV2CircuitMetrics(BaseModel):
 class EV2PanelMetrics(BaseModel):
     total_kw:    Optional[float] = None
     total_kwh:   Optional[float] = None
+    # Rated panel capacity (kW nameplate) — the UI colours Total kW relative to this.
+    rated_kw:    Optional[float] = None
     voltage_pha: Optional[float] = None
     voltage_phb: Optional[float] = None
     voltage_phc: Optional[float] = None
     current_pha: Optional[float] = None
     current_phb: Optional[float] = None
     current_phc: Optional[float] = None
+    # Rated per-phase current (panel nameplate) — the UI colours the live phase
+    # currents relative to this instead of a flat amp limit.
+    rated_current: Optional[float] = None
     frequency:   Optional[float] = None
     power_factor: Optional[float] = None
     voltage_thd: Optional[float] = None
@@ -322,6 +327,8 @@ class EV2PanelMetrics(BaseModel):
     alarm_high_thd:         bool = False
     alarm_phase_loss:       bool = False
     alarm_sensor_fault:     bool = False
+    alarm_undervoltage:     bool = False
+    alarm_underfrequency:   bool = False
 
 
 class EV2DeviceSnapshot(BaseModel):

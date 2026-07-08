@@ -22,6 +22,37 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 
+# ── Load-coupled power-quality curves (active-PFC IT loads) ───────────────────
+# Modern server PSUs use active power-factor correction: PF is poor at light load
+# and climbs toward unity as the supply loads up, while current distortion (%THD-i)
+# is HIGH at light load (the fundamental is small) and falls as the load rises.
+# Both are functions of the load fraction, not free-running walks.
+# Fixed rack-PDU branch breaker (32 A @ 230 V single-phase), the reference a
+# branch's live kW is measured against for its PF/THD load fraction — the SAME
+# basis the PDU uses (device_state_store._DEFAULT_PDU_RATED_W), so the EV2 branch
+# and the rack PDU it clamps report a consistent power factor.
+BRANCH_BREAKER_KW = 7.36
+
+
+def _pf_from_load(lf: float) -> float:
+    """Displacement/true PF vs load fraction: ~0.70 idle → 0.99 near full, with a
+    fast-saturating knee typical of active PFC."""
+    lf = max(0.0, min(1.0, lf))
+    return max(0.70, min(0.99, 0.99 - 0.29 * (1.0 - lf) ** 2))
+
+
+def _thd_i_from_load(lf: float) -> float:
+    """Current THD (%) vs load fraction for a modern ACTIVE-PFC IT supply: ~5 %
+    near full, rising only as the branch approaches idle (~18 % at no load). The
+    knee is deliberately steep (cubic) so a branch carrying real load stays in the
+    active-PFC band — ~5 % at 70 % load, ~7 % at 50 %, ~10 % at 25 % — instead of
+    the old quadratic that read ~15 % at a quarter load (passive-PFC territory).
+    Very light load still inflates %THD-i against a shrinking fundamental, which is
+    physical (and why IEEE 519 measures TDD, not THD, there)."""
+    lf = max(0.0, min(1.0, lf))
+    return max(4.0, min(22.0, 5.0 + 13.0 * (1.0 - lf) ** 3))
+
+
 @dataclass
 class CircuitState:
     """Per-circuit electrical state."""
@@ -53,6 +84,14 @@ class EV2TelemetryEngine:
     VOLTAGE_IMBALANCE_THRESH = 5.0    # V — max phase-to-phase difference
     HIGH_THD_THRESH          = 7.0    # %
     PHASE_LOSS_THRESH        = 10.0   # V — below this = phase lost
+    # Low-side power-quality limits (the disturbances real DCs actually see —
+    # utility faults, motor starts, transfer-switch operations cause voltage SAGS,
+    # and a distressed/overloaded grid or genset DROPS frequency). Symmetric with
+    # the UI's high-side colouring. Sag: −10 % of a 230 V nominal; under-freq: −2 %
+    # of 50 Hz. Expressed as a fraction of the panel's own nominal so a 208 V or
+    # 60 Hz panel scales correctly.
+    UNDERVOLTAGE_FRAC        = 0.90   # × nominal_voltage → sag alarm (207 V @ 230)
+    UNDERFREQ_FRAC           = 0.98   # × nominal_freq   → under-freq (49 Hz @ 50)
 
     def __init__(
         self,
@@ -89,11 +128,41 @@ class EV2TelemetryEngine:
         # this peak — so the panel meters the real IT draw instead of a synthetic
         # diurnal curve.
         self._rated_kw_peak = (self._i_nominal * nominal_voltage * 0.90 * math.sqrt(3)) / 1000.0
-        # Phase-current ceiling and overcurrent trip both follow the panel size
-        # so a large facility meter is not clipped and does not alarm constantly.
+        # A branch is one rack PDU on a fixed 32 A breaker — its live load over that
+        # breaker is the 0..1 load fraction driving its PF and current-THD, matching
+        # the PDU's own basis so the two agree.
+        self._branch_rated_kw = BRANCH_BREAKER_KW
+        # Phase-current ceiling and overcurrent trip reference the panel MAIN
+        # BREAKER — a FIXED hardware limit, not the load present when the meter was
+        # commissioned. A branch-metering RPP is a `circuits`-pole panel of 32 A
+        # (BRANCH_BREAKER_KW) branches, so its main is on the order of its pole
+        # capacity. Sizing the trip off the start-time downstream load instead (the
+        # old behaviour) made ANY post-commission growth — the fleet clamping more
+        # rack PDUs onto a curated RPP as a hall fills — drive the live current past
+        # a threshold frozen to the smaller original load, false-tripping a healthy,
+        # fully-populated panel. max() keeps aggregate/facility meters (huge
+        # rated_kw, few real branches) sized by their real load, not the pole count.
         # 85/60 keeps the legacy trip-to-nominal ratio for standard panels.
-        self._i_clamp            = max(200.0, self._i_nominal * 1.6)
-        self._overcurrent_thresh = self._i_nominal * (self.OVERCURRENT_THRESHOLD / 60.0)
+        panel_i = (circuits * self._branch_rated_kw * 1000.0) / (nominal_voltage * 0.90 * math.sqrt(3))
+        i_cap   = max(self._i_nominal, panel_i)
+        self._i_clamp            = max(200.0, i_cap * 1.6)
+        self._overcurrent_thresh = i_cap * (self.OVERCURRENT_THRESHOLD / 60.0)
+        # Rated per-phase current — the nameplate the DASHBOARD colours a phase
+        # against, so the colour tracks the panel size instead of a flat amp limit
+        # that turns a healthy 42-pole RPP red just for carrying its normal hundreds
+        # of amps. Basis matches the DISPLAYED phase current (branch CTs summed onto
+        # 3 phases at ~230 V single-phase, PF≈0.95 near full), NOT the √3 line-current
+        # figure used for the alarm: a full panel is (circuits/3) branches per phase,
+        # each on its 32 A (BRANCH_BREAKER_KW) breaker. max() with _i_nominal keeps
+        # facility/aggregate meters (huge load, few branches) sized by real load.
+        branch_i = (self._branch_rated_kw * 1000.0) / (nominal_voltage * 0.95)
+        self._rated_phase_current = max((circuits / 3.0) * branch_i, self._i_nominal)
+        # Panel rated kW (nameplate) — the dashboard colours Total kW against this
+        # instead of a flat 150/180 kW limit that reads a healthy fully-loaded panel
+        # red. A `circuits`-pole panel of 32 A branches carries circuits ×
+        # BRANCH_BREAKER_KW at full load; max() with the load-based peak keeps
+        # facility/aggregate meters sized by their real load.
+        self._rated_capacity_kw = max(circuits * self._branch_rated_kw, self._rated_kw_peak)
         self._freq_nominal   = frequency_hz
         self._v_nominal      = nominal_voltage
 
@@ -122,7 +191,17 @@ class EV2TelemetryEngine:
         self._h9       = random.uniform(0.2, 1.0)   # 9th harmonic %
 
         # ── Energy accumulators (kWh) ─────────────────────────────
-        self._panel_kwh = random.uniform(50_000.0, 500_000.0)
+        # A real Verdigris counts up from 0 at commissioning, so a branch's
+        # lifetime kWh ≈ its average load × install age — and the mains kWh equals
+        # the sum of the branch kWh. Rather than seed each counter with an
+        # independent random number (which made an idle branch show huge kWh and
+        # the panel disagree with its circuits), we seed lazily on the first tick
+        # from each branch's REAL load × a per-panel install age, and set the
+        # panel counter to Σ branch kWh. Coherence then holds forever because both
+        # sides accumulate the same per-tick energy.
+        self._install_age_h = random.uniform(2160.0, 12960.0)   # ~90–540 days
+        self._kwh_seeded    = False
+        self._panel_kwh     = 0.0
 
         # ── Per-circuit state ─────────────────────────────────────
         self._circuits_state: List[CircuitState] = [
@@ -130,7 +209,7 @@ class EV2TelemetryEngine:
                 current=random.uniform(0.5, 16.0),
                 pf=random.uniform(0.88, 0.99),
                 thd=random.uniform(2.0, 6.0),
-                kwh=random.uniform(500.0, 5000.0),
+                kwh=0.0,
             )
             for _ in range(circuits)
         ]
@@ -147,6 +226,8 @@ class EV2TelemetryEngine:
         self._alarm_high_thd          = False
         self._alarm_phase_loss        = False
         self._alarm_sensor_fault      = False
+        self._alarm_undervoltage      = False
+        self._alarm_underfrequency    = False
         self._fault_recovery_timer    = 0.0
 
         self._ALARM_DEBOUNCE = 2   # ticks above threshold required to latch
@@ -154,6 +235,18 @@ class EV2TelemetryEngine:
         self._cnt_voltage_imbalance = 0
         self._cnt_high_thd          = 0
         self._cnt_phase_loss        = 0
+        self._cnt_undervoltage      = 0
+        self._cnt_underfrequency    = 0
+
+        # ── Transient power-quality events ────────────────────────
+        # A steady sim never leaves nominal, so the low-side alarms would never
+        # exercise. Occasionally inject a multi-tick voltage SAG (all phases dip
+        # together, as a real feeder fault does) or a FREQUENCY DIP, then recover.
+        # Rare — a few events per simulated day — so normal operation stays clean.
+        self._sag_ticks       = 0     # >0 while a voltage-sag event is active
+        self._freq_dip_ticks  = 0     # >0 while a frequency-dip event is active
+        self._sag_target      = 0.0   # V the sag pulls all phases toward
+        self._freq_dip_target = 0.0   # Hz the dip pulls frequency toward
 
     # ─────────────────────────────────────────────────────────────
     #  Diurnal load multiplier (0.3 – 1.0 over 24 h)
@@ -194,20 +287,73 @@ class EV2TelemetryEngine:
             mul = self._diurnal()
         self._step_voltages()
         self._step_frequency()
-        self._step_thd()
+        self._step_thd(mul)
         self._step_pf()
-        self._step_panel_current(mul)
+
+        live_circuits = circuit_kw is not None
+        if live_circuits:
+            # The live branch map is the authority on how many CTs are clamped.
+            # The fleet can add/remove downstream PDUs long after this engine was
+            # built, so the active-circuit count must track the current list
+            # length — NOT the value frozen at construction. Without this, any
+            # branch added past the original active count trips the spare-CT gate
+            # (i >= self._active) and reads 0 even though it carries real load.
+            self._active = min(len(circuit_kw), self._circuits)
+        if not live_circuits:
+            # Legacy/unpopulated mode: the panel current is the driver and the
+            # circuits are a panel-scaled random walk beneath it. Step the panel
+            # first so the circuits can follow it.
+            self._step_panel_current(mul)
         self._step_circuits(dt, mul, circuit_kw)
-        self._update_alarms()
 
         # ── Panel kW ──────────────────────────────────────────────
-        # Approximate: P = V_avg × I_avg × PF × sqrt(3) for 3-phase
-        v_avg = (self._va + self._vb + self._vc) / 3.0
-        i_avg = (self._ia + self._ib + self._ic) / 3.0
-        panel_kw = round(v_avg * i_avg * self._pf * math.sqrt(3) / 1000.0, 3)
+        if live_circuits:
+            # Real mode: the mains IS the sum of the branch circuits it meters,
+            # exactly as a Verdigris main CT equals the sum of its branch CTs.
+            # _derive_panel_from_circuits sets the per-phase currents + panel PF
+            # and returns Σ branch kW.
+            panel_kw = self._derive_panel_from_circuits()
+        else:
+            # Approximate: P = V_avg × I_avg × PF × sqrt(3) for 3-phase
+            v_avg = (self._va + self._vb + self._vc) / 3.0
+            i_avg = (self._ia + self._ib + self._ic) / 3.0
+            panel_kw = round(v_avg * i_avg * self._pf * math.sqrt(3) / 1000.0, 3)
 
-        # ── Panel kWh accumulation ─────────────────────────────────
-        self._panel_kwh += panel_kw * dt / 3600.0
+        # Alarms read the (now summed) per-phase currents, so evaluate after the
+        # panel is resolved.
+        self._update_alarms()
+
+        # ── One-time kWh seeding (commissioning baseline) ─────────────
+        # Seed each branch's lifetime energy from its real load × install age, and
+        # the mains from the sum, so lifetime kWh is load-proportional and the
+        # panel counter equals Σ branch counters. Done once, on the first tick when
+        # loads are known; both sides then accrue the same per-tick energy.
+        if not self._kwh_seeded:
+            for i, cs in enumerate(self._circuits_state):
+                if live_circuits and circuit_kw is not None:
+                    _ck = circuit_kw[i] if i < len(circuit_kw) else None
+                    # None = freed/spare channel → no seed energy.
+                    base_kw = _ck if (_ck is not None and i < self._active) else 0.0
+                else:
+                    base_kw = cs.kw if i < self._active else 0.0
+                cs.kwh = max(0.0, base_kw) * self._install_age_h
+            if live_circuits:
+                self._panel_kwh = sum(cs.kwh for cs in self._circuits_state)
+            else:
+                self._panel_kwh = max(0.0, panel_kw) * self._install_age_h
+            self._kwh_seeded = True
+
+        # ── Panel kWh ──────────────────────────────────────────────
+        # MONOTONIC mains register: accrue from the live panel kW (both modes),
+        # exactly like a real Verdigris main CT whose non-volatile counter only
+        # ever climbs. It is deliberately NOT re-derived as Σ branch registers —
+        # that tied the mains total to the branches, so removing a branch PDU (its
+        # freed channel zeros) made the lifetime kWh step BACKWARD. Branch registers
+        # still track their own energy in _step_circuits; the mains just isn't their
+        # sum, so a removal lowers instantaneous kW but never the lifetime kWh. (Seed
+        # baseline above still sets panel == Σ branch seeds at commissioning; the two
+        # then drift only by sub-Wh rounding, as real independent CTs do.)
+        self._panel_kwh += max(0.0, panel_kw) * dt / 3600.0
 
         values: Dict[str, float] = {
             "Panel_Total_kW":     max(0.0, panel_kw),
@@ -232,6 +378,8 @@ class EV2TelemetryEngine:
             "Alarm_HighTHD":            1.0 if self._alarm_high_thd          else 0.0,
             "Alarm_PhaseLoss":          1.0 if self._alarm_phase_loss        else 0.0,
             "Alarm_SensorFault":        1.0 if self._alarm_sensor_fault      else 0.0,
+            "Alarm_Undervoltage":       1.0 if self._alarm_undervoltage      else 0.0,
+            "Alarm_UnderFrequency":     1.0 if self._alarm_underfrequency    else 0.0,
         }
 
         # ── Per-circuit values ─────────────────────────────────────
@@ -274,16 +422,40 @@ class EV2TelemetryEngine:
         Occasional voltage transients (sag/swell) still pass through.
         COV cadence: every few minutes at 1.0 V threshold.
         """
+        # Voltage-SAG event: a feeder-wide dip that pulls ALL three phases down
+        # together (utility fault ride-through, large motor start, ATS transfer).
+        # Start rarely; hold the sag band for a few ticks, then recover — this is
+        # what trips Alarm_Undervoltage. A sag is a fast transient, so during the
+        # event drive the phases toward the target with a HIGH α (not the slow
+        # steady-state smoothing, which would never reach the threshold in time).
+        if self._sag_ticks <= 0 and random.random() < 0.0006:
+            self._sag_ticks  = random.randint(3, 6)
+            self._sag_target = self._v_nominal * random.uniform(0.82, 0.88)  # ~189–202 V
+        sagging = self._sag_ticks > 0
+        if sagging:
+            self._sag_ticks -= 1
+
         for attr in ('_va', '_vb', '_vc'):
             old = getattr(self, attr)
-            raw = old + random.uniform(-0.15, 0.15)
-            # Occasional sag/swell (0.2% chance per phase per tick)
-            if random.random() < 0.002:
-                raw += random.choice([-1, 1]) * random.uniform(3.0, 10.0)
-            # Drift back toward nominal
-            raw += (self._v_nominal - raw) * 0.02
-            # EMA smoothing — α=0.12 for stable signals
-            smoothed = self._ema(raw, old, alpha=0.12)
+            if sagging:
+                tgt = self._sag_target + random.uniform(-1.5, 1.5)   # small per-phase spread
+                smoothed = self._ema(tgt, old, alpha=0.7)            # fast transient
+            else:
+                raw = old + random.uniform(-0.15, 0.15)
+                # Occasional shallow sag/swell (0.2% chance per phase per tick)
+                if random.random() < 0.002:
+                    raw += random.choice([-1, 1]) * random.uniform(3.0, 10.0)
+                gap = self._v_nominal - old
+                if abs(gap) > 5.0:
+                    # Post-event recovery: once a sag/swell clears, real voltage
+                    # snaps back within a cycle — pull hard so the alarm de-latches
+                    # in a few ticks instead of crawling back over hours.
+                    raw += gap * 0.5
+                    smoothed = self._ema(raw, old, alpha=0.6)
+                else:
+                    # Near nominal: gentle stable-signal drift + smoothing.
+                    raw += gap * 0.02
+                    smoothed = self._ema(raw, old, alpha=0.12)
             setattr(self, attr, max(0.0, min(300.0, smoothed)))
 
     def _step_frequency(self):
@@ -291,25 +463,42 @@ class EV2TelemetryEngine:
         Stable signal class — ±0.008 Hz/tick with EMA α=0.12.
         Grid regulation pulls toward nominal. COV cadence: every 5–10 min.
         """
-        raw = self._freq + random.uniform(-0.008, 0.008)
-        raw += (self._freq_nominal - raw) * 0.1
-        self._freq = self._ema(raw, self._freq, alpha=0.12)
+        # Frequency-DIP event: a distressed/overloaded grid or genset drops below
+        # nominal for a few ticks (load step, generator governor lag), then the
+        # regulator recovers it — this is what trips Alarm_UnderFrequency.
+        if self._freq_dip_ticks <= 0 and random.random() < 0.0004:
+            self._freq_dip_ticks  = random.randint(3, 6)
+            self._freq_dip_target = self._freq_nominal * random.uniform(0.960, 0.975)  # ~48.0–48.75 @ 50
+        if self._freq_dip_ticks > 0:
+            self._freq_dip_ticks -= 1
+            self._freq = self._ema(self._freq_dip_target + random.uniform(-0.05, 0.05),
+                                   self._freq, alpha=0.6)   # fast transient
+        else:
+            raw = self._freq + random.uniform(-0.008, 0.008)
+            gap = self._freq_nominal - self._freq
+            if abs(gap) > 0.3:
+                # Post-event recovery — regulator restores frequency quickly once
+                # the disturbance clears, so the under-freq alarm de-latches.
+                raw += gap * 0.5
+                self._freq = self._ema(raw, self._freq, alpha=0.6)
+            else:
+                raw += gap * 0.1
+                self._freq = self._ema(raw, self._freq, alpha=0.12)
         self._freq = max(45.0, min(65.0, self._freq))
 
-    def _step_thd(self):
+    def _step_thd(self, load_frac: float = 1.0):
         """
-        Burst/event signal class — routine jitter ±0.05 %/tick with EMA α=0.15.
-        Periodic harmonic events (UPS startup, nonlinear load) spike THD.
-        COV cadence: mostly quiet, fires on harmonic events only.
+        Current THD tracks the INVERSE of panel load (high at light load, ~5 % near
+        full), with occasional nonlinear-load harmonic bursts on top. Voltage THD
+        stays a slow independent walk. EMA α=0.15.
         """
-        # Current THD: small routine jitter
-        raw_i = self._i_thd + random.uniform(-0.05, 0.05)
-        raw_i = max(1.0, min(15.0, raw_i))
-        # Harmonic event: 0.3% chance per tick (UPS, VFD, nonlinear load)
+        # Current THD: load-driven target + routine jitter.
+        raw_i = _thd_i_from_load(load_frac) + random.uniform(-0.2, 0.2)
+        # Harmonic burst: 0.3% chance per tick (UPS, VFD, nonlinear load)
         if random.random() < 0.003:
-            raw_i = random.uniform(7.5, 12.0)   # spike — bypasses EMA clamp
+            raw_i = random.uniform(12.0, 20.0)   # spike — bypasses EMA clamp
         self._i_thd = self._ema(raw_i, self._i_thd, alpha=0.15)
-        self._i_thd = max(1.0, min(15.0, self._i_thd))
+        self._i_thd = max(3.0, min(25.0, self._i_thd))
 
         # Voltage THD: even slower
         raw_v = self._v_thd + random.uniform(-0.03, 0.03)
@@ -356,6 +545,63 @@ class EV2TelemetryEngine:
             smoothed = self._ema(raw, old, alpha=0.18)
             setattr(self, attr, max(0.0, min(self._i_clamp, smoothed)))
 
+    def _derive_panel_from_circuits(self) -> float:
+        """Mains = sum of the branch circuits (real EV2: main CTs == Σ branch CTs).
+
+        Each active branch is a single-phase L-N load assigned to a phase
+        round-robin (A/B/C), matching the pole rotation of a real panelboard, so
+        the phase imbalance falls out of the actual per-branch loads instead of
+        an independent random walk. Per-phase current is the sum of that phase's
+        branch currents; panel real power is Σ branch kW; panel PF is the
+        current-weighted mean of the branch PFs (so V·ΣI·PF reconciles with Σ kW).
+
+        Note: a 3-phase rack PDU is modelled as one single-phase equivalent branch
+        here (one CT per downstream PDU), a deliberate simplification.
+        """
+        ph = [0.0, 0.0, 0.0]      # phase A / B / C current sums (A)
+        tot_kw   = 0.0
+        sum_i    = 0.0
+        sum_i_pf = 0.0
+        for idx in range(self._active):
+            cs = self._circuits_state[idx]
+            ph[idx % 3] += cs.current
+            tot_kw   += cs.kw
+            sum_i    += cs.current
+            sum_i_pf += cs.current * cs.pf
+        self._ia, self._ib, self._ic = ph
+        if sum_i > 0.0:
+            self._pf = max(0.70, min(0.99, sum_i_pf / sum_i))
+        return round(max(0.0, tot_kw), 3)
+
+    # ─────────────────────────────────────────────────────────────
+    #  Energy-register persistence (non-volatile meter behaviour)
+    # ─────────────────────────────────────────────────────────────
+
+    def get_energy_state(self) -> Dict[str, object]:
+        """Snapshot the lifetime energy registers for persistence."""
+        return {
+            "panel_kwh":   self._panel_kwh,
+            "circuit_kwh": [cs.kwh for cs in self._circuits_state],
+        }
+
+    def set_energy_state(self, state: dict) -> None:
+        """Restore persisted lifetime energy so kWh is CONTINUOUS across restarts,
+        like a real meter's non-volatile register. Marks the accumulators seeded so
+        the commissioning baseline is NOT re-applied on the first tick."""
+        try:
+            pk = float(state.get("panel_kwh", 0.0))
+            if pk >= 0.0:
+                self._panel_kwh = pk
+            saved = state.get("circuit_kwh") or []
+            for i, cs in enumerate(self._circuits_state):
+                if i < len(saved):
+                    v = float(saved[i])
+                    if v >= 0.0:
+                        cs.kwh = v
+            self._kwh_seeded = True
+        except (TypeError, ValueError):
+            pass
+
     def _step_circuits(self, dt: float, mul: float, circuit_kw: list | None = None):
         """
         Operational signal class — circuit current eases toward its target with
@@ -370,20 +616,44 @@ class EV2TelemetryEngine:
         v_avg = (self._va + self._vb + self._vc) / 3.0
 
         for i, cs in enumerate(self._circuits_state):
-            # Power factor first (very slow drift) — needed to turn a target kW
-            # into a target current.
-            raw_pf = cs.pf + random.uniform(-0.002, 0.002)
-            cs.pf  = self._ema(raw_pf, cs.pf, alpha=0.12)
-            cs.pf  = max(0.70, min(0.99, cs.pf))
-
+            if i >= self._active:
+                # Spare breaker — no load, no energy accrual. Zero it directly so
+                # the startup transient never adds phantom kWh to the register.
+                cs.current = 0.0
+                cs.kw      = 0.0
+                cs.thd     = 0.0
+                continue
+            if circuit_kw is not None and (i >= len(circuit_kw) or circuit_kw[i] is None):
+                # Freed/spare CT channel — the branch on this slot was removed (None
+                # hole) or is unmapped. Zero the live signals AND the energy register
+                # so a vacated channel reads 0 kWh; a future branch that fills this
+                # slot starts its accumulator fresh instead of inheriting the old
+                # branch's lifetime energy. (A real 0-load branch stays 0.0, not None,
+                # so it keeps its accumulator — only true holes are wiped.)
+                cs.current = 0.0
+                cs.kw      = 0.0
+                cs.thd     = 0.0
+                cs.pf      = 0.0
+                cs.kwh     = 0.0
+                continue
+            # Power factor: real active-PFC IT loads improve PF as they load up
+            # (poor at light load, ~unity near full), so drive it from the branch
+            # load fraction instead of a free walk. PF is set first — it turns the
+            # target kW into a target current. Legacy mode keeps the slow walk.
             if circuit_kw is not None:
                 # Real branch load: I = P / (V × PF). Spare CTs (past the mapped
                 # branches, or an energised-but-unloaded rack PDU) target 0.
                 tgt_kw = circuit_kw[i] if i < len(circuit_kw) else 0.0
-                denom = v_avg * cs.pf
+                cs_lf  = (tgt_kw / self._branch_rated_kw) if self._branch_rated_kw > 0 else 0.0
+                tgt_pf = _pf_from_load(cs_lf) + random.uniform(-0.004, 0.004)
+                cs.pf  = max(0.70, min(0.99, self._ema(tgt_pf, cs.pf, alpha=0.12)))
+                denom  = v_avg * cs.pf
                 cs._target_current = (tgt_kw * 1000.0 / denom) if denom > 0 else 0.0
             else:
                 # Legacy synthetic walk when no live per-circuit load is available.
+                cs_lf  = None
+                raw_pf = cs.pf + random.uniform(-0.002, 0.002)
+                cs.pf  = max(0.70, min(0.99, self._ema(raw_pf, cs.pf, alpha=0.12)))
                 cs._target_current += random.uniform(-0.15, 0.15)
                 cs._target_current  = max(0.1, min(20.0 * mul, cs._target_current))
 
@@ -403,10 +673,18 @@ class EV2TelemetryEngine:
             # kWh accumulation (deterministic — no noise on energy counter)
             cs.kwh += cs.kw * dt / 3600.0
 
-            # Circuit THD: burst/event class — small routine jitter, EMA α=0.15
-            raw_thd = cs.thd + random.uniform(-0.05, 0.05)
-            cs.thd  = self._ema(raw_thd, cs.thd, alpha=0.15)
-            cs.thd  = max(1.0, min(12.0, cs.thd))
+            # Circuit current THD: %THD-i is HIGH at light load and falls as the
+            # branch loads up, so track the inverse of load; nonlinear bursts on top.
+            if cs_lf is not None:
+                raw_thd = _thd_i_from_load(cs_lf) + random.uniform(-0.2, 0.2)
+                if random.random() < 0.003:
+                    raw_thd = random.uniform(12.0, 20.0)
+                cs.thd = self._ema(raw_thd, cs.thd, alpha=0.15)
+                cs.thd = max(3.0, min(25.0, cs.thd))
+            else:
+                raw_thd = cs.thd + random.uniform(-0.05, 0.05)
+                cs.thd  = self._ema(raw_thd, cs.thd, alpha=0.15)
+                cs.thd  = max(1.0, min(12.0, cs.thd))
 
     def _update_alarms(self):
         """Evaluate alarm conditions with debounce — N consecutive ticks required."""
@@ -437,9 +715,10 @@ class EV2TelemetryEngine:
             '_cnt_voltage_imbalance', '_alarm_voltage_imbalance',
         )
 
-        # High THD: current THD exceeds threshold
+        # High THD: alarm on VOLTAGE THD (IEEE-519), not current THD — %THD-i is
+        # naturally high at light load, so it is not itself a fault condition.
         _debounce(
-            self._i_thd > self.HIGH_THD_THRESH,
+            self._v_thd > self.HIGH_THD_THRESH,
             '_cnt_high_thd', '_alarm_high_thd',
         )
 
@@ -449,6 +728,23 @@ class EV2TelemetryEngine:
             self._vb < self.PHASE_LOSS_THRESH or
             self._vc < self.PHASE_LOSS_THRESH,
             '_cnt_phase_loss', '_alarm_phase_loss',
+        )
+
+        # Undervoltage / sag: any phase below −10 % of nominal but NOT a dead phase
+        # (a lost phase near 0 V is covered by Alarm_PhaseLoss above, not double-
+        # reported as a sag).
+        uv_thresh = self._v_nominal * self.UNDERVOLTAGE_FRAC
+        _debounce(
+            (self.PHASE_LOSS_THRESH <= self._va < uv_thresh) or
+            (self.PHASE_LOSS_THRESH <= self._vb < uv_thresh) or
+            (self.PHASE_LOSS_THRESH <= self._vc < uv_thresh),
+            '_cnt_undervoltage', '_alarm_undervoltage',
+        )
+
+        # Under-frequency: line frequency below −2 % of nominal.
+        _debounce(
+            self._freq < self._freq_nominal * self.UNDERFREQ_FRAC,
+            '_cnt_underfrequency', '_alarm_underfrequency',
         )
 
         # Sensor fault: random occurrence 0.05% chance per tick, clears after 5 ticks

@@ -8,11 +8,27 @@ from PySide6.QtWidgets import (
     QScrollArea, QGroupBox, QCheckBox, QSpinBox, QDoubleSpinBox,
     QComboBox, QFrame, QStackedWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 
 if TYPE_CHECKING:
     from core.device_state_store import DeviceStateStore
+
+
+class _SelectAllSpin(QDoubleSpinBox):
+    """QDoubleSpinBox that selects its whole value when focused or clicked, so
+    typing REPLACES the shown number instead of inserting before it. Without this,
+    a field showing '0' turns a typed '95' into '095' (leading zero above the
+    input) because a mouse click just drops the cursor without selecting."""
+
+    def focusInEvent(self, e):
+        super().focusInEvent(e)
+        QTimer.singleShot(0, self.selectAll)   # after Qt positions the cursor
+
+    def mousePressEvent(self, e):
+        super().mousePressEvent(e)
+        if not self.lineEdit().hasSelectedText():
+            self.selectAll()
 
 # ── metric / limit data ──────────────────────────────────────────────────────
 
@@ -655,7 +671,7 @@ class TickPanel(QWidget):
         lbl.setStyleSheet("color: #e6edf3; font-size: 8.5pt;")
         hl.addWidget(lbl, stretch=1)
 
-        spin_min = QDoubleSpinBox()
+        spin_min = _SelectAllSpin()
         spin_min.setRange(abs_min, abs_max)
         spin_min.setSingleStep(step)
         spin_min.setDecimals(decimals)
@@ -669,7 +685,7 @@ class TickPanel(QWidget):
         arrow.setFixedWidth(12)
         arrow.setAlignment(Qt.AlignCenter)
 
-        spin_max = QDoubleSpinBox()
+        spin_max = _SelectAllSpin()
         spin_max.setRange(abs_min, abs_max)
         spin_max.setSingleStep(step)
         spin_max.setDecimals(decimals)

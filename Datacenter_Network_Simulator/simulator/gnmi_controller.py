@@ -498,7 +498,12 @@ class GNMIController:
         True if the device is reachable (direct server up, or proxy-served)."""
         if not self._running:
             return False
-        dataset_ip = device.ip_address
+        # Datasets are keyed by the MGMT IP — GNMIDataGenerator writes
+        # <mgmt_ip>.gnmi.json (falling back to the prod IP only when there's no
+        # mgmt IP), and start()'s load_all() registers targets under that same
+        # key. Loading by the prod IP here would miss the file, so the fleet
+        # device never joined the servicer's target list (Active count stuck).
+        dataset_ip = getattr(device, "mgmt_ip", "") or device.ip_address
         bind_ip = bind_ip or getattr(device, "mgmt_ip", "") or device.ip_address
         port = port or self._device_port
         shared_ok = False

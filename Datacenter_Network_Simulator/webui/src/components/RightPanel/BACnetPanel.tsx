@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import type { BacnetDevice } from '../../api/types'
 import TargetsBox from './TargetsBox'
+import NumberInput from '../NumberInput'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -26,13 +27,18 @@ function StatRow({ label, value, labelColor, valueColor }: {
   )
 }
 
-function Field({ label, suffix, type, value, onChange, disabled, min, max }: {
+function Field({ label, suffix, type, value, onChange, disabled, min, max, fallback }: {
   label: string; suffix?: string; type: 'text' | 'number'
   value: string | number
   onChange: (v: string) => void
   disabled: boolean
-  min?: number; max?: number
+  min?: number; max?: number; fallback?: number
 }) {
+  const inputStyle = {
+    flex: 1, minWidth: 0, background: 'transparent', border: 'none',
+    outline: 'none', color: 'var(--text)', fontSize: 10,
+    fontFamily: 'Consolas, monospace', padding: '4px 0',
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
       <span style={{ width: 90, fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
@@ -42,19 +48,28 @@ function Field({ label, suffix, type, value, onChange, disabled, min, max }: {
         border: '1px solid var(--border)', borderRadius: 4,
         padding: '0 6px', opacity: disabled ? 0.6 : 1,
       }}>
-        <input
-          type={type}
-          value={value}
-          min={min}
-          max={max}
-          onChange={e => onChange(e.target.value)}
-          disabled={disabled}
-          style={{
-            flex: 1, minWidth: 0, background: 'transparent', border: 'none',
-            outline: 'none', color: 'var(--text)', fontSize: 10,
-            fontFamily: 'Consolas, monospace', padding: '4px 0',
-          }}
-        />
+        {type === 'number' ? (
+          <NumberInput
+            value={typeof value === 'number' ? value : parseInt(value, 10) || 0}
+            onChange={n => onChange(String(n))}
+            fallback={fallback}
+            int
+            min={min}
+            max={max}
+            disabled={disabled}
+            style={inputStyle}
+          />
+        ) : (
+          <input
+            type={type}
+            value={value}
+            min={min}
+            max={max}
+            onChange={e => onChange(e.target.value)}
+            disabled={disabled}
+            style={inputStyle}
+          />
+        )}
         {suffix && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{suffix}</span>}
       </div>
     </div>
@@ -218,6 +233,7 @@ export default function BACnetPanel() {
             value={baseInstance}
             min={1}
             max={4194302}
+            fallback={40001}
             onChange={v => setBaseInstance(parseInt(v) || 40001)}
             disabled={running || busy}
           />
@@ -234,6 +250,7 @@ export default function BACnetPanel() {
             value={port}
             min={1024}
             max={65535}
+            fallback={47808}
             onChange={v => setPort(parseInt(v) || 47808)}
             disabled={running || busy}
             suffix="0xBAC0"

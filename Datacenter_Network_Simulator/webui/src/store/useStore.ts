@@ -66,6 +66,10 @@ interface Store {
   // topology UI state
   linkMode:        boolean
   fitViewTrigger:  number
+  // focus-single-node: id to pan/zoom the canvas to. nonce bumps on every request
+  // so re-focusing the same node still fires (a bare id wouldn't re-trigger).
+  focusNodeId:     string | null
+  focusNodeNonce:  number
   layoutAlgo:      string | null
 
   // right panel
@@ -139,6 +143,7 @@ interface Store {
   setSelectedDevice: (id: string | null) => void
   setLinkMode:       (v: boolean) => void
   triggerFitView:    () => void
+  focusNode:         (id: string) => void
   setLayoutAlgo:     (algo: string | null) => void
   appendLog:    (tab: LogEntry['tab'], msg: string, level: string) => void
 
@@ -158,8 +163,11 @@ interface Store {
   fetchHealth:  () => Promise<void>
   pollJob:      (id: string) => Promise<JobStatus>
 
-  startPolling: () => void
-  connectSSE:   () => void
+  // Both return a teardown fn — the caller MUST call it on unmount / re-auth,
+  // else intervals and EventSource streams stack up over a long session and
+  // eventually starve the renderer (blank tab).
+  startPolling: () => () => void
+  connectSSE:   () => () => void
 }
 
 export const useStore = create<Store>((set, get) => ({
@@ -185,6 +193,8 @@ export const useStore = create<Store>((set, get) => ({
   selectedDeviceId: null,
   linkMode:         false,
   fitViewTrigger:   0,
+  focusNodeId:      null,
+  focusNodeNonce:   0,
   layoutAlgo:       null,
   rightTab:         'binding',
   activeView:       'main',
@@ -299,6 +309,7 @@ export const useStore = create<Store>((set, get) => ({
   setSelectedDevice: (id) => set({ selectedDeviceId: id }),
   setLinkMode:       (v) => set({ linkMode: v }),
   triggerFitView:    () => set(s => ({ fitViewTrigger: s.fitViewTrigger + 1 })),
+  focusNode:         (id) => set(s => ({ focusNodeId: id, focusNodeNonce: s.focusNodeNonce + 1 })),
   setLayoutAlgo:     (algo) => set({ layoutAlgo: algo }),
 
   appendLog: (tab, msg, level) => {
@@ -400,7 +411,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchAdapters()
     s.fetchTraps()
     // Status-only refresh every 4 seconds — graph + devices excluded (driven by SSE sync events)
-    setInterval(() => {
+    const iv = setInterval(() => {
       const st = get()
       st.fetchSnmp()
       st.fetchGnmi()
@@ -412,15 +423,21 @@ export const useStore = create<Store>((set, get) => ({
       st.fetchTraps()
       st.fetchRules()
     }, 4000)
+    return () => clearInterval(iv)
   },
 
   connectSSE: () => {
+    // Track the live stream + any pending reconnect so teardown can cancel both.
+    let es: EventSource | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let stopped = false
     const connect = () => {
+      if (stopped) return
       const token = getToken()
-      if (!token) { setTimeout(connect, 3000); return }  // not logged in yet
+      if (!token) { reconnectTimer = setTimeout(connect, 3000); return }  // not logged in yet
       const sseUrl = (import.meta.env.DEV ? 'http://localhost:8000' : '')
         + '/api/events?token=' + encodeURIComponent(token)
-      const es = new EventSource(sseUrl)
+      es = new EventSource(sseUrl)
       es.onmessage = (e) => {
         try {
           const ev = JSON.parse(e.data) as Record<string, unknown>
@@ -453,10 +470,17 @@ export const useStore = create<Store>((set, get) => ({
         } catch { /* ignore parse errors */ }
       }
       es.onerror = () => {
-        es.close()
-        setTimeout(connect, 3000)
+        es?.close()
+        es = null
+        if (!stopped) reconnectTimer = setTimeout(connect, 3000)
       }
     }
     connect()
+    return () => {
+      stopped = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      es?.close()
+      es = null
+    }
   },
 }))

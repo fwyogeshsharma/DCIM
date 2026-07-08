@@ -41,9 +41,21 @@ class FleetConfigBody(BaseModel):
     max_total_servers:    int | None = None
 
 
-def _apply_config(eng, body: FleetConfigBody) -> None:
+def _apply_config(eng, body: FleetConfigBody) -> str | None:
+    """Apply config to the engine, clamping the server count to the resource
+    hard cap. Returns a warning string if anything was clamped, else None."""
+    from core.fleet_lifecycle import MAX_TOTAL_SERVERS_HARD_CAP
+    warn = None
     for k, v in body.model_dump(exclude_none=True).items():
+        if k == "max_total_servers" and v > MAX_TOTAL_SERVERS_HARD_CAP:
+            warn = (f"max_total_servers {v} exceeds the resource-safety cap "
+                    f"{MAX_TOTAL_SERVERS_HARD_CAP}; clamped. Each server is a "
+                    f"Redfish BMC socket + gNMI eventfds — beyond this the process "
+                    f"can exhaust its file descriptors and drop the API listener.")
+            log.warning(warn)
+            v = MAX_TOTAL_SERVERS_HARD_CAP
         setattr(eng.cfg, k, v)
+    return warn
 
 
 @router.get("/status")
@@ -57,21 +69,23 @@ def fleet_config(body: FleetConfigBody):
     """Update cadence/caps. Takes effect on the next sim-day (interval change is
     picked up after the current wait completes)."""
     eng = _engine()
-    _apply_config(eng, body)
-    return OkResponse(message="Fleet config updated")
+    warn = _apply_config(eng, body)
+    return OkResponse(message=warn or "Fleet config updated")
 
 
 @router.post("/start", response_model=OkResponse)
 def fleet_start(body: FleetConfigBody | None = None):
     """Start the compressed sim-day scheduler (optionally applying config first)."""
     eng = _engine()
+    warn = None
     if body is not None:
-        _apply_config(eng, body)
+        warn = _apply_config(eng, body)
     try:
         eng.start()
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
-    return OkResponse(message=f"Fleet lifecycle started ({eng.cfg.minutes_per_day} min/day)")
+    msg = f"Fleet lifecycle started ({eng.cfg.minutes_per_day} min/day)"
+    return OkResponse(message=f"{msg}. {warn}" if warn else msg)
 
 
 @router.post("/stop", response_model=OkResponse)

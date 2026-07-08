@@ -372,7 +372,10 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
                     "5000VA/4500W, 1 × GE management"),
         DeviceModel("APC Symmetra PX 100", Vendor.APC, DeviceType.UPS,
                     [_g(_GE, 1)],
-                    "100kVA scalable, 1 × GE management"),
+                    "100kVA/100kW scalable, 1 × GE management"),
+        DeviceModel("APC Symmetra PX 160", Vendor.APC, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "160kVA/160kW modular, 1 × GE management"),
     ],
 
     # ── Eaton — UPS ───────────────────────────────────────────────────────────
@@ -389,6 +392,12 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Eaton 93E 40kVA", Vendor.EATON, DeviceType.UPS,
                     [_g(_GE, 1)],
                     "40kVA/36kW, 1 × GE management"),
+        DeviceModel("Eaton 93PM 120", Vendor.EATON, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "120kVA/120kW transformerless, 1 × GE management"),
+        DeviceModel("Eaton 93PM 160", Vendor.EATON, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "160kVA/160kW transformerless, 1 × GE management"),
     ],
 
     # ── Vertiv — UPS ──────────────────────────────────────────────────────────
@@ -402,6 +411,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Vertiv Liebert APS 20kVA", Vendor.VERTIV, DeviceType.UPS,
                     [_g(_GE, 1)],
                     "20kVA/18kW, 1 × GE management"),
+        DeviceModel("Vertiv Liebert EXL S1 125kVA", Vendor.VERTIV, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "125kVA/125kW transformer-free, 1 × GE management"),
     ],
 
     # ── APC — PDU ─────────────────────────────────────────────────────────────
@@ -418,6 +430,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("APC AP8681", Vendor.APC, DeviceType.PDU,
                     [_g(_GE, 1)],
                     "Metered-by-Outlet 1U, 16A/230V, 12×C13 + 4×C19"),
+        DeviceModel("APC AP8865", Vendor.APC, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Metered ZeroU, 32A/415V 3-phase (22kW), 21×C13 + 12×C19"),
     ],
 
     # ── Raritan — PDU ─────────────────────────────────────────────────────────
@@ -431,6 +446,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Raritan PX2-5170CR", Vendor.RARITAN, DeviceType.PDU,
                     [_g(_GE, 1)],
                     "Switched 0U, 30A/208V, 24×C13 + 6×C19"),
+        DeviceModel("Raritan PX3-5878", Vendor.RARITAN, DeviceType.PDU,
+                    [_g(_GE, 1)],
+                    "Switched 0U, 32A/415V 3-phase (22kW), 24×C13 + 12×C19"),
     ],
 
     # ── Eaton — PDU ───────────────────────────────────────────────────────────
@@ -535,8 +553,10 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
 
     # ── APC -- Remote Power Panel (passive) ──────────────────────────────────
     (DeviceType.RPP, Vendor.APC): [
-        DeviceModel("APC Galaxy RPP 80A", Vendor.APC, DeviceType.RPP, [], "80A 3-phase RPP, 12 branch circuits, passive -- no SNMP"),
-        DeviceModel("APC Galaxy RPP 160A", Vendor.APC, DeviceType.RPP, [], "160A 3-phase RPP, 24 branch circuits, passive -- no SNMP"),
+        DeviceModel("APC Galaxy RPP 80A", Vendor.APC, DeviceType.RPP, [], "80A 3-phase RPP (~57kVA), 12 branch circuits, passive -- no SNMP"),
+        DeviceModel("APC Galaxy RPP 100A", Vendor.APC, DeviceType.RPP, [], "100A 3-phase RPP (~72kVA), 18 branch circuits, passive -- no SNMP"),
+        DeviceModel("APC Galaxy RPP 125A", Vendor.APC, DeviceType.RPP, [], "125A 3-phase RPP (~90kVA), 24 branch circuits, passive -- no SNMP"),
+        DeviceModel("APC Galaxy RPP 160A", Vendor.APC, DeviceType.RPP, [], "160A 3-phase RPP (~115kVA), 24 branch circuits, passive -- no SNMP"),
     ],
     (DeviceType.RPP, Vendor.SCHNEIDER): [
         DeviceModel("Schneider PanelBoard 400A", Vendor.SCHNEIDER, DeviceType.RPP, [], "400A main breaker, 42 branch circuits, passive -- no SNMP"),

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../../api/client'
+import NumberInput from '../NumberInput'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -11,9 +12,14 @@ interface FleetConfig {
   max_racks_per_row:    number
   compute_rows_per_room: number
   max_total_servers:    number
+  // Read-only power-budget hints (server-computed; not user-editable). The
+  // budget is physically capped by what one rack PDU delivers on A/B failover.
+  rack_pdu_capacity_w?:           number   // compute-rack PDU nameplate (e.g. 22000)
+  rack_power_budget_cap_w?:       number   // = rack_pdu_capacity_w × 0.8 (ceiling)
+  rack_power_budget_effective_w?: number   // = min(configured, cap) actually enforced
 }
 interface FleetDevice {
-  name: string; vendor: string; mgmt_ip: string; ip: string
+  name: string; device_type?: string; vendor: string; mgmt_ip: string; ip: string
 }
 interface DayLog {
   day: number; added: FleetDevice[]; removed: FleetDevice[]; expanded_racks: string[]; total_servers: number
@@ -23,14 +29,28 @@ interface FleetStatus {
   day: number
   config: FleetConfig
   total_servers: number
+  total_devices?: number
+  device_counts?: Record<string, number>
   history: DayLog[]
 }
+
+// Pretty labels for the device-type keys the fleet grows (device_type.value).
+const TYPE_LABELS: Record<string, string> = {
+  server: 'Servers', switch: 'Switches', oob_switch: 'OOB switches',
+  router: 'Routers', firewall: 'Firewalls', load_balancer: 'Load balancers',
+  sensor: 'Sensors', crah: 'CRAHs', chiller: 'Chillers', pump: 'Pumps',
+  cooling_tower: 'Cooling towers', valve: 'Valves', cdu: 'CDUs',
+  pdu: 'PDUs', floor_pdu: 'Floor PDUs', rpp: 'RPPs', ups: 'UPS',
+  generator: 'Generators', energy_monitor: 'Energy monitors',
+}
+const prettyType = (k: string) =>
+  TYPE_LABELS[k] ?? k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
 const CFG_FIELDS: { key: keyof FleetConfig; label: string; step?: number; hint: string }[] = [
   { key: 'minutes_per_day',      label: 'Minutes / day',      step: 0.5, hint: 'wall-clock minutes that equal one sim-day' },
   { key: 'provision_lambda',     label: 'Provision / day',    hint: 'avg servers added on a normal day' },
   { key: 'decommission_lambda',  label: 'Decommission / day', hint: 'avg servers removed (kept below provision = net growth)' },
-  { key: 'rack_power_budget_w',  label: 'Power budget / rack (W)', step: 500, hint: 'per-rack power budget in watts (~15000 = 15 kW usable). A rack fills until summed server+ToR nameplate draw would exceed this, or the leaf runs out of downlink ports — whichever binds first' },
+  { key: 'rack_power_budget_w',  label: 'Power budget / rack (W)', step: 500, hint: 'per-rack power budget in watts (17600 = 17.6 kW usable = a 22 kW rack PDU at the NEC 80% derate, the A/B single-feed ceiling). A rack fills until summed server+ToR nameplate draw would exceed this, or the leaf runs out of downlink ports — whichever binds first' },
   { key: 'max_total_servers',    label: 'Max total servers',  hint: 'global ceiling — provisioning pauses here' },
 ]
 
@@ -41,6 +61,11 @@ export default function FleetPanel() {
   const [cfg, setCfg]       = useState<FleetConfig | null>(null)
   const [busy, setBusy]     = useState<string | null>(null)
   const [err, setErr]       = useState('')
+  // Connection error from the /fleet/status poll. Kept SEPARATE from status so a
+  // failed poll doesn't masquerade as a stopped scheduler: the panel remounts
+  // with status=null on every tab switch, and a silently-swallowed fetch error
+  // would leave it stuck showing a fake "Idle / Start" (see connErr rendering).
+  const [connErr, setConnErr] = useState('')
   const [openDays, setOpenDays] = useState<Set<number>>(new Set())
   const seeded = useRef(false)
 
@@ -55,9 +80,13 @@ export default function FleetPanel() {
       .then(s => {
         const st = s as FleetStatus
         setStatus(st)
+        setConnErr('')
         if (!seeded.current) { setCfg(st.config); seeded.current = true }
       })
-      .catch(() => {})
+      // Don't swallow: surface the failure so a dead/unreachable backend shows as
+      // "unreachable", not as a stopped scheduler. Keep the last-known status so
+      // an intermittent blip doesn't blank an otherwise-good panel.
+      .catch(e => setConnErr(e instanceof Error ? e.message : String(e)))
   }, [])
 
   useEffect(() => {
@@ -74,31 +103,95 @@ export default function FleetPanel() {
   }
 
   const running = status?.enabled ?? false
+  // Poll failing with no fresh status: can't trust the Start/Stop state, so block
+  // the scheduler toggle (a "start" here could double-start an already-running
+  // engine the panel just can't see).
+  const unreachable = !!connErr && !status
+  // First fetch after a (re)mount hasn't returned yet — the panel remounts with
+  // status=null on every tab switch. Show a neutral "Loading…" for that ~1s
+  // instead of the null-defaults (Idle / Start / 0), which falsely read as a
+  // stopped, empty scheduler.
+  const loading = status === null && !connErr
   const setField = (k: keyof FleetConfig, v: number) => setCfg(c => c ? { ...c, [k]: v } : c)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* Header */}
+      {/* Header — an unreachable backend must NOT read as a stopped scheduler,
+          so when the poll is failing (and we have no fresh status) show an amber
+          "Unreachable" badge rather than the grey "Idle". */}
       <div className="panel-header">
         <span className="title">Fleet Lifecycle</span>
-        <span className={`badge ${running ? 'running' : 'stopped'}`}>
-          <span className={`status-dot ${running ? 'green' : 'grey'}`} />
-          {running ? 'Running' : 'Idle'}
-        </span>
+        {loading
+          ? <span className="badge stopped">
+              <span className="status-dot grey" />
+              Loading…
+            </span>
+          : connErr && !status
+          ? <span className="badge stopped" title={connErr}>
+              <span className="status-dot" style={{ background: '#f59e0b', boxShadow: '0 0 4px #f59e0b' }} />
+              Unreachable
+            </span>
+          : <span className={`badge ${running ? 'running' : 'stopped'}`} title={connErr || undefined}>
+              <span className={`status-dot ${running ? 'green' : 'grey'}`} />
+              {running ? 'Running' : 'Idle'}
+            </span>}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Connection banner — the /fleet/status poll is failing. When the fleet
+            is large this is usually the backend under fd pressure (each server =
+            a Redfish socket + gNMI eventfds); the scheduler is likely still
+            running, the panel just can't read it. */}
+        {connErr && (
+          <div style={{
+            background: 'rgba(245,158,11,0.12)', border: '1px solid #f59e0b',
+            borderRadius: 5, padding: '7px 9px', fontSize: 10, lineHeight: 1.5,
+            color: '#f59e0b',
+          }}>
+            <strong>Can't reach the fleet backend.</strong> Status below may be stale or unknown —
+            this is not the same as the scheduler being stopped.
+            <div style={{ marginTop: 3, color: 'var(--text-muted)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{connErr}</div>
+          </div>
+        )}
 
         {/* Day + fleet size */}
         <div className="group-box" style={{ marginTop: 6 }}>
           <span className="group-box-label">Status</span>
           <div className="field-row-split"><span className="label">Sim-day</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status?.day ?? 0}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status ? status.day : '—'}</span>
           </div>
           <div className="field-row-split"><span className="label">Servers</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{status?.total_servers ?? 0}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>{status ? status.total_servers : '—'}</span>
           </div>
+          <div className="field-row-split"><span className="label">Total devices</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)' }}>{status ? (status.total_devices ?? 0) : '—'}</span>
+          </div>
+
+          {/* Full fleet composition — the fleet grows switches, OOB, RPPs,
+              PDUs, and (perimeter cooling) CRAHs + sensors alongside servers. */}
+          {status?.device_counts && Object.keys(status.device_counts).length > 0 && (
+            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                Composition
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto', columnGap: 8, rowGap: 2 }}>
+                {Object.entries(status.device_counts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([k, n]) => (
+                    <div key={k} style={{ display: 'contents' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {prettyType(k)}
+                      </span>
+                      <span style={{ fontSize: 10, fontFamily: 'monospace', fontWeight: 700, color: 'var(--text)', textAlign: 'right' }}>
+                        {n}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Scheduler controls */}
@@ -107,12 +200,14 @@ export default function FleetPanel() {
           <div className="snmp-actions" style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
             <button
               className={`btn-action ${running ? 'btn-stop' : 'btn-start'}`}
-              disabled={busy !== null}
+              disabled={busy !== null || unreachable || loading}
+              title={unreachable ? "Backend unreachable — can't confirm scheduler state"
+                   : loading ? 'Reading scheduler state…' : undefined}
               onClick={() => running
                 ? act('stop', () => api.fleetStop())
                 : act('start', () => api.fleetStart(cfg ?? {}))}
-              style={{ flex: 1 }}
-            >{busy === 'start' || busy === 'stop' ? '…' : running ? 'Stop' : 'Start'}</button>
+              style={{ flex: 1, ...(unreachable || loading ? { opacity: 0.5, cursor: 'not-allowed' } : null) }}
+            >{busy === 'start' || busy === 'stop' ? '…' : loading ? '…' : running ? 'Stop' : 'Start'}</button>
             <button
               className="btn-action"
               disabled={busy !== null}
@@ -138,20 +233,34 @@ export default function FleetPanel() {
         {cfg && (
           <div className="group-box">
             <span className="group-box-label">Cadence &amp; Caps</span>
-            {CFG_FIELDS.map(f => (
-              <div key={f.key} className="field-row-split" title={f.hint} style={{ marginBottom: 5 }}>
-                <span className="label">{f.label}</span>
-                <input
-                  type="number" min={0} step={f.step ?? 1}
-                  value={cfg[f.key]}
-                  onChange={e => setField(f.key, parseFloat(e.target.value) || 0)}
-                  style={{
-                    width: 72, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 4,
-                    color: 'var(--text)', fontSize: 12, fontFamily: 'monospace', padding: '3px 7px', outline: 'none',
-                  }}
-                />
+            {CFG_FIELDS.map(f => {
+              // Per-rack budget is physically capped by one PDU on A/B failover.
+              const cap = status?.config?.rack_power_budget_cap_w ?? 0
+              const pduW = status?.config?.rack_pdu_capacity_w ?? 0
+              const showHint = f.key === 'rack_power_budget_w' && cap > 0
+              const overCap = showHint && cfg.rack_power_budget_w > cap
+              return (
+              <div key={f.key} style={{ marginBottom: 5 }}>
+                <div className="field-row-split" title={f.hint}>
+                  <span className="label">{f.label}</span>
+                  <NumberInput
+                    min={0} step={f.step ?? 1}
+                    value={cfg[f.key] ?? 0}
+                    onChange={n => setField(f.key, n)}
+                    style={{
+                      width: 72, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 4,
+                      color: 'var(--text)', fontSize: 12, fontFamily: 'monospace', padding: '3px 7px', outline: 'none',
+                    }}
+                  />
+                </div>
+                {showHint && (
+                  <div style={{ fontSize: 10, color: overCap ? '#f59e0b' : 'var(--text-dim)', marginTop: 2, lineHeight: 1.3 }}>
+                    rack PDU delivers {(pduW / 1000).toFixed(1)} kW → max {(cap / 1000).toFixed(1)} kW/rack (A/B failover)
+                    {overCap && ` — clamped to ${(cap / 1000).toFixed(1)} kW`}
+                  </div>
+                )}
               </div>
-            ))}
+            )})}
             <button
               className="btn-action"
               disabled={busy !== null}
@@ -167,7 +276,13 @@ export default function FleetPanel() {
         {/* Day log */}
         <div className="group-box">
           <span className="group-box-label">Activity</span>
-          {(!status || status.history.length === 0) && (
+          {loading && (
+            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Loading…</div>
+          )}
+          {!status && connErr && (
+            <div style={{ fontSize: 10, color: '#f59e0b' }}>Backend unreachable — activity unknown.</div>
+          )}
+          {status && status.history.length === 0 && (
             <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No days elapsed yet.</div>
           )}
           {status && [...status.history].reverse().map(d => {
@@ -204,6 +319,7 @@ export default function FleetPanel() {
                     }}>
                       <span style={{ color: x.op === '+' ? '#3fb950' : '#f87171' }}>{x.op}</span>
                       <span style={{ color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {x.device_type && <span style={{ color: 'var(--text-dim)' }}>{x.device_type} </span>}
                         {x.name} <span style={{ color: 'var(--text-dim)' }}>· {x.vendor || '—'}</span>
                       </span>
                       <span style={{ textAlign: 'right' }}>

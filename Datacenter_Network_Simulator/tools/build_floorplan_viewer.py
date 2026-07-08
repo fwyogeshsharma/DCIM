@@ -250,9 +250,12 @@ async function pollLive(){
     if(fr.ok){ applyFloorplan(await fr.json()); refreshSelectors(); }
   }catch(e){ /* keep the last good structure */ }
   LIVE.fetched=true;   // only now is the "no floor-plan" state meaningful
-  // 2. Overlay live telemetry (joined to placement by device identity).
+  // 2. Overlay live telemetry (joined to placement by device identity). Use the
+  // slim /floorplan/telemetry feed (only the heatmap fields, null/zero omitted),
+  // not /devices (85 fields/device incl. interfaces, ~5 MB at scale) — so the
+  // browser isn't parsing megabytes every 5s poll while the fleet grows.
   try{
-    const res=await fetch(base+'/devices',{cache:'no-store',headers});
+    const res=await fetch(base+'/floorplan/telemetry',{cache:'no-store',headers});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const j=await res.json(); const list=j.devices||j; LIVE.byId={}; LIVE.byName={};
     for(const d of list){ LIVE.byId[d.id]=d; if(d.name) LIVE.byName[d.name]=d; }

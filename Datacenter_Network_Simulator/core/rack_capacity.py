@@ -37,6 +37,13 @@ TOR_B_UNIT = 41            # RESERVED for the future MLAG peer leaf — keep emp
 PDU_UNIT = 0               # rack PDUs are 0U vertical side-rail mounts (no RU)
 FIRST_SERVER_UNIT = 1
 LAST_SERVER_UNIT = 40      # U41/U42 reserved for the ToR pair
+# Modeled rack-server form factor. The curated topology uses 2U 2-socket servers
+# (~650 W), placed on a 2U cadence (odd units 1,3,5…), so U1..U40 holds
+# 40 / 2 = 20 servers. The fleet engine steps placement by this height so its
+# racks match curated ones — space-bound at ~20 servers with power headroom,
+# rather than the old 1U cadence that stranded rack U at the power cap.
+SERVER_U_HEIGHT = 2
+SERVERS_PER_RACK_BY_U = (LAST_SERVER_UNIT - FIRST_SERVER_UNIT + 1) // SERVER_U_HEIGHT
 
 # ── Capacity knobs ────────────────────────────────────────────────────────────
 POWER_CAP_DEFAULT = 22     # legacy server-COUNT proxy; still used by the static
@@ -44,10 +51,14 @@ POWER_CAP_DEFAULT = 22     # legacy server-COUNT proxy; still used by the static
                            # column. The live fleet engine no longer fills by
                            # count — it sums device nameplate watts vs the budget
                            # below (see rack_has_power_headroom).
-RACK_POWER_BUDGET_W_DEFAULT = 15000   # usable per-rack power budget (W), ~15 kW.
-                           # This is the USABLE figure (already derated for the
-                           # NEC 80% continuous-load rule); the rack fills until
-                           # summed nameplate draw of its kit would exceed it.
+RACK_POWER_BUDGET_W_DEFAULT = 17600   # usable per-rack power budget (W), 17.6 kW.
+                           # = a 22 kW 3-phase rack PDU derated to the NEC 80%
+                           # continuous-load rule (22000 × 0.8). This is what ONE
+                           # PDU delivers, i.e. the A/B-failover ceiling, so the
+                           # rack fills to its full single-feed capacity. The rack
+                           # fills until summed nameplate draw of its kit would
+                           # exceed it. (Fleet caps per rack at the actual PDU
+                           # rating × 0.8 too — see FleetLifecycleEngine._rack_budget_w.)
 MLAG_PEERLINK_PORTS = 2    # uplink ports held back for the inter-leaf peer-link
 
 # (downlink_ports, uplink_ports) per known leaf model. Downlink = server-facing.

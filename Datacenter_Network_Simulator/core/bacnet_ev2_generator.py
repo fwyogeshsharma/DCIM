@@ -30,6 +30,8 @@ Example (42-circuit EV2):
   1022  Alarm_HighTHD        (BI)
   1023  Alarm_PhaseLoss      (BI)
   1024  Alarm_SensorFault    (BI)
+  1025  Alarm_Undervoltage   (BI)
+  1026  Alarm_UnderFrequency (BI)
   2001–2005  Ckt01: Current, kW, kWh, PF, THD
   3001–3005  Ckt02 …
   …
@@ -46,9 +48,20 @@ from core.bacnet_object_model import (
     UNIT_PERCENT, UNIT_NO_UNITS,
 )
 
-# Supported circuit counts
+# Supported circuit counts — real Verdigris EV2 ships as 24-, 42- or 84-channel.
 CIRCUIT_COUNT_OPTIONS = (24, 42, 84)
 DEFAULT_CIRCUITS      = 42
+MAX_CIRCUITS          = CIRCUIT_COUNT_OPTIONS[-1]   # 84 — largest physical meter
+
+
+def clamp_circuit_count(n: int) -> int:
+    """Snap a requested branch/channel count up to the smallest real EV2 model that
+    covers it (24 → 42 → 84). Anything above 84 caps at 84, the largest meter that
+    physically exists — a panel needing more branches must use a second RPP+meter."""
+    for opt in CIRCUIT_COUNT_OPTIONS:          # ascending
+        if n <= opt:
+            return opt
+    return MAX_CIRCUITS
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -89,6 +102,8 @@ _PANEL_BI = [
     (1022, "Alarm_HighTHD",           "High THD Alarm — current THD exceeds 7%"),
     (1023, "Alarm_PhaseLoss",         "Phase Loss Alarm — any phase voltage < 10 V"),
     (1024, "Alarm_SensorFault",       "Sensor Fault — internal measurement error"),
+    (1025, "Alarm_Undervoltage",      "Undervoltage / Sag Alarm — any phase < 90% of nominal"),
+    (1026, "Alarm_UnderFrequency",    "Under-Frequency Alarm — line frequency < 98% of nominal"),
 ]
 
 _CKT_AI_OFFSETS = [

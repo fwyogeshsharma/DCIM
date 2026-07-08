@@ -182,7 +182,7 @@ function ZoomIndicator() {
 function Canvas() {
   const {
     graphDevices, graphLinks, activeLayer, setLayer, fetchGraph,
-    linkMode, setLinkMode, fitViewTrigger, layoutAlgo, setLayoutAlgo, bacnet,
+    linkMode, setLinkMode, fitViewTrigger, focusNodeId, focusNodeNonce, layoutAlgo, setLayoutAlgo, bacnet,
   } = useStore()
 
   // Map BACnet device IP → instance number (e.g. 40001) for tooltip display
@@ -247,6 +247,14 @@ function Canvas() {
   useEffect(() => {
     if (fitViewTrigger > 0) fitView({ padding: 0.1, duration: 400 })
   }, [fitViewTrigger])
+
+  // Focus-single-node: pan/zoom to one node (e.g. Locate on Graph from the device
+  // list). Nonce-gated so re-locating the same node still fires.
+  useEffect(() => {
+    if (focusNodeNonce > 0 && focusNodeId) {
+      fitView({ nodes: [{ id: focusNodeId }], padding: 0.4, duration: 400 })
+    }
+  }, [focusNodeNonce])
 
   useEffect(() => {
     if (!layoutAlgo) return

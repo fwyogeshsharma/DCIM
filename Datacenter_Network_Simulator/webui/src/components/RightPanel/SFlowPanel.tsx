@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import TargetsBox from './TargetsBox'
+import NumberInput from '../NumberInput'
 
 const IconPlay = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
@@ -25,12 +26,19 @@ function StatRow({ label, value, labelColor, valueColor }: {
   )
 }
 
-function Field({ label, suffix, prefix, type, value, onChange, disabled }: {
+function Field({ label, suffix, prefix, type, value, onChange, onChangeNum, fallback, disabled }: {
   label: string; suffix?: string; prefix?: string; type: 'text' | 'number'
   value: string | number
-  onChange: (v: string) => void
+  onChange?: (v: string) => void
+  onChangeNum?: (n: number) => void
+  fallback?: number
   disabled: boolean
 }) {
+  const inputStyle: React.CSSProperties = {
+    flex: 1, minWidth: 0, background: 'transparent', border: 'none',
+    outline: 'none', color: 'var(--text)', fontSize: 10,
+    fontFamily: 'Consolas, monospace', padding: '4px 0',
+  }
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
       <span style={{ width: 80, fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
@@ -41,17 +49,24 @@ function Field({ label, suffix, prefix, type, value, onChange, disabled }: {
         padding: '0 6px', opacity: disabled ? 0.6 : 1,
       }}>
         {prefix && <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'Consolas, monospace' }}>{prefix}</span>}
-        <input
-          type={type}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          disabled={disabled}
-          style={{
-            flex: 1, minWidth: 0, background: 'transparent', border: 'none',
-            outline: 'none', color: 'var(--text)', fontSize: 10,
-            fontFamily: 'Consolas, monospace', padding: '4px 0',
-          }}
-        />
+        {type === 'number' ? (
+          <NumberInput
+            value={Number(value)}
+            onChange={n => onChangeNum?.(n)}
+            fallback={fallback}
+            int
+            disabled={disabled}
+            style={inputStyle}
+          />
+        ) : (
+          <input
+            type={type}
+            value={value}
+            onChange={e => onChange?.(e.target.value)}
+            disabled={disabled}
+            style={inputStyle}
+          />
+        )}
         {suffix && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{suffix}</span>}
       </div>
     </div>
@@ -139,14 +154,16 @@ export default function SFlowPanel() {
             label="UDP Port"
             type="number"
             value={port}
-            onChange={v => setPort(parseInt(v) || 6343)}
+            onChangeNum={setPort}
+            fallback={6343}
             disabled={running || busy}
           />
           <Field
             label="Interval"
             type="number"
             value={pollInterval}
-            onChange={v => setPollInterval(parseInt(v) || 30)}
+            onChangeNum={setPollInterval}
+            fallback={30}
             disabled={running || busy}
             suffix="sec"
           />
@@ -154,7 +171,8 @@ export default function SFlowPanel() {
             label="Sample Rate"
             type="number"
             value={rate}
-            onChange={v => setRate(parseInt(v) || 1000)}
+            onChangeNum={setRate}
+            fallback={1000}
             disabled={running || busy}
             prefix="1 in"
           />

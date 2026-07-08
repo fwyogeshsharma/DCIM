@@ -186,6 +186,19 @@ class PlantTelemetryEngine:
             self._points.append((name, bv, av, _is_load(name), is_hours))
             # start slightly off base so devices don't look identical
             self._values[name] = bv + (rng.uniform(-0.3, 0.3) * av)
+        # Primary electrical-power point for this unit — overridden by the live
+        # load-/weather-coupled cooling model when the controller supplies it.
+        _PWR = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
+        self._power_point = next(
+            (n for (n, *_r) in self._points if n in _PWR), None)
+        self._nameplate_kw = float(rated_kw)
+        # VFD speed point coupled to the affinity power (P ∝ speed³) for centrifugal
+        # pumps/fans, so the published Speed tracks the metered draw. Chillers have no
+        # such point (compressor unloads instead) → None, speed left on its walk.
+        _SPD = {"pump": "Speed", "cooling_tower": "Fan_Speed",
+                "crah": "Fan_Speed", "cdu": "Pump_Speed"}
+        self._speed_point = _SPD.get(device_type)
+
         self._binaries: Dict[str, float] = {}
         for name in spec["bi"]:
             self._binaries[name] = 1.0 if name in spec["on"] else 0.0
@@ -211,17 +224,31 @@ class PlantTelemetryEngine:
     def _ema(new: float, old: float, a: float) -> float:
         return a * new + (1.0 - a) * old
 
-    def tick(self, dt: float, force_leak: bool = False, forced=None) -> Dict[str, float]:
+    def tick(self, dt: float, force_leak: bool = False, forced=None,
+             live_power: float | None = None,
+             live_cop: float | None = None) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
         # "on" for this device (Limits tab). Back-compat: force_leak maps to it.
+        # `live_power` (kW) — when supplied, the primary electrical-power point is
+        # driven by the load-/weather-coupled cooling model instead of the
+        # nameplate×diurnal curve, so cooling draw tracks the real IT heat and the
+        # site ambient.
         if forced is None:
             forced = {"Alarm_Leak"} if force_leak else set()
         mul = self._diurnal()
         out: Dict[str, float] = {}
+        _pwr_out: float | None = None
         for name, base, amp, is_load, is_hours in self._points:
             if is_hours:
                 self._values[name] += dt / 3600.0          # accumulate run-hours
                 out[name] = round(self._values[name], 2)
+                continue
+            if live_power is not None and name == self._power_point:
+                # Load-/weather-coupled draw + a little metering jitter.
+                raw = max(0.0, live_power) + random.uniform(-0.02, 0.02) * max(1.0, live_power)
+                self._values[name] = self._ema(raw, self._values[name], 0.3)
+                out[name] = round(max(0.0, self._values[name]), 2)
+                _pwr_out = out[name]
                 continue
             if amp == 0.0:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
@@ -232,6 +259,35 @@ class PlantTelemetryEngine:
             lo, hi = target - amp, target + amp
             self._values[name] = max(lo, min(hi, self._values[name]))
             out[name] = round(self._values[name], 2)
+        # Couple the VFD speed point to the metered affinity power (inverse of
+        # P ∝ speed³) so a throttled pump/fan reports the matching speed, not an
+        # independent random walk. VFD_Frequency (Hz) follows the same speed.
+        if _pwr_out is not None and self._speed_point and self._speed_point in out:
+            from core.cooling_model import affinity_speed_frac
+            spd = affinity_speed_frac(_pwr_out, self._nameplate_kw)
+            self._values[self._speed_point] = self._ema(
+                spd * 100.0, self._values[self._speed_point], 0.3)
+            out[self._speed_point] = round(
+                max(0.0, min(100.0, self._values[self._speed_point])), 2)
+            if "VFD_Frequency" in out:
+                out["VFD_Frequency"] = round(spd * 50.0, 2)   # 50 Hz mains at 100 %
+
+        # Chiller compressor load ≈ % full-load amps, which tracks the metered
+        # electrical draw (rises with both cooling load and condenser lift), so
+        # report it from the part-load power instead of a free walk.
+        if (_pwr_out is not None and self._type == "chiller"
+                and self._nameplate_kw > 0 and "Compressor_Load" in out):
+            fla = 100.0 * _pwr_out / self._nameplate_kw
+            self._values["Compressor_Load"] = self._ema(
+                fla, self._values["Compressor_Load"], 0.3)
+            out["Compressor_Load"] = round(
+                max(0.0, min(100.0, self._values["Compressor_Load"])), 2)
+        # COP tracks the part-load / condenser efficiency (peaks mid-load, droops
+        # when hot) — driven by the model instead of a free walk.
+        if live_cop is not None and live_cop > 0.0 and "COP" in out:
+            self._values["COP"] = self._ema(live_cop, self._values["COP"], 0.3)
+            out["COP"] = round(self._values["COP"], 2)
+
         for name, val in self._binaries.items():
             out[name] = val
         if self._type == "cdu":
