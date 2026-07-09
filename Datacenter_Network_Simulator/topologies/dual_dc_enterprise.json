@@ -67493,7 +67493,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.05,
+        "floor_x": 0.6,
         "floor_y": 11.4
       }
     },
@@ -67566,7 +67566,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.15,
+        "floor_x": 1.8,
         "floor_y": 11.4
       }
     },
@@ -67639,7 +67639,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.25,
+        "floor_x": 3.0,
         "floor_y": 11.4
       }
     },
@@ -67712,7 +67712,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.35,
+        "floor_x": 4.2,
         "floor_y": 11.4
       }
     },
@@ -68007,7 +68007,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.975,
+        "floor_x": 0.5571,
         "floor_y": 11.4
       }
     },
@@ -68080,7 +68080,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.925,
+        "floor_x": 1.6714,
         "floor_y": 11.4
       }
     },
@@ -68153,7 +68153,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 4.875,
+        "floor_x": 2.7857,
         "floor_y": 11.4
       }
     },
@@ -68226,7 +68226,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.825,
+        "floor_x": 3.9,
         "floor_y": 11.4
       }
     },
@@ -73403,7 +73403,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.05,
+        "floor_x": 0.6,
         "floor_y": 11.4
       }
     },
@@ -73476,7 +73476,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.15,
+        "floor_x": 1.8,
         "floor_y": 11.4
       }
     },
@@ -73549,7 +73549,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.25,
+        "floor_x": 3.0,
         "floor_y": 11.4
       }
     },
@@ -73622,7 +73622,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.35,
+        "floor_x": 4.2,
         "floor_y": 11.4
       }
     },
@@ -73929,7 +73929,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.975,
+        "floor_x": 0.5571,
         "floor_y": 11.4
       }
     },
@@ -74002,7 +74002,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.925,
+        "floor_x": 1.6714,
         "floor_y": 11.4
       }
     },
@@ -74075,7 +74075,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 4.875,
+        "floor_x": 2.7857,
         "floor_y": 11.4
       }
     },
@@ -74148,7 +74148,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.825,
+        "floor_x": 3.9,
         "floor_y": 11.4
       }
     },
@@ -81992,8 +81992,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.4,
-        "floor_y": 0.3
+        "floor_x": 5.4,
+        "floor_y": 11.4
       }
     },
     {
@@ -82065,8 +82065,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 4.2,
-        "floor_y": 0.3
+        "floor_x": 6.6,
+        "floor_y": 11.4
       }
     },
     {
@@ -82138,8 +82138,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.0,
-        "floor_y": 0.3
+        "floor_x": 7.8,
+        "floor_y": 11.4
       }
     },
     {
@@ -82211,8 +82211,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.4,
-        "floor_y": 0.3
+        "floor_x": 5.4,
+        "floor_y": 11.4
       }
     },
     {
@@ -82284,8 +82284,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 4.2,
-        "floor_y": 0.3
+        "floor_x": 6.6,
+        "floor_y": 11.4
       }
     },
     {
@@ -82357,8 +82357,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.0,
-        "floor_y": 0.3
+        "floor_x": 7.8,
+        "floor_y": 11.4
       }
     },
     {
@@ -82430,8 +82430,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.3,
-        "floor_y": 0.3
+        "floor_x": 5.0143,
+        "floor_y": 11.4
       }
     },
     {
@@ -82503,8 +82503,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.9,
-        "floor_y": 0.3
+        "floor_x": 6.1286,
+        "floor_y": 11.4
       }
     },
     {
@@ -82576,8 +82576,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.5,
-        "floor_y": 0.3
+        "floor_x": 7.2429,
+        "floor_y": 11.4
       }
     },
     {
@@ -82649,8 +82649,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.3,
-        "floor_y": 0.3
+        "floor_x": 5.0143,
+        "floor_y": 11.4
       }
     },
     {
@@ -82722,8 +82722,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.9,
-        "floor_y": 0.3
+        "floor_x": 6.1286,
+        "floor_y": 11.4
       }
     },
     {
@@ -82795,8 +82795,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.5,
-        "floor_y": 0.3
+        "floor_x": 7.2429,
+        "floor_y": 11.4
       }
     },
     {

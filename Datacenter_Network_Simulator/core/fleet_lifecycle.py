@@ -764,19 +764,16 @@ class FleetLifecycleEngine:
 
     def _crah_perimeter_positions(self, ext: dict, rpr: int, n_rows: int,
                                   target: int) -> list:
-        """(fx, fy) for *target* CRAHs split across the hall's two free END walls
-        — back (behind the last IT row) and front (ahead of the first) — evenly
-        spread along each wall's width. The long side walls are skipped: the IT
-        rows span the full hall width, leaving no side-wall clearance. Kept in
-        lock-step with tools/seed_hall_crahs.perimeter_positions()."""
+        """(fx, fy) for *target* CRAHs lined along the hall's BACK wall (behind
+        the last IT row), evenly spread across the width — the curated Hall A
+        layout. The front wall can't hold CRAHs (Row 1 sits there in a network
+        hall, and a unit off the front wall pokes past it); the long side walls
+        are blocked by full-width rack rows. Halls are wide enough that all
+        `target` units fit one back wall. Kept in lock-step with
+        tools/seed_hall_crahs.perimeter_positions()."""
         width = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
         back_y = round(geo.row_y(n_rows), 4)            # back wall, from geometry
-        fy = round(geo.rack_x(1), 4)                    # 0.3 m off the front wall
-        n_back = (target + 1) // 2
-        n_front = target - n_back
-        pos = [(round(width * (j + 0.5) / n_back, 4), back_y) for j in range(n_back)]
-        pos += [(round(width * (j + 0.5) / n_front, 4), fy) for j in range(n_front)]
-        return pos
+        return [(round(width * (j + 0.5) / target, 4), back_y) for j in range(target)]
 
     def _ensure_hall_crahs(self, rk: tuple, infra: Optional[dict] = None) -> list:
         """Install the hall's FULL CRAH complement (top up to _hall_crah_target),

@@ -65,20 +65,15 @@ def hall_grid(ext: dict, has_local_spine: bool):
 
 
 def perimeter_positions(ext: dict, rpr: int, n_rows: int, target: int) -> list:
-    """(floor_x, floor_y) for *target* CRAHs distributed across the hall's two
-    free END walls — back (behind the last IT row) and front (ahead of the
-    first). Units are balanced across both walls (back takes the extra when the
-    count is odd) and evenly spread along each wall's width, so per-wall density
-    is ~halved vs. lining a single wall. The long side walls are skipped: the IT
-    rows span the full hall width, leaving no side-wall clearance."""
+    """(floor_x, floor_y) for *target* CRAHs lined along the hall's BACK wall
+    (behind the last IT row), evenly spread across the width — the curated
+    Hall A layout. The front wall can't hold CRAHs (in a network hall Row 1 sits
+    there, and a unit centered off the front wall pokes past it); the long side
+    walls are blocked by full-width rack rows. The halls are wide enough (7.8–
+    8.4 m) that all `target` units fit one back wall at ~1.1–1.2 m pitch."""
     width = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
     by = round(geo.row_y(n_rows), 4)                           # back wall, from geometry
-    fy = round(geo.rack_x(1), 4)                               # 0.3 m off the front wall
-    n_back = (target + 1) // 2
-    n_front = target - n_back
-    pos = [(round(width * (j + 0.5) / n_back, 4), by) for j in range(n_back)]
-    pos += [(round(width * (j + 0.5) / n_front, 4), fy) for j in range(n_front)]
-    return pos
+    return [(round(width * (j + 0.5) / target, 4), by) for j in range(target)]
 
 
 def next_free_mgmt(seed_ip: str, used: set) -> str:
@@ -169,6 +164,15 @@ def main(path: str) -> int:
                               "dst_iface": 0, "broken": False, "layer": "power"})
                 total_powered += 1
 
+        # Line all CRAHs along the BACK wall, evenly spread. Repositions the
+        # existing units too (so re-runs re-lay them onto the current geometry),
+        # and runs BEFORE the at-target early-continue so a hall already at its
+        # complement still gets re-laid.
+        positions = perimeter_positions(ext, rpr, n_rows, target)
+        for i, n in enumerate(existing):
+            n["device"]["floor_x"], n["device"]["floor_y"] = positions[i]
+            n["device"]["rack_num"] = i + 1
+
         if len(existing) >= target:
             continue
 
@@ -182,16 +186,6 @@ def main(path: str) -> int:
                 chwr = e["dst"]
             elif e["src"] == tmpl["id"] and e.get("layer") == "management":
                 oob = e["dst"]
-
-        # Perimeter distribution across the two FREE end walls — the back wall
-        # (behind the last IT row) and the front wall (ahead of the first). The
-        # long side walls are occupied by full-width rack rows, so the front+back
-        # end walls are the realizable perimeter; splitting across both roughly
-        # halves per-wall density vs. lining a single wall.
-        positions = perimeter_positions(ext, rpr, n_rows, target)
-        for i, n in enumerate(existing):
-            n["device"]["floor_x"], n["device"]["floor_y"] = positions[i]
-            n["device"]["rack_num"] = i + 1
 
         for i in range(len(existing), target):
             new = copy.deepcopy(tmpl)
