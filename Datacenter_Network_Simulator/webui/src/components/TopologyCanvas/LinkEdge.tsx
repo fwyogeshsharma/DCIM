@@ -21,13 +21,13 @@ export const COOL_HOT  = '#fb923c'   // warm return / hot condenser water
 // (chilled supply / cooled return) from the device names at its endpoints.
 export function isHotFlow(src: string, dst: string): boolean {
   const s = src.toUpperCase(), t = dst.toUpperCase()
-  if (s.startsWith('CRAH')) return true            // CHW return: hall → chiller
+  if (s.startsWith('CRAH')) return true            // CHW return: CRAH → CHWR
   if (s.includes('CHWR') || t.includes('CHWR')) return true
-  if (s.includes('CWP') || t.includes('CWP')) return true   // condenser pump (hot side)
-  if (t.startsWith('CT-')) return true             // to cooling tower = hot
-  if (s.endsWith('-CW') || t.endsWith('-CW')) return true   // CW valve branch
-  if (t.startsWith('CDU') && !s.startsWith('SENS')) return true  // cold-plate return → CDU (TCS hot)
-  return false                                     // chilled supply / cooled return
+  if (s.includes('CWP') || t.includes('CWP')) return true   // condenser-water pump (hot loop)
+  if (/^CT\d/.test(t)) return true                 // to a cooling tower (CT1/CT2…) = hot
+  if (s.startsWith('VCW') || t.startsWith('VCW')) return true   // condenser-water (VCW) valve
+  if (t.startsWith('CDU') && s.startsWith('SRV')) return true   // cold-plate return: server → CDU (hot)
+  return false                                     // chilled supply / cooled return = cold
 }
 
 export interface LinkEdgeData {
