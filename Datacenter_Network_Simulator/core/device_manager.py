@@ -489,6 +489,7 @@ _MODEL_RATED_W = {
     "panelboard 400a":  287500,
     "eaton rpp 250a":   179700,
     # ── UPS (real power, kW) ──
+    "exl s1 1200":     1200000,   # Vertiv Liebert EXL S1, large 2N-bus frame
     "symmetra px 250":  250000,
     "symmetra px 160":  160000,
     "symmetra px 100":  100000,
@@ -507,6 +508,7 @@ _MODEL_RATED_W = {
     "5px 2200":           1980,
     "gxt5 2000":          1800,
     # ── Generator (prime/standby real power, kW) ──
+    "3512c":           1500000,   # Caterpillar 3512C, 1500 kW standby (2N genset)
     "c1000d5":          800000,
     "c500d5":           400000,
     "c250d5":           200000,

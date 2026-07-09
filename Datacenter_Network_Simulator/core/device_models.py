@@ -414,6 +414,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Vertiv Liebert EXL S1 125kVA", Vendor.VERTIV, DeviceType.UPS,
                     [_g(_GE, 1)],
                     "125kVA/125kW transformer-free, 1 × GE management"),
+        DeviceModel("Vertiv Liebert EXL S1 1200kVA", Vendor.VERTIV, DeviceType.UPS,
+                    [_g(_GE, 1)],
+                    "1200kVA/1200kW transformer-free large frame, 1 × GE management"),
     ],
 
     # ── APC — PDU ─────────────────────────────────────────────────────────────
@@ -539,6 +542,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Caterpillar XQ600", Vendor.CATERPILLAR, DeviceType.GENERATOR,
                     [_g(_GE, 1)],
                     "600kVA / 480kW diesel, EMCP 4.4B, 1 × GE management"),
+        DeviceModel("Caterpillar 3512C", Vendor.CATERPILLAR, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "1875kVA / 1500kW diesel, EMCP 4.4B, 1 × GE management"),
     ],
 
     # ── Kohler — Diesel Generators ───────────────────────────────────────────

@@ -762,12 +762,33 @@ class FleetLifecycleEngine:
         ult_it_kw = max(1, rpr) * max(1, comp_rows) * self._DESIGN_RACK_KW
         return crah_count_for(ult_it_kw)
 
+    def _crah_perimeter_positions(self, ext: dict, rpr: int, n_rows: int,
+                                  target: int) -> list:
+        """(fx, fy) for *target* CRAHs split across the hall's two free END walls
+        — back (behind the last IT row) and front (ahead of the first) — evenly
+        spread along each wall's width. The long side walls are skipped: the IT
+        rows span the full hall width, leaving no side-wall clearance. Kept in
+        lock-step with tools/seed_hall_crahs.perimeter_positions()."""
+        width = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
+        back_y = round(geo.row_y(n_rows), 4)            # back wall, from geometry
+        fy = round(geo.rack_x(1), 4)                    # 0.3 m off the front wall
+        n_back = (target + 1) // 2
+        n_front = target - n_back
+        pos = [(round(width * (j + 0.5) / n_back, 4), back_y) for j in range(n_back)]
+        pos += [(round(width * (j + 0.5) / n_front, 4), fy) for j in range(n_front)]
+        return pos
+
     def _ensure_hall_crahs(self, rk: tuple, infra: Optional[dict] = None) -> list:
         """Install the hall's FULL CRAH complement (top up to _hall_crah_target),
         spread along the back wall and wired into the CHW loop like the curated
         CRAHs. Idempotent — adds only the shortfall. All CRAHs run (VFD-modulated on
         each hall's own inlet temp); none are staged off, so coverage is even and the
-        many-slow-fans cube-law keeps part-load fan energy low."""
+        many-slow-fans cube-law keeps part-load fan energy low.
+
+        The curated halls now SEED their full complement in the topology JSON (see
+        tools/seed_hall_crahs.py), so for them len(existing) >= target and this is a
+        no-op. It still runs for halls the fleet OPENS at runtime, which cannot be
+        pre-seeded — those get their complement built here on first fill."""
         dc, floor, room = rk
         infra = infra or self._hall_infra(rk)
         if infra is None:
@@ -783,17 +804,24 @@ class FleetLifecycleEngine:
             return existing
         rpr, _cr, _first, n_rows = self._hall_grid(rk)
         ext = self._hall_extent(rk) or {}
-        width_m = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
-        crah_y = round(geo.row_y(n_rows), 4)
+        # Distribute the complement across the two free END walls (front + back),
+        # matching tools/seed_hall_crahs.py — the long side walls are blocked by
+        # full-width rack rows, so front+back is the realizable perimeter and it
+        # halves per-wall density vs. lining one wall.
+        positions = self._crah_perimeter_positions(ext, rpr, n_rows, target)
         chw_supply = infra.get("chw_supply")
         chw_return = infra.get("chw_return")
+        # CRAHs are mechanical loads fed from the DC's mechanical RPP (single feed),
+        # like the curated CRAHs — without this the unit is unpowered.
+        mech_rpp = next((d for d in self.s.device_manager.get_all_devices()
+                         if (d.name or "").startswith(f"RPP-MECH-{dc}")), None)
         unit = int(getattr(tmpls[0], "rack_unit", 1) or 1)
         added = list(existing)
         for i in range(len(existing), target):
-            cx = round(width_m * (i + 0.5) / target, 4)
+            cx, cy = positions[i]
             c = self._clone(tmpls[i % len(tmpls)], dc, self._row_label(rk, "crah"),
                             200 + i, unit, prefix="crah", floor=floor, room=room,
-                            fx=cx, fy=crah_y)
+                            fx=cx, fy=cy)
             if c is None:
                 continue
             try:
@@ -801,6 +829,8 @@ class FleetLifecycleEngine:
                     self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
                 if chw_return is not None:
                     self.s.topology.add_link(c.id, chw_return.id, layer="cooling")
+                if mech_rpp is not None:
+                    self.s.topology.add_link(mech_rpp.id, c.id, layer="power")
             except Exception:
                 pass
             self._commission(c)
