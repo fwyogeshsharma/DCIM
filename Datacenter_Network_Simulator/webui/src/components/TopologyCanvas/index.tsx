@@ -14,6 +14,7 @@ import {
   useViewport,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import dagre from 'dagre'
 import DeviceNode from './DeviceNode'
 import LinkEdge, { isHotFlow } from './LinkEdge'
 import { useStore } from '../../store/useStore'
@@ -80,6 +81,55 @@ function tierLayout(devices: GraphDevice[]): Map<string, { x: number; y: number 
     const startX = -(tier.length * H_GAP) / 2 + H_GAP / 2
     tier.forEach((d, i) => pos.set(d.id, { x: startX + i * H_GAP, y }))
     y += V_GAP
+  }
+  return pos
+}
+
+// Per-layer tier rank (upper tier = smaller). Production keeps its curated
+// (stored) positions; the other layers connect a different set of nodes, so a
+// single position set can't be clean for all — each gets its own hierarchy.
+function roleRank(d: GraphDevice, layer: string): number {
+  const t = d.device_type
+  const nm = d.name || ''
+  if (layer === 'power')
+    return ({ generator: 0, ups: 1, rpp: 2, pdu: 3, floor_pdu: 3 } as Record<string, number>)[t] ?? 4
+  if (layer === 'cooling')
+    return ({ cooling_tower: 0, chiller: 1, pump: 2, valve: 3, sensor: 4, crah: 5, cdu: 6, server: 7 } as Record<string, number>)[t] ?? 8
+  if (layer === 'management') {
+    if (t === 'oob_switch') return nm.startsWith('OOBC') ? 0 : 1
+    return 2
+  }
+  return 0
+}
+
+// Hierarchical layout for a single layer using dagre — orients every edge
+// upper-tier → lower-tier (by roleRank) so the layer reads top-down, and lets
+// dagre order within ranks to minimise crossings. Cooling supply/return loops
+// collapse to one dagre edge. Nodes with no edge in this layer keep their
+// stored position (the server already filters to layer-relevant devices).
+function dagreLayout(devices: GraphDevice[], links: GraphLink[], layer: string): Map<string, { x: number; y: number }> {
+  const g = new dagre.graphlib.Graph()
+  g.setGraph({ rankdir: 'TB', nodesep: 26, ranksep: 110, marginx: 40, marginy: 40 })
+  g.setDefaultEdgeLabel(() => ({}))
+  const byId = new Map(devices.map(d => [d.id, d]))
+  for (const d of devices) g.setNode(d.id, { width: 150, height: 50 })
+  const seen = new Set<string>()
+  for (const l of links) {
+    if (l.layer !== layer) continue
+    const a = byId.get(l.src_id), b = byId.get(l.dst_id)
+    if (!a || !b) continue
+    let s = l.src_id, t = l.dst_id
+    if (roleRank(b, layer) < roleRank(a, layer)) { s = l.dst_id; t = l.src_id }  // upper → lower
+    const k = s + '>' + t
+    if (seen.has(k)) continue
+    seen.add(k)
+    g.setEdge(s, t)
+  }
+  dagre.layout(g)
+  const pos = new Map<string, { x: number; y: number }>()
+  for (const d of devices) {
+    const n = g.node(d.id) as { x: number; y: number } | undefined
+    pos.set(d.id, n ? { x: n.x, y: n.y } : { x: d.x, y: d.y })
   }
   return pos
 }
@@ -208,7 +258,16 @@ function Canvas() {
 
   const searchRef = useRef<HTMLInputElement>(null)
 
-  const positions = useMemo(() => tierLayout(graphDevices), [graphDevices])
+  // Production/all keep the curated (stored) positions — they read cleanly. The
+  // management/power/cooling layers each get their own dagre hierarchy.
+  const positions = useMemo(() => {
+    if (activeLayer === 'management' || activeLayer === 'power' || activeLayer === 'cooling')
+      return dagreLayout(graphDevices, graphLinks, activeLayer)
+    return tierLayout(graphDevices)
+  }, [graphDevices, graphLinks, activeLayer])
+
+  // Switching layer must snap nodes to the new layout (not preserve dragged pos).
+  useEffect(() => { repositionPending.current = true }, [activeLayer])
 
   // Link counts per layer
   const layerCounts = useMemo(() => {
@@ -228,6 +287,7 @@ function Canvas() {
     if (repositionPending.current) {
       repositionPending.current = false
       setNodes(built)
+      setTimeout(() => fitView({ padding: 0.1, duration: 400 }), 60)   // frame the new layout
     } else {
       setNodes(prev => {
         const prevPos = new Map(prev.map(n => [n.id, n.position]))
