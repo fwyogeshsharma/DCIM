@@ -50,6 +50,32 @@ from core import hall_geometry as geo
 if TYPE_CHECKING:
     from api.state import AppState
 
+# ── Unified device-naming scheme (see tools/rename_devices.py) ────────────────
+# Names lead with a type CODE, then location:
+#   rack rooms:     <CODE>-<DC>-<ROOM>-R<row>-<rack:02d>
+#   facility rooms: <CODE>-<DC>-<ROOM>
+_ROOM_CODE = {
+    "Server Hall A": "HA", "Server Hall B": "HB", "Central Plant": "CP",
+    "Network Room": "NR", "UPS Room": "UR", "Generator Room": "GR",
+    "Mechanical Room": "MR", "Roof": "RF",
+}
+# clone-prefix → leading type code (pdu*/rpp* carry an A/B side, handled inline)
+_PREFIX_CODE = {"srv": "SRV", "tor": "LF", "spine": "SP", "ev2": "EV2",
+                "crah": "CRAH", "sen": "SEN"}
+
+
+def _room_code(room: Optional[str]) -> str:
+    r = room or ""
+    m = re.match(r"Server Hall (\w)", r)          # Server Hall A/B/C… → HA/HB/HC
+    if m:
+        return "H" + m.group(1).upper()
+    return _ROOM_CODE.get(r, re.sub(r"[^A-Za-z]", "", r).upper()[:2] or "XX")
+
+
+def _is_rack_room(room: Optional[str]) -> bool:
+    r = room or ""
+    return r.startswith("Server Hall") or r == "Network Room"
+
 # Resource-safety ceiling on the fleet server count. This is NOT the facility
 # limit (that is ~470 — the installed cooling plant; see FleetConfig below), but
 # a hard guard on host resources: every commissioned server is a Redfish BMC
@@ -402,12 +428,14 @@ class FleetLifecycleEngine:
 
     # ── fabric port-capacity (spines fixed per pod, OOB stacks per hall) ──────
     def _is_spine(self, d: Optional[Device]) -> bool:
+        # Names lead with a type code (e.g. 'SP1-DC1-HA-R1-01'); the role is the
+        # first '-'-segment.
         return (d is not None and d.device_type == DeviceType.SWITCH
-                and "-SP" in (d.name or ""))
+                and (d.name or "").split("-", 1)[0].upper().startswith("SP"))
 
     def _is_leaf(self, d: Optional[Device]) -> bool:
         return (d is not None and d.device_type == DeviceType.SWITCH
-                and "-SP" not in (d.name or ""))
+                and not (d.name or "").split("-", 1)[0].upper().startswith("SP"))
 
     def _spine_downlink_cap(self, spine: Device) -> int:
         """Leaf-facing downlink ports on a spine — the max leaves (hence racks) a
@@ -635,14 +663,15 @@ class FleetLifecycleEngine:
         try:
             for nbr in self.s.topology.graph.neighbors(leaf.id):
                 d = self.s.device_manager.get_device(nbr)
-                if d and d.device_type == DeviceType.SWITCH and "-SP" in (d.name or ""):
+                if d and self._is_spine(d):
                     spines.append(d)
         except Exception:
             pass
         rpps = [d for d in self.s.device_manager.get_all_devices()
                 if d.device_type == DeviceType.RPP and self._room_key(d) == rk]
-        rpp_a = next((r for r in rpps if r.name and "A" in r.name.rsplit("-", 1)[-1]), None)
-        rpp_b = next((r for r in rpps if r.name and "B" in r.name.rsplit("-", 1)[-1]), None)
+        # A/B feed side is in the leading type code (e.g. 'RPPA-DC1-HA-R1-04').
+        rpp_a = next((r for r in rpps if r.name and "A" in r.name.split("-", 1)[0]), None)
+        rpp_b = next((r for r in rpps if r.name and "B" in r.name.split("-", 1)[0]), None)
         if rpp_a is None and rpps:
             rpp_a = rpps[0]
         if rpp_b is None and len(rpps) > 1:
@@ -661,11 +690,12 @@ class FleetLifecycleEngine:
                             if d.device_type == DeviceType.SENSOR
                             and self._room_key(d) == rk), None)
 
-        def _chw_header(suffix: str):
+        def _chw_header(code: str):
+            # Header sensors lead with their role code (e.g. 'CHWS-DC1-CP').
             return next((d for d in self.s.device_manager.get_all_devices()
                          if d.device_type == DeviceType.SENSOR
                          and (d.datacenter or "") == _dc
-                         and (d.name or "").upper().endswith(suffix)), None)
+                         and (d.name or "").upper().split("-", 1)[0] == code), None)
         chw_supply = _chw_header("CHWS")
         chw_return = _chw_header("CHWR")
         return {"srv_tmpl": srv_tmpl, "leaf_tmpl": leaf, "oob": oob,
@@ -809,9 +839,11 @@ class FleetLifecycleEngine:
         chw_supply = infra.get("chw_supply")
         chw_return = infra.get("chw_return")
         # CRAHs are mechanical loads fed from the DC's mechanical RPP (single feed),
-        # like the curated CRAHs — without this the unit is unpowered.
+        # like the curated CRAHs — without this the unit is unpowered. Resolved by
+        # ROOM (the mech RPP lives in the Mechanical Room) so it survives renames.
         mech_rpp = next((d for d in self.s.device_manager.get_all_devices()
-                         if (d.name or "").startswith(f"RPP-MECH-{dc}")), None)
+                         if d.device_type == DeviceType.RPP and (d.datacenter or "") == dc
+                         and (d.room or "") == "Mechanical Room"), None)
         unit = int(getattr(tmpls[0], "rack_unit", 1) or 1)
         added = list(existing)
         for i in range(len(existing), target):
@@ -1502,6 +1534,28 @@ class FleetLifecycleEngine:
         self._commission(dev)   # bring it online on SNMP/gNMI/Redfish
         return dev
 
+    def _scheme_name(self, dc: str, room: Optional[str], row, num,
+                     code: str, sided: bool = False, pad: int = 1) -> str:
+        """A device name in the unified scheme. *code* is the leading type token
+        (e.g. 'SRV', 'LF', 'PDUA', 'CRAH'). Rack-room devices get an R<row>-<rack>
+        location suffix; facility devices just <DC>-<ROOM>. A *sided* code (PDUA/
+        RPPB) is used bare when free (one per rack per side); everything else gets
+        the next free per-rack index, zero-padded to *pad* (servers → 2)."""
+        rc = _room_code(room)
+        loc = (f"{dc}-{rc}-R{int(row or 0)}-{int(num or 0):02d}"
+               if _is_rack_room(room) else f"{dc}-{rc}")
+        used = {d.name for d in self.s.device_manager.get_all_devices()}
+        if sided:
+            nm = f"{code}-{loc}"
+            if nm not in used:
+                return nm
+        i = 1
+        while True:
+            nm = f"{code}{i:0{pad}d}-{loc}"
+            if nm not in used:
+                return nm
+            i += 1
+
     def _clone(self, tmpl: Device, dc: str, row: int, num: int, unit: int,
                prefix: str, floor: Optional[str] = None,
                room: Optional[str] = None, fx: Optional[float] = None,
@@ -1534,26 +1588,17 @@ class FleetLifecycleEngine:
         elif mnote == "overflow" and not self._mgmt_overflow_warned:
             self._mgmt_overflow_warned = True
             self._log("[Fleet] mgmt base /22 full — spilling into overflow blocks")
-        # Match the curated naming style so a fleet device is indistinguishable
-        # from a hand-authored peer:
-        #   • servers      → DC2-SRV027 (continue the curated SRV sequence)
-        #   • rack PDUs    → PDU-DC2-SHC-R1-3-A (hall + physical row/rack + side)
-        #   • EV2 meters   → EV2-DC2-RPP05 (follow the per-DC RPP-meter counter,
-        #     not the arbitrary first-found ENERGY_MONITOR template name)
-        #   • everything else (LF/SP/OOB-SW/RPP-IT/CRAH/SENSOR…) → continue the
-        #     clone template's own curated numbering (DC1-LF01 → DC2-LF19)
-        # Only fall back to the old generic DC2-PREFIX-0007 form when a template
-        # carries no continuable counter.
+        # Name in the unified scheme so a fleet device is indistinguishable from a
+        # curated peer: <CODE>-<DC>-<ROOM>-R<row>-<rack> (see _scheme_name).
         dcn = dc or "DC"
-        if prefix == "srv":
-            name = self._next_srv_name(dcn)
-        elif prefix.startswith("pdu"):
-            side = "B" if prefix.endswith("b") else "A"
-            name = self._pdu_name(dcn, floor, room, row, num, side)
+        if prefix.startswith("pdu") or prefix.startswith("rpp"):
+            base = "PDU" if prefix.startswith("pdu") else "RPP"
+            code = base + ("B" if prefix.endswith("b") else "A")
+            name = self._scheme_name(dcn, room, row, num, code, sided=True)
         else:
-            tname = f"EV2-{dcn}-RPP01" if prefix == "ev2" else (getattr(tmpl, "name", "") or "")
-            name = (self._seq_name(tname, dcn)
-                    or self._unique_name(f"{dcn}-{prefix.upper()}".replace(" ", "-")))
+            code = _PREFIX_CODE.get(prefix, (prefix.upper() or "DEV").replace(" ", "-"))
+            name = self._scheme_name(dcn, room, row, num, code,
+                                     pad=(2 if prefix == "srv" else 1))
         try:
             dev = Device(
                 name=name,

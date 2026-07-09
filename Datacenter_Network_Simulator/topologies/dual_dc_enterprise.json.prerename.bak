@@ -12,7 +12,7 @@
         "y": 0
       },
       "device": {
-        "name": "RTR1-DC1-NR-R1-01",
+        "name": "DC1-ER1",
         "device_type": "router",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.2",
@@ -194,7 +194,7 @@
         "y": 0
       },
       "device": {
-        "name": "RTR2-DC1-NR-R1-01",
+        "name": "DC1-ER2",
         "device_type": "router",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.3",
@@ -376,7 +376,7 @@
         "y": 180
       },
       "device": {
-        "name": "FW1-DC1-NR-R1-02",
+        "name": "DC1-FW1",
         "device_type": "firewall",
         "vendor": "Palo Alto Networks",
         "ip_address": "10.50.0.4",
@@ -618,7 +618,7 @@
         "y": 180
       },
       "device": {
-        "name": "FW2-DC1-NR-R1-02",
+        "name": "DC1-FW2",
         "device_type": "firewall",
         "vendor": "Palo Alto Networks",
         "ip_address": "10.50.0.5",
@@ -860,7 +860,7 @@
         "y": 360
       },
       "device": {
-        "name": "LB1-DC1-NR-R1-03",
+        "name": "DC1-LB1",
         "device_type": "load_balancer",
         "vendor": "F5 Networks",
         "ip_address": "10.50.0.6",
@@ -1072,7 +1072,7 @@
         "y": 360
       },
       "device": {
-        "name": "LB2-DC1-NR-R1-03",
+        "name": "DC1-LB2",
         "device_type": "load_balancer",
         "vendor": "F5 Networks",
         "ip_address": "10.50.0.7",
@@ -1284,7 +1284,7 @@
         "y": 540
       },
       "device": {
-        "name": "COR1-DC1-NR-R1-04",
+        "name": "DC1-CORE1",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.8",
@@ -2306,7 +2306,7 @@
         "y": 540
       },
       "device": {
-        "name": "COR2-DC1-NR-R1-04",
+        "name": "DC1-CORE2",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.9",
@@ -3328,7 +3328,7 @@
         "y": 720
       },
       "device": {
-        "name": "SP1-DC1-HA-R1-01",
+        "name": "DC1-SP1",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.10",
@@ -4200,7 +4200,7 @@
         "y": 720
       },
       "device": {
-        "name": "SP2-DC1-HA-R1-01",
+        "name": "DC1-SP2",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.11",
@@ -5072,7 +5072,7 @@
         "y": 720
       },
       "device": {
-        "name": "SP1-DC1-HA-R1-02",
+        "name": "DC1-SP3",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.12",
@@ -5944,7 +5944,7 @@
         "y": 720
       },
       "device": {
-        "name": "SP2-DC1-HA-R1-02",
+        "name": "DC1-SP4",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.13",
@@ -6816,7 +6816,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HA-R2-01",
+        "name": "DC1-LF01",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.14",
@@ -7691,7 +7691,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HA-R2-02",
+        "name": "DC1-LF02",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.15",
@@ -8566,7 +8566,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HA-R2-03",
+        "name": "DC1-LF03",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.16",
@@ -9441,7 +9441,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HA-R2-04",
+        "name": "DC1-LF04",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.17",
@@ -10316,7 +10316,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HA-R2-05",
+        "name": "DC1-LF05",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.18",
@@ -11191,7 +11191,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HB-R2-01",
+        "name": "DC1-LF06",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.19",
@@ -12066,7 +12066,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HB-R2-02",
+        "name": "DC1-LF07",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.20",
@@ -12941,7 +12941,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HB-R2-03",
+        "name": "DC1-LF08",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.21",
@@ -13816,7 +13816,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HB-R2-04",
+        "name": "DC1-LF09",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.22",
@@ -14691,7 +14691,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC1-HB-R2-05",
+        "name": "DC1-LF10",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.23",
@@ -15566,7 +15566,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HA-R2-01",
+        "name": "DC1-SRV001",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.24",
@@ -15659,7 +15659,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HA-R2-01",
+        "name": "DC1-SRV002",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.25",
@@ -15752,7 +15752,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HA-R2-01",
+        "name": "DC1-SRV003",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.26",
@@ -15845,7 +15845,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HA-R2-01",
+        "name": "DC1-SRV004",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.27",
@@ -15938,7 +15938,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HA-R2-01",
+        "name": "DC1-SRV005",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.28",
@@ -16031,7 +16031,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HA-R2-01",
+        "name": "DC1-SRV006",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.29",
@@ -16124,7 +16124,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HA-R2-01",
+        "name": "DC1-SRV007",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.30",
@@ -16217,7 +16217,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HA-R2-01",
+        "name": "DC1-SRV008",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.31",
@@ -16310,7 +16310,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HA-R2-01",
+        "name": "DC1-SRV009",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.32",
@@ -16403,7 +16403,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HA-R2-01",
+        "name": "DC1-SRV010",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.33",
@@ -16496,7 +16496,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HA-R2-01",
+        "name": "DC1-SRV011",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.34",
@@ -16589,7 +16589,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HA-R2-01",
+        "name": "DC1-SRV012",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.35",
@@ -16682,7 +16682,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HA-R2-01",
+        "name": "DC1-SRV013",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.36",
@@ -16775,7 +16775,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HA-R2-01",
+        "name": "DC1-SRV014",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.37",
@@ -16868,7 +16868,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HA-R2-01",
+        "name": "DC1-SRV015",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.38",
@@ -16961,7 +16961,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HA-R2-01",
+        "name": "DC1-SRV016",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.39",
@@ -17054,7 +17054,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HA-R2-01",
+        "name": "DC1-SRV017",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.40",
@@ -17147,7 +17147,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HA-R2-02",
+        "name": "DC1-SRV018",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.41",
@@ -17240,7 +17240,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HA-R2-02",
+        "name": "DC1-SRV019",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.42",
@@ -17333,7 +17333,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HA-R2-02",
+        "name": "DC1-SRV020",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.43",
@@ -17426,7 +17426,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HA-R2-02",
+        "name": "DC1-SRV021",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.44",
@@ -17519,7 +17519,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HA-R2-02",
+        "name": "DC1-SRV022",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.45",
@@ -17612,7 +17612,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HA-R2-02",
+        "name": "DC1-SRV023",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.46",
@@ -17705,7 +17705,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HA-R2-02",
+        "name": "DC1-SRV024",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.47",
@@ -17798,7 +17798,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HA-R2-02",
+        "name": "DC1-SRV025",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.48",
@@ -17891,7 +17891,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HA-R2-02",
+        "name": "DC1-SRV026",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.49",
@@ -17984,7 +17984,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HA-R2-02",
+        "name": "DC1-SRV027",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.50",
@@ -18077,7 +18077,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HA-R2-02",
+        "name": "DC1-SRV028",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.51",
@@ -18170,7 +18170,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HA-R2-02",
+        "name": "DC1-SRV029",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.52",
@@ -18263,7 +18263,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HA-R2-02",
+        "name": "DC1-SRV030",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.53",
@@ -18356,7 +18356,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HA-R2-02",
+        "name": "DC1-SRV031",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.54",
@@ -18449,7 +18449,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HA-R2-02",
+        "name": "DC1-SRV032",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.55",
@@ -18542,7 +18542,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HA-R2-02",
+        "name": "DC1-SRV033",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.56",
@@ -18635,7 +18635,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HA-R2-02",
+        "name": "DC1-SRV034",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.57",
@@ -18728,7 +18728,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HA-R2-03",
+        "name": "DC1-SRV035",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.58",
@@ -18821,7 +18821,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HA-R2-03",
+        "name": "DC1-SRV036",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.59",
@@ -18914,7 +18914,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HA-R2-03",
+        "name": "DC1-SRV037",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.60",
@@ -19007,7 +19007,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HA-R2-03",
+        "name": "DC1-SRV038",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.61",
@@ -19100,7 +19100,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HA-R2-03",
+        "name": "DC1-SRV039",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.62",
@@ -19193,7 +19193,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HA-R2-03",
+        "name": "DC1-SRV040",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.63",
@@ -19286,7 +19286,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HA-R2-03",
+        "name": "DC1-SRV041",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.64",
@@ -19379,7 +19379,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HA-R2-03",
+        "name": "DC1-SRV042",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.65",
@@ -19472,7 +19472,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HA-R2-03",
+        "name": "DC1-SRV043",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.66",
@@ -19565,7 +19565,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HA-R2-03",
+        "name": "DC1-SRV044",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.67",
@@ -19658,7 +19658,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HA-R2-03",
+        "name": "DC1-SRV045",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.68",
@@ -19751,7 +19751,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HA-R2-03",
+        "name": "DC1-SRV046",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.69",
@@ -19844,7 +19844,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HA-R2-03",
+        "name": "DC1-SRV047",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.70",
@@ -19937,7 +19937,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HA-R2-03",
+        "name": "DC1-SRV048",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.71",
@@ -20030,7 +20030,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HA-R2-03",
+        "name": "DC1-SRV049",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.72",
@@ -20123,7 +20123,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HA-R2-03",
+        "name": "DC1-SRV050",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.73",
@@ -20216,7 +20216,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HA-R2-03",
+        "name": "DC1-SRV051",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.74",
@@ -20309,7 +20309,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HA-R2-04",
+        "name": "DC1-SRV052",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.75",
@@ -20402,7 +20402,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HA-R2-04",
+        "name": "DC1-SRV053",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.76",
@@ -20495,7 +20495,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HA-R2-04",
+        "name": "DC1-SRV054",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.77",
@@ -20588,7 +20588,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HA-R2-04",
+        "name": "DC1-SRV055",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.78",
@@ -20681,7 +20681,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HA-R2-04",
+        "name": "DC1-SRV056",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.79",
@@ -20774,7 +20774,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HA-R2-04",
+        "name": "DC1-SRV057",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.80",
@@ -20867,7 +20867,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HA-R2-04",
+        "name": "DC1-SRV058",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.81",
@@ -20960,7 +20960,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HA-R2-04",
+        "name": "DC1-SRV059",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.82",
@@ -21053,7 +21053,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HA-R2-04",
+        "name": "DC1-SRV060",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.83",
@@ -21146,7 +21146,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HA-R2-04",
+        "name": "DC1-SRV061",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.84",
@@ -21239,7 +21239,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HA-R2-04",
+        "name": "DC1-SRV062",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.85",
@@ -21332,7 +21332,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HA-R2-04",
+        "name": "DC1-SRV063",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.86",
@@ -21425,7 +21425,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HA-R2-04",
+        "name": "DC1-SRV064",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.87",
@@ -21518,7 +21518,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HA-R2-04",
+        "name": "DC1-SRV065",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.88",
@@ -21611,7 +21611,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HA-R2-04",
+        "name": "DC1-SRV066",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.89",
@@ -21704,7 +21704,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HA-R2-04",
+        "name": "DC1-SRV067",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.90",
@@ -21797,7 +21797,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HA-R2-04",
+        "name": "DC1-SRV068",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.91",
@@ -21890,7 +21890,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HA-R2-05",
+        "name": "DC1-SRV069",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.92",
@@ -21983,7 +21983,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HA-R2-05",
+        "name": "DC1-SRV070",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.93",
@@ -22076,7 +22076,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HA-R2-05",
+        "name": "DC1-SRV071",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.94",
@@ -22169,7 +22169,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HA-R2-05",
+        "name": "DC1-SRV072",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.95",
@@ -22262,7 +22262,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HA-R2-05",
+        "name": "DC1-SRV073",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.96",
@@ -22355,7 +22355,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HA-R2-05",
+        "name": "DC1-SRV074",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.97",
@@ -22448,7 +22448,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HA-R2-05",
+        "name": "DC1-SRV075",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.98",
@@ -22541,7 +22541,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HA-R2-05",
+        "name": "DC1-SRV076",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.99",
@@ -22634,7 +22634,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HA-R2-05",
+        "name": "DC1-SRV077",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.100",
@@ -22727,7 +22727,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HA-R2-05",
+        "name": "DC1-SRV078",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.101",
@@ -22820,7 +22820,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HA-R2-05",
+        "name": "DC1-SRV079",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.102",
@@ -22913,7 +22913,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HA-R2-05",
+        "name": "DC1-SRV080",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.103",
@@ -23006,7 +23006,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HA-R2-05",
+        "name": "DC1-SRV081",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.104",
@@ -23099,7 +23099,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HA-R2-05",
+        "name": "DC1-SRV082",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.105",
@@ -23192,7 +23192,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HA-R2-05",
+        "name": "DC1-SRV083",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.106",
@@ -23285,7 +23285,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HA-R2-05",
+        "name": "DC1-SRV084",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.107",
@@ -23378,7 +23378,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HA-R2-05",
+        "name": "DC1-SRV085",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.108",
@@ -23471,7 +23471,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HB-R2-01",
+        "name": "DC1-SRV086",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.109",
@@ -23564,7 +23564,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HB-R2-01",
+        "name": "DC1-SRV087",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.110",
@@ -23657,7 +23657,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HB-R2-01",
+        "name": "DC1-SRV088",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.111",
@@ -23750,7 +23750,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HB-R2-01",
+        "name": "DC1-SRV089",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.112",
@@ -23843,7 +23843,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HB-R2-01",
+        "name": "DC1-SRV090",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.113",
@@ -23936,7 +23936,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HB-R2-01",
+        "name": "DC1-SRV091",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.114",
@@ -24029,7 +24029,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HB-R2-01",
+        "name": "DC1-SRV092",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.115",
@@ -24122,7 +24122,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HB-R2-01",
+        "name": "DC1-SRV093",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.116",
@@ -24215,7 +24215,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HB-R2-01",
+        "name": "DC1-SRV094",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.117",
@@ -24308,7 +24308,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HB-R2-01",
+        "name": "DC1-SRV095",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.118",
@@ -24401,7 +24401,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HB-R2-01",
+        "name": "DC1-SRV096",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.119",
@@ -24494,7 +24494,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HB-R2-01",
+        "name": "DC1-SRV097",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.120",
@@ -24587,7 +24587,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HB-R2-01",
+        "name": "DC1-SRV098",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.121",
@@ -24680,7 +24680,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HB-R2-01",
+        "name": "DC1-SRV099",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.122",
@@ -24773,7 +24773,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HB-R2-01",
+        "name": "DC1-SRV100",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.123",
@@ -24866,7 +24866,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HB-R2-01",
+        "name": "DC1-SRV101",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.124",
@@ -24959,7 +24959,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HB-R2-01",
+        "name": "DC1-SRV102",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.125",
@@ -25052,7 +25052,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HB-R2-02",
+        "name": "DC1-SRV103",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.126",
@@ -25145,7 +25145,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HB-R2-02",
+        "name": "DC1-SRV104",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.127",
@@ -25238,7 +25238,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HB-R2-02",
+        "name": "DC1-SRV105",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.128",
@@ -25331,7 +25331,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HB-R2-02",
+        "name": "DC1-SRV106",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.129",
@@ -25424,7 +25424,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HB-R2-02",
+        "name": "DC1-SRV107",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.130",
@@ -25517,7 +25517,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HB-R2-02",
+        "name": "DC1-SRV108",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.131",
@@ -25610,7 +25610,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HB-R2-02",
+        "name": "DC1-SRV109",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.132",
@@ -25703,7 +25703,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HB-R2-02",
+        "name": "DC1-SRV110",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.133",
@@ -25796,7 +25796,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HB-R2-02",
+        "name": "DC1-SRV111",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.134",
@@ -25889,7 +25889,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HB-R2-02",
+        "name": "DC1-SRV112",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.135",
@@ -25982,7 +25982,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HB-R2-02",
+        "name": "DC1-SRV113",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.136",
@@ -26075,7 +26075,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HB-R2-02",
+        "name": "DC1-SRV114",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.137",
@@ -26168,7 +26168,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HB-R2-02",
+        "name": "DC1-SRV115",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.138",
@@ -26261,7 +26261,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HB-R2-02",
+        "name": "DC1-SRV116",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.139",
@@ -26354,7 +26354,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HB-R2-02",
+        "name": "DC1-SRV117",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.140",
@@ -26447,7 +26447,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HB-R2-02",
+        "name": "DC1-SRV118",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.141",
@@ -26540,7 +26540,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HB-R2-02",
+        "name": "DC1-SRV119",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.142",
@@ -26633,7 +26633,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HB-R2-03",
+        "name": "DC1-SRV120",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.143",
@@ -26726,7 +26726,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HB-R2-03",
+        "name": "DC1-SRV121",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.144",
@@ -26819,7 +26819,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HB-R2-03",
+        "name": "DC1-SRV122",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.145",
@@ -26912,7 +26912,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HB-R2-03",
+        "name": "DC1-SRV123",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.146",
@@ -27005,7 +27005,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HB-R2-03",
+        "name": "DC1-SRV124",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.147",
@@ -27098,7 +27098,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HB-R2-03",
+        "name": "DC1-SRV125",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.148",
@@ -27191,7 +27191,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HB-R2-03",
+        "name": "DC1-SRV126",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.149",
@@ -27284,7 +27284,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HB-R2-03",
+        "name": "DC1-SRV127",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.150",
@@ -27377,7 +27377,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HB-R2-03",
+        "name": "DC1-SRV128",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.151",
@@ -27470,7 +27470,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HB-R2-03",
+        "name": "DC1-SRV129",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.152",
@@ -27563,7 +27563,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HB-R2-03",
+        "name": "DC1-SRV130",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.153",
@@ -27656,7 +27656,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HB-R2-03",
+        "name": "DC1-SRV131",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.154",
@@ -27749,7 +27749,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HB-R2-03",
+        "name": "DC1-SRV132",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.155",
@@ -27842,7 +27842,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HB-R2-03",
+        "name": "DC1-SRV133",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.156",
@@ -27935,7 +27935,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HB-R2-03",
+        "name": "DC1-SRV134",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.157",
@@ -28028,7 +28028,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HB-R2-03",
+        "name": "DC1-SRV135",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.158",
@@ -28121,7 +28121,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HB-R2-03",
+        "name": "DC1-SRV136",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.159",
@@ -28214,7 +28214,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HB-R2-04",
+        "name": "DC1-SRV137",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.160",
@@ -28307,7 +28307,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HB-R2-04",
+        "name": "DC1-SRV138",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.161",
@@ -28400,7 +28400,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HB-R2-04",
+        "name": "DC1-SRV139",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.162",
@@ -28493,7 +28493,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HB-R2-04",
+        "name": "DC1-SRV140",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.163",
@@ -28586,7 +28586,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HB-R2-04",
+        "name": "DC1-SRV141",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.164",
@@ -28679,7 +28679,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HB-R2-04",
+        "name": "DC1-SRV142",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.165",
@@ -28772,7 +28772,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HB-R2-04",
+        "name": "DC1-SRV143",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.166",
@@ -28865,7 +28865,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HB-R2-04",
+        "name": "DC1-SRV144",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.167",
@@ -28958,7 +28958,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HB-R2-04",
+        "name": "DC1-SRV145",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.168",
@@ -29051,7 +29051,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HB-R2-04",
+        "name": "DC1-SRV146",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.169",
@@ -29144,7 +29144,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HB-R2-04",
+        "name": "DC1-SRV147",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.170",
@@ -29237,7 +29237,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HB-R2-04",
+        "name": "DC1-SRV148",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.171",
@@ -29330,7 +29330,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HB-R2-04",
+        "name": "DC1-SRV149",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.172",
@@ -29423,7 +29423,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HB-R2-04",
+        "name": "DC1-SRV150",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.173",
@@ -29516,7 +29516,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HB-R2-04",
+        "name": "DC1-SRV151",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.174",
@@ -29609,7 +29609,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HB-R2-04",
+        "name": "DC1-SRV152",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.175",
@@ -29702,7 +29702,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HB-R2-04",
+        "name": "DC1-SRV153",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.176",
@@ -29795,7 +29795,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC1-HB-R2-05",
+        "name": "DC1-SRV154",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.177",
@@ -29888,7 +29888,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC1-HB-R2-05",
+        "name": "DC1-SRV155",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.178",
@@ -29981,7 +29981,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC1-HB-R2-05",
+        "name": "DC1-SRV156",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.179",
@@ -30074,7 +30074,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC1-HB-R2-05",
+        "name": "DC1-SRV157",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.180",
@@ -30167,7 +30167,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC1-HB-R2-05",
+        "name": "DC1-SRV158",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.181",
@@ -30260,7 +30260,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC1-HB-R2-05",
+        "name": "DC1-SRV159",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.182",
@@ -30353,7 +30353,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC1-HB-R2-05",
+        "name": "DC1-SRV160",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.183",
@@ -30446,7 +30446,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC1-HB-R2-05",
+        "name": "DC1-SRV161",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.184",
@@ -30539,7 +30539,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC1-HB-R2-05",
+        "name": "DC1-SRV162",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.185",
@@ -30632,7 +30632,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC1-HB-R2-05",
+        "name": "DC1-SRV163",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.186",
@@ -30725,7 +30725,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC1-HB-R2-05",
+        "name": "DC1-SRV164",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.187",
@@ -30818,7 +30818,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC1-HB-R2-05",
+        "name": "DC1-SRV165",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.188",
@@ -30911,7 +30911,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC1-HB-R2-05",
+        "name": "DC1-SRV166",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.189",
@@ -31004,7 +31004,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC1-HB-R2-05",
+        "name": "DC1-SRV167",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.190",
@@ -31097,7 +31097,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC1-HB-R2-05",
+        "name": "DC1-SRV168",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.191",
@@ -31190,7 +31190,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV16-DC1-HB-R2-05",
+        "name": "DC1-SRV169",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.192",
@@ -31283,7 +31283,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV17-DC1-HB-R2-05",
+        "name": "DC1-SRV170",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.193",
@@ -31376,7 +31376,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HA-R2-01",
+        "name": "DC1-DHCP1",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.194",
@@ -31469,7 +31469,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HA-R2-02",
+        "name": "DC1-DHCP2",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.195",
@@ -31562,7 +31562,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HA-R2-03",
+        "name": "DC1-DNS1",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.196",
@@ -31655,7 +31655,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HA-R2-04",
+        "name": "DC1-DNS2",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.197",
@@ -31748,7 +31748,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HA-R2-05",
+        "name": "DC1-NTP1",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.198",
@@ -31841,7 +31841,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HB-R2-01",
+        "name": "DC1-NTP2",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.199",
@@ -31934,7 +31934,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HB-R2-02",
+        "name": "DC1-MON1",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.200",
@@ -32027,7 +32027,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HB-R2-03",
+        "name": "DC1-MON2",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.201",
@@ -32120,7 +32120,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HB-R2-04",
+        "name": "DC1-STOR1",
         "device_type": "server",
         "vendor": "IBM",
         "ip_address": "10.50.0.202",
@@ -32213,7 +32213,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV18-DC1-HB-R2-05",
+        "name": "DC1-STOR2",
         "device_type": "server",
         "vendor": "IBM",
         "ip_address": "10.50.0.203",
@@ -32306,7 +32306,7 @@
         "y": 0
       },
       "device": {
-        "name": "RTR1-DC2-NR-R1-01",
+        "name": "DC2-ER1",
         "device_type": "router",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.204",
@@ -32488,7 +32488,7 @@
         "y": 0
       },
       "device": {
-        "name": "RTR2-DC2-NR-R1-01",
+        "name": "DC2-ER2",
         "device_type": "router",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.205",
@@ -32670,7 +32670,7 @@
         "y": 180
       },
       "device": {
-        "name": "FW1-DC2-NR-R1-02",
+        "name": "DC2-FW1",
         "device_type": "firewall",
         "vendor": "Palo Alto Networks",
         "ip_address": "10.50.0.206",
@@ -32912,7 +32912,7 @@
         "y": 180
       },
       "device": {
-        "name": "FW2-DC2-NR-R1-02",
+        "name": "DC2-FW2",
         "device_type": "firewall",
         "vendor": "Palo Alto Networks",
         "ip_address": "10.50.0.207",
@@ -33154,7 +33154,7 @@
         "y": 360
       },
       "device": {
-        "name": "LB1-DC2-NR-R1-03",
+        "name": "DC2-LB1",
         "device_type": "load_balancer",
         "vendor": "F5 Networks",
         "ip_address": "10.50.0.208",
@@ -33366,7 +33366,7 @@
         "y": 360
       },
       "device": {
-        "name": "LB2-DC2-NR-R1-03",
+        "name": "DC2-LB2",
         "device_type": "load_balancer",
         "vendor": "F5 Networks",
         "ip_address": "10.50.0.209",
@@ -33578,7 +33578,7 @@
         "y": 540
       },
       "device": {
-        "name": "COR1-DC2-NR-R1-04",
+        "name": "DC2-CORE1",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.210",
@@ -34600,7 +34600,7 @@
         "y": 540
       },
       "device": {
-        "name": "COR2-DC2-NR-R1-04",
+        "name": "DC2-CORE2",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.211",
@@ -35622,7 +35622,7 @@
         "y": 720
       },
       "device": {
-        "name": "SP1-DC2-HA-R1-01",
+        "name": "DC2-SP1",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.212",
@@ -36494,7 +36494,7 @@
         "y": 720
       },
       "device": {
-        "name": "SP2-DC2-HA-R1-01",
+        "name": "DC2-SP2",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.213",
@@ -37366,7 +37366,7 @@
         "y": 720
       },
       "device": {
-        "name": "SP3-DC2-HA-R1-01",
+        "name": "DC2-SP3",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.214",
@@ -38238,7 +38238,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HA-R2-01",
+        "name": "DC2-LF01",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.215",
@@ -39113,7 +39113,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HA-R2-02",
+        "name": "DC2-LF02",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.216",
@@ -39988,7 +39988,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HA-R2-03",
+        "name": "DC2-LF03",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.217",
@@ -40863,7 +40863,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HA-R2-04",
+        "name": "DC2-LF04",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.218",
@@ -41738,7 +41738,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HB-R2-01",
+        "name": "DC2-LF05",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.219",
@@ -42613,7 +42613,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HB-R2-02",
+        "name": "DC2-LF06",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.220",
@@ -43488,7 +43488,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HB-R2-03",
+        "name": "DC2-LF07",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.221",
@@ -44363,7 +44363,7 @@
         "y": 900
       },
       "device": {
-        "name": "LF1-DC2-HB-R2-04",
+        "name": "DC2-LF08",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.222",
@@ -45238,7 +45238,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HA-R2-01",
+        "name": "DC2-SRV001",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.223",
@@ -45331,7 +45331,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HA-R2-01",
+        "name": "DC2-SRV002",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.224",
@@ -45424,7 +45424,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HA-R2-01",
+        "name": "DC2-SRV003",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.225",
@@ -45517,7 +45517,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HA-R2-01",
+        "name": "DC2-SRV004",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.226",
@@ -45610,7 +45610,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HA-R2-01",
+        "name": "DC2-SRV005",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.227",
@@ -45703,7 +45703,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HA-R2-01",
+        "name": "DC2-SRV006",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.228",
@@ -45796,7 +45796,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HA-R2-01",
+        "name": "DC2-SRV007",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.229",
@@ -45889,7 +45889,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HA-R2-01",
+        "name": "DC2-SRV008",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.230",
@@ -45982,7 +45982,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HA-R2-01",
+        "name": "DC2-SRV009",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.231",
@@ -46075,7 +46075,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HA-R2-01",
+        "name": "DC2-SRV010",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.232",
@@ -46168,7 +46168,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HA-R2-01",
+        "name": "DC2-SRV011",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.233",
@@ -46261,7 +46261,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HA-R2-01",
+        "name": "DC2-SRV012",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.234",
@@ -46354,7 +46354,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HA-R2-01",
+        "name": "DC2-SRV013",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.235",
@@ -46447,7 +46447,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HA-R2-01",
+        "name": "DC2-SRV014",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.236",
@@ -46540,7 +46540,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HA-R2-01",
+        "name": "DC2-SRV015",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.237",
@@ -46633,7 +46633,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HA-R2-02",
+        "name": "DC2-SRV016",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.238",
@@ -46726,7 +46726,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HA-R2-02",
+        "name": "DC2-SRV017",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.239",
@@ -46819,7 +46819,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HA-R2-02",
+        "name": "DC2-SRV018",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.240",
@@ -46912,7 +46912,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HA-R2-02",
+        "name": "DC2-SRV019",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.241",
@@ -47005,7 +47005,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HA-R2-02",
+        "name": "DC2-SRV020",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.242",
@@ -47098,7 +47098,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HA-R2-02",
+        "name": "DC2-SRV021",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.243",
@@ -47191,7 +47191,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HA-R2-02",
+        "name": "DC2-SRV022",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.244",
@@ -47284,7 +47284,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HA-R2-02",
+        "name": "DC2-SRV023",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.245",
@@ -47377,7 +47377,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HA-R2-02",
+        "name": "DC2-SRV024",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.246",
@@ -47470,7 +47470,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HA-R2-02",
+        "name": "DC2-SRV025",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.247",
@@ -47563,7 +47563,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HA-R2-02",
+        "name": "DC2-SRV026",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.248",
@@ -47656,7 +47656,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HA-R2-02",
+        "name": "DC2-SRV027",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.249",
@@ -47749,7 +47749,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HA-R2-02",
+        "name": "DC2-SRV028",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.250",
@@ -47842,7 +47842,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HA-R2-02",
+        "name": "DC2-SRV029",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.251",
@@ -47935,7 +47935,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HA-R2-02",
+        "name": "DC2-SRV030",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.0.252",
@@ -48028,7 +48028,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HA-R2-03",
+        "name": "DC2-SRV031",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.0.253",
@@ -48121,7 +48121,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HA-R2-03",
+        "name": "DC2-SRV032",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.254",
@@ -48214,7 +48214,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HA-R2-03",
+        "name": "DC2-SRV033",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.0.255",
@@ -48307,7 +48307,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HA-R2-03",
+        "name": "DC2-SRV034",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.0",
@@ -48400,7 +48400,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HA-R2-03",
+        "name": "DC2-SRV035",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.1",
@@ -48493,7 +48493,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HA-R2-03",
+        "name": "DC2-SRV036",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.2",
@@ -48586,7 +48586,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HA-R2-03",
+        "name": "DC2-SRV037",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.3",
@@ -48679,7 +48679,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HA-R2-03",
+        "name": "DC2-SRV038",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.4",
@@ -48772,7 +48772,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HA-R2-03",
+        "name": "DC2-SRV039",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.5",
@@ -48865,7 +48865,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HA-R2-03",
+        "name": "DC2-SRV040",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.6",
@@ -48958,7 +48958,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HA-R2-03",
+        "name": "DC2-SRV041",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.7",
@@ -49051,7 +49051,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HA-R2-03",
+        "name": "DC2-SRV042",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.8",
@@ -49144,7 +49144,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HA-R2-03",
+        "name": "DC2-SRV043",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.9",
@@ -49237,7 +49237,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HA-R2-03",
+        "name": "DC2-SRV044",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.10",
@@ -49330,7 +49330,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HA-R2-03",
+        "name": "DC2-SRV045",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.11",
@@ -49423,7 +49423,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HA-R2-04",
+        "name": "DC2-SRV046",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.12",
@@ -49516,7 +49516,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HA-R2-04",
+        "name": "DC2-SRV047",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.13",
@@ -49609,7 +49609,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HA-R2-04",
+        "name": "DC2-SRV048",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.14",
@@ -49702,7 +49702,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HA-R2-04",
+        "name": "DC2-SRV049",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.15",
@@ -49795,7 +49795,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HA-R2-04",
+        "name": "DC2-SRV050",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.16",
@@ -49888,7 +49888,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HA-R2-04",
+        "name": "DC2-SRV051",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.17",
@@ -49981,7 +49981,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HA-R2-04",
+        "name": "DC2-SRV052",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.18",
@@ -50074,7 +50074,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HA-R2-04",
+        "name": "DC2-SRV053",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.19",
@@ -50167,7 +50167,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HA-R2-04",
+        "name": "DC2-SRV054",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.20",
@@ -50260,7 +50260,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HA-R2-04",
+        "name": "DC2-SRV055",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.21",
@@ -50353,7 +50353,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HA-R2-04",
+        "name": "DC2-SRV056",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.22",
@@ -50446,7 +50446,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HA-R2-04",
+        "name": "DC2-SRV057",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.23",
@@ -50539,7 +50539,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HA-R2-04",
+        "name": "DC2-SRV058",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.24",
@@ -50632,7 +50632,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HA-R2-04",
+        "name": "DC2-SRV059",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.25",
@@ -50725,7 +50725,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HA-R2-04",
+        "name": "DC2-SRV060",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.26",
@@ -50818,7 +50818,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HB-R2-01",
+        "name": "DC2-SRV061",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.27",
@@ -50911,7 +50911,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HB-R2-01",
+        "name": "DC2-SRV062",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.28",
@@ -51004,7 +51004,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HB-R2-01",
+        "name": "DC2-SRV063",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.29",
@@ -51097,7 +51097,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HB-R2-01",
+        "name": "DC2-SRV064",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.30",
@@ -51190,7 +51190,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HB-R2-01",
+        "name": "DC2-SRV065",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.31",
@@ -51283,7 +51283,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HB-R2-01",
+        "name": "DC2-SRV066",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.32",
@@ -51376,7 +51376,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HB-R2-01",
+        "name": "DC2-SRV067",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.33",
@@ -51469,7 +51469,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HB-R2-01",
+        "name": "DC2-SRV068",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.34",
@@ -51562,7 +51562,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HB-R2-01",
+        "name": "DC2-SRV069",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.35",
@@ -51655,7 +51655,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HB-R2-01",
+        "name": "DC2-SRV070",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.36",
@@ -51748,7 +51748,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HB-R2-01",
+        "name": "DC2-SRV071",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.37",
@@ -51841,7 +51841,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HB-R2-01",
+        "name": "DC2-SRV072",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.38",
@@ -51934,7 +51934,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HB-R2-01",
+        "name": "DC2-SRV073",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.39",
@@ -52027,7 +52027,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HB-R2-01",
+        "name": "DC2-SRV074",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.40",
@@ -52120,7 +52120,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HB-R2-01",
+        "name": "DC2-SRV075",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.41",
@@ -52213,7 +52213,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HB-R2-02",
+        "name": "DC2-SRV076",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.42",
@@ -52306,7 +52306,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HB-R2-02",
+        "name": "DC2-SRV077",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.43",
@@ -52399,7 +52399,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HB-R2-02",
+        "name": "DC2-SRV078",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.44",
@@ -52492,7 +52492,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HB-R2-02",
+        "name": "DC2-SRV079",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.45",
@@ -52585,7 +52585,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HB-R2-02",
+        "name": "DC2-SRV080",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.46",
@@ -52678,7 +52678,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HB-R2-02",
+        "name": "DC2-SRV081",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.47",
@@ -52771,7 +52771,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HB-R2-02",
+        "name": "DC2-SRV082",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.48",
@@ -52864,7 +52864,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HB-R2-02",
+        "name": "DC2-SRV083",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.49",
@@ -52957,7 +52957,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HB-R2-02",
+        "name": "DC2-SRV084",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.50",
@@ -53050,7 +53050,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HB-R2-02",
+        "name": "DC2-SRV085",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.51",
@@ -53143,7 +53143,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HB-R2-02",
+        "name": "DC2-SRV086",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.52",
@@ -53236,7 +53236,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HB-R2-02",
+        "name": "DC2-SRV087",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.53",
@@ -53329,7 +53329,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HB-R2-02",
+        "name": "DC2-SRV088",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.54",
@@ -53422,7 +53422,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HB-R2-02",
+        "name": "DC2-SRV089",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.55",
@@ -53515,7 +53515,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HB-R2-02",
+        "name": "DC2-SRV090",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.56",
@@ -53608,7 +53608,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HB-R2-03",
+        "name": "DC2-SRV091",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.57",
@@ -53701,7 +53701,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HB-R2-03",
+        "name": "DC2-SRV092",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.58",
@@ -53794,7 +53794,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HB-R2-03",
+        "name": "DC2-SRV093",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.59",
@@ -53887,7 +53887,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HB-R2-03",
+        "name": "DC2-SRV094",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.60",
@@ -53980,7 +53980,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HB-R2-03",
+        "name": "DC2-SRV095",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.61",
@@ -54073,7 +54073,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HB-R2-03",
+        "name": "DC2-SRV096",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.62",
@@ -54166,7 +54166,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HB-R2-03",
+        "name": "DC2-SRV097",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.63",
@@ -54259,7 +54259,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HB-R2-03",
+        "name": "DC2-SRV098",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.64",
@@ -54352,7 +54352,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HB-R2-03",
+        "name": "DC2-SRV099",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.65",
@@ -54445,7 +54445,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HB-R2-03",
+        "name": "DC2-SRV100",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.66",
@@ -54538,7 +54538,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HB-R2-03",
+        "name": "DC2-SRV101",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.67",
@@ -54631,7 +54631,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HB-R2-03",
+        "name": "DC2-SRV102",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.68",
@@ -54724,7 +54724,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HB-R2-03",
+        "name": "DC2-SRV103",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.69",
@@ -54817,7 +54817,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HB-R2-03",
+        "name": "DC2-SRV104",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.70",
@@ -54910,7 +54910,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HB-R2-03",
+        "name": "DC2-SRV105",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.71",
@@ -55003,7 +55003,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV01-DC2-HB-R2-04",
+        "name": "DC2-SRV106",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.72",
@@ -55096,7 +55096,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV02-DC2-HB-R2-04",
+        "name": "DC2-SRV107",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.73",
@@ -55189,7 +55189,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV03-DC2-HB-R2-04",
+        "name": "DC2-SRV108",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.74",
@@ -55282,7 +55282,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV04-DC2-HB-R2-04",
+        "name": "DC2-SRV109",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.75",
@@ -55375,7 +55375,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV05-DC2-HB-R2-04",
+        "name": "DC2-SRV110",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.76",
@@ -55468,7 +55468,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV06-DC2-HB-R2-04",
+        "name": "DC2-SRV111",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.77",
@@ -55561,7 +55561,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV07-DC2-HB-R2-04",
+        "name": "DC2-SRV112",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.78",
@@ -55654,7 +55654,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV08-DC2-HB-R2-04",
+        "name": "DC2-SRV113",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.79",
@@ -55747,7 +55747,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV09-DC2-HB-R2-04",
+        "name": "DC2-SRV114",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.80",
@@ -55840,7 +55840,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV10-DC2-HB-R2-04",
+        "name": "DC2-SRV115",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.81",
@@ -55933,7 +55933,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV11-DC2-HB-R2-04",
+        "name": "DC2-SRV116",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.82",
@@ -56026,7 +56026,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV12-DC2-HB-R2-04",
+        "name": "DC2-SRV117",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.83",
@@ -56119,7 +56119,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV13-DC2-HB-R2-04",
+        "name": "DC2-SRV118",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.84",
@@ -56212,7 +56212,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV14-DC2-HB-R2-04",
+        "name": "DC2-SRV119",
         "device_type": "server",
         "vendor": "Supermicro",
         "ip_address": "10.50.1.85",
@@ -56305,7 +56305,7 @@
         "y": 1080
       },
       "device": {
-        "name": "SRV15-DC2-HB-R2-04",
+        "name": "DC2-SRV120",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.86",
@@ -56398,7 +56398,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HA-R2-01",
+        "name": "DC2-DHCP1",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.87",
@@ -56491,7 +56491,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HA-R2-02",
+        "name": "DC2-DHCP2",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.88",
@@ -56584,7 +56584,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HA-R2-03",
+        "name": "DC2-DNS1",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.89",
@@ -56677,7 +56677,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HA-R2-04",
+        "name": "DC2-DNS2",
         "device_type": "server",
         "vendor": "Hewlett Packard Enterprise",
         "ip_address": "10.50.1.90",
@@ -56770,7 +56770,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HB-R2-01",
+        "name": "DC2-NTP1",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.91",
@@ -56863,7 +56863,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HB-R2-02",
+        "name": "DC2-NTP2",
         "device_type": "server",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.92",
@@ -56956,7 +56956,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HB-R2-03",
+        "name": "DC2-MON1",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.93",
@@ -57049,7 +57049,7 @@
         "y": 1220
       },
       "device": {
-        "name": "SRV16-DC2-HB-R2-04",
+        "name": "DC2-MON2",
         "device_type": "server",
         "vendor": "Lenovo",
         "ip_address": "10.50.1.94",
@@ -57142,7 +57142,7 @@
         "y": 2000
       },
       "device": {
-        "name": "OOBC1-DC1-HA-R1-03",
+        "name": "OOB-CORE-DC1",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -57415,7 +57415,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB1-DC1-HA-R1-03",
+        "name": "OOB-SW-DC1-01",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -58228,7 +58228,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB2-DC1-HA-R1-03",
+        "name": "OOB-SW-DC1-02",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -59041,7 +59041,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB3-DC1-HA-R1-03",
+        "name": "OOB-SW-DC1-03",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -59854,7 +59854,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB4-DC1-HA-R1-03",
+        "name": "OOB-SW-DC1-04",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -60667,7 +60667,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB5-DC1-HA-R1-03",
+        "name": "OOB-SW-DC1-05",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -61480,7 +61480,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN1-DC1-HA-R2-01",
+        "name": "SENSOR-DC1-01",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -61559,7 +61559,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN2-DC1-HA-R2-01",
+        "name": "SENSOR-DC1-05",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -61638,7 +61638,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN1-DC1-HA-R2-02",
+        "name": "SENSOR-DC1-10",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -61717,7 +61717,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN1-DC1-HA-R2-03",
+        "name": "SENSOR-DC1-15",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -61796,7 +61796,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN1-DC1-HB-R2-01",
+        "name": "SENSOR-DC1-20",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -61875,7 +61875,7 @@
         "y": 2000
       },
       "device": {
-        "name": "OOBC1-DC2-HA-R1-02",
+        "name": "OOB-CORE-DC2",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -62117,7 +62117,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB1-DC2-HA-R1-02",
+        "name": "OOB-SW-DC2-01",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -62929,7 +62929,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB2-DC2-HA-R1-02",
+        "name": "OOB-SW-DC2-02",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -63741,7 +63741,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB3-DC2-HA-R1-02",
+        "name": "OOB-SW-DC2-03",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -64553,7 +64553,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB4-DC2-HA-R1-02",
+        "name": "OOB-SW-DC2-04",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -65365,7 +65365,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN1-DC2-HA-R2-01",
+        "name": "SENSOR-DC2-01",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -65444,7 +65444,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN2-DC2-HA-R2-01",
+        "name": "SENSOR-DC2-05",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -65523,7 +65523,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN1-DC2-HA-R2-02",
+        "name": "SENSOR-DC2-10",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -65602,7 +65602,7 @@
         "y": 1940
       },
       "device": {
-        "name": "SEN1-DC2-HB-R2-01",
+        "name": "SENSOR-DC2-15",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -65681,7 +65681,7 @@
         "y": 2680
       },
       "device": {
-        "name": "GEN1-DC1-GR",
+        "name": "GEN-DC1",
         "device_type": "generator",
         "vendor": "Caterpillar",
         "ip_address": "",
@@ -65755,7 +65755,7 @@
         "y": 2560
       },
       "device": {
-        "name": "UPSA-DC1-UR",
+        "name": "UPS-DC1-A",
         "device_type": "ups",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -65829,7 +65829,7 @@
         "y": 2560
       },
       "device": {
-        "name": "UPSB-DC1-UR",
+        "name": "UPS-DC1-B",
         "device_type": "ups",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -65903,7 +65903,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPA-DC1-HA-R1-04",
+        "name": "RPP-IT-DC1-A1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -65980,7 +65980,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPB-DC1-HA-R1-09",
+        "name": "RPP-IT-DC1-B1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66057,7 +66057,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPA-DC1-HB-R1-04",
+        "name": "RPP-IT-DC1-A2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66134,7 +66134,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPB-DC1-HB-R1-09",
+        "name": "RPP-IT-DC1-B2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66211,7 +66211,7 @@
         "y": 2680
       },
       "device": {
-        "name": "GEN1-DC2-GR",
+        "name": "GEN-DC2",
         "device_type": "generator",
         "vendor": "Caterpillar",
         "ip_address": "",
@@ -66285,7 +66285,7 @@
         "y": 2560
       },
       "device": {
-        "name": "UPSA-DC2-UR",
+        "name": "UPS-DC2-A",
         "device_type": "ups",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -66359,7 +66359,7 @@
         "y": 2560
       },
       "device": {
-        "name": "UPSB-DC2-UR",
+        "name": "UPS-DC2-B",
         "device_type": "ups",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -66433,7 +66433,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPA-DC2-HA-R1-03",
+        "name": "RPP-IT-DC2-A1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66510,7 +66510,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPB-DC2-HA-R1-13",
+        "name": "RPP-IT-DC2-B1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66587,7 +66587,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPA-DC2-HB-R1-03",
+        "name": "RPP-IT-DC2-A2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66664,7 +66664,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPB-DC2-HB-R1-13",
+        "name": "RPP-IT-DC2-B2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -66741,7 +66741,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC1-HA-R1-04",
+        "name": "EV2-DC1-RPP01",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -66818,7 +66818,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC1-HB-R1-04",
+        "name": "EV2-DC1-RPP02",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -66895,7 +66895,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC1-HA-R1-09",
+        "name": "EV2-DC1-RPP03",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -66972,7 +66972,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC1-HB-R1-09",
+        "name": "EV2-DC1-RPP04",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -67049,7 +67049,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC2-HA-R1-03",
+        "name": "EV2-DC2-RPP01",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -67126,7 +67126,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC2-HB-R1-03",
+        "name": "EV2-DC2-RPP02",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -67203,7 +67203,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC2-HA-R1-13",
+        "name": "EV2-DC2-RPP03",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -67280,7 +67280,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC2-HB-R1-13",
+        "name": "EV2-DC2-RPP04",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -67357,7 +67357,7 @@
         "y": 2920
       },
       "device": {
-        "name": "RPP1-DC1-MR",
+        "name": "RPP-MECH-DC1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -67431,7 +67431,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC1-HA-R9-01",
+        "name": "CRAH-DC1-1",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -67504,7 +67504,7 @@
         "y": 3175
       },
       "device": {
-        "name": "CRAH1-DC1-HA-R9-02",
+        "name": "CRAH-DC1-2",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -67577,7 +67577,7 @@
         "y": 3250
       },
       "device": {
-        "name": "CRAH1-DC1-HA-R9-03",
+        "name": "CRAH-DC1-3",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -67650,7 +67650,7 @@
         "y": 3325
       },
       "device": {
-        "name": "CRAH1-DC1-HA-R9-04",
+        "name": "CRAH-DC1-4",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -67723,7 +67723,7 @@
         "y": 2920
       },
       "device": {
-        "name": "EV21-DC1-MR",
+        "name": "EV2-COOL-DC1",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -67797,7 +67797,7 @@
         "y": 2680
       },
       "device": {
-        "name": "EV21-DC1-GR",
+        "name": "EV2-FAC-DC1",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -67871,7 +67871,7 @@
         "y": 2920
       },
       "device": {
-        "name": "RPP1-DC2-MR",
+        "name": "RPP-MECH-DC2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -67945,7 +67945,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC2-HA-R9-01",
+        "name": "CRAH-DC2-1",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -68018,7 +68018,7 @@
         "y": 3175
       },
       "device": {
-        "name": "CRAH1-DC2-HA-R9-02",
+        "name": "CRAH-DC2-2",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -68091,7 +68091,7 @@
         "y": 3250
       },
       "device": {
-        "name": "CRAH1-DC2-HA-R9-03",
+        "name": "CRAH-DC2-3",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -68164,7 +68164,7 @@
         "y": 3325
       },
       "device": {
-        "name": "CRAH1-DC2-HA-R9-04",
+        "name": "CRAH-DC2-4",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -68237,7 +68237,7 @@
         "y": 2920
       },
       "device": {
-        "name": "EV21-DC2-MR",
+        "name": "EV2-COOL-DC2",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -68311,7 +68311,7 @@
         "y": 2680
       },
       "device": {
-        "name": "EV21-DC2-GR",
+        "name": "EV2-FAC-DC2",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -68385,7 +68385,7 @@
         "y": 2920
       },
       "device": {
-        "name": "RPP1-DC1-CP",
+        "name": "RPP-PLANT-DC1",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -68459,7 +68459,7 @@
         "y": 2920
       },
       "device": {
-        "name": "EV21-DC1-CP",
+        "name": "EV2-CHILLER-DC1",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -68533,7 +68533,7 @@
         "y": 2920
       },
       "device": {
-        "name": "RPP1-DC2-CP",
+        "name": "RPP-PLANT-DC2",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -68607,7 +68607,7 @@
         "y": 2920
       },
       "device": {
-        "name": "EV21-DC2-CP",
+        "name": "EV2-CHILLER-DC2",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -68681,7 +68681,7 @@
         "y": 2920
       },
       "device": {
-        "name": "OOB1-DC1-CP",
+        "name": "OOB-PLANT-DC1",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -68951,7 +68951,7 @@
         "y": 3380
       },
       "device": {
-        "name": "CHL1-DC1-CP",
+        "name": "CHILLER-DC1-1",
         "device_type": "chiller",
         "vendor": "Carrier",
         "ip_address": "",
@@ -69026,7 +69026,7 @@
         "y": 3380
       },
       "device": {
-        "name": "CHL2-DC1-CP",
+        "name": "CHILLER-DC1-2",
         "device_type": "chiller",
         "vendor": "Carrier",
         "ip_address": "",
@@ -69101,7 +69101,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP1-DC1-CP",
+        "name": "CHWP-DC1-1",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -69176,7 +69176,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP2-DC1-CP",
+        "name": "CHWP-DC1-2",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -69251,7 +69251,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP3-DC1-CP",
+        "name": "CHWP-DC1-3",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -69326,7 +69326,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CWP1-DC1-CP",
+        "name": "CWP-DC1-1",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -69401,7 +69401,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CWP2-DC1-CP",
+        "name": "CWP-DC1-2",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -69476,7 +69476,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CT1-DC1-RF",
+        "name": "CT-DC1-1",
         "device_type": "cooling_tower",
         "vendor": "Baltimore Aircoil Company",
         "ip_address": "",
@@ -69551,7 +69551,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CT2-DC1-RF",
+        "name": "CT-DC1-2",
         "device_type": "cooling_tower",
         "vendor": "Baltimore Aircoil Company",
         "ip_address": "",
@@ -69626,7 +69626,7 @@
         "y": 3820
       },
       "device": {
-        "name": "VCHW-DC1-CP",
+        "name": "VLV-DC1-CHW",
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
@@ -69701,7 +69701,7 @@
         "y": 3820
       },
       "device": {
-        "name": "VCW-DC1-CP",
+        "name": "VLV-DC1-CW",
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
@@ -69776,7 +69776,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CHWS-DC1-CP",
+        "name": "SENS-DC1-CHWS",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -69852,7 +69852,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CHWR-DC1-CP",
+        "name": "SENS-DC1-CHWR",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -69928,7 +69928,7 @@
         "y": 4040
       },
       "device": {
-        "name": "FLOW-DC1-CP",
+        "name": "SENS-DC1-FLOW",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -70004,7 +70004,7 @@
         "y": 2920
       },
       "device": {
-        "name": "OOB1-DC2-CP",
+        "name": "OOB-PLANT-DC2",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -70274,7 +70274,7 @@
         "y": 3380
       },
       "device": {
-        "name": "CHL1-DC2-CP",
+        "name": "CHILLER-DC2-1",
         "device_type": "chiller",
         "vendor": "Carrier",
         "ip_address": "",
@@ -70349,7 +70349,7 @@
         "y": 3380
       },
       "device": {
-        "name": "CHL2-DC2-CP",
+        "name": "CHILLER-DC2-2",
         "device_type": "chiller",
         "vendor": "Carrier",
         "ip_address": "",
@@ -70424,7 +70424,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP1-DC2-CP",
+        "name": "CHWP-DC2-1",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -70499,7 +70499,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP2-DC2-CP",
+        "name": "CHWP-DC2-2",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -70574,7 +70574,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP3-DC2-CP",
+        "name": "CHWP-DC2-3",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -70649,7 +70649,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CWP1-DC2-CP",
+        "name": "CWP-DC2-1",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -70724,7 +70724,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CWP2-DC2-CP",
+        "name": "CWP-DC2-2",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -70799,7 +70799,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CT1-DC2-RF",
+        "name": "CT-DC2-1",
         "device_type": "cooling_tower",
         "vendor": "Baltimore Aircoil Company",
         "ip_address": "",
@@ -70874,7 +70874,7 @@
         "y": 3600
       },
       "device": {
-        "name": "CT2-DC2-RF",
+        "name": "CT-DC2-2",
         "device_type": "cooling_tower",
         "vendor": "Baltimore Aircoil Company",
         "ip_address": "",
@@ -70949,7 +70949,7 @@
         "y": 3820
       },
       "device": {
-        "name": "VCHW-DC2-CP",
+        "name": "VLV-DC2-CHW",
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
@@ -71024,7 +71024,7 @@
         "y": 3820
       },
       "device": {
-        "name": "VCW-DC2-CP",
+        "name": "VLV-DC2-CW",
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
@@ -71099,7 +71099,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CHWS-DC2-CP",
+        "name": "SENS-DC2-CHWS",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -71175,7 +71175,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CHWR-DC2-CP",
+        "name": "SENS-DC2-CHWR",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -71251,7 +71251,7 @@
         "y": 4040
       },
       "device": {
-        "name": "FLOW-DC2-CP",
+        "name": "SENS-DC2-FLOW",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -71327,7 +71327,7 @@
         "y": 3380
       },
       "device": {
-        "name": "CHL3-DC1-CP",
+        "name": "CHILLER-DC1-3",
         "device_type": "chiller",
         "vendor": "Carrier",
         "ip_address": "",
@@ -71402,7 +71402,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP4-DC1-CP",
+        "name": "CHWP-DC1-4",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -71477,7 +71477,7 @@
         "y": 3380
       },
       "device": {
-        "name": "CHL3-DC2-CP",
+        "name": "CHILLER-DC2-3",
         "device_type": "chiller",
         "vendor": "Carrier",
         "ip_address": "",
@@ -71552,7 +71552,7 @@
         "y": 3160
       },
       "device": {
-        "name": "CHWP4-DC2-CP",
+        "name": "CHWP-DC2-4",
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
@@ -71627,7 +71627,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC1-HA-R2-01",
+        "name": "CDU-DC1-1",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -71705,7 +71705,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC1-HA-R2-02",
+        "name": "CDU-DC1-2",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -71783,7 +71783,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC1-HA-R2-03",
+        "name": "CDU-DC1-3",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -71861,7 +71861,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC2-HA-R2-01",
+        "name": "CDU-DC2-1",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -71939,7 +71939,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC2-HA-R2-02",
+        "name": "CDU-DC2-2",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -72017,7 +72017,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC2-HA-R2-03",
+        "name": "CDU-DC2-3",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -72095,7 +72095,7 @@
         "y": 980
       },
       "device": {
-        "name": "SEN2-DC1-HB-R2-01",
+        "name": "SENSOR-DC1-21",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72174,7 +72174,7 @@
         "y": 2420
       },
       "device": {
-        "name": "SEN1-DC1-HB-R2-02",
+        "name": "SENSOR-DC1-24",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72253,7 +72253,7 @@
         "y": 980
       },
       "device": {
-        "name": "SEN2-DC2-HB-R2-01",
+        "name": "SENSOR-DC2-19",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72332,7 +72332,7 @@
         "y": 2420
       },
       "device": {
-        "name": "SEN1-DC2-HB-R2-02",
+        "name": "SENSOR-DC2-21",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72411,7 +72411,7 @@
         "y": 1400
       },
       "device": {
-        "name": "LEAK1-DC1-HA-R2-01",
+        "name": "SENS-DC1-CDU1-LEAK",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72490,7 +72490,7 @@
         "y": 1400
       },
       "device": {
-        "name": "LEAK1-DC1-HA-R2-02",
+        "name": "SENS-DC1-CDU2-LEAK",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72569,7 +72569,7 @@
         "y": 1400
       },
       "device": {
-        "name": "LEAK1-DC1-HA-R2-03",
+        "name": "SENS-DC1-CDU3-LEAK",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72648,7 +72648,7 @@
         "y": 1400
       },
       "device": {
-        "name": "LEAK1-DC2-HA-R2-01",
+        "name": "SENS-DC2-CDU1-LEAK",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72727,7 +72727,7 @@
         "y": 1400
       },
       "device": {
-        "name": "LEAK1-DC2-HA-R2-02",
+        "name": "SENS-DC2-CDU2-LEAK",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72806,7 +72806,7 @@
         "y": 1400
       },
       "device": {
-        "name": "LEAK1-DC2-HA-R2-03",
+        "name": "SENS-DC2-CDU3-LEAK",
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
@@ -72885,7 +72885,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CWS-DC1-CP",
+        "name": "SENS-DC1-CWS",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -72961,7 +72961,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CWR-DC1-CP",
+        "name": "SENS-DC1-CWR",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73037,7 +73037,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CTB-DC1-CP",
+        "name": "SENS-DC1-CTB",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73113,7 +73113,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CWS-DC2-CP",
+        "name": "SENS-DC2-CWS",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73189,7 +73189,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CWR-DC2-CP",
+        "name": "SENS-DC2-CWR",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73265,7 +73265,7 @@
         "y": 4040
       },
       "device": {
-        "name": "CTB-DC2-CP",
+        "name": "SENS-DC2-CTB",
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73341,7 +73341,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC1-HB-R9-01",
+        "name": "CRAH-DC1-5",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73414,7 +73414,7 @@
         "y": 3475
       },
       "device": {
-        "name": "CRAH1-DC1-HB-R9-02",
+        "name": "CRAH-DC1-6",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73487,7 +73487,7 @@
         "y": 3550
       },
       "device": {
-        "name": "CRAH1-DC1-HB-R9-03",
+        "name": "CRAH-DC1-7",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73560,7 +73560,7 @@
         "y": 3625
       },
       "device": {
-        "name": "CRAH1-DC1-HB-R9-04",
+        "name": "CRAH-DC1-8",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73633,7 +73633,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC1-HB-R2-01",
+        "name": "CDU-DC1-4",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -73711,7 +73711,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC1-HB-R2-02",
+        "name": "CDU-DC1-5",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -73789,7 +73789,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC1-HB-R2-03",
+        "name": "CDU-DC1-6",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -73867,7 +73867,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC2-HB-R9-01",
+        "name": "CRAH-DC2-5",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -73940,7 +73940,7 @@
         "y": 3475
       },
       "device": {
-        "name": "CRAH1-DC2-HB-R9-02",
+        "name": "CRAH-DC2-6",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -74013,7 +74013,7 @@
         "y": 3550
       },
       "device": {
-        "name": "CRAH1-DC2-HB-R9-03",
+        "name": "CRAH-DC2-7",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -74086,7 +74086,7 @@
         "y": 3625
       },
       "device": {
-        "name": "CRAH1-DC2-HB-R9-04",
+        "name": "CRAH-DC2-8",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -74159,7 +74159,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC2-HB-R2-01",
+        "name": "CDU-DC2-4",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -74237,7 +74237,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC2-HB-R2-02",
+        "name": "CDU-DC2-5",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -74315,7 +74315,7 @@
         "y": 1580
       },
       "device": {
-        "name": "CDU1-DC2-HB-R2-03",
+        "name": "CDU-DC2-6",
         "device_type": "cdu",
         "vendor": "CoolIT Systems",
         "ip_address": "",
@@ -74393,7 +74393,7 @@
         "y": 2680
       },
       "device": {
-        "name": "GEN2-DC1-GR",
+        "name": "GEN-DC1-2",
         "device_type": "generator",
         "vendor": "Caterpillar",
         "ip_address": "",
@@ -74467,7 +74467,7 @@
         "y": 2680
       },
       "device": {
-        "name": "GEN2-DC2-GR",
+        "name": "GEN-DC2-2",
         "device_type": "generator",
         "vendor": "Caterpillar",
         "ip_address": "",
@@ -74541,7 +74541,7 @@
         "y": 2920
       },
       "device": {
-        "name": "PDUA-DC1-CP",
+        "name": "PDU-DC1-CENT-R1-9-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -74617,7 +74617,7 @@
         "y": 2920
       },
       "device": {
-        "name": "PDUB-DC1-CP",
+        "name": "PDU-DC1-CENT-R1-9-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -74693,7 +74693,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-NR-R1-01",
+        "name": "PDU-DC1-NET-R1-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -74771,7 +74771,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-NR-R1-01",
+        "name": "PDU-DC1-NET-R1-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -74849,7 +74849,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-NR-R1-02",
+        "name": "PDU-DC1-NET-R1-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -74927,7 +74927,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-NR-R1-02",
+        "name": "PDU-DC1-NET-R1-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75005,7 +75005,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-NR-R1-03",
+        "name": "PDU-DC1-NET-R1-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -75083,7 +75083,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-NR-R1-03",
+        "name": "PDU-DC1-NET-R1-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75161,7 +75161,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-NR-R1-04",
+        "name": "PDU-DC1-NET-R1-4-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -75239,7 +75239,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-NR-R1-04",
+        "name": "PDU-DC1-NET-R1-4-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75317,7 +75317,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R1-01",
+        "name": "PDU-DC1-SHA-R1-5-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -75395,7 +75395,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R1-01",
+        "name": "PDU-DC1-SHA-R1-5-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75473,7 +75473,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R1-02",
+        "name": "PDU-DC1-SHA-R1-6-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -75551,7 +75551,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R1-02",
+        "name": "PDU-DC1-SHA-R1-6-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75629,7 +75629,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R1-03",
+        "name": "PDU-DC1-SHA-R1-7-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -75707,7 +75707,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R1-03",
+        "name": "PDU-DC1-SHA-R1-7-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75785,7 +75785,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R2-01",
+        "name": "PDU-DC1-SHA-R2-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -75864,7 +75864,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R2-01",
+        "name": "PDU-DC1-SHA-R2-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -75943,7 +75943,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R2-02",
+        "name": "PDU-DC1-SHA-R2-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76022,7 +76022,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R2-02",
+        "name": "PDU-DC1-SHA-R2-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -76101,7 +76101,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R2-03",
+        "name": "PDU-DC1-SHA-R2-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76180,7 +76180,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R2-03",
+        "name": "PDU-DC1-SHA-R2-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -76259,7 +76259,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R2-04",
+        "name": "PDU-DC1-SHA-R2-4-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76338,7 +76338,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R2-04",
+        "name": "PDU-DC1-SHA-R2-4-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -76417,7 +76417,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HA-R2-05",
+        "name": "PDU-DC1-SHA-R2-5-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76496,7 +76496,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HA-R2-05",
+        "name": "PDU-DC1-SHA-R2-5-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -76575,7 +76575,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R2-01",
+        "name": "PDU-DC1-SHB-R3-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76654,7 +76654,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R2-01",
+        "name": "PDU-DC1-SHB-R3-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -76733,7 +76733,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R2-02",
+        "name": "PDU-DC1-SHB-R3-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76812,7 +76812,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R2-02",
+        "name": "PDU-DC1-SHB-R3-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -76891,7 +76891,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R2-03",
+        "name": "PDU-DC1-SHB-R3-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -76970,7 +76970,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R2-03",
+        "name": "PDU-DC1-SHB-R3-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77049,7 +77049,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R2-04",
+        "name": "PDU-DC1-SHB-R3-4-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77128,7 +77128,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R2-04",
+        "name": "PDU-DC1-SHB-R3-4-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77207,7 +77207,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R2-05",
+        "name": "PDU-DC1-SHB-R3-5-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77286,7 +77286,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R2-05",
+        "name": "PDU-DC1-SHB-R3-5-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77365,7 +77365,7 @@
         "y": 2920
       },
       "device": {
-        "name": "PDUA-DC2-CP",
+        "name": "PDU-DC2-CENT-R1-9-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77441,7 +77441,7 @@
         "y": 2920
       },
       "device": {
-        "name": "PDUB-DC2-CP",
+        "name": "PDU-DC2-CENT-R1-9-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77517,7 +77517,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-NR-R1-01",
+        "name": "PDU-DC2-NET-R1-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77595,7 +77595,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-NR-R1-01",
+        "name": "PDU-DC2-NET-R1-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77673,7 +77673,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-NR-R1-02",
+        "name": "PDU-DC2-NET-R1-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77751,7 +77751,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-NR-R1-02",
+        "name": "PDU-DC2-NET-R1-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77829,7 +77829,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-NR-R1-03",
+        "name": "PDU-DC2-NET-R1-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -77907,7 +77907,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-NR-R1-03",
+        "name": "PDU-DC2-NET-R1-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -77985,7 +77985,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-NR-R1-04",
+        "name": "PDU-DC2-NET-R1-4-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -78063,7 +78063,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-NR-R1-04",
+        "name": "PDU-DC2-NET-R1-4-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -78141,7 +78141,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HA-R1-01",
+        "name": "PDU-DC2-SHA-R1-5-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -78219,7 +78219,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HA-R1-01",
+        "name": "PDU-DC2-SHA-R1-5-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -78297,7 +78297,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HA-R1-02",
+        "name": "PDU-DC2-SHA-R1-6-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -78375,7 +78375,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HA-R1-02",
+        "name": "PDU-DC2-SHA-R1-6-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -78453,7 +78453,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HA-R2-01",
+        "name": "PDU-DC2-SHA-R2-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -78532,7 +78532,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HA-R2-01",
+        "name": "PDU-DC2-SHA-R2-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -78611,7 +78611,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HA-R2-02",
+        "name": "PDU-DC2-SHA-R2-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -78690,7 +78690,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HA-R2-02",
+        "name": "PDU-DC2-SHA-R2-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -78769,7 +78769,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HA-R2-03",
+        "name": "PDU-DC2-SHA-R2-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -78848,7 +78848,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HA-R2-03",
+        "name": "PDU-DC2-SHA-R2-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -78927,7 +78927,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HA-R2-04",
+        "name": "PDU-DC2-SHA-R2-4-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79006,7 +79006,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HA-R2-04",
+        "name": "PDU-DC2-SHA-R2-4-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -79085,7 +79085,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HB-R2-01",
+        "name": "PDU-DC2-SHB-R3-1-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79164,7 +79164,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HB-R2-01",
+        "name": "PDU-DC2-SHB-R3-1-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -79243,7 +79243,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HB-R2-02",
+        "name": "PDU-DC2-SHB-R3-2-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79322,7 +79322,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HB-R2-02",
+        "name": "PDU-DC2-SHB-R3-2-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -79401,7 +79401,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HB-R2-03",
+        "name": "PDU-DC2-SHB-R3-3-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79480,7 +79480,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HB-R2-03",
+        "name": "PDU-DC2-SHB-R3-3-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -79559,7 +79559,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HB-R2-04",
+        "name": "PDU-DC2-SHB-R3-4-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79638,7 +79638,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HB-R2-04",
+        "name": "PDU-DC2-SHB-R3-4-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -79717,7 +79717,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPA-DC1-NR-R2-01",
+        "name": "RPP-NET-DC1-A",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79790,7 +79790,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPB-DC1-NR-R2-02",
+        "name": "RPP-NET-DC1-B",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79863,7 +79863,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPA-DC2-NR-R2-01",
+        "name": "RPP-NET-DC2-A",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -79936,7 +79936,7 @@
         "y": 2440
       },
       "device": {
-        "name": "RPPB-DC2-NR-R2-02",
+        "name": "RPP-NET-DC2-B",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -80009,7 +80009,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC1-NR-R2-01",
+        "name": "EV2-DC1-NET-A",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -80083,7 +80083,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC1-NR-R2-02",
+        "name": "EV2-DC1-NET-B",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -80157,7 +80157,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC2-NR-R2-01",
+        "name": "EV2-DC2-NET-A",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -80231,7 +80231,7 @@
         "y": 2440
       },
       "device": {
-        "name": "EV21-DC2-NR-R2-02",
+        "name": "EV2-DC2-NET-B",
         "device_type": "energy_monitor",
         "vendor": "Verdigris Technologies",
         "ip_address": "",
@@ -80305,7 +80305,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB1-DC1-NR-R1-04",
+        "name": "OOB-NET-DC1",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -81118,7 +81118,7 @@
         "y": 1780
       },
       "device": {
-        "name": "OOB1-DC2-NR-R1-04",
+        "name": "OOB-NET-DC2",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -81930,7 +81930,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC1-HA-R9-05",
+        "name": "CRAH-DC1-9",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82003,7 +82003,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC1-HA-R9-06",
+        "name": "CRAH-DC1-10",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82076,7 +82076,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC1-HA-R9-07",
+        "name": "CRAH-DC1-11",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82149,7 +82149,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC1-HB-R9-05",
+        "name": "CRAH-DC1-12",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82222,7 +82222,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC1-HB-R9-06",
+        "name": "CRAH-DC1-13",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82295,7 +82295,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC1-HB-R9-07",
+        "name": "CRAH-DC1-14",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82368,7 +82368,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC2-HA-R9-05",
+        "name": "CRAH-DC2-9",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82441,7 +82441,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC2-HA-R9-06",
+        "name": "CRAH-DC2-10",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82514,7 +82514,7 @@
         "y": 3100
       },
       "device": {
-        "name": "CRAH1-DC2-HA-R9-07",
+        "name": "CRAH-DC2-11",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82587,7 +82587,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC2-HB-R9-05",
+        "name": "CRAH-DC2-12",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82660,7 +82660,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC2-HB-R9-06",
+        "name": "CRAH-DC2-13",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82733,7 +82733,7 @@
         "y": 3400
       },
       "device": {
-        "name": "CRAH1-DC2-HB-R9-07",
+        "name": "CRAH-DC2-14",
         "device_type": "crah",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
@@ -82806,7 +82806,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB1-DC1-HB-R1-03",
+        "name": "OOB-SW-DC1-06",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -83619,7 +83619,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB2-DC1-HB-R1-03",
+        "name": "OOB-SW-DC1-07",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -84432,7 +84432,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB3-DC1-HB-R1-03",
+        "name": "OOB-SW-DC1-08",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -85245,7 +85245,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB4-DC1-HB-R1-03",
+        "name": "OOB-SW-DC1-09",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -86058,7 +86058,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB5-DC1-HB-R1-03",
+        "name": "OOB-SW-DC1-10",
         "device_type": "oob_switch",
         "vendor": "Cisco Systems",
         "ip_address": "",
@@ -86871,7 +86871,7 @@
         "y": 660
       },
       "device": {
-        "name": "SP1-DC1-HB-R1-01",
+        "name": "DC1-SP5",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.1.95",
@@ -87743,7 +87743,7 @@
         "y": 660
       },
       "device": {
-        "name": "SP2-DC1-HB-R1-01",
+        "name": "DC1-SP6",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.1.96",
@@ -88615,7 +88615,7 @@
         "y": 660
       },
       "device": {
-        "name": "SP1-DC1-HB-R1-02",
+        "name": "DC1-SP7",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.1.97",
@@ -89487,7 +89487,7 @@
         "y": 660
       },
       "device": {
-        "name": "SP2-DC1-HB-R1-02",
+        "name": "DC1-SP8",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.1.98",
@@ -90359,7 +90359,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB1-DC2-HB-R1-02",
+        "name": "OOB-SW-DC2-05",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -91171,7 +91171,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB2-DC2-HB-R1-02",
+        "name": "OOB-SW-DC2-06",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -91983,7 +91983,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB3-DC2-HB-R1-02",
+        "name": "OOB-SW-DC2-07",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -92795,7 +92795,7 @@
         "y": 1720
       },
       "device": {
-        "name": "OOB4-DC2-HB-R1-02",
+        "name": "OOB-SW-DC2-08",
         "device_type": "oob_switch",
         "vendor": "Dell Technologies",
         "ip_address": "",
@@ -93607,7 +93607,7 @@
         "y": 660
       },
       "device": {
-        "name": "SP1-DC2-HB-R1-01",
+        "name": "DC2-SP4",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.99",
@@ -94479,7 +94479,7 @@
         "y": 660
       },
       "device": {
-        "name": "SP2-DC2-HB-R1-01",
+        "name": "DC2-SP5",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.100",
@@ -95351,7 +95351,7 @@
         "y": 660
       },
       "device": {
-        "name": "SP3-DC2-HB-R1-01",
+        "name": "DC2-SP6",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.1.101",
@@ -96223,7 +96223,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R1-01",
+        "name": "PDU-DC1-SHB-R1-5-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -96301,7 +96301,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R1-01",
+        "name": "PDU-DC1-SHB-R1-5-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -96379,7 +96379,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R1-02",
+        "name": "PDU-DC1-SHB-R1-6-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -96457,7 +96457,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R1-02",
+        "name": "PDU-DC1-SHB-R1-6-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -96535,7 +96535,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC1-HB-R1-03",
+        "name": "PDU-DC1-SHB-R1-7-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -96613,7 +96613,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC1-HB-R1-03",
+        "name": "PDU-DC1-SHB-R1-7-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -96691,7 +96691,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HB-R1-01",
+        "name": "PDU-DC2-SHB-R1-5-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -96769,7 +96769,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HB-R1-01",
+        "name": "PDU-DC2-SHB-R1-5-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",
@@ -96847,7 +96847,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUA-DC2-HB-R1-02",
+        "name": "PDU-DC2-SHB-R1-6-A",
         "device_type": "pdu",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -96925,7 +96925,7 @@
         "y": 2320
       },
       "device": {
-        "name": "PDUB-DC2-HB-R1-02",
+        "name": "PDU-DC2-SHB-R1-6-B",
         "device_type": "pdu",
         "vendor": "Raritan",
         "ip_address": "",

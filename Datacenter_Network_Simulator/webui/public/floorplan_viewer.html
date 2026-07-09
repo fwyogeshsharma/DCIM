@@ -572,17 +572,25 @@ function rearMat(t,u){ const k='rearm_'+t+'_'+u; if(_frontCache[k]) return _fron
 // Built around local origin; caller positions/orients it. All meshes tagged clickable.
 function makePDU(d){ const g=new THREE.Group();
   const H=RACK_H*0.9, Wp=0.04, Dp=0.07, face=Dp/2+0.002;       // inner (+z) face carries the outlets
-  box3(g,Wp,H,Dp,0,0,0, mat3(0x232a33,{metalness:0.72,roughness:0.42}));       // extruded-aluminium body
-  box3(g,Wp,0.05,Dp,0,H/2+0.025,0, mat3(0x12161d,{metalness:0.6,roughness:0.5}));// end cap
-  // metering display + status LED near the top
-  box3(g,Wp*0.78,0.055,0.012,0,H/2-0.06,face, mat3(0x0a1418,{emissive:emi(tcolor('pdu'),0.85),roughness:0.4}));
-  box3(g,0.01,0.01,0.008,Wp*0.22,H/2-0.115,face, mat3(0x0a0d12,{emissive:emi(0x39d353,0.9)}));
-  // outlet bank: alternating C13 (blue) / C19 (grey) sockets down the face
-  const oc13=mat3(0x0a0d12,{emissive:emi(0x1c4a78,0.35),roughness:0.85});
-  const oc19=mat3(0x0a0d12,{emissive:emi(0x4a4f57,0.3),roughness:0.85});
+  const acc=tcolor('pdu');                                      // PDU identity hue (amber)
+  // Extruded-aluminium body. Against the near-black scene a plain dark strip
+  // vanishes, so the body carries a faint amber self-emission (identity + lift
+  // off the background) while staying a metal, not a glowing block.
+  box3(g,Wp,H,Dp,0,0,0, mat3(0x2d3844,{metalness:0.62,roughness:0.4,emissive:emi(acc,0.13)}));
+  box3(g,Wp,0.05,Dp,0,H/2+0.025,0, mat3(0x161b22,{metalness:0.6,roughness:0.5}));// end cap
+  // Full-height amber identity light-bar down one edge of the face — the cue
+  // that reads at aisle distance / low zoom where the small display can't.
+  box3(g,Wp*0.2,H*0.9,0.01,-Wp*0.32,0,face+0.004, mat3(0x2a1c04,{emissive:emi(acc,0.7),roughness:0.35}));
+  // metering display + status LED near the top (display pushed brighter)
+  box3(g,Wp*0.7,0.06,0.012,Wp*0.06,H/2-0.06,face, mat3(0x0a1418,{emissive:emi(acc,1.05),roughness:0.4}));
+  box3(g,0.01,0.01,0.008,Wp*0.28,H/2-0.12,face, mat3(0x0a0d12,{emissive:emi(0x39d353,0.95)}));
+  // outlet bank: alternating C13 (blue) / C19 (grey) sockets down the face,
+  // shifted clear of the light-bar and lifted so the column stays legible
+  const oc13=mat3(0x0a0d12,{emissive:emi(0x2a63b0,0.5),roughness:0.85});
+  const oc19=mat3(0x0a0d12,{emissive:emi(0x606773,0.42),roughness:0.85});
   const top=H/2-0.16, bot=-H/2+0.06, n=Math.max(10,Math.round((top-bot)/0.085));
   for(let i=0;i<n;i++){ const yy=top-(top-bot)*i/(n-1);
-    box3(g,Wp*0.6,0.026,0.012,0,yy,face, (i%4===0)?oc19:oc13); }
+    box3(g,Wp*0.5,0.026,0.012,Wp*0.12,yy,face, (i%4===0)?oc19:oc13); }   // shifted right, clear of the light-bar
   box3(g,0.013,0.06,0.013,0,-H/2-0.02,0.01, mat3(0x0a0d12,{roughness:0.95}));  // input power cord stub
   g.traverse(o=>{ o.userData.device=d; });
   return g; }

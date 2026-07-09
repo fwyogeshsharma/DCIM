@@ -112,10 +112,12 @@ def main(path: str) -> int:
         if n["device"]["device_type"] == "switch" and "-SP" in (n["device"].get("name") or "")
     }
 
-    # Mechanical RPP per DC — CRAHs are mechanical loads fed from RPP-MECH-<DC>
-    # (single feed), like the curated CRAHs. Used to power every seeded CRAH.
+    # Mechanical RPP per DC — CRAHs are mechanical loads fed from the DC's
+    # mechanical-room RPP (single feed), like the curated CRAHs. Resolved by ROOM
+    # so it survives device renames. Used to power every seeded CRAH.
     rpp_mech = {n["device"]["datacenter"]: n["id"] for n in nodes
-                if (n["device"].get("name") or "").startswith("RPP-MECH-")}
+                if n["device"]["device_type"] == "rpp"
+                and (n["device"].get("room") or "") == "Mechanical Room"}
 
     # Highest CRAH index per DC, to continue the CRAH-<DC>-<n> naming sequence.
     max_idx: dict = {}
