@@ -95,6 +95,13 @@ def promote_dc(topo, dc, log):
     nodes[:] = [n for n in nodes if n["id"] not in drop]
     edges[:] = [e for e in edges if e["src"] not in drop and e["dst"] not in drop]
 
+    # Hall B's floor (clones must NOT inherit Hall A's floor, or they split into a
+    # phantom rack_id and mis-render).
+    hb_floor = next((n["device"].get("floor") for n in nodes
+                     if n["device"]["datacenter"] == dc
+                     and n["device"].get("room") == HB
+                     and n["device"]["device_type"] != "pdu"), None)
+
     # Clone each Hall A network PDU into Hall B with remapped feed + loads.
     added = 0
     for ha_pdu in ha_net_pdus:
@@ -115,6 +122,8 @@ def promote_dc(topo, dc, log):
         new["id"] = nid; dv["id"] = nid
         dv["name"] = (ha_pdu["device"]["name"] or "").replace("-SHA-", "-SHB-")
         dv["room"] = HB
+        if hb_floor is not None:
+            dv["floor"] = hb_floor
         dv["floor_x"] = round(geo.rack_x(rack), 4)
         dv["floor_y"] = round(geo.row_y(1), 4)
         if dv.get("ip_address"):
