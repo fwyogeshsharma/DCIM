@@ -1588,10 +1588,11 @@
         "54c037ab",
         "e69c9a56",
         "1931e9ee",
-        "894a05e4"
+        "894a05e4",
+        "bbd65e8c"
       ],
-      "device_count": 8,
-      "it_power_draw_w": 455,
+      "device_count": 9,
+      "it_power_draw_w": 517,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -1617,10 +1618,11 @@
         "e14eb712",
         "09e66792",
         "4bd6cee6",
-        "f1afdb65"
+        "f1afdb65",
+        "2aaa46a5"
       ],
-      "device_count": 7,
-      "it_power_draw_w": 464,
+      "device_count": 8,
+      "it_power_draw_w": 562,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3080,10 +3082,11 @@
         "cda18b53",
         "cd338026",
         "e8496202",
-        "700c385e"
+        "700c385e",
+        "66245f85"
       ],
-      "device_count": 7,
-      "it_power_draw_w": 361,
+      "device_count": 8,
+      "it_power_draw_w": 423,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3160,10 +3163,11 @@
         "ae10420f",
         "de23644a",
         "86cf3fb2",
-        "c657ada3"
+        "c657ada3",
+        "1e3d0136"
       ],
-      "device_count": 6,
-      "it_power_draw_w": 357,
+      "device_count": 7,
+      "it_power_draw_w": 455,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -10337,6 +10341,54 @@
       "power_draw_w": 0,
       "feed_a": null,
       "feed_b": null
+    },
+    {
+      "id": "bbd65e8c",
+      "name": "OOBM1-DC1-HA-R1-03",
+      "device_type": "oob_switch",
+      "vendor": "Cisco Systems",
+      "model": "Cisco Catalyst 1000-48T",
+      "rack_id": "DC1:ServerHallA:F1:R1:RACK3",
+      "rack_unit": 40,
+      "power_draw_w": 62,
+      "feed_a": "PDUA-DC1-HA-R1-03",
+      "feed_b": "PDUB-DC1-HA-R1-03"
+    },
+    {
+      "id": "66245f85",
+      "name": "OOBM1-DC1-HB-R1-03",
+      "device_type": "oob_switch",
+      "vendor": "Cisco Systems",
+      "model": "Cisco Catalyst 1000-48T",
+      "rack_id": "DC1:ServerHallB:F2:R1:RACK3",
+      "rack_unit": 40,
+      "power_draw_w": 62,
+      "feed_a": "PDUA-DC1-HA-R1-03",
+      "feed_b": "PDUB-DC1-HA-R1-03"
+    },
+    {
+      "id": "2aaa46a5",
+      "name": "OOBM1-DC2-HA-R1-02",
+      "device_type": "oob_switch",
+      "vendor": "Dell Technologies",
+      "model": "Dell N1148T-ON",
+      "rack_id": "DC2:ServerHallA:F1:R1:RACK2",
+      "rack_unit": 40,
+      "power_draw_w": 98,
+      "feed_a": "PDUA-DC2-HA-R1-02",
+      "feed_b": "PDUB-DC2-HA-R1-02"
+    },
+    {
+      "id": "1e3d0136",
+      "name": "OOBM1-DC2-HB-R1-02",
+      "device_type": "oob_switch",
+      "vendor": "Dell Technologies",
+      "model": "Dell N1148T-ON",
+      "rack_id": "DC2:ServerHallB:F2:R1:RACK2",
+      "rack_unit": 40,
+      "power_draw_w": 98,
+      "feed_a": "PDUA-DC2-HA-R1-02",
+      "feed_b": "PDUB-DC2-HA-R1-02"
     }
   ],
   "summary": {
@@ -10346,6 +10398,6 @@
     ],
     "rooms": 16,
     "racks": 96,
-    "devices": 595
+    "devices": 599
   }
 }
