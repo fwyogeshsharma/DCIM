@@ -173,6 +173,12 @@ const TYPE = {
   crah:['CRAH','#38bdf8'], chiller:['chiller','#22d3d3'], pump:['pump','#2dd4bf'],
   cooling_tower:['cool twr','#2aa198'], valve:['valve','#7dd3c8'], cdu:['CDU','#5ead9e']
 };
+// Rack-fill colour priority (2D): the first type present wins, so a rack's colour
+// is deterministic and reflects its role. Facility/plant + RPP rank first; a
+// compute rack (server + ToR leaf) resolves to 'server', a spine rack to 'switch'.
+const RACK_COLOR_PRIO = ['cooling_tower','generator','ups','chiller','pump','valve',
+  'rpp','server','switch','oob_switch','firewall','router','load_balancer','cdu',
+  'sensor','pdu','energy_monitor'];
 const EMO = {router:'R',firewall:'FW',load_balancer:'LB',switch:'SW',server:'SRV',oob_switch:'OOB',
   sensor:'SEN',generator:'GEN',ups:'UPS',rpp:'RPP',pdu:'PDU',energy_monitor:'EM',crah:'CRAH',
   chiller:'CHL',pump:'PMP',cooling_tower:'CT',valve:'VLV',cdu:'CDU'};
@@ -421,8 +427,15 @@ function draw2D(){
     let fill;
     if(heatOn){ const v=m.val(r); const c= v>0? bandColor(v,m.bands):[60,60,60];
       fill=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; }
-    else { const main=ds[0]; fill = main? tcolor(main.device_type):'#444';
-      if(ct) fill=tcolor('cooling_tower'); else if(rpp) fill=tcolor('rpp'); }
+    else {
+      // Colour a rack by its most SIGNIFICANT device type (role priority), not by
+      // whichever device happens to be listed first — so the colour is stable and
+      // reflects the rack's job (compute rack → server, spine rack → switch, …)
+      // regardless of device insertion order.
+      const types=new Set(ds.map(d=>d.device_type));
+      const role=RACK_COLOR_PRIO.find(t=>types.has(t)) || (ds[0]&&ds[0].device_type);
+      fill = role? tcolor(role) : '#444';
+    }
     ctx.fillStyle=fill; ctx.fillRect(px,py,fw,fd);
     ctx.strokeStyle = (S.sel===r.rack_id)?'#fff':'#0b0e13'; ctx.lineWidth=(S.sel===r.rack_id)?2:1;
     ctx.strokeRect(px,py,fw,fd);
