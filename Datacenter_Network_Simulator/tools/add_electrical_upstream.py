@@ -257,8 +257,13 @@ def main(path: str) -> int:
                 edge(made["MCC1"], m)
 
         # ── Management: every new device is a polled SNMP endpoint ────────────
+        # Electrical gear is FACILITY (OT) gear and must land on the BMS access
+        # switch in the plant, never on an IT out-of-band switch. Matching on
+        # startswith("OOB1") used to pick OOB1-<dc>-HA-R1-03 — an IT access switch
+        # in a compute hall — putting the transfer switches on the same broadcast
+        # domain as server iDRACs. Resolve by ROOM instead.
         oob = next((n for n in in_dc(lambda d: d["device_type"] == "oob_switch"
-                                     and (d.get("name") or "").startswith("OOB1"))), None)
+                                     and d.get("room") == "Central Plant")), None)
         if oob is None:
             oob = next(iter(in_dc(lambda d: d["device_type"] == "oob_switch")), None)
         if oob is not None:

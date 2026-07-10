@@ -8,7 +8,8 @@ BMS/facility network separate from the IT OOB that manages servers/switches/PDUs
   1. adds one BMS OOB switch (OOBM…) in the network row, cloned from the hall's IT
      OOB, powered by the same network-row PDU pair,
   2. re-homes every CRAH's management link off the IT OOBs onto the BMS switch,
-  3. uplinks the BMS switch to the DC OOB-CORE (like an IT access OOB).
+  3. uplinks the BMS switch to the DC's BMS AGGREGATION pair (BMSC*), which sits
+     behind the management firewalls. See separate_bms_network.py.
 
 Servers/leaves/PDUs stay on the IT OOBs. Idempotent (skips a hall that already has
 an OOBM). Run export_dcim_floorplan.py + fix_edge_directions.py afterwards.
@@ -60,8 +61,15 @@ def main(path: str) -> int:
 
     added = rehomed = 0
     for dc in sorted({n["device"]["datacenter"] for n in nodes}):
-        core = next((n for n in nodes if (n["device"].get("name") or "").startswith("OOBC")
-                     and n["device"]["datacenter"] == dc), None)
+        # A BMS access switch uplinks to the BMS AGGREGATION pair, never to the IT
+        # OOB core — that is the OT/IT boundary, enforced at the management firewalls
+        # above the aggregation. Falls back to the OOB cores for a topology that has
+        # not been split yet (see separate_bms_network.py).
+        cores = [n for n in nodes if (n["device"].get("name") or "").startswith("BMSC")
+                 and n["device"]["datacenter"] == dc]
+        if not cores:
+            cores = [n for n in nodes if (n["device"].get("name") or "").startswith("OOBC")
+                     and n["device"]["datacenter"] == dc]
         for room in ("Server Hall A", "Server Hall B"):
             crahs = [n["id"] for n in sel(dc, room, "crah")]
             if not crahs:
@@ -108,7 +116,7 @@ def main(path: str) -> int:
             # power from the same network PDU pair; uplink to OOB-CORE
             for pdu in pdus:
                 edge(pdu, nid, "power")
-            if core is not None:
+            for core in cores:
                 edge(nid, core["id"], "management")            # BMS access -> core
 
             # ── re-home CRAHs: drop CRAH<->IT-OOB mgmt, add CRAH -> BMS ──

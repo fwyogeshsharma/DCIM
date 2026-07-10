@@ -474,10 +474,11 @@
         "ec012c83",
         "98993beb",
         "d58842de",
-        "baa80dd4"
+        "baa80dd4",
+        "838ad055"
       ],
-      "device_count": 4,
-      "it_power_draw_w": 766,
+      "device_count": 5,
+      "it_power_draw_w": 860,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -500,10 +501,11 @@
         "b4f942f1",
         "184989b7",
         "c6a7ee39",
-        "508ebad7"
+        "508ebad7",
+        "d5da462c"
       ],
-      "device_count": 4,
-      "it_power_draw_w": 668,
+      "device_count": 5,
+      "it_power_draw_w": 1009,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -526,10 +528,11 @@
         "497525c7",
         "67c1e1d1",
         "95a76d79",
-        "c17af08a"
+        "c17af08a",
+        "afa1b7f0"
       ],
-      "device_count": 4,
-      "it_power_draw_w": 576,
+      "device_count": 5,
+      "it_power_draw_w": 917,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -551,12 +554,13 @@
       "device_ids": [
         "5023ed7c",
         "0c083732",
+        "64d55984",
         "ff01cf99",
         "4b22d308",
         "c6916508"
       ],
-      "device_count": 5,
-      "it_power_draw_w": 553,
+      "device_count": 6,
+      "it_power_draw_w": 647,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -1097,10 +1101,11 @@
         "f141cf08",
         "bd2953cc",
         "ce3714af",
-        "7d7ddbed"
+        "7d7ddbed",
+        "dedccd76"
       ],
-      "device_count": 4,
-      "it_power_draw_w": 748,
+      "device_count": 5,
+      "it_power_draw_w": 855,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -1123,10 +1128,11 @@
         "ebdcd4f9",
         "b2177ffd",
         "7bc67e1f",
-        "e1b294de"
+        "e1b294de",
+        "b4d98ced"
       ],
-      "device_count": 4,
-      "it_power_draw_w": 562,
+      "device_count": 5,
+      "it_power_draw_w": 823,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -1149,10 +1155,11 @@
         "195ed21e",
         "621eeb8d",
         "d9d80b8d",
-        "e14eb70d"
+        "e14eb70d",
+        "5c0c26a0"
       ],
-      "device_count": 4,
-      "it_power_draw_w": 483,
+      "device_count": 5,
+      "it_power_draw_w": 744,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -1174,12 +1181,13 @@
       "device_ids": [
         "12aaf0b8",
         "63fd0813",
+        "431a7dbd",
         "b63b4dc3",
         "b118f68d",
         "72ba2408"
       ],
-      "device_count": 5,
-      "it_power_draw_w": 535,
+      "device_count": 6,
+      "it_power_draw_w": 642,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -1585,7 +1593,6 @@
       "cold_aisle": "CA1",
       "hot_aisle": null,
       "device_ids": [
-        "64d55984",
         "94f1c5b0",
         "ffe07bcf",
         "46aac8d9",
@@ -1595,8 +1602,8 @@
         "894a05e4",
         "bbd65e8c"
       ],
-      "device_count": 9,
-      "it_power_draw_w": 517,
+      "device_count": 8,
+      "it_power_draw_w": 423,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -1616,7 +1623,6 @@
       "cold_aisle": "CA1",
       "hot_aisle": null,
       "device_ids": [
-        "431a7dbd",
         "efbee6c2",
         "2067c82f",
         "e14eb712",
@@ -1625,8 +1631,8 @@
         "f1afdb65",
         "2aaa46a5"
       ],
-      "device_count": 8,
-      "it_power_draw_w": 562,
+      "device_count": 7,
+      "it_power_draw_w": 455,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2302,10 +2308,11 @@
       "device_ids": [
         "1d31a3b3",
         "6b65a6a4",
-        "47229389"
+        "47229389",
+        "e1f2b25c"
       ],
-      "device_count": 3,
-      "it_power_draw_w": 95,
+      "device_count": 4,
+      "it_power_draw_w": 190,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2392,10 +2399,11 @@
       "device_ids": [
         "f8b995ba",
         "8a175dfe",
-        "2702878b"
+        "2702878b",
+        "765fbae4"
       ],
-      "device_count": 3,
-      "it_power_draw_w": 68,
+      "device_count": 4,
+      "it_power_draw_w": 136,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3565,10 +3573,11 @@
       "cold_aisle": "CA1",
       "hot_aisle": null,
       "device_ids": [
-        "c224b59b"
+        "c224b59b",
+        "ddc1d63e"
       ],
-      "device_count": 1,
-      "it_power_draw_w": 0,
+      "device_count": 2,
+      "it_power_draw_w": 95,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3611,10 +3620,11 @@
       "cold_aisle": "CA1",
       "hot_aisle": null,
       "device_ids": [
-        "cb83d55f"
+        "cb83d55f",
+        "f697ad4b"
       ],
-      "device_count": 1,
-      "it_power_draw_w": 0,
+      "device_count": 2,
+      "it_power_draw_w": 68,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -8044,15 +8054,15 @@
     },
     {
       "id": "64d55984",
-      "name": "OOBC1-DC1-HA-R1-03",
+      "name": "OOBC1-DC1-NR-R1-04",
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 9300-48T",
-      "rack_id": "DC1:ServerHallA:F1:R1:RACK3",
-      "rack_unit": 42,
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK4",
+      "rack_unit": 38,
       "power_draw_w": 94,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-NR-R1-04",
+      "feed_b": "PDUB-DC1-NR-R1-04"
     },
     {
       "id": "94f1c5b0",
@@ -8176,15 +8186,15 @@
     },
     {
       "id": "431a7dbd",
-      "name": "OOBC1-DC2-HA-R1-02",
+      "name": "OOBC1-DC2-NR-R1-04",
       "device_type": "oob_switch",
       "vendor": "Dell Technologies",
       "model": "Dell N3248TE-ON",
-      "rack_id": "DC2:ServerHallA:F1:R1:RACK2",
-      "rack_unit": 42,
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK4",
+      "rack_unit": 38,
       "power_draw_w": 107,
-      "feed_a": "PDUA-DC2-HA-R1-02",
-      "feed_b": "PDUB-DC2-HA-R1-02"
+      "feed_a": "PDUA-DC2-NR-R1-04",
+      "feed_b": "PDUB-DC2-NR-R1-04"
     },
     {
       "id": "efbee6c2",
@@ -8740,7 +8750,7 @@
     },
     {
       "id": "1d31a3b3",
-      "name": "OOB1-DC1-CP",
+      "name": "OOBM1-DC1-CP",
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 9300-48T",
@@ -8920,7 +8930,7 @@
     },
     {
       "id": "f8b995ba",
-      "name": "OOB1-DC2-CP",
+      "name": "OOBM1-DC2-CP",
       "device_type": "oob_switch",
       "vendor": "Cisco Systems",
       "model": "Cisco Catalyst 9300-48T",
@@ -11425,6 +11435,126 @@
       "power_draw_w": 0,
       "feed_a": null,
       "feed_b": null
+    },
+    {
+      "id": "838ad055",
+      "name": "OOBC2-DC1-NR-R1-01",
+      "device_type": "oob_switch",
+      "vendor": "Cisco Systems",
+      "model": "Cisco Catalyst 9300-48T",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK1",
+      "rack_unit": 38,
+      "power_draw_w": 94,
+      "feed_a": "PDUA-DC1-NR-R1-01",
+      "feed_b": "PDUB-DC1-NR-R1-01"
+    },
+    {
+      "id": "dedccd76",
+      "name": "OOBC2-DC2-NR-R1-01",
+      "device_type": "oob_switch",
+      "vendor": "Dell Technologies",
+      "model": "Dell N3248TE-ON",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK1",
+      "rack_unit": 38,
+      "power_draw_w": 107,
+      "feed_a": "PDUA-DC2-NR-R1-01",
+      "feed_b": "PDUB-DC2-NR-R1-01"
+    },
+    {
+      "id": "e1f2b25c",
+      "name": "BMSC1-DC1-CP",
+      "device_type": "oob_switch",
+      "vendor": "Cisco Systems",
+      "model": "Cisco Catalyst 9300-48T",
+      "rack_id": "DC1:CentralPlant:F1:R1:RACK9",
+      "rack_unit": 40,
+      "power_draw_w": 95,
+      "feed_a": "PDUA-DC1-CP",
+      "feed_b": "PDUB-DC1-CP"
+    },
+    {
+      "id": "ddc1d63e",
+      "name": "BMSC2-DC1-MR",
+      "device_type": "oob_switch",
+      "vendor": "Cisco Systems",
+      "model": "Cisco Catalyst 9300-48T",
+      "rack_id": "DC1:MechanicalRoom:FG:R2:RACK2",
+      "rack_unit": 40,
+      "power_draw_w": 95,
+      "feed_a": "PDUA-DC1-CP",
+      "feed_b": "PDUB-DC1-CP"
+    },
+    {
+      "id": "d5da462c",
+      "name": "FWM1-DC1-NR-R1-02",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK2",
+      "rack_unit": 38,
+      "power_draw_w": 341,
+      "feed_a": "PDUA-DC1-NR-R1-02",
+      "feed_b": "PDUB-DC1-NR-R1-02"
+    },
+    {
+      "id": "afa1b7f0",
+      "name": "FWM2-DC1-NR-R1-03",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK3",
+      "rack_unit": 38,
+      "power_draw_w": 341,
+      "feed_a": "PDUA-DC1-NR-R1-03",
+      "feed_b": "PDUB-DC1-NR-R1-03"
+    },
+    {
+      "id": "765fbae4",
+      "name": "BMSC1-DC2-CP",
+      "device_type": "oob_switch",
+      "vendor": "Cisco Systems",
+      "model": "Cisco Catalyst 9300-48T",
+      "rack_id": "DC2:CentralPlant:F1:R1:RACK9",
+      "rack_unit": 40,
+      "power_draw_w": 68,
+      "feed_a": "PDUA-DC2-CP",
+      "feed_b": "PDUB-DC2-CP"
+    },
+    {
+      "id": "f697ad4b",
+      "name": "BMSC2-DC2-MR",
+      "device_type": "oob_switch",
+      "vendor": "Cisco Systems",
+      "model": "Cisco Catalyst 9300-48T",
+      "rack_id": "DC2:MechanicalRoom:FG:R2:RACK2",
+      "rack_unit": 40,
+      "power_draw_w": 68,
+      "feed_a": "PDUA-DC2-CP",
+      "feed_b": "PDUB-DC2-CP"
+    },
+    {
+      "id": "b4d98ced",
+      "name": "FWM1-DC2-NR-R1-02",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK2",
+      "rack_unit": 38,
+      "power_draw_w": 261,
+      "feed_a": "PDUA-DC2-NR-R1-02",
+      "feed_b": "PDUB-DC2-NR-R1-02"
+    },
+    {
+      "id": "5c0c26a0",
+      "name": "FWM2-DC2-NR-R1-03",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK3",
+      "rack_unit": 38,
+      "power_draw_w": 261,
+      "feed_a": "PDUA-DC2-NR-R1-03",
+      "feed_b": "PDUB-DC2-NR-R1-03"
     }
   ],
   "summary": {
@@ -11434,6 +11564,6 @@
     ],
     "rooms": 16,
     "racks": 124,
-    "devices": 631
+    "devices": 641
   }
 }
