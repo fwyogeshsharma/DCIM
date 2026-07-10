@@ -23,6 +23,16 @@ class CreateLinkRequest(BaseModel):
 class LayoutRequest(BaseModel):
     algorithm: str  # "default" | "spring" | "shell" | "kamada_kawai"
 
+
+class Point(BaseModel):
+    x: float
+    y: float
+
+
+class PositionsRequest(BaseModel):
+    positions: Dict[str, Point]   # device id → canvas coordinate
+
+
 router = APIRouter(prefix="/topology", tags=["Topology"])
 
 
@@ -255,12 +265,56 @@ def create_link(req: CreateLinkRequest):
     return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] created")
 
 
-@router.post("/layout")
-def apply_layout(req: LayoutRequest):
-    """Run a NetworkX graph layout and return new node positions."""
+@router.post("/positions", response_model=OkResponse)
+def save_positions(req: PositionsRequest):
+    """Persist canvas coordinates for a set of nodes, in one call.
+
+    Sent once when a drag ends, carrying every node that moved — a multi-node drag
+    is one request, not one per node. Unknown ids are ignored rather than failing
+    the whole batch: the canvas may still be holding a device the fleet removed
+    mid-drag, and dropping the rest of a 40-node move over that would be worse than
+    silently skipping it.
+    """
     s = _state()
     if s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
+    if not req.positions:
+        return OkResponse(message="No positions to save")
+    saved = 0
+    for device_id, p in req.positions.items():
+        if s.topology.get_device(device_id) is None:
+            continue
+        s.topology.set_position(device_id, float(p.x), float(p.y))
+        saved += 1
+    skipped = len(req.positions) - saved
+    msg = f"Saved {saved} node position(s)"
+    if skipped:
+        msg += f", skipped {skipped} unknown device(s)"
+    return OkResponse(message=msg)
+
+
+_LAYOUT_ALGORITHMS = ("default", "spring", "shell", "kamada_kawai")
+
+
+@router.post("/layout")
+def apply_layout(req: LayoutRequest):
+    """Run a NetworkX graph layout and return new node positions.
+
+    "default" returns the positions already stored on the topology (whatever the
+    canvas drag, the Qt view, or a previous auto-layout last wrote) rather than
+    computing anything.
+    """
+    s = _state()
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    if req.algorithm not in _LAYOUT_ALGORITHMS:
+        # Previously an unrecognised algorithm fell through to the stored-position
+        # branch, so a typo silently returned "no layout applied" instead of an error.
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown layout algorithm {req.algorithm!r}; "
+                   f"expected one of {', '.join(_LAYOUT_ALGORITHMS)}",
+        )
     try:
         import networkx as nx
         G = s.topology.graph
@@ -268,15 +322,36 @@ def apply_layout(req: LayoutRequest):
         if len(node_ids) == 0:
             return {"positions": {}}
 
+        if req.algorithm == "default":
+            # Canvas coordinates live in TopologyEngine._node_positions, NOT as
+            # networkx node attributes — nothing ever writes G.nodes[n]["x"], so
+            # reading it here returned {x: 0, y: 0} for every node and would have
+            # stacked the whole topology on the origin.
+            stored = {}
+            for nid in node_ids:
+                x, y = s.topology.get_position(nid)
+                stored[nid] = {"x": float(x), "y": float(y)}
+            return {"positions": stored}
+
         if req.algorithm == "spring":
             pos = nx.spring_layout(G, seed=42, iterations=50, scale=2000)
         elif req.algorithm == "shell":
             devices = {d.id: d for d in s.topology.get_all_devices()}
+            # Concentric shells, network core outward to facility plant. Anything
+            # unrecognised lands on the server shell, so every facility type is
+            # listed explicitly — otherwise a chiller would be drawn in among the
+            # compute nodes.
             TIERS = {
                 "router": 0, "firewall": 0,
                 "switch": 1, "load_balancer": 1,
                 "oob_switch": 2, "server": 2,
+                # electrical: distribution and the upstream that feeds it
                 "ups": 3, "pdu": 3, "floor_pdu": 3, "rpp": 3, "generator": 3, "sensor": 3,
+                "utility_feed": 3, "switchgear": 3, "ats": 3, "mcc": 3,
+                "energy_monitor": 3,
+                # mechanical plant
+                "crah": 4, "chiller": 4, "pump": 4, "cooling_tower": 4,
+                "valve": 4, "cdu": 4,
             }
             shells: dict = {}
             for nid in node_ids:
@@ -285,18 +360,11 @@ def apply_layout(req: LayoutRequest):
                 shells.setdefault(tier, []).append(nid)
             nlist = [shells[k] for k in sorted(shells) if shells[k]]
             pos = nx.shell_layout(G, nlist=nlist if len(nlist) > 1 else None, scale=2000)
-        elif req.algorithm == "kamada_kawai":
+        else:   # kamada_kawai — the only algorithm left, guarded above
             if len(node_ids) > 500:
                 raise HTTPException(status_code=400, detail="Too many nodes for Kamada-Kawai (limit: 500)")
             init_pos = nx.spring_layout(G, seed=42, scale=2000)
             pos = nx.kamada_kawai_layout(G, pos=init_pos, scale=2000)
-        else:
-            # default — return stored positions
-            positions = {}
-            for nid in node_ids:
-                nd = G.nodes[nid]
-                positions[nid] = {"x": float(nd.get("x", 0)), "y": float(nd.get("y", 0))}
-            return {"positions": positions}
 
         return {"positions": {nid: {"x": float(xy[0]), "y": float(xy[1])} for nid, xy in pos.items()}}
     except HTTPException:

@@ -230,10 +230,13 @@ function Canvas() {
       setNodes(built)
     } else {
       setNodes(prev => {
-        const prevPos = new Map(prev.map(n => [n.id, n.position]))
+        // Carry over BOTH the dragged position and the selection. Rebuilding from
+        // `built` alone would drop `selected` on every SSE topology sync, so a
+        // multi-node selection would silently evaporate mid-drag-setup.
+        const prevState = new Map(prev.map(n => [n.id, { position: n.position, selected: n.selected }]))
         return built.map(n => {
-          const p = prevPos.get(n.id)
-          return p ? { ...n, position: p } : n
+          const p = prevState.get(n.id)
+          return p ? { ...n, position: p.position, selected: p.selected } : n
         })
       })
     }
@@ -323,6 +326,18 @@ function Canvas() {
         .finally(() => { setLinkSrc(null) })
     }
   }, [linkMode, linkSrc, linkLayer, fetchGraph])
+
+  // React Flow hands us every node that moved in this drag — one node normally,
+  // the whole selection when several were shift-clicked. Persist them in a single
+  // request so a 40-node move is one round trip, not forty.
+  const onNodeDragStop = useCallback((_: React.MouseEvent, _node: Node, dragged: Node[]) => {
+    if (!dragged?.length) return
+    const positions: Record<string, { x: number; y: number }> = {}
+    for (const n of dragged) {
+      positions[n.id] = { x: Math.round(n.position.x), y: Math.round(n.position.y) }
+    }
+    api.savePositions(positions).catch(console.error)
+  }, [])
 
   const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
     e.preventDefault()
@@ -527,6 +542,8 @@ function Canvas() {
         }}>
           <I.info />
           Double-click a production link to break / restore it
+          <span style={{ opacity: 0.5 }}>·</span>
+          <span><b>Shift</b>+click or <b>Shift</b>+drag to select several nodes, then drag to move them together</span>
         </div>
       )}
 
@@ -536,6 +553,7 @@ function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeDragStop={onNodeDragStop}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeDoubleClick={onEdgeDoubleClick}
         nodeTypes={nodeTypes}
@@ -553,6 +571,16 @@ function Canvas() {
         }}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={!linkMode}
+        // Shift+click adds a node to the selection (React Flow defaults this to
+        // Ctrl/Cmd, which collides with browser and OS shortcuts). Shift+drag on
+        // empty canvas still draws a selection box — same key, different target,
+        // so both gestures build the same selection. Dragging any selected node
+        // then moves the whole set.
+        multiSelectionKeyCode="Shift"
+        selectionKeyCode="Shift"
+        // Link mode consumes clicks to pick endpoints; a selection forming
+        // underneath it would be invisible and confusing.
+        elementsSelectable={!linkMode}
       >
         <Background variant={BackgroundVariant.Dots} color="#2d3f5540" gap={20} size={1} />
       </ReactFlow>

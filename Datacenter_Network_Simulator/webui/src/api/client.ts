@@ -149,6 +149,9 @@ export const api = {
     post('/topology/links/create',  { src_id: src, dst_id: dst, layer }),
   layoutGraph:  (algorithm: string) =>
     post<{ positions: Record<string, { x: number; y: number }> }>('/topology/layout', { algorithm }),
+  // One call per drag, carrying every node that moved.
+  savePositions: (positions: Record<string, { x: number; y: number }>) =>
+    post('/topology/positions', { positions }),
 
   // devices
   devices:    (layer?: string)        => get(`/devices${layer ? `?layer=${layer}` : ''}`),
