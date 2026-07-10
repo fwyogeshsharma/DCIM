@@ -27,6 +27,7 @@ class DeviceType(str, Enum):
     SWITCHGEAR     = "switchgear"    # LV main board / generator paralleling bus -- SNMP + Modbus
     ATS            = "ats"           # Automatic Transfer Switch -- SNMP (ASCO/Eaton/APC)
     MCC            = "mcc"           # Motor Control Center -- unprotected mechanical distribution
+    MPP            = "mpp"           # Mechanical Power Panel -- per-hall CRAH panelboard, fed from an MCC
     RPP            = "rpp"           # Remote Power Panel -- passive breaker panel, no SNMP
     CRAH           = "crah"          # Computer Room Air Handler (chilled water) -- SNMP + BACnet (native comm card)
     CHILLER        = "chiller"       # Chiller unit (compressors + evaporator + condenser) -- BACnet only
@@ -45,6 +46,7 @@ FACILITY_TYPES = frozenset({
     DeviceType.SWITCHGEAR,
     DeviceType.ATS,
     DeviceType.MCC,
+    DeviceType.MPP,
     DeviceType.UPS,
     DeviceType.RPP,
     DeviceType.CRAH,
@@ -429,7 +431,42 @@ _MODEL_NAMEPLATE_W = {
     "power system s922": 1000,  # 2U 2S POWER9
     "x3850 x6":          1400,  # 4U 4S
     "flexsystem x240":    450,  # 2S blade
+    # ── Cooling plant ──
+    # These are MOTOR / COMPRESSOR nameplates off the spec sheet, not the tiny
+    # placeholder values the curated topology used to carry (a 7.3 kW "800 kW
+    # chiller"). The chiller follows from the model's own design efficiency:
+    # 800 kW cooling ÷ COP 5.5 (cooling_model.CHILLER_COP_RATED) ≈ 145 kW, i.e.
+    # ~0.64 kW/ton — a water-cooled centrifugal at its design point.
+    "19dv 800":          145000,  # Carrier 19DV, 800 kW cooling
+    "nb 100-200":         18500,  # Grundfos end-suction, primary chilled water
+    "nb 65-200":          11000,  # smaller end-suction frame
+    "tp 100-360":         18500,  # Grundfos in-line, condenser water
+    "pt2 series":         30000,  # BAC counterflow tower, VFD fan motor
+    "liebert pcw 100kw":   6500,  # Vertiv CRAH, EC plug fans at design airflow
+    "chx80":               1800,  # CoolIT CDU, coolant pump module
 }
+
+# Rated COOLING capacity (W of heat removed) for the units that remove heat.
+# Distinct from the electrical draw above: a chiller's spec sheet carries both, and
+# their ratio is its kW/ton. The live model needs the capacity to know a chiller's
+# true part-load ratio — without it, a chiller cooling 88 kW of IT with an 800 kW
+# machine would be evaluated on its part-load curve as if it were nearly fully
+# loaded, reporting an efficient COP while actually crawling along at ~11 % load.
+_MODEL_COOL_CAPACITY_W = {
+    "19dv 800":          800000,
+    "liebert pcw 100kw": 100000,
+    "chx80":              80000,
+}
+
+
+def cooling_capacity_w(model_name: str = "") -> int:
+    """Rated heat-removal capacity (W) for a chiller / CRAH / CDU SKU; 0 if the
+    model is unknown (callers then fall back to a load-ratio proxy)."""
+    m = (model_name or "").lower()
+    for key, w in _MODEL_COOL_CAPACITY_W.items():
+        if key in m:
+            return w
+    return 0
 # Model-name keywords that imply a much higher draw (GPU / AI / accelerated),
 # used as a fallback for models not in the per-SKU table above.
 _HIGH_POWER_KEYWORDS = ("gpu", "dgx", "a100", "h100", "l40", "mi300", "accel", "ai-", "ml-")
@@ -537,19 +574,29 @@ _MODEL_RATED_W = {
     "magnum ds 4000a":            2490000,   # Eaton main switchboard, 4000 A
     "7000 paralleling switchgear": 3000000,  # ASCO gen bus — sum of both gensets
     # ── Automatic transfer switch ──
-    "7000 series 3000a": 1870000,   # ASCO 3000 A bypass-isolation ATS
+    # An ATS carries its side's UPS plus its MCC. With the mechanical bus tie closed
+    # (its sibling's transfer switch failed) it carries BOTH MCCs, so the 4000 A frame
+    # is what a site with a real mechanical load actually installs.
+    "7000 series 4000a": 2490000,   # ASCO 4000 A bypass-isolation ATS
+    "7000 series 3000a": 1870000,
     "7000 series 2000a": 1250000,
     "atc-900 3000a":     1870000,   # Eaton
     # ── Motor control center (mechanical distribution) ──
-    "freedom 2100 mcc 800a":  499000,   # Eaton, 800 A
-    "freedom 2100 mcc 1200a": 748000,
+    "freedom 2100 mcc 1600a": 997000,   # Eaton, 1600 A — sized to carry BOTH mech buses
+    "freedom 2100 mcc 1200a": 748000,   #   across a closed tie, not just its own half
+    "freedom 2100 mcc 800a":  499000,
     "model 6 mcc 800a":       499000,   # Schneider
+    # ── Mechanical power panel (per-hall CRAH panelboard) ──
+    # CRAH fans are small (~6.5 kW each) and numerous; they hang off a panelboard
+    # in the hall, not off the chiller plant's motor control center.
+    "pow-r-line 3a 225a":     140300,   # Eaton, 225 A
+    "pow-r-line 3a 150a":      93500,   # Eaton, 150 A
 }
 # Device types that carry power (rated by throughput) rather than draw it.
 _DIST_RATED_TYPES = {DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.RPP,
                      DeviceType.UPS, DeviceType.GENERATOR,
                      DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                     DeviceType.ATS, DeviceType.MCC}
+                     DeviceType.ATS, DeviceType.MCC, DeviceType.MPP}
 
 
 def rated_capacity_w(device_type: "DeviceType", model_name: str = "") -> int:

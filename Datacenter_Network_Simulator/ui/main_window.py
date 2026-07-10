@@ -3653,7 +3653,7 @@ class MainWindow(QMainWindow):
         # an MCC or an RPP would otherwise count its own incomer as a branch.
         _upstream_types = {DeviceType.UPS, DeviceType.GENERATOR,
                            DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                           DeviceType.ATS}
+                           DeviceType.ATS, DeviceType.MCC}
 
         circuits_map: dict = {}
         device_ips: list = []

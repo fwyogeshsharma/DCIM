@@ -53,7 +53,7 @@ const TYPE_BADGE: Record<string, string> = {
   switch: '#1e6ec8', router: '#8b5cf6', server: '#059669',
   firewall: '#dc2626', load_balancer: '#d97706', ups: '#0891b2',
   pdu: '#065f46', floor_pdu: '#064e3b', rpp: '#4a044e', generator: '#713f12', oob_switch: '#4b5563', sensor: '#92400e',
-  utility_feed: '#3f3f46', switchgear: '#57534e', ats: '#92400e', mcc: '#155e75',
+  utility_feed: '#3f3f46', switchgear: '#57534e', ats: '#92400e', mcc: '#155e75', mpp: '#0e7490',
 }
 
 const ROW_STYLE = (i: number): React.CSSProperties => ({

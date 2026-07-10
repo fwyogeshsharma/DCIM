@@ -38,14 +38,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core import hall_geometry as geo  # noqa: E402
 
 # ── Sizing constants — kept in lock-step with FleetLifecycle / cooling_model ──
+from core.cooling_model import CRAH_COOL_KW, crah_count_for  # noqa: E402,F401
+
 DESIGN_RACK_KW = 12.0    # FleetLifecycle._DESIGN_RACK_KW
-CRAH_COOL_KW   = 80.0    # cooling_model.CRAH_COOL_KW  (per-CRAH sensible capacity)
 RPP_POLES      = 42      # FleetLifecycle._RPP_POLES
-
-
-def crah_count_for(it_kw: float) -> int:
-    """CRAHs for *it_kw* of IT heat: ceil(load / per-unit) + 1 spare (N+1)."""
-    return max(1, math.ceil(max(0.0, it_kw) / CRAH_COOL_KW) + 1)
 
 
 def hall_grid(ext: dict, has_local_spine: bool):
@@ -112,19 +108,25 @@ def main(path: str) -> int:
         if n["device"]["device_type"] == "switch" and "-SP" in (n["device"].get("name") or "")
     }
 
-    # Mechanical distribution per DC. CRAHs are bulk mechanical loads, so they hang
-    # off a Motor Control Center — upstream of the UPS, downstream of a transfer
-    # switch — not off an IT power panel. Resolved by ROOM so it survives renames.
-    # Both MCCs are kept so seeded CRAHs alternate across the 2N mechanical split
-    # instead of piling onto one side.
-    mcc_mech: dict = {}
+    # Mechanical distribution per hall. CRAHs are bulk mechanical loads, so they hang
+    # off the hall's Mechanical Power Panel — a panelboard downstream of an MCC,
+    # upstream of no UPS — not off an IT power panel. Keyed by (dc, room) and sorted
+    # so seeded CRAHs alternate across the hall's A/B panels instead of piling onto
+    # one side. Falls back to the DC's MCCs for a topology with no hall panels.
+    mech_panels: dict = {}
     for n in nodes:
-        if (n["device"]["device_type"] == "mcc"
-                and (n["device"].get("room") or "") == "Mechanical Room"):
-            mcc_mech.setdefault(n["device"]["datacenter"], []).append(n)
-    for v in mcc_mech.values():
+        d = n["device"]
+        if d["device_type"] == "mpp":
+            mech_panels.setdefault((d["datacenter"], d.get("room") or ""), []).append(n)
+    mcc_fallback: dict = {}
+    for n in nodes:
+        d = n["device"]
+        if d["device_type"] == "mcc" and (d.get("room") or "") == "Mechanical Room":
+            mcc_fallback.setdefault(d["datacenter"], []).append(n)
+    for v in list(mech_panels.values()) + list(mcc_fallback.values()):
         v.sort(key=lambda n: n["device"]["name"])
-    mcc_mech = {dc: [n["id"] for n in v] for dc, v in mcc_mech.items()}
+    mech_panels = {k: [n["id"] for n in v] for k, v in mech_panels.items()}
+    mcc_fallback = {k: [n["id"] for n in v] for k, v in mcc_fallback.items()}
 
     # Highest CRAH index per DC, to continue the CRAH-<DC>-<n> naming sequence.
     max_idx: dict = {}
@@ -165,7 +167,7 @@ def main(path: str) -> int:
         # MCCs so a lost transfer switch takes out roughly half a hall's air
         # handlers, not all of them. Idempotent — adds only the missing feed.
         powered = {e["dst"] for e in edges if e.get("layer") == "power"}
-        mccs = mcc_mech.get(dc) or []
+        mccs = mech_panels.get((dc, room)) or mcc_fallback.get(dc) or []
         for i, n in enumerate(sorted(existing, key=lambda n: n["device"]["name"])):
             if not mccs or n["id"] in powered:
                 continue
@@ -177,7 +179,11 @@ def main(path: str) -> int:
         # existing units too (so re-runs re-lay them onto the current geometry),
         # and runs BEFORE the at-target early-continue so a hall already at its
         # complement still gets re-laid.
-        positions = perimeter_positions(ext, rpr, n_rows, target)
+        # Lay out for whatever the hall actually holds, not just the target. A hall
+        # can legitimately carry MORE CRAHs than the current sizing calls for — the
+        # per-unit capacity constant grew, or the hall was seeded under an older one —
+        # and re-laying only `target` positions would index past the end of the list.
+        positions = perimeter_positions(ext, rpr, n_rows, max(target, len(existing)))
         for i, n in enumerate(existing):
             n["device"]["floor_x"], n["device"]["floor_y"] = positions[i]
             n["device"]["rack_num"] = i + 1

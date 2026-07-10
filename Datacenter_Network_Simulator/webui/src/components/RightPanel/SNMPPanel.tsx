@@ -12,6 +12,7 @@ const SNMP_TARGET_ORDER: [string, string][] = [
   ['pdu', 'Rack PDUs:'], ['floor_pdu', 'Floor PDUs:'], ['generator', 'Generators:'],
   ['utility_feed', 'Utility Feeds:'], ['switchgear', 'Switchgear:'],
   ['ats', 'Transfer Switches:'], ['mcc', 'Motor Control Centers:'],
+  ['mpp', 'Mechanical Panels:'],
   ['crah', 'CRAHs:'], ['cdu', 'CDUs:'],
 ]
 
@@ -113,9 +114,12 @@ export default function SNMPPanel() {
   }, [running])
 
   // CRAH/CDU are the only cooling devices with SNMP agents (native comm
-  // cards); chiller/pump/cooling_tower/valve are BACnet-only.
+  // cards); chiller/pump/cooling_tower/valve are BACnet-only. The electrical
+  // upstream (utility feed, switchgear, ATS, MCC, MPP) is served over SNMP too,
+  // so it must be counted here or its Targets rows read zero.
   const SNMP_TYPES = new Set(['switch','router','server','firewall','load_balancer',
-    'oob_switch','sensor','ups','pdu','floor_pdu','generator','crah','cdu'])
+    'oob_switch','sensor','ups','pdu','floor_pdu','generator','crah','cdu',
+    'utility_feed','switchgear','ats','mcc','mpp'])
   const snmpDevices = devices.filter(d => SNMP_TYPES.has(d.device_type))
   const tc: Record<string, number> = {}
   for (const d of snmpDevices) tc[d.device_type] = (tc[d.device_type] || 0) + 1

@@ -50,11 +50,11 @@ METER_Y = 2990  # EV2 meters clamped onto the gear above them
 
 # Canvas x offsets from each DC's facility band origin.
 CANVAS_DX = {
-    "UTIL1": 0,    "SWGR1": 0,
+    "UTIL1": 0,    "SWGR1": 0,     "EV2-UR": 0,
     "ATS1": 200,   "UPSA": 200,
     "ATS2": 460,   "UPSB": 460,
-    "GEN1": 700,   "GEN2": 820,   "SWGR2": 760,   "EV2-GR": 700,
-    "MCC1": 1000,  "MCC2": 1120,  "EV2-MR": 1000,
+    "GEN1": 700,   "GEN2": 820,   "SWGR2": 760,   "EV2-GR": 760,
+    "MCC1": 1000,  "MCC2": 1120,  "EV2-MR": 1000, "EV2-MR2": 1120,
 }
 
 # Physical lineup: room -> ordered device keys, one rack section each.
@@ -64,20 +64,29 @@ LINEUP = {
     "Mechanical Room": ["MCC1", "MCC2"],
 }
 # Meters stand in the row behind the gear they clamp (row 2), as they already did.
-METER_ROW = {"Generator Room": ["EV2-GR"], "Mechanical Room": ["EV2-MR"]}
+# Order here fixes their rack_num, so keep each meter aligned with its panel.
+METER_ROW = {
+    "UPS Room":        ["EV2-UR"],            # clamps SWGR1 (facility main, utility)
+    "Generator Room":  ["EV2-GR"],            # clamps SWGR2 (facility main, generator)
+    "Mechanical Room": ["EV2-MR", "EV2-MR2"], # clamp MCC1 / MCC2
+}
 
 
 def key_for(name: str) -> str | None:
-    """Map a device name like 'ATS1-DC1-UR' onto its layout key."""
+    """Map a device name like 'ATS1-DC1-UR' or 'EV22-DC1-MR' onto its layout key."""
     head = name.split("-", 1)[0]
     if head in ("UTIL1", "SWGR1", "SWGR2", "ATS1", "ATS2", "MCC1", "MCC2",
                 "GEN1", "GEN2", "UPSA", "UPSB"):
         return head
-    if head == "EV21":
+    # Meters are keyed by room, and by index within the room where a room holds
+    # more than one (the two MCC meters).
+    if head.startswith("EV2"):
+        if name.endswith("-UR"):
+            return "EV2-UR"
         if name.endswith("-GR"):
             return "EV2-GR"
         if name.endswith("-MR"):
-            return "EV2-MR"
+            return "EV2-MR2" if head == "EV22" else "EV2-MR"
     return None
 
 
@@ -127,7 +136,8 @@ def main(path: str) -> int:
                 "SWGR1": BUS_Y, "SWGR2": BUS_Y,
                 "ATS1": ATS_Y, "ATS2": ATS_Y,
                 "UPSA": DIST_Y, "UPSB": DIST_Y, "MCC1": DIST_Y, "MCC2": DIST_Y,
-                "EV2-GR": METER_Y, "EV2-MR": METER_Y}
+                "EV2-UR": METER_Y, "EV2-GR": METER_Y,
+                "EV2-MR": METER_Y, "EV2-MR2": METER_Y}
         for k, n in found.items():
             n["position"] = {"x": base_x[dc] + CANVAS_DX[k], "y": y_of[k]}
 

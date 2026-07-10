@@ -299,7 +299,11 @@ def installed_modules_for(design_servers_dc: float,
     return max(1, math.ceil(peak_kw / max(1e-6, module_kw)))
 
 
-CRAH_COOL_KW = 80.0    # per-CRAH sensible cooling capacity (mid-size chilled-water)
+# Per-CRAH sensible cooling capacity. Matches the SKU the halls actually install,
+# a Vertiv Liebert PCW 100kW (see device_manager._MODEL_COOL_CAPACITY_W). A data
+# hall's coil runs dry — there is no latent load to speak of — so the sensible
+# capacity is effectively the unit's nominal total.
+CRAH_COOL_KW = 100.0
 
 
 def crah_count_for(it_kw: float, per_crah_kw: float = CRAH_COOL_KW) -> int:

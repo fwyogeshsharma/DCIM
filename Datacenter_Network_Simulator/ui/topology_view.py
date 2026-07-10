@@ -121,6 +121,12 @@ DEVICE_COLORS = {
         "text": QColor("white"),
         "icon": "MCC",
     },
+    DeviceType.MPP: {
+        "fill": QColor("#0e7490"),
+        "border": QColor("#083344"),
+        "text": QColor("white"),
+        "icon": "MPP",
+    },
     DeviceType.RPP: {
         "fill": QColor("#7c2d6e"),
         "border": QColor("#4a044e"),

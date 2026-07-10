@@ -66745,7 +66745,7 @@
             "count": 1
           }
         ],
-        "model_name": "Caterpillar 3512C",
+        "model_name": "Caterpillar 3516B",
         "metrics_enabled": true,
         "id": "08a89a19",
         "interfaces": [
@@ -67275,7 +67275,7 @@
             "count": 1
           }
         ],
-        "model_name": "Caterpillar 3512C",
+        "model_name": "Caterpillar 3516B",
         "metrics_enabled": true,
         "id": "4b0671f3",
         "interfaces": [
@@ -68443,7 +68443,7 @@
         ],
         "mgmt_ip": "192.168.4.232",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -68516,7 +68516,7 @@
         ],
         "mgmt_ip": "192.168.4.233",
         "mgmt_vlan": 10,
-        "power_draw_w": 1831,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -68589,7 +68589,7 @@
         ],
         "mgmt_ip": "192.168.4.234",
         "mgmt_vlan": 10,
-        "power_draw_w": 1886,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -68662,7 +68662,7 @@
         ],
         "mgmt_ip": "192.168.4.235",
         "mgmt_vlan": 10,
-        "power_draw_w": 1642,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -68761,7 +68761,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "be3c0680",
+        "monitored_panel": "ca5e5b84",
         "floor_x": 0.3,
         "floor_y": 3.0
       }
@@ -68769,7 +68769,7 @@
     {
       "id": "44f2e1dd",
       "position": {
-        "x": 1080,
+        "x": 1140,
         "y": 2990
       },
       "device": {
@@ -68835,7 +68835,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "08a89a19",
+        "monitored_panel": "1032af3d",
         "floor_x": 0.3,
         "floor_y": 3.0
       }
@@ -68883,7 +68883,7 @@
         ],
         "mgmt_ip": "192.168.4.236",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -68956,7 +68956,7 @@
         ],
         "mgmt_ip": "192.168.4.237",
         "mgmt_vlan": 10,
-        "power_draw_w": 1770,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -69029,7 +69029,7 @@
         ],
         "mgmt_ip": "192.168.4.238",
         "mgmt_vlan": 10,
-        "power_draw_w": 1615,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -69102,7 +69102,7 @@
         ],
         "mgmt_ip": "192.168.4.239",
         "mgmt_vlan": 10,
-        "power_draw_w": 1630,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -69201,7 +69201,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "106516f1",
+        "monitored_panel": "d622ff64",
         "floor_x": 0.3,
         "floor_y": 3.0
       }
@@ -69209,7 +69209,7 @@
     {
       "id": "dc12eb64",
       "position": {
-        "x": 3820,
+        "x": 3880,
         "y": 2990
       },
       "device": {
@@ -69275,7 +69275,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "4b0671f3",
+        "monitored_panel": "5a0db7bd",
         "floor_x": 0.3,
         "floor_y": 3.0
       }
@@ -69287,7 +69287,7 @@
         "y": 3120
       },
       "device": {
-        "name": "RPP1-DC1-CP",
+        "name": "RPPA-DC1-CP",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -69435,7 +69435,7 @@
         "y": 3120
       },
       "device": {
-        "name": "RPP1-DC2-CP",
+        "name": "RPPA-DC2-CP",
         "device_type": "rpp",
         "vendor": "APC by Schneider Electric",
         "ip_address": "",
@@ -69889,7 +69889,7 @@
         ],
         "mgmt_ip": "192.168.4.203",
         "mgmt_vlan": 10,
-        "power_draw_w": 7335,
+        "power_draw_w": 145000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -69964,7 +69964,7 @@
         ],
         "mgmt_ip": "192.168.4.204",
         "mgmt_vlan": 10,
-        "power_draw_w": 7299,
+        "power_draw_w": 145000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -70017,7 +70017,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos NB 65-200",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "893e478e",
         "interfaces": [
@@ -70039,7 +70039,7 @@
         ],
         "mgmt_ip": "192.168.4.205",
         "mgmt_vlan": 10,
-        "power_draw_w": 1242,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -70068,7 +70068,8 @@
         "power_source_a": "a3b1799d",
         "power_source_b": "6c031199",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -70092,7 +70093,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos NB 65-200",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "c04f2280",
         "interfaces": [
@@ -70114,7 +70115,7 @@
         ],
         "mgmt_ip": "192.168.4.206",
         "mgmt_vlan": 10,
-        "power_draw_w": 1548,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -70143,7 +70144,8 @@
         "power_source_a": "a3b1799d",
         "power_source_b": "6c031199",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -70167,7 +70169,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos NB 65-200",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "c9bf2418",
         "interfaces": [
@@ -70189,7 +70191,7 @@
         ],
         "mgmt_ip": "192.168.4.207",
         "mgmt_vlan": 10,
-        "power_draw_w": 1732,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -70218,7 +70220,8 @@
         "power_source_a": "a3b1799d",
         "power_source_b": "6c031199",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -70264,7 +70267,7 @@
         ],
         "mgmt_ip": "192.168.4.208",
         "mgmt_vlan": 10,
-        "power_draw_w": 1359,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -70339,7 +70342,7 @@
         ],
         "mgmt_ip": "192.168.4.209",
         "mgmt_vlan": 10,
-        "power_draw_w": 1743,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -70374,7 +70377,7 @@
     {
       "id": "b04435fb",
       "position": {
-        "x": 340,
+        "x": 560,
         "y": 3900
       },
       "device": {
@@ -70414,7 +70417,7 @@
         ],
         "mgmt_ip": "192.168.4.210",
         "mgmt_vlan": 10,
-        "power_draw_w": 733,
+        "power_draw_w": 30000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -70449,7 +70452,7 @@
     {
       "id": "01154b78",
       "position": {
-        "x": 510,
+        "x": 730,
         "y": 3900
       },
       "device": {
@@ -70489,7 +70492,7 @@
         ],
         "mgmt_ip": "192.168.4.211",
         "mgmt_vlan": 10,
-        "power_draw_w": 942,
+        "power_draw_w": 30000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71212,7 +71215,7 @@
         ],
         "mgmt_ip": "192.168.4.218",
         "mgmt_vlan": 10,
-        "power_draw_w": 7871,
+        "power_draw_w": 145000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71287,7 +71290,7 @@
         ],
         "mgmt_ip": "192.168.4.219",
         "mgmt_vlan": 10,
-        "power_draw_w": 7624,
+        "power_draw_w": 145000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71340,7 +71343,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos NB 65-200",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "f8eb42ae",
         "interfaces": [
@@ -71362,7 +71365,7 @@
         ],
         "mgmt_ip": "192.168.4.220",
         "mgmt_vlan": 10,
-        "power_draw_w": 1498,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71391,7 +71394,8 @@
         "power_source_a": "7631de9d",
         "power_source_b": "53ac2ab9",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -71415,7 +71419,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos NB 65-200",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "cc17f464",
         "interfaces": [
@@ -71437,7 +71441,7 @@
         ],
         "mgmt_ip": "192.168.4.221",
         "mgmt_vlan": 10,
-        "power_draw_w": 1456,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71466,7 +71470,8 @@
         "power_source_a": "7631de9d",
         "power_source_b": "53ac2ab9",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -71490,7 +71495,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos NB 65-200",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "53f15d15",
         "interfaces": [
@@ -71512,7 +71517,7 @@
         ],
         "mgmt_ip": "192.168.4.222",
         "mgmt_vlan": 10,
-        "power_draw_w": 1633,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71541,7 +71546,8 @@
         "power_source_a": "7631de9d",
         "power_source_b": "53ac2ab9",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -71587,7 +71593,7 @@
         ],
         "mgmt_ip": "192.168.4.223",
         "mgmt_vlan": 10,
-        "power_draw_w": 1134,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71662,7 +71668,7 @@
         ],
         "mgmt_ip": "192.168.4.224",
         "mgmt_vlan": 10,
-        "power_draw_w": 1413,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71697,7 +71703,7 @@
     {
       "id": "02407220",
       "position": {
-        "x": 3140,
+        "x": 3360,
         "y": 3900
       },
       "device": {
@@ -71737,7 +71743,7 @@
         ],
         "mgmt_ip": "192.168.4.225",
         "mgmt_vlan": 10,
-        "power_draw_w": 802,
+        "power_draw_w": 30000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -71772,7 +71778,7 @@
     {
       "id": "7b33144e",
       "position": {
-        "x": 3310,
+        "x": 3530,
         "y": 3900
       },
       "device": {
@@ -71812,7 +71818,7 @@
         ],
         "mgmt_ip": "192.168.4.226",
         "mgmt_vlan": 10,
-        "power_draw_w": 652,
+        "power_draw_w": 30000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72265,7 +72271,7 @@
         ],
         "mgmt_ip": "192.168.4.240",
         "mgmt_vlan": 10,
-        "power_draw_w": 7621,
+        "power_draw_w": 145000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72318,7 +72324,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos TP 100-360",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "79712904",
         "interfaces": [
@@ -72340,7 +72346,7 @@
         ],
         "mgmt_ip": "192.168.4.241",
         "mgmt_vlan": 10,
-        "power_draw_w": 1104,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72369,7 +72375,8 @@
         "power_source_a": "a3b1799d",
         "power_source_b": "6c031199",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -72415,7 +72422,7 @@
         ],
         "mgmt_ip": "192.168.4.242",
         "mgmt_vlan": 10,
-        "power_draw_w": 7759,
+        "power_draw_w": 145000,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72468,7 +72475,7 @@
             "count": 1
           }
         ],
-        "model_name": "Grundfos TP 100-360",
+        "model_name": "Grundfos NB 100-200",
         "metrics_enabled": true,
         "id": "97d819aa",
         "interfaces": [
@@ -72490,7 +72497,7 @@
         ],
         "mgmt_ip": "192.168.4.243",
         "mgmt_vlan": 10,
-        "power_draw_w": 1462,
+        "power_draw_w": 18500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72519,7 +72526,8 @@
         "power_source_a": "7631de9d",
         "power_source_b": "53ac2ab9",
         "floor_x": 0.3,
-        "floor_y": 0.6
+        "floor_y": 0.6,
+        "rated_power_w": null
       }
     },
     {
@@ -72565,7 +72573,7 @@
         ],
         "mgmt_ip": "192.168.4.244",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72643,7 +72651,7 @@
         ],
         "mgmt_ip": "192.168.4.245",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72721,7 +72729,7 @@
         ],
         "mgmt_ip": "192.168.4.246",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72799,7 +72807,7 @@
         ],
         "mgmt_ip": "192.168.4.247",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72877,7 +72885,7 @@
         ],
         "mgmt_ip": "192.168.4.248",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -72955,7 +72963,7 @@
         ],
         "mgmt_ip": "192.168.4.249",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74279,7 +74287,7 @@
         ],
         "mgmt_ip": "192.168.5.9",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74352,7 +74360,7 @@
         ],
         "mgmt_ip": "192.168.5.10",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74425,7 +74433,7 @@
         ],
         "mgmt_ip": "192.168.5.11",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74498,7 +74506,7 @@
         ],
         "mgmt_ip": "192.168.5.12",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74571,7 +74579,7 @@
         ],
         "mgmt_ip": "192.168.5.13",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74649,7 +74657,7 @@
         ],
         "mgmt_ip": "192.168.5.14",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74727,7 +74735,7 @@
         ],
         "mgmt_ip": "192.168.5.15",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74805,7 +74813,7 @@
         ],
         "mgmt_ip": "192.168.5.16",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74878,7 +74886,7 @@
         ],
         "mgmt_ip": "192.168.5.17",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -74951,7 +74959,7 @@
         ],
         "mgmt_ip": "192.168.5.18",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -75024,7 +75032,7 @@
         ],
         "mgmt_ip": "192.168.5.19",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -75097,7 +75105,7 @@
         ],
         "mgmt_ip": "192.168.5.20",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -75175,7 +75183,7 @@
         ],
         "mgmt_ip": "192.168.5.21",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -75253,7 +75261,7 @@
         ],
         "mgmt_ip": "192.168.5.22",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1800,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -75309,7 +75317,7 @@
             "count": 1
           }
         ],
-        "model_name": "Caterpillar 3512C",
+        "model_name": "Caterpillar 3516B",
         "metrics_enabled": true,
         "id": "f1e1dc00",
         "interfaces": [
@@ -75383,7 +75391,7 @@
             "count": 1
           }
         ],
-        "model_name": "Caterpillar 3512C",
+        "model_name": "Caterpillar 3516B",
         "metrics_enabled": true,
         "id": "5c86d596",
         "interfaces": [
@@ -80973,7 +80981,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "a528c3ab",
+        "monitored_panel": "56fe0eac",
         "floor_x": 0.3,
         "floor_y": 4.2
       }
@@ -81047,7 +81055,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "a528c3ab",
+        "monitored_panel": "dba7d8bc",
         "floor_x": 0.9,
         "floor_y": 4.2
       }
@@ -81121,7 +81129,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "b324209b",
+        "monitored_panel": "263fce5b",
         "floor_x": 0.3,
         "floor_y": 4.2
       }
@@ -81195,7 +81203,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "monitored_panel": "b324209b",
+        "monitored_panel": "14dc2836",
         "floor_x": 0.9,
         "floor_y": 4.2
       }
@@ -82868,7 +82876,7 @@
         ],
         "mgmt_ip": "192.168.5.37",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -82941,7 +82949,7 @@
         ],
         "mgmt_ip": "192.168.5.38",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83014,7 +83022,7 @@
         ],
         "mgmt_ip": "192.168.5.39",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83087,7 +83095,7 @@
         ],
         "mgmt_ip": "192.168.5.40",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83160,7 +83168,7 @@
         ],
         "mgmt_ip": "192.168.5.41",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83233,7 +83241,7 @@
         ],
         "mgmt_ip": "192.168.5.42",
         "mgmt_vlan": 10,
-        "power_draw_w": 2091,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83306,7 +83314,7 @@
         ],
         "mgmt_ip": "192.168.5.43",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83379,7 +83387,7 @@
         ],
         "mgmt_ip": "192.168.5.44",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83452,7 +83460,7 @@
         ],
         "mgmt_ip": "192.168.5.45",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83525,7 +83533,7 @@
         ],
         "mgmt_ip": "192.168.5.46",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83598,7 +83606,7 @@
         ],
         "mgmt_ip": "192.168.5.47",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -83671,7 +83679,7 @@
         ],
         "mgmt_ip": "192.168.5.48",
         "mgmt_vlan": 10,
-        "power_draw_w": 1595,
+        "power_draw_w": 6500,
         "power_source": "",
         "ups_backup": "",
         "country": "USA",
@@ -102407,7 +102415,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "ASCO 7000 Series 3000A",
+        "model_name": "ASCO 7000 Series 4000A",
         "metrics_enabled": true,
         "id": "b471f692",
         "mgmt_ip": "192.168.1.29",
@@ -102464,7 +102472,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "ASCO 7000 Series 3000A",
+        "model_name": "ASCO 7000 Series 4000A",
         "metrics_enabled": true,
         "id": "87202926",
         "mgmt_ip": "192.168.1.30",
@@ -102521,7 +102529,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "Eaton Freedom 2100 MCC 800A",
+        "model_name": "Eaton Freedom 2100 MCC 1600A",
         "metrics_enabled": true,
         "id": "ca5e5b84",
         "mgmt_ip": "192.168.1.31",
@@ -102578,7 +102586,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "Eaton Freedom 2100 MCC 800A",
+        "model_name": "Eaton Freedom 2100 MCC 1600A",
         "metrics_enabled": true,
         "id": "2efc3807",
         "mgmt_ip": "192.168.1.32",
@@ -102806,7 +102814,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "ASCO 7000 Series 3000A",
+        "model_name": "ASCO 7000 Series 4000A",
         "metrics_enabled": true,
         "id": "d38bba8f",
         "mgmt_ip": "192.168.5.52",
@@ -102863,7 +102871,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "ASCO 7000 Series 3000A",
+        "model_name": "ASCO 7000 Series 4000A",
         "metrics_enabled": true,
         "id": "d5354365",
         "mgmt_ip": "192.168.5.53",
@@ -102920,7 +102928,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "Eaton Freedom 2100 MCC 800A",
+        "model_name": "Eaton Freedom 2100 MCC 1600A",
         "metrics_enabled": true,
         "id": "d622ff64",
         "mgmt_ip": "192.168.5.54",
@@ -102977,7 +102985,7 @@
             "connected_to_iface": null
           }
         ],
-        "model_name": "Eaton Freedom 2100 MCC 800A",
+        "model_name": "Eaton Freedom 2100 MCC 1600A",
         "metrics_enabled": true,
         "id": "209ad80c",
         "mgmt_ip": "192.168.5.55",
@@ -102994,6 +103002,1366 @@
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G"
+      }
+    },
+    {
+      "id": "a213d7bf",
+      "position": {
+        "x": 380,
+        "y": 2990
+      },
+      "device": {
+        "name": "EV21-DC1-UR",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.1.33",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "a213d7bf",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "7d:87:93:dd:71:ba",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.1.33",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "UPS Room",
+        "floor": "G",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "8d72a7df",
+        "floor_x": 0.3,
+        "floor_y": 3.0,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
+      }
+    },
+    {
+      "id": "c224b59b",
+      "position": {
+        "x": 1500,
+        "y": 2990
+      },
+      "device": {
+        "name": "EV22-DC1-MR",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.1.34",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "c224b59b",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "63:82:dc:e5:1a:46",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.1.34",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Mechanical Room",
+        "floor": "G",
+        "rack_row": 2,
+        "rack_num": 2,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "2efc3807",
+        "floor_x": 0.9,
+        "floor_y": 3.0,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
+      }
+    },
+    {
+      "id": "08b01d24",
+      "position": {
+        "x": 3120,
+        "y": 2990
+      },
+      "device": {
+        "name": "EV21-DC2-UR",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.56",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "08b01d24",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 214927367,
+            "out_octets": 782737154,
+            "in_errors": 60,
+            "out_errors": 60,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "23:0f:f3:7e:7d:89",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.56",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "room": "UPS Room",
+        "floor": "G",
+        "rack_row": 2,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 66,
+        "memory_total": 17179869184,
+        "memory_used": 5530581439,
+        "disk_total": 536870912000,
+        "disk_used": 349777403429,
+        "sys_uptime": 9908996,
+        "cpu_temp": 45.7,
+        "inlet_temp": 33.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "c2c4f44b",
+        "floor_x": 0.3,
+        "floor_y": 3.0,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
+      }
+    },
+    {
+      "id": "cb83d55f",
+      "position": {
+        "x": 4240,
+        "y": 2990
+      },
+      "device": {
+        "name": "EV22-DC2-MR",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.57",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "cb83d55f",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 214927367,
+            "out_octets": 782737154,
+            "in_errors": 60,
+            "out_errors": 60,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0b:8e:08:39:c6:db",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.57",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "room": "Mechanical Room",
+        "floor": "G",
+        "rack_row": 2,
+        "rack_num": 2,
+        "rack_unit": 0,
+        "cpu_usage": 66,
+        "memory_total": 17179869184,
+        "memory_used": 5530581439,
+        "disk_total": 536870912000,
+        "disk_used": 349777403429,
+        "sys_uptime": 9908996,
+        "cpu_temp": 45.7,
+        "inlet_temp": 33.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "209ad80c",
+        "floor_x": 0.9,
+        "floor_y": 3.0,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "hot_aisle": null
+      }
+    },
+    {
+      "id": "824f3b10",
+      "position": {
+        "x": 340,
+        "y": 3900
+      },
+      "device": {
+        "name": "CWP3-DC1-CP",
+        "device_type": "pump",
+        "vendor": "Grundfos",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.58",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Grundfos TP 100-360",
+        "metrics_enabled": true,
+        "id": "824f3b10",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 104570565,
+            "out_octets": 120411620,
+            "in_errors": 81,
+            "out_errors": 86,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "4c:fa:f0:8b:66:45",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.58",
+        "mgmt_vlan": 10,
+        "power_draw_w": 18500,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 66,
+        "memory_total": 34359738368,
+        "memory_used": 16397823985,
+        "disk_total": 1073741824000,
+        "disk_used": 651002925346,
+        "sys_uptime": 7131100,
+        "cpu_temp": 47.4,
+        "inlet_temp": 36.4,
+        "mid_temp": 42.9,
+        "outlet_temp": 47.3,
+        "humidity": 38.8,
+        "dewpoint": 24.2,
+        "airflow": 0.79,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "power_source_a": "a3b1799d",
+        "power_source_b": "6c031199",
+        "floor_x": 0.3,
+        "floor_y": 0.6
+      }
+    },
+    {
+      "id": "85c24dde",
+      "position": {
+        "x": 900,
+        "y": 3900
+      },
+      "device": {
+        "name": "CT3-DC1-RF",
+        "device_type": "cooling_tower",
+        "vendor": "Baltimore Aircoil Company",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.59",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "BAC PT2 Series",
+        "metrics_enabled": true,
+        "id": "85c24dde",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 104570565,
+            "out_octets": 120411620,
+            "in_errors": 81,
+            "out_errors": 86,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "c1:07:07:bb:5e:fd",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.59",
+        "mgmt_vlan": 10,
+        "power_draw_w": 30000,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Roof",
+        "floor": "Roof",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 66,
+        "memory_total": 34359738368,
+        "memory_used": 16397823985,
+        "disk_total": 1073741824000,
+        "disk_used": 651002925346,
+        "sys_uptime": 7131100,
+        "cpu_temp": 47.4,
+        "inlet_temp": 36.4,
+        "mid_temp": 42.9,
+        "outlet_temp": 47.3,
+        "humidity": 38.8,
+        "dewpoint": 24.2,
+        "airflow": 0.79,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "power_source_a": "ec1b8ca1",
+        "power_source_b": "a9488d99",
+        "floor_x": 0.3,
+        "floor_y": 0.6
+      }
+    },
+    {
+      "id": "dc38cb1c",
+      "position": {
+        "x": 3140,
+        "y": 3900
+      },
+      "device": {
+        "name": "CWP3-DC2-CP",
+        "device_type": "pump",
+        "vendor": "Grundfos",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.60",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Grundfos TP 100-360",
+        "metrics_enabled": true,
+        "id": "dc38cb1c",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 104570565,
+            "out_octets": 120411620,
+            "in_errors": 81,
+            "out_errors": 86,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a3:16:a5:64:10:e3",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.60",
+        "mgmt_vlan": 10,
+        "power_draw_w": 18500,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 66,
+        "memory_total": 34359738368,
+        "memory_used": 16397823985,
+        "disk_total": 1073741824000,
+        "disk_used": 651002925346,
+        "sys_uptime": 7131100,
+        "cpu_temp": 47.4,
+        "inlet_temp": 36.4,
+        "mid_temp": 42.9,
+        "outlet_temp": 47.3,
+        "humidity": 38.8,
+        "dewpoint": 24.2,
+        "airflow": 0.79,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "power_source_a": "7631de9d",
+        "power_source_b": "53ac2ab9",
+        "floor_x": 0.3,
+        "floor_y": 0.6
+      }
+    },
+    {
+      "id": "2789b5e1",
+      "position": {
+        "x": 3700,
+        "y": 3900
+      },
+      "device": {
+        "name": "CT3-DC2-RF",
+        "device_type": "cooling_tower",
+        "vendor": "Baltimore Aircoil Company",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.61",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "BAC PT2 Series",
+        "metrics_enabled": true,
+        "id": "2789b5e1",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 104570565,
+            "out_octets": 120411620,
+            "in_errors": 81,
+            "out_errors": 86,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "25:38:92:d9:f0:3b",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.61",
+        "mgmt_vlan": 10,
+        "power_draw_w": 30000,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "room": "Roof",
+        "floor": "Roof",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 66,
+        "memory_total": 34359738368,
+        "memory_used": 16397823985,
+        "disk_total": 1073741824000,
+        "disk_used": 651002925346,
+        "sys_uptime": 7131100,
+        "cpu_temp": 47.4,
+        "inlet_temp": 36.4,
+        "mid_temp": 42.9,
+        "outlet_temp": 47.3,
+        "humidity": 38.8,
+        "dewpoint": 24.2,
+        "airflow": 0.79,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "power_source_a": "c4536f1d",
+        "power_source_b": "edcb8cb6",
+        "floor_x": 0.3,
+        "floor_y": 0.6
+      }
+    },
+    {
+      "id": "df0ecde8",
+      "position": {
+        "x": 610,
+        "y": 3120
+      },
+      "device": {
+        "name": "RPPB-DC1-CP",
+        "device_type": "rpp",
+        "vendor": "APC by Schneider Electric",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "APC Galaxy RPP 80A",
+        "metrics_enabled": true,
+        "id": "df0ecde8",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "8d:8e:c3:5c:a7:1a",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 2,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "floor_x": 0.9,
+        "floor_y": 3.0,
+        "rated_power_w": null
+      }
+    },
+    {
+      "id": "8de1037e",
+      "position": {
+        "x": 740,
+        "y": 3120
+      },
+      "device": {
+        "name": "EV22-DC1-CP",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.62",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "8de1037e",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "87:cc:5d:45:7f:da",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.62",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 2,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "df0ecde8",
+        "floor_x": 0.9,
+        "floor_y": 3.0
+      }
+    },
+    {
+      "id": "931fda08",
+      "position": {
+        "x": 3410,
+        "y": 3120
+      },
+      "device": {
+        "name": "RPPB-DC2-CP",
+        "device_type": "rpp",
+        "vendor": "APC by Schneider Electric",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "APC Galaxy RPP 80A",
+        "metrics_enabled": true,
+        "id": "931fda08",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 551806057,
+            "out_octets": 699519712,
+            "in_errors": 32,
+            "out_errors": 50,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "e6:e7:75:56:2e:3e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 2,
+        "rack_unit": 0,
+        "cpu_usage": 14,
+        "memory_total": 34359738368,
+        "memory_used": 24822060476,
+        "disk_total": 268435456000,
+        "disk_used": 97400338062,
+        "sys_uptime": 8216155,
+        "cpu_temp": 52.5,
+        "inlet_temp": 22.4,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "floor_x": 0.9,
+        "floor_y": 3.0,
+        "rated_power_w": null
+      }
+    },
+    {
+      "id": "bd9b81b3",
+      "position": {
+        "x": 3540,
+        "y": 3120
+      },
+      "device": {
+        "name": "EV22-DC2-CP",
+        "device_type": "energy_monitor",
+        "vendor": "Verdigris Technologies",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.63",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "model_name": "Verdigris EV2-42",
+        "metrics_enabled": true,
+        "id": "bd9b81b3",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 141826932,
+            "out_octets": 685595481,
+            "in_errors": 64,
+            "out_errors": 36,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0c:64:0a:6c:df:36",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "mgmt_ip": "192.168.5.63",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "power_source": "",
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 2,
+        "rack_num": 2,
+        "rack_unit": 0,
+        "cpu_usage": 42,
+        "memory_total": 34359738368,
+        "memory_used": 17745809697,
+        "disk_total": 1073741824000,
+        "disk_used": 691206596183,
+        "sys_uptime": 2844839,
+        "cpu_temp": 52.6,
+        "inlet_temp": 32.7,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "monitored_panel": "931fda08",
+        "floor_x": 0.9,
+        "floor_y": 3.0
+      }
+    },
+    {
+      "id": "1c9b3258",
+      "position": {
+        "x": -30,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPA-DC1-HA",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.1.35",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "e0:fc:21:e5:45:b6",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "1c9b3258",
+        "mgmt_ip": "192.168.1.35",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall A",
+        "floor": "1",
+        "rack_row": 9,
+        "rack_num": 8,
+        "rack_unit": 0,
+        "floor_x": 0.3,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1"
+      }
+    },
+    {
+      "id": "29ec460c",
+      "position": {
+        "x": 830,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPB-DC1-HA",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.1.36",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "7a:a0:38:a9:49:99",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "29ec460c",
+        "mgmt_ip": "192.168.1.36",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall A",
+        "floor": "1",
+        "rack_row": 9,
+        "rack_num": 9,
+        "rack_unit": 0,
+        "floor_x": 8.1,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1"
+      }
+    },
+    {
+      "id": "7bfb794b",
+      "position": {
+        "x": 770,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPA-DC1-HB",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.1.37",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "8a:8c:79:e2:b8:a6",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "7bfb794b",
+        "mgmt_ip": "192.168.1.37",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall B",
+        "floor": "2",
+        "rack_row": 9,
+        "rack_num": 8,
+        "rack_unit": 0,
+        "floor_x": 0.3,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1"
+      }
+    },
+    {
+      "id": "b117a56f",
+      "position": {
+        "x": 1630,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPB-DC1-HB",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.1.38",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "33:a4:b4:20:50:41",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "b117a56f",
+        "mgmt_ip": "192.168.1.38",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall B",
+        "floor": "2",
+        "rack_row": 9,
+        "rack_num": 9,
+        "rack_unit": 0,
+        "floor_x": 8.1,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1"
+      }
+    },
+    {
+      "id": "5cde01c9",
+      "position": {
+        "x": 2870,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPA-DC2-HA",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.64",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "40:c9:c0:40:6a:5e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "5cde01c9",
+        "mgmt_ip": "192.168.5.64",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall A",
+        "floor": "1",
+        "rack_row": 9,
+        "rack_num": 8,
+        "rack_unit": 0,
+        "floor_x": 0.3,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2"
+      }
+    },
+    {
+      "id": "fdff66f5",
+      "position": {
+        "x": 3570,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPB-DC2-HA",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.65",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "d6:35:3b:3e:f8:00",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "fdff66f5",
+        "mgmt_ip": "192.168.5.65",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall A",
+        "floor": "1",
+        "rack_row": 9,
+        "rack_num": 9,
+        "rack_unit": 0,
+        "floor_x": 7.5,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2"
+      }
+    },
+    {
+      "id": "9e3b089a",
+      "position": {
+        "x": 3510,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPA-DC2-HB",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.66",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a1:c7:7f:6d:53:f8",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "9e3b089a",
+        "mgmt_ip": "192.168.5.66",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall B",
+        "floor": "2",
+        "rack_row": 9,
+        "rack_num": 8,
+        "rack_unit": 0,
+        "floor_x": 0.3,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2"
+      }
+    },
+    {
+      "id": "e249fd0b",
+      "position": {
+        "x": 4210,
+        "y": 2660
+      },
+      "device": {
+        "name": "MPPB-DC2-HB",
+        "device_type": "mpp",
+        "vendor": "Eaton",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.5.67",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0c:6d:fd:6c:eb:06",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          }
+        ],
+        "model_name": "Eaton Pow-R-Line 3a 150A",
+        "metrics_enabled": true,
+        "id": "e249fd0b",
+        "mgmt_ip": "192.168.5.67",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": null,
+        "room": "Server Hall B",
+        "floor": "2",
+        "rack_row": 9,
+        "rack_num": 9,
+        "rack_unit": 0,
+        "floor_x": 7.5,
+        "floor_y": 11.4,
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2"
       }
     }
   ],
@@ -108319,13 +109687,6 @@
       "layer": "management"
     },
     {
-      "src": "08a89a19",
-      "dst": "44f2e1dd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "44f2e1dd",
       "dst": "1d31a3b3",
       "src_iface": 0,
@@ -108338,13 +109699,6 @@
       "src_iface": 0,
       "dst_iface": 22,
       "layer": "management"
-    },
-    {
-      "src": "4b0671f3",
-      "dst": "dc12eb64",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "dc12eb64",
@@ -108858,13 +110212,6 @@
       "layer": "cooling"
     },
     {
-      "src": "7ea9beb5",
-      "dst": "b17bfd83",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "cooling"
-    },
-    {
       "src": "b17bfd83",
       "dst": "69d174b4",
       "src_iface": 0,
@@ -109355,13 +110702,6 @@
       "layer": "cooling"
     },
     {
-      "src": "1ff1caaf",
-      "dst": "fa708342",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "cooling"
-    },
-    {
       "src": "fa708342",
       "dst": "774f3d06",
       "src_iface": 0,
@@ -109838,13 +111178,6 @@
       "layer": "management"
     },
     {
-      "src": "6284bfa0",
-      "dst": "47229389",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "47229389",
       "dst": "1d31a3b3",
       "src_iface": 0,
@@ -110228,13 +111561,6 @@
       "src_iface": 0,
       "dst_iface": 22,
       "layer": "management"
-    },
-    {
-      "src": "3dcdcb2a",
-      "dst": "2702878b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
     },
     {
       "src": "2702878b",
@@ -117006,48 +118332,6 @@
       "layer": "power"
     },
     {
-      "src": "6284bfa0",
-      "dst": "d396a795",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6284bfa0",
-      "dst": "3e4ddd2d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "6284bfa0",
-      "dst": "b9dd5c5e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "3dcdcb2a",
-      "dst": "c8fd4d14",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "3dcdcb2a",
-      "dst": "11992fa8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "3dcdcb2a",
-      "dst": "fc1ab32e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "903e3e7f",
       "dst": "79712904",
       "src_iface": 0,
@@ -119062,230 +120346,6 @@
     },
     {
       "src": "ca5e5b84",
-      "dst": "903e3e7f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "47bebbfb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "7ea9beb5",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "893e478e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "c04f2280",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "c9bf2418",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "79712904",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "b17bfd83",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "f0c4e963",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "b04435fb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "01154b78",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "43ab2687",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "0e78ea53",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "40b34bda",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "ddc67fa6",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "68d79a70",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "edb53a56",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "13dddf65",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "6db52bde",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "ab297064",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "a0847e8b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "14b33e62",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "d9f4d503",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "72056533",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "fb4b7885",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
-      "dst": "60d8fc26",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "2efc3807",
-      "dst": "69d174b4",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "0d1f9d35",
-      "dst": "6284bfa0",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "ca5e5b84",
       "dst": "43d52fb5",
       "src_iface": 0,
       "dst_iface": 0,
@@ -119438,230 +120498,6 @@
     },
     {
       "src": "d622ff64",
-      "dst": "7fbc8b57",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "d0558940",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "1ff1caaf",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "f8eb42ae",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "cc17f464",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "53f15d15",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "97d819aa",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "fa708342",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "96796119",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "02407220",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "7b33144e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "5a83ce67",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "d75f2a9e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "281c795b",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "95dccf22",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "ae579d48",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "ef201813",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "c9674448",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "c7052214",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "60e70a92",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "2bad2225",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "f87af098",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "6fbc4e53",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "fb13ea3f",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "a0284783",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
-      "dst": "e13dfcba",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "209ad80c",
-      "dst": "774f3d06",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "f336f4af",
-      "dst": "3dcdcb2a",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "broken": false,
-      "layer": "power"
-    },
-    {
-      "src": "d622ff64",
       "dst": "8491d46b",
       "src_iface": 0,
       "dst_iface": 0,
@@ -119719,6 +120555,870 @@
     {
       "src": "209ad80c",
       "dst": "efbee6c2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "1032af3d",
+      "dst": "44f2e1dd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "8d72a7df",
+      "dst": "a213d7bf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "a213d7bf",
+      "dst": "94f1c5b0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "c224b59b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "c224b59b",
+      "dst": "94f1c5b0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "5a0db7bd",
+      "dst": "dc12eb64",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "c2c4f44b",
+      "dst": "08b01d24",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "08b01d24",
+      "dst": "efbee6c2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "cb83d55f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "cb83d55f",
+      "dst": "efbee6c2",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "7ea9beb5",
+      "dst": "824f3b10",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "824f3b10",
+      "dst": "69d174b4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "69d174b4",
+      "dst": "85c24dde",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "85c24dde",
+      "dst": "7ea9beb5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "903e3e7f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "893e478e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "b17bfd83",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "b04435fb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "47bebbfb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "c04f2280",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "f0c4e963",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "01154b78",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "7ea9beb5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "c9bf2418",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "824f3b10",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "85c24dde",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "79712904",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "60d8fc26",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "69d174b4",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "1ff1caaf",
+      "dst": "dc38cb1c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "dc38cb1c",
+      "dst": "774f3d06",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "774f3d06",
+      "dst": "2789b5e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "2789b5e1",
+      "dst": "1ff1caaf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "cooling"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "7fbc8b57",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "f8eb42ae",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "fa708342",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "02407220",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "d0558940",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "cc17f464",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "96796119",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "7b33144e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "1ff1caaf",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "53f15d15",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "dc38cb1c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "2789b5e1",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "97d819aa",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "e13dfcba",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "774f3d06",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "0d1f9d35",
+      "dst": "6284bfa0",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "b594e90b",
+      "dst": "df0ecde8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "df0ecde8",
+      "dst": "47229389",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "df0ecde8",
+      "dst": "d396a795",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "df0ecde8",
+      "dst": "3e4ddd2d",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "df0ecde8",
+      "dst": "b9dd5c5e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "df0ecde8",
+      "dst": "8de1037e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "8de1037e",
+      "dst": "1d31a3b3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "f336f4af",
+      "dst": "3dcdcb2a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "1a03cc9e",
+      "dst": "931fda08",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "931fda08",
+      "dst": "2702878b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "931fda08",
+      "dst": "c8fd4d14",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "931fda08",
+      "dst": "11992fa8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "931fda08",
+      "dst": "fc1ab32e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "931fda08",
+      "dst": "bd9b81b3",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "bd9b81b3",
+      "dst": "f8b995ba",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "1c9b3258",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "29ec460c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "1c9b3258",
+      "dst": "43ab2687",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "29ec460c",
+      "dst": "0e78ea53",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "1c9b3258",
+      "dst": "40b34bda",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "29ec460c",
+      "dst": "ddc67fa6",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "1c9b3258",
+      "dst": "68d79a70",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "29ec460c",
+      "dst": "edb53a56",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "1c9b3258",
+      "dst": "13dddf65",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "1c9b3258",
+      "dst": "bbd65e8c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "29ec460c",
+      "dst": "bbd65e8c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "ca5e5b84",
+      "dst": "7bfb794b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "2efc3807",
+      "dst": "b117a56f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "7bfb794b",
+      "dst": "6db52bde",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "b117a56f",
+      "dst": "ab297064",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "7bfb794b",
+      "dst": "a0847e8b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "b117a56f",
+      "dst": "14b33e62",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "7bfb794b",
+      "dst": "d9f4d503",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "b117a56f",
+      "dst": "72056533",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "7bfb794b",
+      "dst": "fb4b7885",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "7bfb794b",
+      "dst": "66245f85",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "b117a56f",
+      "dst": "66245f85",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "5cde01c9",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "fdff66f5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "5cde01c9",
+      "dst": "5a83ce67",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "fdff66f5",
+      "dst": "d75f2a9e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "5cde01c9",
+      "dst": "281c795b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "fdff66f5",
+      "dst": "95dccf22",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "5cde01c9",
+      "dst": "ae579d48",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "fdff66f5",
+      "dst": "ef201813",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "5cde01c9",
+      "dst": "c9674448",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "5cde01c9",
+      "dst": "2aaa46a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "fdff66f5",
+      "dst": "2aaa46a5",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "d622ff64",
+      "dst": "9e3b089a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "209ad80c",
+      "dst": "e249fd0b",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "9e3b089a",
+      "dst": "c7052214",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "e249fd0b",
+      "dst": "60e70a92",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "9e3b089a",
+      "dst": "2bad2225",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "e249fd0b",
+      "dst": "f87af098",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "9e3b089a",
+      "dst": "6fbc4e53",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "e249fd0b",
+      "dst": "fb13ea3f",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "9e3b089a",
+      "dst": "a0284783",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "9e3b089a",
+      "dst": "1e3d0136",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "e249fd0b",
+      "dst": "1e3d0136",
       "src_iface": 0,
       "dst_iface": 0,
       "broken": false,
@@ -119933,9 +121633,10 @@
         "class": "facility",
         "containment": "none",
         "width_m": 3.6,
-        "depth_m": 2.4,
+        "depth_m": 4.8,
         "rows": [
-          1
+          1,
+          2
         ],
         "racks_per_row": 6,
         "aisles": []
@@ -120137,9 +121838,10 @@
         "class": "facility",
         "containment": "none",
         "width_m": 3.6,
-        "depth_m": 2.4,
+        "depth_m": 4.8,
         "rows": [
-          1
+          1,
+          2
         ],
         "racks_per_row": 6,
         "aisles": []

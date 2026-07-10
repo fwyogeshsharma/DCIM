@@ -18,6 +18,7 @@ const TYPE_COLOR: Record<string, string> = {
   switchgear:    '#57534e',
   ats:           '#92400e',
   mcc:           '#155e75',
+  mpp:           '#0e7490',
   sensor:        '#374151',
 }
 
@@ -37,6 +38,7 @@ const TYPE_ICON: Record<string, string> = {
   switchgear:    '▦',
   ats:           '⇄',
   mcc:           '⛭',
+  mpp:           '❄',
   sensor:        '◦',
 }
 

@@ -838,15 +838,21 @@ class FleetLifecycleEngine:
         positions = self._crah_perimeter_positions(ext, rpr, n_rows, target)
         chw_supply = infra.get("chw_supply")
         chw_return = infra.get("chw_return")
-        # CRAHs are bulk mechanical loads, fed from a Motor Control Center — which
-        # sits downstream of a transfer switch and upstream of no UPS. Without this
-        # the unit is unpowered. Resolved by ROOM (the MCCs live in the Mechanical
-        # Room) so it survives renames. New CRAHs alternate across the two MCCs so
-        # each side of the 2N mechanical split carries about half the air handlers.
+        # CRAHs are bulk mechanical loads, fed from the hall's own Mechanical Power
+        # Panel — a panelboard in the room, downstream of an MCC and upstream of no
+        # UPS. Without this the unit is unpowered. Resolved by ROOM so it survives
+        # renames. New CRAHs alternate across the hall's A/B panels so a lost source
+        # thins the air side evenly instead of killing one end of the room. Falls
+        # back to the MCCs for a topology built before the hall panels existed.
         mccs = sorted((d for d in self.s.device_manager.get_all_devices()
-                       if d.device_type == DeviceType.MCC and (d.datacenter or "") == dc
-                       and (d.room or "") == "Mechanical Room"),
+                       if d.device_type == DeviceType.MPP and (d.datacenter or "") == dc
+                       and (d.room or "") == room),
                       key=lambda d: d.name or "")
+        if not mccs:
+            mccs = sorted((d for d in self.s.device_manager.get_all_devices()
+                           if d.device_type == DeviceType.MCC and (d.datacenter or "") == dc
+                           and (d.room or "") == "Mechanical Room"),
+                          key=lambda d: d.name or "")
         unit = int(getattr(tmpls[0], "rack_unit", 1) or 1)
         added = list(existing)
         for i in range(len(existing), target):

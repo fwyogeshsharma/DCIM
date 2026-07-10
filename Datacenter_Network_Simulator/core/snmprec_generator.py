@@ -400,6 +400,9 @@ class SNMPRecGenerator:
         if device.device_type == DeviceType.MCC:
             entries += self._mcc_entries(device)
 
+        if device.device_type == DeviceType.MPP:
+            entries += self._mpp_entries(device)
+
         if device.device_type == DeviceType.CRAH:
             entries += self._crah_entries(device)
 
@@ -741,24 +744,39 @@ class SNMPRecGenerator:
                     op_mode = 1
                 # upsBypassStatus: 1=not-on-bypass, 2=on-bypass
                 bypass_snmp = 2 if bypass_on else 1
-                # upsOutputApparentPower (VA): % load on a nominal 3000 VA frame
-                app_power = int(round(out_load * 30.0))
+                _OUT_PF      = 0.9      # typical UPS output power factor
+                _EFFICIENCY  = 0.92     # typical UPS efficiency
+                _OUT_V       = 220
+                # upsOutputPower is a MEASURED register on real gear, so serve the live
+                # watts the store publishes (ups_output_kw). A UPS with no rating in the
+                # SKU catalog isn't wired into the power graph and has no live watts, so
+                # it falls back to a nominal 3 kVA desktop frame scaled by percent load —
+                # which is all the old code ever did, and why a 1200 kW datacenter UPS
+                # used to report its output as a few hundred watts.
+                _NOM_VA      = 3000.0   # nominal small-frame VA, fallback only
+                out_kw = float(ext.get("ups_output_kw", 0.0) or 0.0)
+                if out_kw > 0.0:
+                    out_real_w = int(round(out_kw * 1000.0))
+                    out_va     = out_real_w / _OUT_PF
+                    # A datacenter frame is 400 V three-phase, not a 220 V wall socket.
+                    # Reporting its current against 220 V single-phase would triple it.
+                    _OUT_V     = 400
+                    _out_phase = 1.7320508    # sqrt(3)
+                else:
+                    out_va     = out_load * _NOM_VA / 100.0
+                    out_real_w = int(round(out_va * _OUT_PF))
+                    _out_phase = 1.0
+                # upsOutputApparentPower (VA)
+                app_power = int(round(out_va))
                 updates[f"{_UPS_ENT}.6.0"]  = ("2", str(op_mode))
                 updates[f"{_UPS_ENT}.7.0"]  = ("2", str(bypass_snmp))
                 updates[f"{_UPS_ENT}.8.0"]  = ("2", str(batt_health))
                 updates[f"{_UPS_ENT}.9.0"]  = ("2", str(app_power))
                 updates[f"{_UPS_ENT}.10.0"] = ("2", str(energy_kwh))
                 updates[f"{_UPS_ENT}.11.0"] = ("2", str(int(round(ext.get("ups_runtime_min", 8.0)))))  # battery runtime (min)
-                # Live-derived UPS-MIB power/current metrics (previously static)
-                _NOM_VA      = 3000.0   # nominal UPS frame VA
-                _OUT_PF      = 0.9      # typical UPS output power factor
-                _EFFICIENCY  = 0.92     # typical UPS efficiency
-                _OUT_V       = 220
-                out_va        = out_load * _NOM_VA / 100.0
-                out_real_w    = int(round(out_va * _OUT_PF))
-                out_cur_x10   = int(round(out_va / _OUT_V * 10))
+                out_cur_x10   = int(round(out_va / (_OUT_V * _out_phase) * 10))
                 in_real_w     = int(round(out_real_w / _EFFICIENCY))
-                in_cur_x10    = int(round(in_real_w / max(in_volt, 1) * 10))
+                in_cur_x10    = int(round(in_real_w / (max(in_volt, 1) * _out_phase) * 10))
                 # Battery voltage sags with discharge: 220V at full, ~180V at empty (×10)
                 batt_volt_x10 = int(round((180.0 + 40.0 * charge / 100.0) * 10))
                 updates[f"{_UPS_MIB}.2.6.0"]     = ("2", str(batt_volt_x10))  # upsBatteryVoltage ×10 V
@@ -838,7 +856,7 @@ class SNMPRecGenerator:
 
             # Electrical upstream pollable OIDs — utility feed / switchgear / ATS / MCC.
             if device.device_type in (DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                                      DeviceType.ATS, DeviceType.MCC):
+                                      DeviceType.ATS, DeviceType.MCC, DeviceType.MPP):
                 ext = {}
                 try:
                     from core.device_state_store import _get_ext_state
@@ -1497,6 +1515,7 @@ class SNMPRecGenerator:
     _SWGR_ENT = "1.3.6.1.4.1.99999.9"
     _ATS_ENT  = "1.3.6.1.4.1.99999.10"
     _MCC_ENT  = "1.3.6.1.4.1.99999.11"
+    _MPP_ENT  = "1.3.6.1.4.1.99999.12"
 
     def _electrical_updates(self, device: Device, ext: dict) -> dict:
         """Live OID values for the electrical upstream, from the device's ext state.
@@ -1536,6 +1555,14 @@ class SNMPRecGenerator:
                 f"{E}.6.0": i("ats_load_pct"),
                 f"{E}.7.0": i("ats_transfer_count"),
             }
+        if dt == DeviceType.MPP:
+            E = self._MPP_ENT
+            return {
+                f"{E}.1.0": ("2", "1" if ext.get("mpp_status") == "energized" else "2"),
+                f"{E}.2.0": v10("mpp_voltage"),
+                f"{E}.3.0": i("mpp_kw"),
+                f"{E}.4.0": i("mpp_load_pct"),
+            }
         E = self._MCC_ENT
         return {
             f"{E}.1.0": ("2", "1" if ext.get("mcc_status") == "energized" else "2"),
@@ -1543,6 +1570,8 @@ class SNMPRecGenerator:
             f"{E}.3.0": i("mcc_kw"),
             f"{E}.4.0": i("mcc_load_pct"),
             f"{E}.5.0": i("mcc_blocks_on", 3.0),
+            f"{E}.6.0": ("2", "2" if ext.get("mcc_tie") == "closed" else "1"),
+            f"{E}.7.0": ("2", {"normal": "1", "tie": "2"}.get(ext.get("mcc_source"), "3")),
         }
 
     def _utility_entries(self, device: Device) -> List[OidEntry]:
@@ -1590,6 +1619,18 @@ class SNMPRecGenerator:
             _oid_entry(f"{E}.3.0", "2", "0"),     # mccKW (kW)
             _oid_entry(f"{E}.4.0", "2", "0"),     # mccLoadPercent %
             _oid_entry(f"{E}.5.0", "2", "3"),     # mccLoadBlocksEnergized (0-3)
+            _oid_entry(f"{E}.6.0", "2", "1"),     # mccTieBreaker (1=open,2=closed)
+            _oid_entry(f"{E}.7.0", "2", "1"),     # mccSource (1=own ATS,2=tie,3=none)
+        ]
+
+    def _mpp_entries(self, device: Device) -> List[OidEntry]:
+        """Mechanical power panel — the hall's CRAH panelboard, fed from an MCC."""
+        E = self._MPP_ENT
+        return [
+            _oid_entry(f"{E}.1.0", "2", "1"),     # mppStatus (1=energized,2=dead)
+            _oid_entry(f"{E}.2.0", "2", "4000"),  # mppBusVoltage x10 V
+            _oid_entry(f"{E}.3.0", "2", "0"),     # mppKW (kW)
+            _oid_entry(f"{E}.4.0", "2", "0"),     # mppLoadPercent %
         ]
 
     # ------------------------------------------------------------------ #

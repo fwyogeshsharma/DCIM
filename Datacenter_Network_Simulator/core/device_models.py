@@ -545,6 +545,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Caterpillar 3512C", Vendor.CATERPILLAR, DeviceType.GENERATOR,
                     [_g(_GE, 1)],
                     "1875kVA / 1500kW diesel, EMCP 4.4B, 1 × GE management"),
+        DeviceModel("Caterpillar 3516B", Vendor.CATERPILLAR, DeviceType.GENERATOR,
+                    [_g(_GE, 1)],
+                    "2500kVA / 2000kW diesel, EMCP 4.4B, 1 × GE management"),
     ],
 
     # ── Kohler — Diesel Generators ───────────────────────────────────────────
@@ -597,8 +600,12 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
 
     # ── PUMP -- Chilled-/condenser-water pump (VFD, BACnet only -- no SNMP) ─
     (DeviceType.PUMP, Vendor.GRUNDFOS): [
-        DeviceModel("Grundfos NB 65-200", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "End-suction VFD water pump, BACnet only -- no SNMP"),
-        DeviceModel("Grundfos TP 100-360", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "In-line VFD water pump, BACnet only -- no SNMP"),
+        DeviceModel("Grundfos NB 65-200", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "End-suction VFD water pump, 11 kW -- BACnet only, no SNMP"),
+        # An 800 kW chiller needs ~115 m3/h of chilled water at 6 K delta-T, which is
+        # past what a 65-200 frame will pass. The primary evaporator pumps are the
+        # larger 100-200 frame; the 65-200 stays in the catalog for smaller plants.
+        DeviceModel("Grundfos NB 100-200", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "End-suction VFD chilled-water pump, 18.5 kW -- BACnet only, no SNMP"),
+        DeviceModel("Grundfos TP 100-360", Vendor.GRUNDFOS, DeviceType.PUMP, [_g(_GE, 1)], "In-line VFD condenser-water pump, 18.5 kW -- BACnet only, no SNMP"),
     ],
     (DeviceType.PUMP, Vendor.ARMSTRONG): [
         DeviceModel("Armstrong 4380 VFD", Vendor.ARMSTRONG, DeviceType.PUMP, [_g(_GE, 1)], "Vertical in-line VFD water pump, BACnet only -- no SNMP"),

@@ -31,7 +31,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, TYPE_CHECKING
 
-from core.device_manager import DeviceType
+from core.device_manager import DeviceType, cooling_capacity_w
 
 if TYPE_CHECKING:
     from core.device_manager import Device, DeviceManager
@@ -282,6 +282,7 @@ class DeviceStateStore:
         # running set instead of collapsing (fleet overload → fake-low PUE) or
         # spiking (full plant floor at low load). See core/cooling_model.stage_modules.
         self._plant_stage_on: Dict[str, int] = {}     # DC → modules currently running
+        self._plant_trains_run: Dict[str, list] = {}  # DC → cooling trains the BMS has ON
         self._plant_standby_names: set = set()        # chiller names staged OFF (not faulted)
         self._plant_overload_kw: Dict[str, float] = {} # DC → IT beyond full installed plant
         # Per-DC installed module count is sized to the fleet server cap so the plant
@@ -643,11 +644,89 @@ class DeviceStateStore:
         return self._liquid_servers_cache
 
     # ── Plant-wide cooling cascade ──────────────────────────────────────────
+    @staticmethod
+    def _unit_index(name: str) -> int:
+        """Trailing digits of a device's leading name segment: CHWP3-DC1-CP → 3."""
+        head = (name or "").split("-", 1)[0]
+        digits = ""
+        for ch in reversed(head):
+            if not ch.isdigit():
+                break
+            digits = ch + digits
+        return int(digits) if digits else 0
+
+    def _build_trains(self, dc: str, plant: Dict[str, list]) -> tuple:
+        """Group this DC's plant into COOLING TRAINS from the cooling-loop topology.
+
+        A train is one complete heat path: a chiller, the evaporator (chilled-water)
+        pump that feeds it, the condenser-water pump that carries its condenser heat,
+        and the tower cell that rejects it. Lose any member and that train stops
+        cooling — which is why the electrical feed must follow the train, not the
+        device type. A plant with N+1 trains rides out the loss of any one of them.
+
+        Chilled-water pumps beyond the one matching each chiller (CHWP4 on a
+        three-chiller plant) sit on the common CHW header as the N+1 standby: any
+        train's evaporator pump can be backed up by it.
+
+        Returns (trains, spare_chwp). Each train is
+        {"chiller", "chwp", "cwp", "tower", "members"}.
+        """
+        trains: list = []
+        spare: list = []
+        if self._topology is None:
+            return trains, spare
+        try:
+            id_by_name = {d.name: d.id for d in self._dm.get_all_devices()}
+            name_by_id = {v: k for k, v in id_by_name.items()}
+            nbrs: Dict[str, set] = {}
+            for u, v, _w in self._topology.get_edges_by_layer("cooling"):
+                nbrs.setdefault(u, set()).add(v)
+                nbrs.setdefault(v, set()).add(u)
+
+            def adj(name, pred):
+                out = []
+                for nid in nbrs.get(id_by_name.get(name, ""), ()):
+                    n = name_by_id.get(nid)
+                    if n and pred(n):
+                        out.append(n)
+                return sorted(out)
+
+            pumps = set(plant.get("pump", []))
+            towers = set(plant.get("cooling_tower", []))
+            is_cwp = lambda n: n.upper().startswith("CWP") or "COND" in n.upper()
+            claimed_chwp: set = set()
+            for chiller in sorted(plant.get("chiller", []), key=self._unit_index):
+                idx = self._unit_index(chiller)
+                chwps = adj(chiller, lambda n: n in pumps and not is_cwp(n))
+                cwps  = adj(chiller, lambda n: n in pumps and is_cwp(n))
+                twrs  = adj(chiller, lambda n: n in towers)
+                # Prefer the index-matched evaporator pump (CHL2 ↔ CHWP2); a chiller
+                # that is also wired to the header standby must not claim it.
+                chwp = next((n for n in chwps if self._unit_index(n) == idx),
+                            next((n for n in chwps if n not in claimed_chwp), None))
+                if chwp:
+                    claimed_chwp.add(chwp)
+                cwp = next((n for n in cwps if self._unit_index(n) == idx),
+                           cwps[0] if cwps else None)
+                tower = next((n for n in twrs if self._unit_index(n) == idx),
+                             twrs[0] if twrs else None)
+                members = [m for m in (chiller, chwp, cwp, tower) if m]
+                trains.append({"chiller": chiller, "chwp": chwp, "cwp": cwp,
+                               "tower": tower, "members": members,
+                               "complete": bool(chwp and cwp and tower)})
+            spare = sorted(n for n in pumps
+                           if not is_cwp(n) and n not in claimed_chwp)
+        except Exception:
+            log.exception("[StateStore] cooling train build error for %s", dc)
+        return trains, spare
+
     def _cooling_context(self) -> dict:
         """Cached maps tying servers/rooms to the cooling plant that feeds them:
           crah_by_room  {(dc,room): [crah names]}     — CRAHs cooling each room
           cdu_by_server {server name: cdu name}       — which CDU cools a server
           plant_by_dc   {dc: {chiller|pump|cooling_tower: [names]}}
+          trains_by_dc  {dc: [train dicts]}           — complete heat paths
+          spare_chwp    {dc: [names]}                 — N+1 header standby pumps
         Built once from the device inventory; used to propagate upstream faults.
         """
         if self._cool_ctx is not None:
@@ -664,13 +743,19 @@ class DeviceStateStore:
                     plant_by_dc.setdefault(d.datacenter, {}).setdefault(dt.value, []).append(d.name)
         except Exception:
             log.exception("[StateStore] cooling context build error")
+        trains_by_dc: Dict[str, list] = {}
+        spare_chwp: Dict[str, list] = {}
+        for dc, plant in plant_by_dc.items():
+            trains_by_dc[dc], spare_chwp[dc] = self._build_trains(dc, plant)
         cdu_by_server: Dict[str, str] = {}
         for cdu_name, servers in self._cdu_loop_servers().items():
             for s in servers:
                 cdu_by_server[s] = cdu_name
         self._cool_ctx = {"crah_by_room": crah_by_room,
                           "cdu_by_server": cdu_by_server,
-                          "plant_by_dc": plant_by_dc}
+                          "plant_by_dc": plant_by_dc,
+                          "trains_by_dc": trains_by_dc,
+                          "spare_chwp": spare_chwp}
         return self._cool_ctx
 
     # Power-chain rank: source (0) → leaf load (4). A device's parents are its
@@ -684,15 +769,17 @@ class DeviceStateStore:
     #   utility_feed ─┐                      generator ─┐
     #                 └─> switchgear ─┐   ┌─ switchgear ┘
     #                                 └─> ats ─┬─> ups ─> rpp ─> pdu ─> IT leaves
-    #                                          └─> mcc ────────────────> plant leaves
+    #                                          └─> mcc ─┬────────────> chiller plant
+    #                                                   └─> mpp ─────> hall CRAHs
     #
     # The mcc sits at the SAME rank as the ups because both hang directly off the
     # transfer switch — mechanical load is NOT UPS-backed, it rides the transfer gap
-    # on chilled-water thermal mass.
+    # on chilled-water thermal mass. The mpp is a hall panelboard one tier below the
+    # mcc, the mechanical mirror of what the rpp is on the critical side.
     _POWER_RANK = {"utility_feed": 0, "generator": 0,
                    "switchgear": 1, "ats": 2,
                    "ups": 3, "mcc": 3,
-                   "rpp": 4, "floor_pdu": 4, "pdu": 5}
+                   "rpp": 4, "floor_pdu": 4, "mpp": 4, "pdu": 5}
     # Rank for anything outside the distribution ladder — IT loads, cooling plant,
     # sensors, meters. Must sit strictly below every tier above so the bottom-up
     # cascade visits leaves first and their watts flow up to the source.
@@ -1039,32 +1126,93 @@ class DeviceStateStore:
         load = max(0.0, min(1.0, getattr(device, "cpu_usage", 0) / 100.0))
         return nominal * (0.55 + 0.45 * load)
 
+    def _native_power_points(self) -> Optional[dict]:
+        """Facility / IT / mechanical kW read off the electrical gear's OWN meters.
+
+        This is how a real DCIM computes PUE, and it is The Green Grid's Category 1
+        measurement plane:
+
+          facility  — at the incoming service. Read from the SWITCHGEAR, not the
+                      utility feed: exactly one source board is energized at a time
+                      (utility main, or the generator paralleling bus), so summing
+                      both boards yields the live total across a transfer without
+                      ever double-counting. A meter on the utility feed alone would
+                      read zero the moment the site ran on generator.
+          IT        — at the UPS OUTPUT (upsOutputPower). Summing both UPS gives the
+                      whole dual-corded IT load, and it keeps reading correctly when
+                      one side drops to battery, or when both do.
+          mechanical— at the MCCs, which carry the bulk plant and nothing else.
+
+        Only these three planes are read. Every ATS, RPP and rack PDU also reports
+        kW, but those tiers are NESTED inside the ones above (ats ⊃ ups ⊃ rpp ⊃ pdu),
+        so adding them would count the same watts several times over.
+
+        None when the topology has no electrical upstream (an older saved file), so
+        the caller falls back to the EV2 sub-meter hierarchy.
+        """
+        ctx = self._power_context() or {}
+        id_type = ctx.get("id_type", {})
+        main_kw = it_kw = mech_kw = 0.0
+        seen_swgr = seen_ups = False
+        for nid, dtv in id_type.items():
+            if dtv not in ("switchgear", "ups", "mcc"):
+                continue
+            d = self._dm.get_device(nid)
+            if d is None:
+                continue
+            st = self._ext_states.get(d.name) or _ext_state_cache.get(d.name) or {}
+            if dtv == "switchgear":
+                seen_swgr = True
+                main_kw += float(st.get("swgr_kw", 0.0) or 0.0)
+            elif dtv == "ups":
+                seen_ups = True
+                it_kw += float(st.get("ups_output_kw", 0.0) or 0.0)
+            else:
+                mech_kw += float(st.get("mcc_kw", 0.0) or 0.0)
+        if not (seen_swgr and seen_ups) or it_kw <= 0.0:
+            # No electrical upstream, or the tick loop has not populated the gear's
+            # telemetry yet (first tick). Either way there is nothing to read.
+            return None
+        return {"main_kw": main_kw, "it_kw": it_kw, "mech_kw": mech_kw}
+
     def get_power_summary(self) -> dict:
-        """Live facility power + PUE, derived from the EV2 METER readings the way a
-        real DCIM does it: PUE = Σ facility-meter kW ÷ Σ IT-sub-meter kW. Each EV2
-        reports the live load through the panel it clamps (self._through_live). If
-        the topology has no proper meter hierarchy, fall back to the internal
-        IT/facility power sums so the value is still populated."""
+        """Live facility power + PUE, the way a real DCIM derives it:
+        PUE = facility kW ÷ IT kW.
+
+        Three sources, in descending order of fidelity:
+
+          "native"   — the gear's own meters (switchgear / UPS output / MCC). This is
+                       The Green Grid Category 1 plane. See _native_power_points.
+          "meters"   — EV2 sub-meter hierarchy, classified by what each clamped
+                       panel's subtree contains. Used for topologies with no modeled
+                       electrical upstream.
+          "computed" — internal power sums, when metering is absent or incoherent.
+        """
         ctx = self._power_context()
         through = self._through_live
         it_m = main_m = cool_m = 0.0
-        for m in ctx.get("ev2_meters", []):
-            kw = through.get(m["panel"], 0.0) / 1000.0
-            role = m.get("role") or ("main" if m.get("facility") else "it")
-            if role == "it":
-                it_m += kw           # IT branch sub-meter
-            elif role == "main":
-                main_m += kw         # building-feed meter — whole facility (IT+cooling)
-            elif role == "cool":
-                cool_m += kw         # cooling-plant sub-meter
+        native = self._native_power_points()
+        if native is not None:
+            it_m, main_m, cool_m = native["it_kw"], native["main_kw"], native["mech_kw"]
+        else:
+            for m in ctx.get("ev2_meters", []):
+                kw = through.get(m["panel"], 0.0) / 1000.0
+                role = m.get("role") or ("main" if m.get("facility") else "it")
+                if role == "it":
+                    it_m += kw           # IT branch sub-meter
+                elif role == "main":
+                    main_m += kw         # building-feed meter — whole facility (IT+cooling)
+                elif role == "cool":
+                    cool_m += kw         # cooling-plant sub-meter
 
-        # CDU reclassification. A CDU (in-rack coolant distribution) is fed from the
-        # IT PDU, so its pump draw rides an IT-role sub-meter and would be counted as
-        # IT load — understating PUE. Its work is mechanical cooling overhead (Green
-        # Grid/ASHRAE put it in the numerator), and the computed path (_COOLING_TYPES)
-        # already treats it as cooling. Shift live CDU watts IT→cool so the meter PUE
-        # matches: facility is unchanged (sub-meter sum is conserved), only the IT
-        # denominator drops. Bounded by the metered IT so we never go negative.
+        # CDU reclassification. A CDU (in-rack coolant distribution) is dual-corded off
+        # the rack PDUs, so its pump draw sits inside the IT reading — on the UPS
+        # output in the native plane, on an IT-role sub-meter in the EV2 plane — and
+        # would be counted as IT load, understating PUE. Its work is mechanical cooling
+        # overhead (Green Grid/ASHRAE put it in the numerator), and the computed path
+        # (_COOLING_TYPES) already treats it as cooling. Shift live CDU watts IT→cool so
+        # the metered PUE matches: facility is unchanged (the total is conserved), only
+        # the IT denominator drops. Bounded by the metered IT so we never go negative.
         cdu_kw = 0.0
         try:
             for d in self._dm.get_all_devices():
@@ -1076,12 +1224,11 @@ class DeviceStateStore:
         it_m   -= cdu_kw
         cool_m += cdu_kw
 
-        # Facility power from meters. The branch sub-meters (IT + cooling) are
-        # non-overlapping and together cover the whole load, so their sum is the
-        # primary facility figure. A building-main meter is only a cross-check: on
-        # a redundant A/B feed a single metered main reads just its side (which can
-        # be LESS than the full sub-meter sum), so take the larger of the two
-        # rather than trusting an under-metered main alone.
+        # Facility power. IT and mechanical are non-overlapping and together cover the
+        # whole load, so their sum is the primary facility figure. The building-main
+        # reading is a cross-check, not the primary: on a dead bus mid-transfer BOTH
+        # source boards read zero while the UPS batteries still carry IT, so a main
+        # meter alone would say the site draws nothing. Take the larger.
         # Cooling for PUE uses the STAGED-MODEL cooling electrical (the plant sized
         # to the fleet and sequenced with load), not the metered plant draw — the
         # latter is capped by the small curated device nameplates, which understates
@@ -1097,12 +1244,16 @@ class DeviceStateStore:
         it_w  = it_m * 1000.0 if it_m > 0 else self._it_w
         fac_w = fac_m * 1000.0 if fac_m > 0 else self._facility_w
         pue = (fac_w / it_w) if it_w > 0 else 0.0
+        if not metered:
+            source = "computed"
+        else:
+            source = "native" if native is not None else "meters"
         return {
             "it_watts":       round(it_w, 1),
             "cooling_watts":  round(max(0.0, fac_w - it_w), 1),
             "facility_watts": round(fac_w, 1),
             "pue":            round(pue, 3),
-            "source":         "meters" if metered else "computed",
+            "source":         source,
         }
 
     # ── Utility / transfer control surface ────────────────────────────────────
@@ -1170,9 +1321,9 @@ class DeviceStateStore:
             st = self._transfer.step(dc, utility_ok, gens_startable, self._tick_interval)
             live_types = st.mech_types_on()
             dc_dark = 0
+            src_ok, _tie = self._mcc_tie_state(dc, ctx)
             for mid in dc_mcc.get(dc, []):
-                # A failed ATS de-energizes only the MCC behind it.
-                dead = mcc_ats.get(mid) in self._ats_failed
+                dead = not src_ok.get(mid, True)
                 for nm, dtv in mcc_plant.get(mid, []):
                     if dead or dtv not in live_types:
                         unpowered.add(nm)
@@ -1182,6 +1333,30 @@ class DeviceStateStore:
             self._mech_dead_s[dc] = (0.0 if dc_dark == 0
                                      else self._mech_dead_s.get(dc, 0.0) + self._tick_interval)
         self._plant_unpowered_names = unpowered
+
+    def _mcc_tie_state(self, dc: str, ctx: dict) -> tuple:
+        """Which MCCs have a source, and whether the bus tie is closed.
+
+        An N+1 chiller plant cannot be fed by statically splitting its trains across
+        two transfer switches: with three trains and two sources, losing the source
+        that carries two of them leaves one, and the load needs two. Real plants
+        solve this with a MAIN-TIE-MAIN mechanical switchboard — the two MCC buses
+        sit either side of a normally-open tie breaker, and on loss of one source the
+        tie closes so the surviving source carries the whole mechanical load. Each
+        MCC is rated for it (800 A ≈ 499 kW against a mechanical load well under).
+
+        The tie only answers for a failed TRANSFER SWITCH. When the utility drops,
+        both ATS are on a dead bus and there is nothing to tie to — that outage is
+        handled by the gensets and the staged mechanical restart.
+
+        Returns ({mcc_id: has_source}, tie_closed).
+        """
+        mcc_ats = ctx.get("mcc_ats", {})
+        mccs = ctx.get("dc_mcc", {}).get(dc, [])
+        own = {m: (mcc_ats.get(m) not in self._ats_failed) for m in mccs}
+        any_ok = any(own.values())
+        tie_closed = any_ok and not all(own.values())
+        return {m: (own[m] or tie_closed) for m in mccs}, tie_closed
 
     def _gen_state(self, gen_id: str) -> dict:
         """Ext-state dict for a generator device id (empty if unknown)."""
@@ -1269,10 +1444,26 @@ class DeviceStateStore:
             st["ats_kw"] = round(thr / 1000.0, 1) if (ats.source_live and not failed) else 0.0
             st["ats_load_pct"] = load_pct if (ats.source_live and not failed) else 0.0
 
+        elif dtv == "mpp":
+            # A hall's mechanical panelboard is passive: it is live exactly when the
+            # MCC feeding it is live, and it goes dark with that bus. Its CRAHs are
+            # mechanical load block 3, so it re-energizes last on a genset restart.
+            live = bool(self._energized.get(device.id, False))
+            st["mpp_status"] = "energized" if live else "dead"
+            st["mpp_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
+            st["mpp_kw"] = round(thr / 1000.0, 1) if live else 0.0
+            st["mpp_load_pct"] = load_pct if live else 0.0
+
         elif dtv == "mcc":
-            dead = ctx.get("mcc_ats", {}).get(device.id) in self._ats_failed
+            src_ok, tie_closed = self._mcc_tie_state(dc, ctx)
+            own_ok = ctx.get("mcc_ats", {}).get(device.id) not in self._ats_failed
+            dead = not src_ok.get(device.id, True)
             live = ats.source_live and not dead
             st["mcc_status"] = "energized" if live else "dead"
+            st["mcc_tie"] = "closed" if tie_closed else "open"
+            # Which source is actually feeding this bus: its own transfer switch, or
+            # the sibling's across a closed tie.
+            st["mcc_source"] = "normal" if own_ok else ("tie" if tie_closed else "none")
             st["mcc_blocks_on"] = 0 if dead else ats.mech_blocks_on
             st["mcc_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
             st["mcc_kw"] = round(thr / 1000.0, 1) if live else 0.0
@@ -1386,6 +1577,14 @@ class DeviceStateStore:
                 d = self._dm.get_device(nid)
                 ext = (self._ext_states.get(d.name) if d else None) or {}
                 en[nid] = not ext.get("ups_battery_exhausted", False)
+            elif dtv == "mcc":
+                # Bus tie: an MCC whose own transfer switch failed is picked up by its
+                # sibling's source. It still needs SOME source to be live, so the
+                # parent check below still applies through the sibling's ATS.
+                dc = self._dc_of(nid)
+                src_ok, _tie = self._mcc_tie_state(dc, ctx)
+                live_ats = any(en.get(a, False) for a in ctx.get("dc_ats", {}).get(dc, []))
+                en[nid] = bool(src_ok.get(nid, True)) and live_ats
             else:
                 ps = parents.get(nid, [])
                 en[nid] = any(en.get(p, False) for p in ps) if ps else True
@@ -1424,6 +1623,19 @@ class DeviceStateStore:
             if d is not None and not self._ups_source_ok(d):
                 return []
             return ps
+        if dtv == "mcc":
+            # With the bus tie closed, this MCC's watts come from a SIBLING's transfer
+            # switch, not from its own dead one. Without this the mechanical load would
+            # stop at the MCC and never reach the facility main meter.
+            dc = self._dc_of(nid)
+            own = ctx.get("mcc_ats", {}).get(nid)
+            if own is not None and own not in self._ats_failed:
+                return [p for p in ps if self._energized.get(p, True)]
+            siblings = [ctx.get("mcc_ats", {}).get(m)
+                        for m in ctx.get("dc_mcc", {}).get(dc, []) if m != nid]
+            live = [a for a in siblings
+                    if a and a not in self._ats_failed and self._energized.get(a, False)]
+            return live[:1]
         return [p for p in ps if self._energized.get(p, True)]
 
     def _compute_power_flow(self) -> None:
@@ -1453,6 +1665,7 @@ class DeviceStateStore:
             crah_room: Dict[str, tuple] = {}                 # CRAH name → (dc, room)
             dc_city: Dict[str, str] = {}
             plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
+            plant_model: Dict[str, str] = {}            # plant device name → SKU model
             for d in devices:
                 dtv = d.device_type.value
                 _dc = getattr(d, "datacenter", None) or "?"
@@ -1481,6 +1694,7 @@ class DeviceStateStore:
                         cool_w += w
                     plant_dc[_dc].append(
                         (d.name, float(getattr(d, "power_draw_w", 0) or 0), dtv))
+                    plant_model[d.name] = getattr(d, "model_name", "") or ""
                     if dtv == "crah":
                         crah_room[d.name] = (_dc, getattr(d, "room", "") or "")
             for nid in sorted(rank, key=lambda x: rank.get(x, self._LEAF_RANK),
@@ -1499,6 +1713,7 @@ class DeviceStateStore:
             # nameplate share. Fed to the plant engines next tick, so cooling draw
             # tracks the real IT load and the location's weather instead of a fixed
             # nameplate × clock curve.
+            cool_ctx = self._cooling_context()
             from core.cooling_model import (
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
                 affinity_power_kw, chiller_electrical_w, chiller_cop,
@@ -1532,46 +1747,70 @@ class DeviceStateStore:
                 self._plant_overload_kw[_dc] = max(0.0, itl / 1000.0 - installed_kw)
                 total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc))
                 _cool_model_w += total_w
-                # Physical chillers to RUN = staged fraction mapped onto this DC's
-                # chiller units; the rest are STANDBY (run-status 0, ~0 draw, and NOT
-                # counted as a cooling loss). Fewer physical units than modeled modules
-                # → coarse but honest "N of M running".
-                _chillers = [_n for _n, _w, _t in units if _t == "chiller"]
+                # ── TRAIN STAGING ────────────────────────────────────────────────
+                # The plant stages whole COOLING TRAINS (chiller + its evaporator
+                # pump + its condenser pump + its tower cell), never individual
+                # devices: a chiller with no tower rejects nothing, and a tower with
+                # no chiller cools nothing. Running the "first N of each device type"
+                # independently — as this used to — can leave a running chiller whose
+                # tower is staged off, and made an electrical side-loss take out every
+                # stage at once.
+                #
+                # Trains are ordered lead/lag by their fitness: healthy and energized
+                # first. So when one MCC drops, the BMS runs the trains that still
+                # have power, and only counts a shortfall if there are not enough of
+                # them — which is exactly what an N+1 plant is supposed to do.
+                _trains = cool_ctx["trains_by_dc"].get(_dc, [])
+                _spare_chwp = cool_ctx["spare_chwp"].get(_dc, [])
                 _n_run = 0
-                if _chillers:
-                    _n_run = max(1, min(len(_chillers),
-                                        math.ceil(on / inst_mods * len(_chillers))))
-                    self._plant_standby_names |= set(_chillers[_n_run:])
-                # Paired pumps and tower cells SEQUENCE WITH the chillers (lead/lag) —
-                # a chiller that's off doesn't need its pumps spinning or its tower
-                # rejecting heat. Run the same fraction as the chillers, standby the
-                # rest, so DCIM shows the whole loop staging. Always ≥1 (a running
-                # plant needs a lead of each); standby units read run-status 0 / ~0 draw
-                # and are excluded from the cooling-loss calc like the chillers.
-                _frac = (_n_run / len(_chillers)) if _chillers else 1.0
+                self._plant_trains_run[_dc] = []
+                if _trains:
+                    _n_run = max(1, min(len(_trains),
+                                        math.ceil(on / inst_mods * len(_trains))))
 
-                def _stage_pool(_names: list) -> None:
-                    if _names:
-                        _run = max(1, min(len(_names), math.ceil(_frac * len(_names))))
-                        self._plant_standby_names |= set(_names[_run:])
+                    def _fitness(i_tr):
+                        i, tr = i_tr
+                        dead = any(m in self._plant_unpowered_names for m in tr["members"])
+                        bad = any(m not in self._plant_unpowered_names
+                                  and self._is_faulted(m) for m in tr["members"])
+                        # (unpowered, faulted, install order) — install order is the
+                        # tiebreak, so a healthy plant always runs its lead trains.
+                        return (dead, bad, i)
 
-                # Pumps: stage the CHILLED-water (CHWP, evaporator) and CONDENSER-water
-                # (CWP) loops as SEPARATE lead/lag pools — a running chiller needs one
-                # of EACH (evap flow AND condenser flow to the tower), so both loops
-                # must keep a pump on, not just the first N of the combined pump list.
-                _pumps = [_n for _n, _w, _t in units if _t == "pump"]
-                _cwp  = [n for n in _pumps if "CWP" in n.upper() or "COND" in n.upper()]
-                _chwp = [n for n in _pumps if n not in _cwp]
-                _stage_pool(_chwp)
-                _stage_pool(_cwp)
-                _stage_pool([_n for _n, _w, _t in units if _t == "cooling_tower"])
-                # Plant-wide duty fraction: how hard the RUNNING plant works vs its
-                # nameplate. Drives the VFD speed of every pump/fan in the DC.
-                lf = min(1.0, total_w / np_sum)
-                # Thermal part-load ratio for the chiller kW/ton curve: live IT heat
-                # vs the enabled IT the running plant is sized to reject (≈1 by design,
-                # so staged chillers sit near their efficient part-load point).
-                plr = (itl / itd) if itd > 0 else 0.0
+                    _order = [i for i, _ in sorted(enumerate(_trains), key=_fitness)]
+                    _run_idx = set(_order[:_n_run])
+                    self._plant_trains_run[_dc] = [_trains[i] for i in _order[:_n_run]]
+                    for i, tr in enumerate(_trains):
+                        if i not in _run_idx:
+                            self._plant_standby_names |= set(tr["members"])
+                # The header standby CHW pump only runs when a RUNNING train's own
+                # evaporator pump is out; otherwise it idles as the N+1 spare.
+                _need_spare = any(
+                    tr["chwp"] and (tr["chwp"] in self._plant_unpowered_names
+                                    or self._is_faulted(tr["chwp"]))
+                    for tr in self._plant_trains_run.get(_dc, []))
+                if _spare_chwp and not _need_spare:
+                    self._plant_standby_names |= set(_spare_chwp)
+                # Plant-wide duty fraction: how hard the RUNNING plant works vs the
+                # nameplate of the units that are actually on. Standby trains carry no
+                # duty, so counting their nameplate would make a lightly-loaded plant
+                # look busier than it is. Drives the VFD speed of every pump/fan.
+                _running_np = sum(w for _n, w, _t in units
+                                  if _n not in self._plant_standby_names) or np_sum
+                lf = min(1.0, total_w / _running_np)
+                # Thermal part-load ratio for the chiller kW/ton curve. This is the
+                # chiller's OWN load ratio — live IT heat divided by the rated cooling
+                # capacity of the chillers currently running — not the staged plant's
+                # load ratio. Feeding the plant's ratio (≈0.8 by design) into a machine
+                # that is really at 11 % load put it on the wrong point of its part-load
+                # curve, reporting a flattering COP and an inflated compressor draw.
+                # Falls back to the old proxy for a topology whose chiller SKU carries
+                # no catalog capacity.
+                _run_cap_w = sum(cooling_capacity_w(plant_model.get(tr["chiller"], ""))
+                                 for tr in self._plant_trains_run.get(_dc, []))
+                plr = ((itl / _run_cap_w) if _run_cap_w > 0
+                       else ((itl / itd) if itd > 0 else 0.0))
+                plr = max(0.0, min(1.0, plr))
                 _city = dc_city.get(_dc)
                 # Hall inlet/return air temp → CRAH fan SPEED ramp (more airflow when
                 # hot). Per-hall (below): each CRAH ramps on ITS room's inlet temp; the
@@ -1736,24 +1975,55 @@ class DeviceStateStore:
             _dead = self._mech_dead_s.get(dc, 0.0)
             ride = max(0.0, min(1.0, (_dead - self._CHW_RIDE_S) / self._CHW_RIDE_S))
 
+            def lost_weight(name: str) -> float:
+                """How much of this unit's capacity is gone, 0..1.
+
+                An UNPOWERED unit is not rejecting heat — but the chilled-water loop
+                has thermal mass, so during the ride-through window its loss costs
+                nothing and only phases in afterwards (see _CHW_RIDE_S). Counted
+                directly rather than waiting for its BACnet run-status to read 0, so
+                the penalty is right even with the BACnet server disabled. A FAULTED
+                unit gets no grace: the rest of the plant has already been
+                compensating for it.
+                """
+                if name in self._plant_unpowered_names:
+                    return ride
+                return 1.0 if self._is_faulted(name) else 0.0
+
+            # ── Cooling loss, computed per TRAIN ─────────────────────────────
+            # A train is a series chain in its own right: chiller → evaporator pump →
+            # condenser pump → tower cell. Lose any member and that train delivers
+            # nothing, so a train's loss is its WORST member, not the product of the
+            # whole plant's per-device-type fractions. Only the trains the BMS has
+            # actually staged ON count — a standby train is redundancy, not a loss.
+            #
+            # The old per-type product multiplied fractions across the plant, so a 2N
+            # electrical split (half of every type on each side) read as ~87 % loss
+            # when one side dropped, instead of the one train it truly cost.
+            trains_on = self._plant_trains_run.get(dc, [])
+            if trains_on:
+                deficit = 0.0
+                for tr in trains_on:
+                    worst = max((lost_weight(m) for m in tr["members"]), default=0.0)
+                    if not tr["complete"]:
+                        worst = 1.0     # a chiller with no tower rejects nothing
+                    deficit += worst
+                loss = deficit / len(trains_on)
+            else:
+                loss = 0.0
+
+            # Header equipment sits OUTSIDE the trains and is common to all of them:
+            # lose the chilled-water or condenser-water isolation valve and every
+            # train downstream of it is throttled. Applied as a multiplier on the
+            # surviving capacity, as before.
             def frac(kind: str) -> float:
-                names = kinds.get(kind) or []
-                # A STAGED-OFF chiller is standby, not a loss — exclude it (only
-                # faulted / unexpectedly-stopped units count against cooling).
-                names = [n for n in names if n not in self._plant_standby_names]
+                names = [n for n in (kinds.get(kind) or [])
+                         if n not in self._plant_standby_names]
                 if not names:
                     return 0.0
-                # An UNPOWERED unit is a loss: its MCC is dead, so it is not
-                # rejecting any heat. Counted directly rather than waiting for its
-                # BACnet run-status to read 0, so the penalty is correct even when
-                # the BACnet server is disabled and there is no plant telemetry.
-                unpowered = [n for n in names if n in self._plant_unpowered_names]
-                faulted = [n for n in names
-                           if n not in self._plant_unpowered_names and self._is_faulted(n)]
-                return (len(faulted) + ride * len(unpowered)) / len(names)
-            # surviving cooling capacity (series chain); towers/valves throttle partially
-            avail = ((1.0 - frac("chiller")) * (1.0 - frac("pump"))
-                     * (1.0 - 0.6 * frac("cooling_tower")) * (1.0 - 0.5 * frac("valve")))
+                return sum(lost_weight(n) for n in names) / len(names)
+
+            avail = (1.0 - loss) * (1.0 - 0.5 * frac("valve"))
             loss = max(0.0, 1.0 - avail)                  # 0 = full cooling, 1 = none
             # PLANT OVERLOAD: live IT beyond the FULL installed plant is heat nothing
             # can reject (every module already on) — treat the excess as a cooling
@@ -1933,6 +2203,7 @@ class DeviceStateStore:
         ext = self._ext_states.setdefault(device.name, {
             "ups_status": "normal",
             "ups_output_load": random.uniform(20.0, 60.0),
+            "ups_output_kw": 0.0,
             "ups_battery_status": "normal",
             "ups_input_voltage": random.uniform(216.0, 224.0),
             "ups_input_frequency": random.uniform(49.8, 50.2),
@@ -1975,10 +2246,16 @@ class DeviceStateStore:
             "ats_load_pct": 0.0,
             "ats_transfer_count": 0,
             "mcc_status": "energized",
+            "mcc_tie": "open",
+            "mcc_source": "normal",
             "mcc_blocks_on": 3,
             "mcc_voltage": 400.0,
             "mcc_kw": 0.0,
             "mcc_load_pct": 0.0,
+            "mpp_status": "energized",
+            "mpp_voltage": 400.0,
+            "mpp_kw": 0.0,
+            "mpp_load_pct": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -2638,6 +2915,7 @@ class DeviceStateStore:
         st = self._ext_states.setdefault(name, {
             "ups_status": "normal",
             "ups_output_load": random.uniform(20.0, 60.0),
+            "ups_output_kw": 0.0,
             "ups_battery_status": "normal",
             "ups_input_voltage": random.uniform(216.0, 224.0),
             "ups_input_frequency": random.uniform(49.8, 50.2),
@@ -2680,10 +2958,16 @@ class DeviceStateStore:
             "ats_load_pct": 0.0,
             "ats_transfer_count": 0,
             "mcc_status": "energized",
+            "mcc_tie": "open",
+            "mcc_source": "normal",
             "mcc_blocks_on": 3,
             "mcc_voltage": 400.0,
             "mcc_kw": 0.0,
             "mcc_load_pct": 0.0,
+            "mpp_status": "energized",
+            "mpp_voltage": 400.0,
+            "mpp_kw": 0.0,
+            "mpp_load_pct": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -2710,6 +2994,17 @@ class DeviceStateStore:
 
         # ── UPS ───────────────────────────────────────────────────────────
         if is_ups:
+            # upsOutputPower is its own measured register in UPS-MIB, not something the
+            # device derives from the percent-load it displays. Publish the real watts
+            # flowing through the UPS, so the PUE denominator reads a clean instrument
+            # value instead of inheriting the percentage's ±0.5 % jitter and 0.1 %
+            # quantisation (which on a 1200 kW frame is ±6 kW of noise per unit).
+            # Written outside the ups_output_load metric flag: switching off a display
+            # metric must not freeze the power reading a DCIM polls.
+            _ups_rated = self._power_context()["rated_w"].get(device.id, 0.0)
+            _ups_thr   = self._through_live.get(device.id, 0.0)
+            st["ups_output_kw"] = round(_ups_thr / 1000.0, 2) if _ups_rated > 0 else 0.0
+
             if mf["ups_status"]:
                 # A UPS does not decide to go on battery — it drops there because its
                 # input source died. That is the ATS's business, so the status is
@@ -2742,8 +3037,7 @@ class DeviceStateStore:
                 st["ups_status"] = self._state_lock("ups_status", st["ups_status"])
 
             if mf["ups_output_load"]:
-                _rated = self._power_context()["rated_w"].get(device.id, 0.0)
-                _thr = self._through_live.get(device.id, 0.0)
+                _rated, _thr = _ups_rated, _ups_thr
                 if _rated > 0:
                     # Live: output load = watts flowing through this UPS / its rating.
                     load = max(0.0, min(100.0, _thr / _rated * 100.0 + random.uniform(-0.5, 0.5)))
@@ -2840,7 +3134,7 @@ class DeviceStateStore:
 
         # ── Electrical upstream (utility feed / switchgear / ATS / MCC) ───
         if device.device_type in (DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                                  DeviceType.ATS, DeviceType.MCC):
+                                  DeviceType.ATS, DeviceType.MCC, DeviceType.MPP):
             self._step_electrical(device, st)
 
         # ── PDU / Floor PDU ───────────────────────────────────────────────

@@ -184,13 +184,13 @@ const TYPE = {
   sensor:['sensor','#34d399'], generator:['gen','#fbbf24'], ups:['UPS','#fcd34d'],
   rpp:['RPP','#fb923c'], pdu:['PDU','#f59e0b'], energy_monitor:['energy','#a3c644'],
   utility_feed:['utility','#94a3b8'], switchgear:['switchgear','#cbd5e1'],
-  ats:['ATS','#f0abfc'], mcc:['MCC','#67e8f9'],
+  ats:['ATS','#f0abfc'], mcc:['MCC','#67e8f9'], mpp:['mech panel','#a5f3fc'],
   crah:['CRAH','#38bdf8'], chiller:['chiller','#22d3d3'], pump:['pump','#2dd4bf'],
   cooling_tower:['cool twr','#2aa198'], valve:['valve','#7dd3c8'], cdu:['CDU','#5ead9e']
 };
 const EMO = {router:'R',firewall:'FW',load_balancer:'LB',switch:'SW',server:'SRV',oob_switch:'OOB',
   sensor:'SEN',generator:'GEN',ups:'UPS',rpp:'RPP',pdu:'PDU',energy_monitor:'EM',crah:'CRAH',
-  utility_feed:'UTIL',switchgear:'SWGR',ats:'ATS',mcc:'MCC',
+  utility_feed:'UTIL',switchgear:'SWGR',ats:'ATS',mcc:'MCC',mpp:'MPP',
   chiller:'CHL',pump:'PMP',cooling_tower:'CT',valve:'VLV',cdu:'CDU'};
 function tcolor(t){ return (TYPE[t]||['?','#888'])[1]; }
 

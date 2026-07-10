@@ -33,6 +33,7 @@ _TYPE_LABELS = {
     DeviceType.SWITCHGEAR:     "Switchgear (main / paralleling bus)",
     DeviceType.ATS:            "Automatic Transfer Switch",
     DeviceType.MCC:            "Motor Control Center (mechanical)",
+    DeviceType.MPP:            "Mechanical Power Panel (hall CRAHs)",
     DeviceType.ENERGY_MONITOR: "Energy Monitor (EV2)",
 }
 
@@ -99,6 +100,7 @@ VENDORS_BY_TYPE = {
     DeviceType.SWITCHGEAR: [Vendor.EATON, Vendor.ASCO, Vendor.SCHNEIDER],
     DeviceType.ATS: [Vendor.ASCO, Vendor.EATON, Vendor.APC],
     DeviceType.MCC: [Vendor.EATON, Vendor.SCHNEIDER],
+    DeviceType.MPP: [Vendor.EATON, Vendor.SCHNEIDER],
     DeviceType.ENERGY_MONITOR: [
         Vendor.VERDIGRIS,
     ],
@@ -333,7 +335,7 @@ class DeviceDialog(QDialog):
                          DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
                          DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR,
                          DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                         DeviceType.ATS, DeviceType.MCC):
+                         DeviceType.ATS, DeviceType.MCC, DeviceType.MPP):
             row = self.rack_row_spin.value()
             if row:
                 parts.append(f"Row {row}")
@@ -377,7 +379,7 @@ class DeviceDialog(QDialog):
                                      DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
                                      DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR,
                                      DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                                     DeviceType.ATS, DeviceType.MCC)
+                                     DeviceType.ATS, DeviceType.MCC, DeviceType.MPP)
         show_gnmi    = dtype in (DeviceType.ROUTER, DeviceType.SWITCH)
         show_prod_ip = dtype in self._PROD_IP_TYPES
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):
@@ -453,7 +455,7 @@ class DeviceDialog(QDialog):
         DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU,
         DeviceType.RPP, DeviceType.GENERATOR,
         DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-        DeviceType.ATS, DeviceType.MCC,
+        DeviceType.ATS, DeviceType.MCC, DeviceType.MPP,
         DeviceType.OOB_SWITCH, DeviceType.SENSOR,
         DeviceType.ENERGY_MONITOR,
     })

@@ -213,9 +213,10 @@
         "class": "facility",
         "containment": "none",
         "width_m": 3.6,
-        "depth_m": 2.4,
+        "depth_m": 4.8,
         "rows": [
-          1
+          1,
+          2
         ],
         "racks_per_row": 6,
         "aisles": []
@@ -417,9 +418,10 @@
         "class": "facility",
         "containment": "none",
         "width_m": 3.6,
-        "depth_m": 2.4,
+        "depth_m": 4.8,
         "rows": [
-          1
+          1,
+          2
         ],
         "racks_per_row": 6,
         "aisles": []
@@ -653,7 +655,7 @@
         "d450281c"
       ],
       "device_count": 25,
-      "it_power_draw_w": 12271,
+      "it_power_draw_w": 13321,
       "servers_used": 18,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -701,7 +703,7 @@
         "d5a804eb"
       ],
       "device_count": 24,
-      "it_power_draw_w": 12019,
+      "it_power_draw_w": 13069,
       "servers_used": 18,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -749,7 +751,7 @@
         "bfddc3d9"
       ],
       "device_count": 24,
-      "it_power_draw_w": 11632,
+      "it_power_draw_w": 12682,
       "servers_used": 18,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -887,7 +889,7 @@
         "30a900ad"
       ],
       "device_count": 24,
-      "it_power_draw_w": 11384,
+      "it_power_draw_w": 12434,
       "servers_used": 18,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -934,7 +936,7 @@
         "8dedf9fb"
       ],
       "device_count": 23,
-      "it_power_draw_w": 12501,
+      "it_power_draw_w": 13551,
       "servers_used": 18,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -980,7 +982,7 @@
         "15b52908"
       ],
       "device_count": 22,
-      "it_power_draw_w": 11942,
+      "it_power_draw_w": 12992,
       "servers_used": 18,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -1249,7 +1251,7 @@
         "409d3602"
       ],
       "device_count": 23,
-      "it_power_draw_w": 11040,
+      "it_power_draw_w": 12090,
       "servers_used": 16,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -1295,7 +1297,7 @@
         "b2c08394"
       ],
       "device_count": 22,
-      "it_power_draw_w": 10827,
+      "it_power_draw_w": 11877,
       "servers_used": 16,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -1340,7 +1342,7 @@
         "b77350ca"
       ],
       "device_count": 21,
-      "it_power_draw_w": 10592,
+      "it_power_draw_w": 11642,
       "servers_used": 16,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -1429,7 +1431,7 @@
         "0b2c782a"
       ],
       "device_count": 22,
-      "it_power_draw_w": 11392,
+      "it_power_draw_w": 12442,
       "servers_used": 16,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -1474,7 +1476,7 @@
         "1327f1bc"
       ],
       "device_count": 21,
-      "it_power_draw_w": 10856,
+      "it_power_draw_w": 11906,
       "servers_used": 16,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -1518,7 +1520,7 @@
         "bf2c14a0"
       ],
       "device_count": 20,
-      "it_power_draw_w": 10409,
+      "it_power_draw_w": 11459,
       "servers_used": 16,
       "server_capacity": 22,
       "mlag_ready": true,
@@ -1977,7 +1979,7 @@
         "43ab2687"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2000,7 +2002,7 @@
         "0e78ea53"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1831,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2023,7 +2025,7 @@
         "40b34bda"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1886,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2046,7 +2048,7 @@
         "ddc67fa6"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1642,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2115,7 +2117,7 @@
         "5a83ce67"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2138,7 +2140,7 @@
         "d75f2a9e"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1770,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2161,7 +2163,7 @@
         "281c795b"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1615,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2184,7 +2186,7 @@
         "95dccf22"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1630,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2339,10 +2341,11 @@
         "79712904",
         "d396a795",
         "3e4ddd2d",
-        "b9dd5c5e"
+        "b9dd5c5e",
+        "824f3b10"
       ],
-      "device_count": 17,
-      "it_power_draw_w": 31031,
+      "device_count": 18,
+      "it_power_draw_w": 564548,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2363,10 +2366,11 @@
       "hot_aisle": null,
       "device_ids": [
         "b04435fb",
-        "01154b78"
+        "01154b78",
+        "85c24dde"
       ],
-      "device_count": 2,
-      "it_power_draw_w": 1675,
+      "device_count": 3,
+      "it_power_draw_w": 90000,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2427,10 +2431,11 @@
         "97d819aa",
         "c8fd4d14",
         "11992fa8",
-        "fc1ab32e"
+        "fc1ab32e",
+        "dc38cb1c"
       ],
-      "device_count": 17,
-      "it_power_draw_w": 31893,
+      "device_count": 18,
+      "it_power_draw_w": 564543,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2451,10 +2456,11 @@
       "hot_aisle": null,
       "device_ids": [
         "02407220",
-        "7b33144e"
+        "7b33144e",
+        "2789b5e1"
       ],
-      "device_count": 2,
-      "it_power_draw_w": 1454,
+      "device_count": 3,
+      "it_power_draw_w": 90000,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2477,7 +2483,7 @@
         "6db52bde"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2500,7 +2506,7 @@
         "ab297064"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2523,7 +2529,7 @@
         "a0847e8b"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2546,7 +2552,7 @@
         "14b33e62"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2569,7 +2575,7 @@
         "c7052214"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2592,7 +2598,7 @@
         "60e70a92"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2615,7 +2621,7 @@
         "2bad2225"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2638,7 +2644,7 @@
         "f87af098"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2803,7 +2809,7 @@
         "68d79a70"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2826,7 +2832,7 @@
         "edb53a56"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2849,7 +2855,7 @@
         "13dddf65"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2872,7 +2878,7 @@
         "d9f4d503"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2895,7 +2901,7 @@
         "72056533"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2918,7 +2924,7 @@
         "fb4b7885"
       ],
       "device_count": 1,
-      "it_power_draw_w": 2091,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2941,7 +2947,7 @@
         "ae579d48"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2964,7 +2970,7 @@
         "ef201813"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -2987,7 +2993,7 @@
         "c9674448"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3010,7 +3016,7 @@
         "6fbc4e53"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3033,7 +3039,7 @@
         "fb13ea3f"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3056,7 +3062,7 @@
         "a0284783"
       ],
       "device_count": 1,
-      "it_power_draw_w": 1595,
+      "it_power_draw_w": 6500,
       "servers_used": 0,
       "server_capacity": null,
       "mlag_ready": false,
@@ -3514,6 +3520,330 @@
       "hot_aisle": null,
       "device_ids": [
         "209ad80c"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC1:UPSRoom:FG:R2:RACK1",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "UPS Room",
+      "floor": "G",
+      "row": 2,
+      "rack_num": 1,
+      "floor_x": 0.3,
+      "floor_y": 3.0,
+      "rack_facing": "S",
+      "cold_aisle": "CA1",
+      "hot_aisle": null,
+      "device_ids": [
+        "a213d7bf"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC1:MechanicalRoom:FG:R2:RACK2",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Mechanical Room",
+      "floor": "G",
+      "row": 2,
+      "rack_num": 2,
+      "floor_x": 0.9,
+      "floor_y": 3.0,
+      "rack_facing": "S",
+      "cold_aisle": "CA1",
+      "hot_aisle": null,
+      "device_ids": [
+        "c224b59b"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC2:UPSRoom:FG:R2:RACK1",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "UPS Room",
+      "floor": "G",
+      "row": 2,
+      "rack_num": 1,
+      "floor_x": 0.3,
+      "floor_y": 3.0,
+      "rack_facing": "S",
+      "cold_aisle": "CA1",
+      "hot_aisle": null,
+      "device_ids": [
+        "08b01d24"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC2:MechanicalRoom:FG:R2:RACK2",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Mechanical Room",
+      "floor": "G",
+      "row": 2,
+      "rack_num": 2,
+      "floor_x": 0.9,
+      "floor_y": 3.0,
+      "rack_facing": "S",
+      "cold_aisle": "CA1",
+      "hot_aisle": null,
+      "device_ids": [
+        "cb83d55f"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC1:CentralPlant:F1:R2:RACK2",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Central Plant",
+      "floor": "1",
+      "row": 2,
+      "rack_num": 2,
+      "floor_x": 0.9,
+      "floor_y": 3.0,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "df0ecde8",
+        "8de1037e"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC2:CentralPlant:F1:R2:RACK2",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Central Plant",
+      "floor": "1",
+      "row": 2,
+      "rack_num": 2,
+      "floor_x": 0.9,
+      "floor_y": 3.0,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "931fda08",
+        "bd9b81b3"
+      ],
+      "device_count": 2,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK8",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 8,
+      "floor_x": 0.3,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "1c9b3258"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK9",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 9,
+      "floor_x": 8.1,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "29ec460c"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC1:ServerHallB:F2:R9:RACK8",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 9,
+      "rack_num": 8,
+      "floor_x": 0.3,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "7bfb794b"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC1:ServerHallB:F2:R9:RACK9",
+      "datacenter": "DC1",
+      "datacenter_city": "Chicago",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 9,
+      "rack_num": 9,
+      "floor_x": 8.1,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "b117a56f"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK8",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 8,
+      "floor_x": 0.3,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "5cde01c9"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK9",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall A",
+      "floor": "1",
+      "row": 9,
+      "rack_num": 9,
+      "floor_x": 7.5,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "fdff66f5"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC2:ServerHallB:F2:R9:RACK8",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 9,
+      "rack_num": 8,
+      "floor_x": 0.3,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "9e3b089a"
+      ],
+      "device_count": 1,
+      "it_power_draw_w": 0,
+      "servers_used": 0,
+      "server_capacity": null,
+      "mlag_ready": false,
+      "reserved_units": []
+    },
+    {
+      "rack_id": "DC2:ServerHallB:F2:R9:RACK9",
+      "datacenter": "DC2",
+      "datacenter_city": "New York",
+      "room": "Server Hall B",
+      "floor": "2",
+      "row": 9,
+      "rack_num": 9,
+      "floor_x": 7.5,
+      "floor_y": 11.4,
+      "rack_facing": null,
+      "cold_aisle": null,
+      "hot_aisle": null,
+      "device_ids": [
+        "e249fd0b"
       ],
       "device_count": 1,
       "it_power_draw_w": 0,
@@ -7957,7 +8287,7 @@
       "name": "GEN1-DC1-GR",
       "device_type": "generator",
       "vendor": "Caterpillar",
-      "model": "Caterpillar 3512C",
+      "model": "Caterpillar 3516B",
       "rack_id": "DC1:GeneratorRoom:FG:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -8041,7 +8371,7 @@
       "name": "GEN1-DC2-GR",
       "device_type": "generator",
       "vendor": "Caterpillar",
-      "model": "Caterpillar 3512C",
+      "model": "Caterpillar 3516B",
       "rack_id": "DC2:GeneratorRoom:FG:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -8224,7 +8554,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8236,7 +8566,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 1831,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8248,7 +8578,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 1886,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8260,7 +8590,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 1642,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8296,7 +8626,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8308,7 +8638,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 1770,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8320,7 +8650,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 1615,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8332,7 +8662,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 1630,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -8362,7 +8692,7 @@
     },
     {
       "id": "6284bfa0",
-      "name": "RPP1-DC1-CP",
+      "name": "RPPA-DC1-CP",
       "device_type": "rpp",
       "vendor": "APC by Schneider Electric",
       "model": "APC Galaxy RPP 80A",
@@ -8386,7 +8716,7 @@
     },
     {
       "id": "3dcdcb2a",
-      "name": "RPP1-DC2-CP",
+      "name": "RPPA-DC2-CP",
       "device_type": "rpp",
       "vendor": "APC by Schneider Electric",
       "model": "APC Galaxy RPP 80A",
@@ -8428,7 +8758,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7335,
+      "power_draw_w": 145000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8440,7 +8770,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7299,
+      "power_draw_w": 145000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8449,10 +8779,10 @@
       "name": "CHWP1-DC1-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos NB 65-200",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1242,
+      "power_draw_w": 18500,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8461,10 +8791,10 @@
       "name": "CHWP2-DC1-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos NB 65-200",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1548,
+      "power_draw_w": 18500,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8473,10 +8803,10 @@
       "name": "CHWP3-DC1-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos NB 65-200",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1732,
+      "power_draw_w": 18500,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8488,7 +8818,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1359,
+      "power_draw_w": 18500,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8500,7 +8830,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1743,
+      "power_draw_w": 18500,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8512,7 +8842,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC1:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 733,
+      "power_draw_w": 30000,
       "feed_a": "ec1b8ca1",
       "feed_b": "a9488d99"
     },
@@ -8524,7 +8854,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC1:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 942,
+      "power_draw_w": 30000,
       "feed_a": "ec1b8ca1",
       "feed_b": "a9488d99"
     },
@@ -8608,7 +8938,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7871,
+      "power_draw_w": 145000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8620,7 +8950,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7624,
+      "power_draw_w": 145000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8629,10 +8959,10 @@
       "name": "CHWP1-DC2-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos NB 65-200",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1498,
+      "power_draw_w": 18500,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8641,10 +8971,10 @@
       "name": "CHWP2-DC2-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos NB 65-200",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1456,
+      "power_draw_w": 18500,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8653,10 +8983,10 @@
       "name": "CHWP3-DC2-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos NB 65-200",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1633,
+      "power_draw_w": 18500,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8668,7 +8998,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1134,
+      "power_draw_w": 18500,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8680,7 +9010,7 @@
       "model": "Grundfos TP 100-360",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1413,
+      "power_draw_w": 18500,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8692,7 +9022,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC2:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 802,
+      "power_draw_w": 30000,
       "feed_a": "c4536f1d",
       "feed_b": "edcb8cb6"
     },
@@ -8704,7 +9034,7 @@
       "model": "BAC PT2 Series",
       "rack_id": "DC2:Roof:FRoof:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 652,
+      "power_draw_w": 30000,
       "feed_a": "c4536f1d",
       "feed_b": "edcb8cb6"
     },
@@ -8776,7 +9106,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7621,
+      "power_draw_w": 145000,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8785,10 +9115,10 @@
       "name": "CHWP4-DC1-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos TP 100-360",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1104,
+      "power_draw_w": 18500,
       "feed_a": "a3b1799d",
       "feed_b": "6c031199"
     },
@@ -8800,7 +9130,7 @@
       "model": "Carrier 19DV 800kW",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 7759,
+      "power_draw_w": 145000,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8809,10 +9139,10 @@
       "name": "CHWP4-DC2-CP",
       "device_type": "pump",
       "vendor": "Grundfos",
-      "model": "Grundfos TP 100-360",
+      "model": "Grundfos NB 100-200",
       "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1462,
+      "power_draw_w": 18500,
       "feed_a": "7631de9d",
       "feed_b": "53ac2ab9"
     },
@@ -8824,7 +9154,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HA-R2-01",
       "feed_b": "PDUB-DC1-HA-R2-01"
     },
@@ -8836,7 +9166,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HA-R2-02",
       "feed_b": "PDUB-DC1-HA-R2-02"
     },
@@ -8848,7 +9178,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HA-R2-03",
       "feed_b": "PDUB-DC1-HA-R2-03"
     },
@@ -8860,7 +9190,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HA-R2-01",
       "feed_b": "PDUB-DC2-HA-R2-01"
     },
@@ -8872,7 +9202,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HA-R2-02",
       "feed_b": "PDUB-DC2-HA-R2-02"
     },
@@ -8884,7 +9214,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HA-R2-03",
       "feed_b": "PDUB-DC2-HA-R2-03"
     },
@@ -9088,7 +9418,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9100,7 +9430,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9112,7 +9442,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9124,7 +9454,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9136,7 +9466,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R2:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": null,
       "feed_b": null
     },
@@ -9148,7 +9478,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R2:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": null,
       "feed_b": null
     },
@@ -9160,7 +9490,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R2:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": null,
       "feed_b": null
     },
@@ -9172,7 +9502,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK1",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9184,7 +9514,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK2",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9196,7 +9526,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK3",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9208,7 +9538,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK4",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -9220,7 +9550,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R2:RACK1",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": null,
       "feed_b": null
     },
@@ -9232,7 +9562,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R2:RACK2",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": null,
       "feed_b": null
     },
@@ -9244,7 +9574,7 @@
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R2:RACK3",
       "rack_unit": 38,
-      "power_draw_w": 750,
+      "power_draw_w": 1800,
       "feed_a": null,
       "feed_b": null
     },
@@ -9253,7 +9583,7 @@
       "name": "GEN2-DC1-GR",
       "device_type": "generator",
       "vendor": "Caterpillar",
-      "model": "Caterpillar 3512C",
+      "model": "Caterpillar 3516B",
       "rack_id": "DC1:GeneratorRoom:FG:R1:RACK2",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -9265,7 +9595,7 @@
       "name": "GEN2-DC2-GR",
       "device_type": "generator",
       "vendor": "Caterpillar",
-      "model": "Caterpillar 3512C",
+      "model": "Caterpillar 3516B",
       "rack_id": "DC2:GeneratorRoom:FG:R1:RACK2",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10192,7 +10522,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK5",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10204,7 +10534,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK6",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10216,7 +10546,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallA:F1:R9:RACK7",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10228,7 +10558,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK5",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10240,7 +10570,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK6",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10252,7 +10582,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC1:ServerHallB:F2:R9:RACK7",
       "rack_unit": 0,
-      "power_draw_w": 2091,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10264,7 +10594,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK5",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10276,7 +10606,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK6",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10288,7 +10618,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallA:F1:R9:RACK7",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10300,7 +10630,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK5",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10312,7 +10642,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK6",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10324,7 +10654,7 @@
       "model": "Vertiv Liebert PCW 100kW",
       "rack_id": "DC2:ServerHallB:F2:R9:RACK7",
       "rack_unit": 0,
-      "power_draw_w": 1595,
+      "power_draw_w": 6500,
       "feed_a": null,
       "feed_b": null
     },
@@ -10729,7 +11059,7 @@
       "name": "ATS1-DC1-UR",
       "device_type": "ats",
       "vendor": "ASCO Power Technologies",
-      "model": "ASCO 7000 Series 3000A",
+      "model": "ASCO 7000 Series 4000A",
       "rack_id": "DC1:UPSRoom:FG:R1:RACK3",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10741,7 +11071,7 @@
       "name": "ATS2-DC1-UR",
       "device_type": "ats",
       "vendor": "ASCO Power Technologies",
-      "model": "ASCO 7000 Series 3000A",
+      "model": "ASCO 7000 Series 4000A",
       "rack_id": "DC1:UPSRoom:FG:R1:RACK5",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10753,7 +11083,7 @@
       "name": "MCC1-DC1-MR",
       "device_type": "mcc",
       "vendor": "Eaton",
-      "model": "Eaton Freedom 2100 MCC 800A",
+      "model": "Eaton Freedom 2100 MCC 1600A",
       "rack_id": "DC1:MechanicalRoom:FG:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10765,7 +11095,7 @@
       "name": "MCC2-DC1-MR",
       "device_type": "mcc",
       "vendor": "Eaton",
-      "model": "Eaton Freedom 2100 MCC 800A",
+      "model": "Eaton Freedom 2100 MCC 1600A",
       "rack_id": "DC1:MechanicalRoom:FG:R1:RACK2",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10813,7 +11143,7 @@
       "name": "ATS1-DC2-UR",
       "device_type": "ats",
       "vendor": "ASCO Power Technologies",
-      "model": "ASCO 7000 Series 3000A",
+      "model": "ASCO 7000 Series 4000A",
       "rack_id": "DC2:UPSRoom:FG:R1:RACK3",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10825,7 +11155,7 @@
       "name": "ATS2-DC2-UR",
       "device_type": "ats",
       "vendor": "ASCO Power Technologies",
-      "model": "ASCO 7000 Series 3000A",
+      "model": "ASCO 7000 Series 4000A",
       "rack_id": "DC2:UPSRoom:FG:R1:RACK5",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10837,7 +11167,7 @@
       "name": "MCC1-DC2-MR",
       "device_type": "mcc",
       "vendor": "Eaton",
-      "model": "Eaton Freedom 2100 MCC 800A",
+      "model": "Eaton Freedom 2100 MCC 1600A",
       "rack_id": "DC2:MechanicalRoom:FG:R1:RACK1",
       "rack_unit": 0,
       "power_draw_w": 0,
@@ -10849,8 +11179,248 @@
       "name": "MCC2-DC2-MR",
       "device_type": "mcc",
       "vendor": "Eaton",
-      "model": "Eaton Freedom 2100 MCC 800A",
+      "model": "Eaton Freedom 2100 MCC 1600A",
       "rack_id": "DC2:MechanicalRoom:FG:R1:RACK2",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "a213d7bf",
+      "name": "EV21-DC1-UR",
+      "device_type": "energy_monitor",
+      "vendor": "Verdigris Technologies",
+      "model": "Verdigris EV2-42",
+      "rack_id": "DC1:UPSRoom:FG:R2:RACK1",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "c224b59b",
+      "name": "EV22-DC1-MR",
+      "device_type": "energy_monitor",
+      "vendor": "Verdigris Technologies",
+      "model": "Verdigris EV2-42",
+      "rack_id": "DC1:MechanicalRoom:FG:R2:RACK2",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "08b01d24",
+      "name": "EV21-DC2-UR",
+      "device_type": "energy_monitor",
+      "vendor": "Verdigris Technologies",
+      "model": "Verdigris EV2-42",
+      "rack_id": "DC2:UPSRoom:FG:R2:RACK1",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "cb83d55f",
+      "name": "EV22-DC2-MR",
+      "device_type": "energy_monitor",
+      "vendor": "Verdigris Technologies",
+      "model": "Verdigris EV2-42",
+      "rack_id": "DC2:MechanicalRoom:FG:R2:RACK2",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "824f3b10",
+      "name": "CWP3-DC1-CP",
+      "device_type": "pump",
+      "vendor": "Grundfos",
+      "model": "Grundfos TP 100-360",
+      "rack_id": "DC1:CentralPlant:F1:R1:RACK1",
+      "rack_unit": 0,
+      "power_draw_w": 18500,
+      "feed_a": "a3b1799d",
+      "feed_b": "6c031199"
+    },
+    {
+      "id": "85c24dde",
+      "name": "CT3-DC1-RF",
+      "device_type": "cooling_tower",
+      "vendor": "Baltimore Aircoil Company",
+      "model": "BAC PT2 Series",
+      "rack_id": "DC1:Roof:FRoof:R1:RACK1",
+      "rack_unit": 0,
+      "power_draw_w": 30000,
+      "feed_a": "ec1b8ca1",
+      "feed_b": "a9488d99"
+    },
+    {
+      "id": "dc38cb1c",
+      "name": "CWP3-DC2-CP",
+      "device_type": "pump",
+      "vendor": "Grundfos",
+      "model": "Grundfos TP 100-360",
+      "rack_id": "DC2:CentralPlant:F1:R1:RACK1",
+      "rack_unit": 0,
+      "power_draw_w": 18500,
+      "feed_a": "7631de9d",
+      "feed_b": "53ac2ab9"
+    },
+    {
+      "id": "2789b5e1",
+      "name": "CT3-DC2-RF",
+      "device_type": "cooling_tower",
+      "vendor": "Baltimore Aircoil Company",
+      "model": "BAC PT2 Series",
+      "rack_id": "DC2:Roof:FRoof:R1:RACK1",
+      "rack_unit": 0,
+      "power_draw_w": 30000,
+      "feed_a": "c4536f1d",
+      "feed_b": "edcb8cb6"
+    },
+    {
+      "id": "df0ecde8",
+      "name": "RPPB-DC1-CP",
+      "device_type": "rpp",
+      "vendor": "APC by Schneider Electric",
+      "model": "APC Galaxy RPP 80A",
+      "rack_id": "DC1:CentralPlant:F1:R2:RACK2",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "8de1037e",
+      "name": "EV22-DC1-CP",
+      "device_type": "energy_monitor",
+      "vendor": "Verdigris Technologies",
+      "model": "Verdigris EV2-42",
+      "rack_id": "DC1:CentralPlant:F1:R2:RACK2",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "931fda08",
+      "name": "RPPB-DC2-CP",
+      "device_type": "rpp",
+      "vendor": "APC by Schneider Electric",
+      "model": "APC Galaxy RPP 80A",
+      "rack_id": "DC2:CentralPlant:F1:R2:RACK2",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "bd9b81b3",
+      "name": "EV22-DC2-CP",
+      "device_type": "energy_monitor",
+      "vendor": "Verdigris Technologies",
+      "model": "Verdigris EV2-42",
+      "rack_id": "DC2:CentralPlant:F1:R2:RACK2",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "1c9b3258",
+      "name": "MPPA-DC1-HA",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK8",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "29ec460c",
+      "name": "MPPB-DC1-HA",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC1:ServerHallA:F1:R9:RACK9",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "7bfb794b",
+      "name": "MPPA-DC1-HB",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC1:ServerHallB:F2:R9:RACK8",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "b117a56f",
+      "name": "MPPB-DC1-HB",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC1:ServerHallB:F2:R9:RACK9",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "5cde01c9",
+      "name": "MPPA-DC2-HA",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK8",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "fdff66f5",
+      "name": "MPPB-DC2-HA",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC2:ServerHallA:F1:R9:RACK9",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "9e3b089a",
+      "name": "MPPA-DC2-HB",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC2:ServerHallB:F2:R9:RACK8",
+      "rack_unit": 0,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "e249fd0b",
+      "name": "MPPB-DC2-HB",
+      "device_type": "mpp",
+      "vendor": "Eaton",
+      "model": "Eaton Pow-R-Line 3a 150A",
+      "rack_id": "DC2:ServerHallB:F2:R9:RACK9",
       "rack_unit": 0,
       "power_draw_w": 0,
       "feed_a": null,
@@ -10863,7 +11433,7 @@
       "DC2"
     ],
     "rooms": 16,
-    "racks": 110,
-    "devices": 611
+    "racks": 124,
+    "devices": 631
   }
 }

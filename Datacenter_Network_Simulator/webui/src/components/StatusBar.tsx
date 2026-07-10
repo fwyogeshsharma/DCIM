@@ -2,9 +2,14 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { api } from '../api/client'
 
+// source: which measurement plane the backend used, best first.
+//   native   — the gear's own meters (switchgear / UPS output / MCC)
+//   meters   — EV2 sub-meter hierarchy
+//   computed — internal sums; no usable metering
+type PueSource = 'native' | 'meters' | 'computed'
 type PowerSummary = {
   it_watts: number; cooling_watts: number; facility_watts: number
-  pue: number; source?: 'meters' | 'computed'
+  pue: number; source?: PueSource
 }
 
 function fmtKW(w: number): string {
@@ -33,10 +38,15 @@ function PowerReadout() {
   }, [])
 
   if (!p || p.facility_watts <= 0) return null
+  const PUE_SOURCE: Record<PueSource, string> = {
+    native:   ' (switchgear + UPS output — Green Grid Category 1)',
+    meters:   ' (from EV2 meter readings)',
+    computed: ' (estimated — no meter hierarchy)',
+  }
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-        title={`Power Usage Effectiveness = facility ÷ IT${p.source === 'computed' ? ' (estimated — no meter hierarchy)' : ' (from EV2 meter readings)'}`}>
+        title={`Power Usage Effectiveness = facility ÷ IT${p.source ? PUE_SOURCE[p.source] : ''}`}>
         <span style={{ color: 'var(--text-muted)' }}>PUE</span>
         <span style={{ color: pueColor(p.pue), fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
           {p.source === 'computed' ? '~' : ''}{p.pue > 0 ? p.pue.toFixed(2) : '—'}

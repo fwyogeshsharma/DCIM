@@ -15,6 +15,7 @@ export const DEVICE_TYPES = [
   { value: 'switchgear',    label: 'Switchgear' },
   { value: 'ats',           label: 'Automatic Transfer Switch' },
   { value: 'mcc',           label: 'Motor Control Center' },
+  { value: 'mpp',           label: 'Mechanical Power Panel' },
   { value: 'oob_switch',    label: 'OOB Switch' },
   { value: 'sensor',        label: 'Sensor' },
 ]

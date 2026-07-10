@@ -32,7 +32,7 @@ from core.device_models import DEVICE_MODELS
 
 # Tier rank along the power chain; loads (servers, switches, cooling, …) = 9.
 _TIER = {"utility_feed": 0, "generator": 0, "switchgear": 1, "ats": 2,
-         "ups": 3, "mcc": 3, "rpp": 4, "pdu": 5, "floor_pdu": 5}
+         "ups": 3, "mcc": 3, "rpp": 4, "mpp": 4, "pdu": 5, "floor_pdu": 5}
 _LOAD_TIER = 9
 
 # Per-type target utilisation and a minimum rating floor (W). The electrical
