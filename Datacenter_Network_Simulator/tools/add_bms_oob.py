@@ -105,8 +105,8 @@ def main(path: str) -> int:
                 iface["mac_address"] = ":".join(f"{b:02x}" for b in uuid.uuid4().bytes[:6])
                 iface["connected_to_device"] = None
                 iface["connected_to_iface"] = None
-            pos = bms.get("position") or {"x": 0, "y": 0}
-            bms["position"] = {"x": pos.get("x", 0), "y": pos.get("y", 0) + 40}
+            # Canvas coordinates are owned by tools/layout_canvas.py.
+            bms["position"] = {"x": 0, "y": 0}
             nodes.append(bms); byid[nid] = bms; added += 1
 
             def edge(s, t, layer):

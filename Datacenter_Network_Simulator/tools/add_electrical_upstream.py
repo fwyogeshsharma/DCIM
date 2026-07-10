@@ -135,29 +135,18 @@ def main(path: str) -> int:
                            and d.get("room") == "Central Plant")
 
         anchor = upses[0]
-        ax, ay = anchor["position"]["x"], anchor["position"]["y"]
-        gx, gy = gens[0]["position"]["x"], gens[0]["position"]["y"]
-        mech_anchor = (mech_rpps or plant_rpps or [anchor])[0]
-        mx, my = mech_anchor["position"]["x"], mech_anchor["position"]["y"]
         seed_ip = anchor["device"].get("mgmt_ip") or ""
         base = {k: anchor["device"].get(k) for k in
                 ("country", "datacenter_city", "datacenter", "floor")}
-
-        pos = {
-            "UTIL1": (ax - 260, ay - 260), "SWGR1": (ax - 260, ay - 130),
-            "SWGR2": (gx + 200, gy - 130),
-            "ATS1":  (ax, ay - 130),       "ATS2":  (ax + 320, ay - 130),
-            "MCC1":  (mx - 110, my),       "MCC2":  (mx + 110, my),
-        }
 
         made = {}
         for suffix, dtype, vendor, model, room in GEAR:
             nid = new_id()
             mgmt = next_ip(seed_ip, used_mgmt)
-            x, y = pos[suffix]
             node = {
                 "id": nid,
-                "position": {"x": x, "y": y},
+                # Canvas coordinates are owned by tools/layout_canvas.py.
+                "position": {"x": 0, "y": 0},
                 "device": {
                     "name": f"{suffix}-{dc}-{ROOM_CODE[room]}",
                     "device_type": dtype,

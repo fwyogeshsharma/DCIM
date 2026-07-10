@@ -41,21 +41,9 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# Canvas rows, one per electrical rank. Power flows downward (+y).
-SRC_Y  = 2480   # utility service entrance, gensets
-BUS_Y  = 2610   # utility main board, generator paralleling board
-ATS_Y  = 2740   # transfer switches
-DIST_Y = 2870   # UPS (critical) and MCC (mechanical) — both hang off an ATS
-METER_Y = 2990  # EV2 meters clamped onto the gear above them
-
-# Canvas x offsets from each DC's facility band origin.
-CANVAS_DX = {
-    "UTIL1": 0,    "SWGR1": 0,     "EV2-UR": 0,
-    "ATS1": 200,   "UPSA": 200,
-    "ATS2": 460,   "UPSB": 460,
-    "GEN1": 700,   "GEN2": 820,   "SWGR2": 760,   "EV2-GR": 760,
-    "MCC1": 1000,  "MCC2": 1120,  "EV2-MR": 1000, "EV2-MR2": 1120,
-}
+# Canvas coordinates are NOT set here. tools/layout_canvas.py is the single owner
+# of position.x/y; this tool owns physical placement only (rack_row / rack_num /
+# floor_x / floor_y and the room extents that follow from them).
 
 # Physical lineup: room -> ordered device keys, one rack section each.
 LINEUP = {
@@ -106,12 +94,6 @@ def main(path: str) -> int:
         if k and d.get("room") in LINEUP:
             by_dc_room[(d["datacenter"], d["room"])][k] = n
 
-    # Facility band origin per DC: the leftmost x any of this gear already holds.
-    base_x: dict = {}
-    for (dc, _room), found in by_dc_room.items():
-        xs = [n["position"]["x"] for n in found.values()]
-        base_x[dc] = min(base_x.get(dc, min(xs)), min(xs))
-
     moved = 0
     for (dc, room), found in sorted(by_dc_room.items()):
         order = [k for k in LINEUP[room] if k in found]
@@ -130,16 +112,6 @@ def main(path: str) -> int:
             d["floor_x"] = round(pitch / 2 + (num - 1) * pitch, 3)
             d["floor_y"] = round(row_pitch / 4 + row_pitch, 3)
             moved += 1
-
-        # Canvas rows, one per electrical rank.
-        y_of = {"UTIL1": SRC_Y, "GEN1": SRC_Y, "GEN2": SRC_Y,
-                "SWGR1": BUS_Y, "SWGR2": BUS_Y,
-                "ATS1": ATS_Y, "ATS2": ATS_Y,
-                "UPSA": DIST_Y, "UPSB": DIST_Y, "MCC1": DIST_Y, "MCC2": DIST_Y,
-                "EV2-UR": METER_Y, "EV2-GR": METER_Y,
-                "EV2-MR": METER_Y, "EV2-MR2": METER_Y}
-        for k, n in found.items():
-            n["position"] = {"x": base_x[dc] + CANVAS_DX[k], "y": y_of[k]}
 
         # Grow the room to the lineup it now holds.
         rk = f"{dc}/{room}"

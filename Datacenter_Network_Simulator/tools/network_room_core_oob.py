@@ -139,9 +139,9 @@ def main() -> None:
             for ifc in oob.get("interfaces", []):
                 ifc["connected_to_device"] = None
                 ifc["connected_to_iface"] = None
-            base_pos = node_by_name[oob_tmpl["name"]]["position"]
+            # Canvas coordinates are owned by tools/layout_canvas.py.
             nodes.append({"id": oob["id"],
-                          "position": {"x": base_pos["x"] + 90, "y": base_pos["y"]},
+                          "position": {"x": 0, "y": 0},
                           "device": oob})
             by_id[oob["id"]] = oob
             by_name[oob["name"]] = oob

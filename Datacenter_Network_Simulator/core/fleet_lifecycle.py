@@ -154,8 +154,6 @@ class FleetLifecycleEngine:
         # Topology-graph layout for fleet nodes: each DC gets its own band (the
         # curated x-range, below the curated nodes) so DC1/DC2 fleet growth never
         # overlaps the other DC. Bounds snapshotted per DC; placed counter tiles.
-        self._dc_bounds_cache: dict = {}
-        self._dc_placed: dict = {}
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
@@ -1275,45 +1273,28 @@ class FleetLifecycleEngine:
 
     # ── device creation ──────────────────────────────────────────────────────
 
-    def _dc_bounds(self, dc: str) -> tuple:
-        """(x0, x1, y_bottom) of *dc*'s CURATED nodes on the topology canvas,
-        snapshotted once. Defines the band the fleet lays its nodes into so each
-        DC stays in its own column and never overlaps the other."""
-        if dc in self._dc_bounds_cache:
-            return self._dc_bounds_cache[dc]
-        # X-band: from the DC's SERVER cluster only — facility/power nodes can sit
-        # at odd coords (x=0) and would bleed one DC's band into the other.
-        # Y-floor: the LOWEST point of ANY curated node in the DC (CDU, OOB,
-        # sensors, RPP/PDU all sit below the servers), so the fleet grid starts
-        # clear of them instead of growing down into them.
-        xs, all_y = [], []
-        for d in self.s.device_manager.get_all_devices():
-            if (d.datacenter or "") != dc:
-                continue
-            x, y = self.s.topology.get_position(d.id)
-            all_y.append(y)
-            if d.device_type == DeviceType.SERVER:
-                xs.append(x)
-        x0, x1 = (min(xs), max(xs)) if xs else (0.0, 1200.0)
-        y_floor = max(all_y) if all_y else 1200.0
-        b = (x0, x1, y_floor)
-        self._dc_bounds_cache[dc] = b
-        return b
+    def _canvas_pos(self, dev: Device) -> tuple:
+        """Canvas slot for a fleet-added device, from the SAME rules the batch
+        layout uses (core/canvas_layout). The fleet used to lay its nodes on a
+        private grid dumped below the curated ones, so a hall grown at runtime
+        looked nothing like the same hall laid out by tools/layout_canvas.py.
 
-    # Clear vertical gap between the lowest curated node and the first fleet row.
-    _FLEET_Y_GAP = 220.0
-
-    def _fleet_pos(self, dc: str) -> tuple:
-        """Next canvas slot for a fleet node in *dc*'s band: a grid spanning the
-        DC's server x-width, starting a clear gap BELOW every curated node and
-        growing down. Monotone, so nodes never overlap each other, the curated
-        CDU/OOB/power rows, or the other DC."""
-        x0, x1, y_floor = self._dc_bounds(dc)
-        step = 46.0
-        cols = max(1, int(max(200.0, x1 - x0) // step))
-        n = self._dc_placed.get(dc, 0)
-        self._dc_placed[dc] = n + 1
-        return (x0 + (n % cols) * step, y_floor + self._FLEET_Y_GAP + (n // cols) * 38.0)
+        place_one() appends the device to its role's row in its room and moves
+        nothing else — the canvas is a live view a user may have dragged. It is
+        best-effort: a role whose rows are all full spills below the room, and a
+        batch run squares it up. O(n) in the device count, which is fine for the
+        handful of devices a churn tick creates."""
+        from core.canvas_layout import place_one
+        try:
+            topo = self.s.topology
+            existing = []
+            for d in topo.get_all_devices():
+                x, y = topo.get_position(d.id)
+                existing.append((d.name, d.datacenter or "", d.room or "", x, y))
+            return place_one(dev.name, dev.datacenter or "", dev.room or "", existing)
+        except Exception:
+            self._log("[Fleet] canvas placement failed; parking at the origin")
+            return (0.0, 0.0)
 
     def _used_ips(self) -> set:
         """Every production + management IP currently in use, so a new device
@@ -1649,13 +1630,12 @@ class FleetLifecycleEngine:
                 # full country/city/DC/floor/room/rack string so fleet-added
                 # devices match the format of curated peers.
             )
-            # Canvas position: a per-DC grid below that DC's curated nodes, so
-            # fleet nodes never pile on the origin, never overlap each other, and
-            # DC1/DC2 fleet growth stays in separate bands. Computed BEFORE the
-            # device is registered so the (still position-less) new node can't
-            # poison the band bounds. Cosmetic graph layout only — floor placement
+            # Canvas position from the shared layout rules (core/canvas_layout),
+            # the same ones tools/layout_canvas.py applies in batch. Computed
+            # BEFORE the device is registered, so the still-unplaced new node
+            # cannot see itself. Cosmetic graph layout only — floor placement
             # lives in floor_x/floor_y.
-            px, py = self._fleet_pos(dc)
+            px, py = self._canvas_pos(dev)
             self.s.device_manager.add_device(dev)
             self.s.topology.add_device(dev, x=px, y=py)
             if self.s.ip_manager and ip:

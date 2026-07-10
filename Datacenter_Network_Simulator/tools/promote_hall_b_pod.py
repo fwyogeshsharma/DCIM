@@ -107,8 +107,8 @@ def clone_switch(tmpl_node, dc, name, room, floor, rack_num, fx, fy,
         iface["mac_address"] = ":".join(f"{b:02x}" for b in uuid.uuid4().bytes[:6])
         iface["connected_to_device"] = None
         iface["connected_to_iface"] = None
-    pos = new.get("position") or {"x": 0, "y": 0}
-    new["position"] = {"x": pos.get("x", 0) + 37 * rack_num, "y": pos.get("y", 0) - 60}
+    # Canvas coordinates are owned by tools/layout_canvas.py.
+    new["position"] = {"x": 0, "y": 0}
     return new
 
 

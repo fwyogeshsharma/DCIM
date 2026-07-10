@@ -231,8 +231,8 @@ def main(path: str) -> int:
                 iface["connected_to_device"] = None
                 iface["connected_to_iface"] = None
             # Cosmetic canvas position: nudge off the template so nodes don't stack.
-            pos = new.get("position") or {"x": 0, "y": 0}
-            new["position"] = {"x": pos.get("x", 0) + 40 * (i + 1), "y": pos.get("y", 0)}
+            # Canvas coordinates are owned by tools/layout_canvas.py.
+            new["position"] = {"x": 0, "y": 0}
 
             nodes.append(new)
             by_id[nid] = new

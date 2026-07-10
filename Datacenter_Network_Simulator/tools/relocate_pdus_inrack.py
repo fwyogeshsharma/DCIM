@@ -49,13 +49,6 @@ def main():
     old_pdu = {i for i, d in dev.items() if d["device_type"] == "pdu"}
     template = copy.deepcopy(nodeOf[next(iter(old_pdu))])
 
-    # Power-tier Y for the topology-canvas tier view: PDUs sit one tier above the
-    # RPP row (same 120px gap the generator used: pdu_y = rpp_y - 120). A single
-    # horizontal row keeps the canvas readable instead of piling PDUs at y=0.
-    rpp_ys = [n["position"]["y"] for n in nodes
-              if n["device"]["device_type"] == "rpp" and n.get("position")]
-    pdu_tier_y = (min(rpp_ys) - 120) if rpp_ys else 2020
-
     # RPP A/B per (dc, room) from the IT RPP nodes (name RPP-IT-<DC>-<A|B><n>)
     rpp_ab = {}   # (dc, room) -> {"A": id, "B": id}
     for d in dev.values():
@@ -124,7 +117,7 @@ def main():
                 "power_source_a": "", "power_source_b": "",
             })
             nd["id"] = nid
-            nd["position"] = {"x": sample_pos(nodeOf, members), "y": pdu_tier_y}
+            nd["position"] = {"x": 0, "y": 0}   # placed by tools/layout_canvas.py
             d["interfaces"] = [dict(template["device"]["interfaces"][0],
                                     mac_address=macaddr(),
                                     connected_to_device=None, connected_to_iface=None)]
@@ -206,14 +199,6 @@ def main():
     print(f"mgmt IPs assigned from 192.168.0.0/23 ({len(ip_pool)} free in pool)")
     for w in warnings[:5]:
         print("  WARN:", w)
-
-
-def sample_pos(nodeOf, members):
-    for m in members:
-        n = nodeOf.get(m["id"])
-        if n and n.get("position"):
-            return n["position"]["x"]
-    return 0
 
 
 if __name__ == "__main__":
