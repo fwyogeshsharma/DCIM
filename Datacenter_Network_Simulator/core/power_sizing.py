@@ -31,10 +31,15 @@ from core.device_manager import DeviceType, _MODEL_RATED_W
 from core.device_models import DEVICE_MODELS
 
 # Tier rank along the power chain; loads (servers, switches, cooling, …) = 9.
-_TIER = {"generator": 0, "ups": 1, "rpp": 2, "pdu": 3, "floor_pdu": 3}
+_TIER = {"utility_feed": 0, "generator": 0, "switchgear": 1, "ats": 2,
+         "ups": 3, "mcc": 3, "rpp": 4, "pdu": 5, "floor_pdu": 5}
 _LOAD_TIER = 9
 
-# Per-type target utilisation and a minimum rating floor (W).
+# Per-type target utilisation and a minimum rating floor (W). The electrical
+# upstream (utility feed, switchgear, ATS, MCC) is deliberately absent: those are
+# rated by BUS AMPACITY, a discrete construction choice (a 3000 A switch, an 800 A
+# MCC), not something you re-derive from today's load. They keep their catalog
+# rating and are only traversed, never re-SKU'd.
 _TARGET = {"generator": 0.50, "ups": 0.80, "rpp": 0.70, "pdu": 0.60, "floor_pdu": 0.70}
 _MIN_RATING = {"pdu": 8600, "floor_pdu": 8600}   # keep rack PDUs a real 3-phase-class unit
 
@@ -135,8 +140,8 @@ def rightsize_nodes(nodes: list, edges: list) -> list[dict]:
     for n in nodes:
         d = n["device"]
         t = d.get("device_type")
-        if t not in _TIER:
-            continue
+        if t not in _TARGET:
+            continue          # in _TIER (so it is traversed) but never re-SKU'd
         load = _downstream_load(n["id"], adj, tier, pdraw)
         if t == "generator":
             load = max(load, dc_total.get(d.get("datacenter") or "", 0.0))

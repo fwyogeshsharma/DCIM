@@ -23,6 +23,10 @@ class DeviceType(str, Enum):
     SENSOR         = "sensor"        # Environmental sensor (temp/humidity)
     ENERGY_MONITOR = "energy_monitor"  # BACnet/IP energy intelligence platform
     GENERATOR      = "generator"     # Diesel/gas standby generator
+    UTILITY_FEED   = "utility_feed"  # Utility service entrance -- revenue/ION meter (Modbus TCP)
+    SWITCHGEAR     = "switchgear"    # LV main board / generator paralleling bus -- SNMP + Modbus
+    ATS            = "ats"           # Automatic Transfer Switch -- SNMP (ASCO/Eaton/APC)
+    MCC            = "mcc"           # Motor Control Center -- unprotected mechanical distribution
     RPP            = "rpp"           # Remote Power Panel -- passive breaker panel, no SNMP
     CRAH           = "crah"          # Computer Room Air Handler (chilled water) -- SNMP + BACnet (native comm card)
     CHILLER        = "chiller"       # Chiller unit (compressors + evaporator + condenser) -- BACnet only
@@ -37,6 +41,10 @@ class DeviceType(str, Enum):
 # must NOT emit "Row/Rack/U" tokens for them (that falsely implies rack mounting).
 FACILITY_TYPES = frozenset({
     DeviceType.GENERATOR,
+    DeviceType.UTILITY_FEED,
+    DeviceType.SWITCHGEAR,
+    DeviceType.ATS,
+    DeviceType.MCC,
     DeviceType.UPS,
     DeviceType.RPP,
     DeviceType.CRAH,
@@ -80,6 +88,8 @@ class Vendor(str, Enum):
     CATERPILLAR = "Caterpillar"
     KOHLER     = "Kohler Power"
     SCHNEIDER  = "Schneider Electric"
+    # Transfer switches / paralleling switchgear
+    ASCO       = "ASCO Power Technologies"
     # Cooling-plant vendors (chillers, pumps, towers, valves)
     CARRIER          = "Carrier"
     TRANE            = "Trane"
@@ -455,6 +465,10 @@ def nameplate_power_w(device_type: "DeviceType", model_name: str = "") -> int:
 #   • RPP/panel : 3-phase kVA at 415V = A × 415 × √3 (80A≈57.5kVA, 400A≈287kVA).
 #   • UPS       : module real power (kW); "40kVA"→36kW at 0.9 PF, PX/93PM in kW.
 #   • Generator : prime/standby real power (kW), i.e. the ...D5/kW figure.
+#   • Switchgear/ATS/MCC : bus or switch ampacity at 400 V 3-phase, converted to
+#                 real power as A × 400 × √3 × 0.9 PF. A 3000 A ATS ≈ 1870 kW;
+#                 a 4000 A main board ≈ 2490 kW; an 800 A MCC ≈ 499 kW.
+#   • Utility feed : the service transformer's rating (kVA → kW at 0.9 PF).
 _MODEL_RATED_W = {
     # ── Rack PDU (0U/1U) ──
     "ap8865":       22000,   # APC Metered ZeroU, 415V 32A 3-phase
@@ -517,10 +531,25 @@ _MODEL_RATED_W = {
     "3516b":           2000000,
     "600reozjb":        480000,
     "250reozjb":        200000,
+    # ── Utility service entrance (transformer kVA at 0.9 PF) ──
+    "ion9000":         2500000,   # 2.78 MVA service transformer + revenue meter
+    # ── LV switchgear / paralleling switchgear (bus ampacity) ──
+    "magnum ds 4000a":            2490000,   # Eaton main switchboard, 4000 A
+    "7000 paralleling switchgear": 3000000,  # ASCO gen bus — sum of both gensets
+    # ── Automatic transfer switch ──
+    "7000 series 3000a": 1870000,   # ASCO 3000 A bypass-isolation ATS
+    "7000 series 2000a": 1250000,
+    "atc-900 3000a":     1870000,   # Eaton
+    # ── Motor control center (mechanical distribution) ──
+    "freedom 2100 mcc 800a":  499000,   # Eaton, 800 A
+    "freedom 2100 mcc 1200a": 748000,
+    "model 6 mcc 800a":       499000,   # Schneider
 }
 # Device types that carry power (rated by throughput) rather than draw it.
 _DIST_RATED_TYPES = {DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.RPP,
-                     DeviceType.UPS, DeviceType.GENERATOR}
+                     DeviceType.UPS, DeviceType.GENERATOR,
+                     DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
+                     DeviceType.ATS, DeviceType.MCC}
 
 
 def rated_capacity_w(device_type: "DeviceType", model_name: str = "") -> int:

@@ -97,6 +97,30 @@ DEVICE_COLORS = {
         "text": QColor("white"),
         "icon": "GEN",
     },
+    DeviceType.UTILITY_FEED: {
+        "fill": QColor("#3f3f46"),
+        "border": QColor("#18181b"),
+        "text": QColor("white"),
+        "icon": "UTIL",
+    },
+    DeviceType.SWITCHGEAR: {
+        "fill": QColor("#57534e"),
+        "border": QColor("#292524"),
+        "text": QColor("white"),
+        "icon": "SWGR",
+    },
+    DeviceType.ATS: {
+        "fill": QColor("#92400e"),
+        "border": QColor("#451a03"),
+        "text": QColor("white"),
+        "icon": "ATS",
+    },
+    DeviceType.MCC: {
+        "fill": QColor("#155e75"),
+        "border": QColor("#083344"),
+        "text": QColor("white"),
+        "icon": "MCC",
+    },
     DeviceType.RPP: {
         "fill": QColor("#7c2d6e"),
         "border": QColor("#4a044e"),

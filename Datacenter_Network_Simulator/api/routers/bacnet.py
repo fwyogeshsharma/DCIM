@@ -30,6 +30,50 @@ def bacnet_power_summary():
     return st.get_power_summary()
 
 
+class UtilityOutage(BaseModel):
+    datacenter: str
+    failed: bool
+
+
+class ATSFault(BaseModel):
+    device_id: str
+    failed: bool
+
+
+@router.get("/electrical")
+def electrical_status():
+    """Per-DC utility/generator transfer state: ATS position, genset status, how
+    many mechanical load blocks are energized, and whether the UPS input is live."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        return {}
+    return st.get_electrical_status()
+
+
+@router.post("/electrical/utility", response_model=OkResponse)
+def set_utility(body: UtilityOutage):
+    """Drop or restore one datacenter's utility feed. Everything downstream — the
+    genset start signal, the ATS transfer, the staged mechanical restart, the UPS
+    battery discharge — follows from this single input, as it does on site."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        raise HTTPException(503, "simulator not running")
+    st.set_utility_outage(body.datacenter, body.failed)
+    return OkResponse(ok=True)
+
+
+@router.post("/electrical/ats", response_model=OkResponse)
+def set_ats(body: ATSFault):
+    """Fail or clear one transfer switch. In this 2N electrical plant that kills
+    only its own side: that UPS drops to battery and that MCC's half of the
+    mechanical plant stops, leaving the other side carrying the datacenter."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        raise HTTPException(503, "simulator not running")
+    st.set_ats_failed(body.device_id, body.failed)
+    return OkResponse(ok=True)
+
+
 @router.get("/status")
 def bacnet_status():
     s  = _state()
@@ -113,13 +157,17 @@ def bacnet_start(cfg: BACnetConfig):
             _id_to_type[dev.id] = dev.device_type
             _id_to_draw[dev.id] = getattr(dev, 'power_draw_w', 0) or 0
 
-    # Power-chain rank orders the distribution hierarchy from source (0) to
-    # leaf load (4). A device's *parents* are its lower-rank power neighbours
-    # (the feeds above it); loads/CRAH default to rank 4.
-    _POWER_RANK = {"generator": 0, "ups": 1, "rpp": 2, "floor_pdu": 2, "pdu": 3}
+    # Power-chain rank orders the distribution hierarchy from source (0) to leaf
+    # load. A device's *parents* are its lower-rank power neighbours (the feeds
+    # above it); loads/plant fall through to the leaf rank. Borrowed from the state
+    # store rather than restated, so adding an electrical tier there cannot leave
+    # this endpoint walking a stale hierarchy.
+    from core.device_state_store import DeviceStateStore as _Store
+    _POWER_RANK = _Store._POWER_RANK
+    _LEAF_RANK = _Store._LEAF_RANK
 
     def _rank(i):
-        return _POWER_RANK.get(_id_to_type.get(i), 4)
+        return _POWER_RANK.get(_id_to_type.get(i), _LEAF_RANK)
 
     def _parents(i):
         out = []

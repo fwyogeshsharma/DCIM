@@ -112,12 +112,19 @@ def main(path: str) -> int:
         if n["device"]["device_type"] == "switch" and "-SP" in (n["device"].get("name") or "")
     }
 
-    # Mechanical RPP per DC — CRAHs are mechanical loads fed from the DC's
-    # mechanical-room RPP (single feed), like the curated CRAHs. Resolved by ROOM
-    # so it survives device renames. Used to power every seeded CRAH.
-    rpp_mech = {n["device"]["datacenter"]: n["id"] for n in nodes
-                if n["device"]["device_type"] == "rpp"
-                and (n["device"].get("room") or "") == "Mechanical Room"}
+    # Mechanical distribution per DC. CRAHs are bulk mechanical loads, so they hang
+    # off a Motor Control Center — upstream of the UPS, downstream of a transfer
+    # switch — not off an IT power panel. Resolved by ROOM so it survives renames.
+    # Both MCCs are kept so seeded CRAHs alternate across the 2N mechanical split
+    # instead of piling onto one side.
+    mcc_mech: dict = {}
+    for n in nodes:
+        if (n["device"]["device_type"] == "mcc"
+                and (n["device"].get("room") or "") == "Mechanical Room"):
+            mcc_mech.setdefault(n["device"]["datacenter"], []).append(n)
+    for v in mcc_mech.values():
+        v.sort(key=lambda n: n["device"]["name"])
+    mcc_mech = {dc: [n["id"] for n in v] for dc, v in mcc_mech.items()}
 
     # Highest CRAH index per DC, to continue the CRAH-<DC>-<n> naming sequence.
     max_idx: dict = {}
@@ -152,19 +159,19 @@ def main(path: str) -> int:
         print(f"{dc}/{room}: rpr={rpr} rows={comp_rows} ult={ult_kw:.0f}kW "
               f"target={target} existing={len(existing)} -> add {max(0, target - len(existing))}")
 
-        # Ensure every CRAH already in the hall draws power from the mechanical
-        # RPP. Curated CRAHs are fed by RPP-MECH-<DC>; earlier seed runs added
-        # CHW + mgmt edges but no power edge, leaving seeded CRAHs unpowered.
-        # Idempotent — adds only the missing power feed. Runs before the
-        # at-target early-continue so it retrofits halls already seeded.
+        # Ensure every CRAH already in the hall draws power from a mechanical MCC.
+        # Earlier seed runs added CHW + mgmt edges but no power edge, leaving
+        # seeded CRAHs unpowered. Unpowered CRAHs alternate A/B across the two
+        # MCCs so a lost transfer switch takes out roughly half a hall's air
+        # handlers, not all of them. Idempotent — adds only the missing feed.
         powered = {e["dst"] for e in edges if e.get("layer") == "power"}
-        pwr_src = next((e["src"] for e in edges if e.get("layer") == "power"
-                        and e["dst"] in {n["id"] for n in existing}), rpp_mech.get(dc))
-        for n in existing:
-            if pwr_src and n["id"] not in powered:
-                edges.append({"src": pwr_src, "dst": n["id"], "src_iface": 0,
-                              "dst_iface": 0, "broken": False, "layer": "power"})
-                total_powered += 1
+        mccs = mcc_mech.get(dc) or []
+        for i, n in enumerate(sorted(existing, key=lambda n: n["device"]["name"])):
+            if not mccs or n["id"] in powered:
+                continue
+            edges.append({"src": mccs[i % len(mccs)], "dst": n["id"], "src_iface": 0,
+                          "dst_iface": 0, "broken": False, "layer": "power"})
+            total_powered += 1
 
         # Line all CRAHs along the BACK wall, evenly spread. Repositions the
         # existing units too (so re-runs re-lay them onto the current geometry),

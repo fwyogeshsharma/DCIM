@@ -3649,7 +3649,11 @@ class MainWindow(QMainWindow):
             dev.id: dev.device_type
             for dev in self.device_manager.get_all_devices()
         }
-        _upstream_types = {DeviceType.UPS, DeviceType.GENERATOR}
+        # Feeds INTO the panel an EV2 clamps, never circuits leaving it. A meter on
+        # an MCC or an RPP would otherwise count its own incomer as a branch.
+        _upstream_types = {DeviceType.UPS, DeviceType.GENERATOR,
+                           DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
+                           DeviceType.ATS}
 
         circuits_map: dict = {}
         device_ips: list = []

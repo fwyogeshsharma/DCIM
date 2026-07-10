@@ -291,6 +291,25 @@ class DeviceStateStore:
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
+        # ── Utility → generator transfer ──────────────────────────────────────
+        # One sequencer per DC, driven from the utility feed's health. Everything
+        # downstream (genset start, ATS position, which mechanical load blocks are
+        # energized, whether each UPS sees a qualified source) falls out of it.
+        from core.power_transfer import TransferController
+        self._transfer = TransferController()
+        self._utility_failed: Dict[str, bool] = {}    # DC → injected utility outage
+        self._ats_failed: Set[str] = set()            # ATS device ids failed by injection
+        # Plant units whose MCC is currently de-energized. Distinct from
+        # _plant_standby_names: a staged-OFF unit is a healthy BMS decision and does
+        # NOT count as lost cooling, whereas an unpowered unit genuinely is not
+        # rejecting heat, so it must show up in the cooling-loss penalty.
+        self._plant_unpowered_names: set = set()
+        # Seconds each DC's mechanical plant has been (even partly) de-energized.
+        # Drives the chilled-water ride-through — see _CHW_RIDE_S.
+        self._mech_dead_s: Dict[str, float] = {}
+        # node id → is it delivering power downstream this tick (see _compute_energized)
+        self._energized: Dict[str, bool] = {}
+
         # Autonomous fault generation. OFF by default: the random walk keeps every
         # device healthy (metrics jitter inside safe bands, no state flips), so NO
         # SNMP trap fires unless the user injects a fault (Simulate Fault / Send
@@ -656,12 +675,37 @@ class DeviceStateStore:
 
     # Power-chain rank: source (0) → leaf load (4). A device's parents are its
     # lower-rank power neighbours (the feeds above it). Mirrors api/routers/bacnet.py.
-    _POWER_RANK = {"generator": 0, "ups": 1, "rpp": 2, "floor_pdu": 2, "pdu": 3}
+    # Electrical hierarchy, source (0) → distribution → leaf load. BOTH sources sit
+    # at rank 0: the utility service entrance and the gensets, each feeding a bus
+    # below them (utility main board / generator paralleling board). The ATS picks
+    # between those two buses, and everything below it is fed from whichever source
+    # the ATS has closed onto.
+    #
+    #   utility_feed ─┐                      generator ─┐
+    #                 └─> switchgear ─┐   ┌─ switchgear ┘
+    #                                 └─> ats ─┬─> ups ─> rpp ─> pdu ─> IT leaves
+    #                                          └─> mcc ────────────────> plant leaves
+    #
+    # The mcc sits at the SAME rank as the ups because both hang directly off the
+    # transfer switch — mechanical load is NOT UPS-backed, it rides the transfer gap
+    # on chilled-water thermal mass.
+    _POWER_RANK = {"utility_feed": 0, "generator": 0,
+                   "switchgear": 1, "ats": 2,
+                   "ups": 3, "mcc": 3,
+                   "rpp": 4, "floor_pdu": 4, "pdu": 5}
+    # Rank for anything outside the distribution ladder — IT loads, cooling plant,
+    # sensors, meters. Must sit strictly below every tier above so the bottom-up
+    # cascade visits leaves first and their watts flow up to the source.
+    _LEAF_RANK = 9
     # Leaf IT load types whose live wattage drives the cascade.
     _IT_LEAF_TYPES = {"server", "switch", "router", "firewall",
                       "load_balancer", "oob_switch"}
     # Cooling-plant types — electrical loads counted toward facility / PUE.
     _COOLING_TYPES = {"crah", "chiller", "pump", "cooling_tower", "cdu"}
+    # Bulk mechanical loads fed from an MCC, i.e. everything that goes dark during
+    # a transfer. A CDU is excluded on purpose: it is dual-corded off the rack PDUs
+    # and therefore UPS-backed, so it never sees the gap.
+    _MECH_LEAF_TYPES = {"crah", "chiller", "pump", "cooling_tower", "valve"}
     # Device types with a real CPU/ASIC die-temperature sensor. ONLY these carry a
     # cpu_temp and are eligible for the HighTemperature (CPU over-temp) trap —
     # power/cooling gear (RPP/PDU/UPS/CRAH/chiller/pump) has no CPU. Mirrors the
@@ -671,6 +715,10 @@ class DeviceStateStore:
     # Per-plant-type BACnet point that reports its live electrical draw (kW).
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
     _UPS_DESIGN_MIN  = 8.0      # UPS autonomy (min) at full load, healthy battery
+    # Fraction of the frozen autonomy at which the low-battery alarm asserts. Real
+    # UPS ship this as a time-remaining threshold (typically the last 2-3 min of an
+    # 8-min string); expressed as a fraction so it tracks a part-loaded string too.
+    _UPS_LOW_BATT_FRAC = 0.75
     _GEN_FULL_HOURS  = 24.0     # genset full-tank runtime (h) at full load
     _DEFAULT_PDU_RATED_W = 7360.0   # rack-PDU breaker default: 32 A @ 230 V single-phase
 
@@ -710,15 +758,23 @@ class DeviceStateStore:
         ev2_ip_panel: Dict[str, str] = {}
         ev2_meters: list = []
         ev2_circuit_pdus: Dict[str, list] = {}
-        gen_ups: Dict[str, list] = {}
+        dc_gens: Dict[str, list] = {}
+        dc_utility: Dict[str, str] = {}
+        dc_ats: Dict[str, list] = {}
+        dc_ups: Dict[str, list] = {}
+        dc_mcc: Dict[str, list] = {}
+        mcc_plant: Dict[str, list] = {}
+        mcc_ats: Dict[str, Optional[str]] = {}
+        ats_src_swgr: Dict[str, Dict[str, str]] = {}
+        id_type: Dict[str, str] = {}     # referenced below even if the build throws
         try:
             _devs = self._dm.get_all_devices()
             id_dev = {d.id: d for d in _devs}
-            id_type = {d.id: d.device_type.value for d in _devs}
+            id_type.update({d.id: d.device_type.value for d in _devs})
             id_draw = {d.id: float(getattr(d, "power_draw_w", 0) or 0) for d in _devs}
             id_rated = {d.id: float(getattr(d, "rated_power_w", 0) or 0) for d in _devs}
             for i in id_type:
-                rank[i] = self._POWER_RANK.get(id_type[i], 4)
+                rank[i] = self._POWER_RANK.get(id_type[i], self._LEAF_RANK)
             edges = topo.get_edges_by_layer("power") if topo else []
 
             def _parents(i):
@@ -728,14 +784,14 @@ class DeviceStateStore:
                         nb = v if u == i else u
                         if id_type.get(nb) == "energy_monitor":
                             continue                 # meters clamp on, don't feed
-                        if rank.get(nb, 4) < rank.get(i, 4):
+                        if rank.get(nb, self._LEAF_RANK) < rank.get(i, self._LEAF_RANK):
                             out.append(nb)
                 return out
 
             for i in id_type:
                 parents[i] = _parents(i)
             for u, v, _w in edges:
-                pu, pv = rank.get(u, 4), rank.get(v, 4)
+                pu, pv = rank.get(u, self._LEAF_RANK), rank.get(v, self._LEAF_RANK)
                 if pu < pv:
                     children.setdefault(u, []).append(v)
                 elif pv < pu:
@@ -743,7 +799,8 @@ class DeviceStateStore:
 
             # Nameplate peak flowing through each node (leaf→root, redundancy split).
             incoming: Dict[str, float] = {}
-            for nid in sorted(id_type, key=lambda x: rank.get(x, 4), reverse=True):
+            for nid in sorted(id_type, key=lambda x: rank.get(x, self._LEAF_RANK),
+                              reverse=True):
                 thr = id_draw.get(nid, 0.0) + incoming.get(nid, 0.0)
                 peak_w[nid] = thr
                 ps = parents.get(nid, [])
@@ -802,7 +859,6 @@ class DeviceStateStore:
             # Circuit i meters ev2_circuit_pdus[ip][i-1], so each circuit reflects
             # the REAL branch load it clamps — an empty rack PDU reads 0, a full one
             # reads its live kW — instead of a panel-scaled random walk.
-            _up_types = {"ups", "generator"}
             for d in self._dm.get_all_devices():
                 if d.device_type.value != "energy_monitor":
                     continue
@@ -813,8 +869,13 @@ class DeviceStateStore:
                 nbr_ids = [(u if v == panel else v) for u, v, _w in edges
                            if panel in (u, v) and d.id not in (u, v)]
                 brs = [id_dev.get(nid) for nid in nbr_ids]
+                # A CT clamps a branch LEAVING the panel, never the incomer feeding
+                # it. Rank does that test for every tier at once (utility, gen,
+                # switchgear, ATS, UPS above an RPP; RPP above a rack PDU) instead of
+                # a hand-kept upstream type list that silently misses the new tiers.
+                _panel_rank = rank.get(panel, self._LEAF_RANK)
                 brs = [b for b in brs if b is not None
-                       and id_type.get(b.id) not in _up_types]
+                       and rank.get(b.id, self._LEAF_RANK) > _panel_rank]
                 # Stable CT-channel assignment (see _ev2_circuit_order). Real EV2 CT
                 # channels are physical, so:
                 #   • a surviving branch keeps the exact slot it already holds;
@@ -882,22 +943,65 @@ class DeviceStateStore:
                     "facility": role in ("main", "cool"),   # legacy key
                 })
 
-            # Generator → names of the UPS units downstream of it. A genset starts
-            # when utility is lost, which the sim sees as a downstream UPS going
-            # on-battery — so this maps the trigger.
-            ups_ids = {i for i, t in id_type.items() if t == "ups"}
-            for gid, t in id_type.items():
+            # ── Per-DC electrical upstream, for the transfer sequencer ────────
+            # The genset no longer starts because a UPS happened to go on battery
+            # (that inverted cause and effect — the UPS drops BECAUSE the source
+            # died). The ATS watches the utility feed and drives everything else.
+            for i, t in id_type.items():
+                d = id_dev.get(i)
+                _dc = (getattr(d, "datacenter", None) or "?") if d else "?"
                 if t == "generator":
-                    subups = _subtree(gid) & ups_ids
-                    gen_ups[gid] = [self._dm.get_device(i).name for i in subups
-                                    if self._dm.get_device(i)]
+                    dc_gens.setdefault(_dc, []).append(i)
+                elif t == "utility_feed":
+                    dc_utility[_dc] = i
+                elif t == "ats":
+                    dc_ats.setdefault(_dc, []).append(i)
+                elif t == "ups":
+                    dc_ups.setdefault(_dc, []).append(i)
+                elif t == "mcc":
+                    dc_mcc.setdefault(_dc, []).append(i)
+
+            # Mechanical loads under each MCC, as (name, device_type). Used to
+            # de-energize exactly the half of the plant whose transfer switch is
+            # mid-sequence, so an A-side event leaves the B-side chillers running.
+            # Each MCC also remembers the ATS feeding it, so a failed transfer
+            # switch takes down only its own half.
+            # Which switchgear board each ATS sees on each of its two sources. An
+            # ATS is the ONE node in the graph with genuinely alternative parents:
+            # every other redundant feed (a dual-corded server, an A/B PDU pair)
+            # really does share the load, but a transfer switch draws from exactly
+            # one source at a time. Without this the cascade would push half the
+            # site's watts into a standby genset.
+            for aid in (i for i, t in id_type.items() if t == "ats"):
+                for p in parents.get(aid, []):
+                    if id_type.get(p) != "switchgear":
+                        continue
+                    gen_side = any(id_type.get(pp) == "generator"
+                                   for pp in parents.get(p, []))
+                    ats_src_swgr.setdefault(aid, {})[
+                        "emergency" if gen_side else "normal"] = p
+
+            for mid in (i for i, t in id_type.items() if t == "mcc"):
+                mcc_ats[mid] = next((p for p in parents.get(mid, [])
+                                     if id_type.get(p) == "ats"), None)
+                for nid in _subtree(mid):
+                    if id_type.get(nid) in self._MECH_LEAF_TYPES:
+                        d = id_dev.get(nid)
+                        if d is not None:
+                            mcc_plant.setdefault(mid, []).append(
+                                (d.name, id_type[nid]))
         except Exception:
             log.exception("[StateStore] power context build error")
 
         self._power_ctx = {"children": children, "parents": parents,
                            "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
                            "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters,
-                           "ev2_circuit_pdus": ev2_circuit_pdus, "gen_ups": gen_ups}
+                           "ev2_circuit_pdus": ev2_circuit_pdus,
+                           "dc_gens": dc_gens, "dc_utility": dc_utility,
+                           "dc_ats": dc_ats, "dc_ups": dc_ups, "dc_mcc": dc_mcc,
+                           "mcc_plant": mcc_plant, "mcc_ats": mcc_ats,
+                           "ats_src_swgr": ats_src_swgr,
+                           "id_type": dict(id_type)}
         self._power_ctx_sig = _sig
         return self._power_ctx
 
@@ -1001,43 +1105,231 @@ class DeviceStateStore:
             "source":         "meters" if metered else "computed",
         }
 
-    def _step_generator(self, device: "Device", st: dict) -> None:
-        """Live generator state. A genset is in STANDBY until utility is lost —
-        which the sim sees as a UPS downstream of it going on-battery. While
-        running it carries the live downstream load (server→…→generator through),
-        burns fuel proportional to that load, and accrues run-hours; the fuel
-        level sets the remaining runtime. Written to the ext-state cache so
-        snmprec serves the live OIDs."""
+    # ── Utility / transfer control surface ────────────────────────────────────
+    def set_utility_outage(self, dc: str, failed: bool) -> None:
+        """Drop or restore the utility feed for one datacenter. Everything else —
+        genset start, ATS transfer, mechanical load-block restart, UPS battery
+        discharge — follows from this one input, the way it does on site."""
+        self._utility_failed[dc] = bool(failed)
+
+    def set_ats_failed(self, ats_id: str, failed: bool) -> None:
+        """Fail (or clear) one transfer switch. In a 2N electrical plant this kills
+        only its own side: that UPS goes to battery and that MCC's half of the
+        mechanical plant stops, leaving the other side carrying the site."""
+        if failed:
+            self._ats_failed.add(ats_id)
+        else:
+            self._ats_failed.discard(ats_id)
+
+    def get_electrical_status(self) -> dict:
+        """Per-DC view of the utility/generator transfer state, for the API."""
         ctx = self._power_context() or {}
-        ups_names = ctx.get("gen_ups", {}).get(device.id, [])
-        # Utility lost → any downstream UPS on battery → start.
-        on_outage = any(
-            (self._ext_states.get(n, {}) or _ext_state_cache.get(n, {})).get("ups_status")
-            in ("on_battery", "low_battery")
-            for n in ups_names
-        )
+        out = {}
+        for dc, st in self._transfer.all_status().items():
+            out[dc] = {
+                "state":           st.state,
+                "ats_source":      st.source,
+                "bus_energized":   st.source_live,
+                "utility_ok":      not self._utility_failed.get(dc, False),
+                "gen_status":      st.gen_status,
+                "gen_at_voltage":  st.gen_at_voltage,
+                "ups_input_ok":    st.ups_input_ok,
+                "mech_blocks_on":  st.mech_blocks_on,
+                "seconds_in_state": round(st.t, 1),
+                "ats_failed": [i for i in ctx.get("dc_ats", {}).get(dc, [])
+                               if i in self._ats_failed],
+            }
+        return out
+
+    def _step_transfer(self) -> None:
+        """Advance every DC's transfer sequence, then publish the two things the
+        rest of the tick needs from it: which mechanical units are unpowered, and
+        whether each UPS is seeing a live source."""
+        ctx = self._power_context() or {}
+        dc_gens = ctx.get("dc_gens", {})
+        dc_utility = ctx.get("dc_utility", {})
+        dc_mcc = ctx.get("dc_mcc", {})
+        mcc_plant = ctx.get("mcc_plant", {})
+        mcc_ats = ctx.get("mcc_ats", {})
+        dcs = set(dc_gens) | set(dc_utility) | set(dc_mcc)
+        unpowered: set = set()
+        for dc in dcs:
+            # A topology with no modeled utility feed (an older saved file) has no
+            # source to lose, so it stays on "utility" forever and behaves exactly
+            # as it did before this model existed.
+            has_util = dc in dc_utility
+            utility_ok = (not self._utility_failed.get(dc, False)) if has_util else True
+            # A genset can crank if it has fuel. With both gensets on a common
+            # paralleling bus, one is enough to qualify the emergency source. A
+            # genset the tick loop has not initialised yet is assumed fuelled, so
+            # the first tick after load doesn't read as a site-wide failed start.
+            gens_startable = any(
+                self._gen_state(gid).get("gen_fuel_pct", 100.0) > 0.5
+                for gid in dc_gens.get(dc, [])
+            )
+            st = self._transfer.step(dc, utility_ok, gens_startable, self._tick_interval)
+            live_types = st.mech_types_on()
+            dc_dark = 0
+            for mid in dc_mcc.get(dc, []):
+                # A failed ATS de-energizes only the MCC behind it.
+                dead = mcc_ats.get(mid) in self._ats_failed
+                for nm, dtv in mcc_plant.get(mid, []):
+                    if dead or dtv not in live_types:
+                        unpowered.add(nm)
+                        dc_dark += 1
+            # Ride-through clock: how long this DC's plant has been short of full
+            # power. Reset the instant every unit is energized again.
+            self._mech_dead_s[dc] = (0.0 if dc_dark == 0
+                                     else self._mech_dead_s.get(dc, 0.0) + self._tick_interval)
+        self._plant_unpowered_names = unpowered
+
+    def _gen_state(self, gen_id: str) -> dict:
+        """Ext-state dict for a generator device id (empty if unknown)."""
+        d = self._dm.get_device(gen_id)
+        if d is None:
+            return {}
+        return self._ext_states.get(d.name) or _ext_state_cache.get(d.name) or {}
+
+    def _ups_source_ok(self, device: "Device") -> bool:
+        """Is this UPS's rectifier seeing a qualified source right now? False while
+        its ATS is mid-transfer, its own ATS has failed, or the whole DC is riding
+        a dead bus — which is precisely when a real UPS drops to battery."""
+        ctx = self._power_context() or {}
+        dc = getattr(device, "datacenter", None) or "?"
+        if dc not in ctx.get("dc_utility", {}) and dc not in ctx.get("dc_gens", {}):
+            return True                      # not wired into a modeled electrical plant
+        _ty = ctx.get("id_type", {})
+        ats = next((p for p in ctx.get("parents", {}).get(device.id, [])
+                    if _ty.get(p) == "ats"), None)
+        if ats is not None and ats in self._ats_failed:
+            return False
+        return self._transfer.status(dc).ups_input_ok
+
+    def _step_electrical(self, device: "Device", st: dict) -> None:
+        """Live telemetry for the electrical upstream, all of it derived from the
+        DC's transfer state so the one-line reads consistently end to end.
+
+        Real protocol coverage, for reference:
+          • utility_feed — a revenue / ION-class meter at the service entrance,
+            typically Modbus TCP (Schneider PowerLogic, Eaton PXM).
+          • switchgear   — breaker status and bus metering over Modbus or SNMP.
+          • ats          — SNMP is the norm here (ASCO 7000 with an ACC card,
+            Eaton ATC-900, APC). Position, source availability and a transfer
+            counter are the points every vendor exposes.
+          • mcc          — per-bucket breaker meters, Modbus RTU behind a gateway.
+        The sim serves these over SNMP because that is the transport it already
+        speaks for power gear; Modbus is not modelled."""
+        ctx = self._power_context() or {}
+        dc = getattr(device, "datacenter", None) or "?"
+        ats = self._transfer.status(dc)
+        dtv = device.device_type.value
+        rated = ctx.get("rated_w", {}).get(device.id, 0.0)
+        thr = self._through_live.get(device.id, 0.0)
+        load_pct = round(max(0.0, min(100.0, thr / rated * 100.0)), 1) if rated > 0 else 0.0
+        utility_ok = not self._utility_failed.get(dc, False)
+
+        if dtv == "utility_feed":
+            st["util_status"] = "normal" if utility_ok else "failed"
+            st["util_voltage"] = (round(random.uniform(398.0, 402.0), 1)
+                                  if utility_ok else 0.0)
+            st["util_frequency"] = (round(random.uniform(49.95, 50.05), 2)
+                                    if utility_ok else 0.0)
+            st["util_kw"] = round(thr / 1000.0, 1) if utility_ok else 0.0
+            st["util_load_pct"] = load_pct if utility_ok else 0.0
+
+        elif dtv == "switchgear":
+            # Which source this board belongs to decides whether it is live: the
+            # utility main dies with the utility, the paralleling board comes alive
+            # when the gensets reach voltage.
+            def _is_gen(pid: str) -> bool:
+                p = self._dm.get_device(pid)
+                return p is not None and p.device_type == DeviceType.GENERATOR
+
+            gen_side = any(_is_gen(p) for p in ctx.get("parents", {}).get(device.id, []))
+            live = ats.gen_at_voltage if gen_side else utility_ok
+            st["swgr_source"] = "generator" if gen_side else "utility"
+            st["swgr_bus_status"] = "energized" if live else "dead"
+            st["swgr_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
+            st["swgr_kw"] = round(thr / 1000.0, 1) if live else 0.0
+            st["swgr_load_pct"] = load_pct if live else 0.0
+            st["swgr_breaker_status"] = "closed" if live else "open"
+
+        elif dtv == "ats":
+            failed = device.id in self._ats_failed
+            pos = "none" if failed else ats.source
+            prev = st.get("ats_position", "normal")
+            if pos != prev and pos in ("normal", "emergency"):
+                st["ats_transfer_count"] = int(st.get("ats_transfer_count", 0)) + 1
+            st["ats_position"] = pos
+            st["ats_state"] = "failed" if failed else ats.state
+            st["ats_normal_available"] = "yes" if (utility_ok and not failed) else "no"
+            st["ats_emergency_available"] = "yes" if (ats.gen_at_voltage and not failed) else "no"
+            st["ats_output_voltage"] = (round(random.uniform(398.0, 402.0), 1)
+                                        if (ats.source_live and not failed) else 0.0)
+            st["ats_kw"] = round(thr / 1000.0, 1) if (ats.source_live and not failed) else 0.0
+            st["ats_load_pct"] = load_pct if (ats.source_live and not failed) else 0.0
+
+        elif dtv == "mcc":
+            dead = ctx.get("mcc_ats", {}).get(device.id) in self._ats_failed
+            live = ats.source_live and not dead
+            st["mcc_status"] = "energized" if live else "dead"
+            st["mcc_blocks_on"] = 0 if dead else ats.mech_blocks_on
+            st["mcc_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
+            st["mcc_kw"] = round(thr / 1000.0, 1) if live else 0.0
+            st["mcc_load_pct"] = load_pct if live else 0.0
+
+        _ext_state_cache[device.name] = dict(st)
+
+    def _step_generator(self, device: "Device", st: dict) -> None:
+        """Live generator state, slaved to its DC's transfer sequence.
+
+        A genset sits in STANDBY until the ATS closes its start contact. It then
+        cranks, reaches rated voltage, and once the ATS transfers it carries the
+        live downstream load (server→…→generator through). Fuel burn is
+        proportional to load and sets the remaining runtime. After the utility
+        returns the engine keeps turning through a COOLDOWN run at no load.
+
+        Both gensets close onto a common paralleling bus and start together, so the
+        site load divides evenly across them and each reads about half the facility
+        kW. Either machine is rated to carry the whole site on its own."""
+        ctx = self._power_context() or {}
+        dc = getattr(device, "datacenter", None) or "?"
+        ats = self._transfer.status(dc)
         rated = ctx.get("rated_w", {}).get(device.id, 0.0)
         thr   = self._through_live.get(device.id, 0.0)
         dt_h  = self._tick_interval / 3600.0
+        out_of_fuel = st.get("gen_fuel_pct", 100.0) <= 0.5
 
-        if on_outage and st.get("gen_fuel_pct", 0.0) > 0.5:
+        if out_of_fuel:
+            st["gen_was_running"] = False
+            st["gen_status"] = "fault"
+            st["gen_load_pct"] = 0.0
+            st["gen_kw"] = 0.0
+            st["gen_runtime_min"] = 0.0
+        elif ats.gen_demand:
             if not st.get("gen_was_running"):
                 st["gen_start_attempts"] = int(st.get("gen_start_attempts", 0)) + 1
                 st["gen_was_running"] = True
-            st["gen_status"] = "running"
-            load_pct = (thr / rated * 100.0) if rated > 0 else 0.0
-            st["gen_load_pct"] = round(max(0.0, min(100.0, load_pct)), 1)
-            st["gen_kw"]       = round(thr / 1000.0, 1)
+            st["gen_status"] = ats.gen_status
             st["gen_run_hours"] = round(st.get("gen_run_hours", 0.0) + dt_h, 3)
-            # Fuel burn ∝ load; full-tank lasts _GEN_FULL_HOURS at full load.
-            burn = (max(0.0, st["gen_load_pct"]) / 100.0) * dt_h / self._GEN_FULL_HOURS * 100.0
+            # Load only once the ATS has actually closed onto the emergency source.
+            # While cranking, or during the open-transition dead time, or on a
+            # post-retransfer cooldown run, the machine turns at no load.
+            carrying = ats.source == "emergency"
+            load_pct = (thr / rated * 100.0) if (carrying and rated > 0) else 0.0
+            st["gen_load_pct"] = round(max(0.0, min(100.0, load_pct)), 1)
+            st["gen_kw"]       = round(thr / 1000.0, 1) if carrying else 0.0
+            # Fuel burn ∝ load; a full tank lasts _GEN_FULL_HOURS at full load. An
+            # unloaded engine still burns roughly a tenth of its full-load rate.
+            lf_burn = max(0.10, st["gen_load_pct"] / 100.0)
+            burn = lf_burn * dt_h / self._GEN_FULL_HOURS * 100.0
             st["gen_fuel_pct"] = round(max(0.0, st.get("gen_fuel_pct", 0.0) - burn), 2)
             lf = max(0.05, st["gen_load_pct"] / 100.0)
             st["gen_runtime_min"] = round(st["gen_fuel_pct"] / 100.0
                                           * self._GEN_FULL_HOURS / lf * 60.0, 1)
         else:
             st["gen_was_running"] = False
-            st["gen_status"] = "fault" if st.get("gen_fuel_pct", 100.0) <= 0.5 else "standby"
+            st["gen_status"] = "standby"
             st["gen_load_pct"] = 0.0
             st["gen_kw"] = 0.0
             st["gen_runtime_min"] = 0.0
@@ -1057,12 +1349,90 @@ class DeviceStateStore:
                     return 0.0
         return 0.0
 
+    def _dc_of(self, nid: str) -> str:
+        d = self._dm.get_device(nid)
+        return (getattr(d, "datacenter", None) or "?") if d else "?"
+
+    def _compute_energized(self, ctx: dict) -> Dict[str, bool]:
+        """Which power nodes are delivering power downstream right now.
+
+        Walked top-down by rank, because energization flows from the sources:
+
+          utility feed — live while the utility is up
+          generator    — live once the gensets reach rated voltage
+          ATS          — live while it is closed onto a source and not failed
+          UPS          — live even with a dead input: that is what a UPS is for. It
+                         goes dark only once its battery is exhausted.
+          everything else — live if any feed above it is live
+
+        A node with no power parents at all (a router, a mgmt-only sensor) is left
+        live, so this never zeroes something that was simply never wired into the
+        power graph.
+        """
+        rank = ctx.get("rank", {})
+        parents = ctx.get("parents", {})
+        id_type = ctx.get("id_type", {})
+        en: Dict[str, bool] = {}
+        for nid in sorted(rank, key=lambda x: rank.get(x, self._LEAF_RANK)):
+            dtv = id_type.get(nid)
+            if dtv == "utility_feed":
+                en[nid] = not self._utility_failed.get(self._dc_of(nid), False)
+            elif dtv == "generator":
+                en[nid] = self._transfer.status(self._dc_of(nid)).gen_at_voltage
+            elif dtv == "ats":
+                en[nid] = (nid not in self._ats_failed
+                           and self._transfer.status(self._dc_of(nid)).source_live)
+            elif dtv == "ups":
+                d = self._dm.get_device(nid)
+                ext = (self._ext_states.get(d.name) if d else None) or {}
+                en[nid] = not ext.get("ups_battery_exhausted", False)
+            else:
+                ps = parents.get(nid, [])
+                en[nid] = any(en.get(p, False) for p in ps) if ps else True
+        return en
+
+    def _active_parents(self, nid: str, ctx: dict) -> list:
+        """The upstream nodes actually carrying this node's watts right now.
+
+        Normally that is every power parent — a dual-corded server really does draw
+        from both its PDUs, so each side sees half. Three rules bend that:
+
+          • an ATS draws from exactly ONE source. Splitting its load across the
+            utility board and the generator board would show a standby genset
+            carrying half the datacenter.
+          • a UPS whose input source is dead is running from its batteries, so its
+            load stops there and never reaches the ATS above it. Returning []
+            simply ends the cascade at that node, which is what a battery does.
+          • a DEAD cord carries nothing. When one side of a 2N feed drops, the
+            surviving side picks up the whole load rather than politely continuing
+            to take half of it — which is the entire reason a 2N plant is designed
+            to sit below 50 % load in normal operation.
+        """
+        parents = ctx.get("parents", {})
+        ps = parents.get(nid, [])
+        if not ps:
+            return ps
+        dtv = ctx.get("id_type", {}).get(nid)
+        if dtv == "ats":
+            if nid in self._ats_failed:
+                return []
+            src = self._transfer.status(self._dc_of(nid)).source   # normal|emergency|none
+            board = ctx.get("ats_src_swgr", {}).get(nid, {}).get(src)
+            return [board] if board else []
+        if dtv == "ups":
+            d = self._dm.get_device(nid)
+            if d is not None and not self._ups_source_ok(d):
+                return []
+            return ps
+        return [p for p in ps if self._energized.get(p, True)]
+
     def _compute_power_flow(self) -> None:
         """Per tick: sum live IT load bottom-up through the power graph so each
         PDU/UPS/EV2 node carries the real watts flowing through it right now.
         Also totals IT vs facility (IT + cooling plant) draw for live PUE."""
         ctx = self._power_context()
         rank, parents = ctx["rank"], ctx["parents"]
+        self._energized = self._compute_energized(ctx)
         through: Dict[str, float] = {}
         incoming: Dict[str, float] = {}
         it_w = 0.0
@@ -1103,7 +1473,9 @@ class DeviceStateStore:
                 elif dtv in self._COOLING_TYPES:
                     # Cooling plant is also an electrical load on the power graph,
                     # so a facility meter downstream reads IT + cooling → PUE > 1.
-                    w = self._plant_watts(d.name)
+                    # A unit whose MCC is de-energized draws nothing, regardless of
+                    # what its last BACnet telemetry said.
+                    w = 0.0 if d.name in self._plant_unpowered_names else self._plant_watts(d.name)
                     if w > 0:
                         own[d.id] = w
                         cool_w += w
@@ -1111,10 +1483,11 @@ class DeviceStateStore:
                         (d.name, float(getattr(d, "power_draw_w", 0) or 0), dtv))
                     if dtv == "crah":
                         crah_room[d.name] = (_dc, getattr(d, "room", "") or "")
-            for nid in sorted(rank, key=lambda x: rank.get(x, 4), reverse=True):
+            for nid in sorted(rank, key=lambda x: rank.get(x, self._LEAF_RANK),
+                              reverse=True):
                 thr = own.get(nid, 0.0) + incoming.get(nid, 0.0)
                 through[nid] = thr
-                ps = parents.get(nid, [])
+                ps = self._active_parents(nid, ctx)
                 if ps and thr:
                     share = thr / len(ps)
                     for p in ps:
@@ -1326,6 +1699,14 @@ class DeviceStateStore:
     _COOL_TOL = 0.34     # cooling-loss fraction the plant rides out (N+1 + thermal mass)
     _COOL_RUN = 0.20     # runaway integration gain (°C/tick per unit deficit)
     _COOL_MAX = 28.0     # ceiling — equipment thermal-limit territory (inlet → ~50 °C)
+    # Seconds of chilled-water + room-air thermal mass. This is the whole reason
+    # bulk mechanical load is allowed to sit on an MCC instead of a UPS: the loop
+    # keeps rejecting heat for about a minute after the pumps stop, which comfortably
+    # covers the ~12 s transfer and the ~25 s staged restart. An UNPOWERED unit's
+    # contribution to the cooling-loss fraction therefore ramps in over this window
+    # rather than landing at full weight on the first dead tick. A FAULTED unit gets
+    # no such grace — the rest of the plant has already been compensating for it.
+    _CHW_RIDE_S = 60.0
 
     def _compute_chw_penalty(self) -> None:
         """Per-tick: update the per-DC chilled-water temperature penalty.
@@ -1346,12 +1727,30 @@ class DeviceStateStore:
         ctx = self._cooling_context()
         from core.cooling_model import PLANT_MODULE_KW
         for dc, kinds in ctx["plant_by_dc"].items():
+            # Thermal-mass grace for a plant that has just lost power (see
+            # _CHW_RIDE_S). While the loop still has stored cooling, an unpowered
+            # unit costs nothing; past that the loop is exhausted and its full loss
+            # phases in over another ride-through's worth of seconds. So a clean
+            # transfer (plant fully back inside ~37 s) never warms the room, while a
+            # genset that fails to start rides the grace out and then runs away.
+            _dead = self._mech_dead_s.get(dc, 0.0)
+            ride = max(0.0, min(1.0, (_dead - self._CHW_RIDE_S) / self._CHW_RIDE_S))
+
             def frac(kind: str) -> float:
                 names = kinds.get(kind) or []
                 # A STAGED-OFF chiller is standby, not a loss — exclude it (only
                 # faulted / unexpectedly-stopped units count against cooling).
                 names = [n for n in names if n not in self._plant_standby_names]
-                return (sum(1 for n in names if self._is_faulted(n)) / len(names)) if names else 0.0
+                if not names:
+                    return 0.0
+                # An UNPOWERED unit is a loss: its MCC is dead, so it is not
+                # rejecting any heat. Counted directly rather than waiting for its
+                # BACnet run-status to read 0, so the penalty is correct even when
+                # the BACnet server is disabled and there is no plant telemetry.
+                unpowered = [n for n in names if n in self._plant_unpowered_names]
+                faulted = [n for n in names
+                           if n not in self._plant_unpowered_names and self._is_faulted(n)]
+                return (len(faulted) + ride * len(unpowered)) / len(names)
             # surviving cooling capacity (series chain); towers/valves throttle partially
             avail = ((1.0 - frac("chiller")) * (1.0 - frac("pump"))
                      * (1.0 - 0.6 * frac("cooling_tower")) * (1.0 - 0.5 * frac("valve")))
@@ -1422,6 +1821,7 @@ class DeviceStateStore:
         devices = self._dm.get_all_devices()
         self._compute_leak_heat()
         self._compute_chw_penalty()       # roll per-DC CHW penalty from upstream faults
+        self._step_transfer()             # utility/genset transfer → who is energized
         self._compute_power_flow()        # live watts up the power graph (server→PDU→UPS→EV2)
         for device in devices:
             self._step_device(device)
@@ -1448,7 +1848,8 @@ class DeviceStateStore:
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
                                        plant_power_by_name=self._plant_power_by_name,
                                        plant_cop_by_name=self._plant_cop_by_name,
-                                       plant_standby_names=self._plant_standby_names)
+                                       plant_standby_names=self._plant_standby_names,
+                                       plant_unpowered_names=self._plant_unpowered_names)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
@@ -1543,6 +1944,9 @@ class DeviceStateStore:
             "ups_battery_health": random.uniform(92.0, 100.0),
             "ups_energy_kwh": 0.0,
             "ups_runtime_min": 8.0,
+            "ups_on_battery_s": 0.0,
+            "ups_autonomy_s": 0.0,
+            "ups_battery_exhausted": False,
             "gen_fuel_pct": random.uniform(75.0, 95.0),
             "gen_run_hours": 0.0,
             "gen_status": "standby",
@@ -1551,6 +1955,30 @@ class DeviceStateStore:
             "gen_runtime_min": 0.0,
             "gen_start_attempts": 0,
             "gen_was_running": False,
+            "util_status": "normal",
+            "util_voltage": 400.0,
+            "util_frequency": 50.0,
+            "util_kw": 0.0,
+            "util_load_pct": 0.0,
+            "swgr_source": "utility",
+            "swgr_bus_status": "energized",
+            "swgr_voltage": 400.0,
+            "swgr_kw": 0.0,
+            "swgr_load_pct": 0.0,
+            "swgr_breaker_status": "closed",
+            "ats_position": "normal",
+            "ats_state": "utility",
+            "ats_normal_available": "yes",
+            "ats_emergency_available": "no",
+            "ats_output_voltage": 400.0,
+            "ats_kw": 0.0,
+            "ats_load_pct": 0.0,
+            "ats_transfer_count": 0,
+            "mcc_status": "energized",
+            "mcc_blocks_on": 3,
+            "mcc_voltage": 400.0,
+            "mcc_kw": 0.0,
+            "mcc_load_pct": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -2095,7 +2523,12 @@ class DeviceStateStore:
                 changed = True
 
         if dt == DeviceType.UPS:
-            setv("ups_status", "normal")
+            # ups_status is scrubbed only when the rectifier actually has a source.
+            # A UPS on battery because its ATS is mid-transfer (or has failed) is a
+            # MODELLED condition, not a random-walk artefact, so it must survive the
+            # scrub — otherwise the utility-outage sequence is invisible on SNMP.
+            if self._ups_source_ok(device):
+                setv("ups_status", "normal")
             setv("ups_battery_status", "normal")
             for c in ("ups_fan_status", "ups_charger_status",
                       "ups_rectifier_status", "ups_phase_status"):
@@ -2216,6 +2649,9 @@ class DeviceStateStore:
             "ups_battery_health": random.uniform(92.0, 100.0),
             "ups_energy_kwh": 0.0,
             "ups_runtime_min": 8.0,
+            "ups_on_battery_s": 0.0,
+            "ups_autonomy_s": 0.0,
+            "ups_battery_exhausted": False,
             "gen_fuel_pct": random.uniform(75.0, 95.0),
             "gen_run_hours": 0.0,
             "gen_status": "standby",
@@ -2224,6 +2660,30 @@ class DeviceStateStore:
             "gen_runtime_min": 0.0,
             "gen_start_attempts": 0,
             "gen_was_running": False,
+            "util_status": "normal",
+            "util_voltage": 400.0,
+            "util_frequency": 50.0,
+            "util_kw": 0.0,
+            "util_load_pct": 0.0,
+            "swgr_source": "utility",
+            "swgr_bus_status": "energized",
+            "swgr_voltage": 400.0,
+            "swgr_kw": 0.0,
+            "swgr_load_pct": 0.0,
+            "swgr_breaker_status": "closed",
+            "ats_position": "normal",
+            "ats_state": "utility",
+            "ats_normal_available": "yes",
+            "ats_emergency_available": "no",
+            "ats_output_voltage": 400.0,
+            "ats_kw": 0.0,
+            "ats_load_pct": 0.0,
+            "ats_transfer_count": 0,
+            "mcc_status": "energized",
+            "mcc_blocks_on": 3,
+            "mcc_voltage": 400.0,
+            "mcc_kw": 0.0,
+            "mcc_load_pct": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -2251,15 +2711,33 @@ class DeviceStateStore:
         # ── UPS ───────────────────────────────────────────────────────────
         if is_ups:
             if mf["ups_status"]:
-                ups = st["ups_status"]
-                if ups == "normal" and random.random() < 0.001:
-                    st["ups_status"] = "on_battery"
-                elif ups == "on_battery" and random.random() < 0.08:
-                    st["ups_status"] = "low_battery"
-                elif ups == "on_battery" and random.random() < 0.10:
+                # A UPS does not decide to go on battery — it drops there because its
+                # input source died. That is the ATS's business, so the status is
+                # slaved to the transfer sequence rather than random-walked. Battery
+                # autonomy is finite: after _UPS_DESIGN_MIN at load the string is
+                # into its low-battery alarm and the site is minutes from dropping.
+                if self._ups_source_ok(device):
+                    st["ups_on_battery_s"] = 0.0
+                    st["ups_battery_exhausted"] = False
                     st["ups_status"] = "normal"
-                elif ups == "low_battery" and random.random() < 0.10:
-                    st["ups_status"] = "normal"
+                else:
+                    on_batt = st.get("ups_on_battery_s", 0.0) + self._tick_interval
+                    if on_batt <= self._tick_interval:
+                        # Freeze the autonomy at the instant of drop-out, from the
+                        # runtime estimate for the load it is carrying right now. A
+                        # lightly-loaded string lasts far longer than its full-load
+                        # rating, which is why a 2N site can ride a long outage.
+                        st["ups_autonomy_s"] = max(60.0, float(
+                            st.get("ups_runtime_min", self._UPS_DESIGN_MIN)) * 60.0)
+                    st["ups_on_battery_s"] = on_batt
+                    autonomy = st.get("ups_autonomy_s", self._UPS_DESIGN_MIN * 60.0)
+                    # Past autonomy the string is flat and the inverter drops the
+                    # load. Downstream, that cord goes dead — on a dual-corded 2N
+                    # feed the other side then carries everything.
+                    st["ups_battery_exhausted"] = on_batt >= autonomy
+                    st["ups_status"] = ("low_battery"
+                                        if on_batt >= autonomy * self._UPS_LOW_BATT_FRAC
+                                        else "on_battery")
             if mf["ups_status"]:
                 st["ups_status"] = self._state_lock("ups_status", st["ups_status"])
 
@@ -2359,6 +2837,11 @@ class DeviceStateStore:
         # ── Generator ─────────────────────────────────────────────────────
         if device.device_type == DeviceType.GENERATOR:
             self._step_generator(device, st)
+
+        # ── Electrical upstream (utility feed / switchgear / ATS / MCC) ───
+        if device.device_type in (DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
+                                  DeviceType.ATS, DeviceType.MCC):
+            self._step_electrical(device, st)
 
         # ── PDU / Floor PDU ───────────────────────────────────────────────
         if is_pdu:

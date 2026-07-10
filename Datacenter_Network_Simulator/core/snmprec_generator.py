@@ -388,6 +388,18 @@ class SNMPRecGenerator:
         if device.device_type == DeviceType.GENERATOR:
             entries += self._generator_entries(device)
 
+        if device.device_type == DeviceType.UTILITY_FEED:
+            entries += self._utility_entries(device)
+
+        if device.device_type == DeviceType.SWITCHGEAR:
+            entries += self._switchgear_entries(device)
+
+        if device.device_type == DeviceType.ATS:
+            entries += self._ats_entries(device)
+
+        if device.device_type == DeviceType.MCC:
+            entries += self._mcc_entries(device)
+
         if device.device_type == DeviceType.CRAH:
             entries += self._crah_entries(device)
 
@@ -813,7 +825,8 @@ class SNMPRecGenerator:
                     pass
                 if ext:
                     _GEN_ENT = "1.3.6.1.4.1.99999.7"
-                    _gen_st = {"standby": 1, "running": 2, "fault": 3}.get(
+                    _gen_st = {"standby": 1, "running": 2, "fault": 3,
+                               "cranking": 4, "cooldown": 5}.get(
                         ext.get("gen_status", "standby"), 1)
                     updates[f"{_GEN_ENT}.1.0"]  = ("2", str(int(round(ext.get("gen_fuel_pct", 80.0)))))
                     updates[f"{_GEN_ENT}.2.0"]  = ("2", str(int(ext.get("gen_run_hours", 0.0))))
@@ -822,6 +835,18 @@ class SNMPRecGenerator:
                     updates[f"{_GEN_ENT}.5.0"]  = ("2", str(int(round(ext.get("gen_kw", 0.0)))))
                     updates[f"{_GEN_ENT}.13.0"] = ("2", str(int(ext.get("gen_start_attempts", 0))))
                     updates[f"{_GEN_ENT}.14.0"] = ("2", str(int(round(ext.get("gen_runtime_min", 0.0)))))
+
+            # Electrical upstream pollable OIDs — utility feed / switchgear / ATS / MCC.
+            if device.device_type in (DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
+                                      DeviceType.ATS, DeviceType.MCC):
+                ext = {}
+                try:
+                    from core.device_state_store import _get_ext_state
+                    ext = _get_ext_state(device.name)
+                except Exception:
+                    pass
+                if ext:
+                    updates.update(self._electrical_updates(device, ext))
 
             # Plant live telemetry — patched from the shared BACnet engine
             # (via _plant_state_cache) so SNMP serves the same ticking values
@@ -1438,7 +1463,11 @@ class SNMPRecGenerator:
         entries += [
             _oid_entry(f"{_GEN_ENT}.1.0",  "2",  "80"),   # genFuelLevelPercent %
             _oid_entry(f"{_GEN_ENT}.2.0",  "2",  "0"),    # genRunHours (hours)
-            _oid_entry(f"{_GEN_ENT}.3.0",  "2",  "1"),    # genStatus (1=standby,2=running,3=fault)
+            # genStatus 1=standby 2=running 3=fault 4=cranking 5=cooldown.
+            # Cranking and cooldown are distinct because in both the engine turns
+            # but carries no load — an operator watching only "running" would
+            # misread a post-retransfer cooldown as the site still being on generator.
+            _oid_entry(f"{_GEN_ENT}.3.0",  "2",  "1"),    # genStatus
             _oid_entry(f"{_GEN_ENT}.4.0",  "2",  "0"),    # genOutputLoadPercent %
             _oid_entry(f"{_GEN_ENT}.5.0",  "2",  "0"),    # genOutputKW (kW)
             _oid_entry(f"{_GEN_ENT}.6.0",  "2",  "4000"), # genOutputVoltagePhA x10 V (400.0)
@@ -1452,6 +1481,116 @@ class SNMPRecGenerator:
             _oid_entry(f"{_GEN_ENT}.14.0", "2",  "0"),    # genRuntimeRemainingMin (min)
         ]
         return entries
+
+    # ------------------------------------------------------------------ #
+    #  Electrical upstream OIDs (enterprise 1.3.6.1.4.1.99999.8-11)       #
+    #                                                                     #
+    #  On real gear these points come from different transports: the      #
+    #  service-entrance meter and the MCC bucket meters are Modbus, the   #
+    #  switchgear is Modbus or SNMP depending on the relay, and the ATS   #
+    #  is genuinely SNMP (ASCO ACC card, Eaton ATC-900, APC). The sim     #
+    #  serves all four over SNMP, which is the transport it already       #
+    #  speaks for power gear — Modbus is not modelled.                    #
+    # ------------------------------------------------------------------ #
+
+    _UTIL_ENT = "1.3.6.1.4.1.99999.8"
+    _SWGR_ENT = "1.3.6.1.4.1.99999.9"
+    _ATS_ENT  = "1.3.6.1.4.1.99999.10"
+    _MCC_ENT  = "1.3.6.1.4.1.99999.11"
+
+    def _electrical_updates(self, device: Device, ext: dict) -> dict:
+        """Live OID values for the electrical upstream, from the device's ext state.
+        Voltages are x10 scaled ints, matching the generator and UPS subtrees."""
+        dt = device.device_type
+        v10 = lambda k: ("2", str(int(round(float(ext.get(k, 0.0)) * 10))))
+        i = lambda k, d=0.0: ("2", str(int(round(float(ext.get(k, d))))))
+
+        if dt == DeviceType.UTILITY_FEED:
+            E = self._UTIL_ENT
+            return {
+                f"{E}.1.0": ("2", "1" if ext.get("util_status") == "normal" else "2"),
+                f"{E}.2.0": v10("util_voltage"),
+                f"{E}.3.0": v10("util_frequency"),
+                f"{E}.4.0": i("util_kw"),
+                f"{E}.5.0": i("util_load_pct"),
+            }
+        if dt == DeviceType.SWITCHGEAR:
+            E = self._SWGR_ENT
+            return {
+                f"{E}.1.0": ("2", "1" if ext.get("swgr_bus_status") == "energized" else "2"),
+                f"{E}.2.0": v10("swgr_voltage"),
+                f"{E}.3.0": i("swgr_kw"),
+                f"{E}.4.0": i("swgr_load_pct"),
+                f"{E}.5.0": ("2", "1" if ext.get("swgr_breaker_status") == "closed" else "2"),
+                f"{E}.6.0": ("2", "2" if ext.get("swgr_source") == "generator" else "1"),
+            }
+        if dt == DeviceType.ATS:
+            E = self._ATS_ENT
+            pos = {"normal": 1, "emergency": 2, "none": 3}.get(ext.get("ats_position"), 3)
+            return {
+                f"{E}.1.0": ("2", str(pos)),
+                f"{E}.2.0": ("2", "1" if ext.get("ats_normal_available") == "yes" else "2"),
+                f"{E}.3.0": ("2", "1" if ext.get("ats_emergency_available") == "yes" else "2"),
+                f"{E}.4.0": v10("ats_output_voltage"),
+                f"{E}.5.0": i("ats_kw"),
+                f"{E}.6.0": i("ats_load_pct"),
+                f"{E}.7.0": i("ats_transfer_count"),
+            }
+        E = self._MCC_ENT
+        return {
+            f"{E}.1.0": ("2", "1" if ext.get("mcc_status") == "energized" else "2"),
+            f"{E}.2.0": v10("mcc_voltage"),
+            f"{E}.3.0": i("mcc_kw"),
+            f"{E}.4.0": i("mcc_load_pct"),
+            f"{E}.5.0": i("mcc_blocks_on", 3.0),
+        }
+
+    def _utility_entries(self, device: Device) -> List[OidEntry]:
+        """Utility service entrance — what a revenue/ION meter reports."""
+        E = self._UTIL_ENT
+        return [
+            _oid_entry(f"{E}.1.0", "2", "1"),     # utilStatus (1=normal,2=failed)
+            _oid_entry(f"{E}.2.0", "2", "4000"),  # utilVoltage x10 V (400.0)
+            _oid_entry(f"{E}.3.0", "2", "500"),   # utilFrequency x10 Hz (50.0)
+            _oid_entry(f"{E}.4.0", "2", "0"),     # utilKW (kW)
+            _oid_entry(f"{E}.5.0", "2", "0"),     # utilLoadPercent % of service rating
+        ]
+
+    def _switchgear_entries(self, device: Device) -> List[OidEntry]:
+        """LV main board / generator paralleling board — bus + breaker status."""
+        E = self._SWGR_ENT
+        return [
+            _oid_entry(f"{E}.1.0", "2", "1"),     # swgrBusStatus (1=energized,2=dead)
+            _oid_entry(f"{E}.2.0", "2", "4000"),  # swgrBusVoltage x10 V
+            _oid_entry(f"{E}.3.0", "2", "0"),     # swgrKW (kW)
+            _oid_entry(f"{E}.4.0", "2", "0"),     # swgrLoadPercent %
+            _oid_entry(f"{E}.5.0", "2", "1"),     # swgrMainBreaker (1=closed,2=open)
+            _oid_entry(f"{E}.6.0", "2", "1"),     # swgrSource (1=utility,2=generator)
+        ]
+
+    def _ats_entries(self, device: Device) -> List[OidEntry]:
+        """Automatic transfer switch — the object that owns the transfer event."""
+        E = self._ATS_ENT
+        return [
+            _oid_entry(f"{E}.1.0", "2", "1"),     # atsPosition (1=normal,2=emergency,3=none)
+            _oid_entry(f"{E}.2.0", "2", "1"),     # atsNormalSourceAvailable (1=yes,2=no)
+            _oid_entry(f"{E}.3.0", "2", "2"),     # atsEmergencySourceAvailable (1=yes,2=no)
+            _oid_entry(f"{E}.4.0", "2", "4000"),  # atsOutputVoltage x10 V
+            _oid_entry(f"{E}.5.0", "2", "0"),     # atsKW (kW)
+            _oid_entry(f"{E}.6.0", "2", "0"),     # atsLoadPercent %
+            _oid_entry(f"{E}.7.0", "2", "0"),     # atsTransferCount (counter)
+        ]
+
+    def _mcc_entries(self, device: Device) -> List[OidEntry]:
+        """Motor control center — the mechanical bus, upstream of no UPS."""
+        E = self._MCC_ENT
+        return [
+            _oid_entry(f"{E}.1.0", "2", "1"),     # mccStatus (1=energized,2=dead)
+            _oid_entry(f"{E}.2.0", "2", "4000"),  # mccBusVoltage x10 V
+            _oid_entry(f"{E}.3.0", "2", "0"),     # mccKW (kW)
+            _oid_entry(f"{E}.4.0", "2", "0"),     # mccLoadPercent %
+            _oid_entry(f"{E}.5.0", "2", "3"),     # mccLoadBlocksEnergized (0-3)
+        ]
 
     # ------------------------------------------------------------------ #
     #  Chiller-plant OIDs (enterprise 1.3.6.1.4.1.99999.20-23)            #

@@ -11,6 +11,10 @@ export const DEVICE_TYPES = [
   { value: 'floor_pdu',     label: 'Floor PDU' },
   { value: 'rpp',           label: 'Remote Power Panel' },
   { value: 'generator',     label: 'Generator' },
+  { value: 'utility_feed',  label: 'Utility Feed' },
+  { value: 'switchgear',    label: 'Switchgear' },
+  { value: 'ats',           label: 'Automatic Transfer Switch' },
+  { value: 'mcc',           label: 'Motor Control Center' },
   { value: 'oob_switch',    label: 'OOB Switch' },
   { value: 'sensor',        label: 'Sensor' },
 ]

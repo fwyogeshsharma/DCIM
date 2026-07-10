@@ -542,7 +542,8 @@ class BACnetController:
              circuit_kw_by_ip: dict | None = None,
              plant_power_by_name: dict | None = None,
              plant_cop_by_name: dict | None = None,
-             plant_standby_names: set | None = None) -> None:
+             plant_standby_names: set | None = None,
+             plant_unpowered_names: set | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -592,7 +593,15 @@ class BACnetController:
                     # its dynamic signals at rest — so a staged-off unit reads "off",
                     # not "running at 75 % speed" — without tripping the cooling-loss
                     # penalty (the store excludes standby names from that calc).
-                    if plant_standby_names and _nm in plant_standby_names:
+                    # An UNPOWERED unit (its MCC is dead — utility lost and the ATS
+                    # has not yet re-energized that mechanical load block) looks
+                    # identical on the wire: stopped, no draw, no flow. The
+                    # difference is upstream: the store excludes standby names from
+                    # the cooling-loss penalty but NOT unpowered ones, because a
+                    # unit that isn't turning genuinely isn't rejecting heat.
+                    _off = ((plant_standby_names and _nm in plant_standby_names)
+                            or (plant_unpowered_names and _nm in plant_unpowered_names))
+                    if _off:
                         for _pt in list(values.keys()):
                             if _pt in ("Chiller_Running", "Run_Status",
                                        "Fan_Status", "Unit_Running"):

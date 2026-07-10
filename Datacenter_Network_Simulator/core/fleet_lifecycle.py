@@ -838,12 +838,15 @@ class FleetLifecycleEngine:
         positions = self._crah_perimeter_positions(ext, rpr, n_rows, target)
         chw_supply = infra.get("chw_supply")
         chw_return = infra.get("chw_return")
-        # CRAHs are mechanical loads fed from the DC's mechanical RPP (single feed),
-        # like the curated CRAHs — without this the unit is unpowered. Resolved by
-        # ROOM (the mech RPP lives in the Mechanical Room) so it survives renames.
-        mech_rpp = next((d for d in self.s.device_manager.get_all_devices()
-                         if d.device_type == DeviceType.RPP and (d.datacenter or "") == dc
-                         and (d.room or "") == "Mechanical Room"), None)
+        # CRAHs are bulk mechanical loads, fed from a Motor Control Center — which
+        # sits downstream of a transfer switch and upstream of no UPS. Without this
+        # the unit is unpowered. Resolved by ROOM (the MCCs live in the Mechanical
+        # Room) so it survives renames. New CRAHs alternate across the two MCCs so
+        # each side of the 2N mechanical split carries about half the air handlers.
+        mccs = sorted((d for d in self.s.device_manager.get_all_devices()
+                       if d.device_type == DeviceType.MCC and (d.datacenter or "") == dc
+                       and (d.room or "") == "Mechanical Room"),
+                      key=lambda d: d.name or "")
         unit = int(getattr(tmpls[0], "rack_unit", 1) or 1)
         added = list(existing)
         for i in range(len(existing), target):
@@ -858,8 +861,8 @@ class FleetLifecycleEngine:
                     self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
                 if chw_return is not None:
                     self.s.topology.add_link(c.id, chw_return.id, layer="cooling")
-                if mech_rpp is not None:
-                    self.s.topology.add_link(mech_rpp.id, c.id, layer="power")
+                if mccs:
+                    self.s.topology.add_link(mccs[i % len(mccs)].id, c.id, layer="power")
             except Exception:
                 pass
             self._commission(c)

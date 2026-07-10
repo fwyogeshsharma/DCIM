@@ -10,6 +10,8 @@ const SNMP_TARGET_ORDER: [string, string][] = [
   ['firewall', 'Firewalls:'], ['load_balancer', 'Load Balancers:'],
   ['oob_switch', 'OOB Switches:'], ['sensor', 'Sensors:'], ['ups', 'UPS:'],
   ['pdu', 'Rack PDUs:'], ['floor_pdu', 'Floor PDUs:'], ['generator', 'Generators:'],
+  ['utility_feed', 'Utility Feeds:'], ['switchgear', 'Switchgear:'],
+  ['ats', 'Transfer Switches:'], ['mcc', 'Motor Control Centers:'],
   ['crah', 'CRAHs:'], ['cdu', 'CDUs:'],
 ]
 

@@ -14,6 +14,10 @@ const TYPE_COLOR: Record<string, string> = {
   rpp:           '#7c2d6e',
   generator:     '#713f12',
   ups:           '#a16207',
+  utility_feed:  '#3f3f46',
+  switchgear:    '#57534e',
+  ats:           '#92400e',
+  mcc:           '#155e75',
   sensor:        '#374151',
 }
 
@@ -29,6 +33,10 @@ const TYPE_ICON: Record<string, string> = {
   rpp:           '⚡',
   generator:     '⚙',
   ups:           '🔋',
+  utility_feed:  '🏛',
+  switchgear:    '▦',
+  ats:           '⇄',
+  mcc:           '⛭',
   sensor:        '◦',
 }
 

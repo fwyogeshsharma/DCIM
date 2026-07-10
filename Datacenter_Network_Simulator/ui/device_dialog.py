@@ -29,6 +29,10 @@ _TYPE_LABELS = {
     DeviceType.VALVE:          "Control valve",
     DeviceType.CDU:            "CDU (direct-to-chip liquid cooling)",
     DeviceType.GENERATOR:      "Generator",
+    DeviceType.UTILITY_FEED:   "Utility feed (service entrance)",
+    DeviceType.SWITCHGEAR:     "Switchgear (main / paralleling bus)",
+    DeviceType.ATS:            "Automatic Transfer Switch",
+    DeviceType.MCC:            "Motor Control Center (mechanical)",
     DeviceType.ENERGY_MONITOR: "Energy Monitor (EV2)",
 }
 
@@ -91,6 +95,10 @@ VENDORS_BY_TYPE = {
     DeviceType.VALVE: [Vendor.BELIMO, Vendor.JOHNSON_CONTROLS],
     DeviceType.CDU: [Vendor.VERTIV, Vendor.COOLIT, Vendor.MOTIVAIR, Vendor.NVENT],
     DeviceType.GENERATOR: [Vendor.CUMMINS, Vendor.CATERPILLAR, Vendor.KOHLER],
+    DeviceType.UTILITY_FEED: [Vendor.SCHNEIDER, Vendor.EATON],
+    DeviceType.SWITCHGEAR: [Vendor.EATON, Vendor.ASCO, Vendor.SCHNEIDER],
+    DeviceType.ATS: [Vendor.ASCO, Vendor.EATON, Vendor.APC],
+    DeviceType.MCC: [Vendor.EATON, Vendor.SCHNEIDER],
     DeviceType.ENERGY_MONITOR: [
         Vendor.VERDIGRIS,
     ],
@@ -323,7 +331,9 @@ class DeviceDialog(QDialog):
         dtype = self.type_combo.currentData()
         if dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.CRAH,
                          DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
-                         DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR):
+                         DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR,
+                         DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
+                         DeviceType.ATS, DeviceType.MCC):
             row = self.rack_row_spin.value()
             if row:
                 parts.append(f"Row {row}")
@@ -365,7 +375,9 @@ class DeviceDialog(QDialog):
         # Floor PDU: no rack placement, no gNMI, has management interface
         show_rack    = dtype not in (DeviceType.UPS, DeviceType.FLOOR_PDU, DeviceType.RPP, DeviceType.CRAH,
                                      DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
-                                     DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR)
+                                     DeviceType.VALVE, DeviceType.CDU, DeviceType.GENERATOR,
+                                     DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
+                                     DeviceType.ATS, DeviceType.MCC)
         show_gnmi    = dtype in (DeviceType.ROUTER, DeviceType.SWITCH)
         show_prod_ip = dtype in self._PROD_IP_TYPES
         for w in (self.rack_row_spin, self.rack_num_spin, self.rack_unit_spin):
@@ -440,6 +452,8 @@ class DeviceDialog(QDialog):
     _MGMT_ONLY_TYPES = frozenset({
         DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU,
         DeviceType.RPP, DeviceType.GENERATOR,
+        DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
+        DeviceType.ATS, DeviceType.MCC,
         DeviceType.OOB_SWITCH, DeviceType.SENSOR,
         DeviceType.ENERGY_MONITOR,
     })

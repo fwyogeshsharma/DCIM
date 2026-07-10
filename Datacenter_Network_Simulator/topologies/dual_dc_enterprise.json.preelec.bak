@@ -66727,8 +66727,8 @@
     {
       "id": "08a89a19",
       "position": {
-        "x": 1080,
-        "y": 2480
+        "x": 960,
+        "y": 2980
       },
       "device": {
         "name": "GEN1-DC1-GR",
@@ -66801,8 +66801,8 @@
     {
       "id": "0d1f9d35",
       "position": {
-        "x": 580,
-        "y": 2870
+        "x": 640,
+        "y": 2860
       },
       "device": {
         "name": "UPSA-DC1-UR",
@@ -66850,7 +66850,7 @@
         "room": "UPS Room",
         "floor": "G",
         "rack_row": 1,
-        "rack_num": 4,
+        "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 17,
         "memory_total": 2147483648,
@@ -66867,7 +66867,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.1,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "rated_power_w": null
       }
@@ -66875,8 +66875,8 @@
     {
       "id": "b594e90b",
       "position": {
-        "x": 840,
-        "y": 2870
+        "x": 960,
+        "y": 2860
       },
       "device": {
         "name": "UPSB-DC1-UR",
@@ -66924,7 +66924,7 @@
         "room": "UPS Room",
         "floor": "G",
         "rack_row": 1,
-        "rack_num": 6,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 87,
         "memory_total": 34359738368,
@@ -66941,7 +66941,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.3,
+        "floor_x": 0.9,
         "floor_y": 0.6,
         "rated_power_w": null
       }
@@ -67257,8 +67257,8 @@
     {
       "id": "4b0671f3",
       "position": {
-        "x": 3820,
-        "y": 2480
+        "x": 3760,
+        "y": 2980
       },
       "device": {
         "name": "GEN1-DC2-GR",
@@ -67331,8 +67331,8 @@
     {
       "id": "f336f4af",
       "position": {
-        "x": 3320,
-        "y": 2870
+        "x": 3380,
+        "y": 2860
       },
       "device": {
         "name": "UPSA-DC2-UR",
@@ -67380,7 +67380,7 @@
         "room": "UPS Room",
         "floor": "G",
         "rack_row": 1,
-        "rack_num": 4,
+        "rack_num": 1,
         "rack_unit": 0,
         "cpu_usage": 34,
         "memory_total": 8589934592,
@@ -67397,7 +67397,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.1,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "rated_power_w": null
       }
@@ -67405,8 +67405,8 @@
     {
       "id": "1a03cc9e",
       "position": {
-        "x": 3580,
-        "y": 2870
+        "x": 3700,
+        "y": 2860
       },
       "device": {
         "name": "UPSB-DC2-UR",
@@ -67454,7 +67454,7 @@
         "room": "UPS Room",
         "floor": "G",
         "rack_row": 1,
-        "rack_num": 6,
+        "rack_num": 2,
         "rack_unit": 0,
         "cpu_usage": 83,
         "memory_total": 2147483648,
@@ -67471,7 +67471,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.3,
+        "floor_x": 0.9,
         "floor_y": 0.6,
         "rated_power_w": null
       }
@@ -68695,8 +68695,8 @@
     {
       "id": "43d52fb5",
       "position": {
-        "x": 1380,
-        "y": 2990
+        "x": 1530,
+        "y": 3220
       },
       "device": {
         "name": "EV21-DC1-MR",
@@ -68769,8 +68769,8 @@
     {
       "id": "44f2e1dd",
       "position": {
-        "x": 1080,
-        "y": 2990
+        "x": 860,
+        "y": 2980
       },
       "device": {
         "name": "EV21-DC1-GR",
@@ -69135,8 +69135,8 @@
     {
       "id": "8491d46b",
       "position": {
-        "x": 4120,
-        "y": 2990
+        "x": 4330,
+        "y": 3220
       },
       "device": {
         "name": "EV21-DC2-MR",
@@ -69209,8 +69209,8 @@
     {
       "id": "dc12eb64",
       "position": {
-        "x": 3820,
-        "y": 2990
+        "x": 3660,
+        "y": 2980
       },
       "device": {
         "name": "EV21-DC2-GR",
@@ -75291,8 +75291,8 @@
     {
       "id": "f1e1dc00",
       "position": {
-        "x": 1200,
-        "y": 2480
+        "x": 1060,
+        "y": 2980
       },
       "device": {
         "name": "GEN2-DC1-GR",
@@ -75365,8 +75365,8 @@
     {
       "id": "5c86d596",
       "position": {
-        "x": 3940,
-        "y": 2480
+        "x": 3860,
+        "y": 2980
       },
       "device": {
         "name": "GEN2-DC2-GR",
@@ -102202,7 +102202,7 @@
       "id": "f49c7b06",
       "position": {
         "x": 380,
-        "y": 2480
+        "y": 2600
       },
       "device": {
         "name": "UTIL1-DC1-UR",
@@ -102259,7 +102259,7 @@
       "id": "8d72a7df",
       "position": {
         "x": 380,
-        "y": 2610
+        "y": 2730
       },
       "device": {
         "name": "SWGR1-DC1-UR",
@@ -102302,9 +102302,9 @@
         "rated_power_w": null,
         "room": "UPS Room",
         "rack_row": 1,
-        "rack_num": 2,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.9,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -102315,8 +102315,8 @@
     {
       "id": "1032af3d",
       "position": {
-        "x": 1140,
-        "y": 2610
+        "x": 1160,
+        "y": 2850
       },
       "device": {
         "name": "SWGR2-DC1-GR",
@@ -102359,9 +102359,9 @@
         "rated_power_w": null,
         "room": "Generator Room",
         "rack_row": 1,
-        "rack_num": 3,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 1.5,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -102372,8 +102372,8 @@
     {
       "id": "b471f692",
       "position": {
-        "x": 580,
-        "y": 2740
+        "x": 640,
+        "y": 2730
       },
       "device": {
         "name": "ATS1-DC1-UR",
@@ -102416,9 +102416,9 @@
         "rated_power_w": null,
         "room": "UPS Room",
         "rack_row": 1,
-        "rack_num": 3,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 1.5,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -102429,8 +102429,8 @@
     {
       "id": "87202926",
       "position": {
-        "x": 840,
-        "y": 2740
+        "x": 960,
+        "y": 2730
       },
       "device": {
         "name": "ATS2-DC1-UR",
@@ -102473,9 +102473,9 @@
         "rated_power_w": null,
         "room": "UPS Room",
         "rack_row": 1,
-        "rack_num": 5,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 2.7,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -102486,8 +102486,8 @@
     {
       "id": "ca5e5b84",
       "position": {
-        "x": 1380,
-        "y": 2870
+        "x": 1290,
+        "y": 3220
       },
       "device": {
         "name": "MCC1-DC1-MR",
@@ -102543,8 +102543,8 @@
     {
       "id": "2efc3807",
       "position": {
-        "x": 1500,
-        "y": 2870
+        "x": 1510,
+        "y": 3220
       },
       "device": {
         "name": "MCC2-DC1-MR",
@@ -102587,9 +102587,9 @@
         "rated_power_w": null,
         "room": "Mechanical Room",
         "rack_row": 1,
-        "rack_num": 2,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.9,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -102601,7 +102601,7 @@
       "id": "80e8526a",
       "position": {
         "x": 3120,
-        "y": 2480
+        "y": 2600
       },
       "device": {
         "name": "UTIL1-DC2-UR",
@@ -102658,7 +102658,7 @@
       "id": "c2c4f44b",
       "position": {
         "x": 3120,
-        "y": 2610
+        "y": 2730
       },
       "device": {
         "name": "SWGR1-DC2-UR",
@@ -102701,9 +102701,9 @@
         "rated_power_w": null,
         "room": "UPS Room",
         "rack_row": 1,
-        "rack_num": 2,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.9,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "New York",
@@ -102714,8 +102714,8 @@
     {
       "id": "5a0db7bd",
       "position": {
-        "x": 3880,
-        "y": 2610
+        "x": 3960,
+        "y": 2850
       },
       "device": {
         "name": "SWGR2-DC2-GR",
@@ -102758,9 +102758,9 @@
         "rated_power_w": null,
         "room": "Generator Room",
         "rack_row": 1,
-        "rack_num": 3,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 1.5,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "New York",
@@ -102771,8 +102771,8 @@
     {
       "id": "d38bba8f",
       "position": {
-        "x": 3320,
-        "y": 2740
+        "x": 3380,
+        "y": 2730
       },
       "device": {
         "name": "ATS1-DC2-UR",
@@ -102815,9 +102815,9 @@
         "rated_power_w": null,
         "room": "UPS Room",
         "rack_row": 1,
-        "rack_num": 3,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 1.5,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "New York",
@@ -102828,8 +102828,8 @@
     {
       "id": "d5354365",
       "position": {
-        "x": 3580,
-        "y": 2740
+        "x": 3700,
+        "y": 2730
       },
       "device": {
         "name": "ATS2-DC2-UR",
@@ -102872,9 +102872,9 @@
         "rated_power_w": null,
         "room": "UPS Room",
         "rack_row": 1,
-        "rack_num": 5,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 2.7,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "New York",
@@ -102885,8 +102885,8 @@
     {
       "id": "d622ff64",
       "position": {
-        "x": 4120,
-        "y": 2870
+        "x": 4090,
+        "y": 3220
       },
       "device": {
         "name": "MCC1-DC2-MR",
@@ -102942,8 +102942,8 @@
     {
       "id": "209ad80c",
       "position": {
-        "x": 4240,
-        "y": 2870
+        "x": 4310,
+        "y": 3220
       },
       "device": {
         "name": "MCC2-DC2-MR",
@@ -102986,9 +102986,9 @@
         "rated_power_w": null,
         "room": "Mechanical Room",
         "rack_row": 1,
-        "rack_num": 2,
+        "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.9,
+        "floor_x": 0.3,
         "floor_y": 0.6,
         "country": "USA",
         "datacenter_city": "New York",
@@ -119755,20 +119755,6 @@
         "room": "Generator Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 1.8,
-        "depth_m": 4.8,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
-        "aisles": []
-      },
-      "DC1/Mechanical Room": {
-        "datacenter": "DC1",
-        "room": "Mechanical Room",
-        "class": "facility",
-        "containment": "none",
         "width_m": 1.2,
         "depth_m": 4.8,
         "rows": [
@@ -119776,6 +119762,19 @@
           2
         ],
         "racks_per_row": 2,
+        "aisles": []
+      },
+      "DC1/Mechanical Room": {
+        "datacenter": "DC1",
+        "room": "Mechanical Room",
+        "class": "facility",
+        "containment": "none",
+        "width_m": 0.6,
+        "depth_m": 4.8,
+        "rows": [
+          2
+        ],
+        "racks_per_row": 1,
         "aisles": []
       },
       "DC1/Roof": {
@@ -119932,12 +119931,12 @@
         "room": "UPS Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 3.6,
+        "width_m": 1.2,
         "depth_m": 2.4,
         "rows": [
           1
         ],
-        "racks_per_row": 6,
+        "racks_per_row": 2,
         "aisles": []
       },
       "DC2/Central Plant": {
@@ -119959,20 +119958,6 @@
         "room": "Generator Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 1.8,
-        "depth_m": 4.8,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
-        "aisles": []
-      },
-      "DC2/Mechanical Room": {
-        "datacenter": "DC2",
-        "room": "Mechanical Room",
-        "class": "facility",
-        "containment": "none",
         "width_m": 1.2,
         "depth_m": 4.8,
         "rows": [
@@ -119980,6 +119965,19 @@
           2
         ],
         "racks_per_row": 2,
+        "aisles": []
+      },
+      "DC2/Mechanical Room": {
+        "datacenter": "DC2",
+        "room": "Mechanical Room",
+        "class": "facility",
+        "containment": "none",
+        "width_m": 0.6,
+        "depth_m": 4.8,
+        "rows": [
+          2
+        ],
+        "racks_per_row": 1,
         "aisles": []
       },
       "DC2/Roof": {
@@ -120136,12 +120134,12 @@
         "room": "UPS Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 3.6,
+        "width_m": 1.2,
         "depth_m": 2.4,
         "rows": [
           1
         ],
-        "racks_per_row": 6,
+        "racks_per_row": 2,
         "aisles": []
       },
       "DC1/Network Room": {
