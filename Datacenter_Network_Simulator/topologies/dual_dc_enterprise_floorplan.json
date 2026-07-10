@@ -475,9 +475,11 @@
         "98993beb",
         "d58842de",
         "baa80dd4",
-        "838ad055"
+        "838ad055",
+        "a55e3797",
+        "811f404e"
       ],
-      "device_count": 5,
+      "device_count": 7,
       "it_power_draw_w": 860,
       "servers_used": 0,
       "server_capacity": null,
@@ -529,11 +531,12 @@
         "67c1e1d1",
         "95a76d79",
         "c17af08a",
-        "afa1b7f0"
+        "afa1b7f0",
+        "c8ef400b"
       ],
-      "device_count": 5,
+      "device_count": 6,
       "it_power_draw_w": 917,
-      "servers_used": 0,
+      "servers_used": 1,
       "server_capacity": null,
       "mlag_ready": false,
       "reserved_units": []
@@ -557,9 +560,11 @@
         "64d55984",
         "ff01cf99",
         "4b22d308",
-        "c6916508"
+        "c6916508",
+        "6a20bac7",
+        "62f5ba01"
       ],
-      "device_count": 6,
+      "device_count": 8,
       "it_power_draw_w": 647,
       "servers_used": 0,
       "server_capacity": null,
@@ -1102,9 +1107,11 @@
         "bd2953cc",
         "ce3714af",
         "7d7ddbed",
-        "dedccd76"
+        "dedccd76",
+        "7cd6a57d",
+        "2dd2b5db"
       ],
-      "device_count": 5,
+      "device_count": 7,
       "it_power_draw_w": 855,
       "servers_used": 0,
       "server_capacity": null,
@@ -1156,11 +1163,12 @@
         "621eeb8d",
         "d9d80b8d",
         "e14eb70d",
-        "5c0c26a0"
+        "5c0c26a0",
+        "23c177ae"
       ],
-      "device_count": 5,
+      "device_count": 6,
       "it_power_draw_w": 744,
-      "servers_used": 0,
+      "servers_used": 1,
       "server_capacity": null,
       "mlag_ready": false,
       "reserved_units": []
@@ -1184,9 +1192,11 @@
         "431a7dbd",
         "b63b4dc3",
         "b118f68d",
-        "72ba2408"
+        "72ba2408",
+        "13b937e5",
+        "db29c054"
       ],
-      "device_count": 6,
+      "device_count": 8,
       "it_power_draw_w": 642,
       "servers_used": 0,
       "server_capacity": null,
@@ -11555,6 +11565,126 @@
       "power_draw_w": 261,
       "feed_a": "PDUA-DC2-NR-R1-03",
       "feed_b": "PDUB-DC2-NR-R1-03"
+    },
+    {
+      "id": "a55e3797",
+      "name": "OOBR1-DC1-NR-R1-01",
+      "device_type": "router",
+      "vendor": "Cisco Systems",
+      "model": "Cisco ISR 4431",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK1",
+      "rack_unit": 36,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC1-NR-R1-01",
+      "feed_b": "PDUB-DC1-NR-R1-01"
+    },
+    {
+      "id": "6a20bac7",
+      "name": "OOBR2-DC1-NR-R1-04",
+      "device_type": "router",
+      "vendor": "Cisco Systems",
+      "model": "Cisco ISR 4431",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK4",
+      "rack_unit": 36,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC1-NR-R1-04",
+      "feed_b": "PDUB-DC1-NR-R1-04"
+    },
+    {
+      "id": "811f404e",
+      "name": "FWO1-DC1-NR-R1-01",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK1",
+      "rack_unit": 34,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC1-NR-R1-01",
+      "feed_b": "PDUB-DC1-NR-R1-01"
+    },
+    {
+      "id": "62f5ba01",
+      "name": "FWO2-DC1-NR-R1-04",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK4",
+      "rack_unit": 34,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC1-NR-R1-04",
+      "feed_b": "PDUB-DC1-NR-R1-04"
+    },
+    {
+      "id": "c8ef400b",
+      "name": "JUMP1-DC1-NR-R1-03",
+      "device_type": "server",
+      "vendor": "Dell Technologies",
+      "model": "PowerEdge R640",
+      "rack_id": "DC1:NetworkRoom:F1:R1:RACK3",
+      "rack_unit": 36,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC1-NR-R1-03",
+      "feed_b": "PDUB-DC1-NR-R1-03"
+    },
+    {
+      "id": "7cd6a57d",
+      "name": "OOBR1-DC2-NR-R1-01",
+      "device_type": "router",
+      "vendor": "Cisco Systems",
+      "model": "Cisco ISR 4431",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK1",
+      "rack_unit": 36,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC2-NR-R1-01",
+      "feed_b": "PDUB-DC2-NR-R1-01"
+    },
+    {
+      "id": "13b937e5",
+      "name": "OOBR2-DC2-NR-R1-04",
+      "device_type": "router",
+      "vendor": "Cisco Systems",
+      "model": "Cisco ISR 4431",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK4",
+      "rack_unit": 36,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC2-NR-R1-04",
+      "feed_b": "PDUB-DC2-NR-R1-04"
+    },
+    {
+      "id": "2dd2b5db",
+      "name": "FWO1-DC2-NR-R1-01",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK1",
+      "rack_unit": 34,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC2-NR-R1-01",
+      "feed_b": "PDUB-DC2-NR-R1-01"
+    },
+    {
+      "id": "db29c054",
+      "name": "FWO2-DC2-NR-R1-04",
+      "device_type": "firewall",
+      "vendor": "Palo Alto Networks",
+      "model": "PA-5220",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK4",
+      "rack_unit": 34,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC2-NR-R1-04",
+      "feed_b": "PDUB-DC2-NR-R1-04"
+    },
+    {
+      "id": "23c177ae",
+      "name": "JUMP1-DC2-NR-R1-03",
+      "device_type": "server",
+      "vendor": "Dell Technologies",
+      "model": "PowerEdge R640",
+      "rack_id": "DC2:NetworkRoom:F1:R1:RACK3",
+      "rack_unit": 36,
+      "power_draw_w": 0,
+      "feed_a": "PDUA-DC2-NR-R1-03",
+      "feed_b": "PDUB-DC2-NR-R1-03"
     }
   ],
   "summary": {
@@ -11564,6 +11694,6 @@
     ],
     "rooms": 16,
     "racks": 124,
-    "devices": 641
+    "devices": 651
   }
 }
