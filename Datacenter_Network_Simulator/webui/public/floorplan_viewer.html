@@ -831,7 +831,8 @@ function draw3D(){
               : ts.has('cooling_tower') ? makeRoof(r,ds)
               : ts.has('crah') ? makeCRAH(r,ds)
               : (!ts.has('server')&&ts.has('rpp')) ? makeRPP(r,ds)
-              : (!ts.has('server')&&ts.has('energy_monitor')) ? makePanel(r,ds)
+              : (!ts.has('server')&&(ts.has('energy_monitor')||ts.has('mpp')||ts.has('mcc')
+                 ||ts.has('switchgear')||ts.has('ats')||ts.has('utility_feed'))) ? makePanel(r,ds)
               : makeRack(r,ds,m);
     grp.position.set(r.floor_x-cx, FLR, r.floor_y-cz);
     if(r.rack_facing==='N') grp.rotation.y=Math.PI;             // face intake (front) toward the cold aisle

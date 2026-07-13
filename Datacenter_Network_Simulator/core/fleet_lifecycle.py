@@ -1991,15 +1991,20 @@ class FleetLifecycleEngine:
             self._mgmt_overflow_warned = True
             self._log("[Fleet] mgmt base /22 full — spilling into overflow blocks")
         # Name in the unified scheme so a fleet device is indistinguishable from a
-        # curated peer: <CODE>-<DC>-<ROOM>-R<row>-<rack> (see _scheme_name).
+        # curated peer: <CODE>-<DC>-<ROOM>-R<row>-<rack> (see _scheme_name). When
+        # filling an existing rack the caller passes room=None so the room FIELD
+        # inherits the template's hall — resolve that SAME hall here for the NAME
+        # too, else it falls through to the "XX" room-code and drops the R#-##
+        # location suffix (SRV05-DC1-XX instead of SRV05-DC1-HA-R2-01).
         dcn = dc or "DC"
+        eff_room = room if room is not None else getattr(tmpl, "room", "")
         if prefix.startswith("pdu") or prefix.startswith("rpp"):
             base = "PDU" if prefix.startswith("pdu") else "RPP"
             code = base + ("B" if prefix.endswith("b") else "A")
-            name = self._scheme_name(dcn, room, row, num, code, sided=True)
+            name = self._scheme_name(dcn, eff_room, row, num, code, sided=True)
         else:
             code = _PREFIX_CODE.get(prefix, (prefix.upper() or "DEV").replace(" ", "-"))
-            name = self._scheme_name(dcn, room, row, num, code,
+            name = self._scheme_name(dcn, eff_room, row, num, code,
                                      pad=(2 if prefix == "srv" else 1))
         try:
             dev = Device(
@@ -2028,7 +2033,7 @@ class FleetLifecycleEngine:
                 country=getattr(tmpl, "country", ""),
                 datacenter_city=getattr(tmpl, "datacenter_city", ""),
                 datacenter=dc,
-                room=room if room is not None else getattr(tmpl, "room", ""),
+                room=eff_room,   # same hall the name was built from (see above)
                 floor=floor if floor is not None else getattr(tmpl, "floor", ""),
                 rack_row=row,
                 rack_num=num,
