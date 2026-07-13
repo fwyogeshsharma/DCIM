@@ -160,6 +160,12 @@ class FleetLifecycleEngine:
         # Latch so the "mgmt /22 base full — spilling to overflow" note is logged
         # once per session, not once per device past the cliff.
         self._mgmt_overflow_warned = False
+        # Per-DC latch for the "OOB core downlinks exhausted" warning, so the
+        # management-aggregation ceiling is surfaced once per DC, not per endpoint.
+        self._oob_core_warned: dict = {}
+        # Per-hall (rk -> (pduA_id, pduB_id)) network-row PDU pair that powers the
+        # pod's spine/OOB/OOBM gear, created once per fleet hall.
+        self._hall_net_pdus_cache: dict = {}
 
     # ── lifecycle ────────────────────────────────────────────────────────────
 
@@ -449,18 +455,25 @@ class FleetLifecycleEngine:
         ports = int(getattr(oob, "interface_count", 48) or 48)
         return max(8, ports - self._OOB_UPLINK_RESERVE)
 
-    def _oob_port_load(self, oob: Device) -> int:
-        """Management endpoints consuming an access port on this OOB switch — server
-        BMCs (iDRAC/iLO/XCC), managed PDUs and switch consoles. Uplinks to the OOB
-        cores and the peer OOB link don't count (they are OOB_SWITCH neighbours, not
-        managed endpoints), so this is the true port fill. This — not the leaf count
-        — is what the stacking decision measures, so the OOB count tracks the SERVER
-        count: a rack of ~20 servers eats ~20 iDRAC ports, filling a 48-port OOB in
-        roughly two racks, just like a real management network."""
-        _managed = (DeviceType.SERVER, DeviceType.PDU,
-                    DeviceType.FLOOR_PDU, DeviceType.SWITCH)
+    # Devices that consume one access port on an OOB / OOBM switch. IT endpoints
+    # (server BMC, rack PDU, switch console) and facility endpoints (CRAH, sensor,
+    # EV2 meter, CDU, busway). Every OOB-family switch (OOB/OOBM/OOBC/BMSC) is
+    # oob_switch, so uplinks and peers are excluded by simply not listing that type.
+    _MGMT_ENDPOINT_TYPES = (
+        DeviceType.SERVER, DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.SWITCH,
+        DeviceType.CRAH, DeviceType.SENSOR, DeviceType.ENERGY_MONITOR,
+        DeviceType.CDU, DeviceType.MPP, DeviceType.MCC,
+    )
+
+    def _mgmt_endpoints_on(self, sw: Device) -> int:
+        """Managed endpoints consuming an access port on an OOB or OOBM switch — the
+        true port fill. Uplinks to the OOB cores / BMS controllers and peer links are
+        OOB_SWITCH neighbours (not in _MGMT_ENDPOINT_TYPES) and don't count. This —
+        not the leaf count — is what the stacking decision measures, so an access OOB
+        tracks the SERVER count (a rack of ~20 BMCs fills a 48-port OOB in ~2 racks)
+        and a BMS OOBM tracks the facility-device count the same way."""
         try:
-            adj = self.s.topology.graph[oob.id]
+            adj = self.s.topology.graph[sw.id]
         except Exception:
             return 0
         n = 0
@@ -468,7 +481,7 @@ class FleetLifecycleEngine:
             if not any(ed.get("layer") == "management" for ed in edges.values()):
                 continue
             d = self.s.device_manager.get_device(nbr)
-            if d and d.device_type in _managed:
+            if d and d.device_type in self._MGMT_ENDPOINT_TYPES:
                 n += 1
         return n
 
@@ -516,6 +529,57 @@ class FleetLifecycleEngine:
         return [d for d in self._by_type(DeviceType.SWITCH)
                 if self._is_spine(d) and self._room_key(d) == rk]
 
+    _OOB_CORE_UPLINK_RESERVE = 6   # core ports kept for perimeter FW / WAN + peer
+
+    def _oob_cores(self, dc: str) -> list:
+        """The OOB core switches (OOBC*) in datacenter *dc* — the Network-Room
+        aggregation every hall access OOB uplinks to."""
+        out = []
+        for d in self._by_type(DeviceType.OOB_SWITCH):
+            if (d.datacenter or "") != dc:
+                continue
+            letters = "".join(c for c in (d.name or "").split("-", 1)[0] if c.isalpha())
+            if letters.upper() == "OOBC":
+                out.append(d)
+        return out
+
+    def _oob_core_downlink_cap(self, core: Device) -> int:
+        """Access-OOB uplink ports on an OOB core: real port count minus a reserve
+        for the core's own upstream (perimeter firewalls / OOB WAN) and the
+        peer-core link."""
+        ports = int(getattr(core, "interface_count", 24) or 24)
+        return max(4, ports - self._OOB_CORE_UPLINK_RESERVE)
+
+    def _oob_core_load(self, core: Device) -> int:
+        """Access OOB switches (role 'OOB') currently uplinked to this core. The
+        peer core, upstream firewalls and WAN routers are not access downlinks and
+        don't count."""
+        try:
+            adj = self.s.topology.graph[core.id]
+        except Exception:
+            return 0
+        n = 0
+        for nbr, edges in adj.items():
+            if not any(ed.get("layer") == "management" for ed in edges.values()):
+                continue
+            d = self.s.device_manager.get_device(nbr)
+            if d is None:
+                continue
+            letters = "".join(c for c in (d.name or "").split("-", 1)[0] if c.isalpha())
+            if letters.upper() == "OOB":
+                n += 1
+        return n
+
+    def _oob_cores_have_room(self, dc: str) -> bool:
+        """True if every OOB core in *dc* still has a free access-downlink port. A
+        new access OOB dual-homes to BOTH cores, so it needs room on each. With no
+        modelled cores there is nothing to gate on."""
+        cores = self._oob_cores(dc)
+        if not cores:
+            return True
+        return all(self._oob_core_load(c) < self._oob_core_downlink_cap(c)
+                   for c in cores)
+
     def _clone_fabric_node(self, tmpl: Device, rk: tuple, prefix: str,
                            num: int = 1, fx: Optional[float] = None,
                            fy: Optional[float] = None) -> Optional[Device]:
@@ -548,7 +612,7 @@ class FleetLifecycleEngine:
         """A hall OOB switch with a free management port for ONE more endpoint — a
         server BMC (iDRAC/iLO), a managed PDU, or a switch console. When every hall
         OOB is full it clones a new one into the hall. Because the fill is measured
-        by real endpoints (_oob_port_load), each server's BMC consumes a port, so
+        by real endpoints (_mgmt_endpoints_on), each server's BMC consumes a port, so
         the OOB count grows with the server count, not just the leaf/rack count.
 
         *infra* is optional: it supplies a clone template and spine count when the
@@ -556,11 +620,26 @@ class FleetLifecycleEngine:
         infra = infra or {}
         oobs = self._hall_oobs(rk) or ([infra["oob"]] if infra.get("oob") else [])
         for o in oobs:
-            if self._oob_port_load(o) < self._oob_port_cap(o):
+            if self._mgmt_endpoints_on(o) < self._oob_port_cap(o):
                 return o
         tmpl = oobs[0] if oobs else infra.get("oob")
         if tmpl is None:
             return None
+        # Stacking a new access OOB dual-homes it into BOTH OOB cores, consuming a
+        # downlink on each. If the cores are out of downlinks, the DC's management
+        # aggregation is full — don't stack past it. Oversubscribe the least-loaded
+        # existing OOB and surface the ceiling once per DC: the real call an
+        # operator faces until a second OOB core pair is added.
+        dc = rk[0]
+        if oobs and not self._oob_cores_have_room(dc):
+            victim = min(oobs, key=self._mgmt_endpoints_on)
+            if not self._oob_core_warned.get(dc):
+                self._oob_core_warned[dc] = True
+                self._log(f"[Fleet] OOB core downlinks exhausted in {dc} — cannot "
+                          f"stack another access OOB; endpoints now oversubscribing "
+                          f"{victim.name}. Add a second OOB core pair to grow the "
+                          f"management plane.")
+            return victim
         # Next free slot on the hall's back network row (past RPPs + spines + OOBs).
         spines = infra.get("spines")
         if spines is None:
@@ -570,10 +649,163 @@ class FleetLifecycleEngine:
                                       fx=geo.rack_x(slot),
                                       fy=getattr(tmpl, "floor_y", None))
         if new is not None:
+            self._wire_network_power(new, rk, infra)   # cord to network-row PDUs
             self._commission(new)
             self._log(f"[Fleet] OOB management ports full — stacked {new.name} in "
                       f"{rk[0]}/{rk[2]}")
         return new
+
+    # ── BMS OOB (OOBM): the facility/OT management plane ──────────────────────
+    # A separate plane from the IT access OOB. Hall CRAHs, sensors, EV2 meters and
+    # CDUs answer BACnet/Modbus on it, and it uplinks to the BMS controllers (BMSC),
+    # NOT to the OOB cores. Mirrors the curated OOBM wiring.
+    def _hall_oobms(self, rk: tuple) -> list:
+        """The BMS OOB switch(es) (role 'OOBM') physically in hall *rk*."""
+        out = []
+        for d in self._by_type(DeviceType.OOB_SWITCH):
+            if self._room_key(d) != rk:
+                continue
+            letters = "".join(c for c in (d.name or "").split("-", 1)[0] if c.isalpha())
+            if letters.upper() == "OOBM":
+                out.append(d)
+        return out
+
+    def _any_oobm(self, dc: str) -> Optional[Device]:
+        """A clone-template OOBM in *dc* when the hall has none yet. Prefers a hall
+        OOBM (rack room) over the central-plant one, so the clone inherits a
+        hall-shaped port count and placement."""
+        cands = []
+        for d in self._by_type(DeviceType.OOB_SWITCH):
+            if (d.datacenter or "") != dc:
+                continue
+            letters = "".join(c for c in (d.name or "").split("-", 1)[0] if c.isalpha())
+            if letters.upper() == "OOBM":
+                cands.append(d)
+        cands.sort(key=lambda d: 0 if _is_rack_room(d.room) else 1)
+        return cands[0] if cands else None
+
+    def _clone_bms_oob(self, tmpl: Device, rk: tuple, slot: int) -> Optional[Device]:
+        """Clone a hall BMS OOB (OOBM) into hall *rk*, keeping ONLY its uplinks to the
+        BMS controllers (BMSC). Unlike _clone_fabric_node this must NOT replicate the
+        template's facility neighbours (CRAH/sensor/…), which belong to the source
+        hall — only the OT-plane uplink is shared."""
+        dc, floor, room = rk
+        new = self._clone(tmpl, dc, self._row_label(rk, "oobm"), slot,
+                          int(getattr(tmpl, "rack_unit", 1) or 1),
+                          prefix="oobm", floor=floor, room=room,
+                          fx=geo.rack_x(slot), fy=getattr(tmpl, "floor_y", None))
+        if new is None:
+            return None
+        try:
+            for nbr in list(self.s.topology.graph.neighbors(tmpl.id)):
+                d = self.s.device_manager.get_device(nbr)
+                if d is None:
+                    continue
+                letters = "".join(c for c in (d.name or "").split("-", 1)[0] if c.isalpha())
+                if letters.upper() == "BMSC":
+                    self.s.topology.add_link(new.id, nbr,
+                        layer=self._link_layer(tmpl.id, nbr) or "management")
+        except Exception as e:
+            self._log(f"[Fleet] BMS-OOB uplink {new.name}: {e}")
+        return new
+
+    def _oobm_port_for(self, rk: tuple, infra: Optional[dict] = None) -> Optional[Device]:
+        """A hall BMS OOB (OOBM) with a free port for one facility endpoint (CRAH,
+        sensor, EV2 meter, CDU). Creates the hall's OOBM on first use — cloning from
+        the source hall's OOBM (infra['oobm']) or any DC OOBM — and stacks a new one
+        when the plane fills, so OOBM count tracks the facility-device count."""
+        infra = infra or {}
+        oobms = self._hall_oobms(rk)
+        for o in oobms:
+            if self._mgmt_endpoints_on(o) < self._oob_port_cap(o):
+                return o
+        tmpl = oobms[0] if oobms else (infra.get("oobm") or self._any_oobm(rk[0]))
+        if tmpl is None:
+            return None
+        spines = infra.get("spines")
+        if spines is None:
+            spines = self._hall_spines(rk)
+        # Sits on the back network row, past RPPs + spines + IT access OOBs + OOBMs.
+        slot = 3 + len(spines) + len(self._hall_oobs(rk)) + len(oobms)
+        new = self._clone_bms_oob(tmpl, rk, slot)
+        if new is not None:
+            self._wire_network_power(new, rk, infra)   # cord to network-row PDUs
+            self._commission(new)
+            self._log(f"[Fleet] BMS-OOB {'ports full — stacked' if oobms else 'created'} "
+                      f"{new.name} in {rk[0]}/{rk[2]}")
+        return new
+
+    def _wire_facility_mgmt(self, dev: Device, rk: tuple,
+                            infra: Optional[dict] = None) -> None:
+        """Put a fleet facility device (CRAH / sensor / EV2 meter / CDU) onto the
+        hall's BMS OOB (OOBM), like the curated facility gear — it then answers
+        BACnet/Modbus out-of-band. Creates or stacks the OOBM as needed."""
+        try:
+            oobm = self._oobm_port_for(rk, infra)
+            if oobm is not None:
+                self.s.topology.add_link(dev.id, oobm.id, layer="management")
+        except Exception as e:
+            self._log(f"[Fleet] BMS mgmt link {dev.name} failed: {e}")
+
+    # ── network-row power: cord the pod's shared gear to rack PDUs ─────────────
+    # Curated spine/OOB/OOBM cord to their network RACK's A/B PDUs (fed from the
+    # RPP → UPS). A fleet hall's front row has no such pair, so the fleet makes one
+    # shared network-row PDU pair per hall and cords every pod-shared device to it —
+    # otherwise the switch draws no power and its load never reaches the PDU/UPS.
+    def _net_pdus_for(self, rk: tuple, infra: Optional[dict] = None):
+        """Get-or-create the fleet hall's network-row A/B PDU pair, fed from the
+        hall's RPP pair. Returns (pduA, pduB) or (None, None)."""
+        cached = self._hall_net_pdus_cache.get(rk)
+        if cached:
+            a = self.s.device_manager.get_device(cached[0])
+            b = self.s.device_manager.get_device(cached[1])
+            if a and b:
+                return a, b
+        infra = infra or self._hall_infra(rk) or {}
+        tmpl = infra.get("pdu_tmpl")
+        rpp_a, rpp_b = infra.get("rpp_a"), infra.get("rpp_b")
+        if tmpl is None or rpp_a is None:
+            return None, None
+        dc, floor, room = rk
+        made = []
+        for side, rpp in (("A", rpp_a), ("B", rpp_b or rpp_a)):
+            pdu = self._clone(tmpl, dc, self._row_label(rk, "netpdu"), 1, PDU_UNIT,
+                              prefix=f"pdu{side.lower()}", floor=floor, room=room,
+                              fx=geo.rack_x(1), fy=round(geo.row_y(1), 4))
+            if pdu is None:
+                return None, None
+            try:
+                self.s.topology.add_link(rpp.id, pdu.id, layer="power")
+            except Exception:
+                pass
+            self._commission(pdu)
+            made.append(pdu)
+        self._hall_net_pdus_cache[rk] = (made[0].id, made[1].id)
+        self._log(f"[Fleet] network-row PDU pair created in {dc}/{room} "
+                  f"(powers pod spine/OOB/OOBM)")
+        return made[0], made[1]
+
+    def _wire_network_power(self, dev: Device, rk: tuple,
+                            infra: Optional[dict] = None) -> None:
+        """Dual-cord a pod-shared network device (spine / access OOB / BMS OOB) to
+        the hall's network-row A/B PDU pair, like the curated network racks."""
+        a, b = self._net_pdus_for(rk, infra)
+        if a is None:
+            return
+        upd = {}
+        for pdu, key in ((a, "power_source_a"), (b, "power_source_b")):
+            if pdu is None:
+                continue
+            try:
+                self.s.topology.add_link(dev.id, pdu.id, layer="power")
+                upd[key] = pdu.id
+            except Exception:
+                pass
+        if upd:
+            try:
+                self.s.device_manager.update_device(dev.id, **upd)
+            except Exception:
+                pass
 
     # ── capacity expansion (fill each hall's grid, then open a new hall) ──────
     #
@@ -741,6 +973,7 @@ class FleetLifecycleEngine:
         chw_supply = _chw_header("CHWS")
         chw_return = _chw_header("CHWR")
         return {"srv_tmpl": srv_tmpl, "leaf_tmpl": leaf, "oob": oob,
+                "oobm": next(iter(self._hall_oobms(rk)), None),
                 "spines": spines, "rpp_a": rpp_a, "rpp_b": rpp_b,
                 "pdu_tmpl": self._dc_pdu(_dc),
                 "crahs": crahs, "sensor_tmpl": sensor_tmpl,
@@ -913,6 +1146,7 @@ class FleetLifecycleEngine:
                     self.s.topology.add_link(mccs[i % len(mccs)].id, c.id, layer="power")
             except Exception:
                 pass
+            self._wire_facility_mgmt(c, rk, infra)   # CRAH onto the hall BMS OOB
             self._commission(c)
             added.append(c)
         if added != existing:
@@ -987,6 +1221,7 @@ class FleetLifecycleEngine:
             c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=front_y)
             if c is None:
                 continue
+            self._wire_network_power(c, rk, new_infra)   # cord to network-row PDUs
             self._commission(c)
             if pfx == "sp":
                 new_spines.append(c)
@@ -996,6 +1231,20 @@ class FleetLifecycleEngine:
             new_infra["spines"] = new_spines
         if new_oob is not None:
             new_infra["oob"] = new_oob
+            # _clone_fabric_node copied each new spine's console link from the
+            # TEMPLATE spine, so it points at the SOURCE hall's access OOB. Re-home
+            # it onto THIS hall's own OOB so the pod is self-contained and its port
+            # load counts against the right switch.
+            for sp in new_spines:
+                try:
+                    for nbr in list(self.s.topology.graph.neighbors(sp.id)):
+                        d = self.s.device_manager.get_device(nbr)
+                        if (d and d.device_type == DeviceType.OOB_SWITCH
+                                and d.id != new_oob.id and self._room_key(d) != rk):
+                            self.s.topology.remove_link(sp.id, d.id, "management")
+                    self.s.topology.add_link(sp.id, new_oob.id, layer="management")
+                except Exception as e:
+                    self._log(f"[Fleet] spine console re-home {sp.name}: {e}")
 
         # ── Back wall (row n_rows): install the hall's FULL CRAH complement, sized
         # to its ULTIMATE rack load (N+1) — not a fixed clone count — spread along
@@ -1013,6 +1262,8 @@ class FleetLifecycleEngine:
                                 int(getattr(sen_tmpl, "rack_unit", 1) or 1),
                                 prefix="sen", floor=floor, room=room, fx=sx, fy=sy)
                 if c is not None:
+                    self._wire_facility_mgmt(c, rk, new_infra)   # sensor onto BMS OOB
+                    self._wire_network_power(c, rk, new_infra)   # sensor to net-row PDUs
                     self._commission(c)
 
         self._fleet_halls.add(rk)
@@ -1216,6 +1467,7 @@ class FleetLifecycleEngine:
                 ev2.id, model_name=f"Verdigris EV2-{self._RPP_POLES}")
         except Exception:
             pass
+        self._wire_facility_mgmt(ev2, rk)   # EV2 meter onto the hall BMS OOB
         self._commission(ev2)
         return ev2
 
@@ -1272,9 +1524,33 @@ class FleetLifecycleEngine:
                     self.s.topology.add_link(rpp.id, pdu.id, layer="power")
                 except Exception:
                     pass
+            # Managed rack PDU onto a hall OOB management port (SNMP/Modbus over the
+            # OOB plane), like the curated rack PDUs. Consumes a port too, so it
+            # feeds the same stacking accounting — ~2 per rack.
+            try:
+                poob = self._oob_port_for(rk, infra)
+                if poob is not None:
+                    self.s.topology.add_link(pdu.id, poob.id, layer="management")
+            except Exception as e:
+                self._log(f"[Fleet] PDU mgmt link {pdu.name}: {e}")
             self._commission(pdu)
             pdus.append(pdu)
 
+        # Cord the leaf to its OWN rack's A/B PDUs, like a curated ToR — otherwise
+        # the switch draws no power and its load never reaches the PDU/RPP/UPS.
+        if pdus:
+            upd = {}
+            for pdu, key in zip(pdus, ("power_source_a", "power_source_b")):
+                try:
+                    self.s.topology.add_link(leaf.id, pdu.id, layer="power")
+                    upd[key] = pdu.id
+                except Exception:
+                    pass
+            if upd:
+                try:
+                    self.s.device_manager.update_device(leaf.id, **upd)
+                except Exception:
+                    pass
         self._commission(leaf)
         summ.expanded_racks.append(f"{dc}:{room}:R{row}:RACK{num}")
         self._log(f"[Fleet] new rack {dc}/F{floor}/{room} R{row} RACK{num} (leaf+{len(pdus)}PDU)")
