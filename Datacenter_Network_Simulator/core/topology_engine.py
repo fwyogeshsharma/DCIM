@@ -64,6 +64,16 @@ class TopologyEngine:
     def get_position(self, device_id: str) -> Tuple[float, float]:
         return self._node_positions.get(device_id, (0.0, 0.0))
 
+    def reset_positions(self) -> int:
+        """Discard every stored canvas coordinate — user drags and any prior
+        auto-layout. get_position() falls back to (0, 0) afterwards, so the web
+        canvas recomputes a fresh tier layout on the next fetch. Returns the
+        number of nodes that had a saved position."""
+        with self._lock:
+            n = len(self._node_positions)
+            self._node_positions.clear()
+            return n
+
     # ------------------------------------------------------------------ #
     #  Edges (Links)                                                       #
     # ------------------------------------------------------------------ #

@@ -28,21 +28,21 @@ RULES
 
 WHY LEFT-ALIGNED AND NOT CENTRED
 
-Centring a row means adding one node re-centres it, moving every other node on
-that row. The fleet adds devices to a *live* topology where a node may already
-have been dragged by a user, so a placement that shifts its neighbours is not
-usable. Left-aligned rows let place_one() append a node without touching anything
-else. Rule 6 survives because equal-count rows both start at the room's x0.
+Centring a row means adding one node re-centres it, moving every node on that row —
+including when the row has plenty of space. Left-aligned rows make the common case
+(append to a row with a free column) move nothing at all, and keep rule 6, because
+equal-count rows both start at the room's x0.
 
 TWO ENTRY POINTS
 
   layout_all(records)  — batch. Recomputes every coordinate from scratch. Used by
                          tools/layout_canvas.py against a topology JSON.
-  place_one(...)       — incremental. Returns a coordinate for ONE new device and
-                         moves nothing. Used by core/fleet_lifecycle when the fleet
-                         grows a live topology. Best-effort: a node that overflows
-                         its role's rows spills below the room. Re-run
-                         tools/layout_canvas.py to tidy.
+  place_one(...)       — incremental. Returns a coordinate for ONE new device plus
+                         the moves needed to seat it. Used by core/fleet_lifecycle
+                         when the fleet grows a live topology. The result is the
+                         canonical layout, so a hall grown at runtime is identical
+                         to the same hall laid out in batch — no spill, no drift
+                         out of the room rectangle.
 """
 from __future__ import annotations
 
@@ -201,64 +201,53 @@ def layout_all(records: Iterable[Tuple[str, str, str, str]]) -> Tuple[dict, dict
 
 
 def place_one(name: str, dc: str, room: str,
-              existing: Iterable[Tuple[str, str, str, float, float]]) -> Tuple[int, int]:
-    """Coordinate for ONE new device. Moves nothing that is already placed.
+              existing: Iterable[Tuple[str, str, str, float, float]]
+              ) -> Tuple[Tuple[int, int], Dict[str, Tuple[int, int]]]:
+    """Coordinate for ONE new device, plus whatever else must move to make room.
 
     existing: iterable of (name, datacenter, room, x, y) for every node already on
     the canvas.
 
-    Appends the node to the last non-full sub-row of its role. If every sub-row is
-    full, or the role is new to this room, it starts a fresh row below the room's
-    current content. That can push past the room's tidy rectangle; a batch
-    layout_all() pass squares it up. What it never does is move a neighbour.
+    Returns ((x, y) for the new device, {name: (x, y)} for every existing node whose
+    position changed). The caller applies the moves.
+
+    It is simply the canonical layout of (existing + new), so the result is
+    identical to what tools/layout_canvas.py would produce and every invariant
+    holds by construction — the new node is inside its room's rectangle, on its
+    role's row, and nothing overlaps.
+
+    WHY THIS MOVES NODES, AND WHY IT MUST
+
+    No-move placement, a fixed room rectangle, one role per row, and wrapping past
+    MAX_COLS cannot all hold at once. Append a node to a role whose sub-rows are
+    full and you need a new sub-row; a new sub-row lands on the next role's band,
+    so that role and everything below it has to shift. An earlier version dodged
+    this by spilling the overflow below the room, which kept neighbours still at
+    the cost of walking the node out of its rectangle. That was the wrong trade:
+    the rectangle is an invariant, "nothing moves" was only a convenience.
+
+    In practice the cost is small and bounded. Appending to a row with a free
+    column moves NOTHING — the canonical layout already puts it there. Only an
+    overflow shifts anything, and then only rows below it in that room, plus the
+    bands below that room, all by exactly one ROW_PITCH. Rooms beside it (Hall B
+    next to Hall A) and the other datacenter are untouched, because room widths
+    and DC band widths do not change.
+
+    The caveat worth knowing: an overflow does clobber any hand-dragged position
+    in that datacenter, because the canonical layout has no memory of drags.
     """
-    ex = [e for e in existing]
-    if not ex:
-        return (0, 0)
+    ex = list(existing)
+    records = [(n, n, d, r) for n, d, r, _x, _y in ex]
+    records.append((name, name, dc, room))
 
-    occupied = {(round(x), round(y)) for _n, _d, _r, x, y in ex}
-    same_room = [(n, x, y) for n, d, r, x, y in ex if d == dc and r == room]
+    positions, _rects, _notes = layout_all(records)
 
-    if not same_room:
-        # First node of a room the canvas has never seen. Park it below this DC's
-        # content (or below everything, if the DC is new too) at the left edge.
-        in_dc = [(x, y) for _n, d, _r, x, y in ex if d == dc]
-        pool = in_dc or [(x, y) for _n, _d, _r, x, y in ex]
-        x0 = min(x for x, _ in pool)
-        y0 = max(y for _, y in pool) + ROOM_GAP_Y
-        return _free(x0, y0, occupied)
-
-    room_x0 = min(x for _n, x, _y in same_room)
-    room_ys = {round(y) for _n, _x, y in same_room}
-    room_ymax = max(room_ys)
-
-    r = role(name)
-    mine = [(n, x, y) for n, x, y in same_room if role(n) == r]
-
-    if mine:
-        rows: Dict[int, list] = collections.defaultdict(list)
-        for n, x, y in mine:
-            rows[round(y)].append(x)
-        for y in sorted(rows):
-            if len(rows[y]) < MAX_COLS:
-                return _free(max(rows[y]) + X_PITCH, y, occupied)
-        # Every sub-row of this role is full. A fresh one goes directly beneath the
-        # role's last row if that band is empty, else below the whole room.
-        y_new = max(rows) + ROW_PITCH
-        if round(y_new) in room_ys:
-            y_new = room_ymax + ROW_PITCH
-        return _free(room_x0, y_new, occupied)
-
-    # Role is new to this room (a hall's first CRAH, say): start a row below it.
-    return _free(room_x0, room_ymax + ROW_PITCH, occupied)
-
-
-def _free(x: float, y: float, occupied: set) -> Tuple[int, int]:
-    """Step right until the slot is empty. Guarantees no coincident nodes."""
-    x, y = round(x), round(y)
-    while (x, y) in occupied:
-        x += X_PITCH
-    return (x, y)
+    moves: Dict[str, Tuple[int, int]] = {}
+    for n, _d, _r, x, y in ex:
+        want = positions[n]
+        if (round(x), round(y)) != want:
+            moves[n] = want
+    return positions[name], moves
 
 
 def check(positions: Dict[str, Tuple[int, int]],

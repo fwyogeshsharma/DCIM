@@ -293,6 +293,22 @@ def save_positions(req: PositionsRequest):
     return OkResponse(message=msg)
 
 
+@router.post("/positions/reset", response_model=OkResponse)
+def reset_positions():
+    """Wipe all saved canvas coordinates — the Reset Layout button.
+
+    Drops every drag/auto-layout position on the server so the next
+    /topology/graph returns (0, 0) for all nodes and the web canvas rebuilds a
+    fresh tier layout. View-only: it does not re-persist the tier positions, so
+    the reset sticks until the operator drags again.
+    """
+    s = _state()
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    n = s.topology.reset_positions()
+    return OkResponse(message=f"Wiped {n} saved node position(s)")
+
+
 _LAYOUT_ALGORITHMS = ("default", "spring", "shell", "kamada_kawai")
 
 

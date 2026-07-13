@@ -1279,11 +1279,14 @@ class FleetLifecycleEngine:
         private grid dumped below the curated ones, so a hall grown at runtime
         looked nothing like the same hall laid out by tools/layout_canvas.py.
 
-        place_one() appends the device to its role's row in its room and moves
-        nothing else — the canvas is a live view a user may have dragged. It is
-        best-effort: a role whose rows are all full spills below the room, and a
-        batch run squares it up. O(n) in the device count, which is fine for the
-        handful of devices a churn tick creates."""
+        place_one() returns the canonical coordinate plus any nodes that must shift
+        to seat it — a role whose sub-rows are full needs a new one, which pushes
+        the rows below it down. Appending to a row with a free column moves nothing,
+        which is the overwhelmingly common case. The moves are applied here so the
+        hall stays inside its room rectangle instead of spilling out of it.
+
+        O(n log n) in the device count, run once per created device. Fine for the
+        handful a churn tick makes; it would be the wrong shape for a bulk load."""
         from core.canvas_layout import place_one
         try:
             topo = self.s.topology
@@ -1291,7 +1294,16 @@ class FleetLifecycleEngine:
             for d in topo.get_all_devices():
                 x, y = topo.get_position(d.id)
                 existing.append((d.name, d.datacenter or "", d.room or "", x, y))
-            return place_one(dev.name, dev.datacenter or "", dev.room or "", existing)
+            pos, moves = place_one(dev.name, dev.datacenter or "",
+                                   dev.room or "", existing)
+            if moves:
+                id_of = {d.name: d.id for d in topo.get_all_devices()}
+                for name, (mx, my) in moves.items():
+                    if name in id_of:
+                        topo.set_position(id_of[name], mx, my)
+                self._log(f"[Fleet] canvas: {dev.name} opened a new row; "
+                          f"shifted {len(moves)} node(s) to keep the layout canonical")
+            return pos
         except Exception:
             self._log("[Fleet] canvas placement failed; parking at the origin")
             return (0.0, 0.0)

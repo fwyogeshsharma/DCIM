@@ -391,7 +391,14 @@ function Canvas() {
         <ToolBtn title="Zoom Out" onClick={() => zoomOut({ duration: 200 })}><I.zoomOut /></ToolBtn>
         <ToolBtn title="Fit to View  (Ctrl+Shift+F)" onClick={() => fitView({ padding: 0.1, duration: 400 })}><I.fit /></ToolBtn>
         <div className="canvas-tool-divider" />
-        <ToolBtn title="Reset Layout" onClick={() => { initialFit.current = false; repositionPending.current = true; fetchGraph() }}><I.reset /></ToolBtn>
+        <ToolBtn title="Reset Layout" onClick={() => {
+          // Wipe saved positions server-side FIRST, then refetch — the graph
+          // comes back with (0,0) for every node, so tierLayout rebuilds a fresh
+          // tier layout instead of the passthrough branch replaying old drags.
+          api.resetPositions()
+            .then(() => { initialFit.current = false; repositionPending.current = true; return fetchGraph() })
+            .catch(console.error)
+        }}><I.reset /></ToolBtn>
 
       </div>
 

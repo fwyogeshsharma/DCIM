@@ -152,6 +152,8 @@ export const api = {
   // One call per drag, carrying every node that moved.
   savePositions: (positions: Record<string, { x: number; y: number }>) =>
     post('/topology/positions', { positions }),
+  // Reset Layout: wipe all saved positions server-side, then refetch.
+  resetPositions: () => post('/topology/positions/reset', {}),
 
   // devices
   devices:    (layer?: string)        => get(`/devices${layer ? `?layer=${layer}` : ''}`),
