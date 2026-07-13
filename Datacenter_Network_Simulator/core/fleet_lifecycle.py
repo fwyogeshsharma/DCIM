@@ -440,10 +440,37 @@ class FleetLifecycleEngine:
         pod can hold before a new pod/hall is needed."""
         return max(8, int(getattr(spine, "interface_count", 32) or 32))
 
+    _OOB_UPLINK_RESERVE = 4   # ports kept for the OOB-core uplinks + the peer link
+
     def _oob_port_cap(self, oob: Device) -> int:
-        """Management ports on an OOB switch — max managed uplinks before another
-        OOB must be stacked into the hall."""
-        return max(8, int(getattr(oob, "interface_count", 48) or 48))
+        """Usable access ports on an OOB switch: its real port count minus a small
+        reserve for the uplinks to the OOB cores and the peer link. Endpoints past
+        this stack a new OOB into the hall."""
+        ports = int(getattr(oob, "interface_count", 48) or 48)
+        return max(8, ports - self._OOB_UPLINK_RESERVE)
+
+    def _oob_port_load(self, oob: Device) -> int:
+        """Management endpoints consuming an access port on this OOB switch — server
+        BMCs (iDRAC/iLO/XCC), managed PDUs and switch consoles. Uplinks to the OOB
+        cores and the peer OOB link don't count (they are OOB_SWITCH neighbours, not
+        managed endpoints), so this is the true port fill. This — not the leaf count
+        — is what the stacking decision measures, so the OOB count tracks the SERVER
+        count: a rack of ~20 servers eats ~20 iDRAC ports, filling a 48-port OOB in
+        roughly two racks, just like a real management network."""
+        _managed = (DeviceType.SERVER, DeviceType.PDU,
+                    DeviceType.FLOOR_PDU, DeviceType.SWITCH)
+        try:
+            adj = self.s.topology.graph[oob.id]
+        except Exception:
+            return 0
+        n = 0
+        for nbr, edges in adj.items():
+            if not any(ed.get("layer") == "management" for ed in edges.values()):
+                continue
+            d = self.s.device_manager.get_device(nbr)
+            if d and d.device_type in _managed:
+                n += 1
+        return n
 
     def _leaves_on(self, dev: Device) -> int:
         """How many leaf switches are attached to *dev* (spine downlinks / OOB ports
@@ -470,17 +497,24 @@ class FleetLifecycleEngine:
         return None
 
     def _hall_oobs(self, rk: tuple) -> list:
-        """Every OOB switch that manages a leaf in hall *rk* (deduped)."""
-        seen: dict = {}
-        for s in self._servers():
-            if self._room_key(s) != rk:
+        """Every IT access OOB switch physically in hall *rk*. Filters on the name
+        role being exactly 'OOB' so the BMS OOB (OOBM) and the OOB cores (OOBC) are
+        excluded. Room-based rather than leaf-derived, so it also finds a freshly
+        stacked OOB that so far carries only server BMCs and no leaf yet."""
+        out = []
+        for d in self._by_type(DeviceType.OOB_SWITCH):
+            if self._room_key(d) != rk:
                 continue
-            leaf = self._neighbor(s, "production", (DeviceType.SWITCH,))
-            if leaf is None:
-                continue
-            for o in self._neighbors(leaf, "management", (DeviceType.OOB_SWITCH,)):
-                seen[o.id] = o
-        return list(seen.values())
+            letters = "".join(c for c in (d.name or "").split("-", 1)[0] if c.isalpha())
+            if letters.upper() == "OOB":
+                out.append(d)
+        return out
+
+    def _hall_spines(self, rk: tuple) -> list:
+        """Spine switches physically in hall *rk* (used for OOB stack slot numbering
+        when the caller has no infra dict to hand)."""
+        return [d for d in self._by_type(DeviceType.SWITCH)
+                if self._is_spine(d) and self._room_key(d) == rk]
 
     def _clone_fabric_node(self, tmpl: Device, rk: tuple, prefix: str,
                            num: int = 1, fx: Optional[float] = None,
@@ -510,24 +544,34 @@ class FleetLifecycleEngine:
             self._log(f"[Fleet] fabric clone uplink {new.name}: {e}")
         return new
 
-    def _oob_for_new_leaf(self, rk: tuple, infra: dict) -> Optional[Device]:
-        """An OOB switch in hall *rk* with a free management port; stack a new OOB
-        into the hall (cloned from the existing one) when they are all full."""
+    def _oob_port_for(self, rk: tuple, infra: Optional[dict] = None) -> Optional[Device]:
+        """A hall OOB switch with a free management port for ONE more endpoint — a
+        server BMC (iDRAC/iLO), a managed PDU, or a switch console. When every hall
+        OOB is full it clones a new one into the hall. Because the fill is measured
+        by real endpoints (_oob_port_load), each server's BMC consumes a port, so
+        the OOB count grows with the server count, not just the leaf/rack count.
+
+        *infra* is optional: it supplies a clone template and spine count when the
+        caller has one; both fall back to what's physically in the hall otherwise."""
+        infra = infra or {}
         oobs = self._hall_oobs(rk) or ([infra["oob"]] if infra.get("oob") else [])
         for o in oobs:
-            if self._leaves_on(o) < self._oob_port_cap(o):
+            if self._oob_port_load(o) < self._oob_port_cap(o):
                 return o
         tmpl = oobs[0] if oobs else infra.get("oob")
         if tmpl is None:
             return None
         # Next free slot on the hall's back network row (past RPPs + spines + OOBs).
-        slot = 3 + len(infra.get("spines") or []) + len(oobs)
+        spines = infra.get("spines")
+        if spines is None:
+            spines = self._hall_spines(rk)
+        slot = 3 + len(spines) + len(oobs)
         new = self._clone_fabric_node(tmpl, rk, "oob", num=slot,
                                       fx=geo.rack_x(slot),
                                       fy=getattr(tmpl, "floor_y", None))
         if new is not None:
             self._commission(new)
-            self._log(f"[Fleet] OOB ports exhausted — stacked {new.name} in "
+            self._log(f"[Fleet] OOB management ports full — stacked {new.name} in "
                       f"{rk[0]}/{rk[2]}")
         return new
 
@@ -1198,8 +1242,8 @@ class FleetLifecycleEngine:
         try:
             for sp in infra.get("spines") or []:
                 self.s.topology.add_link(leaf.id, sp.id, layer="production")
-            # OOB with a free port (stacks a new OOB into the hall if full).
-            oob = self._oob_for_new_leaf(rk, infra)
+            # Leaf console onto an OOB with a free port (stacks a new OOB if full).
+            oob = self._oob_port_for(rk, infra)
             if oob is not None:
                 self.s.topology.add_link(leaf.id, oob.id, layer="management")
         except Exception as e:
@@ -1533,6 +1577,21 @@ class FleetLifecycleEngine:
             upd["power_source_b"] = pdus[1].id
         if upd:
             self.s.device_manager.update_device(dev.id, **upd)
+        # Server BMC (iDRAC/iLO/XCC) onto a hall OOB management port, like a real
+        # server that answers Redfish/IPMI out-of-band. This is what ties the OOB
+        # switch count to the server count: each BMC eats one management port, so
+        # the plane fills from compute and stacks a new OOB as servers grow — not
+        # only when leaf/rack count crosses a threshold.
+        try:
+            tor = rack.get("tor")
+            if tor is not None:
+                rk = self._room_key(tor)
+                leaf_oob = self._neighbor(tor, "management", (DeviceType.OOB_SWITCH,))
+                oob = self._oob_port_for(rk, {"oob": leaf_oob})
+                if oob is not None:
+                    self.s.topology.add_link(dev.id, oob.id, layer="management")
+        except Exception as e:
+            self._log(f"[Fleet] BMC mgmt link {dev.name} failed: {e}")
         self._commission(dev)   # bring it online on SNMP/gNMI/Redfish
         return dev
 
