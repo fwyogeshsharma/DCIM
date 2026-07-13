@@ -392,9 +392,9 @@ function Canvas() {
         <ToolBtn title="Fit to View  (Ctrl+Shift+F)" onClick={() => fitView({ padding: 0.1, duration: 400 })}><I.fit /></ToolBtn>
         <div className="canvas-tool-divider" />
         <ToolBtn title="Reset Layout" onClick={() => {
-          // Wipe saved positions server-side FIRST, then refetch — the graph
-          // comes back with (0,0) for every node, so tierLayout rebuilds a fresh
-          // tier layout instead of the passthrough branch replaying old drags.
+          // Restore the canonical layout server-side FIRST, then refetch — the
+          // graph comes back with canonical coords, and repositionPending forces
+          // a rebuild from them so any hand-drags are dropped.
           api.resetPositions()
             .then(() => { initialFit.current = false; repositionPending.current = true; return fetchGraph() })
             .catch(console.error)

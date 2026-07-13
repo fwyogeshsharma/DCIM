@@ -295,18 +295,27 @@ def save_positions(req: PositionsRequest):
 
 @router.post("/positions/reset", response_model=OkResponse)
 def reset_positions():
-    """Wipe all saved canvas coordinates — the Reset Layout button.
+    """Restore the canonical canvas layout — the Reset Layout button.
 
-    Drops every drag/auto-layout position on the server so the next
-    /topology/graph returns (0, 0) for all nodes and the web canvas rebuilds a
-    fresh tier layout. View-only: it does not re-persist the tier positions, so
-    the reset sticks until the operator drags again.
+    Recomputes every node coordinate from scratch via core.canvas_layout — the
+    same rules tools/layout_canvas.py applies — and writes them back, discarding
+    any hand-drags. The next /topology/graph returns the canonical two-DC pod
+    grid, so Reset always lands on the same picture no matter how nodes were
+    dragged. Nodes with no datacenter/room get no canonical slot and keep their
+    current position.
     """
     s = _state()
     if s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
-    n = s.topology.reset_positions()
-    return OkResponse(message=f"Wiped {n} saved node position(s)")
+    from core.canvas_layout import layout_all
+    records = [
+        (d.id, d.name, getattr(d, "datacenter", "") or "", getattr(d, "room", "") or "")
+        for d in s.topology.get_all_devices()
+    ]
+    positions, _rects, _notes = layout_all(records)
+    for nid, (x, y) in positions.items():
+        s.topology.set_position(nid, float(x), float(y))
+    return OkResponse(message=f"Reset {len(positions)} node(s) to the canonical layout")
 
 
 _LAYOUT_ALGORITHMS = ("default", "spring", "shell", "kamada_kawai")
