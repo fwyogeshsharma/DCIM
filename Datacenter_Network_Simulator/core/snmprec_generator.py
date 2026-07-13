@@ -1524,113 +1524,131 @@ class SNMPRecGenerator:
         v10 = lambda k: ("2", str(int(round(float(ext.get(k, 0.0)) * 10))))
         i = lambda k, d=0.0: ("2", str(int(round(float(ext.get(k, d))))))
 
+        pf100 = lambda k: ("2", str(int(round(float(ext.get(k, 0.0)) * 100))))
+
         if dt == DeviceType.UTILITY_FEED:
+            # Schneider ION9000 meter: V, A, Hz, kW, PF, kWh (measured quantities).
             E = self._UTIL_ENT
             return {
                 f"{E}.1.0": ("2", "1" if ext.get("util_status") == "normal" else "2"),
                 f"{E}.2.0": v10("util_voltage"),
-                f"{E}.3.0": v10("util_frequency"),
-                f"{E}.4.0": i("util_kw"),
-                f"{E}.5.0": i("util_load_pct"),
+                f"{E}.3.0": i("util_current"),
+                f"{E}.4.0": v10("util_frequency"),
+                f"{E}.5.0": i("util_kw"),
+                f"{E}.6.0": pf100("util_power_factor"),
+                f"{E}.7.0": i("util_energy_kwh"),
             }
         if dt == DeviceType.SWITCHGEAR:
+            # Eaton Magnum DS / ASCO paralleling: V, A, kW, % rating, breaker, source.
             E = self._SWGR_ENT
             return {
                 f"{E}.1.0": ("2", "1" if ext.get("swgr_bus_status") == "energized" else "2"),
                 f"{E}.2.0": v10("swgr_voltage"),
-                f"{E}.3.0": i("swgr_kw"),
-                f"{E}.4.0": i("swgr_load_pct"),
-                f"{E}.5.0": ("2", "1" if ext.get("swgr_breaker_status") == "closed" else "2"),
-                f"{E}.6.0": ("2", "2" if ext.get("swgr_source") == "generator" else "1"),
+                f"{E}.3.0": i("swgr_current"),
+                f"{E}.4.0": i("swgr_kw"),
+                f"{E}.5.0": i("swgr_load_pct"),
+                f"{E}.6.0": ("2", "1" if ext.get("swgr_breaker_status") == "closed" else "2"),
+                f"{E}.7.0": ("2", "2" if ext.get("swgr_source") == "generator" else "1"),
             }
         if dt == DeviceType.ATS:
+            # ASCO 7000: position, source availabilities, both source voltages, Hz,
+            # transfer count, time-on-emergency. A switch — no kW/load metering.
             E = self._ATS_ENT
             pos = {"normal": 1, "emergency": 2, "none": 3}.get(ext.get("ats_position"), 3)
             return {
                 f"{E}.1.0": ("2", str(pos)),
                 f"{E}.2.0": ("2", "1" if ext.get("ats_normal_available") == "yes" else "2"),
                 f"{E}.3.0": ("2", "1" if ext.get("ats_emergency_available") == "yes" else "2"),
-                f"{E}.4.0": v10("ats_output_voltage"),
-                f"{E}.5.0": i("ats_kw"),
-                f"{E}.6.0": i("ats_load_pct"),
+                f"{E}.4.0": v10("ats_normal_voltage"),
+                f"{E}.5.0": v10("ats_emergency_voltage"),
+                f"{E}.6.0": v10("ats_frequency"),
                 f"{E}.7.0": i("ats_transfer_count"),
+                f"{E}.8.0": i("ats_time_on_emergency"),
             }
         if dt == DeviceType.MPP:
+            # Metered panelboard main: V, kW, % load, kWh.
             E = self._MPP_ENT
             return {
                 f"{E}.1.0": ("2", "1" if ext.get("mpp_status") == "energized" else "2"),
                 f"{E}.2.0": v10("mpp_voltage"),
                 f"{E}.3.0": i("mpp_kw"),
                 f"{E}.4.0": i("mpp_load_pct"),
+                f"{E}.5.0": i("mpp_energy_kwh"),
             }
+        # Eaton Freedom 2100 MCC with metered main: V, A, kW, % load, tie, source.
         E = self._MCC_ENT
         return {
             f"{E}.1.0": ("2", "1" if ext.get("mcc_status") == "energized" else "2"),
             f"{E}.2.0": v10("mcc_voltage"),
-            f"{E}.3.0": i("mcc_kw"),
-            f"{E}.4.0": i("mcc_load_pct"),
-            f"{E}.5.0": i("mcc_blocks_on", 3.0),
+            f"{E}.3.0": i("mcc_current"),
+            f"{E}.4.0": i("mcc_kw"),
+            f"{E}.5.0": i("mcc_load_pct"),
             f"{E}.6.0": ("2", "2" if ext.get("mcc_tie") == "closed" else "1"),
             f"{E}.7.0": ("2", {"normal": "1", "tie": "2"}.get(ext.get("mcc_source"), "3")),
         }
 
     def _utility_entries(self, device: Device) -> List[OidEntry]:
-        """Utility service entrance — what a revenue/ION meter reports."""
+        """Utility service entrance — Schneider ION9000 revenue/PQ meter points."""
         E = self._UTIL_ENT
         return [
             _oid_entry(f"{E}.1.0", "2", "1"),     # utilStatus (1=normal,2=failed)
             _oid_entry(f"{E}.2.0", "2", "4000"),  # utilVoltage x10 V (400.0)
-            _oid_entry(f"{E}.3.0", "2", "500"),   # utilFrequency x10 Hz (50.0)
-            _oid_entry(f"{E}.4.0", "2", "0"),     # utilKW (kW)
-            _oid_entry(f"{E}.5.0", "2", "0"),     # utilLoadPercent % of service rating
+            _oid_entry(f"{E}.3.0", "2", "0"),     # utilCurrent A
+            _oid_entry(f"{E}.4.0", "2", "500"),   # utilFrequency x10 Hz (50.0)
+            _oid_entry(f"{E}.5.0", "2", "0"),     # utilKW (kW)
+            _oid_entry(f"{E}.6.0", "2", "97"),    # utilPowerFactor x100
+            _oid_entry(f"{E}.7.0", "2", "0"),     # utilEnergyKWh (cumulative)
         ]
 
     def _switchgear_entries(self, device: Device) -> List[OidEntry]:
-        """LV main board / generator paralleling board — bus + breaker status."""
+        """LV main / generator paralleling board — Digitrip trip-unit metering."""
         E = self._SWGR_ENT
         return [
             _oid_entry(f"{E}.1.0", "2", "1"),     # swgrBusStatus (1=energized,2=dead)
             _oid_entry(f"{E}.2.0", "2", "4000"),  # swgrBusVoltage x10 V
-            _oid_entry(f"{E}.3.0", "2", "0"),     # swgrKW (kW)
-            _oid_entry(f"{E}.4.0", "2", "0"),     # swgrLoadPercent %
-            _oid_entry(f"{E}.5.0", "2", "1"),     # swgrMainBreaker (1=closed,2=open)
-            _oid_entry(f"{E}.6.0", "2", "1"),     # swgrSource (1=utility,2=generator)
+            _oid_entry(f"{E}.3.0", "2", "0"),     # swgrCurrent A
+            _oid_entry(f"{E}.4.0", "2", "0"),     # swgrKW (kW)
+            _oid_entry(f"{E}.5.0", "2", "0"),     # swgrLoadPercent % of breaker rating
+            _oid_entry(f"{E}.6.0", "2", "1"),     # swgrMainBreaker (1=closed,2=open)
+            _oid_entry(f"{E}.7.0", "2", "1"),     # swgrSource (1=utility,2=generator)
         ]
 
     def _ats_entries(self, device: Device) -> List[OidEntry]:
-        """Automatic transfer switch — the object that owns the transfer event."""
+        """ASCO 7000 transfer switch — sources, position, transfer counters."""
         E = self._ATS_ENT
         return [
             _oid_entry(f"{E}.1.0", "2", "1"),     # atsPosition (1=normal,2=emergency,3=none)
             _oid_entry(f"{E}.2.0", "2", "1"),     # atsNormalSourceAvailable (1=yes,2=no)
             _oid_entry(f"{E}.3.0", "2", "2"),     # atsEmergencySourceAvailable (1=yes,2=no)
-            _oid_entry(f"{E}.4.0", "2", "4000"),  # atsOutputVoltage x10 V
-            _oid_entry(f"{E}.5.0", "2", "0"),     # atsKW (kW)
-            _oid_entry(f"{E}.6.0", "2", "0"),     # atsLoadPercent %
+            _oid_entry(f"{E}.4.0", "2", "4000"),  # atsNormalVoltage x10 V
+            _oid_entry(f"{E}.5.0", "2", "0"),     # atsEmergencyVoltage x10 V
+            _oid_entry(f"{E}.6.0", "2", "500"),   # atsFrequency x10 Hz
             _oid_entry(f"{E}.7.0", "2", "0"),     # atsTransferCount (counter)
+            _oid_entry(f"{E}.8.0", "2", "0"),     # atsTimeOnEmergency (minutes)
         ]
 
     def _mcc_entries(self, device: Device) -> List[OidEntry]:
-        """Motor control center — the mechanical bus, upstream of no UPS."""
+        """Eaton Freedom 2100 MCC (metered main) — the mechanical bus."""
         E = self._MCC_ENT
         return [
             _oid_entry(f"{E}.1.0", "2", "1"),     # mccStatus (1=energized,2=dead)
             _oid_entry(f"{E}.2.0", "2", "4000"),  # mccBusVoltage x10 V
-            _oid_entry(f"{E}.3.0", "2", "0"),     # mccKW (kW)
-            _oid_entry(f"{E}.4.0", "2", "0"),     # mccLoadPercent %
-            _oid_entry(f"{E}.5.0", "2", "3"),     # mccLoadBlocksEnergized (0-3)
+            _oid_entry(f"{E}.3.0", "2", "0"),     # mccCurrent A
+            _oid_entry(f"{E}.4.0", "2", "0"),     # mccKW (kW)
+            _oid_entry(f"{E}.5.0", "2", "0"),     # mccLoadPercent %
             _oid_entry(f"{E}.6.0", "2", "1"),     # mccTieBreaker (1=open,2=closed)
             _oid_entry(f"{E}.7.0", "2", "1"),     # mccSource (1=own ATS,2=tie,3=none)
         ]
 
     def _mpp_entries(self, device: Device) -> List[OidEntry]:
-        """Mechanical power panel — the hall's CRAH panelboard, fed from an MCC."""
+        """Mechanical power panel (metered panelboard main) — fed from an MCC."""
         E = self._MPP_ENT
         return [
             _oid_entry(f"{E}.1.0", "2", "1"),     # mppStatus (1=energized,2=dead)
             _oid_entry(f"{E}.2.0", "2", "4000"),  # mppBusVoltage x10 V
             _oid_entry(f"{E}.3.0", "2", "0"),     # mppKW (kW)
             _oid_entry(f"{E}.4.0", "2", "0"),     # mppLoadPercent %
+            _oid_entry(f"{E}.5.0", "2", "0"),     # mppEnergyKWh (cumulative)
         ]
 
     # ------------------------------------------------------------------ #

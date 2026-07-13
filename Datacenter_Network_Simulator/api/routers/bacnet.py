@@ -50,6 +50,16 @@ def electrical_status():
     return st.get_electrical_status()
 
 
+@router.get("/electrical/devices")
+def electrical_device_metrics():
+    """Per-device live metrics for utility feed / switchgear / ATS / MCC / MPP —
+    powers the Live Metrics page electrical tabs (same values served over SNMP)."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        return {"devices": []}
+    return {"devices": st.get_electrical_device_metrics()}
+
+
 @router.post("/electrical/utility", response_model=OkResponse)
 def set_utility(body: UtilityOutage):
     """Drop or restore one datacenter's utility feed. Everything downstream — the

@@ -363,6 +363,17 @@ export interface PlantDeviceSnapshot {
   values:      Record<string, number>
 }
 
+// Electrical upstream device (utility_feed / switchgear / ats / mcc / mpp).
+// Flat metric fields (util_voltage, swgr_kw, ats_position, …) alongside identity.
+export interface ElectricalDeviceSnapshot {
+  id:          string
+  name:        string
+  device_type: string
+  datacenter:  string
+  room:        string
+  [key: string]: string | number
+}
+
 export interface LogEntry {
   id: number
   tab: 'snmp' | 'gnmi' | 'sflow' | 'bacnet' | 'redfish'

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import type { DeviceInfo, IfaceStats, EV2DeviceSnapshot, EV2CircuitMetrics, PlantDeviceSnapshot } from '../api/types'
+import type { DeviceInfo, IfaceStats, EV2DeviceSnapshot, EV2CircuitMetrics, PlantDeviceSnapshot, ElectricalDeviceSnapshot } from '../api/types'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -1233,16 +1233,145 @@ function PlantTable({ type, rows }: { type: string; rows: PlantDeviceSnapshot[] 
   )
 }
 
+// ── Electrical-upstream tabs (Utility / Switchgear / ATS / MCC / MPP) ──────────
+// SNMP metrics matched to each device's real model: Schneider ION9000 revenue
+// meter, Eaton Magnum DS / ASCO paralleling trip units, ASCO 7000 ATS, Eaton
+// Freedom 2100 MCC, metered panelboard. `states` columns are enum/status pills.
+
+type ElecCol = {
+  key: string; label: string; unit?: string; decimals?: number
+  warn?: number; crit?: number
+  states?: Record<string, { text: string; good: boolean | null }>
+}
+const OK  = (text: string) => ({ text, good: true as boolean | null })
+const BAD = (text: string) => ({ text, good: false as boolean | null })
+const NEU = (text: string) => ({ text, good: null as boolean | null })
+
+const ELEC_COLUMNS: Record<string, ElecCol[]> = {
+  utility_feed: [
+    { key: 'util_status',       label: 'Status',  states: { normal: OK('NORMAL'), failed: BAD('FAILED') } },
+    { key: 'util_voltage',      label: 'Voltage', unit: ' V',  decimals: 1 },
+    { key: 'util_current',      label: 'Current', unit: ' A',  decimals: 0 },
+    { key: 'util_frequency',    label: 'Freq',    unit: ' Hz', decimals: 2 },
+    { key: 'util_kw',           label: 'Real Power', unit: ' kW', decimals: 0 },
+    { key: 'util_power_factor', label: 'PF',      decimals: 2 },
+    { key: 'util_energy_kwh',   label: 'Energy',  unit: ' kWh', decimals: 0 },
+  ],
+  switchgear: [
+    { key: 'swgr_bus_status',      label: 'Bus',      states: { energized: OK('ENERGIZED'), dead: BAD('DEAD') } },
+    { key: 'swgr_voltage',         label: 'Voltage',  unit: ' V', decimals: 1 },
+    { key: 'swgr_current',         label: 'Current',  unit: ' A', decimals: 0 },
+    { key: 'swgr_kw',              label: 'Real Power', unit: ' kW', decimals: 0 },
+    { key: 'swgr_load_pct',        label: 'Load',     unit: '%', decimals: 0, warn: 80, crit: 95 },
+    { key: 'swgr_breaker_status',  label: 'Breaker',  states: { closed: OK('CLOSED'), open: BAD('OPEN') } },
+    { key: 'swgr_source',          label: 'Source',   states: { utility: NEU('UTILITY'), generator: NEU('GEN') } },
+  ],
+  ats: [
+    { key: 'ats_position',            label: 'Position',  states: { normal: OK('NORMAL'), emergency: NEU('EMERGENCY'), none: BAD('NONE') } },
+    { key: 'ats_normal_available',    label: 'Normal Src', states: { yes: OK('AVAIL'), no: BAD('LOST') } },
+    { key: 'ats_emergency_available', label: 'Emerg Src',  states: { yes: OK('AVAIL'), no: NEU('OFF') } },
+    { key: 'ats_normal_voltage',      label: 'Normal V',   unit: ' V', decimals: 1 },
+    { key: 'ats_emergency_voltage',   label: 'Emerg V',    unit: ' V', decimals: 1 },
+    { key: 'ats_frequency',           label: 'Freq',       unit: ' Hz', decimals: 2 },
+    { key: 'ats_transfer_count',      label: 'Transfers',  decimals: 0 },
+    { key: 'ats_time_on_emergency',   label: 'On Emerg',   unit: ' min', decimals: 1 },
+  ],
+  mcc: [
+    { key: 'mcc_status',    label: 'Status',  states: { energized: OK('ENERGIZED'), dead: BAD('DEAD') } },
+    { key: 'mcc_voltage',   label: 'Voltage', unit: ' V', decimals: 1 },
+    { key: 'mcc_current',   label: 'Current', unit: ' A', decimals: 0 },
+    { key: 'mcc_kw',        label: 'Real Power', unit: ' kW', decimals: 0 },
+    { key: 'mcc_load_pct',  label: 'Load',    unit: '%', decimals: 0, warn: 80, crit: 95 },
+    { key: 'mcc_tie',       label: 'Tie Bkr', states: { open: NEU('OPEN'), closed: NEU('CLOSED') } },
+    { key: 'mcc_source',    label: 'Source',  states: { normal: OK('NORMAL'), tie: NEU('TIE'), none: BAD('NONE') } },
+  ],
+  mpp: [
+    { key: 'mpp_status',      label: 'Status',  states: { energized: OK('ENERGIZED'), dead: BAD('DEAD') } },
+    { key: 'mpp_voltage',     label: 'Voltage', unit: ' V', decimals: 1 },
+    { key: 'mpp_kw',          label: 'Real Power', unit: ' kW', decimals: 0 },
+    { key: 'mpp_load_pct',    label: 'Load',    unit: '%', decimals: 0, warn: 80, crit: 95 },
+    { key: 'mpp_energy_kwh',  label: 'Energy',  unit: ' kWh', decimals: 0 },
+  ],
+}
+
+function ElecStatusCell({ raw, col }: { raw: unknown; col: ElecCol }) {
+  const s = col.states?.[String(raw)]
+  if (!s) return <span style={{ color: 'var(--text-dim)' }}>—</span>
+  const color = s.good === true ? '#3fb950' : s.good === false ? '#f85149' : 'var(--text-muted)'
+  const bg    = s.good === true ? '#3fb95022' : s.good === false ? '#f8514922' : 'var(--bg-card)'
+  const bd    = s.good === true ? '#3fb95044' : s.good === false ? '#f8514944' : 'var(--border)'
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
+      fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
+      background: bg, border: `1px solid ${bd}`, color,
+    }}>{s.text}</span>
+  )
+}
+
+function ElectricalTable({ type, rows }: { type: string; rows: ElectricalDeviceSnapshot[] }) {
+  const cols = ELEC_COLUMNS[type] ?? []
+  const sort = useSortState('name')
+  const sorted = useMemo(() => [...rows].sort((a, b) => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    if (sort.col === 'name') return a.name.localeCompare(b.name) * dir
+    const av = a[sort.col], bv = b[sort.col]
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir
+    return String(av ?? '').localeCompare(String(bv ?? '')) * dir
+  }), [rows, sort.col, sort.dir])
+
+  if (rows.length === 0) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
+        No {(TAB_LABELS[type as Tab] ?? type).toLowerCase()} devices
+      </div>
+    )
+  }
+
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+      <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+        <tr>
+          <SortTH label="Name" id="name"       sort={sort} minW={150} />
+          <SortTH label="DC"   id="datacenter" sort={sort} minW={50} />
+          {cols.map(c => (
+            <SortTH key={c.key} label={c.label} id={c.key} sort={sort}
+              align={c.states ? 'center' : 'right'} minW={c.states ? 82 : 76} />
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((d, i) => (
+          <tr key={d.id} style={ROW_STYLE(i)}>
+            <td style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.name}>{d.name}</td>
+            <td style={{ padding: '6px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{d.datacenter}</td>
+            {cols.map(c => (
+              <td key={c.key} style={{ padding: '6px 10px', textAlign: c.states ? 'center' : 'right' }}>
+                {c.states
+                  ? <ElecStatusCell raw={d[c.key]} col={c} />
+                  : <NumCell val={typeof d[c.key] === 'number' ? d[c.key] as number : undefined} unit={c.unit} warn={c.warn} crit={c.crit} decimals={c.decimals ?? 1} />}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 // ── tabs ──────────────────────────────────────────────────────────────────────
 
 type Tab = 'all' | 'network' | 'server' | 'ups' | 'pdu' | 'sensor' | 'energy'
         | 'crah' | 'chiller' | 'pump' | 'cooling_tower' | 'valve' | 'cdu'
+        | 'utility_feed' | 'switchgear' | 'ats' | 'mcc' | 'mpp'
 
 const PLANT_TABS: Tab[] = ['crah', 'chiller', 'pump', 'cooling_tower', 'valve', 'cdu']
+const ELEC_TABS: Tab[] = ['utility_feed', 'switchgear', 'ats', 'mcc', 'mpp']
 
 const TAB_LABELS: Record<Tab, string> = {
   all: 'All', network: 'Network', server: 'Server', ups: 'UPS', pdu: 'PDU', sensor: 'Sensor', energy: 'Energy (EV2)',
   crah: 'CRAH', chiller: 'Chiller', pump: 'Pump', cooling_tower: 'Cooling Tower', valve: 'Valve', cdu: 'CDU',
+  utility_feed: 'Utility', switchgear: 'Switchgear', ats: 'ATS', mcc: 'MCC', mpp: 'MPP',
 }
 
 const TAB_TYPES: Record<Tab, string[]> = {
@@ -1254,16 +1383,18 @@ const TAB_TYPES: Record<Tab, string[]> = {
   sensor:  ['sensor'],
   energy:  [],   // data comes from ev2Metrics, not devices[]
   crah:    [], chiller: [], pump: [], cooling_tower: [], valve: [], cdu: [],  // data from plantMetrics
+  utility_feed: [], switchgear: [], ats: [], mcc: [], mpp: [],                // data from electricalMetrics
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function LiveMetricsPage() {
-  const { devices, ev2Metrics, plantMetrics, tickSeq, setActiveView, fetchEV2Metrics, fetchPlantMetrics } = useStore()
+  const { devices, ev2Metrics, plantMetrics, electricalMetrics, tickSeq, setActiveView, fetchEV2Metrics, fetchPlantMetrics, fetchElectricalMetrics } = useStore()
   const [tab,    setTab]    = useState<Tab>('all')
   const [search, setSearch] = useState('')
 
   const isPlantTab = PLANT_TABS.includes(tab)
+  const isElecTab  = ELEC_TABS.includes(tab)
 
   // Refresh EV2 metrics on tab open + every simulator tick (matches tick interval)
   useEffect(() => {
@@ -1276,6 +1407,12 @@ export default function LiveMetricsPage() {
     if (!isPlantTab) return
     fetchPlantMetrics()
   }, [isPlantTab, tickSeq, fetchPlantMetrics])
+
+  // Refresh electrical-upstream metrics on tab open + every simulator tick
+  useEffect(() => {
+    if (!isElecTab) return
+    fetchElectricalMetrics()
+  }, [isElecTab, tickSeq, fetchElectricalMetrics])
 
   const counts = useMemo((): Record<Tab, number> => ({
     all:     devices.length,
@@ -1291,10 +1428,15 @@ export default function LiveMetricsPage() {
     cooling_tower: plantMetrics.filter(p => p.device_type === 'cooling_tower').length,
     valve:         plantMetrics.filter(p => p.device_type === 'valve').length,
     cdu:           plantMetrics.filter(p => p.device_type === 'cdu').length,
-  }), [devices, ev2Metrics, plantMetrics])
+    utility_feed:  electricalMetrics.filter(p => p.device_type === 'utility_feed').length,
+    switchgear:    electricalMetrics.filter(p => p.device_type === 'switchgear').length,
+    ats:           electricalMetrics.filter(p => p.device_type === 'ats').length,
+    mcc:           electricalMetrics.filter(p => p.device_type === 'mcc').length,
+    mpp:           electricalMetrics.filter(p => p.device_type === 'mpp').length,
+  }), [devices, ev2Metrics, plantMetrics, electricalMetrics])
 
   const filtered = useMemo(() => {
-    if (tab === 'energy' || isPlantTab) return []   // these tabs use ev2Metrics/plantMetrics directly
+    if (tab === 'energy' || isPlantTab || isElecTab) return []   // these tabs use ev2Metrics/plantMetrics/electricalMetrics directly
     let list = devices.filter(d => d.device_type !== 'rpp')
     const types = TAB_TYPES[tab]
     if (types.length > 0) list = list.filter(d => types.includes(d.device_type))
@@ -1371,6 +1513,8 @@ export default function LiveMetricsPage() {
           ? <EV2MetricsTab snapshots={ev2Metrics} />
           : isPlantTab
           ? <PlantTable type={tab} rows={plantMetrics.filter(p => p.device_type === tab)} />
+          : isElecTab
+          ? <ElectricalTable type={tab} rows={electricalMetrics.filter(p => p.device_type === tab)} />
           : filtered.length === 0
             ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-dim)', fontSize: 11 }}>
                 {devices.length === 0 ? 'No topology loaded' : `No ${TAB_LABELS[tab].toLowerCase()} devices`}

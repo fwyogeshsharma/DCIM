@@ -6,6 +6,7 @@ import type {
   BindingStatus, RulesTable, TrapRecord, LogEntry,
   HealthStatus, AdaptersResponse, DeviceInfo, JobStatus, EV2DeviceSnapshot,
   PlantDeviceSnapshot,
+  ElectricalDeviceSnapshot,
 } from '../api/types'
 
 let _logSeq = 0
@@ -38,6 +39,7 @@ interface Store {
   devices:    DeviceInfo[]
   ev2Metrics:   EV2DeviceSnapshot[]
   plantMetrics: PlantDeviceSnapshot[]
+  electricalMetrics: ElectricalDeviceSnapshot[]
 
   // simulator status
   snmp:    SnmpStatus | null
@@ -156,6 +158,7 @@ interface Store {
   fetchRedfish:      () => Promise<void>
   fetchEV2Metrics:   () => Promise<void>
   fetchPlantMetrics: () => Promise<void>
+  fetchElectricalMetrics: () => Promise<void>
   fetchBinding: () => Promise<void>
   fetchAdapters:() => Promise<void>
   fetchRules:   () => Promise<void>
@@ -177,6 +180,7 @@ export const useStore = create<Store>((set, get) => ({
   devices:      [],
   ev2Metrics:   [],
   plantMetrics: [],
+  electricalMetrics: [],
   snmp:         null,
   gnmi:         null,
   sflow:        null,
@@ -363,6 +367,13 @@ export const useStore = create<Store>((set, get) => ({
     try {
       const data = await api.plantMetrics() as PlantDeviceSnapshot[]
       set({ plantMetrics: data })
+    } catch { /* ignore */ }
+  },
+
+  fetchElectricalMetrics: async () => {
+    try {
+      const data = await api.electricalMetrics() as { devices: ElectricalDeviceSnapshot[] }
+      set({ electricalMetrics: data.devices || [] })
     } catch { /* ignore */ }
   },
 

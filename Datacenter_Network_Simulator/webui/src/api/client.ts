@@ -208,6 +208,7 @@ export const api = {
   bacnetStop:   ()                        => post('/bacnet/stop'),
   ev2Metrics:   ()                        => get('/bacnet/ev2/metrics'),
   plantMetrics: ()                        => get('/bacnet/plant/metrics'),
+  electricalMetrics: ()                   => get('/bacnet/electrical/devices'),
   plantOverrides:   (device: string)      => get('/bacnet/plant/overrides?device=' + encodeURIComponent(device)),
   setPlantOverride: (device: string, point: string, value: number | null) =>
     post('/bacnet/plant/overrides', { device, point, value }),

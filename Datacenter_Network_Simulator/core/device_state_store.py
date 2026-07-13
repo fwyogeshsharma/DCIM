@@ -1292,6 +1292,31 @@ class DeviceStateStore:
             }
         return out
 
+    def get_electrical_device_metrics(self) -> list:
+        """Per-device live metrics for the electrical upstream (utility feed /
+        switchgear / ATS / MCC / MPP) — the same values served over SNMP, for the
+        Live Metrics page tabs. Each row carries the device's own metric fields."""
+        _pfx = {"utility_feed": "util_", "switchgear": "swgr_", "ats": "ats_",
+                "mcc": "mcc_", "mpp": "mpp_"}
+        dm = getattr(self, "_dm", None)
+        if dm is None:
+            return []
+        out = []
+        for d in dm.get_all_devices():
+            dtv = d.device_type.value
+            pfx = _pfx.get(dtv)
+            if pfx is None:
+                continue
+            st = _ext_state_cache.get(d.name, {})
+            row = {"id": d.id, "name": d.name, "device_type": dtv,
+                   "datacenter": getattr(d, "datacenter", "") or "",
+                   "room": getattr(d, "room", "") or ""}
+            for k, v in st.items():
+                if k.startswith(pfx):
+                    row[k] = v
+            out.append(row)
+        return out
+
     def _step_transfer(self) -> None:
         """Advance every DC's transfer sequence, then publish the two things the
         rest of the tick needs from it: which mechanical units are unpowered, and
@@ -1403,14 +1428,27 @@ class DeviceStateStore:
         load_pct = round(max(0.0, min(100.0, thr / rated * 100.0)), 1) if rated > 0 else 0.0
         utility_ok = not self._utility_failed.get(dc, False)
 
+        # 3-phase line current from real power: I = P / (sqrt(3) * V_LL * PF).
+        def _amps(kw: float, volts: float, pf: float) -> float:
+            if volts <= 0 or pf <= 0:
+                return 0.0
+            return round(kw * 1000.0 / (1.7320508 * volts * pf), 1)
+
         if dtv == "utility_feed":
+            # Schneider PowerLogic ION9000 revenue/PQ meter — reports measured
+            # quantities, NOT a "% of rating" (a meter has no rating to load against).
             st["util_status"] = "normal" if utility_ok else "failed"
-            st["util_voltage"] = (round(random.uniform(398.0, 402.0), 1)
-                                  if utility_ok else 0.0)
+            v = round(random.uniform(398.0, 402.0), 1) if utility_ok else 0.0
+            kw = round(thr / 1000.0, 1) if utility_ok else 0.0
+            pf = round(random.uniform(0.96, 0.99), 3) if utility_ok else 0.0
+            st["util_voltage"] = v
             st["util_frequency"] = (round(random.uniform(49.95, 50.05), 2)
                                     if utility_ok else 0.0)
-            st["util_kw"] = round(thr / 1000.0, 1) if utility_ok else 0.0
-            st["util_load_pct"] = load_pct if utility_ok else 0.0
+            st["util_kw"] = kw
+            st["util_power_factor"] = pf
+            st["util_current"] = _amps(kw, v, pf)
+            # cumulative energy (kWh) — ~1-min tick, same convention as UPS/PDU.
+            st["util_energy_kwh"] = round(st.get("util_energy_kwh", 0.0) + kw / 60.0, 3)
 
         elif dtv == "switchgear":
             # Which source this board belongs to decides whether it is live: the
@@ -1422,10 +1460,15 @@ class DeviceStateStore:
 
             gen_side = any(_is_gen(p) for p in ctx.get("parents", {}).get(device.id, []))
             live = ats.gen_at_voltage if gen_side else utility_ok
+            # Eaton Magnum DS main / ASCO paralleling board — Digitrip trip unit
+            # reports bus V, line current, kW and % of the breaker ampere rating.
+            v = round(random.uniform(398.0, 402.0), 1) if live else 0.0
+            kw = round(thr / 1000.0, 1) if live else 0.0
             st["swgr_source"] = "generator" if gen_side else "utility"
             st["swgr_bus_status"] = "energized" if live else "dead"
-            st["swgr_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
-            st["swgr_kw"] = round(thr / 1000.0, 1) if live else 0.0
+            st["swgr_voltage"] = v
+            st["swgr_kw"] = kw
+            st["swgr_current"] = _amps(kw, v, 0.97) if live else 0.0
             st["swgr_load_pct"] = load_pct if live else 0.0
             st["swgr_breaker_status"] = "closed" if live else "open"
 
@@ -1435,38 +1478,52 @@ class DeviceStateStore:
             prev = st.get("ats_position", "normal")
             if pos != prev and pos in ("normal", "emergency"):
                 st["ats_transfer_count"] = int(st.get("ats_transfer_count", 0)) + 1
+            live_ats = ats.source_live and not failed
             st["ats_position"] = pos
             st["ats_state"] = "failed" if failed else ats.state
             st["ats_normal_available"] = "yes" if (utility_ok and not failed) else "no"
             st["ats_emergency_available"] = "yes" if (ats.gen_at_voltage and not failed) else "no"
-            st["ats_output_voltage"] = (round(random.uniform(398.0, 402.0), 1)
-                                        if (ats.source_live and not failed) else 0.0)
-            st["ats_kw"] = round(thr / 1000.0, 1) if (ats.source_live and not failed) else 0.0
-            st["ats_load_pct"] = load_pct if (ats.source_live and not failed) else 0.0
+            # ASCO 7000 (ACC SNMP): source voltages, frequency, position, transfer
+            # count and time-on-emergency. It is a SWITCH — it does NOT meter kW/load%.
+            st["ats_normal_voltage"] = (round(random.uniform(398.0, 402.0), 1)
+                                        if (utility_ok and not failed) else 0.0)
+            st["ats_emergency_voltage"] = (round(random.uniform(398.0, 402.0), 1)
+                                           if (ats.gen_at_voltage and not failed) else 0.0)
+            st["ats_frequency"] = (round(random.uniform(49.9, 50.1), 2)
+                                   if live_ats else 0.0)
+            # minutes the load has been on the emergency (generator) source
+            on_emg = pos == "emergency" and not failed
+            st["ats_time_on_emergency"] = round(
+                (st.get("ats_time_on_emergency", 0.0) + 1.0 / 60.0) if on_emg else 0.0, 2)
 
         elif dtv == "mpp":
-            # A hall's mechanical panelboard is passive: it is live exactly when the
-            # MCC feeding it is live, and it goes dark with that bus. Its CRAHs are
-            # mechanical load block 3, so it re-energizes last on a genset restart.
+            # A hall's mechanical panelboard (with a panel-main meter) is passive: it
+            # is live exactly when the MCC feeding it is live. Its CRAHs are mechanical
+            # load block 3, so it re-energizes last on a genset restart.
             live = bool(self._energized.get(device.id, False))
+            kw = round(thr / 1000.0, 1) if live else 0.0
             st["mpp_status"] = "energized" if live else "dead"
             st["mpp_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
-            st["mpp_kw"] = round(thr / 1000.0, 1) if live else 0.0
+            st["mpp_kw"] = kw
             st["mpp_load_pct"] = load_pct if live else 0.0
+            st["mpp_energy_kwh"] = round(st.get("mpp_energy_kwh", 0.0) + kw / 60.0, 3)
 
         elif dtv == "mcc":
             src_ok, tie_closed = self._mcc_tie_state(dc, ctx)
             own_ok = ctx.get("mcc_ats", {}).get(device.id) not in self._ats_failed
             dead = not src_ok.get(device.id, True)
             live = ats.source_live and not dead
+            # Eaton Freedom 2100 with a metered main — bus V, line current, kW, % load.
+            v = round(random.uniform(398.0, 402.0), 1) if live else 0.0
+            kw = round(thr / 1000.0, 1) if live else 0.0
             st["mcc_status"] = "energized" if live else "dead"
             st["mcc_tie"] = "closed" if tie_closed else "open"
             # Which source is actually feeding this bus: its own transfer switch, or
             # the sibling's across a closed tie.
             st["mcc_source"] = "normal" if own_ok else ("tie" if tie_closed else "none")
-            st["mcc_blocks_on"] = 0 if dead else ats.mech_blocks_on
-            st["mcc_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
-            st["mcc_kw"] = round(thr / 1000.0, 1) if live else 0.0
+            st["mcc_voltage"] = v
+            st["mcc_current"] = _amps(kw, v, 0.88) if live else 0.0   # motor loads, lower PF
+            st["mcc_kw"] = kw
             st["mcc_load_pct"] = load_pct if live else 0.0
 
         _ext_state_cache[device.name] = dict(st)
@@ -2228,12 +2285,15 @@ class DeviceStateStore:
             "gen_was_running": False,
             "util_status": "normal",
             "util_voltage": 400.0,
+            "util_current": 0.0,
             "util_frequency": 50.0,
             "util_kw": 0.0,
-            "util_load_pct": 0.0,
+            "util_power_factor": 0.97,
+            "util_energy_kwh": 0.0,
             "swgr_source": "utility",
             "swgr_bus_status": "energized",
             "swgr_voltage": 400.0,
+            "swgr_current": 0.0,
             "swgr_kw": 0.0,
             "swgr_load_pct": 0.0,
             "swgr_breaker_status": "closed",
@@ -2241,21 +2301,23 @@ class DeviceStateStore:
             "ats_state": "utility",
             "ats_normal_available": "yes",
             "ats_emergency_available": "no",
-            "ats_output_voltage": 400.0,
-            "ats_kw": 0.0,
-            "ats_load_pct": 0.0,
+            "ats_normal_voltage": 400.0,
+            "ats_emergency_voltage": 0.0,
+            "ats_frequency": 50.0,
             "ats_transfer_count": 0,
+            "ats_time_on_emergency": 0.0,
             "mcc_status": "energized",
             "mcc_tie": "open",
             "mcc_source": "normal",
-            "mcc_blocks_on": 3,
             "mcc_voltage": 400.0,
+            "mcc_current": 0.0,
             "mcc_kw": 0.0,
             "mcc_load_pct": 0.0,
             "mpp_status": "energized",
             "mpp_voltage": 400.0,
             "mpp_kw": 0.0,
             "mpp_load_pct": 0.0,
+            "mpp_energy_kwh": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -2940,12 +3002,15 @@ class DeviceStateStore:
             "gen_was_running": False,
             "util_status": "normal",
             "util_voltage": 400.0,
+            "util_current": 0.0,
             "util_frequency": 50.0,
             "util_kw": 0.0,
-            "util_load_pct": 0.0,
+            "util_power_factor": 0.97,
+            "util_energy_kwh": 0.0,
             "swgr_source": "utility",
             "swgr_bus_status": "energized",
             "swgr_voltage": 400.0,
+            "swgr_current": 0.0,
             "swgr_kw": 0.0,
             "swgr_load_pct": 0.0,
             "swgr_breaker_status": "closed",
@@ -2953,21 +3018,23 @@ class DeviceStateStore:
             "ats_state": "utility",
             "ats_normal_available": "yes",
             "ats_emergency_available": "no",
-            "ats_output_voltage": 400.0,
-            "ats_kw": 0.0,
-            "ats_load_pct": 0.0,
+            "ats_normal_voltage": 400.0,
+            "ats_emergency_voltage": 0.0,
+            "ats_frequency": 50.0,
             "ats_transfer_count": 0,
+            "ats_time_on_emergency": 0.0,
             "mcc_status": "energized",
             "mcc_tie": "open",
             "mcc_source": "normal",
-            "mcc_blocks_on": 3,
             "mcc_voltage": 400.0,
+            "mcc_current": 0.0,
             "mcc_kw": 0.0,
             "mcc_load_pct": 0.0,
             "mpp_status": "energized",
             "mpp_voltage": 400.0,
             "mpp_kw": 0.0,
             "mpp_load_pct": 0.0,
+            "mpp_energy_kwh": 0.0,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
