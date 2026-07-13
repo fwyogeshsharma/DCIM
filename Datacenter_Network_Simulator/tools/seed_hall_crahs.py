@@ -42,6 +42,7 @@ from core.cooling_model import CRAH_COOL_KW, crah_count_for  # noqa: E402,F401
 
 DESIGN_RACK_KW = 12.0    # FleetLifecycle._DESIGN_RACK_KW
 RPP_POLES      = 42      # FleetLifecycle._RPP_POLES
+END_RESERVE    = 0.7     # FleetLifecycle.CRAH_END_RESERVE — MPP bay at each wall end
 
 
 def hall_grid(ext: dict, has_local_spine: bool):
@@ -69,7 +70,12 @@ def perimeter_positions(ext: dict, rpr: int, n_rows: int, target: int) -> list:
     8.4 m) that all `target` units fit one back wall at ~1.1–1.2 m pitch."""
     width = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
     by = round(geo.row_y(n_rows), 4)                           # back wall, from geometry
-    return [(round(width * (j + 0.5) / target, 4), by) for j in range(target)]
+    # Inset the lineup by END_RESERVE at each end so the two mechanical power panels
+    # (MPP) stand in the wall's end bays, flanking the CRAHs. Lock-step with
+    # core.fleet_lifecycle._crah_perimeter_positions (CRAH_END_RESERVE).
+    end = END_RESERVE
+    usable = max(1.0, width - 2 * end)
+    return [(round(end + usable * (j + 0.5) / target, 4), by) for j in range(target)]
 
 
 def next_free_mgmt(seed_ip: str, used: set) -> str:

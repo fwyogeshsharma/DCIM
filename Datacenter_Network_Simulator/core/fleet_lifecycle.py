@@ -88,6 +88,12 @@ def _is_rack_room(room: Optional[str]) -> bool:
 # (as snmpsim does) — until then this ceiling stands.
 MAX_TOTAL_SERVERS_HARD_CAP = 5000
 
+# Metres reserved at each end of the CRAH back wall for a mechanical power panel
+# (MPP). The CRAH lineup is inset by this, so the two MPPs stand in the end bays
+# flanking the CRAHs they feed. Shared with tools/seed_hall_crahs +
+# tools/add_hall_mech_panels + tools/inset_crah_wall (keep them in step).
+CRAH_END_RESERVE = 0.7
+
 # Rack geometry (shared contract — see core/rack_capacity.py):
 #   U42 = ToR-A (leaf)   U41 = reserved for future MLAG peer leaf (empty)
 #   PDUs = 0U vertical    servers fill U1..U40 from the bottom.
@@ -1143,7 +1149,13 @@ class FleetLifecycleEngine:
         tools/seed_hall_crahs.perimeter_positions()."""
         width = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
         back_y = round(geo.row_y(n_rows), 4)            # back wall, from geometry
-        return [(round(width * (j + 0.5) / target, 4), back_y) for j in range(target)]
+        # Inset the lineup by CRAH_END_RESERVE at each end so the two mechanical
+        # power panels (MPP) can stand in the wall's end bays, flanking the CRAHs
+        # they feed. Kept in lock-step with tools/seed_hall_crahs.perimeter_positions.
+        end = CRAH_END_RESERVE
+        usable = max(1.0, width - 2 * end)
+        return [(round(end + usable * (j + 0.5) / target, 4), back_y)
+                for j in range(target)]
 
     def _ensure_hall_crahs(self, rk: tuple, infra: Optional[dict] = None) -> list:
         """Install the hall's FULL CRAH complement (top up to _hall_crah_target),

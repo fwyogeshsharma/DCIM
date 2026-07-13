@@ -69519,7 +69519,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.6,
+        "floor_x": 1.2,
         "floor_y": 11.4
       }
     },
@@ -69592,7 +69592,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.8,
+        "floor_x": 2.2,
         "floor_y": 11.4
       }
     },
@@ -69665,7 +69665,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.0,
+        "floor_x": 3.2,
         "floor_y": 11.4
       }
     },
@@ -69959,7 +69959,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.5571,
+        "floor_x": 1.1571,
         "floor_y": 11.4
       }
     },
@@ -70032,7 +70032,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.6714,
+        "floor_x": 2.0714,
         "floor_y": 11.4
       }
     },
@@ -70105,7 +70105,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.7857,
+        "floor_x": 2.9857,
         "floor_y": 11.4
       }
     },
@@ -75363,7 +75363,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.6,
+        "floor_x": 1.2,
         "floor_y": 11.4
       }
     },
@@ -75436,7 +75436,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.8,
+        "floor_x": 2.2,
         "floor_y": 11.4
       }
     },
@@ -75509,7 +75509,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.0,
+        "floor_x": 3.2,
         "floor_y": 11.4
       }
     },
@@ -75889,7 +75889,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.5571,
+        "floor_x": 1.1571,
         "floor_y": 11.4
       }
     },
@@ -75962,7 +75962,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 1.6714,
+        "floor_x": 2.0714,
         "floor_y": 11.4
       }
     },
@@ -76035,7 +76035,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.7857,
+        "floor_x": 2.9857,
         "floor_y": 11.4
       }
     },
@@ -83952,7 +83952,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.4,
+        "floor_x": 5.2,
         "floor_y": 11.4
       }
     },
@@ -84025,7 +84025,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.6,
+        "floor_x": 6.2,
         "floor_y": 11.4
       }
     },
@@ -84098,7 +84098,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.8,
+        "floor_x": 7.2,
         "floor_y": 11.4
       }
     },
@@ -84171,7 +84171,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.4,
+        "floor_x": 5.2,
         "floor_y": 11.4
       }
     },
@@ -84244,7 +84244,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.6,
+        "floor_x": 6.2,
         "floor_y": 11.4
       }
     },
@@ -84317,7 +84317,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.8,
+        "floor_x": 7.2,
         "floor_y": 11.4
       }
     },
@@ -84390,7 +84390,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.0143,
+        "floor_x": 4.8143,
         "floor_y": 11.4
       }
     },
@@ -84463,7 +84463,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.1286,
+        "floor_x": 5.7286,
         "floor_y": 11.4
       }
     },
@@ -84536,7 +84536,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.2429,
+        "floor_x": 6.6429,
         "floor_y": 11.4
       }
     },
@@ -84609,7 +84609,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.0143,
+        "floor_x": 4.8143,
         "floor_y": 11.4
       }
     },
@@ -84682,7 +84682,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 6.1286,
+        "floor_x": 5.7286,
         "floor_y": 11.4
       }
     },
@@ -84755,7 +84755,7 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 7.2429,
+        "floor_x": 6.6429,
         "floor_y": 11.4
       }
     },
@@ -105009,7 +105009,7 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1"
@@ -105066,7 +105066,7 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 8.1,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1"
@@ -105123,7 +105123,7 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1"
@@ -105180,7 +105180,7 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 8.1,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1"
@@ -105237,7 +105237,7 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2"
@@ -105294,7 +105294,7 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 7.5,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2"
@@ -105351,7 +105351,7 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2"
@@ -105408,7 +105408,7 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 7.5,
-        "floor_y": 10.2,
+        "floor_y": 11.4,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2"

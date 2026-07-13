@@ -718,15 +718,16 @@ function makeUtilityFeed(r,ds){ const grp=new THREE.Group(); const dev=ds.find(d
   box3(grp,W,0.03,0.012,0,H*0.95,D/2+0.012, mat3(tcolor('utility_feed'),{emissive:emi(tcolor('utility_feed'),0.35)}));
   grp.traverse(o=>{ o.userData.device=dev; }); return grp; }
 
-// mechanical power panel (Eaton Pow-R-Line): wall-mounted dead-front panelboard —
-// slim, raised off the floor, branch-breaker rows behind the door.
-function makeMPP(r,ds){ const grp=new THREE.Group(); const dev=ds.find(d=>d.device_type==='mpp'); const y0=0.35;
-  const W=0.42,D=0.17,H=1.2, body=mat3(0x5b6270,{metalness:0.45,roughness:0.55});
-  box3(grp,W,H,D,0,y0+H/2,0, body);
-  box3(grp,W*0.86,H*0.86,0.015,0,y0+H/2,D/2+0.01, mat3(0x232a35));                      // dead-front door
-  for(let rr=0;rr<7;rr++) for(let c=0;c<2;c++)
-    box3(grp,W*0.3,0.028,0.014,(c?0.09:-0.09),y0+0.16+rr*0.12,D/2+0.014, mat3(0x10141a)); // branch breakers
-  box3(grp,W,0.025,0.01,0,y0+H,D/2+0.01, mat3(tcolor('mpp'),{emissive:emi(tcolor('mpp'),0.4)}));
+// mechanical power panel (Eaton Pow-R-Line): FLOOR-STANDING dead-front panelboard
+// on the floor (not wall-hung — nothing to hang it on in the open plan), slim
+// enclosure with branch-breaker rows behind the door.
+function makeMPP(r,ds){ const grp=new THREE.Group(); const dev=ds.find(d=>d.device_type==='mpp');
+  const W=0.4,D=0.28,H=1.65, body=mat3(0x5b6270,{metalness:0.45,roughness:0.55});
+  box3(grp,W,H,D,0,H/2,0, body);                                                       // floor-standing enclosure
+  box3(grp,W*0.88,H*0.9,0.015,0,H*0.5,D/2+0.008, mat3(0x232a35));                       // dead-front door
+  for(let rr=0;rr<9;rr++) for(let c=0;c<2;c++)
+    box3(grp,W*0.28,0.03,0.012,(c?0.09:-0.09),H*0.18+rr*0.13,D/2+0.012, mat3(0x10141a)); // branch breakers
+  box3(grp,W,0.03,0.01,0,H*0.94,D/2+0.008, mat3(tcolor('mpp'),{emissive:emi(tcolor('mpp'),0.4)}));
   grp.traverse(o=>{ o.userData.device=dev; }); return grp; }
 
 // standalone branch-circuit power meter (Verdigris EV2): small enclosure on a
