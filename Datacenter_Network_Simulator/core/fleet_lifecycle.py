@@ -163,9 +163,6 @@ class FleetLifecycleEngine:
         # Per-DC latch for the "OOB core downlinks exhausted" warning, so the
         # management-aggregation ceiling is surfaced once per DC, not per endpoint.
         self._oob_core_warned: dict = {}
-        # Per-hall (rk -> (pduA_id, pduB_id)) network-row PDU pair that powers the
-        # pod's spine/OOB/OOBM gear, created once per fleet hall.
-        self._hall_net_pdus_cache: dict = {}
 
     # ── lifecycle ────────────────────────────────────────────────────────────
 
@@ -523,11 +520,31 @@ class FleetLifecycleEngine:
                 out.append(d)
         return out
 
-    def _hall_spines(self, rk: tuple) -> list:
-        """Spine switches physically in hall *rk* (used for OOB stack slot numbering
-        when the caller has no infra dict to hand)."""
-        return [d for d in self._by_type(DeviceType.SWITCH)
-                if self._is_spine(d) and self._room_key(d) == rk]
+    _SWITCH_U_PITCH = 2      # RU between stacked management switches
+    _RACK_U = 42
+
+    def _switch_stack_slot(self, rk: tuple, anchors: list):
+        """(rack_row, rack_num, rack_unit) for one more management switch, U-STACKED
+        into a network rack that already holds *anchors* (the hall's OOB/OOBM
+        switches). Fills a rack's U-space top-down at 2U pitch before spilling to a
+        fresh rack beside it — so a hall's switches share a rack like the curated
+        network row (all OOBs in one rack), NOT one floor rack each."""
+        racks: dict = {}
+        for a in anchors:
+            racks.setdefault((a.rack_row or 1, a.rack_num or 1), True)
+        alldev = self.s.device_manager.get_all_devices()
+        for (row, num) in sorted(racks):
+            used = {d.rack_unit for d in alldev
+                    if self._room_key(d) == rk and (d.rack_row or 0) == row
+                    and (d.rack_num or 0) == num and d.rack_unit}
+            for u in range(self._RACK_U, 0, -self._SWITCH_U_PITCH):
+                if u not in used:
+                    return row, num, u
+        # every anchor rack is U-full — open a fresh network rack beside them.
+        base = anchors[0] if anchors else None
+        row = (base.rack_row if base else 1) or 1
+        num = max((a.rack_num or 1) for a in anchors) + 1 if anchors else 1
+        return row, num, self._RACK_U
 
     _OOB_CORE_UPLINK_RESERVE = 6   # core ports kept for perimeter FW / WAN + peer
 
@@ -582,17 +599,22 @@ class FleetLifecycleEngine:
 
     def _clone_fabric_node(self, tmpl: Device, rk: tuple, prefix: str,
                            num: int = 1, fx: Optional[float] = None,
-                           fy: Optional[float] = None) -> Optional[Device]:
+                           fy: Optional[float] = None, row: Optional[int] = None,
+                           unit: Optional[int] = None) -> Optional[Device]:
         """Clone a shared fabric node (spine / OOB) into hall *rk* and replicate its
         UPSTREAM links (to the core / management aggregation) — but NOT its downstream
         leaves/servers/PDUs. Used to give a new hall its own pod fabric and to stack
         an extra OOB when a hall's management ports are exhausted. *num*/*fx*/*fy*
         place it on the hall's floor grid (network/back row) so the floor-plan draws
         it inside the right hall; without them it would inherit the source hall's
-        coordinates and render in the wrong room."""
+        coordinates and render in the wrong room. *row*/*unit* override the rack_row
+        and rack_unit — used to U-STACK a stacked switch into an existing network
+        rack (a shared MDA rack holds many 1-2U switches) instead of consuming a
+        whole floor rack each."""
         dc, floor, room = rk
-        new = self._clone(tmpl, dc, self._row_label(rk, prefix), num,
-                          int(getattr(tmpl, "rack_unit", 1) or 1),
+        new = self._clone(tmpl, dc,
+                          row if row is not None else self._row_label(rk, prefix), num,
+                          unit if unit is not None else int(getattr(tmpl, "rack_unit", 1) or 1),
                           prefix=prefix, floor=floor, room=room, fx=fx, fy=fy)
         if new is None:
             return None
@@ -640,14 +662,15 @@ class FleetLifecycleEngine:
                           f"{victim.name}. Add a second OOB core pair to grow the "
                           f"management plane.")
             return victim
-        # Next free slot on the hall's back network row (past RPPs + spines + OOBs).
-        spines = infra.get("spines")
-        if spines is None:
-            spines = self._hall_spines(rk)
-        slot = 3 + len(spines) + len(oobs)
-        new = self._clone_fabric_node(tmpl, rk, "oob", num=slot,
-                                      fx=geo.rack_x(slot),
-                                      fy=getattr(tmpl, "floor_y", None))
+        # U-stack the new OOB into the hall's existing network rack (like the
+        # curated row: all OOBs share one rack), NOT a fresh floor rack each.
+        anchors = oobs or ([tmpl] if tmpl else [])
+        anchor = anchors[0] if anchors else tmpl
+        row, num, unit = self._switch_stack_slot(rk, anchors)
+        new = self._clone_fabric_node(tmpl, rk, "oob", num=num,
+                                      fx=getattr(anchor, "floor_x", None),
+                                      fy=getattr(anchor, "floor_y", None),
+                                      row=row, unit=unit)
         if new is not None:
             self._wire_network_power(new, rk, infra)   # cord to network-row PDUs
             self._commission(new)
@@ -684,16 +707,22 @@ class FleetLifecycleEngine:
         cands.sort(key=lambda d: 0 if _is_rack_room(d.room) else 1)
         return cands[0] if cands else None
 
-    def _clone_bms_oob(self, tmpl: Device, rk: tuple, slot: int) -> Optional[Device]:
+    def _clone_bms_oob(self, tmpl: Device, rk: tuple, num: int,
+                       row: Optional[int] = None, unit: Optional[int] = None,
+                       fx: Optional[float] = None,
+                       fy: Optional[float] = None) -> Optional[Device]:
         """Clone a hall BMS OOB (OOBM) into hall *rk*, keeping ONLY its uplinks to the
         BMS controllers (BMSC). Unlike _clone_fabric_node this must NOT replicate the
         template's facility neighbours (CRAH/sensor/…), which belong to the source
-        hall — only the OT-plane uplink is shared."""
+        hall — only the OT-plane uplink is shared. *row*/*unit* U-stack it into an
+        existing network rack instead of taking a whole floor rack."""
         dc, floor, room = rk
-        new = self._clone(tmpl, dc, self._row_label(rk, "oobm"), slot,
-                          int(getattr(tmpl, "rack_unit", 1) or 1),
+        new = self._clone(tmpl, dc,
+                          row if row is not None else self._row_label(rk, "oobm"), num,
+                          unit if unit is not None else int(getattr(tmpl, "rack_unit", 1) or 1),
                           prefix="oobm", floor=floor, room=room,
-                          fx=geo.rack_x(slot), fy=getattr(tmpl, "floor_y", None))
+                          fx=fx if fx is not None else geo.rack_x(num),
+                          fy=fy if fy is not None else getattr(tmpl, "floor_y", None))
         if new is None:
             return None
         try:
@@ -722,12 +751,15 @@ class FleetLifecycleEngine:
         tmpl = oobms[0] if oobms else (infra.get("oobm") or self._any_oobm(rk[0]))
         if tmpl is None:
             return None
-        spines = infra.get("spines")
-        if spines is None:
-            spines = self._hall_spines(rk)
-        # Sits on the back network row, past RPPs + spines + IT access OOBs + OOBMs.
-        slot = 3 + len(spines) + len(self._hall_oobs(rk)) + len(oobms)
-        new = self._clone_bms_oob(tmpl, rk, slot)
+        # U-stack the OOBM into the hall's network rack. Anchor on existing OOBMs,
+        # or (first OOBM in the hall) on the access OOBs — curated OOBM shares the
+        # OOB rack (e.g. R1-03). Never a whole floor rack of its own.
+        anchors = oobms or self._hall_oobs(rk) or ([tmpl] if tmpl else [])
+        anchor = anchors[0] if anchors else tmpl
+        row, num, unit = self._switch_stack_slot(rk, anchors)
+        new = self._clone_bms_oob(tmpl, rk, num, row=row, unit=unit,
+                                  fx=getattr(anchor, "floor_x", None),
+                                  fy=getattr(anchor, "floor_y", None))
         if new is not None:
             self._wire_network_power(new, rk, infra)   # cord to network-row PDUs
             self._commission(new)
@@ -747,50 +779,67 @@ class FleetLifecycleEngine:
         except Exception as e:
             self._log(f"[Fleet] BMS mgmt link {dev.name} failed: {e}")
 
-    # ── network-row power: cord the pod's shared gear to rack PDUs ─────────────
-    # Curated spine/OOB/OOBM cord to their network RACK's A/B PDUs (fed from the
-    # RPP → UPS). A fleet hall's front row has no such pair, so the fleet makes one
-    # shared network-row PDU pair per hall and cords every pod-shared device to it —
-    # otherwise the switch draws no power and its load never reaches the PDU/UPS.
-    def _net_pdus_for(self, rk: tuple, infra: Optional[dict] = None):
-        """Get-or-create the fleet hall's network-row A/B PDU pair, fed from the
-        hall's RPP pair. Returns (pduA, pduB) or (None, None)."""
-        cached = self._hall_net_pdus_cache.get(rk)
-        if cached:
-            a = self.s.device_manager.get_device(cached[0])
-            b = self.s.device_manager.get_device(cached[1])
-            if a and b:
-                return a, b
+    # ── network-row power: cord network gear to ITS OWN rack's A/B PDUs ────────
+    # Real network gear is powered by the PDU pair in the SAME rack (a curated
+    # network rack, e.g. R1-03, has its own PDUA/PDUB fed from the hall RPP → UPS).
+    # So a stacked OOB U-stacked into that rack draws from that rack's PDUs — never
+    # a shared off-rack pair. Only a brand-new fleet network rack (a new hall's
+    # spine/OOB rack) has no PDUs yet; then one A/B pair is created IN that rack.
+    def _rack_pdus(self, rk: tuple, row, num):
+        """The (PDUA, PDUB) already in rack (row, num) of hall *rk*, or (None, None)."""
+        a = b = None
+        for d in self._by_type(DeviceType.PDU):
+            if (self._room_key(d) == rk and (d.rack_row or 0) == (row or 0)
+                    and (d.rack_num or 0) == (num or 0)):
+                code = "".join(c for c in (d.name or "").split("-", 1)[0] if c.isalpha()).upper()
+                if code == "PDUA" and a is None:
+                    a = d
+                elif code == "PDUB" and b is None:
+                    b = d
+        return a, b
+
+    def _ensure_rack_pdus(self, rk: tuple, row, num, infra: Optional[dict],
+                          fx=None, fy=None):
+        """A/B rack PDUs in rack (row, num) — the pair already there (curated network
+        rack) or a fresh pair created IN that rack, fed from the hall RPP. Rack-local,
+        like real power distribution."""
+        a, b = self._rack_pdus(rk, row, num)
+        if a and b:
+            return a, b
         infra = infra or self._hall_infra(rk) or {}
         tmpl = infra.get("pdu_tmpl")
         rpp_a, rpp_b = infra.get("rpp_a"), infra.get("rpp_b")
         if tmpl is None or rpp_a is None:
-            return None, None
+            return a, b
         dc, floor, room = rk
-        made = []
-        for side, rpp in (("A", rpp_a), ("B", rpp_b or rpp_a)):
-            pdu = self._clone(tmpl, dc, self._row_label(rk, "netpdu"), 1, PDU_UNIT,
+        for side, rpp, have in (("A", rpp_a, a), ("B", rpp_b or rpp_a, b)):
+            if have is not None:
+                continue
+            pdu = self._clone(tmpl, dc, row, num, PDU_UNIT,
                               prefix=f"pdu{side.lower()}", floor=floor, room=room,
-                              fx=geo.rack_x(1), fy=round(geo.row_y(1), 4))
+                              fx=fx, fy=fy)
             if pdu is None:
-                return None, None
+                continue
             try:
                 self.s.topology.add_link(rpp.id, pdu.id, layer="power")
             except Exception:
                 pass
             self._commission(pdu)
-            made.append(pdu)
-        self._hall_net_pdus_cache[rk] = (made[0].id, made[1].id)
-        self._log(f"[Fleet] network-row PDU pair created in {dc}/{room} "
-                  f"(powers pod spine/OOB/OOBM)")
-        return made[0], made[1]
+            if side == "A":
+                a = pdu
+            else:
+                b = pdu
+        return a, b
 
     def _wire_network_power(self, dev: Device, rk: tuple,
                             infra: Optional[dict] = None) -> None:
-        """Dual-cord a pod-shared network device (spine / access OOB / BMS OOB) to
-        the hall's network-row A/B PDU pair, like the curated network racks."""
-        a, b = self._net_pdus_for(rk, infra)
-        if a is None:
+        """Dual-cord a network device (spine / access OOB / BMS OOB) to the A/B PDU
+        pair IN ITS OWN RACK, like the curated network racks — never an off-rack
+        pair. Creates the rack's PDUs only if the rack has none (fresh fleet rack)."""
+        a, b = self._ensure_rack_pdus(rk, dev.rack_row, dev.rack_num, infra,
+                                      fx=getattr(dev, "floor_x", None),
+                                      fy=getattr(dev, "floor_y", None))
+        if a is None and b is None:
             return
         upd = {}
         for pdu, key in ((a, "power_source_a"), (b, "power_source_b")):
@@ -806,6 +855,22 @@ class FleetLifecycleEngine:
                 self.s.device_manager.update_device(dev.id, **upd)
             except Exception:
                 pass
+
+    def _wire_sensor_power(self, dev: Device, rk: tuple) -> None:
+        """Environmental probes mount in the cold aisle, not a rack, and draw a
+        single feed from a nearby rack PDU-B — like the curated hall sensors. Cords
+        to an existing hall PDU-B (no per-sensor PDU is created)."""
+        pdub = next((d for d in self._by_type(DeviceType.PDU)
+                     if self._room_key(d) == rk
+                     and "".join(c for c in (d.name or "").split("-", 1)[0]
+                                 if c.isalpha()).upper() == "PDUB"), None)
+        if pdub is None:
+            return
+        try:
+            self.s.topology.add_link(dev.id, pdub.id, layer="power")
+            self.s.device_manager.update_device(dev.id, power_source_b=pdub.id)
+        except Exception:
+            pass
 
     # ── capacity expansion (fill each hall's grid, then open a new hall) ──────
     #
@@ -1263,7 +1328,7 @@ class FleetLifecycleEngine:
                                 prefix="sen", floor=floor, room=room, fx=sx, fy=sy)
                 if c is not None:
                     self._wire_facility_mgmt(c, rk, new_infra)   # sensor onto BMS OOB
-                    self._wire_network_power(c, rk, new_infra)   # sensor to net-row PDUs
+                    self._wire_sensor_power(c, rk)               # sensor to a rack PDU-B
                     self._commission(c)
 
         self._fleet_halls.add(rk)
