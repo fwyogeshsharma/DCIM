@@ -2078,6 +2078,13 @@ class FleetLifecycleEngine:
 
     # ── hot-commission (make a churned device answer on the live protocols) ───
 
+    def commission_device(self, device: Device) -> None:
+        """Public entry point: bring a device online on the running protocol servers
+        (SNMP/gNMI/Redfish/BACnet), the same path fleet churn uses. Called by the
+        manual Add-Device API so a hand-added device answers immediately, without a
+        regenerate + restart. Best-effort and guarded internally."""
+        self._commission(device)
+
     def _commission(self, device: Device) -> None:
         """Bring a freshly-provisioned device online on the running protocol
         servers: host-bind its IP, generate SNMP+gNMI datasets, and hot-add it to

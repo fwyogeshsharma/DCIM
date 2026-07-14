@@ -525,6 +525,19 @@ def add_device(req: AddDeviceRequest):
         if s.ip_manager:
             s.ip_manager.reserve(req.ip_address)
         _invalidate_power(s)
+        # Hot-commission onto the running protocol sims (SNMP/gNMI/Redfish/BACnet)
+        # via the same path fleet churn uses, so a hand-added device answers
+        # immediately — no regenerate + restart. Best-effort: a sim that isn't
+        # running is skipped, and any failure never fails the add.
+        try:
+            eng = getattr(s, "fleet_engine", None)
+            if eng is None:
+                from core.fleet_lifecycle import FleetLifecycleEngine
+                eng = FleetLifecycleEngine(s)
+                s.fleet_engine = eng
+            eng.commission_device(device)
+        except Exception:
+            pass
         s.notify_ui("sync_devices")
         return _device_to_info(device)
     except Exception as e:

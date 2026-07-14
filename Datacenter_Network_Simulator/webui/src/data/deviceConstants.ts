@@ -38,6 +38,14 @@ export const VENDORS = [
   'Vertiv (Liebert)',
   'Raritan',
   'Server Technology',
+  // Generator OEMs — models were keyed under these but the vendors were missing,
+  // so the generator vendor/model cascade fell back to the network-vendor list.
+  'Cummins',
+  'Caterpillar',
+  'Kohler Power',
+  // Electrical-upstream OEMs (utility feed / switchgear / ATS / MCC / panelboard).
+  'Schneider Electric',
+  'ASCO Power Technologies',
 ]
 
 // key: "device_type:Vendor Name" → model names
@@ -82,6 +90,14 @@ export const MODELS: Record<string, string[]> = {
   'generator:Cummins':           ['Cummins C250D5','Cummins C500D5','Cummins C1000D5'],
   'generator:Caterpillar':       ['Caterpillar XQ230','Caterpillar XQ600'],
   'generator:Kohler Power':      ['Kohler 250REOZJB','Kohler 600REOZJB'],
+  // Electrical upstream — SKUs mirror the deployed topology (add_electrical_upstream.py).
+  'utility_feed:Schneider Electric':      ['Schneider PowerLogic ION9000'],
+  'switchgear:Eaton':                     ['Eaton Magnum DS 4000A'],
+  'switchgear:ASCO Power Technologies':   ['ASCO 7000 Paralleling Switchgear'],
+  'ats:ASCO Power Technologies':          ['ASCO 7000 Series 4000A'],
+  'ats:Eaton':                            ['Eaton ATC-900'],
+  'mcc:Eaton':                            ['Eaton Freedom 2100 MCC 1600A'],
+  'mpp:Eaton':                            ['Eaton Pow-R-Line 3a 150A'],
   'oob_switch:Cisco Systems':    ['Cisco Catalyst 1000-48T','Cisco Catalyst 1000-24T'],
   'oob_switch:Hewlett Packard Enterprise': ['HPE Aruba 2530-48G','HPE Aruba 2530-24G'],
   'oob_switch:Dell Technologies': ['Dell N1148T-ON','Dell N1124T-ON'],

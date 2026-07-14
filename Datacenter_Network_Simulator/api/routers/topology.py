@@ -262,6 +262,14 @@ def create_link(req: CreateLinkRequest):
     if not ok:
         raise HTTPException(status_code=409, detail="Link already exists or invalid devices")
     s.notify_ui("link_changed", req.src_id, req.dst_id, False)
+    # Regenerate both endpoints' .snmprec so the new link shows live — ifOperStatus
+    # (a new active interface) + the LLDP neighbor table — without a restart, the
+    # same background patch break/restore use.
+    threading.Thread(
+        target=_patch_link_endpoints,
+        args=(s, req.src_id, req.dst_id),
+        daemon=True,
+    ).start()
     return OkResponse(message=f"Link {req.src_id} ↔ {req.dst_id} [{req.layer}] created")
 
 

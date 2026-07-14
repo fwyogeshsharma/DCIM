@@ -144,6 +144,11 @@ function defaultVendorFor(type: string): string {
     generator:     'Cummins',
     oob_switch:    'Cisco Systems',
     sensor:        'Raritan',
+    utility_feed:  'Schneider Electric',
+    switchgear:    'Eaton',
+    ats:           'ASCO Power Technologies',
+    mcc:           'Eaton',
+    mpp:           'Eaton',
   }
   return typeVendorMap[type] || VENDORS[0]
 }
