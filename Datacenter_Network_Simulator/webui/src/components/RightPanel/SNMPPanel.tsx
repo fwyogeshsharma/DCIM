@@ -245,24 +245,15 @@ export default function SNMPPanel() {
           />
         )}
 
-        {/* Active Devices */}
+        {/* Active Devices — data-driven from the same SNMP_TARGET_ORDER as Targets,
+            so every SNMP type (incl. the electrical upstream) is itemized and the
+            rows always sum to Total. */}
         {showStats && (
           <div className="group-box" style={{ marginTop: 6 }}>
             <span className="group-box-label">Active Devices</span>
-            {(tc['switch']        ?? 0) > 0 && <StatRow label="Switches:"       value={tc['switch']        ?? 0} />}
-            {(tc['router']        ?? 0) > 0 && <StatRow label="Routers:"        value={tc['router']        ?? 0} />}
-            {(tc['server']        ?? 0) > 0 && <StatRow label="Servers:"        value={tc['server']        ?? 0} />}
-            {(tc['firewall']      ?? 0) > 0 && <StatRow label="Firewalls:"      value={tc['firewall']      ?? 0} />}
-            {(tc['load_balancer'] ?? 0) > 0 && <StatRow label="Load Balancers:" value={tc['load_balancer'] ?? 0} />}
-            {(['oob_switch','sensor','ups','pdu','floor_pdu','generator','crah','cdu'].some(t => (tc[t] ?? 0) > 0)) && <div style={{ height: 4 }} />}
-            {(tc['oob_switch']    ?? 0) > 0 && <StatRow label="OOB Switches:"   value={tc['oob_switch']    ?? 0} />}
-            {(tc['sensor']        ?? 0) > 0 && <StatRow label="Sensors:"        value={tc['sensor']        ?? 0} />}
-            {(tc['ups']           ?? 0) > 0 && <StatRow label="UPS:"            value={tc['ups']           ?? 0} />}
-            {(tc['pdu']           ?? 0) > 0 && <StatRow label="Rack PDUs:"      value={tc['pdu']           ?? 0} />}
-            {(tc['floor_pdu']     ?? 0) > 0 && <StatRow label="Floor PDUs:"     value={tc['floor_pdu']     ?? 0} />}
-            {(tc['generator']     ?? 0) > 0 && <StatRow label="Generators:"     value={tc['generator']     ?? 0} />}
-            {(tc['crah']          ?? 0) > 0 && <StatRow label="CRAHs:"          value={tc['crah']          ?? 0} />}
-            {(tc['cdu']           ?? 0) > 0 && <StatRow label="CDUs:"           value={tc['cdu']           ?? 0} />}
+            {SNMP_TARGET_ORDER
+              .filter(([k]) => (tc[k] ?? 0) > 0)
+              .map(([k, label]) => <StatRow key={k} label={label} value={tc[k]} />)}
             <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
           </div>
         )}

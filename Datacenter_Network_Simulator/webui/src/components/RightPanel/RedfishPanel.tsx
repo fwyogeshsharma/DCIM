@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { RedfishDevice, RedfishLogEntry, RedfishSubscription } from '../../api/types'
@@ -414,8 +414,25 @@ export default function RedfishPanel() {
     redfishBusy: busy, redfishOp: operation, startRedfish: start, stopRedfish: stop,
   } = useStore()
   const [showPass,  setShowPass]  = useState(false)
+  // Active-BMCs search + list virtualization (scales to thousands of BMCs: a
+  // name/IP filter scopes the list, and only the rows in view are mounted).
+  const [bmcQuery, setBmcQuery]   = useState('')
+  const [scrollTop, setScrollTop] = useState(0)
+  const [viewH, setViewH]         = useState(600)   // corrected by ResizeObserver
+  const bmcScrollRef = useRef<HTMLDivElement>(null)
 
   const running = status?.running ?? false
+
+  // Track the BMC scroll viewport height so windowing renders exactly what fits.
+  useEffect(() => {
+    const el = bmcScrollRef.current
+    if (!running || !el) return
+    const measure = () => setViewH(el.clientHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [running])
 
   // Redfish runs on server BMCs only
   const serverCount = devices.filter(d => d.device_type === 'server').length
@@ -449,6 +466,23 @@ export default function RedfishPanel() {
                  : 'Start Redfish/BMC on all servers'
 
   const bmcs = status?.devices ?? []
+
+  // ── Active-BMCs filter + windowing ──────────────────────────────────────────
+  // ROW_H is the collapsed ServerOps height; expanding a row (log/subs) grows it
+  // transiently — fine for a control list, self-corrects on scroll. Only the
+  // in-view slice (+overscan) is mounted, so 3000 BMCs stay smooth.
+  const ROW_H = 120
+  const OVERSCAN = 4
+  const filteredBmcs = useMemo(() => {
+    const q = bmcQuery.trim().toLowerCase()
+    if (!q) return bmcs
+    return bmcs.filter(d =>
+      d.name.toLowerCase().includes(q) || (d.ip || '').toLowerCase().includes(q))
+  }, [bmcs, bmcQuery])
+  const bmcTotal = filteredBmcs.length
+  const startIdx = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN)
+  const endIdx   = Math.min(bmcTotal, Math.ceil((scrollTop + viewH) / ROW_H) + OVERSCAN)
+  const visibleBmcs = filteredBmcs.slice(startIdx, endIdx)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -513,10 +547,41 @@ export default function RedfishPanel() {
             <span className="group-box-label">Active BMCs</span>
             <StatRow label="Endpoints:" value={status?.active_devices ?? 0} labelColor="#a371f7" valueColor="#a371f7" />
             <StatRow label="Sessions:"  value={status?.sessions ?? 0} />
-            <div style={{ marginTop: 6, flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
-              {bmcs.map(d => (
-                <ServerOps key={d.ip} d={d} onChanged={() => fetchRedfish()} />
-              ))}
+            {/* Search — scopes the list; "showing X of Y" so the scale is clear */}
+            <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                value={bmcQuery}
+                onChange={e => { setBmcQuery(e.target.value); if (bmcScrollRef.current) bmcScrollRef.current.scrollTop = 0 }}
+                placeholder="Search name / IP…"
+                style={{
+                  flex: 1, minWidth: 0, background: 'var(--bg-card)',
+                  border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text)',
+                  fontSize: 10, fontFamily: 'Consolas, monospace', padding: '3px 7px', outline: 'none',
+                }}
+              />
+              <span style={{ fontSize: 9, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {bmcQuery.trim() ? `${bmcTotal} of ${bmcs.length}` : bmcs.length}
+              </span>
+            </div>
+            {/* Windowed scroll — only the in-view slice is mounted */}
+            <div
+              ref={bmcScrollRef}
+              onScroll={e => setScrollTop(e.currentTarget.scrollTop)}
+              style={{ marginTop: 6, flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}
+            >
+              {bmcTotal === 0 ? (
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', padding: '10px 4px', textAlign: 'center' }}>
+                  No BMC matches “{bmcQuery.trim()}”
+                </div>
+              ) : (
+                <div style={{ height: bmcTotal * ROW_H, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${startIdx * ROW_H}px)` }}>
+                    {visibleBmcs.map(d => (
+                      <ServerOps key={d.ip} d={d} onChanged={() => fetchRedfish()} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
