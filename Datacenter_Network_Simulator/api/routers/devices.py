@@ -509,7 +509,7 @@ def add_device(req: AddDeviceRequest):
             gnmi_port=req.gnmi_port,
             interface_count=req.interface_count,
             sys_contact=req.sys_contact,
-            sys_location=sys_location,
+            sys_location_override=sys_location,
             metrics_enabled=req.metrics_enabled,
             country=req.country,
             datacenter_city=req.datacenter_city,
