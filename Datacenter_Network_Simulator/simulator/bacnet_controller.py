@@ -614,8 +614,34 @@ class BACnetController:
                                 values[_pt] = 0.0            # stopped
                             elif any(_k in _pt for _k in ("Power", "Speed", "Flow",
                                                           "Frequency", "Load", "Capacity",
-                                                          "Position", "Valve")):
-                                values[_pt] = 0.0            # no draw / flow / valve shut
+                                                          "Position", "Valve", "Vibration")):
+                                values[_pt] = 0.0            # no draw/flow/rotation/valve
+                        # A stopped unit does no thermodynamic work: efficiency is
+                        # undefined (COP→0), the temperature ΔT collapses (no flow →
+                        # no heat exchange, so supply≈return), and the refrigerant
+                        # pressures equalize. Sensors still read — just with no ΔT —
+                        # so the row shows "idle", not fake operating values. Setpoints
+                        # and run-hour counters persist (config / cumulative).
+                        if "COP" in values:
+                            values["COP"] = 0.0
+                        for _a, _b in (("CHW_Supply_Temp", "CHW_Return_Temp"),
+                                       ("Cond_Supply_Temp", "Cond_Return_Temp"),
+                                       ("Supply_Air_Temp", "Return_Air_Temp"),
+                                       ("TCS_Supply_Temp", "TCS_Return_Temp"),
+                                       ("Cond_Water_In", "Cond_Water_Out"),
+                                       ("Evap_Pressure", "Cond_Pressure")):
+                            if _a in values and _b in values:
+                                _m = round((values[_a] + values[_b]) / 2.0, 2)
+                                values[_a] = values[_b] = _m
+                        # A stopped pump develops no head: differential → 0 and the
+                        # discharge falls back to the suction (standby header) pressure.
+                        if "Diff_Pressure" in values:
+                            values["Diff_Pressure"] = 0.0
+                        if "Discharge_Pressure" in values and "Suction_Pressure" in values:
+                            values["Discharge_Pressure"] = values["Suction_Pressure"]
+                        # A stopped motor cools toward mechanical-room ambient.
+                        if "Motor_Temp" in values:
+                            values["Motor_Temp"] = 25.0
                 else:
                     # EV2 energy meter: drive the panel from the live downstream
                     # load (server→PDU→panel) when available, else its own curve.
