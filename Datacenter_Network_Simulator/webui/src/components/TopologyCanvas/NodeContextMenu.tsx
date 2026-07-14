@@ -33,8 +33,6 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
     { type: 'CPU_HIGH',          label: 'CPU High Usage' },
     { type: 'MEMORY_HIGH',       label: 'Memory High Usage' },
     { type: 'TEMPERATURE_ALERT', label: 'Temperature Alert' },
-    { type: 'UPS_ON_BATTERY',    label: 'UPS On Battery' },
-    { type: 'UPS_LOW_BATTERY',   label: 'UPS Low Battery' },
   ],
   firewall: [
     { type: 'COLD_START',        label: 'Cold Start' },

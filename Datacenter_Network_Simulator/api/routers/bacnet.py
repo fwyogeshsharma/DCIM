@@ -506,13 +506,19 @@ class PlantOverride(BaseModel):
 
 
 def _device_ip(device_id: str) -> str | None:
-    """Resolve a topology device id to the IP the override map is keyed by.
-    IP is stable across renames; the BACnet device is matched on it."""
+    """Resolve a topology device id to the IP the override map is keyed by — the
+    device's BACnet bind address, which the controller matches on (dev.device_ip).
+    Plant/EV2 devices are OT gear on the management plane, so that address is
+    mgmt_ip; their production ip_address is empty. Falling back to ip_address kept
+    keying them all under "" — a single colliding, never-matched bucket, so plant
+    fault injection silently did nothing and never showed ACTIVE."""
     dm = _state().device_manager
     if dm is None:
         return None
     dev = dm.get_device(device_id)
-    return getattr(dev, "ip_address", None) if dev else None
+    if dev is None:
+        return None
+    return (getattr(dev, "mgmt_ip", None) or getattr(dev, "ip_address", None)) or None
 
 
 @router.get("/plant/overrides")
