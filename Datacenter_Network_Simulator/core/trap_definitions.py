@@ -117,6 +117,15 @@ class TrapType(str, Enum):
     GEN_BATTERY_FAILURE   = "generatorBatteryFailure"
     GEN_TRANSFER_SWITCH   = "generatorTransferSwitch"
     GEN_OVERCRANK         = "generatorOvercrank"
+    # ATS enterprise traps (1.3.6.1.4.1.99999.13.x) — ASCO 7000 ACC / Eaton ATC-900.
+    # An automatic transfer switch is the one electrical-upstream device that
+    # natively speaks SNMP (source-loss, transfer, fail-to-transfer, not-in-auto).
+    ATS_TRANSFER_EMERGENCY = "atsTransferEmergency"
+    ATS_TRANSFER_NORMAL    = "atsTransferNormal"
+    ATS_SOURCE_LOST        = "atsSourceLost"
+    ATS_FAIL_TO_TRANSFER   = "atsFailToTransfer"
+    ATS_NOT_IN_AUTO        = "atsNotInAuto"
+    ATS_ENGINE_START       = "atsEngineStart"
 
 
 SEVERITY_COLOR = {
@@ -520,6 +529,31 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
         TrapType.SERVER_POWER_ON, "1.3.6.1.4.1.99999.26.0.2",
         "Server Powered On",
         "Server chassis power turned on (BMC platform event)", "informational"),
+    # ── ATS traps (ASCO 7000 ACC / Eaton ATC-900) — 1.3.6.1.4.1.99999.13.x ──────
+    TrapType.ATS_SOURCE_LOST: TrapDefinition(
+        TrapType.ATS_SOURCE_LOST, "1.3.6.1.4.1.99999.13.1",
+        "Normal Source Lost",
+        "ATS normal (utility) source voltage/frequency out of range", "major"),
+    TrapType.ATS_ENGINE_START: TrapDefinition(
+        TrapType.ATS_ENGINE_START, "1.3.6.1.4.1.99999.13.2",
+        "Engine Start Signal",
+        "ATS asserted the generator engine-start contact", "informational"),
+    TrapType.ATS_TRANSFER_EMERGENCY: TrapDefinition(
+        TrapType.ATS_TRANSFER_EMERGENCY, "1.3.6.1.4.1.99999.13.3",
+        "Transferred to Emergency",
+        "ATS transferred the load to the emergency (generator) source", "critical"),
+    TrapType.ATS_TRANSFER_NORMAL: TrapDefinition(
+        TrapType.ATS_TRANSFER_NORMAL, "1.3.6.1.4.1.99999.13.4",
+        "Transferred to Normal",
+        "ATS retransferred the load to the normal (utility) source", "informational"),
+    TrapType.ATS_FAIL_TO_TRANSFER: TrapDefinition(
+        TrapType.ATS_FAIL_TO_TRANSFER, "1.3.6.1.4.1.99999.13.5",
+        "Fail to Transfer",
+        "ATS failed to transfer to an available source", "critical"),
+    TrapType.ATS_NOT_IN_AUTO: TrapDefinition(
+        TrapType.ATS_NOT_IN_AUTO, "1.3.6.1.4.1.99999.13.6",
+        "Not in Automatic",
+        "ATS control switch is not in the automatic position", "minor"),
 }
 
 # Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)
