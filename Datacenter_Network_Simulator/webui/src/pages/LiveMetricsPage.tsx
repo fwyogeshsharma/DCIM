@@ -654,7 +654,7 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_voltage}   unit="V" /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_current}   unit="A" decimals={2} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_power}     unit="W" decimals={0} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_voltage}    unit="V" warn={235} crit={245} /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_voltage}    unit="V" warn={415} crit={430} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_current}    unit="A" decimals={2} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_power}      unit="W" decimals={0} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_frequency}  unit="Hz" warn={50.3} crit={50.5} decimals={2} /></td>

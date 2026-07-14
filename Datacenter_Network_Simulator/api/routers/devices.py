@@ -175,11 +175,17 @@ def _device_to_info(device) -> DeviceInfo:
         ups_battery_health=ext.get("ups_battery_health") if dt == "ups" else None,
         ups_energy_kwh=ext.get("ups_energy_kwh")         if dt == "ups" else None,
         ups_battery_voltage=(round(180.0 + 40.0 * (100 if ext.get("ups_status") == "normal" else 50 if ext.get("ups_status") == "on_battery" else 15), 1) if dt == "ups" else None),
-        ups_output_voltage=(220.0 if dt == "ups" else None),
-        ups_output_current=(round(ext.get("ups_output_load", 40.0) * 3000.0 / 100.0 / 220.0, 2) if dt == "ups" else None),
-        ups_output_power=(round(ext.get("ups_output_load", 40.0) * 3000.0 / 100.0 * 0.9, 1) if dt == "ups" else None),
-        ups_input_current=(round(ext.get("ups_output_load", 40.0) * 3000.0 / 100.0 * 0.9 / 0.92 / max(float(ext.get("ups_input_voltage", 220.0)), 1.0), 2) if dt == "ups" else None),
-        ups_input_power=(round(ext.get("ups_output_load", 40.0) * 3000.0 / 100.0 * 0.9 / 0.92, 1) if dt == "ups" else None),
+        ups_output_voltage=(400.0 if dt == "ups" else None),
+        # Output/input power + currents derive from the REAL watts through this UPS
+        # (ups_output_kw, from the live power graph) — NOT a fixed 3 kW frame, so a
+        # 1.2 MW UPS reads MW-scale power that tracks the IT load and fleet growth.
+        # 3-phase 400 V line-to-line (matches the rest of the plant): I = P/(√3·V·PF),
+        # PF 0.9; double-conversion input = output ÷ 0.92 efficiency. Constants match
+        # the SNMP UPS plane so both report the same telemetry.
+        ups_output_power=(round(float(ext.get("ups_output_kw", 0.0)) * 1000.0, 1) if dt == "ups" else None),
+        ups_output_current=(round(float(ext.get("ups_output_kw", 0.0)) * 1000.0 / (1.7320508 * 400.0 * 0.9), 1) if dt == "ups" else None),
+        ups_input_power=(round(float(ext.get("ups_output_kw", 0.0)) * 1000.0 / 0.92, 1) if dt == "ups" else None),
+        ups_input_current=(round(float(ext.get("ups_output_kw", 0.0)) * 1000.0 / 0.92 / (1.7320508 * max(float(ext.get("ups_input_voltage", 400.0)), 1.0) * 0.9), 1) if dt == "ups" else None),
         pdu_load=ext.get("pdu_load")                     if dt in ("pdu", "floor_pdu") else None,
         pdu_voltage=ext.get("pdu_voltage")               if dt in ("pdu", "floor_pdu") else None,
         pdu_power_factor=ext.get("pdu_power_factor")     if dt in ("pdu", "floor_pdu") else None,

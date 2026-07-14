@@ -342,7 +342,7 @@ class DeviceStateStore:
             "mid_temp":            {"enabled": False, "min": 15.0,  "max": 55.0},
             "outlet_temp":         {"enabled": False, "min": 15.0,  "max": 65.0},
             "ups_output_load":     {"enabled": False, "min": 0.0,   "max": 100.0},
-            "ups_input_voltage":   {"enabled": False, "min": 200.0, "max": 240.0},
+            "ups_input_voltage":   {"enabled": False, "min": 360.0, "max": 440.0},
             "ups_input_frequency": {"enabled": False, "min": 49.5,  "max": 50.5},
             "ups_battery_health":  {"enabled": False, "min": 0.0,   "max": 100.0},
             "pdu_load":            {"enabled": False, "min": 0.0,   "max": 100.0},
@@ -2541,8 +2541,8 @@ class DeviceStateStore:
             "ups_output_load": random.uniform(20.0, 60.0),
             "ups_output_kw": 0.0,
             "ups_battery_status": "normal",
-            "ups_input_voltage": random.uniform(216.0, 224.0),
-            "ups_input_frequency": random.uniform(49.8, 50.2),
+            "ups_input_voltage": random.uniform(396.0, 404.0),
+            "ups_input_frequency": random.uniform(49.9, 50.1),
             "ups_fan_status": "ok",
             "ups_charger_status": "ok",
             "ups_rectifier_status": "ok",
@@ -3021,7 +3021,7 @@ class DeviceStateStore:
         "memory_pct":          ("pct", "memory",              0.0, 100.0),
         "disk_pct":            ("pct", "disk",                0.0, 100.0),
         "ups_output_load":     ("ext", "ups_output_load",     0.0, 150.0),
-        "ups_input_voltage":   ("ext", "ups_input_voltage",   0.0, 300.0),
+        "ups_input_voltage":   ("ext", "ups_input_voltage",   0.0, 500.0),
         "pdu_load":            ("ext", "pdu_load",            0.0, 150.0),
         "pdu_voltage":         ("ext", "pdu_voltage",         0.0, 300.0),
         "pdu_outlet_current":  ("ext", "pdu_outlet_current",  0.0,  50.0),
@@ -3244,7 +3244,7 @@ class DeviceStateStore:
         if dt == DeviceType.UPS:
             if st.get("ups_output_load", 0.0) > 89.9:             # overload > 90
                 st["ups_output_load"] = 89.9; changed = True
-            clamp("ups_input_voltage", 190.1, 249.9, 220.0)        # >250 / <190
+            clamp("ups_input_voltage", 365.1, 434.9, 400.0)        # >435 / <365
             clamp("ups_input_frequency", 49.1, 50.9, 50.0)         # OOR <49 / >51
             if st.get("ups_battery_health", 100.0) < 50.1:         # low health < 50
                 st["ups_battery_health"] = 50.1; changed = True
@@ -3281,8 +3281,8 @@ class DeviceStateStore:
             "ups_output_load": random.uniform(20.0, 60.0),
             "ups_output_kw": 0.0,
             "ups_battery_status": "normal",
-            "ups_input_voltage": random.uniform(216.0, 224.0),
-            "ups_input_frequency": random.uniform(49.8, 50.2),
+            "ups_input_voltage": random.uniform(396.0, 404.0),
+            "ups_input_frequency": random.uniform(49.9, 50.1),
             "ups_fan_status": "ok",
             "ups_charger_status": "ok",
             "ups_rectifier_status": "ok",
@@ -3460,20 +3460,32 @@ class DeviceStateStore:
                 st["ups_battery_status"] = self._state_lock("ups_battery_status", st["ups_battery_status"])
 
             if mf["ups_input_voltage"]:
-                v = st.get("ups_input_voltage", 220.0)
-                v = max(200.0, min(240.0, v + random.uniform(-2.0, 2.0)))
+                # UPS input is fed from its ATS off the 400 V (L-L) LV bus, like the
+                # rest of the plant — mean-revert to 400 V, with the odd transient
+                # sag/swell for the over/under-voltage alarm.
+                v = st.get("ups_input_voltage", 400.0)
+                v += (400.0 - v) * 0.05 + random.uniform(-1.5, 1.5)
+                v = max(388.0, min(412.0, v))
                 if random.random() < 0.003:
-                    v = random.choice([random.uniform(251.0, 260.0),
-                                       random.uniform(180.0, 189.0)])
+                    v = random.choice([random.uniform(436.0, 450.0),
+                                       random.uniform(350.0, 364.0)])
                 st["ups_input_voltage"] = round(self._num_limit("ups_input_voltage", v), 1)
 
             if mf["ups_input_frequency"]:
-                f = st.get("ups_input_frequency", 50.0)
-                f = max(49.5, min(50.5, f + random.uniform(-0.05, 0.05)))
-                if random.random() < 0.002:
-                    f = random.choice([random.uniform(47.0, 48.9),
-                                       random.uniform(51.1, 53.0)])
-                st["ups_input_frequency"] = round(self._num_limit("ups_input_frequency", f), 2)
+                # Input frequency is the SOURCE frequency, not a free walk: the shared
+                # grid on utility, the genset governor on emergency, and 0 with no live
+                # source (the UPS is on battery, inverter-isolated). Matches the ATS /
+                # switchgear frequency for the same DC.
+                _dc = getattr(device, "datacenter", None) or "?"
+                if not self._ups_source_ok(device):
+                    f = 0.0
+                elif self._transfer.status(_dc).source == "emergency":
+                    f = round(random.uniform(49.8, 50.2), 2)   # genset governor
+                else:
+                    f = round(self._grid_frequency(
+                        getattr(device, "datacenter_city", None) or _dc), 2)
+                st["ups_input_frequency"] = (
+                    0.0 if f == 0.0 else round(self._num_limit("ups_input_frequency", f), 2))
 
             for comp_key in ("ups_fan_status", "ups_charger_status",
                              "ups_rectifier_status", "ups_phase_status"):
@@ -3505,9 +3517,11 @@ class DeviceStateStore:
             # Output energy accumulator (kWh): integrate ~3 kW frame at current % load,
             # assuming a ~1-minute tick interval. Flag gates accumulation (freeze counter).
             if mf["ups_energy_kwh"]:
-                load_now = st.get("ups_output_load", 40.0)
+                # Integrate the REAL watts through the UPS (kW/60 per ~1-min tick),
+                # same convention as the util/MCC/MPP energy — not a 3 kW frame.
+                kw_now = st.get("ups_output_kw", 0.0)
                 st["ups_energy_kwh"] = round(st.get("ups_energy_kwh", 0.0)
-                                             + (load_now / 100.0) * 3.0 / 60.0, 3)
+                                             + kw_now / 60.0, 3)
 
             # Battery runtime (minutes remaining) ∝ 1/load — a heavier load drains
             # the battery faster. Anchored at ~8 min autonomy at full load (typical
@@ -3763,7 +3777,7 @@ class DeviceStateStore:
                     ups_status=ext.get("ups_status", "normal"),
                     ups_output_load=float(ext.get("ups_output_load", 0.0)),
                     ups_battery_status=ext.get("ups_battery_status", "normal"),
-                    ups_input_voltage=float(ext.get("ups_input_voltage", 220.0)),
+                    ups_input_voltage=float(ext.get("ups_input_voltage", 400.0)),
                     ups_input_frequency=float(ext.get("ups_input_frequency", 50.0)),
                     ups_fan_status=ext.get("ups_fan_status", "ok"),
                     ups_charger_status=ext.get("ups_charger_status", "ok"),

@@ -1358,7 +1358,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{_UPS_MIB}.3.1.0",      "2",  "1"),      # upsInputNumLines
             _oid_entry(f"{_UPS_MIB}.3.3.1.1.1",  "2",  "1"),      # upsInputLineIndex
             _oid_entry(f"{_UPS_MIB}.3.3.1.2.1",  "2",  "500"),    # upsInputFrequency x10 Hz (50.0)
-            _oid_entry(f"{_UPS_MIB}.3.3.1.3.1",  "2",  "220"),    # upsInputVoltage V
+            _oid_entry(f"{_UPS_MIB}.3.3.1.3.1",  "2",  "400"),    # upsInputVoltage V (400 V 3-phase)
             _oid_entry(f"{_UPS_MIB}.3.3.1.4.1",  "2",  "100"),    # upsInputCurrent x10 A
             _oid_entry(f"{_UPS_MIB}.3.3.1.5.1",  "2",  "2200"),   # upsInputTruePower W
         ]
