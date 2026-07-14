@@ -261,6 +261,11 @@ class DeviceStateStore:
         # instead of the rating re-sizing itself to the new load.
         self._rated_w_frozen: Dict[str, float] = {}
         self._through_live: Dict[str, float] = {}
+        # One frequency per grid region (keyed by city). A power grid has a single
+        # frequency across its whole interconnect, so every utility meter on the
+        # same grid reads an identical value each tick; separate grids drift apart.
+        # Stepped once per tick by the power-flow pass, read by the utility meters.
+        self._grid_freq: Dict[str, float] = {}
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
         # Persistent circuit→branch slot order per EV2 IP. Real EV2 CT channels are
@@ -1405,6 +1410,25 @@ class DeviceStateStore:
             return False
         return self._transfer.status(dc).ups_input_ok
 
+    def _step_grid_freq(self, grid_key: str) -> float:
+        """Advance one grid region's frequency by a small mean-reverting random walk
+        and return it. Nominal 50 Hz, pulled back toward 50 and held inside the ±0.05
+        Hz normal operating band. Called once per tick per city by the power-flow pass
+        so every utility meter on that grid reads the same frequency this tick."""
+        f = self._grid_freq.get(grid_key, 50.0)
+        f += (50.0 - f) * 0.1 + random.uniform(-0.008, 0.008)
+        f = max(49.90, min(50.10, f))
+        self._grid_freq[grid_key] = f
+        return f
+
+    def _grid_frequency(self, grid_key: str) -> float:
+        """Read this grid region's current frequency. The power-flow pass steps it
+        once per tick; if a meter is read before that (or its city is unknown), fall
+        back to a one-off step so the reading is never a flat 50.00."""
+        if grid_key in self._grid_freq:
+            return self._grid_freq[grid_key]
+        return self._step_grid_freq(grid_key)
+
     def _step_electrical(self, device: "Device", st: dict) -> None:
         """Live telemetry for the electrical upstream, all of it derived from the
         DC's transfer state so the one-line reads consistently end to end.
@@ -1435,20 +1459,80 @@ class DeviceStateStore:
             return round(kw * 1000.0 / (1.7320508 * volts * pf), 1)
 
         if dtv == "utility_feed":
-            # Schneider PowerLogic ION9000 revenue/PQ meter — reports measured
-            # quantities, NOT a "% of rating" (a meter has no rating to load against).
+            # Schneider PowerLogic ION9000 revenue/PQ meter — reports MEASURED
+            # quantities (per-phase V/I, imbalance, THD, kW/kVAR/kVA, peak demand),
+            # NOT a "% of rating" (a meter has no rating to load against).
             st["util_status"] = "normal" if utility_ok else "failed"
-            v = round(random.uniform(398.0, 402.0), 1) if utility_ok else 0.0
-            kw = round(thr / 1000.0, 1) if utility_ok else 0.0
-            pf = round(random.uniform(0.96, 0.99), 3) if utility_ok else 0.0
-            st["util_voltage"] = v
-            st["util_frequency"] = (round(random.uniform(49.95, 50.05), 2)
-                                    if utility_ok else 0.0)
-            st["util_kw"] = kw
-            st["util_power_factor"] = pf
-            st["util_current"] = _amps(kw, v, pf)
-            # cumulative energy (kWh) — ~1-min tick, same convention as UPS/PDU.
-            st["util_energy_kwh"] = round(st.get("util_energy_kwh", 0.0) + kw / 60.0, 3)
+            if not utility_ok:
+                # Dead feed — every instantaneous measurement reads zero. Cumulative
+                # registers (energy, peak demand) are NOT reset: a real meter holds
+                # them through an outage.
+                for _k in ("util_voltage", "util_current", "util_frequency", "util_kw",
+                           "util_power_factor", "util_xfmr_loss_kw", "util_kvar",
+                           "util_kva", "util_va", "util_vb", "util_vc", "util_ia",
+                           "util_ib", "util_ic", "util_phase_imbalance",
+                           "util_thd_v", "util_thd_i"):
+                    st[_k] = 0.0
+            else:
+                # Class-0.2 revenue meter: every reported quantity carries a small
+                # (±0.2 %) measurement error, so readings aren't the exact model sum.
+                def _m(x: float) -> float:
+                    return x * (1.0 + random.uniform(-0.002, 0.002))
+
+                load_frac = (thr / rated) if rated > 0 else 0.0
+                # MV/LV service transformer between this revenue meter and the LV main
+                # switchgear: the import reads MORE than the downstream load. Constant
+                # core/iron loss (magnetising) + copper/I²R loss ∝ load². ~0.4 % no-load
+                # + ~1.1 % at full load ⇒ 98.5–99.6 % efficient. Downstream gear is LV;
+                # its busbar/breaker losses are <0.1 % and are not modelled, so only
+                # this meter marks the transformer up.
+                xfmr_loss_w = ((0.004 + 0.011 * load_frac * load_frac) * rated
+                               if rated > 0 else thr * 0.015)
+                st["util_xfmr_loss_kw"] = round(xfmr_loss_w / 1000.0, 2)
+                kw_true = (thr + xfmr_loss_w) / 1000.0
+                # PFC front-ends run best near full load — PF climbs with load, not RNG.
+                pf = round(min(0.995, 0.955 + 0.035 * load_frac
+                               + random.uniform(-0.005, 0.005)), 3)
+                # LV bus droops slightly under load (~2 % at full). System V is L-L;
+                # per-phase meters read L-N (= V_LL / √3).
+                v_ll_true = 400.0 * (1.0 - 0.02 * load_frac)
+                v_ln = v_ll_true / 1.7320508
+                # Per-phase quantities with small realistic imbalance: voltages within
+                # ~±0.6 %, currents within ~±2 % (DC loads are well balanced but not
+                # perfectly). Phase imbalance % = worst phase-current deviation / mean.
+                v_ph = [_m(v_ln * (1.0 + random.uniform(-0.006, 0.006))) for _ in range(3)]
+                i_avg = (kw_true * 1000.0) / (3.0 * v_ln * pf) if (v_ln > 0 and pf > 0) else 0.0
+                i_ph = [_m(i_avg * (1.0 + random.uniform(-0.02, 0.02))) for _ in range(3)]
+                i_mean = sum(i_ph) / 3.0 if i_ph else 0.0
+                imbal = (max(abs(x - i_mean) for x in i_ph) / i_mean * 100.0) if i_mean > 0 else 0.0
+                # Reported aggregates. kVA = kW / PF; kVAR = √(kVA² − kW²).
+                kw = round(_m(kw_true), 1)
+                kva = round(kw / pf, 1) if pf > 0 else 0.0
+                kvar = round((kva * kva - kw * kw) ** 0.5, 1) if kva >= kw else 0.0
+                st["util_va"] = round(v_ph[0], 1)
+                st["util_vb"] = round(v_ph[1], 1)
+                st["util_vc"] = round(v_ph[2], 1)
+                st["util_ia"] = round(i_ph[0], 1)
+                st["util_ib"] = round(i_ph[1], 1)
+                st["util_ic"] = round(i_ph[2], 1)
+                st["util_voltage"] = round(_m(v_ll_true), 1)     # L-L system voltage
+                st["util_current"] = round(i_mean, 1)            # avg line current
+                st["util_phase_imbalance"] = round(imbal, 1)
+                st["util_frequency"] = round(
+                    self._grid_frequency(getattr(device, "datacenter_city", None) or dc), 2)
+                st["util_kw"] = kw
+                st["util_kvar"] = kvar
+                st["util_kva"] = kva
+                st["util_power_factor"] = pf
+                # Voltage THD is stiff at the service (~1–2.5 %); current THD is higher
+                # even behind PFC front-ends (~4–8 %).
+                st["util_thd_v"] = round(random.uniform(1.0, 2.5), 1)
+                st["util_thd_i"] = round(random.uniform(4.0, 8.0), 1)
+                # Peak demand — the billing quantity is a 15-min sliding demand; a
+                # running peak of measured kW is the sim's proxy.
+                st["util_peak_kw"] = round(max(st.get("util_peak_kw", 0.0), kw), 1)
+                # cumulative energy (kWh) — ~1-min tick, same convention as UPS/PDU.
+                st["util_energy_kwh"] = round(st.get("util_energy_kwh", 0.0) + kw / 60.0, 3)
 
         elif dtv == "switchgear":
             # Which source this board belongs to decides whether it is live: the
@@ -1940,6 +2024,13 @@ class DeviceStateStore:
         except Exception:
             log.exception("[StateStore] power flow error")
         self._through_live = through
+        # Step each grid region's frequency once this tick, so every utility meter on
+        # the same grid reads an identical value (a grid has one frequency).
+        try:
+            for _city in {c for c in dc_city.values() if c}:
+                self._step_grid_freq(_city)
+        except NameError:
+            pass
         self._it_w = it_w
         self._facility_w = it_w + cool_w
         # Live downstream kW per EV2 meter IP, for the BACnet telemetry engines.
@@ -2290,6 +2381,12 @@ class DeviceStateStore:
             "util_kw": 0.0,
             "util_power_factor": 0.97,
             "util_energy_kwh": 0.0,
+            "util_xfmr_loss_kw": 0.0,
+            "util_va": 230.0, "util_vb": 230.0, "util_vc": 230.0,
+            "util_ia": 0.0, "util_ib": 0.0, "util_ic": 0.0,
+            "util_phase_imbalance": 0.0,
+            "util_thd_v": 0.0, "util_thd_i": 0.0,
+            "util_kvar": 0.0, "util_kva": 0.0, "util_peak_kw": 0.0,
             "swgr_source": "utility",
             "swgr_bus_status": "energized",
             "swgr_voltage": 400.0,
@@ -3007,6 +3104,12 @@ class DeviceStateStore:
             "util_kw": 0.0,
             "util_power_factor": 0.97,
             "util_energy_kwh": 0.0,
+            "util_xfmr_loss_kw": 0.0,
+            "util_va": 230.0, "util_vb": 230.0, "util_vc": 230.0,
+            "util_ia": 0.0, "util_ib": 0.0, "util_ic": 0.0,
+            "util_phase_imbalance": 0.0,
+            "util_thd_v": 0.0, "util_thd_i": 0.0,
+            "util_kvar": 0.0, "util_kva": 0.0, "util_peak_kw": 0.0,
             "swgr_source": "utility",
             "swgr_bus_status": "energized",
             "swgr_voltage": 400.0,

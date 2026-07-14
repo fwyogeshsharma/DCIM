@@ -1527,7 +1527,8 @@ class SNMPRecGenerator:
         pf100 = lambda k: ("2", str(int(round(float(ext.get(k, 0.0)) * 100))))
 
         if dt == DeviceType.UTILITY_FEED:
-            # Schneider ION9000 meter: V, A, Hz, kW, PF, kWh (measured quantities).
+            # Schneider ION9000 revenue/PQ meter: system + per-phase V/I, imbalance,
+            # THD, kW/kVAR/kVA, PF, peak demand, kWh (all measured quantities).
             E = self._UTIL_ENT
             return {
                 f"{E}.1.0": ("2", "1" if ext.get("util_status") == "normal" else "2"),
@@ -1537,6 +1538,20 @@ class SNMPRecGenerator:
                 f"{E}.5.0": i("util_kw"),
                 f"{E}.6.0": pf100("util_power_factor"),
                 f"{E}.7.0": i("util_energy_kwh"),
+                # per-phase line-to-neutral voltage (x10) and line current
+                f"{E}.8.0": v10("util_va"),
+                f"{E}.9.0": v10("util_vb"),
+                f"{E}.10.0": v10("util_vc"),
+                f"{E}.11.0": i("util_ia"),
+                f"{E}.12.0": i("util_ib"),
+                f"{E}.13.0": i("util_ic"),
+                # power quality (x10 for %/THD) + reactive/apparent power + peak demand
+                f"{E}.14.0": v10("util_phase_imbalance"),
+                f"{E}.15.0": v10("util_thd_v"),
+                f"{E}.16.0": v10("util_thd_i"),
+                f"{E}.17.0": i("util_kvar"),
+                f"{E}.18.0": i("util_kva"),
+                f"{E}.19.0": i("util_peak_kw"),
             }
         if dt == DeviceType.SWITCHGEAR:
             # Eaton Magnum DS / ASCO paralleling: V, A, kW, % rating, breaker, source.
