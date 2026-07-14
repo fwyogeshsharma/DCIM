@@ -110,7 +110,10 @@ def send_trap(req: SendTrapRequest):
                 s.notify_ui("link_changed", req.device_id, req.peer_id, False)
 
         s.trap_engine.send_trap(device, trap_type, **req.kwargs)
-        msg = f"Trap {req.trap_type} queued for device {device.name} ({device.ip_address})"
+        # Prefer the production IP; fall back to mgmt_ip for OT gear (ATS, plant,
+        # BMC-only devices) whose ip_address is empty, so the message isn't "()".
+        _ip = getattr(device, "ip_address", "") or getattr(device, "mgmt_ip", "") or "no IP"
+        msg = f"Trap {req.trap_type} queued for device {device.name} ({_ip})"
         if req.peer_id and trap_type in (_TT.LINK_DOWN, _TT.LINK_UP):
             action = "broken" if trap_type == _TT.LINK_DOWN else "restored"
             msg += f" — link to {req.peer_id} {action}"
