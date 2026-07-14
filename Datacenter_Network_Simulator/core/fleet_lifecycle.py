@@ -2078,6 +2078,27 @@ class FleetLifecycleEngine:
 
     # ── hot-commission (make a churned device answer on the live protocols) ───
 
+    def place_device(self, device: Device) -> tuple:
+        """Public entry point: give a manually-added device the SAME physical
+        placement fleet computes — floor_x/floor_y + hot/cold aisle + facing from
+        the rack grid (core/hall_geometry), and the canvas position from the shared
+        layout (which also nudges peers to keep the hall canonical). Returns the
+        canvas (x, y). A device without full rack coords (row/num) gets no floor
+        placement and is parked at the canvas origin. Guarded — never raises."""
+        try:
+            row = int(getattr(device, "rack_row", 0) or 0)
+            num = int(getattr(device, "rack_num", 0) or 0)
+            if row > 0 and num > 0:
+                sl = geo.slot(row, num)
+                device.floor_x = sl.floor_x
+                device.floor_y = sl.floor_y
+                device.hot_aisle = sl.hot_aisle
+                device.cold_aisle = sl.cold_aisle
+                device.rack_facing = sl.rack_facing
+        except Exception:
+            self._log(f"[Fleet] floor placement {getattr(device,'name','?')} failed")
+        return self._canvas_pos(device)
+
     def commission_device(self, device: Device) -> None:
         """Public entry point: bring a device online on the running protocol servers
         (SNMP/gNMI/Redfish/BACnet), the same path fleet churn uses. Called by the

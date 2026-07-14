@@ -264,6 +264,15 @@ export default function AddDeviceDialog({ onClose }: Props) {
   async function submit() {
     if (!form.name.trim())                          { setErr('Name required');       return }
     if (showProdIp && !form.ip_address.trim())      { setErr('IP address required'); return }
+    // Rack-location validation. A U-slot belongs to a specific rack in a room, so a
+    // unit only makes sense with the full location set, and must be a real rack U.
+    const { rack_row: rr, rack_num: rn, rack_unit: ru } = form
+    if (rr < 0 || rn < 0 || ru < 0)                 { setErr('Row / Rack / Unit cannot be negative'); return }
+    if (ru > 52)                                    { setErr('Rack Unit must be 1–52'); return }
+    if (ru > 0 && (!form.datacenter.trim() || !form.room.trim() || rr <= 0 || rn <= 0)) {
+      setErr('A Rack Unit needs Datacenter, Room, Row and Rack set'); return
+    }
+    if ((rr > 0 || rn > 0) && (rr <= 0 || rn <= 0)) { setErr('Set both Row and Rack together'); return }
     setBusy(true); setErr('')
     try {
       await api.addDevice({

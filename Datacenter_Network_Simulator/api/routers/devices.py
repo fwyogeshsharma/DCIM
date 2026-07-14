@@ -484,6 +484,31 @@ def add_device(req: AddDeviceRequest):
     if any(d.ip_address == req.ip_address for d in existing):
         raise HTTPException(status_code=409, detail=f"IP address {req.ip_address} already in use")
 
+    # Rack-location validation. A U-slot is owned by exactly one device — reject a
+    # placement that would double-book the same U in the same rack, and sanity-check
+    # the coordinates. rack_unit == 0 means "unplaced" and skips the U check.
+    if req.rack_row < 0 or req.rack_num < 0 or req.rack_unit < 0:
+        raise HTTPException(status_code=400, detail="Row / Rack / Unit cannot be negative")
+    if req.rack_unit > 52:
+        raise HTTPException(status_code=400, detail="Rack Unit must be 1–52")
+    if req.rack_unit > 0 and not (req.datacenter and req.room
+                                  and req.rack_row > 0 and req.rack_num > 0):
+        raise HTTPException(status_code=400,
+                            detail="A Rack Unit needs Datacenter, Room, Row and Rack set")
+    if req.rack_unit > 0:
+        for d in existing:
+            if (getattr(d, "datacenter", "") == req.datacenter
+                    and getattr(d, "room", "") == req.room
+                    and str(getattr(d, "floor", "") or "") == str(req.floor or "")
+                    and (getattr(d, "rack_row", 0) or 0) == req.rack_row
+                    and (getattr(d, "rack_num", 0) or 0) == req.rack_num
+                    and (getattr(d, "rack_unit", 0) or 0) == req.rack_unit):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(f"Rack unit U{req.rack_unit} in {req.datacenter}/{req.room} "
+                            f"row {req.rack_row} rack {req.rack_num} is already occupied "
+                            f"by {d.name}"))
+
     # Build sys_location from physical location fields if not explicitly set
     loc_parts = []
     if req.datacenter:
@@ -520,8 +545,27 @@ def add_device(req: AddDeviceRequest):
             rack_num=req.rack_num,
             rack_unit=req.rack_unit,
         )
+        # Resolve (or create) the fleet engine once — used for both physical
+        # placement and hot-commission. Log routes to the app logger so any
+        # placement/commission failure is visible, not silently swallowed.
+        import logging as _logging
+        _clog = _logging.getLogger("api.devices")
+        eng = getattr(s, "fleet_engine", None)
+        if eng is None:
+            from core.fleet_lifecycle import FleetLifecycleEngine
+            eng = FleetLifecycleEngine(s, log_cb=_clog.warning)
+            s.fleet_engine = eng
+        # Physical placement: floor_x/floor_y + hot/cold aisle + facing from the
+        # rack grid, and the canvas position from the shared layout — so a device
+        # given a rack location renders IN that rack, like a fleet device (not at
+        # the origin). No rack coords → parked at the origin, nothing placed.
+        try:
+            px, py = eng.place_device(device)
+        except Exception as _e:
+            px, py = 0.0, 0.0
+            _clog.warning("[add_device] placement %s failed: %s", device.name, _e)
         s.device_manager.add_device(device)
-        s.topology.add_device(device, x=0.0, y=0.0)
+        s.topology.add_device(device, x=px, y=py)
         if s.ip_manager:
             s.ip_manager.reserve(req.ip_address)
         _invalidate_power(s)
@@ -530,14 +574,11 @@ def add_device(req: AddDeviceRequest):
         # immediately — no regenerate + restart. Best-effort: a sim that isn't
         # running is skipped, and any failure never fails the add.
         try:
-            eng = getattr(s, "fleet_engine", None)
-            if eng is None:
-                from core.fleet_lifecycle import FleetLifecycleEngine
-                eng = FleetLifecycleEngine(s)
-                s.fleet_engine = eng
             eng.commission_device(device)
-        except Exception:
-            pass
+            _clog.info("[add_device] commissioned %s (%s) onto live sims",
+                       device.name, device.device_type.value)
+        except Exception as _e:
+            _clog.warning("[add_device] commission %s failed: %s", device.name, _e)
         s.notify_ui("sync_devices")
         return _device_to_info(device)
     except Exception as e:
