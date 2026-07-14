@@ -649,7 +649,7 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_operating_mode}   okStates={['online']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_battery_status}   okStates={['normal']} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_battery_health}   unit="%" warn={80} crit={50} invert /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_battery_voltage}  unit="V" warn={200} crit={185} invert /></td>
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_battery_voltage}  unit="V" warn={490} crit={450} invert /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_load}      unit="%" warn={70} crit={90} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_voltage}   unit="V" /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_current}   unit="A" decimals={2} /></td>

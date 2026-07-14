@@ -174,7 +174,11 @@ def _device_to_info(device) -> DeviceInfo:
             else None) if dt == "ups" else None,
         ups_battery_health=ext.get("ups_battery_health") if dt == "ups" else None,
         ups_energy_kwh=ext.get("ups_energy_kwh")         if dt == "ups" else None,
-        ups_battery_voltage=(round(180.0 + 40.0 * (100 if ext.get("ups_status") == "normal" else 50 if ext.get("ups_status") == "on_battery" else 15), 1) if dt == "ups" else None),
+        # Battery string voltage — a 480 V VRLA string (40× 12 V blocks, 240 cells):
+        # float/charged ~544 V, sagging toward the ~420 V end-of-discharge cutoff as it
+        # drains. 416 + 128×charge-fraction ⇒ 544 (normal) / 480 (on battery) / 435
+        # (low). Matches the SNMP upsBatteryVoltage plane.
+        ups_battery_voltage=(round(416.0 + 128.0 * (100 if ext.get("ups_status") == "normal" else 50 if ext.get("ups_status") == "on_battery" else 15) / 100.0, 1) if dt == "ups" else None),
         ups_output_voltage=(400.0 if dt == "ups" else None),
         # Output/input power + currents derive from the REAL watts through this UPS
         # (ups_output_kw, from the live power graph) — NOT a fixed 3 kW frame, so a

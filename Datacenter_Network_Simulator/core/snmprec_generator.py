@@ -778,7 +778,8 @@ class SNMPRecGenerator:
                 in_real_w     = int(round(out_real_w / _EFFICIENCY))
                 in_cur_x10    = int(round(in_real_w / (max(in_volt, 1) * _out_phase) * 10))
                 # Battery voltage sags with discharge: 220V at full, ~180V at empty (×10)
-                batt_volt_x10 = int(round((180.0 + 40.0 * charge / 100.0) * 10))
+                # 480 V VRLA string: float ~544 V, sagging toward the ~420 V cutoff.
+                batt_volt_x10 = int(round((416.0 + 128.0 * charge / 100.0) * 10))
                 updates[f"{_UPS_MIB}.2.6.0"]     = ("2", str(batt_volt_x10))  # upsBatteryVoltage ×10 V
                 updates[f"{_UPS_MIB}.3.3.1.4.1"] = ("2", str(in_cur_x10))    # upsInputCurrent ×10 A
                 updates[f"{_UPS_MIB}.3.3.1.5.1"] = ("2", str(in_real_w))     # upsInputTruePower W
@@ -1349,7 +1350,7 @@ class SNMPRecGenerator:
             _oid_entry(f"{_UPS_MIB}.2.3.0",      "2",  "2"),      # upsBatteryStatus (alias)
             _oid_entry(f"{_UPS_MIB}.2.4.0",      "2",  "60"),     # upsEstimatedMinutesRemaining
             _oid_entry(f"{_UPS_MIB}.2.5.0",      "2",  "100"),    # upsEstimatedChargeRemaining %
-            _oid_entry(f"{_UPS_MIB}.2.6.0",      "2",  "2200"),   # upsBatteryVoltage (220.0V x10)
+            _oid_entry(f"{_UPS_MIB}.2.6.0",      "2",  "5440"),   # upsBatteryVoltage (544.0V x10)
             _oid_entry(f"{_UPS_MIB}.2.7.0",      "2",  "0"),      # upsBatteryCurrent (0A)
             _oid_entry(f"{_UPS_MIB}.2.8.0",      "2",  "25"),     # upsBatteryTemperature C
         ]
