@@ -1554,7 +1554,9 @@ class SNMPRecGenerator:
                 f"{E}.19.0": i("util_peak_kw"),
             }
         if dt == DeviceType.SWITCHGEAR:
-            # Eaton Magnum DS / ASCO paralleling: V, A, kW, % rating, breaker, source.
+            # Eaton Magnum DS / ASCO paralleling — Digitrip energy-metering trip unit:
+            # system + per-phase V/I, imbalance, Hz, kW/kVAR/kVA, PF, kWh, % rating,
+            # breaker, source. (No THD/peak-demand — that is the ION9000's domain.)
             E = self._SWGR_ENT
             return {
                 f"{E}.1.0": ("2", "1" if ext.get("swgr_bus_status") == "energized" else "2"),
@@ -1564,10 +1566,24 @@ class SNMPRecGenerator:
                 f"{E}.5.0": i("swgr_load_pct"),
                 f"{E}.6.0": ("2", "1" if ext.get("swgr_breaker_status") == "closed" else "2"),
                 f"{E}.7.0": ("2", "2" if ext.get("swgr_source") == "generator" else "1"),
+                # per-phase line-to-neutral voltage (x10) and line current
+                f"{E}.8.0": v10("swgr_va"),
+                f"{E}.9.0": v10("swgr_vb"),
+                f"{E}.10.0": v10("swgr_vc"),
+                f"{E}.11.0": i("swgr_ia"),
+                f"{E}.12.0": i("swgr_ib"),
+                f"{E}.13.0": i("swgr_ic"),
+                # imbalance % (x10), frequency (x10), reactive/apparent power, PF, kWh
+                f"{E}.14.0": v10("swgr_phase_imbalance"),
+                f"{E}.15.0": v10("swgr_frequency"),
+                f"{E}.16.0": i("swgr_kvar"),
+                f"{E}.17.0": i("swgr_kva"),
+                f"{E}.18.0": pf100("swgr_power_factor"),
+                f"{E}.19.0": i("swgr_energy_kwh"),
             }
         if dt == DeviceType.ATS:
-            # ASCO 7000: position, source availabilities, both source voltages, Hz,
-            # transfer count, time-on-emergency. A switch — no kW/load metering.
+            # ASCO 7000: position, source availabilities, both source voltages, active +
+            # per-source Hz, transfer count, time-on-emergency. A switch — no kW/load.
             E = self._ATS_ENT
             pos = {"normal": 1, "emergency": 2, "none": 3}.get(ext.get("ats_position"), 3)
             return {
@@ -1576,12 +1592,15 @@ class SNMPRecGenerator:
                 f"{E}.3.0": ("2", "1" if ext.get("ats_emergency_available") == "yes" else "2"),
                 f"{E}.4.0": v10("ats_normal_voltage"),
                 f"{E}.5.0": v10("ats_emergency_voltage"),
-                f"{E}.6.0": v10("ats_frequency"),
+                f"{E}.6.0": v10("ats_frequency"),          # active source Hz
                 f"{E}.7.0": i("ats_transfer_count"),
                 f"{E}.8.0": i("ats_time_on_emergency"),
+                f"{E}.9.0": v10("ats_normal_frequency"),
+                f"{E}.10.0": v10("ats_emergency_frequency"),
             }
         if dt == DeviceType.MPP:
-            # Metered panelboard main: V, kW, % load, kWh.
+            # Schneider PowerLogic PM5000 panel-main meter: system + per-phase V/I,
+            # imbalance, Hz, kW/kVAR/kVA, PF, % load, kWh.
             E = self._MPP_ENT
             return {
                 f"{E}.1.0": ("2", "1" if ext.get("mpp_status") == "energized" else "2"),
@@ -1589,8 +1608,23 @@ class SNMPRecGenerator:
                 f"{E}.3.0": i("mpp_kw"),
                 f"{E}.4.0": i("mpp_load_pct"),
                 f"{E}.5.0": i("mpp_energy_kwh"),
+                f"{E}.6.0": i("mpp_current"),
+                # per-phase line-to-neutral voltage (x10) and line current
+                f"{E}.7.0": v10("mpp_va"),
+                f"{E}.8.0": v10("mpp_vb"),
+                f"{E}.9.0": v10("mpp_vc"),
+                f"{E}.10.0": i("mpp_ia"),
+                f"{E}.11.0": i("mpp_ib"),
+                f"{E}.12.0": i("mpp_ic"),
+                # imbalance % (x10), frequency (x10), reactive/apparent power, PF
+                f"{E}.13.0": v10("mpp_phase_imbalance"),
+                f"{E}.14.0": v10("mpp_frequency"),
+                f"{E}.15.0": i("mpp_kvar"),
+                f"{E}.16.0": i("mpp_kva"),
+                f"{E}.17.0": pf100("mpp_power_factor"),
             }
-        # Eaton Freedom 2100 MCC with metered main: V, A, kW, % load, tie, source.
+        # Eaton Freedom 2100 MCC with metered main (Power Xpert/IQ): system + per-phase
+        # V/I, imbalance, Hz, kW/kVAR/kVA, motor PF, kWh, % load, tie, source.
         E = self._MCC_ENT
         return {
             f"{E}.1.0": ("2", "1" if ext.get("mcc_status") == "energized" else "2"),
@@ -1600,6 +1634,20 @@ class SNMPRecGenerator:
             f"{E}.5.0": i("mcc_load_pct"),
             f"{E}.6.0": ("2", "2" if ext.get("mcc_tie") == "closed" else "1"),
             f"{E}.7.0": ("2", {"normal": "1", "tie": "2"}.get(ext.get("mcc_source"), "3")),
+            # per-phase line-to-neutral voltage (x10) and line current
+            f"{E}.8.0": v10("mcc_va"),
+            f"{E}.9.0": v10("mcc_vb"),
+            f"{E}.10.0": v10("mcc_vc"),
+            f"{E}.11.0": i("mcc_ia"),
+            f"{E}.12.0": i("mcc_ib"),
+            f"{E}.13.0": i("mcc_ic"),
+            # imbalance % (x10), frequency (x10), reactive/apparent power, PF, kWh
+            f"{E}.14.0": v10("mcc_phase_imbalance"),
+            f"{E}.15.0": v10("mcc_frequency"),
+            f"{E}.16.0": i("mcc_kvar"),
+            f"{E}.17.0": i("mcc_kva"),
+            f"{E}.18.0": pf100("mcc_power_factor"),
+            f"{E}.19.0": i("mcc_energy_kwh"),
         }
 
     def _utility_entries(self, device: Device) -> List[OidEntry]:

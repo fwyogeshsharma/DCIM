@@ -276,6 +276,8 @@ class DeviceStateStore:
         self._ev2_circuit_order: Dict[str, list] = {}  # {ev2_ip: [branch device_id]}
         self._plant_power_by_name: Dict[str, float] = {}  # {plant_name: live cooling kW}
         self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
+        self._plant_loadfrac_by_name: Dict[str, float] = {}  # {plant_name: DC duty frac}
+        self._cdu_loop_heat_kw: Dict[str, float] = {}     # {cdu_name: live loop heat kW}
         # Frozen per-DC design cooling nameplate (first-seen), so IT_design stays a
         # fixed capacity ceiling even when the fleet adds CRAHs to new halls — those
         # are air distribution, not extra chiller/plant capacity.
@@ -1544,17 +1546,62 @@ class DeviceStateStore:
 
             gen_side = any(_is_gen(p) for p in ctx.get("parents", {}).get(device.id, []))
             live = ats.gen_at_voltage if gen_side else utility_ok
-            # Eaton Magnum DS main / ASCO paralleling board — Digitrip trip unit
-            # reports bus V, line current, kW and % of the breaker ampere rating.
-            v = round(random.uniform(398.0, 402.0), 1) if live else 0.0
-            kw = round(thr / 1000.0, 1) if live else 0.0
             st["swgr_source"] = "generator" if gen_side else "utility"
             st["swgr_bus_status"] = "energized" if live else "dead"
-            st["swgr_voltage"] = v
-            st["swgr_kw"] = kw
-            st["swgr_current"] = _amps(kw, v, 0.97) if live else 0.0
-            st["swgr_load_pct"] = load_pct if live else 0.0
             st["swgr_breaker_status"] = "closed" if live else "open"
+            # Eaton Magnum DS main / ASCO paralleling board — a Digitrip trip unit with
+            # energy metering (~class 1, ±0.5 %). Reports per-phase V/I, imbalance, PF,
+            # kW/kVAR/kVA and kWh, but NOT the revenue-grade PQ (THD, peak demand) of
+            # the ION9000 upstream — that is the distinction between a trip-unit meter
+            # and a revenue/PQ meter.
+            if not live:
+                for _k in ("swgr_voltage", "swgr_current", "swgr_kw", "swgr_load_pct",
+                           "swgr_va", "swgr_vb", "swgr_vc", "swgr_ia", "swgr_ib",
+                           "swgr_ic", "swgr_phase_imbalance", "swgr_frequency",
+                           "swgr_kvar", "swgr_kva", "swgr_power_factor"):
+                    st[_k] = 0.0
+            else:
+                def _m(x: float) -> float:            # class-1 trip-unit metering error
+                    return x * (1.0 + random.uniform(-0.005, 0.005))
+
+                lf = load_pct / 100.0
+                # PFC-corrected load — PF climbs with load (same load model as utility).
+                pf = round(min(0.995, 0.955 + 0.035 * lf + random.uniform(-0.005, 0.005)), 3)
+                # LV bus voltage droops with load (~2.5 % at full). System V is L-L;
+                # per-phase reads L-N (= V_LL / √3).
+                v_ll_true = 400.0 * (1.0 - 0.025 * lf)
+                v_ln = v_ll_true / 1.7320508
+                v_ph = [_m(v_ln * (1.0 + random.uniform(-0.006, 0.006))) for _ in range(3)]
+                i_avg = thr / (3.0 * v_ln * pf) if (v_ln > 0 and pf > 0) else 0.0
+                i_ph = [_m(i_avg * (1.0 + random.uniform(-0.02, 0.02))) for _ in range(3)]
+                i_mean = sum(i_ph) / 3.0
+                imbal = (max(abs(x - i_mean) for x in i_ph) / i_mean * 100.0) if i_mean > 0 else 0.0
+                kw = round(_m(thr / 1000.0), 1)
+                kva = round(kw / pf, 1) if pf > 0 else 0.0
+                kvar = round((kva * kva - kw * kw) ** 0.5, 1) if kva >= kw else 0.0
+                # Frequency: the grid on the utility board; the genset governor (less
+                # stiff than the grid) on the paralleling board.
+                freq = (round(random.uniform(49.8, 50.2), 2) if gen_side
+                        else round(self._grid_frequency(
+                            getattr(device, "datacenter_city", None) or dc), 2))
+                st["swgr_voltage"] = round(_m(v_ll_true), 1)     # L-L system voltage
+                st["swgr_va"] = round(v_ph[0], 1)
+                st["swgr_vb"] = round(v_ph[1], 1)
+                st["swgr_vc"] = round(v_ph[2], 1)
+                st["swgr_ia"] = round(i_ph[0], 1)
+                st["swgr_ib"] = round(i_ph[1], 1)
+                st["swgr_ic"] = round(i_ph[2], 1)
+                st["swgr_current"] = round(i_mean, 1)            # avg line current
+                st["swgr_phase_imbalance"] = round(imbal, 1)
+                st["swgr_frequency"] = freq
+                st["swgr_kw"] = kw
+                st["swgr_kvar"] = kvar
+                st["swgr_kva"] = kva
+                st["swgr_power_factor"] = pf
+                st["swgr_load_pct"] = load_pct
+            # Cumulative energy accrues only while energized (swgr_kw is 0 when dead).
+            st["swgr_energy_kwh"] = round(
+                st.get("swgr_energy_kwh", 0.0) + st.get("swgr_kw", 0.0) / 60.0, 3)
 
         elif dtv == "ats":
             failed = device.id in self._ats_failed
@@ -1567,48 +1614,160 @@ class DeviceStateStore:
             st["ats_state"] = "failed" if failed else ats.state
             st["ats_normal_available"] = "yes" if (utility_ok and not failed) else "no"
             st["ats_emergency_available"] = "yes" if (ats.gen_at_voltage and not failed) else "no"
-            # ASCO 7000 (ACC SNMP): source voltages, frequency, position, transfer
-            # count and time-on-emergency. It is a SWITCH — it does NOT meter kW/load%.
-            st["ats_normal_voltage"] = (round(random.uniform(398.0, 402.0), 1)
-                                        if (utility_ok and not failed) else 0.0)
-            st["ats_emergency_voltage"] = (round(random.uniform(398.0, 402.0), 1)
-                                           if (ats.gen_at_voltage and not failed) else 0.0)
-            st["ats_frequency"] = (round(random.uniform(49.9, 50.1), 2)
-                                   if live_ats else 0.0)
+            # ASCO 7000 (ACC SNMP): source voltages + per-source frequency, position,
+            # transfer count and time-on-emergency. It is a SWITCH — it does NOT meter
+            # kW/load%. The two sources it senses are the utility main switchgear
+            # (normal) and the generator paralleling board (emergency), so read those
+            # boards' live bus V/Hz directly: the ATS reports the SAME numbers as the
+            # switchgear it is wired to, not an independent random reading. (Switchgear
+            # is stepped before the ATS each tick; a cold start falls back to nominal.)
+            norm_v = norm_hz = emer_v = emer_hz = 0.0
+            for _pid in ctx.get("parents", {}).get(device.id, []):
+                _pd = self._dm.get_device(_pid)
+                if _pd is None or _pd.device_type != DeviceType.SWITCHGEAR:
+                    continue
+                _pst = _ext_state_cache.get(_pd.name, {})
+                if _pst.get("swgr_source") == "generator":
+                    emer_v = float(_pst.get("swgr_voltage", 0.0) or 0.0)
+                    emer_hz = float(_pst.get("swgr_frequency", 0.0) or 0.0)
+                else:
+                    norm_v = float(_pst.get("swgr_voltage", 0.0) or 0.0)
+                    norm_hz = float(_pst.get("swgr_frequency", 0.0) or 0.0)
+            normal_ok = utility_ok and not failed
+            emerg_ok = ats.gen_at_voltage and not failed
+            st["ats_normal_voltage"]      = round(norm_v if norm_v > 0 else 400.0, 1) if normal_ok else 0.0
+            st["ats_emergency_voltage"]   = round(emer_v if emer_v > 0 else 400.0, 1) if emerg_ok else 0.0
+            st["ats_normal_frequency"]    = round(norm_hz if norm_hz > 0 else 50.0, 2) if normal_ok else 0.0
+            st["ats_emergency_frequency"] = round(emer_hz if emer_hz > 0 else 50.0, 2) if emerg_ok else 0.0
+            # Frequency of the source currently connected to the load.
+            if not live_ats:
+                st["ats_frequency"] = 0.0
+            elif pos == "emergency":
+                st["ats_frequency"] = st["ats_emergency_frequency"]
+            else:
+                st["ats_frequency"] = st["ats_normal_frequency"]
             # minutes the load has been on the emergency (generator) source
             on_emg = pos == "emergency" and not failed
             st["ats_time_on_emergency"] = round(
                 (st.get("ats_time_on_emergency", 0.0) + 1.0 / 60.0) if on_emg else 0.0, 2)
 
         elif dtv == "mpp":
-            # A hall's mechanical panelboard (with a panel-main meter) is passive: it
-            # is live exactly when the MCC feeding it is live. Its CRAHs are mechanical
-            # load block 3, so it re-energizes last on a genset restart.
+            # A hall's mechanical panelboard with a panel-main meter (Schneider
+            # PowerLogic PM5000): per-phase V/I, imbalance, PF, kW/kVAR/kVA, Hz, kWh.
+            # Passive — live exactly when the MCC feeding it is live. Its CRAHs are
+            # mechanical load block 3, so it re-energizes last on a genset restart. It
+            # feeds EC/VFD CRAH fans: good PF, modest imbalance.
             live = bool(self._energized.get(device.id, False))
-            kw = round(thr / 1000.0, 1) if live else 0.0
             st["mpp_status"] = "energized" if live else "dead"
-            st["mpp_voltage"] = round(random.uniform(398.0, 402.0), 1) if live else 0.0
-            st["mpp_kw"] = kw
-            st["mpp_load_pct"] = load_pct if live else 0.0
-            st["mpp_energy_kwh"] = round(st.get("mpp_energy_kwh", 0.0) + kw / 60.0, 3)
+            if not live:
+                for _k in ("mpp_voltage", "mpp_current", "mpp_kw", "mpp_load_pct",
+                           "mpp_va", "mpp_vb", "mpp_vc", "mpp_ia", "mpp_ib", "mpp_ic",
+                           "mpp_phase_imbalance", "mpp_frequency", "mpp_kvar",
+                           "mpp_kva", "mpp_power_factor"):
+                    st[_k] = 0.0
+            else:
+                def _m(x: float) -> float:            # class-0.5 panel-meter error
+                    return x * (1.0 + random.uniform(-0.005, 0.005))
+
+                lf = load_pct / 100.0
+                # EC/VFD CRAH fans — better PF than uncorrected motors, climbing with load.
+                pf = round(min(0.96, 0.88 + 0.06 * lf + random.uniform(-0.008, 0.008)), 3)
+                v_ll_true = 400.0 * (1.0 - 0.02 * lf)
+                v_ln = v_ll_true / 1.7320508
+                v_ph = [_m(v_ln * (1.0 + random.uniform(-0.006, 0.006))) for _ in range(3)]
+                i_avg = thr / (3.0 * v_ln * pf) if (v_ln > 0 and pf > 0) else 0.0
+                i_ph = [_m(i_avg * (1.0 + random.uniform(-0.025, 0.025))) for _ in range(3)]
+                i_mean = sum(i_ph) / 3.0
+                imbal = (max(abs(x - i_mean) for x in i_ph) / i_mean * 100.0) if i_mean > 0 else 0.0
+                kw = round(_m(thr / 1000.0), 1)
+                kva = round(kw / pf, 1) if pf > 0 else 0.0
+                kvar = round((kva * kva - kw * kw) ** 0.5, 1) if kva >= kw else 0.0
+                # Frequency: grid on utility; genset governor when the DC is on emergency.
+                freq = (round(random.uniform(49.8, 50.2), 2) if ats.source == "emergency"
+                        else round(self._grid_frequency(
+                            getattr(device, "datacenter_city", None) or dc), 2))
+                st["mpp_voltage"] = round(_m(v_ll_true), 1)      # L-L system voltage
+                st["mpp_va"] = round(v_ph[0], 1)
+                st["mpp_vb"] = round(v_ph[1], 1)
+                st["mpp_vc"] = round(v_ph[2], 1)
+                st["mpp_ia"] = round(i_ph[0], 1)
+                st["mpp_ib"] = round(i_ph[1], 1)
+                st["mpp_ic"] = round(i_ph[2], 1)
+                st["mpp_current"] = round(i_mean, 1)             # avg line current
+                st["mpp_phase_imbalance"] = round(imbal, 1)
+                st["mpp_frequency"] = freq
+                st["mpp_kw"] = kw
+                st["mpp_kvar"] = kvar
+                st["mpp_kva"] = kva
+                st["mpp_power_factor"] = pf
+                st["mpp_load_pct"] = load_pct
+            # Cumulative mechanical energy accrues only while energized.
+            st["mpp_energy_kwh"] = round(
+                st.get("mpp_energy_kwh", 0.0) + st.get("mpp_kw", 0.0) / 60.0, 3)
 
         elif dtv == "mcc":
             src_ok, tie_closed = self._mcc_tie_state(dc, ctx)
             own_ok = ctx.get("mcc_ats", {}).get(device.id) not in self._ats_failed
             dead = not src_ok.get(device.id, True)
             live = ats.source_live and not dead
-            # Eaton Freedom 2100 with a metered main — bus V, line current, kW, % load.
-            v = round(random.uniform(398.0, 402.0), 1) if live else 0.0
-            kw = round(thr / 1000.0, 1) if live else 0.0
             st["mcc_status"] = "energized" if live else "dead"
             st["mcc_tie"] = "closed" if tie_closed else "open"
             # Which source is actually feeding this bus: its own transfer switch, or
             # the sibling's across a closed tie.
             st["mcc_source"] = "normal" if own_ok else ("tie" if tie_closed else "none")
-            st["mcc_voltage"] = v
-            st["mcc_current"] = _amps(kw, v, 0.88) if live else 0.0   # motor loads, lower PF
-            st["mcc_kw"] = kw
-            st["mcc_load_pct"] = load_pct if live else 0.0
+            # Eaton Freedom 2100 with a metered main (Power Xpert/IQ) — per-phase V/I,
+            # imbalance, motor PF, kW/kVAR/kVA, Hz and kWh. This bus carries the
+            # cooling-plant MOTOR load, so PF is lower than IT and drops at part load,
+            # imbalance runs higher (one large motor skews a phase), and kVAR is
+            # significant.
+            if not live:
+                for _k in ("mcc_voltage", "mcc_current", "mcc_kw", "mcc_load_pct",
+                           "mcc_va", "mcc_vb", "mcc_vc", "mcc_ia", "mcc_ib", "mcc_ic",
+                           "mcc_phase_imbalance", "mcc_frequency", "mcc_kvar",
+                           "mcc_kva", "mcc_power_factor"):
+                    st[_k] = 0.0
+            else:
+                def _m(x: float) -> float:            # class-0.5 metered-main error
+                    return x * (1.0 + random.uniform(-0.005, 0.005))
+
+                lf = load_pct / 100.0
+                # Motor/VFD load: PF lower than IT and worse at part load (a lightly
+                # loaded motor is highly reactive), climbing toward ~0.90 near full.
+                pf = round(min(0.90, 0.78 + 0.12 * lf + random.uniform(-0.01, 0.01)), 3)
+                # LV motor bus droops more than the IT bus (~3 % at full load).
+                v_ll_true = 400.0 * (1.0 - 0.03 * lf)
+                v_ln = v_ll_true / 1.7320508
+                # Motor buses are less balanced than IT — one large motor skews a phase.
+                v_ph = [_m(v_ln * (1.0 + random.uniform(-0.008, 0.008))) for _ in range(3)]
+                i_avg = thr / (3.0 * v_ln * pf) if (v_ln > 0 and pf > 0) else 0.0
+                i_ph = [_m(i_avg * (1.0 + random.uniform(-0.035, 0.035))) for _ in range(3)]
+                i_mean = sum(i_ph) / 3.0
+                imbal = (max(abs(x - i_mean) for x in i_ph) / i_mean * 100.0) if i_mean > 0 else 0.0
+                kw = round(_m(thr / 1000.0), 1)
+                kva = round(kw / pf, 1) if pf > 0 else 0.0
+                kvar = round((kva * kva - kw * kw) ** 0.5, 1) if kva >= kw else 0.0
+                # Frequency: grid on utility; genset governor when the DC is on emergency.
+                freq = (round(random.uniform(49.8, 50.2), 2) if ats.source == "emergency"
+                        else round(self._grid_frequency(
+                            getattr(device, "datacenter_city", None) or dc), 2))
+                st["mcc_voltage"] = round(_m(v_ll_true), 1)      # L-L system voltage
+                st["mcc_va"] = round(v_ph[0], 1)
+                st["mcc_vb"] = round(v_ph[1], 1)
+                st["mcc_vc"] = round(v_ph[2], 1)
+                st["mcc_ia"] = round(i_ph[0], 1)
+                st["mcc_ib"] = round(i_ph[1], 1)
+                st["mcc_ic"] = round(i_ph[2], 1)
+                st["mcc_current"] = round(i_mean, 1)             # avg line current
+                st["mcc_phase_imbalance"] = round(imbal, 1)
+                st["mcc_frequency"] = freq
+                st["mcc_kw"] = kw
+                st["mcc_kvar"] = kvar
+                st["mcc_kva"] = kva
+                st["mcc_power_factor"] = pf
+                st["mcc_load_pct"] = load_pct
+            # Cumulative mechanical energy accrues only while energized.
+            st["mcc_energy_kwh"] = round(
+                st.get("mcc_energy_kwh", 0.0) + st.get("mcc_kw", 0.0) / 60.0, 3)
 
         _ext_state_cache[device.name] = dict(st)
 
@@ -1807,6 +1966,11 @@ class DeviceStateStore:
             dc_city: Dict[str, str] = {}
             plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
             plant_model: Dict[str, str] = {}            # plant device name → SKU model
+            # Per-server live + nominal draw by NAME, for per-CDU loop-heat coupling:
+            # a CDU's duty tracks the live heat of the cold-plate servers on ITS loop.
+            it_w_by_name: Dict[str, float] = {}
+            it_nom_by_name: Dict[str, float] = {}
+            cdu_loops = self._cdu_loop_servers()        # {cdu name: {server names}}
             for d in devices:
                 dtv = d.device_type.value
                 _dc = getattr(d, "datacenter", None) or "?"
@@ -1817,6 +1981,8 @@ class DeviceStateStore:
                     own[d.id] = w
                     it_w += w
                     it_live_dc[_dc] += w
+                    it_w_by_name[d.name] = w
+                    it_nom_by_name[d.name] = float(getattr(d, "power_draw_w", 0) or 0)
                     _inl = getattr(d, "inlet_temp", None)
                     if _inl is not None:
                         inlet_sum_dc[_dc] += float(_inl)
@@ -1865,6 +2031,7 @@ class DeviceStateStore:
             _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
             plant_power: Dict[str, float] = {}
             plant_cop: Dict[str, float] = {}
+            plant_loadfrac: Dict[str, float] = {}   # {unit_name: its DC's plant duty}
             self._plant_standby_names = set()
             _cool_model_w = 0.0
             for _dc, units in plant_dc.items():
@@ -1939,6 +2106,12 @@ class DeviceStateStore:
                 _running_np = sum(w for _n, w, _t in units
                                   if _n not in self._plant_standby_names) or np_sum
                 lf = min(1.0, total_w / _running_np)
+                # Cooling DEMAND fraction for this DC — drives modulating valve
+                # position (a control valve opens toward 100 % as load rises). Keyed
+                # per unit name so the BACnet controller can look it up like the power
+                # map. A staged-off unit's valve is handled as "off" downstream.
+                for _n2, _w2, _t2 in units:
+                    plant_loadfrac[_n2] = lf
                 # Thermal part-load ratio for the chiller kW/ton curve. This is the
                 # chiller's OWN load ratio — live IT heat divided by the rated cooling
                 # capacity of the chillers currently running — not the staged plant's
@@ -1980,6 +2153,18 @@ class DeviceStateStore:
                             _rn = inlet_n_room.get(_rk, 0)
                             _rinl = (inlet_sum_room[_rk] / _rn) if _rn else avg_inlet
                             duty = lf * crah_fan_speed_ratio(_rinl)
+                        elif _t == "cdu":
+                            # Per-loop control: a CDU's pump ramps on the LIVE heat of
+                            # the cold-plate servers on ITS loop, not the DC-wide plant
+                            # duty — flow tracks heat (fixed ΔT). Duty = live loop heat
+                            # / the loop's full-load (nameplate) heat, so an idle GPU
+                            # loop coasts and a busy one drives the pump toward full.
+                            _members = cdu_loops.get(_n, ())
+                            _live_hw = sum(it_w_by_name.get(s, 0.0) for s in _members)
+                            _nom_hw = sum(it_nom_by_name.get(s, 0.0) for s in _members)
+                            duty = (_live_hw / _nom_hw) if _nom_hw > 0 else lf
+                            self._cdu_loop_heat_kw[_n] = _live_hw / 1000.0
+                            plant_loadfrac[_n] = duty     # per-loop, not DC-wide lf
                         else:
                             duty = lf
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
@@ -2020,6 +2205,7 @@ class DeviceStateStore:
                             plant_power[_x] *= _scale
             self._plant_power_by_name = plant_power
             self._plant_cop_by_name = plant_cop
+            self._plant_loadfrac_by_name = plant_loadfrac
             self._cool_model_w = _cool_model_w
         except Exception:
             log.exception("[StateStore] power flow error")
@@ -2266,6 +2452,8 @@ class DeviceStateStore:
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
                                        plant_power_by_name=self._plant_power_by_name,
                                        plant_cop_by_name=self._plant_cop_by_name,
+                                       plant_loadfrac_by_name=self._plant_loadfrac_by_name,
+                                       plant_heat_by_name=self._cdu_loop_heat_kw,
                                        plant_standby_names=self._plant_standby_names,
                                        plant_unpowered_names=self._plant_unpowered_names)
                 self._publish_plant_state()
@@ -2394,12 +2582,19 @@ class DeviceStateStore:
             "swgr_kw": 0.0,
             "swgr_load_pct": 0.0,
             "swgr_breaker_status": "closed",
+            "swgr_va": 230.0, "swgr_vb": 230.0, "swgr_vc": 230.0,
+            "swgr_ia": 0.0, "swgr_ib": 0.0, "swgr_ic": 0.0,
+            "swgr_phase_imbalance": 0.0, "swgr_frequency": 50.0,
+            "swgr_kvar": 0.0, "swgr_kva": 0.0, "swgr_power_factor": 0.97,
+            "swgr_energy_kwh": 0.0,
             "ats_position": "normal",
             "ats_state": "utility",
             "ats_normal_available": "yes",
             "ats_emergency_available": "no",
             "ats_normal_voltage": 400.0,
             "ats_emergency_voltage": 0.0,
+            "ats_normal_frequency": 50.0,
+            "ats_emergency_frequency": 0.0,
             "ats_frequency": 50.0,
             "ats_transfer_count": 0,
             "ats_time_on_emergency": 0.0,
@@ -2410,11 +2605,21 @@ class DeviceStateStore:
             "mcc_current": 0.0,
             "mcc_kw": 0.0,
             "mcc_load_pct": 0.0,
+            "mcc_va": 230.0, "mcc_vb": 230.0, "mcc_vc": 230.0,
+            "mcc_ia": 0.0, "mcc_ib": 0.0, "mcc_ic": 0.0,
+            "mcc_phase_imbalance": 0.0, "mcc_frequency": 50.0,
+            "mcc_kvar": 0.0, "mcc_kva": 0.0, "mcc_power_factor": 0.88,
+            "mcc_energy_kwh": 0.0,
             "mpp_status": "energized",
             "mpp_voltage": 400.0,
+            "mpp_current": 0.0,
             "mpp_kw": 0.0,
             "mpp_load_pct": 0.0,
             "mpp_energy_kwh": 0.0,
+            "mpp_va": 230.0, "mpp_vb": 230.0, "mpp_vc": 230.0,
+            "mpp_ia": 0.0, "mpp_ib": 0.0, "mpp_ic": 0.0,
+            "mpp_phase_imbalance": 0.0, "mpp_frequency": 50.0,
+            "mpp_kvar": 0.0, "mpp_kva": 0.0, "mpp_power_factor": 0.92,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),
@@ -3117,12 +3322,19 @@ class DeviceStateStore:
             "swgr_kw": 0.0,
             "swgr_load_pct": 0.0,
             "swgr_breaker_status": "closed",
+            "swgr_va": 230.0, "swgr_vb": 230.0, "swgr_vc": 230.0,
+            "swgr_ia": 0.0, "swgr_ib": 0.0, "swgr_ic": 0.0,
+            "swgr_phase_imbalance": 0.0, "swgr_frequency": 50.0,
+            "swgr_kvar": 0.0, "swgr_kva": 0.0, "swgr_power_factor": 0.97,
+            "swgr_energy_kwh": 0.0,
             "ats_position": "normal",
             "ats_state": "utility",
             "ats_normal_available": "yes",
             "ats_emergency_available": "no",
             "ats_normal_voltage": 400.0,
             "ats_emergency_voltage": 0.0,
+            "ats_normal_frequency": 50.0,
+            "ats_emergency_frequency": 0.0,
             "ats_frequency": 50.0,
             "ats_transfer_count": 0,
             "ats_time_on_emergency": 0.0,
@@ -3133,11 +3345,21 @@ class DeviceStateStore:
             "mcc_current": 0.0,
             "mcc_kw": 0.0,
             "mcc_load_pct": 0.0,
+            "mcc_va": 230.0, "mcc_vb": 230.0, "mcc_vc": 230.0,
+            "mcc_ia": 0.0, "mcc_ib": 0.0, "mcc_ic": 0.0,
+            "mcc_phase_imbalance": 0.0, "mcc_frequency": 50.0,
+            "mcc_kvar": 0.0, "mcc_kva": 0.0, "mcc_power_factor": 0.88,
+            "mcc_energy_kwh": 0.0,
             "mpp_status": "energized",
             "mpp_voltage": 400.0,
+            "mpp_current": 0.0,
             "mpp_kw": 0.0,
             "mpp_load_pct": 0.0,
             "mpp_energy_kwh": 0.0,
+            "mpp_va": 230.0, "mpp_vb": 230.0, "mpp_vc": 230.0,
+            "mpp_ia": 0.0, "mpp_ib": 0.0, "mpp_ic": 0.0,
+            "mpp_phase_imbalance": 0.0, "mpp_frequency": 50.0,
+            "mpp_kvar": 0.0, "mpp_kva": 0.0, "mpp_power_factor": 0.92,
             "pdu_load": random.uniform(30.0, 60.0),
             "pdu_voltage": random.uniform(228.0, 232.0),
             "pdu_power_factor": random.uniform(0.92, 0.98),

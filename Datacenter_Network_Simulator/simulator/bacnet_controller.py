@@ -542,6 +542,8 @@ class BACnetController:
              circuit_kw_by_ip: dict | None = None,
              plant_power_by_name: dict | None = None,
              plant_cop_by_name: dict | None = None,
+             plant_loadfrac_by_name: dict | None = None,
+             plant_heat_by_name: dict | None = None,
              plant_standby_names: set | None = None,
              plant_unpowered_names: set | None = None) -> None:
         """
@@ -587,7 +589,11 @@ class BACnetController:
                     _nm = getattr(dev, "device_name", "")
                     _pw = (plant_power_by_name or {}).get(_nm)
                     _cop = (plant_cop_by_name or {}).get(_nm)
-                    values = engine.tick(dt, forced=forced, live_power=_pw, live_cop=_cop)
+                    _lf = (plant_loadfrac_by_name or {}).get(_nm)
+                    _hl = (plant_heat_by_name or {}).get(_nm)
+                    values = engine.tick(dt, forced=forced, live_power=_pw,
+                                         live_cop=_cop, plant_load_frac=_lf,
+                                         live_heat=_hl)
                     # Staged-OFF (standby) chiller / pump / tower cell: sequenced down
                     # by the BMS (lead/lag), not faulted. Report the unit STOPPED and
                     # its dynamic signals at rest — so a staged-off unit reads "off",
@@ -607,8 +613,9 @@ class BACnetController:
                                        "Fan_Status", "Unit_Running"):
                                 values[_pt] = 0.0            # stopped
                             elif any(_k in _pt for _k in ("Power", "Speed", "Flow",
-                                                          "Frequency", "Load", "Capacity")):
-                                values[_pt] = 0.0            # no draw / flow / output
+                                                          "Frequency", "Load", "Capacity",
+                                                          "Position", "Valve")):
+                                values[_pt] = 0.0            # no draw / flow / valve shut
                 else:
                     # EV2 energy meter: drive the panel from the live downstream
                     # load (server→PDU→panel) when available, else its own curve.

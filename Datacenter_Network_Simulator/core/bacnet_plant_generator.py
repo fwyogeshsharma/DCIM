@@ -198,6 +198,16 @@ class PlantTelemetryEngine:
         _SPD = {"pump": "Speed", "cooling_tower": "Fan_Speed",
                 "crah": "Fan_Speed", "cdu": "Pump_Speed"}
         self._speed_point = _SPD.get(device_type)
+        # Modulating control-valve position points track cooling DEMAND (the plant
+        # load fraction), not the valve's own negligible actuator power. Covers the
+        # standalone valve (Position/Commanded_Position) and the CHW control-valve
+        # points on a CRAH/CDU (CHW_Valve / Facility_CHW_Valve).
+        self._valve_pos_pts = [n for (n, *_r) in self._points
+                               if n.endswith("Valve")
+                               or n in ("Position", "Commanded_Position")]
+        # Design base per point — anchors the live-heat coupling (CDU Heat_Load /
+        # TCS_Flow scale off the loop heat relative to these nameplate bases).
+        self._base = {n: b for (n, b, _a, _il, _ih) in self._points}
 
         self._binaries: Dict[str, float] = {}
         for name in spec["bi"]:
@@ -226,7 +236,9 @@ class PlantTelemetryEngine:
 
     def tick(self, dt: float, force_leak: bool = False, forced=None,
              live_power: float | None = None,
-             live_cop: float | None = None) -> Dict[str, float]:
+             live_cop: float | None = None,
+             plant_load_frac: float | None = None,
+             live_heat: float | None = None) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
         # "on" for this device (Limits tab). Back-compat: force_leak maps to it.
         # `live_power` (kW) — when supplied, the primary electrical-power point is
@@ -293,6 +305,33 @@ class PlantTelemetryEngine:
         if live_cop is not None and live_cop > 0.0 and "COP" in out:
             self._values["COP"] = self._ema(live_cop, self._values["COP"], 0.3)
             out["COP"] = round(self._values["COP"], 2)
+
+        # CDU heat rejection — Heat_Load is the LIVE heat of the cold-plate servers on
+        # this CDU's loop (Σ their live watts), not a diurnal walk. TCS_Flow tracks it
+        # (flow ∝ heat at a fixed loop ΔT), scaled off the design bases.
+        if live_heat is not None and "Heat_Load" in out:
+            self._values["Heat_Load"] = self._ema(
+                max(0.0, live_heat), self._values["Heat_Load"], 0.3)
+            out["Heat_Load"] = round(max(0.0, self._values["Heat_Load"]), 2)
+            _hbase = self._base.get("Heat_Load", 0.0)
+            _fbase = self._base.get("TCS_Flow", 0.0)
+            if _hbase > 0 and _fbase > 0 and "TCS_Flow" in out:
+                flow = _fbase * (out["Heat_Load"] / _hbase)
+                self._values["TCS_Flow"] = self._ema(flow, self._values["TCS_Flow"], 0.3)
+                out["TCS_Flow"] = round(max(0.0, self._values["TCS_Flow"]), 2)
+
+        # Modulating control valve — position tracks cooling DEMAND (plant load
+        # fraction), not its own actuator power: the valve strokes toward 100 % open
+        # as load rises, floored at a ~10 % minimum modulating position. Commanded
+        # leads; the actual Position lags it by the actuator stroke time.
+        if plant_load_frac is not None and self._valve_pos_pts:
+            frac = max(0.0, min(1.0, plant_load_frac))
+            cmd = 10.0 + 85.0 * frac
+            for _vp in self._valve_pos_pts:
+                a = 0.5 if _vp == "Commanded_Position" else 0.3
+                tgt = cmd + random.uniform(-1.0, 1.0)
+                self._values[_vp] = self._ema(tgt, self._values.get(_vp, tgt), a)
+                out[_vp] = round(max(0.0, min(100.0, self._values[_vp])), 2)
 
         for name, val in self._binaries.items():
             out[name] = val
