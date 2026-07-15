@@ -145,6 +145,8 @@ function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edg
 
 const LINK_LAYERS = ['production', 'management', 'power', 'cooling']
 
+type Port = { iface: number; name: string; used: boolean; peer: string | null }
+
 function ToolBtn({ title, onClick, active, children, disabled }: {
   title: string
   onClick?: () => void
@@ -198,8 +200,15 @@ function Canvas() {
   const initialFit = useRef(false)
   const repositionPending = useRef(false)
   const [linkSrc,    setLinkSrc]    = useState<string | null>(null)
+  const [linkDst,    setLinkDst]    = useState<string | null>(null)
   const [linkLayer,  setLinkLayer]  = useState('production')
   const [linkMsg,    setLinkMsg]    = useState('')
+  // Port pickers: full port list per end + the chosen port (null = auto next-free).
+  const [srcPorts,   setSrcPorts]   = useState<Port[]>([])
+  const [dstPorts,   setDstPorts]   = useState<Port[]>([])
+  const [srcPort,    setSrcPort]    = useState<number | null>(null)
+  const [dstPort,    setDstPort]    = useState<number | null>(null)
+  const [linkBusy,   setLinkBusy]   = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [ctxMenu,      setCtxMenu]      = useState<{ nodeId: string; deviceType: string; deviceName: string; modelName: string; x: number; y: number } | null>(null)
@@ -279,9 +288,27 @@ function Canvas() {
       .catch(console.error)
   }, [layoutAlgo])
 
+  const resetLink = useCallback((clearMsg = true) => {
+    setLinkSrc(null); setLinkDst(null)
+    setSrcPorts([]); setDstPorts([]); setSrcPort(null); setDstPort(null)
+    if (clearMsg) setLinkMsg('')
+  }, [])
+
+  // Load a device's ports and default-select its first FREE port.
+  const loadPorts = useCallback((id: string, end: 'src' | 'dst') => {
+    api.devicePorts(id)
+      .then((r: unknown) => {
+        const ports = ((r as { ports?: Port[] }).ports) || []
+        const firstFree = ports.find(p => !p.used)?.iface ?? null
+        if (end === 'src') { setSrcPorts(ports); setSrcPort(firstFree) }
+        else               { setDstPorts(ports); setDstPort(firstFree) }
+      })
+      .catch(() => { if (end === 'src') setSrcPorts([]); else setDstPorts([]) })
+  }, [])
+
   useEffect(() => {
-    if (!linkMode) { setLinkSrc(null); setLinkMsg('') }
-  }, [linkMode])
+    if (!linkMode) resetLink()
+  }, [linkMode, resetLink])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -313,19 +340,30 @@ function Canvas() {
     else setSearchText('')
   }, [searchOpen])
 
+  // Clicking canvas nodes FILLS the builder (source, then destination) instead of
+  // creating immediately — the operator then picks ports and hits Create Link.
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (!linkMode) return
-    if (!linkSrc) {
-      setLinkSrc(node.id)
-      setLinkMsg(`Source: ${node.data.name}`)
-    } else {
-      if (linkSrc === node.id) { setLinkSrc(null); setLinkMsg(''); return }
-      api.createLink(linkSrc, node.id, linkLayer)
-        .then(() => { fetchGraph(); setLinkMsg(`Link created`) })
-        .catch(e => setLinkMsg(errorMessage(e)))
-        .finally(() => { setLinkSrc(null) })
+    if (!linkSrc || (linkSrc && linkDst)) {          // (re)start: this is the source
+      resetLink(false)
+      setLinkSrc(node.id); setLinkMsg('')
+      loadPorts(node.id, 'src')
+    } else if (node.id === linkSrc) {                // clicking source again clears it
+      resetLink()
+    } else {                                         // this is the destination
+      setLinkDst(node.id); setLinkMsg('')
+      loadPorts(node.id, 'dst')
     }
-  }, [linkMode, linkSrc, linkLayer, fetchGraph])
+  }, [linkMode, linkSrc, linkDst, resetLink, loadPorts])
+
+  const doCreateLink = useCallback(() => {
+    if (!linkSrc || !linkDst || linkBusy) return
+    setLinkBusy(true)
+    api.createLink(linkSrc, linkDst, linkLayer, srcPort ?? undefined, dstPort ?? undefined)
+      .then(() => { fetchGraph(); setLinkMsg('Link created'); resetLink(false) })
+      .catch(e => setLinkMsg(errorMessage(e)))
+      .finally(() => setLinkBusy(false))
+  }, [linkSrc, linkDst, linkLayer, srcPort, dstPort, linkBusy, fetchGraph, resetLink])
 
   // React Flow hands us every node that moved in this drag — one node normally,
   // the whole selection when several were shift-clicked. Persist them in a single
@@ -462,55 +500,97 @@ function Canvas() {
         })}
       </div>
 
-      {/* ── Link mode overlay banner ─────────────────────────── */}
-      {linkMode && (
-        <div style={{
-          position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 10, background: 'rgba(30, 58, 95, 0.95)',
-          border: '1px solid #1e6ec8', borderRadius: 6,
-          padding: '6px 14px',
-          display: 'flex', alignItems: 'center', gap: 12,
-          boxShadow: '0 4px 18px rgba(0,0,0,0.5), 0 0 0 1px rgba(30,110,200,0.3)',
-          backdropFilter: 'blur(4px)',
-        }}>
-          <span style={{ color: '#93c5fd', display: 'flex' }}><I.link /></span>
-          <span style={{ fontSize: 11, color: '#93c5fd', fontWeight: 600, letterSpacing: '0.3px' }}>
-            Link Mode
-          </span>
-          {/* Step indicator */}
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{
-              width: 18, height: 18, borderRadius: '50%',
-              background: '#1e6ec8', color: '#fff',
-              fontSize: 10, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>{linkSrc ? '2' : '1'}</span>
-            <span style={{ fontSize: 10, color: '#93c5fd' }}>
-              {linkMsg || (linkSrc ? 'Click destination node' : 'Click source node')}
-            </span>
-          </span>
-          <select
-            value={linkLayer}
-            onChange={e => setLinkLayer(e.target.value)}
-            style={{
-              fontSize: 10, background: '#0f1f3a',
-              border: '1px solid #1e6ec8', color: '#93c5fd',
-              borderRadius: 3, padding: '2px 4px',
-            }}
-          >
-            {LINK_LAYERS.map(l => <option key={l} value={l}>{l}</option>)}
+      {/* ── Link mode builder ────────────────────────────────── */}
+      {linkMode && (() => {
+        const nm = (id: string | null) => id ? (graphDevices.find(d => d.id === id)?.name ?? id) : ''
+        const selStyle: React.CSSProperties = {
+          fontSize: 10, background: '#0f1f3a', border: '1px solid #1e6ec8',
+          color: '#dbeafe', borderRadius: 3, padding: '2px 4px', minWidth: 130,
+        }
+        const portSelect = (ports: Port[], port: number | null,
+                            setPort: (n: number | null) => void, disabled: boolean) => (
+          <select value={port ?? ''} disabled={disabled || !ports.length} style={{ ...selStyle, minWidth: 150 }}
+            onChange={e => setPort(e.target.value === '' ? null : parseInt(e.target.value))}>
+            <option value="">auto (next free)</option>
+            {ports.map(p => (
+              <option key={p.iface} value={p.iface} disabled={p.used}>
+                {p.name}{p.used ? ` — in use${p.peer ? ` → ${p.peer}` : ''}` : ''}
+              </option>
+            ))}
           </select>
-          <button onClick={() => setLinkMode(false)}
-            style={{
-              fontSize: 10, background: 'transparent',
-              border: '1px solid #1e6ec8', color: '#93c5fd',
-              borderRadius: 3, padding: '1px 8px',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            }}>
-            <I.close /> Exit
-          </button>
-        </div>
-      )}
+        )
+        const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 }
+        const badge = (n: string, on: boolean): React.CSSProperties => ({
+          width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+          background: on ? '#1e6ec8' : '#24405f', color: on ? '#fff' : '#7aa0c8',
+          fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        })
+        return (
+          <div style={{
+            position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 10, background: 'rgba(20, 40, 68, 0.97)',
+            border: '1px solid #1e6ec8', borderRadius: 6, padding: '8px 12px',
+            display: 'flex', flexDirection: 'column', gap: 7,
+            boxShadow: '0 4px 18px rgba(0,0,0,0.5), 0 0 0 1px rgba(30,110,200,0.3)',
+            backdropFilter: 'blur(4px)',
+          }}>
+            <div style={{ ...rowStyle, justifyContent: 'space-between' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#93c5fd', fontSize: 11, fontWeight: 600 }}>
+                <I.link /> Link Builder
+              </span>
+              <button onClick={() => setLinkMode(false)} style={{
+                fontSize: 10, background: 'transparent', border: '1px solid #1e6ec8',
+                color: '#93c5fd', borderRadius: 3, padding: '1px 8px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}><I.close /> Exit</button>
+            </div>
+
+            <div style={rowStyle}>
+              <span style={badge('1', !!linkSrc)}>1</span>
+              <span style={{ fontSize: 10, color: '#93c5fd', width: 34 }}>Source</span>
+              <span style={{ fontSize: 10, color: linkSrc ? '#dbeafe' : '#7aa0c8', width: 150, fontWeight: linkSrc ? 600 : 400,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {linkSrc ? nm(linkSrc) : 'click a node…'}
+              </span>
+              {portSelect(srcPorts, srcPort, setSrcPort, !linkSrc)}
+            </div>
+
+            <div style={rowStyle}>
+              <span style={badge('2', !!linkDst)}>2</span>
+              <span style={{ fontSize: 10, color: '#93c5fd', width: 34 }}>Dest</span>
+              <span style={{ fontSize: 10, color: linkDst ? '#dbeafe' : '#7aa0c8', width: 150, fontWeight: linkDst ? 600 : 400,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {linkDst ? nm(linkDst) : (linkSrc ? 'click a node…' : '—')}
+              </span>
+              {portSelect(dstPorts, dstPort, setDstPort, !linkDst)}
+            </div>
+
+            <div style={{ ...rowStyle, justifyContent: 'space-between', borderTop: '1px solid #24405f', paddingTop: 7 }}>
+              <div style={rowStyle}>
+                <span style={{ fontSize: 10, color: '#93c5fd' }}>Layer</span>
+                <select value={linkLayer} onChange={e => setLinkLayer(e.target.value)} style={selStyle}>
+                  {LINK_LAYERS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div style={rowStyle}>
+                {linkSrc && <button onClick={() => resetLink()} style={{
+                  fontSize: 10, background: 'transparent', border: '1px solid #24405f',
+                  color: '#7aa0c8', borderRadius: 3, padding: '2px 8px', cursor: 'pointer',
+                }}>Clear</button>}
+                <button onClick={doCreateLink} disabled={!linkSrc || !linkDst || linkBusy} style={{
+                  fontSize: 10, fontWeight: 700, borderRadius: 3, padding: '2px 12px',
+                  border: '1px solid #1e6ec8',
+                  background: (!linkSrc || !linkDst || linkBusy) ? '#24405f' : '#1e6ec8',
+                  color: (!linkSrc || !linkDst || linkBusy) ? '#7aa0c8' : '#fff',
+                  cursor: (!linkSrc || !linkDst || linkBusy) ? 'not-allowed' : 'pointer',
+                }}>{linkBusy ? 'Creating…' : 'Create Link'}</button>
+              </div>
+            </div>
+
+            {linkMsg && <div style={{ fontSize: 10, color: linkMsg === 'Link created' ? '#4ade80' : '#fca5a5' }}>{linkMsg}</div>}
+          </div>
+        )
+      })()}
 
 
       {/* ── Empty state ──────────────────────────────────────── */}

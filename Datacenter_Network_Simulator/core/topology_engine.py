@@ -116,14 +116,13 @@ class TopologyEngine:
                 return False
             src_dev = self.get_device(src_id)
             dst_dev = self.get_device(dst_id)
-            if layer == "management":
+            # Honour an explicitly-chosen port on any layer (the manual link builder
+            # passes them); fall back to the next free port when not given — the
+            # long-standing auto behaviour every other caller relies on.
+            if src_iface is None:
                 src_iface = self._next_free_iface(src_dev) if src_dev else 0
+            if dst_iface is None:
                 dst_iface = self._next_free_iface(dst_dev) if dst_dev else 0
-            else:
-                if src_iface is None:
-                    src_iface = self._next_free_iface(src_dev) if src_dev else 0
-                if dst_iface is None:
-                    dst_iface = self._next_free_iface(dst_dev) if dst_dev else 0
             self.graph.add_edge(src_id, dst_id,
                                 key=edge_key,
                                 src_iface=src_iface,

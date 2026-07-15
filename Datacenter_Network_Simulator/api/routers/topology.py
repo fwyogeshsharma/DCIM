@@ -19,6 +19,10 @@ class CreateLinkRequest(BaseModel):
     src_id: str
     dst_id: str
     layer: str = "production"
+    # Explicit port (interface list-index) on each end. None = auto-pick the next
+    # free port, the old behaviour. When given, the port must be free (else 409).
+    src_iface: Optional[int] = None
+    dst_iface: Optional[int] = None
 
 class LayoutRequest(BaseModel):
     algorithm: str  # "default" | "spring" | "shell" | "kamada_kawai"
@@ -252,13 +256,60 @@ def restore_link(req: LinkActionRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/devices/{device_id}/ports")
+def device_ports(device_id: str):
+    """List a device's ports for the link-builder port pickers: every interface,
+    each flagged used/free with its peer, so the UI can show ALL ports but only let
+    the operator pick a FREE one. The `iface` field is the value to pass back as
+    create_link's src_iface/dst_iface (the interface list-index that add_link uses)."""
+    s = _state()
+    if s.topology is None or s.device_manager is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    dev = s.device_manager.get_device(device_id)
+    if dev is None:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    ports = []
+    for i, itf in enumerate(dev.interfaces):
+        peer = None
+        if itf.connected_to_device:
+            pd = s.device_manager.get_device(itf.connected_to_device)
+            pname = pd.name if pd else itf.connected_to_device
+            pi = itf.connected_to_iface
+            if pd and pi is not None and 0 <= pi < len(pd.interfaces):
+                peer = f"{pname} · {pd.interfaces[pi].name}"
+            else:
+                peer = pname
+        ports.append({"iface": i, "name": itf.name,
+                      "used": itf.connected_to_device is not None, "peer": peer})
+    return {"device_id": device_id, "name": dev.name,
+            "interface_count": len(dev.interfaces),
+            "free": sum(1 for p in ports if not p["used"]), "ports": ports}
+
+
 @router.post("/links/create", response_model=OkResponse)
 def create_link(req: CreateLinkRequest):
-    """Create a new link between two devices."""
+    """Create a new link between two devices, optionally on explicit ports."""
     s = _state()
     if s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
-    ok = s.topology.add_link(req.src_id, req.dst_id, layer=req.layer)
+    # Validate any explicitly-chosen port: it must exist and be free. The UI only
+    # offers free ports, but a stale view (or a direct API call) could still target
+    # an occupied one, and add_link would otherwise silently overwrite it.
+    for who, dev_id, iface in (("Source", req.src_id, req.src_iface),
+                               ("Destination", req.dst_id, req.dst_iface)):
+        if iface is None:
+            continue
+        dev = s.device_manager.get_device(dev_id) if s.device_manager else None
+        if dev is None:
+            raise HTTPException(status_code=404, detail=f"{who} device not found")
+        if not (0 <= iface < len(dev.interfaces)):
+            raise HTTPException(status_code=422, detail=f"{who} port {iface} out of range")
+        if dev.interfaces[iface].connected_to_device is not None:
+            raise HTTPException(status_code=409,
+                                detail=f"{who} port {dev.interfaces[iface].name} is already in use")
+    ok = s.topology.add_link(req.src_id, req.dst_id,
+                             src_iface=req.src_iface, dst_iface=req.dst_iface,
+                             layer=req.layer)
     if not ok:
         raise HTTPException(status_code=409, detail="Link already exists or invalid devices")
     s.notify_ui("link_changed", req.src_id, req.dst_id, False)
