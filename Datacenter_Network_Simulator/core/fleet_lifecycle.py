@@ -38,7 +38,7 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
-from core.device_manager import Device, DeviceType, Vendor
+from core.device_manager import Device, DeviceType, Vendor, Interface
 from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
     RACK_POWER_BUDGET_W_DEFAULT,
@@ -62,6 +62,12 @@ _ROOM_CODE = {
 # clone-prefix → leading type code (pdu*/rpp* carry an A/B side, handled inline)
 _PREFIX_CODE = {"srv": "SRV", "tor": "LF", "spine": "SP", "ev2": "EV2",
                 "crah": "CRAH", "sen": "SEN"}
+
+# Names of a device's DEDICATED out-of-band management / BMC port — the console
+# (switch/router) or lights-out controller (server) lands here, never on a data
+# port. Kept in lock-step with tools/add_network_mgmt_port.py + tools/set_server_ports.py.
+_MGMT_PORT_NAMES = {"mgmt0", "management", "mgmt", "management1", "fxp0", "em0",
+                    "idrac", "ilo", "xcc", "ipmi", "imm", "cimc", "bmc"}
 
 
 def _room_code(room: Optional[str]) -> str:
@@ -822,6 +828,15 @@ class FleetLifecycleEngine:
                       f"{new.name} in {rk[0]}/{rk[2]}")
         return new
 
+    def _mgmt_port_iface(self, dev: Device) -> Optional[int]:
+        """List-index of *dev*'s dedicated OOB management / BMC port (mgmt0 / iLO /
+        iDRAC / management / ...) so a console/BMC edge lands there, not on a data
+        port. None when the device has no such named port (caller then auto-picks)."""
+        for i, itf in enumerate(getattr(dev, "interfaces", None) or []):
+            if (getattr(itf, "name", "") or "").strip().lower() in _MGMT_PORT_NAMES:
+                return i
+        return None
+
     def _wire_facility_mgmt(self, dev: Device, rk: tuple,
                             infra: Optional[dict] = None) -> None:
         """Put a fleet facility device (CRAH / sensor / EV2 meter / CDU) onto the
@@ -1467,7 +1482,9 @@ class FleetLifecycleEngine:
                         if (d and d.device_type == DeviceType.OOB_SWITCH
                                 and d.id != new_oob.id and self._room_key(d) != rk):
                             self.s.topology.remove_link(sp.id, d.id, "management")
-                    self.s.topology.add_link(sp.id, new_oob.id, layer="management")
+                    self.s.topology.add_link(sp.id, new_oob.id,
+                                             src_iface=self._mgmt_port_iface(sp),
+                                             layer="management")   # spine console on its mgmt0
                 except Exception as e:
                     self._log(f"[Fleet] spine console re-home {sp.name}: {e}")
 
@@ -1746,7 +1763,9 @@ class FleetLifecycleEngine:
             # Leaf console onto an OOB with a free port (stacks a new OOB if full).
             oob = self._oob_port_for(rk, infra)
             if oob is not None:
-                self.s.topology.add_link(leaf.id, oob.id, layer="management")
+                self.s.topology.add_link(leaf.id, oob.id,
+                                         src_iface=self._mgmt_port_iface(leaf),
+                                         layer="management")   # leaf console on its mgmt0
         except Exception as e:
             self._log(f"[Fleet] leaf uplink {leaf.name}: {e}")
 
@@ -2088,7 +2107,8 @@ class FleetLifecycleEngine:
         # upstream power meters.
         pdus = rack.get("pdus") or ([rack["pdu"]] if rack.get("pdu") else [])
         try:
-            self.s.topology.add_link(dev.id, rack["tor"].id, layer="production")
+            self.s.topology.add_link(dev.id, rack["tor"].id,
+                                     src_iface=0, layer="production")   # data NIC 0 -> ToR
             for p in pdus:
                 self.s.topology.add_link(dev.id, p.id, layer="power")
         except Exception as e:
@@ -2114,7 +2134,9 @@ class FleetLifecycleEngine:
                 leaf_oob = self._neighbor(tor, "management", (DeviceType.OOB_SWITCH,))
                 oob = self._oob_port_for(rk, {"oob": leaf_oob})
                 if oob is not None:
-                    self.s.topology.add_link(dev.id, oob.id, layer="management")
+                    self.s.topology.add_link(dev.id, oob.id,
+                                             src_iface=self._mgmt_port_iface(dev),
+                                             layer="management")   # BMC (iLO/iDRAC) port -> OOB
         except Exception as e:
             self._log(f"[Fleet] BMC mgmt link {dev.name} failed: {e}")
         self._commission(dev)   # bring it online on SNMP/gNMI/Redfish
@@ -2191,6 +2213,18 @@ class FleetLifecycleEngine:
             code = _PREFIX_CODE.get(prefix, (prefix.upper() or "DEV").replace(" ", "-"))
             name = self._scheme_name(dcn, eff_room, row, num, code,
                                      pad=(2 if prefix == "srv" else 1))
+        # Copy the template's PORT LAYOUT verbatim — the named ports (incl. the
+        # dedicated mgmt/BMC port: mgmt0 / iLO / iDRAC / management / ...), their
+        # speeds and the mixed-speed groups — so a fleet clone is indistinguishable
+        # from its curated peer down to the console/BMC port. Fresh MAC + cleared
+        # connections per interface (edges are (re)wired by the caller). Without this
+        # the clone regenerates GENERIC ports and loses the named mgmt port, so its
+        # console/BMC edge falls back onto a data port (the very collision the
+        # curated topology was fixed for).
+        cloned_ifaces = [Interface(index=itf.index, name=itf.name, speed=itf.speed,
+                                   oper_status=1)
+                         for itf in (getattr(tmpl, "interfaces", None) or [])]
+        cloned_groups = [dict(g) for g in (getattr(tmpl, "interface_groups", None) or [])]
         try:
             dev = Device(
                 name=name,
@@ -2202,6 +2236,8 @@ class FleetLifecycleEngine:
                 snmp_port=getattr(tmpl, "snmp_port", 161),
                 gnmi_port=getattr(tmpl, "gnmi_port", 57400),
                 interface_count=getattr(tmpl, "interface_count", 8),
+                interface_groups=cloned_groups,
+                interfaces=cloned_ifaces,
                 # Inherit the rack peer's nameplate draw so the fleet server's
                 # watts match its rack profile and feed the power-budget cap +
                 # the live power cascade consistently. (0 lets Device fill a
