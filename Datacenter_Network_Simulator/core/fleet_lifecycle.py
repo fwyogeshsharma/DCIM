@@ -665,8 +665,17 @@ class FleetLifecycleEngine:
         try:
             for nbr in list(self.s.topology.graph.neighbors(tmpl.id)):
                 d = self.s.device_manager.get_device(nbr)
-                if d is None or self._is_leaf(d) or d.device_type in _down:
-                    continue                      # skip downstream; keep uplinks only
+                if d is None or d.device_type in _down:
+                    continue                      # skip downstream servers/PDUs
+                # Skip DOWNSTREAM hall leaves (ToRs) but KEEP the UPSTREAM core /
+                # aggregation switches. _is_leaf() alone can't tell them apart — a
+                # core switch (role COR) is also a non-SP switch, so it reads as a
+                # "leaf" — so gate the skip on the room: a real leaf lives in a
+                # Server Hall, a core sits in the Network Room. Without this the
+                # cloned spine loses its uplink to COR1/COR2 and the new pod is
+                # islanded from the DC core.
+                if self._is_leaf(d) and (getattr(d, "room", "") or "").startswith("Server Hall"):
+                    continue
                 self.s.topology.add_link(new.id, nbr,
                                          layer=self._link_layer(tmpl.id, nbr) or "production")
         except Exception as e:
