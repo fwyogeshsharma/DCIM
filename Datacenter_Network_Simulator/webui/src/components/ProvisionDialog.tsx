@@ -52,6 +52,7 @@ export default function ProvisionDialog({ onClose }: Props) {
 
   const datacenters = useMemo(() => uniq(devices.map(d => d.datacenter)), [devices])
   const [dc, setDc] = useState('')
+  const [room, setRoom] = useState('')   // target hall for Add Rack; '' = busiest
   const [mode, setMode] = useState<'rack' | 'hall'>('rack')
 
   const [racks, setRacks] = useState<RackOcc[]>([])
@@ -85,6 +86,15 @@ export default function ProvisionDialog({ onClose }: Props) {
   const freeUnits      = racks.reduce((n, r) => n + r.free_units.length, 0)
   const allFull        = totalRacks > 0 && racksWithSpace === 0
 
+  // Halls in the DC (with their current rack counts) to target Add Rack at. NOT
+  // filtered by free U — a hall whose existing racks are full may still have empty
+  // GRID slots for a new rack; the backend enforces the grid/fabric cap per hall.
+  const halls = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of racks) m.set(r.room, (m.get(r.room) || 0) + 1)
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [racks])
+
   // Add-Rack has nowhere to go when every rack in the DC is full → nudge to Hall.
   useEffect(() => { if (allFull && mode === 'rack') setMode('hall') }, [allFull, mode])
 
@@ -93,7 +103,7 @@ export default function ProvisionDialog({ onClose }: Props) {
     setBusy(true); setErr(''); setResult(null)
     try {
       const r = (mode === 'rack'
-        ? await api.provisionRack(dc)
+        ? await api.provisionRack(dc, room || undefined)
         : await api.provisionHall(dc)) as ProvResult
       setResult(r)
       await Promise.all([fetchGraph(), fetchDevices(), loadCapacity(dc)])
@@ -113,7 +123,7 @@ export default function ProvisionDialog({ onClose }: Props) {
         <div style={{ padding: '10px 16px 14px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
           <div style={sectionHeader}>Target</div>
           <Row label="Datacenter">
-            <select style={{ flex: 1 }} value={dc} onChange={e => { setDc(e.target.value); setResult(null); setErr('') }}>
+            <select style={{ flex: 1 }} value={dc} onChange={e => { setDc(e.target.value); setRoom(''); setResult(null); setErr('') }}>
               {datacenters.length === 0 && <option value="">— no datacenters —</option>}
               {datacenters.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -143,6 +153,20 @@ export default function ProvisionDialog({ onClose }: Props) {
                      desc="A brand-new server hall — own pod (spines + OOB), RPP pair + EV2 meters, back-wall CRAHs, sensors — cloned from the DC's busiest hall, first rack placed." />
             </div>
           </Row>
+
+          {/* Which hall to drop the new rack into (Add Rack only). The row/rack
+              number + starting U are assigned by the hall's grid packing — you
+              choose the hall, the floor grid chooses the slot. */}
+          {mode === 'rack' && (
+            <Row label="Hall">
+              <select style={{ flex: 1 }} value={room} onChange={e => { setRoom(e.target.value); setResult(null); setErr('') }}>
+                <option value="">Auto — most-utilized hall</option>
+                {halls.map(([name, n]) => (
+                  <option key={name} value={name}>{name} · {n} racks</option>
+                ))}
+              </select>
+            </Row>
+          )}
 
           {result && (
             <div style={{ marginTop: 10, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-hover)' }}>

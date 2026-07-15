@@ -110,6 +110,7 @@ def fleet_advance():
 # ── manual capacity provisioning (user-driven, off the day scheduler) ─────────
 class ProvisionBody(BaseModel):
     datacenter: str
+    room: str | None = None   # target hall for provision-rack; None = busiest hall
 
 
 def _rack_response(eng, rack: dict, message: str) -> dict:
@@ -139,11 +140,13 @@ def fleet_provision_rack(body: ProvisionBody):
     dc = (body.datacenter or "").strip()
     if not dc:
         raise HTTPException(status_code=422, detail="datacenter is required")
-    rack = _engine().provision_rack(dc)
+    room = (body.room or "").strip() or None
+    rack = _engine().provision_rack(dc, room=room)
     if rack is None:
+        where = f"{dc}/{room}" if room else dc
         raise HTTPException(status_code=409, detail=(
-            f"No hall in {dc} has rack space (grid, spine fabric or rack power all "
-            f"full). Provision a new hall to add capacity."))
+            f"No rack space in {where} (grid, spine fabric or rack power all full). "
+            f"Try another hall or provision a new hall to add capacity."))
     dc_, row, num = rack["key"]
     return _rack_response(_engine(), rack,
                           f"Provisioned rack R{row}-{num:02d} in {dc}/{rack.get('room','')}.")

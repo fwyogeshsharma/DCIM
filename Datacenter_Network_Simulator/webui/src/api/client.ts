@@ -161,7 +161,8 @@ export const api = {
   addDevice:  (d: unknown)            => post('/devices', d),
   rackOccupancy: (datacenter: string) =>
     get(`/devices/rack-occupancy?datacenter=${encodeURIComponent(datacenter)}`),
-  provisionRack: (datacenter: string) => post('/fleet/provision-rack', { datacenter }),
+  provisionRack: (datacenter: string, room?: string) =>
+    post('/fleet/provision-rack', room ? { datacenter, room } : { datacenter }),
   provisionHall: (datacenter: string) => post('/fleet/provision-hall', { datacenter }),
   editDevice: (id: string, d: unknown)=> put(`/devices/${id}`, d),
   delDevice:  (id: string)            => del(`/devices/${id}`),

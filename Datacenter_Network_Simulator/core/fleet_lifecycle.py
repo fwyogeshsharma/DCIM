@@ -251,16 +251,17 @@ class FleetLifecycleEngine:
                     self._log(f"[Fleet] snmp reload submit: {e}")
 
     # ── user-driven provisioning (manual capacity, off the day scheduler) ─────
-    def provision_rack(self, dc: str) -> Optional[dict]:
+    def provision_rack(self, dc: str, room: Optional[str] = None) -> Optional[dict]:
         """Add ONE empty compute rack (leaf + A/B rack PDUs, wired to the pod
         fabric + RPP feeds) to a hall in *dc* that still has grid space and
         fabric/power headroom — the SAME fill path day-churn uses, so every cap
-        (spine downlinks, OOB ports, grid, RPP poles) is honoured. Returns the new
-        rack's context dict, or None when no hall in *dc* has room (caller should
-        open a new hall). Hot-commissions the rack's gear onto the live sims."""
+        (spine downlinks, OOB ports, grid, RPP poles) is honoured. *room* targets a
+        specific hall; None auto-picks the busiest hall in the DC. Returns the new
+        rack's context dict, or None when the target hall (or, auto, no hall in the
+        DC) has room. Hot-commissions the rack's gear onto the live sims."""
         with self._lock:
             summ = DaySummary(day=self.day)
-            rack = self._fill_hall_grid(summ, dc=dc)
+            rack = self._fill_hall_grid(summ, dc=dc, room=room)
             if rack is None:
                 return None
             summ.total_servers = len(self._servers())
@@ -1137,8 +1138,8 @@ class FleetLifecycleEngine:
                 return rack_row, num, (geo.rack_x(num), round(fy, 4), hot, cold, facing)
         return None
 
-    def _fill_hall_grid(self, summ: DaySummary,
-                        dc: Optional[str] = None) -> Optional[dict]:
+    def _fill_hall_grid(self, summ: DaySummary, dc: Optional[str] = None,
+                        room: Optional[str] = None) -> Optional[dict]:
         """Add the next compute rack to a hall that's still under its grid cap.
         Most-occupied hall first, so one hall fills before the next is touched.
         Racks fill ROW-MAJOR (each compute row packs full before the next opens),
@@ -1146,11 +1147,14 @@ class FleetLifecycleEngine:
         (racks_per_row x compute_rows) and row width come from each hall's PHYSICAL
         extent, so a hall fills to its real floor capacity before a new hall opens.
 
-        *dc* scopes the search to one datacenter's halls (used by the manual
-        provision action); None spans all DCs (day churn)."""
+        *dc* scopes the search to one datacenter's halls and *room* to a single
+        hall within it (both used by the manual provision action, so the operator
+        can target a specific hall); None spans all DCs (day churn)."""
         racks = self._hall_compute_racks()
         if dc is not None:
             racks = {rk: v for rk, v in racks.items() if rk[0] == dc}
+        if room is not None:
+            racks = {rk: v for rk, v in racks.items() if rk[2] == room}
         for rk in sorted(racks, key=lambda k: (-len(racks[k]), tuple(map(str, k)))):
             rpr, comp_rows, _first_row, _n_rows = self._hall_grid(rk)
             if len(racks[rk]) >= rpr * comp_rows:
