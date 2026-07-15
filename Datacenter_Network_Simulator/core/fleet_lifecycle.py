@@ -1277,6 +1277,62 @@ class FleetLifecycleEngine:
                       f"(sized to ~{self._hall_crah_target(rk)} for capacity)")
         return added
 
+    def _ensure_hall_mpps(self, rk: tuple, infra: Optional[dict] = None) -> list:
+        """Install the hall's A/B Mechanical Power Panels (MPPA/MPPB) — the
+        panelboards its CRAHs hang off, like the curated halls
+        (tools/add_hall_mech_panels.py). Each panel is fed from the DC's same-side
+        MCC (NOT UPS-backed — it inherits the mechanical bus and bus tie from the
+        MCC above it) and stands in an end bay of the CRAH back wall; its mgmt lands
+        on the hall's BMS OOB. Idempotent.
+
+        MUST run BEFORE _ensure_hall_crahs so the new CRAHs cord to these panels
+        (resolved by room) instead of home-running 400 A across the site to the
+        plant MCCs."""
+        dc, floor, room = rk
+        existing = [d for d in self.s.device_manager.get_all_devices()
+                    if d.device_type == DeviceType.MPP and self._room_key(d) == rk]
+        if existing:
+            return existing
+        # The DC's two Motor Control Centers, A-side then B-side (each MPP inherits
+        # its source from the same-side MCC).
+        mccs = sorted((d for d in self.s.device_manager.get_all_devices()
+                       if d.device_type == DeviceType.MCC and (d.datacenter or "") == dc),
+                      key=lambda d: d.name or "")
+        if len(mccs) < 2:
+            self._log(f"[Fleet] {dc}/{room}: <2 MCCs — hall MPPs skipped")
+            return []
+        tmpl = next((d for d in self.s.device_manager.get_all_devices()
+                     if d.device_type == DeviceType.MPP), None)
+        if tmpl is None:
+            self._log(f"[Fleet] {dc}/{room}: no MPP template to clone — skipped")
+            return []
+        rpr, _cr, _first, n_rows = self._hall_grid(rk)
+        ext = self._hall_extent(rk) or {}
+        width_m = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
+        back_y = round(geo.row_y(n_rows), 4)             # CRAH back wall
+        # CRAHs will take rack_num 200..200+target-1 (see _ensure_hall_crahs); the
+        # panels stand in the end bays just past them.
+        target = self._hall_crah_target(rk)
+        row = self._row_label(rk, "crah")                # share the back-wall row label
+        made = []
+        for side, mcc, num, fx in (("a", mccs[0], 200 + target, 0.3),
+                                   ("b", mccs[1], 200 + target + 1, round(width_m - 0.3, 3))):
+            c = self._clone(tmpl, dc, row, num, 0, prefix=f"mpp{side}",
+                            floor=floor, room=room, fx=fx, fy=back_y)
+            if c is None:
+                continue
+            try:
+                self.s.topology.add_link(mcc.id, c.id, layer="power")
+            except Exception as e:
+                self._log(f"[Fleet] MPP feed {c.name}: {e}")
+            self._wire_facility_mgmt(c, rk, infra)       # panel onto the hall BMS OOB
+            self._commission(c)
+            made.append(c)
+        if made:
+            self._log(f"[Fleet] {dc}/{room}: +{len(made)} MPP "
+                      f"(fed from {mccs[0].name}/{mccs[1].name}, mgmt on BMS OOB)")
+        return made
+
     def _ensure_all_hall_crahs(self) -> None:
         """Top every hall that holds servers up to its full CRAH complement, once."""
         for rk in {self._room_key(d) for d in self._servers()}:
@@ -1336,20 +1392,32 @@ class FleetLifecycleEngine:
         for _rpp in (new_infra["rpp_a"], new_infra["rpp_b"]):
             if _rpp is not None:
                 self._provision_ev2_for_rpp(_rpp, rk)
-        fabric = [(sp, "sp") for sp in (infra.get("spines") or [])]
-        if infra.get("oob") is not None:
-            fabric.append((infra["oob"], "oob"))
+        # Pack the front-row network gear like the curated halls: TWO spines per
+        # rack (U42/U41), then the OOB switch in its own rack — NOT one rack per
+        # spine, which spread a 4-spine pod across four cabinets and made a fresh
+        # hall show far more row-1 racks than a curated hall (which packs its spine
+        # pair 2-up). Cols 1-2 are the RPP pair, so spine racks start at col 3.
+        spines = list(infra.get("spines") or [])
         new_spines, new_oob = [], None
-        for i, (tmpl, pfx) in enumerate(fabric):
-            fx = geo.rack_x(min(3 + i, rpr))          # cols 1-2 are the RPP pair
-            c = self._clone_fabric_node(tmpl, rk, pfx, num=100 + i, fx=fx, fy=front_y)
-            if c is None:
-                continue
-            self._wire_network_power(c, rk, new_infra)   # cord to network-row PDUs
-            self._commission(c)
-            if pfx == "sp":
+        col = 3
+        for p in range(0, len(spines), 2):
+            fx = geo.rack_x(min(col, rpr))
+            for j, tmpl in enumerate(spines[p:p + 2]):
+                c = self._clone_fabric_node(tmpl, rk, "sp", num=100 + col,
+                                            fx=fx, fy=front_y, unit=42 - j)
+                if c is None:
+                    continue
+                self._wire_network_power(c, rk, new_infra)   # cord to network-row PDUs
+                self._commission(c)
                 new_spines.append(c)
-            else:
+            col += 1
+        if infra.get("oob") is not None:                     # OOB in its own rack
+            fx = geo.rack_x(min(col, rpr))
+            c = self._clone_fabric_node(infra["oob"], rk, "oob", num=100 + col,
+                                        fx=fx, fy=front_y)
+            if c is not None:
+                self._wire_network_power(c, rk, new_infra)
+                self._commission(c)
                 new_oob = c
         if new_spines:
             new_infra["spines"] = new_spines
@@ -1369,6 +1437,11 @@ class FleetLifecycleEngine:
                     self.s.topology.add_link(sp.id, new_oob.id, layer="management")
                 except Exception as e:
                     self._log(f"[Fleet] spine console re-home {sp.name}: {e}")
+
+        # ── Back wall: the hall's own A/B mechanical power panels FIRST, so the
+        # CRAHs below cord to them (resolved by room) instead of home-running to the
+        # plant MCCs — same as the curated halls (tools/add_hall_mech_panels.py).
+        self._ensure_hall_mpps(rk, new_infra)
 
         # ── Back wall (row n_rows): install the hall's FULL CRAH complement, sized
         # to its ULTIMATE rack load (N+1) — not a fixed clone count — spread along
@@ -2057,8 +2130,9 @@ class FleetLifecycleEngine:
         # location suffix (SRV05-DC1-XX instead of SRV05-DC1-HA-R2-01).
         dcn = dc or "DC"
         eff_room = room if room is not None else getattr(tmpl, "room", "")
-        if prefix.startswith("pdu") or prefix.startswith("rpp"):
-            base = "PDU" if prefix.startswith("pdu") else "RPP"
+        if prefix.startswith(("pdu", "rpp", "mpp")):
+            base = ("PDU" if prefix.startswith("pdu")
+                    else "RPP" if prefix.startswith("rpp") else "MPP")
             code = base + ("B" if prefix.endswith("b") else "A")
             name = self._scheme_name(dcn, eff_room, row, num, code, sided=True)
         else:
