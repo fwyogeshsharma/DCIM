@@ -105,3 +105,67 @@ def fleet_advance():
     summ = eng.advance_day()
     return OkResponse(message=f"Day {summ.day}: +{len(summ.added)} -{len(summ.removed)} "
                               f"(servers={summ.total_servers})")
+
+
+# ── manual capacity provisioning (user-driven, off the day scheduler) ─────────
+class ProvisionBody(BaseModel):
+    datacenter: str
+
+
+def _rack_response(eng, rack: dict, message: str) -> dict:
+    """Shape a provision result for the UI: the new (empty) rack's location + the
+    free server-U it opened up, so the Floor-Plan page can report it and Add Device
+    can deep-link straight into it."""
+    from core.rack_capacity import FIRST_SERVER_UNIT, LAST_SERVER_UNIT
+    dc, row, num = rack["key"]
+    free = list(range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT + 1))
+    return {"ok": True, "message": message,
+            "rack": {"datacenter": dc, "room": rack.get("room", ""),
+                     "floor": rack.get("floor", ""), "rack_row": row, "rack_num": num,
+                     "free_units": free, "next_free": free[0] if free else None},
+            "total_servers": len(eng._servers())}
+
+
+@router.post("/provision-rack")
+def fleet_provision_rack(body: ProvisionBody):
+    """Add ONE empty compute rack (leaf + A/B rack PDUs, wired to the pod fabric
+    and RPP feeds) to a hall in *datacenter* that still has grid space. Reuses the
+    fleet fill path, so spine/OOB/grid/power caps are all honoured, and the gear is
+    hot-commissioned onto the live sims. 409 when every hall in the DC is full —
+    the caller should open a new hall instead."""
+    s = _state()
+    if s.device_manager is None or s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    dc = (body.datacenter or "").strip()
+    if not dc:
+        raise HTTPException(status_code=422, detail="datacenter is required")
+    rack = _engine().provision_rack(dc)
+    if rack is None:
+        raise HTTPException(status_code=409, detail=(
+            f"No hall in {dc} has rack space (grid, spine fabric or rack power all "
+            f"full). Provision a new hall to add capacity."))
+    dc_, row, num = rack["key"]
+    return _rack_response(_engine(), rack,
+                          f"Provisioned rack R{row}-{num:02d} in {dc}/{rack.get('room','')}.")
+
+
+@router.post("/provision-hall")
+def fleet_provision_hall(body: ProvisionBody):
+    """Open a brand-new server hall in *datacenter* — its own pod fabric
+    (spines+OOB), RPP pair + EV2 meters, back-wall CRAH complement and sensors,
+    cloned from the DC's busiest hall — and place its first compute rack. All the
+    new gear is hot-commissioned. 409 when the DC has no existing hall to clone."""
+    s = _state()
+    if s.device_manager is None or s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    dc = (body.datacenter or "").strip()
+    if not dc:
+        raise HTTPException(status_code=422, detail="datacenter is required")
+    rack = _engine().provision_hall(dc)
+    if rack is None:
+        raise HTTPException(status_code=409, detail=(
+            f"Could not open a new hall in {dc} — no existing hall to clone its "
+            f"pod fabric / RPP feed from."))
+    return _rack_response(_engine(), rack,
+                          f"Opened new hall {rack.get('room','')} in {dc} "
+                          f"(pod fabric + CRAHs + first rack).")

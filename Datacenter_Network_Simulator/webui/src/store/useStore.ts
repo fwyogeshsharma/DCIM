@@ -81,6 +81,11 @@ interface Store {
   activeView: 'main' | 'metrics' | 'floorplan'
   setActiveView: (v: 'main' | 'metrics' | 'floorplan') => void
 
+  // Provision-capacity dialog (lives on the Floor-Plan page). Add Device's
+  // no-space state deep-links here: it flips the view to floorplan + this flag.
+  provisionOpen: boolean
+  setProvisionOpen: (v: boolean) => void
+
   // binding operation state (survives tab switches)
   bindingBusy:     boolean
   bindingProgress: { done: number; total: number } | null
@@ -202,6 +207,7 @@ export const useStore = create<Store>((set, get) => ({
   layoutAlgo:       null,
   rightTab:         'binding',
   activeView:       'main',
+  provisionOpen:    false,
 
   bindingBusy:     false,
   bindingProgress: null,
@@ -310,6 +316,7 @@ export const useStore = create<Store>((set, get) => ({
   setLayer:          (l) => { set({ activeLayer: l }); get().fetchGraph() },
   setRightTab:       (t) => set({ rightTab: t }),
   setActiveView:     (v) => set({ activeView: v }),
+  setProvisionOpen:  (v) => set({ provisionOpen: v }),
   setSelectedDevice: (id) => set({ selectedDeviceId: id }),
   setLinkMode:       (v) => set({ linkMode: v }),
   triggerFitView:    () => set(s => ({ fitViewTrigger: s.fitViewTrigger + 1 })),

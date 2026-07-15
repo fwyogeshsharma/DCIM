@@ -265,6 +265,48 @@ async def get_all_devices(device_type: str = None, layer: str = None):
     )
 
 
+@router.get("/rack-occupancy")
+def rack_occupancy(datacenter: str, room: str = ""):
+    """Per-rack server-U occupancy across a datacenter (optionally one room), for
+    the Add-Device cascading location picker.
+
+    Lists every rack that has any device (every real rack has 0U PDUs, so empty
+    server racks still show) with its room/floor/row/num, how many of the U1–U40
+    server slots are used, which U's are free, the next free U, and a full flag.
+    `all_full` flags no free server U anywhere in the returned scope. U41/U42 (ToR
+    pair) and 0U PDUs are not server slots. The client filters rooms/rows/racks/
+    units down to those with space."""
+    s = _state()
+    if s.device_manager is None:
+        raise HTTPException(status_code=503, detail="Device manager not initialized")
+    from core.rack_capacity import FIRST_SERVER_UNIT, LAST_SERVER_UNIT
+    total = LAST_SERVER_UNIT - FIRST_SERVER_UNIT + 1
+    all_us = set(range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT + 1))
+    racks: dict = {}
+    for d in s.device_manager.get_all_devices():
+        if (getattr(d, "datacenter", "") or "") != datacenter:
+            continue
+        if room and (getattr(d, "room", "") or "") != room:
+            continue
+        rr = getattr(d, "rack_row", 0) or 0
+        rn = getattr(d, "rack_num", 0) or 0
+        if rr <= 0 or rn <= 0:
+            continue
+        key = ((getattr(d, "room", "") or ""), str(getattr(d, "floor", "") or ""), rr, rn)
+        occ = racks.setdefault(key, set())
+        u = getattr(d, "rack_unit", 0) or 0
+        if FIRST_SERVER_UNIT <= u <= LAST_SERVER_UNIT:
+            occ.add(u)
+    out = []
+    for (rm, fl, rr, rn), occ in sorted(racks.items()):
+        free = sorted(all_us - occ)
+        out.append({"room": rm, "floor": fl, "rack_row": rr, "rack_num": rn,
+                    "used": len(occ), "total": total, "free_units": free,
+                    "next_free": (free[0] if free else None), "full": len(occ) >= total})
+    return {"datacenter": datacenter, "racks": out,
+            "all_full": bool(out) and all(r["full"] for r in out)}
+
+
 @router.get("/{device_id}", response_model=DeviceInfo)
 async def get_device(device_id: str):
     """Get a specific device by ID."""

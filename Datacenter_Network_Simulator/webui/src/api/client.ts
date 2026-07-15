@@ -159,6 +159,10 @@ export const api = {
   devices:    (layer?: string)        => get(`/devices${layer ? `?layer=${layer}` : ''}`),
   device:     (id: string)            => get(`/devices/${id}`),
   addDevice:  (d: unknown)            => post('/devices', d),
+  rackOccupancy: (datacenter: string) =>
+    get(`/devices/rack-occupancy?datacenter=${encodeURIComponent(datacenter)}`),
+  provisionRack: (datacenter: string) => post('/fleet/provision-rack', { datacenter }),
+  provisionHall: (datacenter: string) => post('/fleet/provision-hall', { datacenter }),
   editDevice: (id: string, d: unknown)=> put(`/devices/${id}`, d),
   delDevice:  (id: string)            => del(`/devices/${id}`),
   deviceOverridable: (id: string)     => get(`/devices/${id}/overridable`),

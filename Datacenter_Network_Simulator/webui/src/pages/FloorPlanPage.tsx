@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
 import { getToken } from '../api/client'
+import ProvisionDialog from '../components/ProvisionDialog'
 
 /**
  * Floor-plan / heatmap viewer, embedded as the self-contained
@@ -10,7 +11,7 @@ import { getToken } from '../api/client'
  * and `live=1` so it auto-connects on open.
  */
 export default function FloorPlanPage() {
-  const { setActiveView } = useStore()
+  const { setActiveView, provisionOpen, setProvisionOpen } = useStore()
 
   const src = useMemo(() => {
     // Same base the API client uses: absolute in dev (Vite :5173 -> :8000),
@@ -36,12 +37,18 @@ export default function FloorPlanPage() {
           borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer',
         }}>← Back</button>
         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>Floor Plan &amp; Heatmap</span>
+        <div style={{ flex: 1 }} />
+        <button onClick={() => setProvisionOpen(true)} style={{
+          background: 'var(--accent)', border: '1px solid var(--accent)', color: '#061018',
+          borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+        }}>＋ Provision Capacity</button>
       </div>
       <iframe
         title="Floor Plan"
         src={src}
         style={{ flex: 1, width: '100%', border: 'none', background: '#0e1116' }}
       />
+      {provisionOpen && <ProvisionDialog onClose={() => setProvisionOpen(false)} />}
     </div>
   )
 }

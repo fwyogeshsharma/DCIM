@@ -219,35 +219,71 @@ class FleetLifecycleEngine:
             summ.total_servers = len(self._servers())
             self.history.append(summ)
             self.history = self.history[-60:]
-            # Power graph changed (devices + power edges added/removed) — drop the
-            # cached cascade so the new IT load ripples up to the PDU/UPS/RPP/EV2
-            # meters on the next tick instead of being summed against a stale tree.
-            ss = getattr(self.s, "state_store", None)
-            if ss is not None:
-                try: ss.invalidate_power_context()
-                except Exception as e: self._log(f"[Fleet] power ctx invalidate: {e}")
-            if self.s is not None:
-                self.s.notify_ui("sync_devices")
-            # SNMP agents for churned devices only become pollable after snmpsim
-            # re-indexes its data-dir. Bounce it ONCE per changed day — async (off
-            # the sim-day thread) and coalesced inside reload_snmp, never per
-            # device. gNMI/Redfish were already hot-added live in _commission.
-            if summ.added or summ.removed or summ.expanded_racks:
-                # The power/topology graph gained or lost nodes+edges — tell the UI
-                # to rebuild the topology scene (Qt) / refetch the graph (web), not
-                # just the device list. Without this the churned devices show in the
-                # device table but never appear/disappear on the live topology.
-                if self.s is not None:
-                    self.s.notify_ui("rebuild_topology_scene")
-                ex = getattr(self.s, "executor", None)
-                if ex is not None and getattr(self.s, "snmpsim", None) is not None:
-                    try:
-                        ex.submit(self.s.reload_snmp, self._log)
-                    except Exception as e:
-                        self._log(f"[Fleet] snmp reload submit: {e}")
+            self._settle_after_change(summ)
             self._log(f"[Fleet] day {self.day}: +{len(summ.added)} -{len(summ.removed)} "
                       f"(servers={summ.total_servers})")
             return summ
+
+    def _settle_after_change(self, summ: DaySummary) -> None:
+        """After a graph mutation (day churn OR a manual provision), refresh the
+        derived power model and the live UIs. Caller must already hold self._lock.
+
+        Drops the cached power cascade so new IT load ripples up to the
+        PDU/UPS/RPP/EV2 meters instead of being summed against a stale tree, tells
+        the UI to resync the device list + rebuild the topology scene (Qt) / refetch
+        the graph (web), and bounces snmpsim ONCE (async, coalesced) so the new
+        devices' SNMP agents become pollable. gNMI/Redfish were already hot-added
+        live in _commission."""
+        ss = getattr(self.s, "state_store", None)
+        if ss is not None:
+            try: ss.invalidate_power_context()
+            except Exception as e: self._log(f"[Fleet] power ctx invalidate: {e}")
+        if self.s is not None:
+            self.s.notify_ui("sync_devices")
+        if summ.added or summ.removed or summ.expanded_racks:
+            if self.s is not None:
+                self.s.notify_ui("rebuild_topology_scene")
+            ex = getattr(self.s, "executor", None)
+            if ex is not None and getattr(self.s, "snmpsim", None) is not None:
+                try:
+                    ex.submit(self.s.reload_snmp, self._log)
+                except Exception as e:
+                    self._log(f"[Fleet] snmp reload submit: {e}")
+
+    # ── user-driven provisioning (manual capacity, off the day scheduler) ─────
+    def provision_rack(self, dc: str) -> Optional[dict]:
+        """Add ONE empty compute rack (leaf + A/B rack PDUs, wired to the pod
+        fabric + RPP feeds) to a hall in *dc* that still has grid space and
+        fabric/power headroom — the SAME fill path day-churn uses, so every cap
+        (spine downlinks, OOB ports, grid, RPP poles) is honoured. Returns the new
+        rack's context dict, or None when no hall in *dc* has room (caller should
+        open a new hall). Hot-commissions the rack's gear onto the live sims."""
+        with self._lock:
+            summ = DaySummary(day=self.day)
+            rack = self._fill_hall_grid(summ, dc=dc)
+            if rack is None:
+                return None
+            summ.total_servers = len(self._servers())
+            self._settle_after_change(summ)
+            self._log(f"[Fleet] manual provision rack in {dc}: "
+                      f"{summ.expanded_racks[-1] if summ.expanded_racks else '?'}")
+            return rack
+
+    def provision_hall(self, dc: str) -> Optional[dict]:
+        """Open a brand-new server hall in *dc* — its own pod fabric (spines+OOB),
+        RPP pair + EV2 meters, back-wall CRAH complement and sensors, cloned from
+        the DC's busiest hall — and place its first compute rack. Returns that
+        rack's context dict, or None when *dc* has no hall to clone from (RPP/infra
+        missing). Hot-commissions all the new gear onto the live sims."""
+        with self._lock:
+            summ = DaySummary(day=self.day)
+            rack = self._open_new_hall(summ, dc=dc)
+            if rack is None:
+                return None
+            summ.total_servers = len(self._servers())
+            self._settle_after_change(summ)
+            self._log(f"[Fleet] manual provision NEW hall in {dc}")
+            return rack
 
     # ── churn counts (lumpy, net-positive) ───────────────────────────────────
 
@@ -1101,14 +1137,20 @@ class FleetLifecycleEngine:
                 return rack_row, num, (geo.rack_x(num), round(fy, 4), hot, cold, facing)
         return None
 
-    def _fill_hall_grid(self, summ: DaySummary) -> Optional[dict]:
+    def _fill_hall_grid(self, summ: DaySummary,
+                        dc: Optional[str] = None) -> Optional[dict]:
         """Add the next compute rack to a hall that's still under its grid cap.
         Most-occupied hall first, so one hall fills before the next is touched.
         Racks fill ROW-MAJOR (each compute row packs full before the next opens),
         so freed in-row gaps are used before a new row is started. The cap
         (racks_per_row x compute_rows) and row width come from each hall's PHYSICAL
-        extent, so a hall fills to its real floor capacity before a new hall opens."""
+        extent, so a hall fills to its real floor capacity before a new hall opens.
+
+        *dc* scopes the search to one datacenter's halls (used by the manual
+        provision action); None spans all DCs (day churn)."""
         racks = self._hall_compute_racks()
+        if dc is not None:
+            racks = {rk: v for rk, v in racks.items() if rk[0] == dc}
         for rk in sorted(racks, key=lambda k: (-len(racks[k]), tuple(map(str, k)))):
             rpr, comp_rows, _first_row, _n_rows = self._hall_grid(rk)
             if len(racks[rk]) >= rpr * comp_rows:
@@ -1242,15 +1284,16 @@ class FleetLifecycleEngine:
                 self._log(f"[Fleet] CRAH provision {rk}: {e}")
             self._crah_ensured.add(rk)
 
-    def _open_new_hall(self, summ: DaySummary) -> Optional[dict]:
-        """Commission a brand-new server hall in the busiest DC, built to look
-        like the curated halls: it CLONES the source hall's floor-plan extent (so
-        it is the same physical size/shape), lays its power + pod-network gear on
-        the front row, spreads its CRAHs along the back wall, and puts the first
-        compute rack in the first middle row. Subsequent provisions fill the
+    def _open_new_hall(self, summ: DaySummary,
+                       dc: Optional[str] = None) -> Optional[dict]:
+        """Commission a brand-new server hall in *dc* (the busiest DC when None),
+        built to look like the curated halls: it CLONES the source hall's floor-plan
+        extent (so it is the same physical size/shape), lays its power + pod-network
+        gear on the front row, spreads its CRAHs along the back wall, and puts the
+        first compute rack in the first middle row. Subsequent provisions fill the
         middle-row grid via _fill_hall_grid — the extent-derived cap fills the
         hall to capacity before another new hall opens."""
-        dc = self._busiest_dc()
+        dc = dc or self._busiest_dc()
         if dc is None:
             return None
         src_rk = self._busiest_hall(dc)

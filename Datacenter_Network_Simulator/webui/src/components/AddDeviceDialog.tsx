@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useStore } from '../store/useStore'
 import { DEVICE_TYPES, VENDORS, MODELS } from '../data/deviceConstants'
@@ -222,8 +222,25 @@ const spinnerStyle: React.CSSProperties = { width: 72 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+type RackOcc = { room: string; floor: string; rack_row: number; rack_num: number
+                 used: number; total: number; free_units: number[]
+                 next_free: number | null; full: boolean }
+
 export default function AddDeviceDialog({ onClose }: Props) {
-  const { fetchGraph, fetchDevices } = useStore()
+  const { fetchGraph, fetchDevices, devices, setActiveView, setProvisionOpen } = useStore()
+
+  // Deep-link to the Floor-Plan page's Provision dialog when a DC is out of rack
+  // space (Add Device is placement-only — provisioning lives there).
+  const goProvision = () => { setProvisionOpen(true); setActiveView('floorplan'); onClose() }
+
+  // Per-DC rack occupancy (fetched when a DC is picked); drives the capacity-aware
+  // Room→Floor→Row→Rack→Unit cascade — deeper levels appear only where there's space.
+  const [racks,   setRacks]   = useState<RackOcc[]>([])
+  const [locBusy, setLocBusy] = useState(false)
+
+  // Upper location levels come straight from the live inventory (cascading distinct).
+  const uniq = (xs: (string | undefined)[]) =>
+    [...new Set(xs.filter((x): x is string => !!x))].sort()
 
   const initType = 'router'
   const initVendor = defaultVendorFor(initType)
@@ -248,6 +265,63 @@ export default function AddDeviceDialog({ onClose }: Props) {
   const availableModels  = useMemo(() => modelsFor(form.device_type, form.vendor), [form.device_type, form.vendor])
   const sysLocation      = useMemo(() => buildSysLocation(form), [form])
   const showProdIp       = PROD_IP_TYPES.has(form.device_type)
+
+  // ── Cascading, capacity-aware location picker ───────────────────────────────
+  // Country → City → Datacenter come from the inventory (distinct, cascading).
+  // Room → Floor → Row → Rack → Unit come from the DC's rack occupancy and only
+  // list levels that still have a free server U somewhere below them.
+  const countries = useMemo(() => uniq(devices.map(d => d.country)), [devices])
+  const cities = useMemo(() =>
+    uniq(devices.filter(d => d.country === form.country).map(d => d.datacenter_city)),
+    [devices, form.country])
+  const dcOptions = useMemo(() =>
+    uniq(devices.filter(d => d.country === form.country
+      && d.datacenter_city === form.datacenter_city).map(d => d.datacenter)),
+    [devices, form.country, form.datacenter_city])
+
+  // Fetch this DC's rack occupancy whenever the DC changes.
+  useEffect(() => {
+    if (!form.datacenter) { setRacks([]); return }
+    let live = true
+    setLocBusy(true)
+    api.rackOccupancy(form.datacenter)
+      .then((r: unknown) => { if (live) setRacks(((r as { racks?: RackOcc[] }).racks) || []) })
+      .catch(() => { if (live) setRacks([]) })
+      .finally(() => { if (live) setLocBusy(false) })
+    return () => { live = false }
+  }, [form.datacenter])
+
+  const withSpace = (r: RackOcc) => r.free_units.length > 0
+  const roomsWithSpace = useMemo(() =>
+    uniq(racks.filter(withSpace).map(r => r.room)), [racks])
+  const floorsWithSpace = useMemo(() =>
+    uniq(racks.filter(r => withSpace(r) && r.room === form.room).map(r => r.floor)),
+    [racks, form.room])
+  const rowsWithSpace = useMemo(() =>
+    [...new Set(racks.filter(r => withSpace(r) && r.room === form.room
+      && r.floor === form.floor).map(r => r.rack_row))].sort((a, b) => a - b),
+    [racks, form.room, form.floor])
+  const racksInRow = useMemo(() =>
+    racks.filter(r => r.room === form.room && r.floor === form.floor
+      && r.rack_row === form.rack_row).sort((a, b) => a.rack_num - b.rack_num),
+    [racks, form.room, form.floor, form.rack_row])
+  const chosenRack = useMemo(() =>
+    racks.find(r => r.room === form.room && r.floor === form.floor
+      && r.rack_row === form.rack_row && r.rack_num === form.rack_num),
+    [racks, form.room, form.floor, form.rack_row, form.rack_num])
+
+  // Cascade resets: picking an upper level clears everything below it.
+  const setCountry = (v: string) => setForm(f => ({ ...f, country: v, datacenter_city: '', datacenter: '', room: '', floor: '', rack_row: 0, rack_num: 0, rack_unit: 0 }))
+  const setCity    = (v: string) => setForm(f => ({ ...f, datacenter_city: v, datacenter: '', room: '', floor: '', rack_row: 0, rack_num: 0, rack_unit: 0 }))
+  const setDc      = (v: string) => setForm(f => ({ ...f, datacenter: v, room: '', floor: '', rack_row: 0, rack_num: 0, rack_unit: 0 }))
+  const setRoom    = (v: string) => setForm(f => ({ ...f, room: v, floor: '', rack_row: 0, rack_num: 0, rack_unit: 0 }))
+  const setFloor   = (v: string) => setForm(f => ({ ...f, floor: v, rack_row: 0, rack_num: 0, rack_unit: 0 }))
+  const setRow     = (v: number) => setForm(f => ({ ...f, rack_row: v, rack_num: 0, rack_unit: 0 }))
+  const setRack    = (num: number) => setForm(f => {
+    const rk = racks.find(r => r.room === f.room && r.floor === f.floor
+      && r.rack_row === f.rack_row && r.rack_num === num)
+    return { ...f, rack_num: num, rack_unit: rk?.next_free ?? 0 }   // auto-fill next free U
+  })
 
   function onTypeChange(newType: string) {
     const vendors = vendorsFor(newType)
@@ -358,40 +432,89 @@ export default function AddDeviceDialog({ onClose }: Props) {
               value="" readOnly placeholder="auto (mirrors IP address)" />
           </FormRow>
 
-          {/* ── Physical Location ── */}
+          {/* ── Physical Location (cascading, capacity-aware) ── */}
           <div style={sectionHeader}>Physical Location</div>
           <FormRow label="Country">
-            <input style={{ flex: 1 }} value={form.country}
-              onChange={e => set('country', e.target.value)} placeholder="e.g. USA" />
+            <select style={{ flex: 1 }} value={form.country} onChange={e => setCountry(e.target.value)}>
+              <option value="">— select —</option>
+              {countries.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </FormRow>
-          <FormRow label="City">
-            <input style={{ flex: 1 }} value={form.datacenter_city}
-              onChange={e => set('datacenter_city', e.target.value)} placeholder="e.g. Dallas" />
-          </FormRow>
-          <FormRow label="Datacenter">
-            <input style={{ flex: 1 }} value={form.datacenter}
-              onChange={e => set('datacenter', e.target.value)} placeholder="e.g. DC1" />
-          </FormRow>
-          <FormRow label="Room">
-            <input style={{ flex: 1 }} value={form.room}
-              onChange={e => set('room', e.target.value)} placeholder="e.g. A" />
-          </FormRow>
-          <FormRow label="Floor">
-            <input style={{ flex: 1 }} value={form.floor}
-              onChange={e => set('floor', e.target.value)} placeholder="e.g. 1" />
-          </FormRow>
-          <FormRow label="Row">
-            <input type="number" style={spinnerStyle} value={form.rack_row || ''}
-              onChange={e => set('rack_row', parseInt(e.target.value) || 0)} placeholder="—" min={0} />
-          </FormRow>
-          <FormRow label="Rack">
-            <input type="number" style={spinnerStyle} value={form.rack_num || ''}
-              onChange={e => set('rack_num', parseInt(e.target.value) || 0)} placeholder="—" min={0} />
-          </FormRow>
-          <FormRow label="Unit (U)">
-            <input type="number" style={spinnerStyle} value={form.rack_unit || ''}
-              onChange={e => set('rack_unit', parseInt(e.target.value) || 0)} placeholder="—" min={0} />
-          </FormRow>
+          {form.country && (
+            <FormRow label="City">
+              <select style={{ flex: 1 }} value={form.datacenter_city} onChange={e => setCity(e.target.value)}>
+                <option value="">— select —</option>
+                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </FormRow>
+          )}
+          {form.datacenter_city && (
+            <FormRow label="Datacenter">
+              <select style={{ flex: 1 }} value={form.datacenter} onChange={e => setDc(e.target.value)}>
+                <option value="">— select —</option>
+                {dcOptions.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </FormRow>
+          )}
+          {/* Room and below appear only where a free server U exists. */}
+          {form.datacenter && (
+            locBusy ? (
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 100, marginTop: 4 }}>loading rack capacity…</div>
+            ) : roomsWithSpace.length === 0 ? (
+              <div style={{ paddingLeft: 100, marginTop: 4 }}>
+                <div style={{ fontSize: 10, color: '#f0a020' }}>
+                  No free rack space in {form.datacenter} — provision a rack/hall (or free a U) first.
+                </div>
+                <button type="button" onClick={goProvision} style={{
+                  marginTop: 5, background: 'var(--accent)', border: '1px solid var(--accent)',
+                  color: '#061018', borderRadius: 4, padding: '3px 9px', fontSize: 10,
+                  fontWeight: 700, cursor: 'pointer',
+                }}>Provision capacity →</button>
+              </div>
+            ) : (
+              <FormRow label="Room">
+                <select style={{ flex: 1 }} value={form.room} onChange={e => setRoom(e.target.value)}>
+                  <option value="">— select —</option>
+                  {roomsWithSpace.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </FormRow>
+            )
+          )}
+          {form.room && floorsWithSpace.length > 0 && (
+            <FormRow label="Floor">
+              <select style={{ flex: 1 }} value={form.floor} onChange={e => setFloor(e.target.value)}>
+                <option value="">— select —</option>
+                {floorsWithSpace.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </FormRow>
+          )}
+          {form.floor && rowsWithSpace.length > 0 && (
+            <FormRow label="Row">
+              <select style={{ flex: 1 }} value={form.rack_row || ''} onChange={e => setRow(parseInt(e.target.value) || 0)}>
+                <option value="">— select —</option>
+                {rowsWithSpace.map(r => <option key={r} value={r}>Row {r}</option>)}
+              </select>
+            </FormRow>
+          )}
+          {form.rack_row > 0 && (
+            <FormRow label="Rack">
+              <select style={{ flex: 1 }} value={form.rack_num || ''} onChange={e => setRack(parseInt(e.target.value) || 0)}>
+                <option value="">— select —</option>
+                {racksInRow.filter(r => r.free_units.length > 0).map(r => (
+                  <option key={r.rack_num} value={r.rack_num}>
+                    R{r.rack_row}-{String(r.rack_num).padStart(2, '0')} · {r.used}/{r.total} used
+                  </option>
+                ))}
+              </select>
+            </FormRow>
+          )}
+          {form.rack_num > 0 && chosenRack && (
+            <FormRow label="Unit (U)">
+              <select style={{ flex: 1 }} value={form.rack_unit || ''} onChange={e => set('rack_unit', parseInt(e.target.value) || 0)}>
+                {chosenRack.free_units.map(u => <option key={u} value={u}>U{u}</option>)}
+              </select>
+            </FormRow>
+          )}
           {sysLocation && (
             <div style={{ fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic', marginTop: 4, paddingLeft: 100 }}>
               sysLocation: {sysLocation}
