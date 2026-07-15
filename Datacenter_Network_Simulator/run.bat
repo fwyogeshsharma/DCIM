@@ -4,6 +4,15 @@ REM ================================================================
 REM  Datacenter Network Simulator - Quick Launch Script
 REM ================================================================
 
+REM ---- UTF-8 console + Python I/O so Unicode in log output renders correctly
+REM      instead of cp1252 mojibake (e.g. a "…" showing as "â€¦"). chcp switches
+REM      the console code page to UTF-8; PYTHONUTF8 makes Python encode stdio as
+REM      UTF-8 to match. Runs before the admin self-elevation relaunch so the
+REM      elevated console (a fresh window) picks it up too. ----
+chcp 65001 >nul
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+
 echo Starting Datacenter Network Simulator...
 echo.
 

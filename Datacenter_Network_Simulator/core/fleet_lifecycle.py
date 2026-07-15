@@ -867,6 +867,18 @@ class FleetLifecycleEngine:
                 self.s.topology.add_link(rpp.id, pdu.id, layer="power")
             except Exception:
                 pass
+            # Managed rack PDU onto the hall's access OOB (SNMP/Modbus over the OOB
+            # plane), like every curated network-rack PDU — but only once THIS hall
+            # actually has an OOB. A brand-new hall creates its spine/OOB-rack PDUs
+            # BEFORE its OOB is stood up, so those get mgmt'd in a later pass (see
+            # _open_new_hall); an existing hall (OOB stack) links immediately.
+            try:
+                if self._hall_oobs(rk):
+                    poob = self._oob_port_for(rk, infra)
+                    if poob is not None and self._room_key(poob) == rk:
+                        self.s.topology.add_link(pdu.id, poob.id, layer="management")
+            except Exception as e:
+                self._log(f"[Fleet] network PDU mgmt link {pdu.name}: {e}")
             self._commission(pdu)
             if side == "A":
                 a = pdu
@@ -1380,26 +1392,27 @@ class FleetLifecycleEngine:
         chw_return = infra.get("chw_return")
         new_infra = dict(infra)
 
-        # ── Front row (row 1): power + pod network, like the curated halls ──
-        # Fresh RPP pair (fed by the source RPPs' UPS so hall load still reaches
-        # the UPS/generator) at the near wall, then the pod's OWN spine set + OOB
-        # (own fabric = meaningful spine/OOB port caps) across the rest of the row.
+        # ── Front row (row 1): pod network then power, laid out like the curated
+        # halls — spines (2/rack) in cols 1-2, OOB in col 3, then the RPP pair
+        # FLANKING the row: RPPA in col 4 (just past the network gear), RPPB at the
+        # far end (last column). Both fed by the source RPPs' UPS so hall load still
+        # reaches the UPS/generator. (Previously the RPPs sat in cols 1-2 and pushed
+        # the network gear right, so a fleet/manual hall did not match curated.)
         front_y = round(geo.row_y(1), 4)
-        new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", front_y)
-        new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", front_y) if infra["rpp_b"] else None
+        new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", front_y, col=4)
+        new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", front_y, col=rpr) if infra["rpp_b"] else None
         # Every RPP gets its OWN EV2-42 meter (like the curated halls), so a new
         # hall's power is monitored from day one — not only spill panels.
         for _rpp in (new_infra["rpp_a"], new_infra["rpp_b"]):
             if _rpp is not None:
                 self._provision_ev2_for_rpp(_rpp, rk)
         # Pack the front-row network gear like the curated halls: TWO spines per
-        # rack (U42/U41), then the OOB switch in its own rack — NOT one rack per
-        # spine, which spread a 4-spine pod across four cabinets and made a fresh
-        # hall show far more row-1 racks than a curated hall (which packs its spine
-        # pair 2-up). Cols 1-2 are the RPP pair, so spine racks start at col 3.
+        # rack (U42/U41) in cols 1-2, then the OOB switch in its own rack (col 3) —
+        # NOT one rack per spine, which spread a 4-spine pod across four cabinets.
+        # The RPP pair flanks this gear (cols 4 and last), matching curated.
         spines = list(infra.get("spines") or [])
         new_spines, new_oob = [], None
-        col = 3
+        col = 1
         for p in range(0, len(spines), 2):
             fx = geo.rack_x(min(col, rpr))
             for j, tmpl in enumerate(spines[p:p + 2]):
@@ -1437,6 +1450,22 @@ class FleetLifecycleEngine:
                     self.s.topology.add_link(sp.id, new_oob.id, layer="management")
                 except Exception as e:
                     self._log(f"[Fleet] spine console re-home {sp.name}: {e}")
+
+            # The spine/OOB-rack PDUs were created (in _wire_network_power ->
+            # _ensure_rack_pdus) before this hall had an OOB, so they carry no mgmt
+            # link yet. Land them on the hall access OOB now, like the curated
+            # network-rack PDUs. Idempotent: skips any already on an OOB.
+            for pdu in self._by_type(DeviceType.PDU):
+                if self._room_key(pdu) != rk:
+                    continue
+                if self._neighbors(pdu, "management", (DeviceType.OOB_SWITCH,)):
+                    continue
+                poob = self._oob_port_for(rk, new_infra)
+                if poob is not None:
+                    try:
+                        self.s.topology.add_link(pdu.id, poob.id, layer="management")
+                    except Exception as e:
+                        self._log(f"[Fleet] network PDU mgmt {pdu.name}: {e}")
 
         # ── Back wall: the hall's own A/B mechanical power panels FIRST, so the
         # CRAHs below cord to them (resolved by room) instead of home-running to the
@@ -1541,15 +1570,18 @@ class FleetLifecycleEngine:
         return f"{prefix}{nxt}"
 
     def _clone_rpp(self, tmpl: Device, rk: tuple, side: str,
-                   y: Optional[float] = None) -> Optional[Device]:
+                   y: Optional[float] = None, col: Optional[int] = None) -> Optional[Device]:
         """Clone a Remote Power Panel into hall *rk* and feed it from the same UPS
-        the template draws from, so downstream rack load reaches the UPS."""
+        the template draws from, so downstream rack load reaches the UPS. *col* is
+        the row-1 rack column the panel stands in — the curated halls flank the row
+        (RPPA near the network gear, RPPB at the far end); defaults to 1/2 for A/B."""
         dc, floor, room = rk
+        num = col if col is not None else (1 if side == "A" else 2)
         ups = self._neighbor(tmpl, "power", (DeviceType.UPS,))
         rpp = self._clone(tmpl, dc, self._row_label(rk, "rpp"),
-                          1 if side == "A" else 2, PDU_UNIT,
+                          num, PDU_UNIT,
                           prefix=f"rpp{side.lower()}", floor=floor, room=room,
-                          fx=geo.rack_x(1 if side == "A" else 2), fy=y)
+                          fx=geo.rack_x(num), fy=y)
         if rpp is None:
             return None
         if ups is not None:

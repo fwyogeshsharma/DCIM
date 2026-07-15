@@ -1,10 +1,10 @@
-﻿"""
+"""
 Datacenter Network Simulator - Entry Point
 """
 import sys
 import os
 
-# â”€â”€ SNMPSim runner mode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── SNMPSim runner mode ───────────────────────────────────────────────────────
 # When the frozen exe is launched with _SNMPSIM_RUNNER=1 it acts as the snmpsim
 # subprocess instead of starting the UI.  This lets a single self-contained exe
 # serve as both the main application and the snmpsim backend without requiring
@@ -15,7 +15,7 @@ if os.environ.get("_SNMPSIM_RUNNER") == "1":
         # runtime.  In a frozen exe those files can't be exec'd reliably, so
         # load_variation_modules() returns 1 (error) instead of a dict, causing
         # an AttributeError later.  Pointing snmpsim at an empty temp directory
-        # makes it find no .py files â†’ returns {} â†’ starts cleanly.
+        # makes it find no .py files → returns {} → starts cleanly.
         # We don't use variation modules in our simulation so this is safe.
         import tempfile as _tempfile
         _var_dir = _tempfile.mkdtemp(prefix="snmpsim_var_")
@@ -24,7 +24,7 @@ if os.environ.get("_SNMPSIM_RUNNER") == "1":
 
     from snmpsim.commands.responder import main as _snmpsim_main
     sys.exit(_snmpsim_main() or 0)
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 
 import faulthandler
 
@@ -37,7 +37,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*pysnmp-lex
 
 # Ensure project root is on the path (handles both dev and PyInstaller modes)
 if getattr(sys, "frozen", False):
-    # Running as PyInstaller bundle â€” imports live in _MEIPASS, logs go next to the exe
+    # Running as PyInstaller bundle — imports live in _MEIPASS, logs go next to the exe
     _base_dir = sys._MEIPASS
     _log_dir  = os.path.dirname(sys.executable)
 else:
@@ -68,7 +68,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt, QObject, QEvent
 from PySide6.QtGui import QPalette, QColor
 
-# â”€â”€ Windows dark title bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Windows dark title bar ────────────────────────────────────────────────────
 if sys.platform == "win32":
     import ctypes
     _dwmapi = ctypes.windll.dwmapi
@@ -150,7 +150,7 @@ def _force_dark_palette(app: QApplication) -> None:
 
 
 def _run_headless():
-    """Start the simulator in headless mode (no GUI) â€” API only on port 8000.
+    """Start the simulator in headless mode (no GUI) — API only on port 8000.
     Uses QCoreApplication so Qt signals/slots work without a display."""
     import logging
     log = logging.getLogger("headless")
@@ -173,7 +173,7 @@ def _run_headless():
     from PySide6.QtCore import QCoreApplication
     _app = QCoreApplication(sys.argv)
 
-    log.info("Headless mode: initialising core objectsâ€¦")
+    log.info("Headless mode: initialising core objects...")
 
     from core.device_manager import DeviceManager
     from core.topology_engine import TopologyEngine
@@ -258,14 +258,14 @@ def _run_headless():
         elif arg.startswith("--port="):
             port = int(arg.split("=", 1)[1])
 
-    log.info("Core ready. Starting REST API on http://0.0.0.0:%d â€¦", port)
+    log.info("Core ready. Starting REST API on http://0.0.0.0:%d ...", port)
     import threading
     from api.main import start_api_server
     # daemon=True so the process (and its bound socket) exits the moment the Qt
     # loop returns — otherwise a non-daemon uvicorn thread keeps port 8001 held.
     _api_thread = threading.Thread(target=lambda: start_api_server(port=port), daemon=True, name="api-server")
     _api_thread.start()
-    log.info("REST API up â€” http://0.0.0.0:%d/docs", port)
+    log.info("REST API up - http://0.0.0.0:%d/docs", port)
 
     # Make Ctrl+C / SIGTERM actually stop headless. Qt's C++ event loop swallows
     # SIGINT, so: (1) route the signals to _app.quit(), and (2) run an idle
@@ -280,7 +280,7 @@ def _run_headless():
 
     log.info("Press Ctrl+C to stop.")
     rc = _app.exec()
-    log.info("Shutting downâ€¦ releasing port %d.", port)
+    log.info("Shutting down... releasing port %d.", port)
     sys.exit(rc)
 
 
