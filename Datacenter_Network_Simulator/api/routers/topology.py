@@ -256,31 +256,57 @@ def restore_link(req: LinkActionRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+def _port_terminations(s, device_id: str) -> dict:
+    """iface list-index -> list of live terminations on it, read from the actual
+    EDGES (production + management) rather than the interface's cached
+    connected_to_device (which only holds the last write). A device's data uplink
+    and its BMC/console can share one iface index across layers, so reading edges
+    surfaces EVERY termination — the ToR link is not hidden behind the OOB link."""
+    term: dict = {}
+    for u, v, d in s.topology.get_links():
+        layer = d.get("layer", "production")
+        if layer not in ("production", "management"):
+            continue
+        if u == device_id:
+            myif, peer_id, peer_if = d.get("src_iface"), v, d.get("dst_iface")
+        elif v == device_id:
+            myif, peer_id, peer_if = d.get("dst_iface"), u, d.get("src_iface")
+        else:
+            continue
+        if myif is None:
+            continue
+        pd = s.device_manager.get_device(peer_id) if s.device_manager else None
+        pname = pd.name if pd else peer_id
+        pifn = (pd.interfaces[peer_if].name
+                if pd and peer_if is not None and 0 <= peer_if < len(pd.interfaces) else None)
+        term.setdefault(myif, []).append({"peer": pname, "peer_iface": pifn, "layer": layer})
+    return term
+
+
 @router.get("/devices/{device_id}/ports")
 def device_ports(device_id: str):
     """List a device's ports for the link-builder port pickers: every interface,
-    each flagged used/free with its peer, so the UI can show ALL ports but only let
-    the operator pick a FREE one. The `iface` field is the value to pass back as
-    create_link's src_iface/dst_iface (the interface list-index that add_link uses)."""
+    each flagged used/free with its peer(s), so the UI can show ALL ports but only
+    let the operator pick a FREE one. `iface` is the value to pass back as
+    create_link's src_iface/dst_iface (the interface list-index add_link uses)."""
     s = _state()
     if s.topology is None or s.device_manager is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
     dev = s.device_manager.get_device(device_id)
     if dev is None:
         raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    term = _port_terminations(s, device_id)
     ports = []
     for i, itf in enumerate(dev.interfaces):
+        conns = term.get(i, [])
         peer = None
-        if itf.connected_to_device:
-            pd = s.device_manager.get_device(itf.connected_to_device)
-            pname = pd.name if pd else itf.connected_to_device
-            pi = itf.connected_to_iface
-            if pd and pi is not None and 0 <= pi < len(pd.interfaces):
-                peer = f"{pname} · {pd.interfaces[pi].name}"
-            else:
-                peer = pname
-        ports.append({"iface": i, "name": itf.name,
-                      "used": itf.connected_to_device is not None, "peer": peer})
+        if conns:
+            # Label prefers the production (data) peer so the ToR/uplink is visible;
+            # the full list stays in `connections`.
+            c = next((c for c in conns if c["layer"] == "production"), conns[0])
+            peer = f"{c['peer']} - {c['peer_iface']}" if c["peer_iface"] else c["peer"]
+        ports.append({"iface": i, "name": itf.name, "used": bool(conns),
+                      "peer": peer, "connections": conns})
     return {"device_id": device_id, "name": dev.name,
             "interface_count": len(dev.interfaces),
             "free": sum(1 for p in ports if not p["used"]), "ports": ports}
@@ -304,7 +330,10 @@ def create_link(req: CreateLinkRequest):
             raise HTTPException(status_code=404, detail=f"{who} device not found")
         if not (0 <= iface < len(dev.interfaces)):
             raise HTTPException(status_code=422, detail=f"{who} port {iface} out of range")
-        if dev.interfaces[iface].connected_to_device is not None:
+        # "Free" is judged by real edges (same source of truth the picker uses), not
+        # the cached connected_to_device — so a data-uplinked port can't be double-
+        # booked even if its cache points elsewhere.
+        if iface in _port_terminations(s, dev_id):
             raise HTTPException(status_code=409,
                                 detail=f"{who} port {dev.interfaces[iface].name} is already in use")
     ok = s.topology.add_link(req.src_id, req.dst_id,
