@@ -667,14 +667,17 @@ class FleetLifecycleEngine:
                 d = self.s.device_manager.get_device(nbr)
                 if d is None or d.device_type in _down:
                     continue                      # skip downstream servers/PDUs
-                # Skip DOWNSTREAM hall leaves (ToRs) but KEEP the UPSTREAM core /
-                # aggregation switches. _is_leaf() alone can't tell them apart — a
-                # core switch (role COR) is also a non-SP switch, so it reads as a
-                # "leaf" — so gate the skip on the room: a real leaf lives in a
-                # Server Hall, a core sits in the Network Room. Without this the
-                # cloned spine loses its uplink to COR1/COR2 and the new pod is
-                # islanded from the DC core.
-                if self._is_leaf(d) and (getattr(d, "room", "") or "").startswith("Server Hall"):
+                # Skip DOWNSTREAM in-hall fabric — both leaf ToRs AND spine consoles
+                # live in a Server Hall — but KEEP the UPSTREAM cores/aggregation,
+                # which sit in the Network Room. Gate on room + switch type:
+                #   * a core switch (COR) reads as a non-SP "leaf" via _is_leaf, so
+                #     without the room gate the cloned SPINE loses its COR1/COR2
+                #     uplink and the new pod is islanded from the DC core;
+                #   * a source-hall SPINE is NOT a leaf, so without covering all
+                #     Server-Hall switches the cloned OOB inherits the SOURCE hall's
+                #     spine consoles — a spurious cross-hall management link.
+                if (d.device_type == DeviceType.SWITCH
+                        and (getattr(d, "room", "") or "").startswith("Server Hall")):
                     continue
                 self.s.topology.add_link(new.id, nbr,
                                          layer=self._link_layer(tmpl.id, nbr) or "production")
@@ -1408,8 +1411,16 @@ class FleetLifecycleEngine:
         # reaches the UPS/generator. (Previously the RPPs sat in cols 1-2 and pushed
         # the network gear right, so a fleet/manual hall did not match curated.)
         front_y = round(geo.row_y(1), 4)
+        # RPPB flanks the far end of the row at the PHYSICAL column count
+        # (racks_per_row from the extent), NOT the compute-grid `rpr`: _hall_grid is
+        # called here BEFORE the spines exist, so it can't see a local spine and
+        # mis-reads the hall as a compute annex — which shrinks compute_rows and, via
+        # the RPP-pole cap, `rpr` (e.g. 10 instead of 13). The compute grid fills
+        # correctly (3x13) once the spines are up; only this placement needed the
+        # true physical width.
+        last_col = int(ext.get("racks_per_row") or rpr)
         new_infra["rpp_a"] = self._clone_rpp(infra["rpp_a"], rk, "A", front_y, col=4)
-        new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", front_y, col=rpr) if infra["rpp_b"] else None
+        new_infra["rpp_b"] = self._clone_rpp(infra["rpp_b"], rk, "B", front_y, col=last_col) if infra["rpp_b"] else None
         # Every RPP gets its OWN EV2-42 meter (like the curated halls), so a new
         # hall's power is monitored from day one — not only spill panels.
         for _rpp in (new_infra["rpp_a"], new_infra["rpp_b"]):
