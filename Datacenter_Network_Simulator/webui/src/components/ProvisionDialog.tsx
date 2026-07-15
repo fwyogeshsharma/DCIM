@@ -86,14 +86,22 @@ export default function ProvisionDialog({ onClose }: Props) {
   const freeUnits      = racks.reduce((n, r) => n + r.free_units.length, 0)
   const allFull        = totalRacks > 0 && racksWithSpace === 0
 
-  // Halls in the DC (with their current rack counts) to target Add Rack at. NOT
-  // filtered by free U — a hall whose existing racks are full may still have empty
-  // GRID slots for a new rack; the backend enforces the grid/fabric cap per hall.
+  // Add Rack builds a COMPUTE rack, so it can only target a server hall (white
+  // space with a pod fabric + RPP + CRAH). Facility rooms (Mechanical/Electrical)
+  // can't hold one and the backend rejects them (no _hall_infra). Restrict the
+  // picker to rooms in this DC that actually contain servers — in this topology
+  // the network gear lives inside those same halls (each hall is its own pod), so
+  // there is no separate network hall to list. NOT filtered by free U: a hall whose
+  // existing racks are full may still have empty GRID slots for a new rack; the
+  // backend enforces the per-hall grid/fabric cap.
+  const computeRooms = useMemo(() => new Set(
+    devices.filter(d => d.device_type === 'server' && d.datacenter === dc)
+      .map(d => d.room || '')), [devices, dc])
   const halls = useMemo(() => {
     const m = new Map<string, number>()
-    for (const r of racks) m.set(r.room, (m.get(r.room) || 0) + 1)
+    for (const r of racks) if (computeRooms.has(r.room)) m.set(r.room, (m.get(r.room) || 0) + 1)
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  }, [racks])
+  }, [racks, computeRooms])
 
   // Add-Rack has nowhere to go when every rack in the DC is full → nudge to Hall.
   useEffect(() => { if (allFull && mode === 'rack') setMode('hall') }, [allFull, mode])

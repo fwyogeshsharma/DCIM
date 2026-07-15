@@ -194,7 +194,7 @@
         "y": 65
       },
       "device": {
-        "name": "RTR2-DC1-NR-R1-01",
+        "name": "RTR2-DC1-NR-R1-04",
         "device_type": "router",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.3",
@@ -344,8 +344,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 40,
+        "rack_num": 4,
+        "rack_unit": 42,
         "cpu_usage": 41,
         "memory_total": 4294967296,
         "memory_used": 2578601429,
@@ -361,9 +361,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "d58842de",
-        "power_source_b": "baa80dd4",
-        "floor_x": 0.3,
+        "power_source_a": "ff01cf99",
+        "power_source_b": "4b22d308",
+        "floor_x": 2.1,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -618,7 +618,7 @@
         "y": 195
       },
       "device": {
-        "name": "FW2-DC1-NR-R1-02",
+        "name": "FW2-DC1-NR-R1-03",
         "device_type": "firewall",
         "vendor": "Palo Alto Networks",
         "ip_address": "10.50.0.5",
@@ -828,8 +828,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 2,
-        "rack_unit": 40,
+        "rack_num": 3,
+        "rack_unit": 42,
         "cpu_usage": 31,
         "memory_total": 2147483648,
         "memory_used": 1265990102,
@@ -845,9 +845,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "c6a7ee39",
-        "power_source_b": "508ebad7",
-        "floor_x": 0.9,
+        "power_source_a": "95a76d79",
+        "power_source_b": "c17af08a",
+        "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -860,7 +860,7 @@
         "y": 325
       },
       "device": {
-        "name": "LB1-DC1-NR-R1-03",
+        "name": "LB1-DC1-NR-R1-02",
         "device_type": "load_balancer",
         "vendor": "F5 Networks",
         "ip_address": "10.50.0.6",
@@ -1040,8 +1040,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 3,
-        "rack_unit": 42,
+        "rack_num": 2,
+        "rack_unit": 40,
         "cpu_usage": 30,
         "memory_total": 17179869184,
         "memory_used": 13730904519,
@@ -1057,9 +1057,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "95a76d79",
-        "power_source_b": "c17af08a",
-        "floor_x": 1.5,
+        "power_source_a": "c6a7ee39",
+        "power_source_b": "508ebad7",
+        "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -1284,7 +1284,7 @@
         "y": 455
       },
       "device": {
-        "name": "COR1-DC1-NR-R1-04",
+        "name": "COR1-DC1-NR-R1-01",
         "device_type": "switch",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.8",
@@ -2274,8 +2274,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 4,
-        "rack_unit": 42,
+        "rack_num": 1,
+        "rack_unit": 40,
         "cpu_usage": 8,
         "memory_total": 34359738368,
         "memory_used": 12894963297,
@@ -2291,9 +2291,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "ff01cf99",
-        "power_source_b": "4b22d308",
-        "floor_x": 2.1,
+        "power_source_a": "d58842de",
+        "power_source_b": "baa80dd4",
+        "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -33088,7 +33088,7 @@
         "y": 65
       },
       "device": {
-        "name": "RTR2-DC2-NR-R1-01",
+        "name": "RTR2-DC2-NR-R1-04",
         "device_type": "router",
         "vendor": "Cisco Systems",
         "ip_address": "10.50.0.205",
@@ -33238,8 +33238,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 40,
+        "rack_num": 4,
+        "rack_unit": 42,
         "cpu_usage": 32,
         "memory_total": 17179869184,
         "memory_used": 11548449248,
@@ -33255,9 +33255,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "ce3714af",
-        "power_source_b": "7d7ddbed",
-        "floor_x": 0.3,
+        "power_source_a": "b63b4dc3",
+        "power_source_b": "b118f68d",
+        "floor_x": 2.1,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -33512,7 +33512,7 @@
         "y": 195
       },
       "device": {
-        "name": "FW2-DC2-NR-R1-02",
+        "name": "FW2-DC2-NR-R1-03",
         "device_type": "firewall",
         "vendor": "Palo Alto Networks",
         "ip_address": "10.50.0.207",
@@ -33722,8 +33722,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 2,
-        "rack_unit": 40,
+        "rack_num": 3,
+        "rack_unit": 42,
         "cpu_usage": 47,
         "memory_total": 8589934592,
         "memory_used": 5694335424,
@@ -33739,9 +33739,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "7bc67e1f",
-        "power_source_b": "e1b294de",
-        "floor_x": 0.9,
+        "power_source_a": "d9d80b8d",
+        "power_source_b": "e14eb70d",
+        "floor_x": 1.5,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -33754,7 +33754,7 @@
         "y": 325
       },
       "device": {
-        "name": "LB1-DC2-NR-R1-03",
+        "name": "LB1-DC2-NR-R1-02",
         "device_type": "load_balancer",
         "vendor": "F5 Networks",
         "ip_address": "10.50.0.208",
@@ -33934,8 +33934,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 3,
-        "rack_unit": 42,
+        "rack_num": 2,
+        "rack_unit": 40,
         "cpu_usage": 9,
         "memory_total": 8589934592,
         "memory_used": 2836092778,
@@ -33951,9 +33951,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "d9d80b8d",
-        "power_source_b": "e14eb70d",
-        "floor_x": 1.5,
+        "power_source_a": "7bc67e1f",
+        "power_source_b": "e1b294de",
+        "floor_x": 0.9,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -34178,7 +34178,7 @@
         "y": 455
       },
       "device": {
-        "name": "COR1-DC2-NR-R1-04",
+        "name": "COR1-DC2-NR-R1-01",
         "device_type": "switch",
         "vendor": "Dell Technologies",
         "ip_address": "10.50.0.210",
@@ -35168,8 +35168,8 @@
         "room": "Network Room",
         "floor": "1",
         "rack_row": 1,
-        "rack_num": 4,
-        "rack_unit": 42,
+        "rack_num": 1,
+        "rack_unit": 40,
         "cpu_usage": 85,
         "memory_total": 4294967296,
         "memory_used": 2445785941,
@@ -35185,9 +35185,9 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "power_source_a": "b63b4dc3",
-        "power_source_b": "b118f68d",
-        "floor_x": 2.1,
+        "power_source_a": "ce3714af",
+        "power_source_b": "7d7ddbed",
+        "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1"
@@ -111865,7 +111865,7 @@
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
-        "rack_unit": 40,
+        "rack_unit": 34,
         "cpu_usage": 22,
         "memory_total": 4294967296,
         "memory_used": 2883291244,
@@ -112678,7 +112678,7 @@
         "floor": "1",
         "rack_row": 1,
         "rack_num": 3,
-        "rack_unit": 40,
+        "rack_unit": 34,
         "cpu_usage": 53,
         "memory_total": 34359738368,
         "memory_used": 22955678949,
@@ -117479,20 +117479,6 @@
       "layer": "power"
     },
     {
-      "src": "d58842de",
-      "dst": "98993beb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "baa80dd4",
-      "dst": "98993beb",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "c6a7ee39",
       "dst": "b4f942f1",
       "src_iface": 0,
@@ -117507,34 +117493,6 @@
       "layer": "power"
     },
     {
-      "src": "c6a7ee39",
-      "dst": "184989b7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "508ebad7",
-      "dst": "184989b7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "95a76d79",
-      "dst": "497525c7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "c17af08a",
-      "dst": "497525c7",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "95a76d79",
       "dst": "67c1e1d1",
       "src_iface": 0,
@@ -117544,20 +117502,6 @@
     {
       "src": "c17af08a",
       "dst": "67c1e1d1",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "ff01cf99",
-      "dst": "5023ed7c",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "4b22d308",
-      "dst": "5023ed7c",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -120349,20 +120293,6 @@
       "layer": "power"
     },
     {
-      "src": "ce3714af",
-      "dst": "bd2953cc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "7d7ddbed",
-      "dst": "bd2953cc",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "7bc67e1f",
       "dst": "ebdcd4f9",
       "src_iface": 0,
@@ -120377,34 +120307,6 @@
       "layer": "power"
     },
     {
-      "src": "7bc67e1f",
-      "dst": "b2177ffd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e1b294de",
-      "dst": "b2177ffd",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "d9d80b8d",
-      "dst": "195ed21e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "e14eb70d",
-      "dst": "195ed21e",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
       "src": "d9d80b8d",
       "dst": "621eeb8d",
       "src_iface": 0,
@@ -120414,20 +120316,6 @@
     {
       "src": "e14eb70d",
       "dst": "621eeb8d",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b63b4dc3",
-      "dst": "12aaf0b8",
-      "src_iface": 0,
-      "dst_iface": 0,
-      "layer": "power"
-    },
-    {
-      "src": "b118f68d",
-      "dst": "12aaf0b8",
       "src_iface": 0,
       "dst_iface": 0,
       "layer": "power"
@@ -131226,6 +131114,134 @@
       "dst_iface": 0,
       "broken": false,
       "layer": "management"
+    },
+    {
+      "src": "ff01cf99",
+      "dst": "98993beb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "4b22d308",
+      "dst": "98993beb",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d58842de",
+      "dst": "5023ed7c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "baa80dd4",
+      "dst": "5023ed7c",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "95a76d79",
+      "dst": "184989b7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "c17af08a",
+      "dst": "184989b7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "c6a7ee39",
+      "dst": "497525c7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "508ebad7",
+      "dst": "497525c7",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "b63b4dc3",
+      "dst": "bd2953cc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "b118f68d",
+      "dst": "bd2953cc",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "ce3714af",
+      "dst": "12aaf0b8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "7d7ddbed",
+      "dst": "12aaf0b8",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "d9d80b8d",
+      "dst": "b2177ffd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "e14eb70d",
+      "dst": "b2177ffd",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "7bc67e1f",
+      "dst": "195ed21e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "e1b294de",
+      "dst": "195ed21e",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
     }
   ],
   "floorplan": {
