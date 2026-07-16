@@ -318,12 +318,19 @@ def clear_snmp_simulation():
 
     def _run():
         try:
+            from core.snmprec_generator import SNMPRecGenerator
             ds_path = Path(s.snmp_datasets_dir)
             if ds_path.exists():
                 for child in ds_path.iterdir():
                     if child.is_dir():
                         shutil.rmtree(child, ignore_errors=True)
-                    elif child.suffix in (".snmprec", ".dbm", ".dat", ".dir"):
+                    # The fingerprint sidecar is a DOTFILE, so Path.suffix is ""
+                    # and the extension list below never matched it — clearing the
+                    # datasets left behind a stamp claiming an empty directory was
+                    # built from some topology. Harmless only because the
+                    # completeness check runs first; delete it with what it describes.
+                    elif (child.name == SNMPRecGenerator.FINGERPRINT_FILE
+                            or child.suffix in (".snmprec", ".dbm", ".dat", ".dir")):
                         child.unlink(missing_ok=True)
             s.generated_snmp_files = []
             if s.rule_engine:
