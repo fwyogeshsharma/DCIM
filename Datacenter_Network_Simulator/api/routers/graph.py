@@ -73,7 +73,7 @@ def get_graph(layer: str = None):
         if key in seen:
             continue
         seen.add(key)
-        links_out.append({
+        link = {
             "id": f"{a}--{b}--{link_layer}",
             "src_id": a,
             "dst_id": b,
@@ -81,6 +81,18 @@ def get_graph(layer: str = None):
             "broken": s.topology.is_link_broken(src_id, dst_id, link_layer),
             "src_iface": edge_data.get("src_iface"),
             "dst_iface": edge_data.get("dst_iface"),
-        })
+        }
+        # A power cord's terminations are an outlet and a PSU, not ifaces. They ride
+        # alongside src_iface/dst_iface rather than reusing them: the pair is only
+        # meaningful with supply_node/load_node, since which end feeds which is not
+        # the same question as which end the edge happens to name first.
+        if edge_data.get("outlet") is not None:
+            link.update({
+                "outlet": edge_data["outlet"],
+                "psu": edge_data.get("psu"),
+                "supply_node": edge_data.get("supply_node"),
+                "load_node": edge_data.get("load_node"),
+            })
+        links_out.append(link)
 
     return {"devices": devices_out, "links": links_out}

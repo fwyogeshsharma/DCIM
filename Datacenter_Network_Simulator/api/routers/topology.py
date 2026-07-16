@@ -113,14 +113,30 @@ def get_links(layer: str = None):
         raw = s.topology.get_links()
     links = []
     for src_id, dst_id, edge_data in raw:
-        links.append({
-            "src_id": src_id,
-            "dst_id": dst_id,
+        # src_node/dst_node, not the (src_id, dst_id) iteration order: the graph is
+        # undirected, so edges() reports each link from whichever endpoint networkx
+        # walks first. Pairing that order with src_iface/dst_iface hands each end
+        # the FAR side's port — the same defect that made a spine's port list read
+        # back with its own port numbers as the peer's.
+        a = edge_data.get("src_node", src_id)
+        b = edge_data.get("dst_node", dst_id)
+        link = {
+            "src_id": a,
+            "dst_id": b,
             "layer": edge_data.get("layer", "production"),
             "broken": s.topology.is_link_broken(src_id, dst_id),
             "src_iface": edge_data.get("src_iface"),
             "dst_iface": edge_data.get("dst_iface"),
-        })
+        }
+        # Power cords terminate on an outlet and a PSU — see the graph router.
+        if edge_data.get("outlet") is not None:
+            link.update({
+                "outlet": edge_data["outlet"],
+                "psu": edge_data.get("psu"),
+                "supply_node": edge_data.get("supply_node"),
+                "load_node": edge_data.get("load_node"),
+            })
+        links.append(link)
     return {"links": links, "count": len(links)}
 
 

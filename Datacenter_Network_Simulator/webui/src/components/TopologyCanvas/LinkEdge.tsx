@@ -33,8 +33,11 @@ export function isHotFlow(src: string, dst: string): boolean {
 export interface LinkEdgeData {
   layer: string
   broken: boolean
-  src_iface?: number
-  dst_iface?: number
+  src_iface?: number | null
+  dst_iface?: number | null
+  // Power layer only — a cord's terminations. Null everywhere else.
+  outlet?: number | null
+  psu?: number | null
   srcName?: string
   dstName?: string
   flow?: 'hot' | 'cold'
@@ -170,6 +173,16 @@ function LinkEdge(props: EdgeProps) {
               <span style={{ color: '#8b949e' }}>Interfaces:</span>
               <span style={{ color: '#e6edf3', fontFamily: 'Consolas, monospace' }}>
                 {d.src_iface ?? '?'} ↔ {d.dst_iface ?? '?'}
+              </span>
+            </div>
+          )}
+          {/* A power cord: outlet → PSU. Read left-to-right as the power FLOWS,
+              which is why it uses the arrow the interfaces row does not. */}
+          {d.outlet != null && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 10.5, lineHeight: 1.85 }}>
+              <span style={{ color: '#8b949e' }}>Cord:</span>
+              <span style={{ color: '#e6edf3', fontFamily: 'Consolas, monospace' }}>
+                outlet {d.outlet} → PSU{d.psu ?? '?'}
               </span>
             </div>
           )}

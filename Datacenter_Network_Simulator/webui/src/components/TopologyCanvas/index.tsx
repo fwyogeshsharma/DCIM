@@ -135,6 +135,8 @@ function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edg
         broken: l.broken,
         src_iface: l.src_iface,
         dst_iface: l.dst_iface,
+        outlet: l.outlet,
+        psu: l.psu,
         srcName: nameById[l.src_id] || l.src_id,
         dstName: nameById[l.dst_id] || l.dst_id,
         flow: isCool ? (hot ? 'hot' : 'cold') : undefined,

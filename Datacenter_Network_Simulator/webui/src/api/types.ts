@@ -127,8 +127,16 @@ export interface GraphLink {
   dst_id: string
   layer: string
   broken: boolean
-  src_iface?: number
-  dst_iface?: number
+  // Ethernet layers only (production/management) — null on power/cooling, which
+  // terminate on an outlet or a pipe rather than an interface.
+  src_iface?: number | null
+  dst_iface?: number | null
+  // Power layer only: the 1-based PDU outlet and load PSU this cord runs between.
+  // supply_node/load_node say which end feeds which — src_id/dst_id do not.
+  outlet?: number
+  psu?: number
+  supply_node?: string
+  load_node?: string
 }
 
 export interface SnmpStatus {
