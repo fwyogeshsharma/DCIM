@@ -18,6 +18,7 @@ Type codes:
   71 = Opaque       (0x47)
 """
 from __future__ import annotations
+import hashlib
 import logging
 import os
 import random
@@ -247,10 +248,79 @@ _PLANT_OID_PATCH = {
 
 
 class SNMPRecGenerator:
+    # Sidecar recording WHICH topology the datasets in this directory were built
+    # from. Deliberately not a .snmprec: snmpsim serves anything matching that
+    # glob, and the orphan reaper deletes anything that is not an expected agent.
+    FINGERPRINT_FILE = ".topology_fingerprint"
+
     def __init__(self, output_dir: str = "datasets/snmp"):
         self.output_dir = Path(output_dir).resolve()
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._cache_dir: Optional[str] = None   # lazily resolved from snmpsim.confdir
+
+    # ------------------------------------------------------------------ #
+    #  Topology fingerprint                                                #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def topology_fingerprint(topology: TopologyEngine) -> str:
+        """Hash of everything that decides dataset CONTENT.
+
+        Datasets are named by IP, so a directory can be COMPLETE (every expected
+        filename present) while every file inside is stale — re-seat a switch's
+        ports or resize a device and the names never change. This is the missing
+        half: it answers "were these built from THIS topology?".
+
+        Covers what the generator actually reads — identity, model, addresses, the
+        full port list, and every ethernet termination (which drives ifTable, LLDP
+        and the MAC table). It deliberately EXCLUDES live telemetry (octets, cpu,
+        uptime) and link broken-ness: the state store patches those into the
+        datasets every tick, so folding them in would mark the directory stale
+        seconds after it was written and make the check worthless.
+        """
+        h = hashlib.sha256()
+        devs = []
+        for d in topology.get_all_devices():
+            ifaces = tuple(
+                (i.index, i.name, i.speed, getattr(i, "role", "data"))
+                for i in getattr(d, "interfaces", [])
+            )
+            devs.append((
+                d.name, d.device_type.value, d.vendor.value, d.model_name or "",
+                d.ip_address or "", getattr(d, "mgmt_ip", "") or "",
+                getattr(d, "sys_location", "") or "", ifaces,
+            ))
+        for t in sorted(devs, key=repr):
+            h.update(repr(t).encode())
+        edges = []
+        for u, v, e in topology.get_links():
+            edges.append((
+                e.get("src_node", u), e.get("dst_node", v),
+                e.get("layer", "production"), e.get("src_iface"), e.get("dst_iface"),
+            ))
+        for t in sorted(edges, key=repr):
+            h.update(repr(t).encode())
+        return h.hexdigest()[:16]
+
+    def write_fingerprint(self, topology: TopologyEngine) -> str:
+        fp = self.topology_fingerprint(topology)
+        try:
+            (self.output_dir / self.FINGERPRINT_FILE).write_text(fp, encoding="utf-8")
+        except OSError:
+            pass          # datasets are still usable; reconcile just won't adopt
+        return fp
+
+    def read_fingerprint(self) -> Optional[str]:
+        """The topology these datasets were built from, or None if unknown.
+
+        None means "written before fingerprinting existed, or hand-managed" — the
+        caller must treat that as unverifiable, not as a match.
+        """
+        try:
+            v = (self.output_dir / self.FINGERPRINT_FILE).read_text(encoding="utf-8").strip()
+            return v or None
+        except OSError:
+            return None
 
     # ------------------------------------------------------------------ #
     #  Public API                                                          #

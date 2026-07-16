@@ -101,16 +101,19 @@ async def upload_topology(file: UploadFile = File(...)):
             s.notify_ui("sync_binding")
         # Same story for the .snmprec datasets: they outlive the process, the list
         # tracking them does not. Adopt them so a restart does not force a rebuild
-        # of files that are already there — but say so LOUDLY, because a filename
-        # match cannot prove the CONTENTS are current: edit ports or interfaces and
-        # the names stay identical while the data inside goes stale.
+        # of files that are already there — but only when their fingerprint proves
+        # they were built from THIS topology, since the filenames alone never change.
         ds = s.reconcile_generated_datasets()
         if ds:
             s.notify_ui("log",
-                        f"[SNMP] Adopted {ds} existing dataset(s) from a previous "
-                        f"run — REGENERATE if this topology changed since they were "
-                        f"written (names match; contents are not checked)", "warning")
+                        f"[SNMP] Adopted {ds} existing dataset(s) — fingerprint "
+                        f"matches this topology", "success")
             s.notify_ui("sync_snmp")
+        elif getattr(s, "_datasets_stale", False):
+            s.notify_ui("log",
+                        "[SNMP] Datasets on disk were built from a DIFFERENT topology "
+                        "(or predate fingerprinting) — none adopted, regenerate before "
+                        "starting SNMP", "warning")
         elif getattr(s, "_missing_datasets", 0):
             s.notify_ui("log",
                         f"[SNMP] {s._missing_datasets} dataset(s) missing for this "

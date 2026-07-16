@@ -70,9 +70,10 @@ class AppState:
 
         # Dataset generation state
         self.generated_snmp_files: List[str] = []
-        # How many datasets this topology expects but disk does not have. Set by
-        # reconcile_generated_datasets so the caller can say WHY it adopted none.
+        # Why reconcile_generated_datasets adopted nothing, so the caller can say so:
+        # files absent, or present-but-built-from-another-topology.
         self._missing_datasets: int = 0
+        self._datasets_stale: bool = False
         self.generated_gnmi_files: List[str] = []
         self.snmp_datasets_dir: str = "datasets/snmp"
         self.gnmi_datasets_dir: str = "datasets/gnmi"
@@ -347,10 +348,12 @@ class AppState:
         expects (OS agent + BMC agent, per snmp_bind_ips) must be present or we
         adopt nothing.
 
-        WHAT THIS CANNOT SEE: a file matching by NAME is not proof its CONTENT is
-        current. Re-seat a switch's ports or resize a device and the filenames are
-        unchanged while the contents are stale. The caller logs loudly for exactly
-        this reason — adoption saves a rebuild, it does not certify freshness.
+        Completeness alone would not be enough: filenames are IPs, so re-seating a
+        switch's ports leaves every name identical while the contents go stale. So
+        generation stamps a fingerprint of the topology it built from, and this
+        adopts only when that fingerprint still matches the topology now loaded.
+        Datasets written before fingerprinting existed have none, which reads as
+        unverifiable — not as a match.
         """
         if self.topology is None or self.device_manager is None:
             return 0
@@ -378,8 +381,21 @@ class AppState:
         missing = expected - have
         if missing:
             self._missing_datasets = len(missing)
+            self._datasets_stale = False
             return 0
         self._missing_datasets = 0
+        # Complete — but are they OURS? Compare the fingerprint generation stamped
+        # against the topology now loaded.
+        gen = SNMPRecGenerator(self.snmp_datasets_dir)
+        stamped = gen.read_fingerprint()
+        current = SNMPRecGenerator.topology_fingerprint(self.topology)
+        if stamped != current:
+            # None = pre-fingerprint or hand-managed datasets; a value = built from
+            # a DIFFERENT topology. Either way we cannot vouch for the contents, so
+            # adopt nothing and let the operator regenerate.
+            self._datasets_stale = True
+            return 0
+        self._datasets_stale = False
         self.generated_snmp_files = owners
         return len(owners)
 

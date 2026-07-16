@@ -90,6 +90,13 @@ def generate_datasets():
                             f"[SNMP] Removed {len(reaped)} orphaned dataset(s) from "
                             f"a previous topology", "info")
 
+            # Stamp WHICH topology these datasets came from, after the reap so the
+            # fingerprint describes the directory as it finally stands. Without it
+            # a later reconcile can only see that the filenames are all present —
+            # never that their contents match the topology now loaded.
+            fp = gen.write_fingerprint(s.topology)
+            s.notify_ui("log", f"[SNMP] Datasets fingerprinted for this topology ({fp})", "info")
+
             # Pre-build .dbm indexes
             if s.snmpsim:
                 s.update_job(job_id, message="Building indexes...")
