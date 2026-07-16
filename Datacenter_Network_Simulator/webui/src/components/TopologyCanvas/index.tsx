@@ -146,6 +146,12 @@ function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edg
 const LINK_LAYERS = ['production', 'management', 'power', 'cooling']
 
 type Port = { iface: number; name: string; used: boolean; peer: string | null; role?: 'data' | 'mgmt' }
+// The power-layer equivalents: a cord runs from a PDU outlet to a load's PSU.
+type Outlet = { outlet: number; type: string; bank: number; phase: string
+                used: boolean; peer: string | null }
+type Psu = { psu: number; name: string; inlet: string; feed: string
+             used: boolean; peer: string | null }
+type PowerTerm = { outlets: Outlet[]; psus: Psu[] }
 
 // Only these layers terminate on an Ethernet port at all. A power link is a C13/C14
 // cord to a PDU OUTLET and a cooling link is a PIPE between loop connections —
@@ -237,6 +243,11 @@ function Canvas() {
   const [dstPorts,   setDstPorts]   = useState<Port[]>([])
   const [srcPort,    setSrcPort]    = useState<number | null>(null)
   const [dstPort,    setDstPort]    = useState<number | null>(null)
+  // Power terminations per end, and the chosen outlet/PSU (null = auto).
+  const [srcPower,   setSrcPower]   = useState<PowerTerm | null>(null)
+  const [dstPower,   setDstPower]   = useState<PowerTerm | null>(null)
+  const [linkOutlet, setLinkOutlet] = useState<number | null>(null)
+  const [linkPsu,    setLinkPsu]    = useState<number | null>(null)
   const [linkBusy,   setLinkBusy]   = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -320,10 +331,13 @@ function Canvas() {
   const resetLink = useCallback((clearMsg = true) => {
     setLinkSrc(null); setLinkDst(null)
     setSrcPorts([]); setDstPorts([]); setSrcPort(null); setDstPort(null)
+    setSrcPower(null); setDstPower(null); setLinkOutlet(null); setLinkPsu(null)
     if (clearMsg) setLinkMsg('')
   }, [])
 
   // Load a device's ports and default-select the first FREE port this layer wants.
+  // Power terminations come along too: which end is the PDU isn't known until both
+  // are picked, so fetch both and decide at render.
   const loadPorts = useCallback((id: string, end: 'src' | 'dst') => {
     api.devicePorts(id)
       .then((r: unknown) => {
@@ -333,6 +347,12 @@ function Canvas() {
         else               { setDstPorts(ports); setDstPort(pick) }
       })
       .catch(() => { if (end === 'src') setSrcPorts([]); else setDstPorts([]) })
+    api.devicePower(id)
+      .then((r: unknown) => {
+        const p = r as PowerTerm
+        if (end === 'src') setSrcPower(p); else setDstPower(p)
+      })
+      .catch(() => { if (end === 'src') setSrcPower(null); else setDstPower(null) })
   }, [linkLayer])
 
   useEffect(() => {
@@ -345,6 +365,9 @@ function Canvas() {
   useEffect(() => {
     setSrcPort(p => (p !== null ? defaultPort(srcPorts, linkLayer) : p))
     setDstPort(p => (p !== null ? defaultPort(dstPorts, linkLayer) : p))
+    // An outlet/PSU chosen for a power link means nothing on any other layer, and
+    // the API rejects them outright — clear rather than carry them across.
+    setLinkOutlet(null); setLinkPsu(null)
     // Ports are deliberately out of deps: they only change on a node click, which
     // sets the default itself — re-running here would clobber a manual pick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,11 +422,17 @@ function Canvas() {
   const doCreateLink = useCallback(() => {
     if (!linkSrc || !linkDst || linkBusy) return
     setLinkBusy(true)
-    api.createLink(linkSrc, linkDst, linkLayer, srcPort ?? undefined, dstPort ?? undefined)
+    const isPower = linkLayer === 'power'
+    api.createLink(linkSrc, linkDst, linkLayer,
+                   isPower ? undefined : srcPort ?? undefined,
+                   isPower ? undefined : dstPort ?? undefined,
+                   isPower ? linkOutlet ?? undefined : undefined,
+                   isPower ? linkPsu ?? undefined : undefined)
       .then(() => { fetchGraph(); setLinkMsg('Link created'); resetLink(false) })
       .catch(e => setLinkMsg(errorMessage(e)))
       .finally(() => setLinkBusy(false))
-  }, [linkSrc, linkDst, linkLayer, srcPort, dstPort, linkBusy, fetchGraph, resetLink])
+  }, [linkSrc, linkDst, linkLayer, srcPort, dstPort, linkOutlet, linkPsu,
+      linkBusy, fetchGraph, resetLink])
 
   // React Flow hands us every node that moved in this drag — one node normally,
   // the whole selection when several were shift-clicked. Persist them in a single
@@ -556,12 +585,62 @@ function Canvas() {
         // dedicated port is what an operator wants, but data ports stay pickable
         // for in-band mgmt and for the OOB gear whose data plane IS the mgmt net.
         // A production link never lists mgmt ports at all: it cannot use them.
+        // Power: the outlet belongs to whichever end is the PDU and the PSU to the
+        // other — not to "source" and "dest". Resolve by which end actually has
+        // outlets/PSUs, so clicking the server first works the same as the PDU.
+        const supplyEnd: 'src' | 'dst' | null =
+          srcPower?.outlets.length && dstPower?.psus.length ? 'src'
+          : dstPower?.outlets.length && srcPower?.psus.length ? 'dst'
+          : null
+        const powerSelect = (end: 'src' | 'dst') => {
+          if (supplyEnd === null) {
+            return (
+              <span style={{ fontSize: 10, color: '#7aa0c8', minWidth: 150, fontStyle: 'italic' }}>
+                {linkSrc && linkDst ? 'upstream feed — no outlet' : 'PDU outlet → PSU inlet'}
+              </span>
+            )
+          }
+          if (end === supplyEnd) {
+            const outs = (end === 'src' ? srcPower : dstPower)!.outlets
+            const load = (end === 'src' ? dstPower : srcPower)!.psus[0]
+            // A C14 inlet takes a C13 outlet, a C20 takes a C19 — never both.
+            const want = load?.inlet === 'C20' ? 'C19' : 'C13'
+            const fit = outs.filter(o => o.type === want)
+            return (
+              <select value={linkOutlet ?? ''} style={{ ...selStyle, minWidth: 150 }}
+                onChange={e => setLinkOutlet(e.target.value === '' ? null : parseInt(e.target.value))}>
+                <option value="">auto (next free {want})</option>
+                {fit.map(o => (
+                  <option key={o.outlet} value={o.outlet} disabled={o.used}>
+                    outlet {o.outlet} · {o.type} · bank {o.bank} · {o.phase}
+                    {o.used ? ` — in use${o.peer ? ` → ${o.peer}` : ''}` : ''}
+                  </option>
+                ))}
+              </select>
+            )
+          }
+          const psus = (end === 'src' ? srcPower : dstPower)!.psus
+          return (
+            <select value={linkPsu ?? ''} style={{ ...selStyle, minWidth: 150 }}
+              onChange={e => setLinkPsu(e.target.value === '' ? null : parseInt(e.target.value))}>
+              <option value="">auto (next free PSU)</option>
+              {psus.map(p => (
+                <option key={p.psu} value={p.psu} disabled={p.used}>
+                  {p.name} · {p.inlet}{p.feed ? ` · ${p.feed} feed` : ''}
+                  {p.used ? ` — in use${p.peer ? ` → ${p.peer}` : ''}` : ''}
+                </option>
+              ))}
+            </select>
+          )
+        }
         const portSelect = (ports: Port[], port: number | null,
-                            setPort: (n: number | null) => void, disabled: boolean) => {
+                            setPort: (n: number | null) => void, disabled: boolean,
+                            end: 'src' | 'dst') => {
+          if (linkLayer === 'power') return powerSelect(end)
           if (!usesPorts(linkLayer)) {
             return (
               <span style={{ fontSize: 10, color: '#7aa0c8', minWidth: 150, fontStyle: 'italic' }}>
-                {linkLayer === 'power' ? 'PDU outlet → PSU inlet' : 'pipe — no port'}
+                pipe — no port
               </span>
             )
           }
@@ -615,7 +694,7 @@ function Canvas() {
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {linkSrc ? nm(linkSrc) : 'click a node…'}
               </span>
-              {portSelect(srcPorts, srcPort, setSrcPort, !linkSrc)}
+              {portSelect(srcPorts, srcPort, setSrcPort, !linkSrc, 'src')}
             </div>
 
             <div style={rowStyle}>
@@ -625,7 +704,7 @@ function Canvas() {
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {linkDst ? nm(linkDst) : (linkSrc ? 'click a node…' : '—')}
               </span>
-              {portSelect(dstPorts, dstPort, setDstPort, !linkDst)}
+              {portSelect(dstPorts, dstPort, setDstPort, !linkDst, 'dst')}
             </div>
 
             <div style={{ ...rowStyle, justifyContent: 'space-between', borderTop: '1px solid #24405f', paddingTop: 7 }}>

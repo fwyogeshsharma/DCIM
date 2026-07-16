@@ -146,10 +146,13 @@ export const api = {
   restoreLink:  (src: string, dst: string, layer = 'production') =>
     post('/topology/links/restore', { src_id: src, dst_id: dst, layer }),
   createLink:   (src: string, dst: string, layer = 'production',
-                 srcIface?: number, dstIface?: number) =>
+                 srcIface?: number, dstIface?: number,
+                 outlet?: number, psu?: number) =>
     post('/topology/links/create',  { src_id: src, dst_id: dst, layer,
-                                       src_iface: srcIface ?? null, dst_iface: dstIface ?? null }),
+                                       src_iface: srcIface ?? null, dst_iface: dstIface ?? null,
+                                       outlet: outlet ?? null, psu: psu ?? null }),
   devicePorts:  (id: string) => get(`/topology/devices/${id}/ports`),
+  devicePower:  (id: string) => get(`/topology/devices/${id}/power-terminations`),
   layoutGraph:  (algorithm: string) =>
     post<{ positions: Record<string, { x: number; y: number }> }>('/topology/layout', { algorithm }),
   // One call per drag, carrying every node that moved.

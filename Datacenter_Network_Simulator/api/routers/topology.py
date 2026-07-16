@@ -24,6 +24,10 @@ class CreateLinkRequest(BaseModel):
     # free port, the old behaviour. When given, the port must be free (else 409).
     src_iface: Optional[int] = None
     dst_iface: Optional[int] = None
+    # Power layer only: 1-based PDU outlet + load PSU. None = auto-pick the next
+    # free outlet of the type the PSU's inlet demands.
+    outlet: Optional[int] = None
+    psu: Optional[int] = None
 
 class LayoutRequest(BaseModel):
     algorithm: str  # "default" | "spring" | "shell" | "kamada_kawai"
@@ -320,6 +324,103 @@ def device_ports(device_id: str):
             "free": sum(1 for p in ports if not p["used"]), "ports": ports}
 
 
+@router.get("/devices/{device_id}/power-terminations")
+def device_power_terminations(device_id: str):
+    """A device's outlets (if it's a PDU) and PSUs (if it's a load), each flagged
+    used/free with what's corded to it — the power-layer twin of /ports.
+
+    Terminations are read from the EDGES, never from a cached field on the outlet:
+    the same reason the port picker reads edges. `outlet`/`psu` are the 1-based
+    numbers to pass back to create_link, and they match what the vendor MIBs index.
+    """
+    s = _state()
+    if s.topology is None or s.device_manager is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    dev = s.device_manager.get_device(device_id)
+    if dev is None:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    peer_of_outlet, peer_of_psu = {}, {}
+    for u, v, d in s.topology.get_links():
+        if d.get("layer") != "power":
+            continue
+        if d.get("supply_node") == device_id and d.get("outlet") is not None:
+            load = s.device_manager.get_device(d.get("load_node"))
+            peer_of_outlet[d["outlet"]] = (f"{load.name} PSU{d.get('psu')}"
+                                           if load else d.get("load_node"))
+        if d.get("load_node") == device_id and d.get("psu") is not None:
+            sup = s.device_manager.get_device(d.get("supply_node"))
+            peer_of_psu[d["psu"]] = (f"{sup.name} outlet {d.get('outlet')}"
+                                     if sup else d.get("supply_node"))
+    outlets = [{"outlet": o.index, "type": o.type, "bank": o.bank, "phase": o.phase,
+                "rated_a": o.rated_a, "used": o.index in peer_of_outlet,
+                "peer": peer_of_outlet.get(o.index)}
+               for o in dev.outlets]
+    psus = [{"psu": p.index, "name": p.name, "inlet": p.inlet, "feed": p.feed,
+             "capacity_w": p.capacity_w, "used": p.index in peer_of_psu,
+             "peer": peer_of_psu.get(p.index)}
+            for p in dev.psus]
+    return {"device_id": device_id, "name": dev.name,
+            "outlets": outlets, "psus": psus,
+            "free_outlets": sum(1 for o in outlets if not o["used"]),
+            "free_psus": sum(1 for p in psus if not p["used"])}
+
+
+def _validate_power_link(s, req: "CreateLinkRequest"):
+    """Reject a power cord that could not physically be plugged in.
+
+    add_link already refuses these (returning False), but a bare "link already
+    exists or invalid devices" tells an operator nothing about WHY a cord won't
+    fit. These checks exist to name the actual reason: no outlet left, wrong
+    receptacle for the inlet, or a PSU that already has a cord in it.
+    """
+    src = s.device_manager.get_device(req.src_id) if s.device_manager else None
+    dst = s.device_manager.get_device(req.dst_id) if s.device_manager else None
+    if src is None or dst is None:
+        raise HTTPException(status_code=404, detail="Source or destination not found")
+    ends = TopologyEngine._power_ends(src, dst)
+    if ends is None:
+        if req.outlet is not None or req.psu is not None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Neither {src.name} nor {dst.name} is a PDU feeding a "
+                       f"PSU — this power link has no outlet to occupy")
+        return          # upstream feed (rpp->pdu, mcc->pump) — no terminations
+    supply, load, _ = ends
+    want = "C19" if load.psus[0].inlet == "C20" else "C13"
+    used_out, _ = s.topology._used_power_terminations(supply.id)
+    _, used_psu = s.topology._used_power_terminations(load.id)
+    if req.outlet is not None:
+        o = next((x for x in supply.outlets if x.index == req.outlet), None)
+        if o is None:
+            raise HTTPException(status_code=422,
+                                detail=f"{supply.name} has no outlet {req.outlet}")
+        if o.type != want:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{load.name} has a {load.psus[0].inlet} inlet and needs a "
+                       f"{want} outlet — {supply.name} outlet {o.index} is {o.type}")
+        if o.index in used_out:
+            raise HTTPException(status_code=409,
+                                detail=f"{supply.name} outlet {o.index} is already in use")
+    elif s.topology.next_free_outlet(supply.id, want) is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{supply.name} has no free {want} outlet left "
+                   f"({len(supply.outlets)} outlets, all {want}s taken)")
+    if req.psu is not None:
+        if not any(p.index == req.psu for p in load.psus):
+            raise HTTPException(status_code=422,
+                                detail=f"{load.name} has no PSU {req.psu}")
+        if req.psu in used_psu:
+            raise HTTPException(status_code=409,
+                                detail=f"{load.name} PSU{req.psu} is already corded")
+    elif len(used_psu) >= len(load.psus):
+        raise HTTPException(
+            status_code=409,
+            detail=f"every PSU on {load.name} already has a cord "
+                   f"({len(load.psus)} PSUs)")
+
+
 @router.post("/links/create", response_model=OkResponse)
 def create_link(req: CreateLinkRequest):
     """Create a new link between two devices, optionally on explicit ports."""
@@ -336,6 +437,12 @@ def create_link(req: CreateLinkRequest):
                 status_code=422,
                 detail=f"A '{req.layer}' link does not terminate on an interface — "
                        f"omit src_iface/dst_iface")
+    if req.layer != "power" and (req.outlet is not None or req.psu is not None):
+        raise HTTPException(
+            status_code=422,
+            detail=f"outlet/psu are power-layer only, not '{req.layer}'")
+    if req.layer == "power":
+        _validate_power_link(s, req)
     # Validate any explicitly-chosen port: it must exist and be free. The UI only
     # offers free ports, but a stale view (or a direct API call) could still target
     # an occupied one, and add_link would otherwise silently overwrite it.
@@ -367,7 +474,8 @@ def create_link(req: CreateLinkRequest):
                                 detail=f"{who} port {dev.interfaces[iface].name} is already in use")
     ok = s.topology.add_link(req.src_id, req.dst_id,
                              src_iface=req.src_iface, dst_iface=req.dst_iface,
-                             layer=req.layer)
+                             layer=req.layer,
+                             outlet=req.outlet, psu=req.psu)
     if not ok:
         raise HTTPException(status_code=409, detail="Link already exists or invalid devices")
     s.notify_ui("link_changed", req.src_id, req.dst_id, False)

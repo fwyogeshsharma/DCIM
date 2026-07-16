@@ -83,6 +83,54 @@ class TopologyEngine:
         return len(device.interfaces) - 1  # all occupied — reuse last
 
     @staticmethod
+    def _power_ends(src_dev, dst_dev):
+        """Orient a power edge: (supply, load, supply_is_src), or None if neither.
+
+        The supply is the end with OUTLETS and the load is the end with PSUs — both
+        conditions, not either. "Has outlets" alone is not enough: on an rpp -> pdu
+        feed the PDU has outlets but is the LOAD, and its own feed is a breaker
+        position on the RPP panel, not an outlet. Requiring a PSU on the far end
+        rejects that cleanly, along with pdu -> sensor (a DPX2 has no PSU; it hangs
+        off the sensor port) and mcc -> pump. Those keep null terminations.
+        """
+        if src_dev is not None and dst_dev is not None:
+            if src_dev.outlets and dst_dev.psus:
+                return src_dev, dst_dev, True
+            if dst_dev.outlets and src_dev.psus:
+                return dst_dev, src_dev, False
+        return None
+
+    def _used_power_terminations(self, device_id: str):
+        """(outlet indices, psu indices) already taken on this device, read from the
+        EDGES — the same source of truth the Ethernet port picker uses."""
+        outlets, psus = set(), set()
+        for u, v, d in self.graph.edges(data=True):
+            if d.get("layer") != "power":
+                continue
+            supply, load = d.get("supply_node"), d.get("load_node")
+            if supply == device_id and d.get("outlet") is not None:
+                outlets.add(d["outlet"])
+            if load == device_id and d.get("psu") is not None:
+                psus.add(d["psu"])
+        return outlets, psus
+
+    def next_free_outlet(self, pdu_id: str, want_type: str = "C13"):
+        """First unused outlet of *want_type* on this PDU, or None when full.
+
+        A PDU with no free outlet of the right type cannot take another cord — you
+        cannot plug a C14 into thin air. Callers surface that as a refusal rather
+        than overbooking a receptacle.
+        """
+        dev = self.get_device(pdu_id)
+        if dev is None or not dev.outlets:
+            return None
+        used, _ = self._used_power_terminations(pdu_id)
+        for o in dev.outlets:
+            if o.type == want_type and o.index not in used:
+                return o.index
+        return None
+
+    @staticmethod
     def _edge_key(src_id: str, dst_id: str, layer: str) -> str:
         """MultiGraph edge key. One edge per (pair, layer) for most layers, but
         cooling is keyed by direction so supply + return both coexist."""
@@ -105,7 +153,9 @@ class TopologyEngine:
     def add_link(self, src_id: str, dst_id: str,
                  src_iface: Optional[int] = None,
                  dst_iface: Optional[int] = None,
-                 layer: str = "production") -> bool:
+                 layer: str = "production",
+                 outlet: Optional[int] = None,
+                 psu: Optional[int] = None) -> bool:
         if src_id == dst_id:
             return False
         # Reject same-layer duplicates only; different layers between the same
@@ -122,12 +172,34 @@ class TopologyEngine:
                 return False
             src_dev = self.get_device(src_id)
             dst_dev = self.get_device(dst_id)
+            power_ends = None
             if layer not in self.ETHERNET_LAYERS:
                 # Power and cooling do not land on an interface at all. Allocating
                 # one here is what put every power cord and every pipe on iface 0 /
                 # eth0: a lie that then reads back as a real termination. Carry None
-                # and let the outlet/pipe stay unmodelled rather than mismodelled.
+                # and let the pipe stay unmodelled rather than mismodelled.
                 src_iface = dst_iface = None
+                if layer == "power":
+                    power_ends = self._power_ends(src_dev, dst_dev)
+                    if power_ends is not None:
+                        supply, load, _ = power_ends
+                        # The cord is decided by the PSU's inlet: a C14 takes a C13
+                        # outlet, a C20 takes a C19. Picking by anything else would
+                        # let a 16A load hang off a 10A receptacle.
+                        want = "C19" if load.psus[0].inlet == "C20" else "C13"
+                        used_out, used_psu = self._used_power_terminations(supply.id)
+                        if outlet is None:
+                            outlet = self.next_free_outlet(supply.id, want)
+                            if outlet is None:
+                                return False      # PDU out of outlets of this type
+                        elif outlet in used_out:
+                            return False          # receptacle already occupied
+                        if psu is None:
+                            _, used_psu_load = self._used_power_terminations(load.id)
+                            psu = next((p.index for p in load.psus
+                                        if p.index not in used_psu_load), None)
+                            if psu is None:
+                                return False      # every PSU already corded
             else:
                 # Honour an explicitly-chosen port (the manual link builder passes
                 # them); fall back to the next free port when not given — the
@@ -143,6 +215,14 @@ class TopologyEngine:
                                 src_node=src_id,
                                 dst_node=dst_id,
                                 layer=layer)
+            if power_ends is not None:
+                supply, load, _ = power_ends
+                # supply_node/load_node, not src/dst: power FLOWS, and which end
+                # feeds which is not the same question as which end the caller
+                # happened to name first.
+                self.graph[src_id][dst_id][edge_key].update(
+                    outlet=outlet, psu=psu,
+                    supply_node=supply.id, load_node=load.id)
             if layer in ("production", "management"):
                 if src_dev and src_iface < len(src_dev.interfaces):
                     src_dev.interfaces[src_iface].connected_to_device = dst_id
@@ -342,6 +422,11 @@ class TopologyEngine:
                     "broken": data.get("broken", False),
                     "layer": data.get("layer", "production"),
                 })
+                if data.get("outlet") is not None:
+                    edges[-1].update(
+                        outlet=data["outlet"], psu=data.get("psu"),
+                        supply_node=data.get("supply_node"),
+                        load_node=data.get("load_node"))
 
         out: Dict[str, Any] = {"nodes": nodes, "edges": edges}
         if self.floorplan:
@@ -371,6 +456,8 @@ class TopologyEngine:
                     edge_data.get("src_iface"),
                     edge_data.get("dst_iface"),
                     layer=layer,
+                    outlet=edge_data.get("outlet"),
+                    psu=edge_data.get("psu"),
                 )
                 if edge_data.get("broken", False):
                     self.break_link(edge_data["src"], edge_data["dst"], layer=layer)

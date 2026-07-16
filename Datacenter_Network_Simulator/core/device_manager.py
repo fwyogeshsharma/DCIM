@@ -371,6 +371,92 @@ SERVER_OS_INFO = {
 
 
 @dataclass
+class Outlet:
+    """One receptacle on a rack PDU — what a power cord actually plugs into.
+
+    Indexed 1-based to match the number silk-screened on the PDU and the outlet
+    index in the vendor MIBs (APC rPDU2OutletMeteredStatusTable /
+    rPDU2OutletSwitchedControlTable, Raritan PDU2-MIB outletTable, ServerTech
+    Sentry3/4-MIB outletTable) — an off-by-one here would misname every outlet an
+    operator reads over SNMP.
+
+    `bank` is the branch-breaker group: outlets share an overcurrent device, so a
+    bank trip drops every outlet behind it. `phase` is the pair the bank is fed
+    from on a 3-phase PDU, which is what makes phase balance a real concern.
+    Neither is simulated yet — they are carried so branch-breaker and
+    phase-balance work does not need a re-migration.
+    """
+    index: int
+    type: str                 # "C13" | "C19" — IEC 60320 receptacle
+    bank: int = 1
+    phase: str = "L1"         # "L1" 1-phase, or "L1-L2"/"L2-L3"/"L3-L1" on 3-phase
+    rated_a: float = 10.0     # C13 = 10A, C19 = 16A
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class PowerSupply:
+    """One PSU in a load device — the other end of the cord.
+
+    Redfish exposes these as Chassis/{id}/Power#/PowerSupplies[{MemberId}]; IPMI
+    as PSU status sensors. `feed` records which side of the 2N pair this PSU is
+    corded to, so an A-feed loss maps to the PSUs it actually kills.
+    """
+    index: int
+    name: str                 # "PSU1" / "PSU2"
+    inlet: str = "C14"        # "C14" (takes a C13 outlet) | "C20" (takes a C19)
+    capacity_w: int = 1100
+    feed: str = ""            # "A" | "B" | "" when not yet corded
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+# Outlet layout per rack-PDU SKU. Counts are the ones this repo already commits to
+# in MODEL_SYSDESCR (which is what an operator polling sysDescr sees) — kept in one
+# place so the two cannot drift.
+#
+# banks/phases: the phase count and current rating come from the SKU. The BANK
+# COUNT is a modelled convention, NOT a datasheet figure: a 1-phase 30A rPDU is
+# split into 2 breakered banks and a 3-phase into 6 (two per phase pair), which is
+# the common layout but varies by SKU. Confirm against the datasheet before relying
+# on bank identity for breaker simulation.
+PDU_OUTLET_CATALOG = {
+    # model_name:        (C13 count, C19 count, phases, rating A, volts)
+    "APC AP8941":        (21,  3, 1, 30, 208),
+    "APC AP8865":        (21, 12, 3, 32, 415),
+    "APC AP8959":        (12,  4, 1, 30, 208),
+    "Raritan PX2-5170CR": (24,  6, 1, 30, 208),
+    "Raritan PX3-5878":  (24, 12, 3, 32, 415),
+    "Raritan PX3-5190R": (24,  6, 1, 30, 208),
+    "Raritan PX3-5161R": (12,  4, 1, 16, 208),
+    "Sentry PT40":       (40,  0, 1, 30, 208),
+    "Sentry 4805-XLS":   (48,  0, 1, 30, 208),
+}
+
+# 3-phase rPDUs alternate their banks across the phase pairs in this order.
+_PHASE_PAIRS = ("L1-L2", "L2-L3", "L3-L1")
+
+# How many PSUs a load device has, by type. IT gear is dual-corded (1+1) — that is
+# what the 2N A/B feed exists for. Devices absent from this map get none:
+#   sensor  — a Raritan DPX2 has no PSU. It plugs into the PDU's SENSOR port
+#             (RJ-12/RJ-45) and is powered over it, which is why it is single-fed.
+#             Giving it a PSU would invent a cord that does not exist.
+#   pdu/rpp/ups and other distribution gear — they SUPPLY power; their own feed is
+#             an upstream breaker position, not an outlet, and is out of scope here.
+PSU_COUNT_BY_TYPE = {
+    "server": 2, "switch": 2, "oob_switch": 2, "router": 2,
+    "firewall": 2, "load_balancer": 2, "cdu": 2,
+}
+
+# A C13 outlet / C14 inlet is rated 10A; derated to 80% for a continuous load that
+# is 8A — ~1.66 kW at 208V. Above that the cord steps up to C19/C20 (16A).
+C13_CONTINUOUS_W = 1660
+
+
+@dataclass
 class Interface:
     index: int
     name: str
@@ -653,6 +739,12 @@ class Device:
     metrics_enabled: bool = True
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     interfaces: List[Interface] = field(default_factory=list)
+    # Power terminations. A PDU has outlets; a load device has PSUs. Which of them
+    # a given cord uses lives on the EDGE, not here — these are inventory only.
+    # (Interface.connected_to_device is the cached-termination pattern that already
+    # went stale once; power does not repeat it.)
+    outlets: List[Outlet] = field(default_factory=list)
+    psus: List[PowerSupply] = field(default_factory=list)
 
     # Management network
     mgmt_ip: str = ""      # OOB management IP (192.168.x.y)
@@ -770,6 +862,54 @@ class Device:
             self.outlet_temp = round(self.inlet_temp + random.uniform(8.0, 14.0), 1)
         if not self.interfaces:
             self._generate_interfaces()
+        if not self.outlets:
+            self._generate_outlets()
+        if not self.psus:
+            self._generate_psus()
+
+    def _generate_outlets(self):
+        """Build this PDU's receptacles from its SKU. Non-PDUs get none."""
+        if self.device_type != DeviceType.PDU:
+            return
+        spec = PDU_OUTLET_CATALOG.get(self.model_name)
+        if not spec:
+            return          # unknown SKU: no invented outlets — absent beats wrong
+        n_c13, n_c19, phases, _rating_a, _volts = spec
+        n_banks = 6 if phases == 3 else 2
+        self.outlets = []
+        # C13s first, then C19s — the order they are numbered on the unit. Banks are
+        # filled in contiguous runs (bank 1 = the first outlets), matching how a
+        # breakered group maps to a physical section of the strip.
+        total = n_c13 + n_c19
+        per_bank = max(1, -(-total // n_banks))       # ceil
+        for i in range(total):
+            bank = min(n_banks, i // per_bank + 1)
+            self.outlets.append(Outlet(
+                index=i + 1,
+                type="C13" if i < n_c13 else "C19",
+                bank=bank,
+                phase=_PHASE_PAIRS[(bank - 1) % 3] if phases == 3 else "L1",
+                rated_a=10.0 if i < n_c13 else 16.0,
+            ))
+
+    def _generate_psus(self):
+        """Build this load's PSUs. Supply gear and sensor-port devices get none."""
+        n = PSU_COUNT_BY_TYPE.get(self.device_type.value, 0)
+        if not n:
+            return
+        # The cord is sized past C13's derated 8A. Size for the FAILURE case, not the
+        # happy one: in a 1+1 pair each PSU normally carries about half the chassis,
+        # but when one drops the survivor carries all of it — and that is exactly
+        # when you must not be over a cord's rating. So compare the FULL draw.
+        # power_draw_w (not rated_power_w) is the IT nameplate; rated_power_w is
+        # throughput on distribution SKUs and stays 0 on loads.
+        watts = self.power_draw_w or 0
+        inlet = "C20" if watts > C13_CONTINUOUS_W else "C14"
+        self.psus = [
+            PowerSupply(index=i + 1, name=f"PSU{i + 1}", inlet=inlet,
+                        capacity_w=1100 if inlet == "C14" else 2400)
+            for i in range(n)
+        ]
 
     def _generate_interfaces(self):
         self.interfaces = []
@@ -987,12 +1127,24 @@ class Device:
     @classmethod
     def from_dict(cls, data: dict) -> "Device":
         from dataclasses import fields as _fields
+        # Copy first: popping straight off the caller's dict strips interfaces /
+        # outlets / psus out of THEIR data, so loading the same parsed topology
+        # twice yields devices with no ports the second time round.
+        data = dict(data)
         interfaces_data = data.pop("interfaces", [])
+        outlets_data = data.pop("outlets", None)
+        psus_data = data.pop("psus", None)
         data.pop("interface_type", None)  # removed field — drop from legacy JSON
         valid = {f.name for f in _fields(cls)}
         data = {k: v for k, v in data.items() if k in valid}
         device = cls(**data)
         device.interfaces = [Interface(**i) for i in interfaces_data]
+        # Absent (pre-outlet topology) => let __post_init__'s generation stand.
+        # Present-but-empty => honour it; the SKU legitimately has none.
+        if outlets_data is not None:
+            device.outlets = [Outlet(**o) for o in outlets_data]
+        if psus_data is not None:
+            device.psus = [PowerSupply(**p) for p in psus_data]
         return device
 
 
