@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from core.device_manager import Device
     from core.topology_engine import TopologyEngine
 
+from core import dataset_fingerprint as _fingerprint
 from core.device_manager import DeviceType
 
 # ── OpenConfig speed strings ──────────────────────────────────────────────────
@@ -57,6 +58,16 @@ class GNMIDataGenerator:
     # ------------------------------------------------------------------ #
     #  Public API                                                          #
     # ------------------------------------------------------------------ #
+
+    # Which topology these datasets were built from — same stamp the SNMP
+    # generator writes into its own directory. See core.dataset_fingerprint.
+    FINGERPRINT_FILE = _fingerprint.FINGERPRINT_FILE
+
+    def write_fingerprint(self, topology: "TopologyEngine") -> str:
+        return _fingerprint.write(self.output_dir, topology)
+
+    def read_fingerprint(self) -> Optional[str]:
+        return _fingerprint.read(self.output_dir)
 
     def generate_device(self, device: "Device", topology: "TopologyEngine") -> Optional[str]:
         """

@@ -119,6 +119,23 @@ async def upload_topology(file: UploadFile = File(...)):
                         f"[SNMP] {s._missing_datasets} dataset(s) missing for this "
                         f"topology — none adopted, generate before starting SNMP",
                         "info")
+        # gNMI keeps its own datasets, with the same lifetime problem.
+        gds = s.reconcile_generated_gnmi_datasets()
+        if gds:
+            s.notify_ui("log",
+                        f"[gNMI] Adopted {gds} existing dataset(s) — fingerprint "
+                        f"matches this topology", "success")
+            s.notify_ui("sync_gnmi")
+        elif getattr(s, "_gnmi_datasets_stale", False):
+            s.notify_ui("log",
+                        "[gNMI] Datasets on disk were built from a DIFFERENT topology "
+                        "(or predate fingerprinting) — none adopted, regenerate before "
+                        "starting gNMI", "warning")
+        elif getattr(s, "_missing_gnmi_datasets", 0):
+            s.notify_ui("log",
+                        f"[gNMI] {s._missing_gnmi_datasets} dataset(s) missing for this "
+                        f"topology — none adopted, generate before starting gNMI",
+                        "info")
         s.notify_ui("rebuild_topology_scene")
         devices = s.topology.get_all_devices()
         return TopologyInfoResponse(

@@ -70,7 +70,12 @@ def generate_gnmi_datasets():
                     s.notify_ui("gnmi_gen_progress", i + 1, total)
 
             s.generated_gnmi_files = files
-            s.notify_ui("console_log", f"[gNMI] {len(files)} datasets generated.", "success")
+            # Stamp WHICH topology these came from, so a restart can adopt them
+            # instead of rebuilding — and can tell "complete" from "current".
+            gfp = gen.write_fingerprint(s.topology)
+            s.notify_ui("console_log",
+                        f"[gNMI] {len(files)} datasets generated, fingerprinted ({gfp}).",
+                        "success")
             s.notify_ui("sync_gnmi")
             s.update_job(
                 job_id,
@@ -198,12 +203,17 @@ def clear_gnmi_simulation():
 
     def _run():
         try:
+            from core.gnmi_data_generator import GNMIDataGenerator
             ds_path = Path(s.gnmi_datasets_dir)
             if ds_path.exists():
                 for child in ds_path.iterdir():
                     if child.is_dir():
                         shutil.rmtree(child, ignore_errors=True)
-                    elif child.suffix in (".json", ".gnmi"):
+                    # The fingerprint sidecar is a dotfile, so Path.suffix is ""
+                    # and the extension list never matches it — take it with the
+                    # datasets it describes, or an emptied directory keeps a stamp.
+                    elif (child.name == GNMIDataGenerator.FINGERPRINT_FILE
+                            or child.suffix in (".json", ".gnmi")):
                         child.unlink(missing_ok=True)
             s.generated_gnmi_files = []
             s.notify_ui("sync_gnmi")

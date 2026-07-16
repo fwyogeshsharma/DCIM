@@ -74,6 +74,8 @@ class AppState:
         # files absent, or present-but-built-from-another-topology.
         self._missing_datasets: int = 0
         self._datasets_stale: bool = False
+        self._missing_gnmi_datasets: int = 0
+        self._gnmi_datasets_stale: bool = False
         self.generated_gnmi_files: List[str] = []
         self.snmp_datasets_dir: str = "datasets/snmp"
         self.gnmi_datasets_dir: str = "datasets/gnmi"
@@ -378,25 +380,74 @@ class AppState:
         if not expected:
             return 0
         have = {p.name for p in ddir.glob("*.snmprec")}
+        if not self._datasets_current(ddir, expected, have, "_missing_datasets",
+                                      "_datasets_stale"):
+            return 0
+        self.generated_snmp_files = owners
+        return len(owners)
+
+    def _datasets_current(self, ddir, expected: set, have: set,
+                          missing_attr: str, stale_attr: str) -> bool:
+        """Are the datasets in *ddir* both complete AND built from this topology?
+
+        Shared by the SNMP and gNMI reconciles: same two questions, same answers,
+        and they must not drift apart — a half-adopted protocol is worse than one
+        that asks for a rebuild.
+        """
+        from core import dataset_fingerprint as _fp
         missing = expected - have
         if missing:
-            self._missing_datasets = len(missing)
-            self._datasets_stale = False
+            setattr(self, missing_attr, len(missing))
+            setattr(self, stale_attr, False)
+            return False
+        setattr(self, missing_attr, 0)
+        # Complete — but are they OURS? None = pre-fingerprint or hand-managed;
+        # a different value = built from another topology. Either way the contents
+        # are unvouchable, so adopt nothing and let the operator regenerate.
+        if _fp.read(ddir) != _fp.compute(self.topology):
+            setattr(self, stale_attr, True)
+            return False
+        setattr(self, stale_attr, False)
+        return True
+
+    def reconcile_generated_gnmi_datasets(self) -> int:
+        """The gNMI twin of reconcile_generated_datasets — same bug, same cure.
+
+        generated_gnmi_files resets on every start while datasets/gnmi/*.gnmi.json
+        outlive the process, so /gnmi/start refused with "No gNMI datasets" at an
+        operator whose datasets were sitting right there. gNMI's documents encode
+        the same interface and neighbour data as SNMP's, so the same topology
+        fingerprint decides whether they are still current.
+        """
+        if self.topology is None or self.device_manager is None:
             return 0
-        self._missing_datasets = 0
-        # Complete — but are they OURS? Compare the fingerprint generation stamped
-        # against the topology now loaded.
-        gen = SNMPRecGenerator(self.snmp_datasets_dir)
-        stamped = gen.read_fingerprint()
-        current = SNMPRecGenerator.topology_fingerprint(self.topology)
-        if stamped != current:
-            # None = pre-fingerprint or hand-managed datasets; a value = built from
-            # a DIFFERENT topology. Either way we cannot vouch for the contents, so
-            # adopt nothing and let the operator regenerate.
-            self._datasets_stale = True
+        try:
+            from core.gnmi_data_generator import GNMIDataGenerator  # noqa: F401
+            from core.device_manager import DeviceType
+        except Exception:
             return 0
-        self._datasets_stale = False
-        self.generated_snmp_files = owners
+        ddir = _Path(self.gnmi_datasets_dir)
+        if not ddir.is_dir():
+            return 0
+        expected: set = set()
+        owners: List[str] = []
+        for dev in self.topology.get_all_devices():
+            # Mirrors GNMIDataGenerator.generate_device: routers and switches only,
+            # keyed by mgmt_ip when present.
+            if dev.device_type not in (DeviceType.ROUTER, DeviceType.SWITCH):
+                continue
+            key = getattr(dev, "mgmt_ip", "") or dev.ip_address
+            if not key:
+                continue
+            expected.add(f"{key}.gnmi.json")
+            owners.append(str(ddir / f"{key}.gnmi.json"))
+        if not expected:
+            return 0
+        have = {p.name for p in ddir.glob("*.gnmi.json")}
+        if not self._datasets_current(ddir, expected, have, "_missing_gnmi_datasets",
+                                      "_gnmi_datasets_stale"):
+            return 0
+        self.generated_gnmi_files = owners
         return len(owners)
 
     def add_sse_client(self, q: _queue.Queue):
