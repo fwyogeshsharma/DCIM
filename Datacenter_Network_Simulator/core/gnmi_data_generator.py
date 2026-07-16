@@ -207,19 +207,28 @@ class GNMIDataGenerator:
             if not topology.graph.has_edge(device.id, neighbor.id):
                 continue
             all_edges = topology.graph[device.id][neighbor.id]
-            edge_data = all_edges.get("production") or next(iter(all_edges.values()), None)
+            # LLDP runs over Ethernet. A power cord or a coolant pipe is not a
+            # neighbor adjacency, so never fall back onto one — a server cabled to
+            # its PDU would otherwise advertise the PDU as an LLDP neighbor.
+            edge_data = (all_edges.get("production")
+                         or all_edges.get("management")
+                         or None)
             if not edge_data:
                 continue
 
             if edge_data.get("src_node") == device.id:
-                local_iface_idx  = edge_data.get("src_iface", 0)
-                remote_iface_idx = edge_data.get("dst_iface", 0)
+                local_iface_idx  = edge_data.get("src_iface")
+                remote_iface_idx = edge_data.get("dst_iface")
             else:
-                local_iface_idx  = edge_data.get("dst_iface", 0)
-                remote_iface_idx = edge_data.get("src_iface", 0)
+                local_iface_idx  = edge_data.get("dst_iface")
+                remote_iface_idx = edge_data.get("src_iface")
+            if local_iface_idx is None:
+                continue
 
             local_iface  = device.interfaces[local_iface_idx]  if local_iface_idx  < len(device.interfaces)   else None
-            remote_iface = neighbor.interfaces[remote_iface_idx] if remote_iface_idx < len(neighbor.interfaces) else None
+            remote_iface = (neighbor.interfaces[remote_iface_idx]
+                            if remote_iface_idx is not None and remote_iface_idx < len(neighbor.interfaces)
+                            else None)
 
             if not local_iface:
                 continue
@@ -504,13 +513,16 @@ class GNMIDataGenerator:
             if not topology.graph.has_edge(device.id, neighbor.id):
                 continue
             all_edges = topology.graph[device.id][neighbor.id]
-            edge_data = all_edges.get("production") or next(iter(all_edges.values()), None)
+            # OSPF adjacencies form over Ethernet only — never over a power/cooling edge.
+            edge_data = all_edges.get("production") or all_edges.get("management") or None
             if not edge_data:
                 continue
             if edge_data.get("src_node") == device.id:
-                local_iface_idx = edge_data.get("src_iface", 0)
+                local_iface_idx = edge_data.get("src_iface")
             else:
-                local_iface_idx = edge_data.get("dst_iface", 0)
+                local_iface_idx = edge_data.get("dst_iface")
+            if local_iface_idx is None:
+                continue
             local_iface = device.interfaces[local_iface_idx] if local_iface_idx < len(device.interfaces) else None
             if not local_iface:
                 continue

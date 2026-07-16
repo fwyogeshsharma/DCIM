@@ -2013,6 +2013,9 @@ class SNMPRecGenerator:
         MultiGraph-aware: iterates all edges per neighbor pair so that a device
         with both a power and a management edge to the same OOB switch produces
         one tuple per layer (the caller filters by layer).
+
+        Power/cooling edges are skipped: they carry no iface (a cord plugs into an
+        outlet, not an ifIndex), and every consumer here indexes device.interfaces.
         """
         result = []
         for neighbor in topology.get_neighbors(device.id):
@@ -2021,11 +2024,13 @@ class SNMPRecGenerator:
                 if edge.get("broken", False):
                     continue
                 if edge.get("src_node") == device.id:
-                    local_port  = edge.get("src_iface", 0)
-                    remote_port = edge.get("dst_iface", 0)
+                    local_port  = edge.get("src_iface")
+                    remote_port = edge.get("dst_iface")
                 else:
-                    local_port  = edge.get("dst_iface", 0)
-                    remote_port = edge.get("src_iface", 0)
+                    local_port  = edge.get("dst_iface")
+                    remote_port = edge.get("src_iface")
+                if local_port is None:
+                    continue
                 layer = edge.get("layer", "production")
                 result.append((neighbor, local_port, remote_port, layer))
         return result

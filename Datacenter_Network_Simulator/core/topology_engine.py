@@ -68,6 +68,12 @@ class TopologyEngine:
     #  Edges (Links)                                                       #
     # ------------------------------------------------------------------ #
 
+    # Layers that actually terminate on an Ethernet interface. Everything else is
+    # a different kind of cable entirely: a power link is a C13/C14 cord from a PDU
+    # OUTLET to a PSU inlet, a cooling link is a PIPE between loop connections.
+    # Neither has an ifIndex, so neither gets an iface — see add_link.
+    ETHERNET_LAYERS = ("production", "management")
+
     @staticmethod
     def _next_free_iface(device) -> int:
         """Return index of the first interface not yet connected to any device."""
@@ -116,13 +122,20 @@ class TopologyEngine:
                 return False
             src_dev = self.get_device(src_id)
             dst_dev = self.get_device(dst_id)
-            # Honour an explicitly-chosen port on any layer (the manual link builder
-            # passes them); fall back to the next free port when not given — the
-            # long-standing auto behaviour every other caller relies on.
-            if src_iface is None:
-                src_iface = self._next_free_iface(src_dev) if src_dev else 0
-            if dst_iface is None:
-                dst_iface = self._next_free_iface(dst_dev) if dst_dev else 0
+            if layer not in self.ETHERNET_LAYERS:
+                # Power and cooling do not land on an interface at all. Allocating
+                # one here is what put every power cord and every pipe on iface 0 /
+                # eth0: a lie that then reads back as a real termination. Carry None
+                # and let the outlet/pipe stay unmodelled rather than mismodelled.
+                src_iface = dst_iface = None
+            else:
+                # Honour an explicitly-chosen port (the manual link builder passes
+                # them); fall back to the next free port when not given — the
+                # long-standing auto behaviour every other caller relies on.
+                if src_iface is None:
+                    src_iface = self._next_free_iface(src_dev) if src_dev else 0
+                if dst_iface is None:
+                    dst_iface = self._next_free_iface(dst_dev) if dst_dev else 0
             self.graph.add_edge(src_id, dst_id,
                                 key=edge_key,
                                 src_iface=src_iface,
@@ -322,8 +335,10 @@ class TopologyEngine:
                 edges.append({
                     "src": data.get("src_node", u),
                     "dst": data.get("dst_node", v),
-                    "src_iface": data.get("src_iface", 0),
-                    "dst_iface": data.get("dst_iface", 0),
+                    # null, not 0, on power/cooling — see add_link. Defaulting to 0
+                    # here would re-mint the fiction on every save.
+                    "src_iface": data.get("src_iface"),
+                    "dst_iface": data.get("dst_iface"),
                     "broken": data.get("broken", False),
                     "layer": data.get("layer", "production"),
                 })
@@ -349,10 +364,12 @@ class TopologyEngine:
 
             for edge_data in data.get("edges", []):
                 layer = edge_data.get("layer", "production")
+                # No 0 default: a missing iface means "unknown", which add_link
+                # resolves per layer (auto-pick for Ethernet, None for power/cooling).
                 self.add_link(
                     edge_data["src"], edge_data["dst"],
-                    edge_data.get("src_iface", 0),
-                    edge_data.get("dst_iface", 0),
+                    edge_data.get("src_iface"),
+                    edge_data.get("dst_iface"),
                     layer=layer,
                 )
                 if edge_data.get("broken", False):

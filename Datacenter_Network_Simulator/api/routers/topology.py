@@ -7,6 +7,7 @@ import threading
 from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from api.state import AppState
+from core.topology_engine import TopologyEngine
 from api.models.schemas import (
     TopologyInfoResponse,
     LinkActionRequest,
@@ -325,6 +326,16 @@ def create_link(req: CreateLinkRequest):
     s = _state()
     if s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
+    # Power and cooling links don't terminate on an interface — a power link is a
+    # cord to a PDU outlet, a cooling link is a pipe. Naming a port for one is a
+    # category error, so reject it outright rather than accept a value add_link
+    # will drop. (The picker hides ports on these layers; this catches direct calls.)
+    if req.layer not in TopologyEngine.ETHERNET_LAYERS:
+        if req.src_iface is not None or req.dst_iface is not None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"A '{req.layer}' link does not terminate on an interface — "
+                       f"omit src_iface/dst_iface")
     # Validate any explicitly-chosen port: it must exist and be free. The UI only
     # offers free ports, but a stale view (or a direct API call) could still target
     # an occupied one, and add_link would otherwise silently overwrite it.

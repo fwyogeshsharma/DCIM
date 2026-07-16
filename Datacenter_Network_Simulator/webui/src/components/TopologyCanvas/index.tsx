@@ -147,6 +147,13 @@ const LINK_LAYERS = ['production', 'management', 'power', 'cooling']
 
 type Port = { iface: number; name: string; used: boolean; peer: string | null; role?: 'data' | 'mgmt' }
 
+// Only these layers terminate on an Ethernet port at all. A power link is a C13/C14
+// cord to a PDU OUTLET and a cooling link is a PIPE between loop connections —
+// neither has an ifIndex, so neither gets a port picker. The backend drops any iface
+// sent on those layers; the UI must not imply otherwise by offering one.
+const ETHERNET_LAYERS = ['production', 'management']
+const usesPorts = (layer: string) => ETHERNET_LAYERS.includes(layer)
+
 // Which ports a layer may terminate on. The asymmetry is physical, not cosmetic:
 //   production  — NEVER on a mgmt port. mgmt0 / iDRAC hangs off the management CPU,
 //                 not the switching ASIC; it cannot carry production traffic at all.
@@ -160,7 +167,10 @@ const portsForLayer = (ports: Port[], layer: string): Port[] =>
   layer === 'production' ? ports.filter(p => p.role !== 'mgmt') : ports
 
 // Preferred default: the first FREE port of the role this layer actually wants.
+// Null on power/cooling — carrying a stale iface across a layer switch would POST a
+// port on a link that cannot have one, which the API now rejects outright.
 const defaultPort = (ports: Port[], layer: string): number | null => {
+  if (!usesPorts(layer)) return null
   const pool = portsForLayer(ports, layer)
   const wanted = layer === 'management' ? pool.filter(p => p.role === 'mgmt') : pool
   return (wanted.find(p => !p.used) ?? pool.find(p => !p.used))?.iface ?? null
@@ -548,6 +558,13 @@ function Canvas() {
         // A production link never lists mgmt ports at all: it cannot use them.
         const portSelect = (ports: Port[], port: number | null,
                             setPort: (n: number | null) => void, disabled: boolean) => {
+          if (!usesPorts(linkLayer)) {
+            return (
+              <span style={{ fontSize: 10, color: '#7aa0c8', minWidth: 150, fontStyle: 'italic' }}>
+                {linkLayer === 'power' ? 'PDU outlet → PSU inlet' : 'pipe — no port'}
+              </span>
+            )
+          }
           const pool = portsForLayer(ports, linkLayer)
           const mgmt = pool.filter(p => p.role === 'mgmt')
           const data = pool.filter(p => p.role !== 'mgmt')
