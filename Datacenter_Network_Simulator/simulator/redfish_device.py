@@ -42,10 +42,14 @@ class RedfishDevice:
 
     def __init__(self, device: "Device",
                  username: str = "admin", password: str = "password",
-                 power_trap_cb=None):
+                 power_trap_cb=None, topology=None):
         self.device = device
         self._user = username
         self._pass = password
+        # Live TopologyEngine, or None when a BMC is built outside a topology.
+        # Held (not snapshotted) so a re-corded PSU reports its NEW feed on the
+        # next poll — a real BMC reads its input voltage, it does not remember it.
+        self._topology = topology
         # cb(device, is_on: bool, reset_type: str) — fired on every chassis
         # power transition (the BMC's platform-event trap).
         self._power_trap_cb = power_trap_cb
@@ -399,7 +403,7 @@ class RedfishDevice:
                 "/redfish/v1/Chassis":                          lambda: rf.chassis_collection(self.device),
                 f"/redfish/v1/Chassis/{sid}":                   lambda: rf.chassis(self.device),
                 f"/redfish/v1/Chassis/{sid}/Thermal":           lambda: rf.thermal(self.device),
-                f"/redfish/v1/Chassis/{sid}/Power":             lambda: rf.power(self.device),
+                f"/redfish/v1/Chassis/{sid}/Power":             lambda: rf.power(self.device, self._topology),
                 f"/redfish/v1/Systems/{sid}/EthernetInterfaces": lambda: rf.ethernet_collection(self.device),
                 f"/redfish/v1/Systems/{sid}/Storage":           lambda: rf.storage_collection(self.device),
                 f"/redfish/v1/Systems/{sid}/Storage/{rf.STORAGE_ID}": lambda: rf.storage(self.device),

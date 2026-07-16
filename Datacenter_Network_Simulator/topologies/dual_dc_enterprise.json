@@ -215,15 +215,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -438,15 +436,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -725,15 +721,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -1012,15 +1006,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -1267,15 +1259,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -1522,15 +1512,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -2641,15 +2629,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -3760,15 +3746,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -4879,15 +4863,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -5998,15 +5980,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -7117,15 +7097,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -8236,15 +8214,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -9198,15 +9174,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -10160,15 +10134,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -11122,15 +11094,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -12084,15 +12054,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -13046,15 +13014,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -14008,15 +13974,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -14970,15 +14934,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -15932,15 +15894,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -16894,15 +16854,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -17856,15 +17814,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -18016,15 +17972,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -18148,15 +18102,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -18280,15 +18232,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -18440,15 +18390,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -18600,15 +18548,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -18732,15 +18678,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -18864,15 +18808,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -19024,15 +18966,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -19156,15 +19096,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -19316,15 +19254,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -19448,15 +19384,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -19580,15 +19514,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -19740,15 +19672,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -19872,15 +19802,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -20004,15 +19932,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -20164,15 +20090,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -20324,15 +20248,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -20456,15 +20378,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -20588,15 +20508,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -20720,15 +20638,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -20880,15 +20796,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -21040,15 +20954,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -21172,15 +21084,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -21332,15 +21242,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -21464,15 +21372,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -21596,15 +21502,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -21728,15 +21632,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -21888,15 +21790,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -22048,15 +21948,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -22180,15 +22078,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -22312,15 +22208,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -22444,15 +22338,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -22604,15 +22496,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -22764,15 +22654,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -22896,15 +22784,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -23056,15 +22942,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -23216,15 +23100,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -23348,15 +23230,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -23480,15 +23360,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -23612,15 +23490,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -23744,15 +23620,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -23876,15 +23750,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -24008,15 +23880,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -24168,15 +24038,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -24328,15 +24196,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -24488,15 +24354,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -24620,15 +24484,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -24780,15 +24642,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -24940,15 +24800,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -25072,15 +24930,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -25204,15 +25060,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -25336,15 +25190,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -25496,15 +25348,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -25628,15 +25478,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -25760,15 +25608,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -25920,15 +25766,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -26052,15 +25896,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -26212,15 +26054,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -26344,15 +26184,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -26476,15 +26314,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -26636,15 +26472,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -26768,15 +26602,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -26900,15 +26732,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -27060,15 +26890,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -27220,15 +27048,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -27352,15 +27178,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -27484,15 +27308,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -27644,15 +27466,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -27804,15 +27624,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -27964,15 +27782,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -28096,15 +27912,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -28228,15 +28042,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -28360,15 +28172,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -28492,15 +28302,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -28624,15 +28432,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -28784,15 +28590,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -28944,15 +28748,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -29076,15 +28878,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -29208,15 +29008,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -29340,15 +29138,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -29500,15 +29296,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -29660,15 +29454,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -29792,15 +29584,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -29952,15 +29742,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -30112,15 +29900,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -30244,15 +30030,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -30376,15 +30160,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -30536,15 +30318,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -30668,15 +30448,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -30800,15 +30578,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -30932,15 +30708,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -31064,15 +30838,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -31224,15 +30996,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -31384,15 +31154,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -31516,15 +31284,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -31676,15 +31442,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -31836,15 +31600,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -31968,15 +31730,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -32100,15 +31860,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -32232,15 +31990,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -32392,15 +32148,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -32524,15 +32278,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -32656,15 +32408,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -32816,15 +32566,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -32948,15 +32696,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -33108,15 +32854,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -33240,15 +32984,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -33400,15 +33142,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -33560,15 +33300,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -33692,15 +33430,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -33824,15 +33560,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -33956,15 +33690,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -34116,15 +33848,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -34248,15 +33978,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -34380,15 +34108,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -34540,15 +34266,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -34700,15 +34424,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -34860,15 +34582,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -34992,15 +34712,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -35124,15 +34842,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -35256,15 +34972,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -35388,15 +35102,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -35520,15 +35232,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -35680,15 +35390,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -35840,15 +35548,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -35972,15 +35678,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -36104,15 +35808,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -36264,15 +35966,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -36424,15 +36124,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -36584,15 +36282,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -36716,15 +36412,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -36848,15 +36542,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37008,15 +36700,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37140,15 +36830,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37272,15 +36960,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37432,15 +37118,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37564,15 +37248,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37696,15 +37378,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37828,15 +37508,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -37960,15 +37638,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -38120,15 +37796,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -38280,15 +37954,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -38412,15 +38084,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -38572,15 +38242,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -38732,15 +38400,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -38864,15 +38530,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -38996,15 +38660,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -39156,15 +38818,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -39316,15 +38976,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -39448,15 +39106,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -39580,15 +39236,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -39712,15 +39366,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -39844,15 +39496,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -40004,15 +39654,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -40136,15 +39784,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -40296,15 +39942,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -40456,15 +40100,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -40588,15 +40230,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -40720,15 +40360,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -40852,15 +40490,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -41012,15 +40648,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -41144,15 +40778,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -41276,15 +40908,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -41436,15 +41066,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -41596,15 +41224,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -41756,15 +41382,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -41888,15 +41512,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -42048,15 +41670,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -42180,15 +41800,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -42312,15 +41930,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -42444,15 +42060,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -42604,15 +42218,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -42764,15 +42376,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -42924,15 +42534,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -43056,15 +42664,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -43216,15 +42822,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -43348,15 +42952,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -43508,15 +43110,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -43668,15 +43268,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -43828,15 +43426,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -44051,15 +43647,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -44274,15 +43868,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -44561,15 +44153,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -44848,15 +44438,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -45103,15 +44691,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -45358,15 +44944,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -46477,15 +46061,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -47596,15 +47178,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -48715,15 +48295,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -49834,15 +49412,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -50953,15 +50529,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -51915,15 +51489,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -52877,15 +52449,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -53839,15 +53409,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -54801,15 +54369,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -55763,15 +55329,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -56725,15 +56289,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -57687,15 +57249,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -58649,15 +58209,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -58809,15 +58367,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -58941,15 +58497,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -59073,15 +58627,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -59233,15 +58785,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -59365,15 +58915,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -59497,15 +59045,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -59629,15 +59175,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -59761,15 +59305,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -59921,15 +59463,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -60081,15 +59621,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -60213,15 +59751,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -60373,15 +59909,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -60533,15 +60067,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -60665,15 +60197,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -60797,15 +60327,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -60929,15 +60457,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -61089,15 +60615,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -61221,15 +60745,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -61353,15 +60875,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -61513,15 +61033,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -61645,15 +61163,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -61805,15 +61321,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -61937,15 +61451,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -62097,15 +61609,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -62257,15 +61767,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -62389,15 +61897,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -62521,15 +62027,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -62653,15 +62157,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -62813,15 +62315,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -62945,15 +62445,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -63077,15 +62575,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -63237,15 +62733,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -63397,15 +62891,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -63557,15 +63049,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -63689,15 +63179,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -63821,15 +63309,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -63953,15 +63439,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -64085,15 +63569,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -64217,15 +63699,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -64377,15 +63857,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -64537,15 +64015,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -64669,15 +64145,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -64801,15 +64275,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -64961,15 +64433,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -65121,15 +64591,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -65281,15 +64749,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -65413,15 +64879,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -65545,15 +65009,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -65705,15 +65167,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -65837,15 +65297,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -65969,15 +65427,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -66129,15 +65585,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -66261,15 +65715,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -66393,15 +65845,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -66525,15 +65975,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -66657,15 +66105,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -66817,15 +66263,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -66977,15 +66421,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -67109,15 +66551,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -67269,15 +66709,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -67429,15 +66867,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -67561,15 +66997,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -67693,15 +67127,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -67853,15 +67285,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68013,15 +67443,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68145,15 +67573,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68277,15 +67703,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68409,15 +67833,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68541,15 +67963,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68701,15 +68121,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68833,15 +68251,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -68993,15 +68409,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -69153,15 +68567,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -69285,15 +68697,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -69417,15 +68827,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -69549,15 +68957,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -69709,15 +69115,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -69841,15 +69245,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -69973,15 +69375,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -70133,15 +69533,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -70293,15 +69691,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -70453,15 +69849,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -70585,15 +69979,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -70745,15 +70137,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -70877,15 +70267,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -71009,15 +70397,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -71141,15 +70527,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -71273,15 +70657,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -71433,15 +70815,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -71565,15 +70945,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -71697,15 +71075,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -71857,15 +71233,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -72017,15 +71391,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -72177,15 +71549,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -72309,15 +71679,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -72441,15 +71809,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -72601,15 +71967,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -72733,15 +72097,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -72865,15 +72227,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -73025,15 +72385,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -73157,15 +72515,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -73289,15 +72645,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -73421,15 +72775,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -73581,15 +72933,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -73741,15 +73091,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -73901,15 +73249,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -74033,15 +73379,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -74165,15 +73509,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -74325,15 +73667,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -74457,15 +73797,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -74589,15 +73927,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -74749,15 +74085,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -74909,15 +74243,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -75041,15 +74373,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -75173,15 +74503,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -75305,15 +74633,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -75437,15 +74763,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -75597,15 +74921,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -75729,15 +75051,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -75889,15 +75209,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -76049,15 +75367,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -76181,15 +75497,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -76341,15 +75655,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -76501,15 +75813,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -76661,15 +75971,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -76793,15 +76101,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -76925,15 +76231,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -77057,15 +76361,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -77905,15 +77207,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -78785,15 +78085,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -79665,15 +78963,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -80545,15 +79841,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -81425,15 +80719,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -82305,15 +81597,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -83562,15 +82852,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -84441,15 +83729,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -85320,15 +84606,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -86199,15 +85483,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -87078,15 +86360,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -90737,15 +90017,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -92136,15 +91414,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -93644,15 +92920,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -93740,15 +93014,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -93836,15 +93108,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -93932,15 +93202,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -94028,15 +93296,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -94124,15 +93390,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -95818,15 +95082,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -95914,15 +95176,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -96010,15 +95270,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -96410,15 +95668,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -96506,15 +95762,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -96602,15 +95856,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "A"
+            "capacity_w": 2400
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C20",
-            "capacity_w": 2400,
-            "feed": "B"
+            "capacity_w": 2400
           }
         ]
       }
@@ -119108,15 +118360,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -119987,15 +119237,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -121779,15 +121027,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -122659,15 +121905,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -123539,15 +122783,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -124419,15 +123661,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -125299,15 +124539,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -126418,15 +125656,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -127537,15 +126773,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -128656,15 +127890,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -129775,15 +129007,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -130654,15 +129884,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -131533,15 +130761,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -132412,15 +131638,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -133291,15 +132515,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -134410,15 +133632,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -135529,15 +134749,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -136648,15 +135866,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -140398,15 +139614,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -141278,15 +140492,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -142157,15 +141369,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -143036,15 +142246,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -146272,15 +145480,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -147119,15 +146325,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -147580,15 +146784,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -148041,15 +147243,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -148312,15 +147512,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -148583,15 +147781,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -149044,15 +148240,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -149505,15 +148699,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -149776,15 +148968,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -150047,15 +149237,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -150171,15 +149359,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -150295,15 +149481,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -150547,15 +149731,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -150799,15 +149981,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -150939,15 +150119,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -151063,15 +150241,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -151187,15 +150363,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -151439,15 +150613,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -151691,15 +150863,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -151831,15 +151001,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -152711,15 +151879,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -153590,15 +152756,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -155283,15 +154447,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }
@@ -156976,15 +156138,13 @@
             "index": 1,
             "name": "PSU1",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "A"
+            "capacity_w": 1100
           },
           {
             "index": 2,
             "name": "PSU2",
             "inlet": "C14",
-            "capacity_w": 1100,
-            "feed": "B"
+            "capacity_w": 1100
           }
         ]
       }

@@ -22,6 +22,8 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Optional
 
+from core.device_manager import outlet_voltage
+
 if TYPE_CHECKING:
     from core.device_manager import Device
 
@@ -332,7 +334,7 @@ def _live_watts(device: "Device") -> int:
     return int(nominal * (0.55 + 0.45 * load))
 
 
-def power(device: "Device") -> dict:
+def power(device: "Device", topology=None) -> dict:
     cid = member_id(device)
     watts = _live_watts(device)
     return {
@@ -353,29 +355,82 @@ def power(device: "Device") -> dict:
             },
             "Status": {"State": "Enabled", "Health": "OK"},
         }],
-        "PowerSupplies": _power_supplies(device),
+        "PowerSupplies": _power_supplies(device, topology),
     }
 
 
-def _power_supplies(device: "Device") -> list:
-    """Two redundant PSUs splitting the chassis load."""
+# A modern 80 PLUS Platinum PSU runs ~92% efficient around the 30-50% load band
+# these chassis sit in. Redfish reports input and output separately, and the
+# difference between them is heat — it is not a rounding artefact.
+_PSU_EFFICIENCY = 0.92
+
+
+def _power_supplies(device: "Device", topology=None) -> list:
+    """The chassis PSUs, from the device's modelled 1+1 pair.
+
+    Reads device.psus rather than assuming two 1100W supplies: a CDU carries C20
+    inlets and 2400W supplies, and inventing a 1100W PSU for it would contradict
+    the cord the topology actually plugs in. A device with no PSUs (an environmental
+    sensor is powered off the PDU's sensor port) correctly reports none.
+
+    With *topology*, LineInputVoltage comes from the PDU each cord actually runs to
+    — 208V on a 1-phase rPDU, 240V line-to-neutral on a 415V 3-phase one — because
+    input voltage is a fact about the FEED, not about the supply. Without it (a BMC
+    built outside a loaded topology) the reading falls back to a 230V nominal.
+
+    MemberId stays 0-based to keep the @odata.id URLs stable for existing clients;
+    Name carries the model's 1-based PSU number, which is what an operator reads.
+    """
     cid = member_id(device)
+    psus = getattr(device, "psus", None) or []
+    if not psus:
+        return []
+    feeds = topology.power_feeds(device.id) if topology is not None else {}
     watts = _live_watts(device)
-    half = watts / 2.0
-    psus = []
-    for i in range(2):
-        psus.append({
+    # A 1+1 pair shares the load; both supplies are live, each carrying its share
+    # of the WALL draw. (A failed-PSU case would put the whole chassis on the
+    # survivor — not modelled here, since nothing fails a PSU yet.)
+    input_per_psu = watts / len(psus)
+    out = []
+    for i, p in enumerate(psus):
+        feed = feeds.get(p.index)
+        volts = outlet_voltage(feed["supply_model"]) if feed else 230
+        entry = {
             "@odata.id": f"/redfish/v1/Chassis/{cid}/Power#/PowerSupplies/{i}",
             "MemberId": str(i),
-            "Name": f"PSU {i + 1}",
+            "Name": p.name,
             "PowerSupplyType": "AC",
-            "LineInputVoltage": 230,
-            "PowerCapacityWatts": 1100,
-            "LastPowerOutputWatts": round(half, 1),
-            "Model": "PWR-1100W-AC",
+            "LineInputVoltage": volts,
+            "PowerCapacityWatts": p.capacity_w,
+            "PowerInputWatts": round(input_per_psu, 1),
+            "LastPowerOutputWatts": round(input_per_psu * _PSU_EFFICIENCY, 1),
+            "InputRanges": [{
+                "InputType": "AC",
+                # Auto-ranging supply: one SKU covers every rack voltage it might
+                # be plugged into, which is why the same server works on a 208V and
+                # a 240V feed.
+                "MinimumVoltage": 100,
+                "MaximumVoltage": 240,
+                "OutputWattage": p.capacity_w,
+            }],
+            "Model": f"PWR-{p.capacity_w}W-AC",
             "Status": {"State": "Enabled", "Health": "OK"},
-        })
-    return psus
+        }
+        if feed:
+            # Which cord this supply is on. Redfish's Power schema has no standard
+            # field for the upstream outlet (that link lives in PowerDistribution /
+            # Circuit on the PDU side), so it goes under Oem — where real vendors
+            # put exactly this kind of site-specific detail — rather than being
+            # bolted onto a standard property that means something else.
+            entry["Oem"] = {"DCSim": {
+                "@odata.type": "#DCSimPowerSupply.v1_0_0.DCSimPowerSupply",
+                "FeedSide": feed["feed"],
+                "SourcePDU": feed["supply_name"],
+                "SourceOutlet": feed["outlet"],
+                "InletType": p.inlet,
+            }}
+        out.append(entry)
+    return out
 
 
 def manager(device: "Device") -> dict:

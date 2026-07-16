@@ -177,6 +177,9 @@ class RedfishController:
         self._port = 8443
         self._username = "admin"
         self._password = "password"
+        # Live TopologyEngine, supplied at start(). Lets each BMC report the PSU
+        # feed it is corded to; None means Power falls back to a nominal voltage.
+        self._topology = None
 
     # ── callbacks ──────────────────────────────────────────────────────────
     def set_log_callback(self, cb: Callable[[str, str], None]):
@@ -317,6 +320,7 @@ class RedfishController:
         username: str = "admin",
         password: str = "password",
         ip_for: Optional[Callable[["Device"], str]] = None,
+        topology=None,
     ) -> bool:
         """
         Bind one HTTP server per server device and begin serving Redfish.
@@ -325,6 +329,9 @@ class RedfishController:
         port:     TCP port for every BMC (default 8443).
         ip_for:   optional fn mapping a Device → bind IP. Defaults to
                   ``device.mgmt_ip or device.ip_address`` (BMC on OOB net).
+        topology: optional live TopologyEngine. Lets each BMC report the PSU feed
+                  it is actually corded to (input voltage, source PDU/outlet).
+                  Without it the Power resource falls back to a 230V nominal.
         """
         if self._running:
             self._log("[Redfish] Already running.", "warning")
@@ -336,6 +343,10 @@ class RedfishController:
         self._port = port
         self._username = username
         self._password = password
+        # Kept so add_device() gives a hot-commissioned BMC the same topology
+        # view as the ones bound at start — otherwise a fleet-added server would
+        # silently report a 230V nominal while its rack peers report the real feed.
+        self._topology = topology
         if ip_for is None:
             ip_for = lambda d: (d.mgmt_ip or d.ip_address)  # noqa: E731
 
@@ -345,7 +356,7 @@ class RedfishController:
             if not ip:
                 continue
             rdev = RedfishDevice(dev, username=username, password=password,
-                                 power_trap_cb=self._trap_cb)
+                                 power_trap_cb=self._trap_cb, topology=topology)
             try:
                 sock = self._make_listener(ip)
             except OSError as exc:
@@ -386,7 +397,8 @@ class RedfishController:
         if not ip or ip in self._servers:
             return False
         rdev = RedfishDevice(device, username=self._username, password=self._password,
-                             power_trap_cb=self._trap_cb)
+                             power_trap_cb=self._trap_cb,
+                             topology=getattr(self, "_topology", None))
         try:
             sock = self._make_listener(ip)
         except OSError as exc:

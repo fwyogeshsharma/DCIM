@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 import networkx as nx
 from typing import List, Tuple, Optional, Dict, Any
-from core.device_manager import Device, DeviceType
+from core.device_manager import Device, DeviceType, feed_side
 
 
 class TopologyEngine:
@@ -130,6 +130,37 @@ class TopologyEngine:
                 return o.index
         return None
 
+    def power_feeds(self, device_id: str) -> dict:
+        """psu index -> the cord feeding it: {supply_id, supply_name, outlet, feed}.
+
+        Derived from the EDGES on every call, never cached on the PSU: a PSU's feed
+        is a fact about the cord, so caching it on the device is the same mistake as
+        Interface.connected_to_device — it goes stale the moment anything re-cords.
+        Walks only this device's adjacency (not every edge) because Redfish calls it
+        per request, and takes the engine lock because fleet churn mutates the graph
+        from its own thread.
+        """
+        feeds: dict = {}
+        with self._lock:
+            if not self.graph.has_node(device_id):
+                return feeds
+            for peer in self.graph[device_id]:
+                for _key, d in self.graph[device_id][peer].items():
+                    if d.get("layer") != "power" or d.get("load_node") != device_id:
+                        continue
+                    psu = d.get("psu")
+                    if psu is None:
+                        continue
+                    sup = self.get_device(d.get("supply_node"))
+                    feeds[psu] = {
+                        "supply_id": d.get("supply_node"),
+                        "supply_name": sup.name if sup else d.get("supply_node"),
+                        "supply_model": getattr(sup, "model_name", "") if sup else "",
+                        "outlet": d.get("outlet"),
+                        "feed": feed_side(sup.name) if sup else "",
+                    }
+        return feeds
+
     @staticmethod
     def _edge_key(src_id: str, dst_id: str, layer: str) -> str:
         """MultiGraph edge key. One edge per (pair, layer) for most layers, but
@@ -245,12 +276,16 @@ class TopologyEngine:
             dst_dev = self.get_device(dst_id)
 
             def _clear_iface(edge_data: dict):
-                si = edge_data.get("src_iface", 0)
-                di = edge_data.get("dst_iface", 0)
-                if src_dev and si < len(src_dev.interfaces):
+                # None on power/cooling — those edges hold no iface. The old `, 0`
+                # default was worse than a crash: pulling a power cord cleared the
+                # device's iface 0 termination cache, silently unlinking whatever
+                # ETHERNET link happened to live on port 0.
+                si = edge_data.get("src_iface")
+                di = edge_data.get("dst_iface")
+                if src_dev and si is not None and si < len(src_dev.interfaces):
                     src_dev.interfaces[si].connected_to_device = None
                     src_dev.interfaces[si].connected_to_iface = None
-                if dst_dev and di < len(dst_dev.interfaces):
+                if dst_dev and di is not None and di < len(dst_dev.interfaces):
                     dst_dev.interfaces[di].connected_to_device = None
                     dst_dev.interfaces[di].connected_to_iface = None
 

@@ -2,6 +2,7 @@
 Device Manager - Manages all simulated network devices.
 """
 from __future__ import annotations
+import math
 import uuid
 import random
 import threading
@@ -401,14 +402,18 @@ class PowerSupply:
     """One PSU in a load device — the other end of the cord.
 
     Redfish exposes these as Chassis/{id}/Power#/PowerSupplies[{MemberId}]; IPMI
-    as PSU status sensors. `feed` records which side of the 2N pair this PSU is
-    corded to, so an A-feed loss maps to the PSUs it actually kills.
+    as PSU status sensors.
+
+    Inventory only — deliberately no `feed` or `line_v` here. Which side a PSU is
+    corded to and what voltage it sees are facts about the CORD, so they are read
+    from the edges (TopologyEngine.power_feeds) on demand. Cached here they would
+    be right until the first re-cord and wrong forever after — the same trap as
+    Interface.connected_to_device.
     """
     index: int
     name: str                 # "PSU1" / "PSU2"
     inlet: str = "C14"        # "C14" (takes a C13 outlet) | "C20" (takes a C19)
     capacity_w: int = 1100
-    feed: str = ""            # "A" | "B" | "" when not yet corded
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -438,6 +443,39 @@ PDU_OUTLET_CATALOG = {
 
 # 3-phase rPDUs alternate their banks across the phase pairs in this order.
 _PHASE_PAIRS = ("L1-L2", "L2-L3", "L3-L1")
+
+
+def outlet_voltage(model_name: str) -> int:
+    """What a load actually sees at this PDU's outlet.
+
+    NOT the PDU's headline figure. A 415V 3-phase rPDU is a WYE unit: its outlets
+    are wired line-to-neutral, so a C13 on it delivers 415/sqrt(3) = 240V, not 415V
+    — nothing in a rack is fed 415V. A 208V unit is line-to-line and delivers its
+    208V as-is. Reporting the nameplate here would tell an operator their server is
+    running on 415V, which would be alarming and wrong.
+    """
+    spec = PDU_OUTLET_CATALOG.get(model_name)
+    if not spec:
+        return 230                      # unknown SKU: nominal
+    _c13, _c19, phases, _a, volts = spec
+    return round(volts / math.sqrt(3)) if phases == 3 else volts
+
+
+def feed_side(pdu_name: str) -> str:
+    """"A" / "B" from a PDU's name, or "" when it carries no side.
+
+    The leading code in a device name is the functional role the runtime already
+    parses (PDUA/PDUB are an A/B pair — see canvas_layout's PDUA/PDUB -> PDU
+    normalisation), so this reads the same signal rather than inventing a second
+    source of truth. Renaming a PDU out of that scheme changes its feed side, which
+    is why the naming rule is what it is.
+    """
+    n = (pdu_name or "").upper()
+    if n.startswith("PDUA"):
+        return "A"
+    if n.startswith("PDUB"):
+        return "B"
+    return ""
 
 # How many PSUs a load device has, by type. IT gear is dual-corded (1+1) — that is
 # what the 2N A/B feed exists for. Devices absent from this map get none:
@@ -1141,10 +1179,16 @@ class Device:
         device.interfaces = [Interface(**i) for i in interfaces_data]
         # Absent (pre-outlet topology) => let __post_init__'s generation stand.
         # Present-but-empty => honour it; the SKU legitimately has none.
+        # Unknown keys are dropped rather than raising: a topology written before a
+        # field was retired (psus carried a cached "feed" until it moved onto the
+        # edges) must still load instead of taking the whole file down.
+        def _only(cls_, rows):
+            valid_ = {f.name for f in _fields(cls_)}
+            return [cls_(**{k: v for k, v in r.items() if k in valid_}) for r in rows]
         if outlets_data is not None:
-            device.outlets = [Outlet(**o) for o in outlets_data]
+            device.outlets = _only(Outlet, outlets_data)
         if psus_data is not None:
-            device.psus = [PowerSupply(**p) for p in psus_data]
+            device.psus = _only(PowerSupply, psus_data)
         return device
 
 

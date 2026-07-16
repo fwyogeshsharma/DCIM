@@ -371,7 +371,11 @@ def device_power_terminations(device_id: str):
                 "rated_a": o.rated_a, "used": o.index in peer_of_outlet,
                 "peer": peer_of_outlet.get(o.index)}
                for o in dev.outlets]
-    psus = [{"psu": p.index, "name": p.name, "inlet": p.inlet, "feed": p.feed,
+    # feed side is derived from the cord, not stored on the PSU — an uncorded PSU
+    # genuinely has no side, and a re-corded one must not report its old one.
+    feeds = s.topology.power_feeds(device_id)
+    psus = [{"psu": p.index, "name": p.name, "inlet": p.inlet,
+             "feed": feeds.get(p.index, {}).get("feed", ""),
              "capacity_w": p.capacity_w, "used": p.index in peer_of_psu,
              "peer": peer_of_psu.get(p.index)}
             for p in dev.psus]
