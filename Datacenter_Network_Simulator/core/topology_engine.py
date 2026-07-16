@@ -316,9 +316,12 @@ class TopologyEngine:
 
             edges = []
             for u, v, data in self.graph.edges(data=True):
+                # src_iface/dst_iface are recorded against src_node/dst_node, and an
+                # undirected edges() walk can report (u, v) the other way round —
+                # emitting u/v here would pair each end with the far side's port.
                 edges.append({
-                    "src": u,
-                    "dst": v,
+                    "src": data.get("src_node", u),
+                    "dst": data.get("dst_node", v),
                     "src_iface": data.get("src_iface", 0),
                     "dst_iface": data.get("dst_iface", 0),
                     "broken": data.get("broken", False),

@@ -77787,11 +77787,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.234",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Vertiv Liebert EXL S1 1200kVA",
@@ -77810,6 +77810,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "20:25:d4:72:98:ea",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "de:16:08:b5:e3:23",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -77861,11 +77876,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.235",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Vertiv Liebert EXL S1 1200kVA",
@@ -77884,6 +77899,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "01:ec:4b:3c:f8:59",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "b6:43:86:54:e7:bb",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -78317,11 +78347,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.176",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Vertiv Liebert EXL S1 1200kVA",
@@ -78340,6 +78370,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "17:d9:a7:c8:d3:16",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "c6:93:33:94:80:d2",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -78391,11 +78436,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.177",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Vertiv Liebert EXL S1 1200kVA",
@@ -78414,6 +78459,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "0e:2e:b7:11:4f:c0",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "be:61:39:26:78:13",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86433,11 +86493,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.212",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -86456,6 +86516,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "e5:8e:03:51:d8:ae",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "32:4b:69:13:75:55",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86509,11 +86584,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.214",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -86532,6 +86607,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "6e:ac:34:2f:c2:31",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "fe:05:e3:5d:38:15",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86585,11 +86675,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.217",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -86608,6 +86698,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "53:bd:b5:6b:88:24",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "12:50:65:86:a9:ef",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86663,11 +86768,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.219",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -86686,6 +86791,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "53:ec:c2:8a:70:a6",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "c2:43:96:ca:a0:17",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86741,11 +86861,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.220",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -86764,6 +86884,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "75:10:a1:cd:89:21",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "1a:6b:1d:d1:5b:55",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86819,11 +86954,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.221",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -86842,6 +86977,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "ff:ca:ea:49:87:47",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "72:14:2a:3b:c9:71",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86897,11 +87047,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.222",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -86920,6 +87070,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "cc:b9:70:46:fc:2e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ca:32:b4:b7:8a:61",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -86975,11 +87140,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.224",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -86998,6 +87163,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "38:4e:51:d8:20:c5",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ba:6b:f5:8e:2c:67",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87053,11 +87233,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.225",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -87076,6 +87256,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "80:05:3a:88:ae:39",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a6:03:ea:9d:dc:d8",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87131,11 +87326,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.226",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -87154,6 +87349,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "50:e8:01:86:5b:36",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "7a:f4:fb:b9:58:34",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87209,11 +87419,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.227",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -87232,6 +87442,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "4e:bf:52:00:a5:fa",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "92:67:16:b8:bb:90",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87287,11 +87512,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.236",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -87310,6 +87535,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b9:9d:7a:1d:7b:28",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "42:9e:08:84:c7:46",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87365,11 +87605,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.237",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -87388,6 +87628,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "41:f3:54:87:d8:6c",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "82:53:5b:29:e0:ab",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87443,11 +87698,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.238",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -87466,6 +87721,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "9f:cc:bf:e0:e7:3d",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "5e:b3:bc:0d:45:f6",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87521,11 +87791,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.243",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -87544,6 +87814,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "ce:ad:37:7f:62:61",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "de:95:55:50:6c:46",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87599,11 +87884,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.244",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -87622,6 +87907,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "47:d8:5d:8e:ec:7f",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "36:6f:52:9c:4c:1d",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87677,11 +87977,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.2",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -87700,6 +88000,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "87:fa:80:1a:2f:d8",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ba:e9:dd:2b:33:2f",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87756,11 +88071,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.3",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -87779,6 +88094,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "16:01:aa:42:86:52",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "46:d8:c6:41:a2:0e",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87835,11 +88165,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.5",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -87858,6 +88188,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "da:04:39:26:4c:12",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a6:b5:e9:02:74:76",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87914,11 +88259,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.6",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -87937,6 +88282,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "4b:dc:41:15:9d:ba",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "7e:b3:ec:7c:59:2b",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -87993,11 +88353,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.9",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -88016,6 +88376,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b7:6b:7f:34:b5:d0",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3e:7b:2e:b8:90:6f",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88072,11 +88447,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.10",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -88095,6 +88470,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "79:53:5a:d3:0c:5b",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "e6:ef:b8:65:7f:e0",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88151,11 +88541,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.11",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -88174,6 +88564,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "7f:88:51:37:c3:13",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "86:28:f4:b2:c2:d7",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88230,11 +88635,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.12",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -88253,6 +88658,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "71:66:eb:b3:9c:74",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "96:e7:b6:6a:86:2a",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88309,11 +88729,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.13",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -88332,6 +88752,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "62:cc:a8:8e:23:8e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "d2:4b:59:08:b5:8d",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88388,11 +88823,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.14",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -88411,6 +88846,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "a9:0e:3b:85:5b:87",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ea:97:42:f5:fe:65",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88467,11 +88917,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.15",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -88490,6 +88940,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "de:b0:a0:df:3b:c5",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "5a:03:9f:12:0d:1e",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88546,11 +89011,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.16",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -88569,6 +89034,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "16:df:00:64:ba:dc",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "2a:ed:3a:65:da:8f",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88625,11 +89105,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.17",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -88648,6 +89128,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "99:9e:d1:a7:ce:97",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3a:d3:12:a4:85:42",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88704,11 +89199,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.18",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -88727,6 +89222,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "62:d7:c2:59:9a:cf",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3a:c7:66:cd:81:42",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88783,11 +89293,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.19",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -88806,6 +89316,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "92:6b:dc:a4:ee:e2",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "36:25:41:44:cd:ba",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88862,11 +89387,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.20",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -88885,6 +89410,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "ab:2f:78:9e:73:65",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3a:69:1a:5f:13:7a",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -88941,11 +89481,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.21",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -88964,6 +89504,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "17:7d:f3:25:e9:d4",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "86:06:96:c9:ad:58",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89020,11 +89575,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.22",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -89043,6 +89598,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "c4:fd:cc:7c:4b:02",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0e:07:70:1b:8a:69",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89099,11 +89669,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.23",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -89122,6 +89692,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "d9:70:5a:ed:19:7f",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "d6:9b:e4:e2:a1:42",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89178,11 +89763,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.24",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -89201,6 +89786,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "44:ed:a2:e2:da:e4",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ca:c7:60:33:0f:68",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89257,11 +89857,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.156",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -89280,6 +89880,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b3:72:23:14:0f:7e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "c2:fc:8d:e2:fb:e9",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89333,11 +89948,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.158",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -89356,6 +89971,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "40:f2:3a:6f:ee:83",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a6:b5:9c:d1:d4:6d",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89409,11 +90039,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.161",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -89432,6 +90062,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "15:b1:db:bd:23:ae",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "5e:db:7d:41:a1:26",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89487,11 +90132,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.163",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -89510,6 +90155,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "dd:b9:eb:4e:de:5a",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "62:76:61:ec:c7:8f",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89565,11 +90225,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.164",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -89588,6 +90248,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "df:89:a5:7d:2c:8e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "42:8d:7d:ab:82:41",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89643,11 +90318,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.165",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -89666,6 +90341,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "7c:ed:c2:ac:0e:fd",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0a:d0:f9:bf:e9:63",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89721,11 +90411,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.166",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -89744,6 +90434,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "5d:f9:6c:b5:84:ae",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "da:55:71:ac:15:ab",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89799,11 +90504,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.168",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -89822,6 +90527,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "05:61:2b:7b:d0:fa",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0a:da:aa:66:22:6a",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89877,11 +90597,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.169",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -89900,6 +90620,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "e5:08:2f:96:71:cf",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "de:bb:fe:b4:5f:a2",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -89955,11 +90690,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.170",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -89978,6 +90713,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "9c:bc:f2:b0:d9:a9",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "a2:e3:44:a4:c8:b1",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90033,11 +90783,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.178",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -90056,6 +90806,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "9c:80:76:3d:62:a1",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3a:59:8f:a7:ae:b0",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90111,11 +90876,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.179",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -90134,6 +90899,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "6e:f7:8d:90:33:63",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0e:b8:6c:f9:c8:09",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90189,11 +90969,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.180",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -90212,6 +90992,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b8:5b:9a:07:40:8c",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "36:7b:e1:a4:86:f8",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90267,11 +91062,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.181",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -90290,6 +91085,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "fb:34:06:91:f0:f5",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "b6:16:b9:48:1c:a6",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90345,11 +91155,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.194",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -90368,6 +91178,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "93:cd:12:e8:2d:a1",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "aa:68:e1:cd:52:55",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90424,11 +91249,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.195",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -90447,6 +91272,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "3b:ce:00:ec:d3:1b",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "42:ac:36:1e:11:f9",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90503,11 +91343,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.251",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -90526,6 +91366,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "e2:1a:68:88:43:93",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ee:e6:52:0e:89:1a",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90582,11 +91437,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.24",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -90605,6 +91460,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "3e:0e:7a:51:9f:07",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "46:81:8a:3e:8e:d0",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90661,11 +91531,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.25",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -90684,6 +91554,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "2f:73:3a:ec:3c:4e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "42:24:8b:ef:c7:b4",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90740,11 +91625,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.26",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -90763,6 +91648,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "8b:d4:f7:f1:7c:e9",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "36:7d:62:95:19:b8",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90819,11 +91719,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.27",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -90842,6 +91742,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "c4:61:45:23:8d:d4",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "82:26:9d:97:0d:96",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90898,11 +91813,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.28",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -90921,6 +91836,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "98:fa:4c:e4:f7:b0",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "4e:8d:de:1b:8f:10",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -90977,11 +91907,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.29",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -91000,6 +91930,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "a4:60:7a:c4:77:d2",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "4e:54:80:1f:45:22",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -91056,11 +92001,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.30",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -91079,6 +92024,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "f2:c3:c5:4d:fd:12",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ce:cf:14:d5:9d:f3",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -91135,11 +92095,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.31",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -91158,6 +92118,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "33:e9:07:49:d1:4f",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "96:3a:58:f9:da:49",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -91214,11 +92189,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.32",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -91237,6 +92212,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "87:ad:cb:29:a8:c2",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "06:76:93:09:23:3e",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -91293,11 +92283,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.33",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -91316,6 +92306,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "f9:12:23:78:93:74",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "76:c2:e6:ad:0b:27",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -91372,11 +92377,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.34",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -91395,6 +92400,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "de:32:33:e3:55:99",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "7a:3e:03:ef:54:61",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -91451,11 +92471,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.35",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8865",
@@ -91474,6 +92494,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "17:a6:1c:96:b7:bf",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "12:7b:2d:a1:ae:63",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -91530,11 +92565,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.36",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX3-5878",
@@ -91553,6 +92588,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "7d:d2:5c:57:59:28",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "7e:bf:74:36:d5:be",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109165,11 +110215,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.249",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -109188,6 +110238,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "4e:bf:52:00:a5:fa",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "7a:a3:7c:75:07:c0",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109243,11 +110308,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.250",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -109266,6 +110331,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b9:9d:7a:1d:7b:28",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "c6:9a:1b:ff:64:e8",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109321,11 +110401,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.251",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -109344,6 +110424,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "41:f3:54:87:d8:6c",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ee:bf:a5:bf:5c:cc",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109399,11 +110494,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.252",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -109422,6 +110517,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "9f:cc:bf:e0:e7:3d",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "e6:ff:49:a4:8d:fa",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109477,11 +110587,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.253",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -109500,6 +110610,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "ce:ad:37:7f:62:61",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "06:c5:c9:94:3d:13",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109555,11 +110680,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.0.254",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -109578,6 +110703,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "47:d8:5d:8e:ec:7f",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "62:2a:3d:11:cf:00",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109633,11 +110773,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.188",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -109656,6 +110796,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "9c:80:76:3d:62:a1",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0a:89:73:de:9b:71",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109711,11 +110866,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.189",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -109734,6 +110889,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "6e:f7:8d:90:33:63",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "1e:cf:e3:de:a8:0a",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109789,11 +110959,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.190",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -109812,6 +110982,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b8:5b:9a:07:40:8c",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "02:b5:1f:cd:ac:27",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -109867,11 +111052,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.4.191",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -109890,6 +111075,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "fb:34:06:91:f0:f5",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "4a:b8:7b:36:81:2a",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113252,11 +114452,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.27",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113272,6 +114472,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "45:85:a0:48:c5:f2",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "0e:73:ff:e6:ca:00",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113309,11 +114524,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.28",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113329,6 +114544,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "38:55:d1:5e:c0:89",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "82:0f:00:16:f7:0c",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113366,11 +114596,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.29",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113386,6 +114616,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "a0:c0:78:6b:65:ed",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "8e:91:0e:fc:08:00",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113423,11 +114668,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.1.30",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113443,6 +114688,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "70:ac:85:15:7f:d4",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "b6:12:96:1d:dd:d8",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113651,11 +114911,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.50",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113671,6 +114931,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "60:12:98:8f:60:0e",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "82:c7:38:d4:c7:0a",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113708,11 +114983,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.51",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113728,6 +115003,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "73:02:ef:30:01:6f",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "96:a8:24:65:e2:e4",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113765,11 +115055,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.52",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113785,6 +115075,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "38:e7:61:0b:c0:c4",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "b6:9a:5b:0e:bb:a4",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -113822,11 +115127,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.53",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "interfaces": [
@@ -113842,6 +115147,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "e5:57:f3:e0:cf:56",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "be:d0:4a:f9:65:51",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -122731,11 +124051,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.81",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -122754,6 +124074,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b8:5b:9a:07:40:8c",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "ce:a7:df:cf:2b:6c",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -122809,11 +124144,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.82",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -122832,6 +124167,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "fb:34:06:91:f0:f5",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3e:ee:4a:de:44:2f",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -123924,11 +125274,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.84",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "APC AP8941",
@@ -123947,6 +125297,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "b8:5b:9a:07:40:8c",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "b2:f8:b3:72:bb:77",
             "connected_to_device": null,
             "connected_to_iface": null
           }
@@ -124002,11 +125367,11 @@
         "snmp_port": 161,
         "gnmi_port": 57400,
         "snmp_community": "192.168.5.85",
-        "interface_count": 1,
+        "interface_count": 2,
         "interface_groups": [
           {
             "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
+            "count": 2
           }
         ],
         "model_name": "Raritan PX2-5170CR",
@@ -124025,6 +125390,21 @@
             "in_discards": 0,
             "out_discards": 0,
             "mac_address": "fb:34:06:91:f0:f5",
+            "connected_to_device": null,
+            "connected_to_iface": null
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3e:6d:13:48:c0:bd",
             "connected_to_device": null,
             "connected_to_iface": null
           }

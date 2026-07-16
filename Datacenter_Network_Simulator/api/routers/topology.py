@@ -267,10 +267,16 @@ def _port_terminations(s, device_id: str) -> dict:
         layer = d.get("layer", "production")
         if layer not in ("production", "management"):
             continue
-        if u == device_id:
-            myif, peer_id, peer_if = d.get("src_iface"), v, d.get("dst_iface")
-        elif v == device_id:
-            myif, peer_id, peer_if = d.get("dst_iface"), u, d.get("src_iface")
+        # Which end is which comes from the edge's own src_node/dst_node, NOT from
+        # (u, v): the graph is undirected, so edges() reports each link from
+        # whichever endpoint networkx walks first — that is not the end the
+        # src_iface/dst_iface pair was recorded against.
+        src = d.get("src_node", u)
+        dst = d.get("dst_node", v)
+        if src == device_id:
+            myif, peer_id, peer_if = d.get("src_iface"), dst, d.get("dst_iface")
+        elif dst == device_id:
+            myif, peer_id, peer_if = d.get("dst_iface"), src, d.get("src_iface")
         else:
             continue
         if myif is None:
