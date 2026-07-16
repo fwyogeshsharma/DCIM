@@ -89,6 +89,16 @@ async def upload_topology(file: UploadFile = File(...)):
             if s.ip_manager:
                 s.ip_manager.reserve(device.ip_address)
         s.current_topology_path = file.filename
+        # Device IPs are known now, so this is the first moment we can ask the OS
+        # which of them it still has aliased from a previous run. Without it, a
+        # restart leaves the app believing nothing is bound while every alias is
+        # still up, and Redfish/SNMP refuse to start for a user who really did bind.
+        adopted = s.reconcile_bound_ips()
+        if adopted:
+            s.notify_ui("log",
+                        f"[Binding] Adopted {adopted} IP(s) already bound to "
+                        f"{s.selected_adapter} from a previous run", "info")
+            s.notify_ui("sync_binding")
         s.notify_ui("rebuild_topology_scene")
         devices = s.topology.get_all_devices()
         return TopologyInfoResponse(

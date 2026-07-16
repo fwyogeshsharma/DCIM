@@ -287,6 +287,50 @@ class AppState:
                     seen.add(ip)
         return ips
 
+    def reconcile_bound_ips(self) -> int:
+        """Adopt device IPs the OS already has aliased, and return how many.
+
+        Binding puts IP aliases on a real interface; those aliases OUTLIVE this
+        process. bound_ips does not — it is rebuilt empty on every start. So after
+        a restart the OS still has every alias while the app believes nothing is
+        bound, and /redfish/start refuses with "none have a bound IP" at a user who
+        did bind, correctly, before the restart. The only fix is to ask the OS
+        instead of trusting our own memory.
+
+        Only IPs this topology would itself bind are adopted (get_all_bind_ips) —
+        never every address on the box, or we would claim the host's own IP and
+        hand it to unbind. Cheap on the surface (one `ip addr` per interface) but
+        it shells out, so this is called on topology load, not per status poll.
+
+        nte_contexts stays empty: it exists only to speed up unbind, Linux ignores
+        it outright, and the Windows path already falls back to netsh without it.
+        """
+        want = set(self.get_all_bind_ips())
+        if not want:
+            return 0
+        try:
+            from core.ip_binder import get_interfaces, get_interface_ips
+        except Exception:
+            return 0
+        found: Dict[str, List[str]] = {}
+        for name, _label in get_interfaces():
+            try:
+                hit = [ip for ip in get_interface_ips(name) if ip in want]
+            except Exception:
+                continue
+            if hit:
+                found[name] = hit
+        if not found:
+            return 0
+        adopted = sorted({ip for ips in found.values() for ip in ips})
+        self.bound_ips = adopted
+        # Point the adapter at wherever the aliases actually live, so a later
+        # unbind removes them from the right interface. A choice the user already
+        # made and the OS still reflects — not a new one being made for them.
+        if not self.selected_adapter:
+            self.selected_adapter = max(found, key=lambda n: len(found[n]))
+        return len(adopted)
+
     def add_sse_client(self, q: _queue.Queue):
         with self._state_lock:
             self._sse_clients.append(q)
