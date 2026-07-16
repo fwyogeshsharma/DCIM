@@ -3809,8 +3809,6 @@ class MainWindow(QMainWindow):
             username=cfg["username"],
             password=cfg["password"],
             ip_for=_bmc_ip,
-            # So each BMC reports the PSU feed its cords actually run to.
-            topology=self.topology,
         )
         if ok:
             self._redfish_panel.set_running(True)
