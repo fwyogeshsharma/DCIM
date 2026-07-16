@@ -412,6 +412,7 @@ export default function RedfishPanel() {
     setRedfishPort: setPort, setRedfishUsername: setUsername,
     setRedfishPassword: setPassword,
     redfishBusy: busy, redfishOp: operation, startRedfish: start, stopRedfish: stop,
+    redfishError: error,
   } = useStore()
   const [showPass,  setShowPass]  = useState(false)
   // Active-BMCs search + list virtualization (scales to thousands of BMCs: a
@@ -529,6 +530,37 @@ export default function RedfishPanel() {
             rows={serverCount > 0 ? [{ label: 'Servers:', value: serverCount }] : []}
             total={serverCount}
           />
+        )}
+
+        {/* ── Why Start is unavailable ───────────────────────────
+            The precondition was already enforced, but only as a title tooltip on
+            a DISABLED button — you had to hover a greyed-out control to find out
+            that IPs were not bound. A disabled button with no visible reason
+            reads as broken. State the blocker where the eye already is. */}
+        {!running && !canStart && !busy && (
+          <div style={{
+            fontSize: 10, color: 'var(--yellow)', padding: '6px 8px',
+            background: 'color-mix(in srgb, var(--yellow) 10%, var(--bg-base))',
+            border: '1px solid color-mix(in srgb, var(--yellow) 30%, transparent)',
+            borderRadius: 4, lineHeight: 1.5,
+          }}>
+            {startTip}
+          </div>
+        )}
+
+        {/* ── Why the last start was refused ─────────────────────
+            Sits directly above the button that produced it. The API's refusals
+            are actionable ("bind IPs first", "port in use"), and the operator
+            cannot act on what they never see. */}
+        {error && (
+          <div style={{
+            fontSize: 10, color: 'var(--red)', padding: '6px 8px',
+            background: 'color-mix(in srgb, var(--red) 10%, var(--bg-base))',
+            border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)',
+            borderRadius: 4, lineHeight: 1.5,
+          }}>
+            {error}
+          </div>
         )}
 
         {/* ── Start button sits just below Targets while idle ──── */}

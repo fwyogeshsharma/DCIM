@@ -108,6 +108,7 @@ interface Store {
   // Start/stop in-flight state — kept here so it survives panel close/reopen
   redfishBusy: boolean
   redfishOp:   'start' | 'stop' | null
+  redfishError: string | null
   startRedfish: () => Promise<void>
   stopRedfish:  () => Promise<void>
 
@@ -228,21 +229,30 @@ export const useStore = create<Store>((set, get) => ({
 
   redfishBusy: false,
   redfishOp:   null,
+  redfishError: null,
   startRedfish: async () => {
     if (get().redfishBusy) return
     const { redfishPort, redfishUsername, redfishPassword } = get()
-    set({ redfishBusy: true, redfishOp: 'start' })
+    set({ redfishBusy: true, redfishOp: 'start', redfishError: null })
     try {
       await api.redfishStart({ port: redfishPort, username: redfishUsername, password: redfishPassword })
       await get().fetchRedfish()
-    } catch { /* ignore */ }
+    } catch (e: unknown) {
+      // The API refuses a start it cannot honour (no bound IPs, no servers, port
+      // in use) and says why. Swallowing that left the button looking like it had
+      // worked while nothing bound — the operator's only clue was a status that
+      // stayed "Stopped".
+      set({ redfishError: errorMessage(e) })
+    }
     finally { set({ redfishBusy: false, redfishOp: null }) }
   },
   stopRedfish: async () => {
     if (get().redfishBusy) return
-    set({ redfishBusy: true, redfishOp: 'stop' })
+    set({ redfishBusy: true, redfishOp: 'stop', redfishError: null })
     try { await api.redfishStop(); await get().fetchRedfish() }
-    catch { /* ignore */ }
+    catch (e: unknown) {
+      set({ redfishError: errorMessage(e) })
+    }
     finally { set({ redfishBusy: false, redfishOp: null }) }
   },
 
