@@ -7,6 +7,7 @@ from __future__ import annotations
 import queue as _queue
 import threading
 import uuid
+from pathlib import Path as _Path
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -69,6 +70,9 @@ class AppState:
 
         # Dataset generation state
         self.generated_snmp_files: List[str] = []
+        # How many datasets this topology expects but disk does not have. Set by
+        # reconcile_generated_datasets so the caller can say WHY it adopted none.
+        self._missing_datasets: int = 0
         self.generated_gnmi_files: List[str] = []
         self.snmp_datasets_dir: str = "datasets/snmp"
         self.gnmi_datasets_dir: str = "datasets/gnmi"
@@ -327,6 +331,57 @@ class AppState:
         if not self.selected_adapter:
             self.selected_adapter = max(found, key=lambda n: len(found[n]))
         return len(adopted)
+
+    def reconcile_generated_datasets(self) -> int:
+        """Adopt .snmprec datasets already on disk for THIS topology, or none.
+
+        generated_snmp_files is rebuilt empty on every start, but the datasets it
+        tracks live on disk and outlive the process — so after a restart the app
+        demands a full regeneration of hundreds of files it already has, and
+        /snmp/start refuses with "No datasets generated" at an operator looking at
+        a directory full of them. Same shape as reconcile_bound_ips().
+
+        ALL-OR-NOTHING, deliberately. A partial adoption would let snmpsim start
+        with some devices served from disk and the rest silent — worse than asking
+        for a regeneration, because it looks healthy. Every dataset this topology
+        expects (OS agent + BMC agent, per snmp_bind_ips) must be present or we
+        adopt nothing.
+
+        WHAT THIS CANNOT SEE: a file matching by NAME is not proof its CONTENT is
+        current. Re-seat a switch's ports or resize a device and the filenames are
+        unchanged while the contents are stale. The caller logs loudly for exactly
+        this reason — adoption saves a rebuild, it does not certify freshness.
+        """
+        if self.topology is None or self.device_manager is None:
+            return 0
+        try:
+            from core.snmprec_generator import SNMPRecGenerator
+        except Exception:
+            return 0
+        ddir = _Path(self.snmp_datasets_dir)
+        if not ddir.is_dir():
+            return 0
+        expected: set = set()
+        owners: List[str] = []          # the per-device file generate_device returns
+        for dev in self.topology.get_all_devices():
+            ips = SNMPRecGenerator.snmp_bind_ips(dev)
+            if not ips:
+                continue                # no SNMP agent (BACnet/Modbus plant gear)
+            for ip in ips:
+                expected.add(f"{ip}.snmprec")
+            addr = SNMPRecGenerator.snmp_address(dev)
+            if addr:
+                owners.append(str(ddir / f"{addr}.snmprec"))
+        if not expected:
+            return 0
+        have = {p.name for p in ddir.glob("*.snmprec")}
+        missing = expected - have
+        if missing:
+            self._missing_datasets = len(missing)
+            return 0
+        self._missing_datasets = 0
+        self.generated_snmp_files = owners
+        return len(owners)
 
     def add_sse_client(self, q: _queue.Queue):
         with self._state_lock:
