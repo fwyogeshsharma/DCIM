@@ -293,6 +293,43 @@ class SNMPRecGenerator:
             ips.append(b)
         return ips
 
+    def reap_orphans(self, topology: TopologyEngine) -> List[str]:
+        """Delete .snmprec files no device in THIS topology should serve.
+
+        snmpsim resolves a request by community -> "<community>.snmprec", so any
+        file left in this directory is a live agent whether or not the topology
+        still contains that device. Datasets were only ever written, never removed,
+        so IPs from retired topologies kept answering: a pump at an address that
+        once belonged to a Lenovo server replied "XClarity Controller — Lenovo
+        Server BMC", and plant gear that must have NO SNMP agent at all
+        (_NO_SNMP_TYPES: chiller/pump/cooling tower/valve/RPP — BACnet & Modbus
+        devices) answered anyway. A DCIM polling that address would inventory
+        hardware that does not exist.
+
+        snmp_bind_ips() is the authority on what SHOULD exist — the same function
+        the binder uses — so this cannot drift from what gets generated: it returns
+        [] for the types that have no agent.
+
+        Refuses to run on an empty expectation (no devices / topology not loaded)
+        rather than emptying the directory.
+        """
+        expected = set()
+        for d in topology.get_all_devices():
+            for ip in self.snmp_bind_ips(d):
+                expected.add(f"{ip}.snmprec")
+        if not expected:
+            return []
+        removed = []
+        for p in self.output_dir.glob("*.snmprec"):
+            if p.name in expected:
+                continue
+            try:
+                p.unlink()
+                removed.append(p.name)
+            except OSError:
+                pass          # busy/permission — leave it; next run retries
+        return removed
+
     def generate_all(self, topology: TopologyEngine) -> List[str]:
         """Generate .snmprec file for every device reachable via SNMP.
 

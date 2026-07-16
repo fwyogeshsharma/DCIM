@@ -63,7 +63,11 @@ def generate_datasets():
             s.notify_ui("log", f"Generating {total} SNMP datasets…", "info")
             for i, device in enumerate(devices):
                 fp = gen.generate_device(device, s.topology)
-                files.append(fp)
+                # None = this type has no SNMP agent (chiller/pump/valve/... are
+                # BACnet/Modbus). Keeping it would inflate the count and index a
+                # file that does not exist.
+                if fp:
+                    files.append(fp)
                 if (i + 1) % log_step == 0 or i == total - 1:
                     s.notify_ui(
                         "log",
@@ -76,6 +80,15 @@ def generate_datasets():
                     s.notify_ui("snmp_progress", i + 1, total)
 
             s.notify_ui("log", f"[SNMP] {len(files)} .snmprec files generated", "success")
+
+            # Drop datasets from retired topologies BEFORE indexing: snmpsim serves
+            # any file in this directory (community -> <ip>.snmprec), so an orphan
+            # is a live agent answering for a device that no longer exists.
+            reaped = gen.reap_orphans(s.topology)
+            if reaped:
+                s.notify_ui("log",
+                            f"[SNMP] Removed {len(reaped)} orphaned dataset(s) from "
+                            f"a previous topology", "info")
 
             # Pre-build .dbm indexes
             if s.snmpsim:
