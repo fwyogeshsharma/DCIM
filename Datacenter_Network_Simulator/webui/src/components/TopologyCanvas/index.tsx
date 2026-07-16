@@ -145,7 +145,26 @@ function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edg
 
 const LINK_LAYERS = ['production', 'management', 'power', 'cooling']
 
-type Port = { iface: number; name: string; used: boolean; peer: string | null }
+type Port = { iface: number; name: string; used: boolean; peer: string | null; role?: 'data' | 'mgmt' }
+
+// Which ports a layer may terminate on. The asymmetry is physical, not cosmetic:
+//   production  — NEVER on a mgmt port. mgmt0 / iDRAC hangs off the management CPU,
+//                 not the switching ASIC; it cannot carry production traffic at all.
+//   management  — prefers the dedicated mgmt/BMC port, but data ports stay legal:
+//                 in-band management over a data VLAN is real, and the devices that
+//                 BUILD the OOB network (OOB switches, OOB firewalls/routers) carry
+//                 the mgmt plane on their data ports by design.
+// power/cooling don't terminate on Ethernet ports at all — a power link is a cord to
+// an outlet, a cooling link is a pipe. Their iface is a placeholder, so no filtering.
+const portsForLayer = (ports: Port[], layer: string): Port[] =>
+  layer === 'production' ? ports.filter(p => p.role !== 'mgmt') : ports
+
+// Preferred default: the first FREE port of the role this layer actually wants.
+const defaultPort = (ports: Port[], layer: string): number | null => {
+  const pool = portsForLayer(ports, layer)
+  const wanted = layer === 'management' ? pool.filter(p => p.role === 'mgmt') : pool
+  return (wanted.find(p => !p.used) ?? pool.find(p => !p.used))?.iface ?? null
+}
 
 function ToolBtn({ title, onClick, active, children, disabled }: {
   title: string
@@ -294,21 +313,32 @@ function Canvas() {
     if (clearMsg) setLinkMsg('')
   }, [])
 
-  // Load a device's ports and default-select its first FREE port.
+  // Load a device's ports and default-select the first FREE port this layer wants.
   const loadPorts = useCallback((id: string, end: 'src' | 'dst') => {
     api.devicePorts(id)
       .then((r: unknown) => {
         const ports = ((r as { ports?: Port[] }).ports) || []
-        const firstFree = ports.find(p => !p.used)?.iface ?? null
-        if (end === 'src') { setSrcPorts(ports); setSrcPort(firstFree) }
-        else               { setDstPorts(ports); setDstPort(firstFree) }
+        const pick = defaultPort(ports, linkLayer)
+        if (end === 'src') { setSrcPorts(ports); setSrcPort(pick) }
+        else               { setDstPorts(ports); setDstPort(pick) }
       })
       .catch(() => { if (end === 'src') setSrcPorts([]); else setDstPorts([]) })
-  }, [])
+  }, [linkLayer])
 
   useEffect(() => {
     if (!linkMode) resetLink()
   }, [linkMode, resetLink])
+
+  // Switching layer can strand the selection on a port the new layer may not use
+  // (production cannot land on mgmt0), which would silently POST the old iface.
+  // Re-default both ends; the port LISTS are unchanged, only what's legal on them.
+  useEffect(() => {
+    setSrcPort(p => (p !== null ? defaultPort(srcPorts, linkLayer) : p))
+    setDstPort(p => (p !== null ? defaultPort(dstPorts, linkLayer) : p))
+    // Ports are deliberately out of deps: they only change on a node click, which
+    // sets the default itself — re-running here would clobber a manual pick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkLayer])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -507,18 +537,34 @@ function Canvas() {
           fontSize: 10, background: '#0f1f3a', border: '1px solid #1e6ec8',
           color: '#dbeafe', borderRadius: 3, padding: '2px 4px', minWidth: 130,
         }
-        const portSelect = (ports: Port[], port: number | null,
-                            setPort: (n: number | null) => void, disabled: boolean) => (
-          <select value={port ?? ''} disabled={disabled || !ports.length} style={{ ...selStyle, minWidth: 150 }}
-            onChange={e => setPort(e.target.value === '' ? null : parseInt(e.target.value))}>
-            <option value="">auto (next free)</option>
-            {ports.map(p => (
-              <option key={p.iface} value={p.iface} disabled={p.used}>
-                {p.name}{p.used ? ` — in use${p.peer ? ` → ${p.peer}` : ''}` : ''}
-              </option>
-            ))}
-          </select>
+        const portOption = (p: Port) => (
+          <option key={p.iface} value={p.iface} disabled={p.used}>
+            {p.name}{p.used ? ` — in use${p.peer ? ` → ${p.peer}` : ''}` : ''}
+          </option>
         )
+        // Grouped by role, mgmt first, when building a management link — the
+        // dedicated port is what an operator wants, but data ports stay pickable
+        // for in-band mgmt and for the OOB gear whose data plane IS the mgmt net.
+        // A production link never lists mgmt ports at all: it cannot use them.
+        const portSelect = (ports: Port[], port: number | null,
+                            setPort: (n: number | null) => void, disabled: boolean) => {
+          const pool = portsForLayer(ports, linkLayer)
+          const mgmt = pool.filter(p => p.role === 'mgmt')
+          const data = pool.filter(p => p.role !== 'mgmt')
+          const grouped = linkLayer === 'management' && mgmt.length > 0 && data.length > 0
+          return (
+            <select value={port ?? ''} disabled={disabled || !pool.length} style={{ ...selStyle, minWidth: 150 }}
+              onChange={e => setPort(e.target.value === '' ? null : parseInt(e.target.value))}>
+              <option value="">auto (next free)</option>
+              {grouped ? (
+                <>
+                  <optgroup label="Management ports">{mgmt.map(portOption)}</optgroup>
+                  <optgroup label="Data ports (in-band)">{data.map(portOption)}</optgroup>
+                </>
+              ) : pool.map(portOption)}
+            </select>
+          )
+        }
         const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 }
         const badge = (n: string, on: boolean): React.CSSProperties => ({
           width: 16, height: 16, borderRadius: '50%', flexShrink: 0,

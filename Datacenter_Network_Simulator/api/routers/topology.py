@@ -312,7 +312,8 @@ def device_ports(device_id: str):
             c = next((c for c in conns if c["layer"] == "production"), conns[0])
             peer = f"{c['peer']} - {c['peer_iface']}" if c["peer_iface"] else c["peer"]
         ports.append({"iface": i, "name": itf.name, "used": bool(conns),
-                      "peer": peer, "connections": conns})
+                      "peer": peer, "connections": conns,
+                      "role": getattr(itf, "role", "data")})
     return {"device_id": device_id, "name": dev.name,
             "interface_count": len(dev.interfaces),
             "free": sum(1 for p in ports if not p["used"]), "ports": ports}
@@ -336,6 +337,17 @@ def create_link(req: CreateLinkRequest):
             raise HTTPException(status_code=404, detail=f"{who} device not found")
         if not (0 <= iface < len(dev.interfaces)):
             raise HTTPException(status_code=422, detail=f"{who} port {iface} out of range")
+        # A dedicated mgmt port hangs off the management CPU, not the switching
+        # ASIC — it physically cannot carry production traffic, so no production
+        # link may terminate there. The reverse is NOT blocked: management over a
+        # data port is in-band mgmt, which is real, and is how the OOB switches and
+        # OOB firewalls/routers carry the mgmt plane by design.
+        itf = dev.interfaces[iface]
+        if req.layer == "production" and getattr(itf, "role", "data") == "mgmt":
+            raise HTTPException(
+                status_code=422,
+                detail=f"{who} port {itf.name} is a management port — "
+                       f"it cannot carry production traffic")
         # "Free" is judged by real edges (same source of truth the picker uses), not
         # the cached connected_to_device — so a data-uplinked port can't be double-
         # booked even if its cache points elsewhere.

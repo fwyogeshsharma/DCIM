@@ -108,6 +108,24 @@ class Vendor(str, Enum):
     NVENT            = "nVent"
 
 
+class InterfaceRole(str, Enum):
+    """What an interface is FOR, which is not the same as what it is wired to.
+
+    Real gear separates the two planes physically: front-panel switchports carry
+    production traffic, while out-of-band management terminates on a dedicated
+    port on a separate path (Nexus `mgmt0`, Arista `Management1`, Juniper `fxp0`,
+    PAN `management`, F5 `mgmt`) or, on a server, the BMC NIC (iDRAC / iLO / XCC /
+    IPMI). That separation is the point of OOB — the mgmt plane must survive a
+    data-plane outage — so the role is a property of the PORT, fixed at build
+    time, not something inferred from the links that happen to land on it.
+
+    An unroled port is DATA: that is what the generator emits from
+    interface_groups, and mgmt ports are added deliberately on top.
+    """
+    DATA = "data"
+    MGMT = "mgmt"
+
+
 class InterfaceType(str, Enum):
     FAST_ETHERNET    = "Fast Ethernet (100 Mbps)"
     GIGABIT_ETHERNET = "Gigabit Ethernet (1 Gbps)"
@@ -368,6 +386,13 @@ class Interface:
         f"{random.randint(0,255):02x}" for _ in range(6)))
     connected_to_device: Optional[str] = None
     connected_to_iface: Optional[int] = None
+    # Data or dedicated out-of-band mgmt port — see InterfaceRole. Last field so a
+    # topology written before roles existed still loads: the default fills in.
+    role: str = InterfaceRole.DATA.value
+
+    @property
+    def is_mgmt(self) -> bool:
+        return self.role == InterfaceRole.MGMT.value
 
     def to_dict(self) -> dict:
         return asdict(self)

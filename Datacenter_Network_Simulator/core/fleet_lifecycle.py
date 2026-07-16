@@ -38,7 +38,7 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
-from core.device_manager import Device, DeviceType, Vendor, Interface
+from core.device_manager import Device, DeviceType, Vendor, Interface, InterfaceRole
 from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
     RACK_POWER_BUDGET_W_DEFAULT,
@@ -2222,7 +2222,8 @@ class FleetLifecycleEngine:
         # console/BMC edge falls back onto a data port (the very collision the
         # curated topology was fixed for).
         cloned_ifaces = [Interface(index=itf.index, name=itf.name, speed=itf.speed,
-                                   oper_status=1)
+                                   oper_status=1,
+                                   role=getattr(itf, "role", InterfaceRole.DATA.value))
                          for itf in (getattr(tmpl, "interfaces", None) or [])]
         cloned_groups = [dict(g) for g in (getattr(tmpl, "interface_groups", None) or [])]
         try:
