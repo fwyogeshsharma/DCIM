@@ -247,14 +247,11 @@ class AppState:
                     self.bound_ips = list(bound_set | set(bound))
                 else:
                     log("not admin — skipping host IP bind (new SNMP IPs unreachable)")
-            # Reuse the port snmpsim is currently serving on.
-            port = 161
-            eps = self.snmpsim.get_active_endpoints()
-            if eps:
-                try:
-                    port = int(eps[0].rsplit(":", 1)[1])
-                except (ValueError, IndexError):
-                    pass
+            # Reuse the port snmpsim is currently serving on. Ask the controller
+            # rather than string-splitting an endpoint label: that list is empty
+            # whenever the sim is not ready, and the 161 fallback would silently
+            # move a running sim off the port the operator chose.
+            port = self.snmpsim.get_port() or 161
             if self.state_store:
                 self.state_store.disable_snmp_sync()
             log("Restarting SNMP simulator...")

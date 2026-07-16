@@ -121,7 +121,11 @@ class SNMPSimController:
         self._status_callback: Optional[Callable[[str], None]] = None
         self._ready_callback: Optional[Callable[[], None]] = None
         self._running = False
-        self._ready = False   # True once snmpsim is actually listening
+        self._ready = False   # snmpsim logged its "Listening at ..." line
+        self._port: Optional[int] = None   # port we told snmpsim to bind
+        # is_ready() is polled by the status endpoint; cache the OS socket lookup
+        # so a UI refreshing every second doesn't re-read /proc each time.
+        self._bound_cache: tuple = (0.0, False)   # (checked_at_monotonic, bound?)
         self._active_endpoints: List[str] = []
         self._job_handle = None   # Windows Job Object handle — kept open until stop()
         self._snmpsim_path: Optional[str] = None  # cached after first discovery
@@ -157,14 +161,105 @@ class SNMPSimController:
             return False
         return self._process.poll() is None
 
+    @staticmethod
+    def _udp_port_bound(port: int) -> Optional[bool]:
+        """Is anything actually listening on this UDP port? None = cannot tell.
+
+        Read-only: it asks the OS what is bound. It deliberately does NOT try to
+        bind the port itself — that would race snmpsim during startup and could
+        steal the port out from under it, turning a health check into an outage.
+        """
+        if sys.platform != "win32":
+            # /proc/net/udp columns: sl  local_address(HEX_IP:HEX_PORT)  rem_address ...
+            hexport = f"{port:04X}"
+            found = False
+            seen_any = False
+            for path in ("/proc/net/udp", "/proc/net/udp6"):
+                try:
+                    with open(path) as fh:
+                        next(fh, None)              # header row
+                        for line in fh:
+                            cols = line.split()
+                            if len(cols) < 2:
+                                continue
+                            seen_any = True
+                            if cols[1].rsplit(":", 1)[-1].upper() == hexport:
+                                found = True
+                                break
+                except OSError:
+                    continue
+                if found:
+                    break
+            return found if (found or seen_any) else None
+        try:
+            out = subprocess.run(
+                ["netstat", "-ano", "-p", "UDP"], capture_output=True, text=True,
+                timeout=5, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            ).stdout
+        except Exception:
+            return None
+        needle = f":{port}"
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].endswith(needle):
+                return True
+        return False
+
+    def _port_is_bound(self) -> bool:
+        import time as _time
+        if self._port is None:
+            return False
+        now = _time.monotonic()
+        checked_at, val = self._bound_cache
+        if now - checked_at < 2.0:
+            return val
+        got = self._udp_port_bound(self._port)
+        # None = the OS would not tell us (unreadable /proc, netstat missing). Fall
+        # back to snmpsim's own word rather than declaring a healthy sim dead.
+        val = self._ready if got is None else got
+        self._bound_cache = (now, val)
+        return val
+
     def is_ready(self) -> bool:
-        """True once SNMPSim has logged its 'Listening at UDP/IPv4 endpoint' line."""
-        return self._ready
+        """True only when snmpsim is ALIVE and its UDP port is actually bound.
+
+        The log line alone is not proof. It says snmpsim reached the point of
+        announcing a listener; it does not say the socket is still there, and it
+        is never re-evaluated. A responder that logged "Listening", then died or
+        never completed its bind, kept reporting ready=True with nothing on the
+        wire — so every device looked dead while the status panel said Running and
+        Ready, which sends you hunting through datasets instead of the socket.
+        """
+        if not self._running or self._process is None or self._process.poll() is not None:
+            return False
+        if not self._ready:
+            return False            # hasn't announced a listener yet
+        return self._port_is_bound()
 
     def get_pid(self) -> Optional[int]:
         return self._process.pid if self._process else None
 
+    def get_port(self) -> Optional[int]:
+        """The port snmpsim was started on, or None when stopped.
+
+        The authoritative answer to "which port are we serving?". Callers used to
+        recover this by string-splitting get_active_endpoints()[0], which breaks
+        the moment that list is empty — and silently falls back to 161, moving a
+        running sim off the operator's chosen port.
+        """
+        return self._port
+
     def get_active_endpoints(self) -> List[str]:
+        """The endpoints actually being served — empty unless we are ready.
+
+        This list is CONSTRUCTED at start (ip:port per device), so on its own it
+        only says what we intended to serve. It once reported 921 live endpoints
+        while snmpsim had no socket bound at all. Gating it on is_ready() keeps it
+        from advertising agents that answer nothing; use get_port() if you need the
+        configured port regardless of health.
+        """
+        if not self.is_ready():
+            return []
         return list(self._active_endpoints)
 
     # ------------------------------------------------------------------ #
@@ -328,6 +423,8 @@ class SNMPSimController:
             )
             self._running = True
             self._ready = False
+            self._port = port
+            self._bound_cache = (0.0, False)
             self._active_endpoints = [f"{ip}:{port}" for ip in device_ips]
             # Tie snmpsim's lifetime to ours: if we crash or are force-killed,
             # the OS will kill snmpsim too, releasing its .snmprec file handles.
@@ -394,6 +491,8 @@ class SNMPSimController:
         self._running = False
         self._ready = False
         self._process = None
+        self._port = None
+        self._bound_cache = (0.0, False)
         self._active_endpoints = []
         if self._job_handle:
             try:
