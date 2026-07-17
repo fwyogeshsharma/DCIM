@@ -175,6 +175,127 @@ def iface_name(vendor: Vendor, iface_type: InterfaceType, index: int) -> str:
     return f"eth{index}"
 
 
+# The dedicated baseboard-management-controller port each server vendor ships, by
+# its real product name. This is NOT cosmetic: the name is what _MGMT_PORT_NAMES
+# (fleet_lifecycle) matches to land a BMC edge on the right port, and what an
+# operator sees in the port picker. A server without one has no out-of-band path —
+# its Redfish/IPMI would have to ride the data plane, which defeats OOB.
+BMC_PORT_NAME = {
+    Vendor.DELL:          "iDRAC",
+    Vendor.HPE:           "iLO",
+    Vendor.LENOVO:        "XCC",
+    Vendor.SUPERMICRO:    "IPMI",
+    Vendor.IBM:           "IMM",
+    Vendor.CISCO_SYSTEMS: "CIMC",
+}
+MGMT_PORT_SPEED = 1_000_000_000   # BMC and switch/router mgmt NICs are 1G throughout
+
+
+# Facility / electrical / mechanical gear: EVERY port is management. This gear has no
+# data plane at all — its only Ethernet is the monitoring card (SNMP / Modbus / BACnet),
+# and nothing production ever lands there. So the role is a property of the TYPE, and
+# these devices need no extra mgmt port: the NIC they already have IS the mgmt NIC.
+#
+# Mirrors FACILITY_TYPES in tools/set_iface_roles.py, the one-shot that stamped the
+# curated topology, PLUS floor_pdu — that tool's set omits it only because the curated
+# topology contains no floor_pdu to stamp, and a floor PDU is RPP-class distribution
+# gear with a monitoring card exactly like the rpp beside it in this set.
+#
+# Type-driven, never name-driven: set_iface_roles.py matched names because a one-shot
+# migration over a fixed, inspected set of files can. At runtime that would drift —
+# vendor conventions differ and a renamed port would silently change role.
+FACILITY_MGMT_TYPES = frozenset({
+    DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.UPS, DeviceType.RPP,
+    DeviceType.ATS, DeviceType.MCC, DeviceType.MPP, DeviceType.SWITCHGEAR,
+    DeviceType.UTILITY_FEED, DeviceType.GENERATOR, DeviceType.ENERGY_MONITOR,
+    DeviceType.SENSOR, DeviceType.CRAH, DeviceType.CHILLER,
+    DeviceType.COOLING_TOWER, DeviceType.PUMP, DeviceType.VALVE, DeviceType.CDU,
+})
+
+
+# Facility gear that ships TWO network management interfaces, for a redundant network
+# path or to daisy-chain/cascade units on one drop: managed rack PDUs (Raritan PX3
+# ETH1/ETH2, ServerTech PRO2 Link, Vertiv Geist), UPS with dual NMC slots, ATS and
+# switchgear. Mirrors TARGET in tools/add_redundant_mgmt_port.py. Deliberately NOT
+# generator (genset controllers are single-Ethernet) and NOT mcc (mechanical, not
+# critical power) — those keep one.
+FACILITY_REDUNDANT_MGMT_TYPES = frozenset({
+    DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.UPS,
+    DeviceType.ATS, DeviceType.SWITCHGEAR,
+})
+
+
+def facility_mgmt_nic_count(device_type: "DeviceType") -> int:
+    """How many monitoring NICs this facility device physically has: 2 for gear with a
+    redundant/cascade NMC, else 1.
+
+    The TYPE decides this, not the model registry — a registry entry describes a data
+    fit-out, and this gear has no data plane to describe. It is also why the
+    interface_count fallback must not apply here: a caller-supplied 4 would give a CRAH
+    four Ethernet ports when it has one BACnet/Modbus card."""
+    return 2 if device_type in FACILITY_REDUNDANT_MGMT_TYPES else 1
+
+
+def mgmt_port_name(device_type: "DeviceType", vendor: "Vendor") -> Optional[str]:
+    """The dedicated out-of-band management port this device ships, or None when it
+    has none. Mirrors tools/add_network_mgmt_port.py's mgmt_name(), which stamped
+    the curated topology — the two must agree or a hand-added switch gets a port the
+    curated ones don't have.
+
+    Real network gear has a management Ethernet port separate from the numbered data
+    switchports (Nexus `mgmt0`, Arista `Management1`, Juniper `fxp0`, PAN
+    `management`, F5 `mgmt`); a server has its BMC NIC. That separation IS the point
+    of OOB — the management plane must survive a data-plane outage — so it is a
+    dedicated port, not a data port that happens to carry a console.
+
+    Deliberately None for OOB_SWITCH and facility gear:
+      * An OOB switch BUILDS the management plane. Its management-layer links are its
+        DATA plane (uplinks to the OOB cores, peer links, access ports to BMCs), not
+        consoles. Giving it a mgmt port would invent a console nothing plugs into and
+        would hide an access port from the picker.
+      * A PDU/CRAH/sensor has ONE network port and that port is already its
+        management NIC — it needs no second one.
+    """
+    if device_type == DeviceType.SERVER:
+        return BMC_PORT_NAME.get(vendor)
+    if device_type == DeviceType.FIREWALL:
+        return "management"               # PAN-OS names it by function, not vendor
+    if device_type == DeviceType.LOAD_BALANCER:
+        return "mgmt"                     # F5 TMOS
+    if device_type in (DeviceType.SWITCH, DeviceType.ROUTER):
+        if vendor == Vendor.ARISTA_NETWORKS:
+            return "Management1"
+        if vendor == Vendor.JUNIPER_NETWORKS:
+            return "fxp0"
+        return "mgmt0"                    # Cisco / Dell / generic switch + router
+    return None
+
+
+def model_interface_groups(device_type: "DeviceType", vendor: "Vendor",
+                           model_name: str) -> Optional[List[dict]]:
+    """The DATA-port fit-out of a real SKU, from the model registry, or None when
+    the model is unknown.
+
+    The SKU decides how many ports a box has and how fast they are — a caller-
+    supplied interface_count cannot know that, and guessing yields a device whose
+    ports contradict its own sysDescr. The BMC port is deliberately NOT here: the
+    registry describes the data NICs, and management is a separate plane added on
+    top by _generate_interfaces.
+
+    Imported lazily: core.device_models imports this module, so a module-level
+    import would be circular."""
+    if not model_name:
+        return None
+    try:
+        from core.device_models import DEVICE_MODELS
+    except Exception:
+        return None
+    for m in DEVICE_MODELS.get((device_type, vendor), []):
+        if m.name == model_name:
+            return [dict(g) for g in m.interface_groups]
+    return None
+
+
 VENDOR_SYSOID = {
     Vendor.CISCO_SYSTEMS:   "1.3.6.1.4.1.9.1.1",
     Vendor.JUNIPER_NETWORKS:"1.3.6.1.4.1.2636.1.1.1.2.1",
@@ -881,11 +1002,31 @@ class Device:
                 normalized.append({"iface_type": itype, "count": int(g["count"])})
             self.interface_groups = normalized
             self.interface_count = sum(g["count"] for g in self.interface_groups)
+        elif self.device_type in FACILITY_MGMT_TYPES:
+            # Facility gear's port count is a fact about the TYPE, not the SKU: it has
+            # no data plane, just 1 monitoring NIC (or 2 where a redundant NMC ships).
+            # This wins over both the registry and interface_count — those describe a
+            # data fit-out this gear does not have, and the default count of 4 would
+            # give a CRAH four Ethernets when it has one.
+            self.interface_groups = [{"iface_type": InterfaceType.GIGABIT_ETHERNET,
+                                      "count": facility_mgmt_nic_count(self.device_type)}]
+            self.interface_count = self.interface_groups[0]["count"]
         else:
-            # Auto-generate a single group from interface_count (e.g. topology scripts)
-            self.interface_groups = [
-                {"iface_type": InterfaceType.GIGABIT_ETHERNET, "count": self.interface_count}
-            ]
+            # No explicit groups: let the SKU speak before falling back to a count.
+            # A model in the registry knows its real port fit-out (an R750 has 2 ×
+            # 25G, not 4 × 1G), so a caller-supplied interface_count is a worse
+            # answer than the catalog whenever the catalog has one — and it is what
+            # the Add-Device dialog already SHOWS, so display and reality agree.
+            groups = model_interface_groups(self.device_type, self.vendor, self.model_name)
+            if groups:
+                self.interface_groups = groups
+                self.interface_count = sum(g["count"] for g in groups)
+            else:
+                # Unknown SKU (or none): a flat group from interface_count, which is
+                # what topology scripts and hand-built devices rely on.
+                self.interface_groups = [
+                    {"iface_type": InterfaceType.GIGABIT_ETHERNET, "count": self.interface_count}
+                ]
         # Community string always mirrors the IP address (default "public" is a placeholder)
         if self.snmp_community == "public":
             self.snmp_community = self.ip_address
@@ -952,6 +1093,12 @@ class Device:
     def _generate_interfaces(self):
         self.interfaces = []
         idx = 1
+        # On facility gear the ports FROM the groups are already the mgmt NICs — a
+        # PDU/CRAH/chiller has no data plane, so its monitoring card is all there is.
+        # Everything else generates data ports and gets its dedicated mgmt port below.
+        group_role = (InterfaceRole.MGMT.value
+                      if self.device_type in FACILITY_MGMT_TYPES
+                      else InterfaceRole.DATA.value)
         for group in self.interface_groups:
             itype = group["iface_type"]
             speed = IFACE_SPEED.get(itype, 1_000_000_000)
@@ -960,8 +1107,24 @@ class Device:
                     index=idx,
                     name=iface_name(self.vendor, itype, i),
                     speed=speed,
+                    role=group_role,
                 ))
                 idx += 1
+        # A server's lights-out port (iDRAC / iLO / …) and a switch/router's mgmt
+        # port (mgmt0 / Management1 / fxp0) are ADDITIONAL dedicated interfaces on a
+        # separate path from the data plane — that is what the OOB switch's access
+        # ports terminate, and what still answers when the data plane is down. Added
+        # here rather than carried in interface_groups because they are not part of
+        # the SKU's data fit-out; interface_count is resynced to include them so a
+        # device's count matches the ports it actually has. See mgmt_port_name for
+        # why OOB switches and facility gear get none.
+        mgmt = mgmt_port_name(self.device_type, self.vendor)
+        if mgmt:
+            self.interfaces.append(Interface(
+                index=idx, name=mgmt, speed=MGMT_PORT_SPEED,
+                role=InterfaceRole.MGMT.value,
+            ))
+        self.interface_count = len(self.interfaces)
 
     @property
     def sys_descr(self) -> str:
@@ -1177,6 +1340,14 @@ class Device:
         data = {k: v for k, v in data.items() if k in valid}
         device = cls(**data)
         device.interfaces = [Interface(**i) for i in interfaces_data]
+        # A loaded device's port LIST is the truth; the count must follow it, not the
+        # throwaway list __post_init__ generated and this line just replaced. Curated
+        # servers already carry their BMC inside interface_groups, so that generation
+        # appends a second one and lands on a count the device does not have (an
+        # R7525 reading 4 ports while holding 3). Resync only when the file actually
+        # supplied ports — an empty list means "generation stands".
+        if interfaces_data:
+            device.interface_count = len(device.interfaces)
         # Absent (pre-outlet topology) => let __post_init__'s generation stand.
         # Present-but-empty => honour it; the SKU legitimately has none.
         # Unknown keys are dropped rather than raising: a topology written before a

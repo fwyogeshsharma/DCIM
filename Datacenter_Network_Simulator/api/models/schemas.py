@@ -341,6 +341,20 @@ class EV2DeviceSnapshot(BaseModel):
     circuit_list:      List[EV2CircuitMetrics] = []
 
 
+class NewDeviceLink(BaseModel):
+    """One cable to create in the same call that creates the device.
+
+    Only the FAR end is named. The near end (the new device's own NIC / BMC port /
+    PSU) is picked by the server exactly as fleet churn picks it — the device does
+    not exist while the operator is filling the form, so the UI has no port list to
+    point at. See AddDeviceRequest.links.
+    """
+    layer: str = Field("production", description="production | management | power")
+    dst_id: str = Field(..., description="Far-end device id (leaf / OOB switch / rack PDU)")
+    dst_iface: Optional[int] = Field(None, description="Far-end port index — Ethernet layers only")
+    outlet: Optional[int] = Field(None, description="Far-end PDU outlet number (1-based) — power layer only")
+
+
 class AddDeviceRequest(BaseModel):
     name: str
     device_type: str = Field(..., description="router | switch | server | firewall | load_balancer | ups | pdu | floor_pdu | rpp | oob_switch | sensor | generator")
@@ -362,6 +376,12 @@ class AddDeviceRequest(BaseModel):
     rack_row: int = 0
     rack_num: int = 0
     rack_unit: int = 0
+    # Cabling, created atomically with the device: either every link lands or the
+    # device itself is rolled back. A device added with no cables is a dead node —
+    # it answers SNMP but carries no traffic, draws no metered power and never
+    # appears on an upstream feed — so the UI requires the set that its type needs
+    # (GET /devices/link-candidates says which).
+    links: List[NewDeviceLink] = []
 
 
 class EditDeviceRequest(BaseModel):

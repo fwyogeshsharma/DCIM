@@ -13,6 +13,7 @@ from api.models.schemas import (
     DevicesResponse,
     AddDeviceRequest,
     EditDeviceRequest,
+    NewDeviceLink,
     OkResponse,
 )
 
@@ -307,6 +308,285 @@ def rack_occupancy(datacenter: str, room: str = ""):
             "all_full": bool(out) and all(r["full"] for r in out)}
 
 
+# ── Link candidates for the Add-Device LINKS section ─────────────────────────
+#
+# A device that is racked but not cabled is a dead node: it answers SNMP, but it
+# carries no traffic, draws no metered power and never shows on an upstream feed.
+# Fleet churn never creates one (FleetLifecycleEngine._add_server wires the ToR
+# uplink, the BMC and both cords in the same breath); the manual Add Device path
+# used to. These endpoints let the dialog demand the same cabling, and they answer
+# with the FAR ends only — the near end (this device's NIC / BMC port / PSU) is the
+# server's to choose, because the device does not exist yet.
+
+# What each device type must be cabled to before it is a real, live device. Only
+# `server` is populated for now; a type absent here keeps the old uncabled add.
+# Adding a type here is what turns its LINKS section on, so keep the requirement
+# list honest to how that type is really cabled — not to what is convenient.
+_LINK_REQUIREMENTS = {
+    "server": ("data", "mgmt", "power"),
+}
+
+_OOB_ROLE = "OOB"     # IT access OOB. NOT OOBM (BMS plane) and NOT OOBC (cores).
+
+# The named ports a BMC/console edge belongs on — mirrors fleet_lifecycle's
+# _MGMT_PORT_NAMES, imported rather than copied so the two cannot drift.
+def _mgmt_iface(dev):
+    """List-index of *dev*'s dedicated management/BMC port (iDRAC / iLO / mgmt0), or
+    None when it has none — then add_link auto-picks the next free port, which is
+    what fleet does (_mgmt_port_iface)."""
+    from core.fleet_lifecycle import _MGMT_PORT_NAMES
+    for i, itf in enumerate(getattr(dev, "interfaces", None) or []):
+        if (getattr(itf, "name", "") or "").strip().lower() in _MGMT_PORT_NAMES:
+            return i
+    return None
+
+
+def _first_free_iface(dev, role: str, taken: set):
+    """First port of *role* on a BRAND-NEW device not already claimed earlier in this
+    same batch. *taken* is what previous links in the batch consumed — without it a
+    second data link would land on NIC 0 again (every port still reads free: nothing
+    is wired yet, so there are no edges to read)."""
+    mgmt_i = _mgmt_iface(dev)
+    for i, itf in enumerate(getattr(dev, "interfaces", None) or []):
+        if i in taken:
+            continue
+        if (getattr(itf, "role", "data") or "data") != role:
+            continue
+        # A production link may not land on the dedicated mgmt port: that port hangs
+        # off the management CPU, not the NIC/ASIC, and physically cannot carry it.
+        if role == "data" and i == mgmt_i:
+            continue
+        return i
+    return None
+
+
+def _name_role(dev) -> str:
+    """The leading name segment's letters — the functional role the runtime already
+    parses (SP=spine, LF=leaf, PDUA/PDUB=A/B pair, OOB/OOBM/OOBC). See
+    core/fleet_lifecycle.py's _hall_oobs / _is_spine, which read the same signal."""
+    return "".join(c for c in (dev.name or "").split("-", 1)[0] if c.isalpha()).upper()
+
+
+def _room_key(dev) -> tuple:
+    return ((getattr(dev, "datacenter", "") or ""), str(getattr(dev, "floor", "") or ""),
+            (getattr(dev, "room", "") or ""))
+
+
+def _rack_of(dev) -> tuple:
+    return ((getattr(dev, "rack_row", 0) or 0), (getattr(dev, "rack_num", 0) or 0))
+
+
+def _probe_device(device_type: str, vendor: str, model_name: str, interface_count: int):
+    """An unregistered Device built from the form's type/vendor/model, purely to ask
+    it what ports and PSUs it WOULD have.
+
+    Built rather than re-derived: Device.__post_init__ already fills the nameplate,
+    the interface layout and the PSU inlet (C14 vs C20 is decided by the draw, in
+    _generate_psus). Re-implementing that rule here would be a second source of
+    truth that goes stale the first time the real one changes."""
+    from core.device_manager import Device, DeviceType, Vendor
+    try:
+        dt = DeviceType(device_type.lower())
+    except ValueError:
+        return None
+    try:
+        vd = Vendor(vendor)
+    except ValueError:
+        from core.device_manager import Vendor as _V
+        vd = next(iter(_V))
+    try:
+        return Device(name="_probe", device_type=dt, vendor=vd, ip_address="0.0.0.0",
+                      model_name=model_name or "", interface_count=interface_count)
+    except Exception:
+        return None
+
+
+def _free_ports(s, dev, lo: int = 0, hi: int | None = None, role: str = "data") -> list:
+    """Free ports on *dev* within the [lo, hi) index window, as picker options.
+
+    Free is judged from the EDGES (_port_terminations), never from the interface's
+    cached connected_to_device — that field holds only the last write and reads as
+    occupied long after a link is gone."""
+    from api.routers.topology import _port_terminations
+    term = _port_terminations(s, dev.id)
+    out = []
+    ifaces = getattr(dev, "interfaces", None) or []
+    hi = len(ifaces) if hi is None else min(hi, len(ifaces))
+    for i in range(lo, hi):
+        itf = ifaces[i]
+        if term.get(i):
+            continue
+        if role and (getattr(itf, "role", "data") or "data") != role:
+            continue
+        out.append({"value": i, "label": itf.name})
+    return out
+
+
+def _leaf_slot(s, devs, rk: tuple, rack: tuple, near_label: str) -> dict:
+    """The data-uplink slot: leaf switches in this hall with a free SERVER-FACING
+    port, this rack's ToR first.
+
+    Only downlink ports are offered. A leaf's high-speed uplink ports face the
+    spines (and two are held for the MLAG peer-link) — hanging a server off one is
+    not a thing you can do in a real fabric, so they are not in the list. The split
+    comes from core.rack_capacity.leaf_port_roles, the same function the fleet's
+    per-rack server cap is measured with."""
+    from core.device_manager import DeviceType
+    from core.rack_capacity import leaf_port_roles
+    cands = []
+    for d in devs:
+        if d.device_type != DeviceType.SWITCH or _room_key(d) != rk:
+            continue
+        if _name_role(d).startswith("SP"):
+            continue                       # spine — leaf-facing, never server-facing
+        downlink, _uplink = leaf_port_roles(getattr(d, "model_name", "") or "",
+                                            getattr(d, "interface_count", 54) or 54)
+        ports = _free_ports(s, d, 0, downlink, role="data")
+        if not ports:
+            continue                       # leaf downlinks exhausted
+        same_rack = _rack_of(d) == rack
+        cands.append({
+            "id": d.id, "name": d.name, "same_rack": same_rack,
+            "detail": f"R{d.rack_row or 0}-{str(d.rack_num or 0).zfill(2)}"
+                      f" · {len(ports)}/{downlink} downlinks free"
+                      + (" · this rack" if same_rack else ""),
+            "ports": ports,
+        })
+    cands.sort(key=lambda c: (not c["same_rack"], c["name"]))
+    return {"key": "data0", "label": "Leaf switch", "port_label": "Downlink port",
+            "near_end": near_label, "candidates": cands}
+
+
+def _oob_slot(s, devs, rk: tuple, near_label: str) -> dict:
+    """The management slot: this hall's IT access OOB switches with a free port.
+
+    Filtered to name role exactly 'OOB': OOBM is the BMS/facility plane (BACnet
+    gear) and OOBC are the OOB cores that the access switches uplink INTO — a
+    server BMC belongs on neither. Same rule as _hall_oobs in fleet_lifecycle."""
+    from core.device_manager import DeviceType
+    cands = []
+    for d in devs:
+        if d.device_type != DeviceType.OOB_SWITCH or _room_key(d) != rk:
+            continue
+        if _name_role(d) != _OOB_ROLE:
+            continue
+        # OOB-plane switches carry the mgmt plane on DATA-role ports by design —
+        # their own 'mgmt' port is the switch's console, not an access port.
+        ports = _free_ports(s, d, role="data")
+        if not ports:
+            continue
+        cands.append({"id": d.id, "name": d.name, "same_rack": False,
+                      "detail": f"{len(ports)} ports free",
+                      "ports": ports})
+    cands.sort(key=lambda c: c["name"])
+    return {"key": "mgmt0", "label": "OOB switch", "port_label": "Access port",
+            "near_end": near_label, "candidates": cands}
+
+
+def _pdu_slots(s, devs, rk: tuple, rack: tuple, probe) -> list:
+    """One slot per PSU — a real server is dual-corded, PSU1 to the A-side rack PDU
+    and PSU2 to the B side. That is the whole point of the 2N feed: a single cord
+    makes the A/B pair decorative, and the rack's redundancy claim false.
+
+    Only PDUs in the SAME rack are offered (a cord does not leave the cabinet), and
+    only outlets matching this load's inlet — a C20 inlet needs a C19 receptacle,
+    which is exactly what TopologyEngine.add_link enforces on the way in."""
+    from core.device_manager import DeviceType, feed_side
+    psus = getattr(probe, "psus", None) or []
+    if not psus:
+        return []                          # no PSU = no cord (a DPX2 sensor, a PDU)
+    want = "C19" if psus[0].inlet == "C20" else "C13"
+    by_side: dict = {}
+    for d in devs:
+        if d.device_type not in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            continue
+        if _room_key(d) != rk or _rack_of(d) != rack:
+            continue
+        used, _ = s.topology._used_power_terminations(d.id)
+        outs = [{"value": o.index, "label": f"Outlet {o.index} ({o.type})"}
+                for o in (getattr(d, "outlets", None) or [])
+                if o.type == want and o.index not in used]
+        if not outs:
+            continue                       # no receptacle this cord can go in
+        cand = {"id": d.id, "name": d.name, "same_rack": True,
+                "detail": f"{len(outs)} × {want} free", "ports": outs}
+        by_side.setdefault(feed_side(d.name) or "?", []).append(cand)
+    slots = []
+    for i, p in enumerate(psus):
+        side = "A" if i == 0 else ("B" if i == 1 else "?")
+        # Side comes from the PDUA/PDUB name code. When a rack's PDUs carry no side
+        # (a hand-named pair), offer them all rather than silently showing nothing —
+        # the operator can still cord correctly; we just cannot label the sides.
+        cands = by_side.get(side) or [c for cs in by_side.values() for c in cs]
+        slots.append({"key": f"pwr{side}", "label": f"Feed {side} PDU",
+                      "port_label": "Outlet", "near_end": p.name,
+                      "candidates": sorted(cands, key=lambda c: c["name"])})
+    return slots
+
+
+@router.get("/link-candidates")
+def link_candidates(device_type: str, datacenter: str, room: str, floor: str = "",
+                    rack_row: int = 0, rack_num: int = 0,
+                    vendor: str = "Cisco Systems", model_name: str = "",
+                    interface_count: int = 4):
+    """The far ends a NEW device of this type, in this rack, must be cabled to.
+
+    Answers the Add-Device LINKS section: one group per layer, each with slots, each
+    slot with the devices that can take the cable and the ports/outlets on them that
+    are actually free. The dialog only ever offers what is physically pluggable, so
+    the operator cannot compose a link that add_link would then refuse.
+
+    A type with no entry in _LINK_REQUIREMENTS answers supported=false and the
+    dialog leaves its LINKS section out entirely (old uncabled behaviour)."""
+    s = _state()
+    if s.device_manager is None or s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    dt = (device_type or "").lower()
+    need = _LINK_REQUIREMENTS.get(dt)
+    if not need:
+        return {"device_type": dt, "supported": False, "groups": []}
+    probe = _probe_device(dt, vendor, model_name, interface_count)
+    if probe is None:
+        raise HTTPException(status_code=400, detail=f"Invalid device_type '{device_type}'")
+
+    rk = (datacenter or "", str(floor or ""), room or "")
+    rack = (rack_row or 0, rack_num or 0)
+    devs = s.device_manager.get_all_devices()
+
+    # Near-end labels: what the cable lands on at THIS device. Mirrors the picks
+    # _wire_new_device makes at create time — including the mgmt fallback to a data
+    # port (in-band) when the model carries no BMC port — so the dialog names the
+    # port the cable will really land on rather than a plausible-looking guess.
+    ifs = getattr(probe, "interfaces", None) or []
+    def _label(i, fallback):
+        return ifs[i].name if i is not None and i < len(ifs) else fallback
+    data_if = _first_free_iface(probe, "data", set())
+    mgmt_if = _mgmt_iface(probe)
+    if mgmt_if is None:
+        mgmt_if = _first_free_iface(probe, "data", {data_if} if data_if is not None else set())
+    data_label = _label(data_if, "NIC 0")
+    mgmt_label = _label(mgmt_if, "first free port")
+
+    groups = []
+    if "data" in need:
+        groups.append({"key": "data", "layer": "production", "label": "Data uplink",
+                       "help": f"{data_label} → the rack leaf's server-facing downlink",
+                       "slots": [_leaf_slot(s, devs, rk, rack, data_label)]})
+    if "mgmt" in need:
+        groups.append({"key": "mgmt", "layer": "management", "label": "Management (BMC)",
+                       "help": f"{mgmt_label} → a hall OOB access port — this is what "
+                               f"answers Redfish/IPMI out-of-band",
+                       "slots": [_oob_slot(s, devs, rk, mgmt_label)]})
+    if "power" in need:
+        slots = _pdu_slots(s, devs, rk, rack, probe)
+        if slots:
+            groups.append({"key": "power", "layer": "power", "label": "Power feeds",
+                           "help": "Dual-corded: one cord per PSU, to opposite sides "
+                                   "of the rack's A/B pair",
+                           "slots": slots})
+    return {"device_type": dt, "supported": True, "groups": groups}
+
+
 @router.get("/{device_id}", response_model=DeviceInfo)
 async def get_device(device_id: str):
     """Get a specific device by ID."""
@@ -504,9 +784,100 @@ def set_device_fault(device_id: str, body: FaultRequest):
     return OkResponse(message=f"Injecting {spec['label']} on {dev.name}")
 
 
+def _wire_new_device(s, device, links: list, made: list) -> list:
+    """Cable a just-created device, appending each (dst_id, layer) to *made*.
+
+    *made* is the CALLER's list, not a return value: it has to stay readable when
+    this raises half-way through, or the rollback would not know which cords are
+    already in and would leave them dangling on the far end.
+
+    Near ends are chosen here, not by the caller: while the operator was filling the
+    form the device did not exist, so the dialog had no port list to point at. The
+    picks mirror FleetLifecycleEngine._add_server exactly — data on the first free
+    NIC, management on the dedicated BMC port, power left to add_link so cords land
+    on PSU1 then PSU2 in the order the links arrive (hence A before B).
+
+    Raises HTTPException on the first cable that will not go in. add_link returns a
+    bare False for every refusal, so the reason is reconstructed here — "PDU has no
+    free C13" is actionable; "link failed" is not.
+    """
+    taken: set = set()
+    for ln in links:
+        layer = (ln.layer or "production").lower()
+        dst = s.device_manager.get_device(ln.dst_id)
+        if dst is None:
+            raise HTTPException(status_code=404,
+                                detail=f"Link target '{ln.dst_id}' not found")
+        src_iface = None
+        if layer in ("production", "management"):
+            if layer == "management":
+                # The BMC/iDRAC port when the model has one; otherwise fall back to a
+                # free data port, which is in-band management — real, and how the OOB
+                # switches themselves carry the plane.
+                mgmt_i = _mgmt_iface(device)
+                src_iface = (mgmt_i if mgmt_i is not None and mgmt_i not in taken
+                             else _first_free_iface(device, "data", taken))
+            else:
+                src_iface = _first_free_iface(device, "data", taken)
+            if src_iface is None:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"{device.name} has no free port left for the {layer} link "
+                           f"to {dst.name}")
+            taken.add(src_iface)
+        ok = s.topology.add_link(device.id, dst.id, src_iface=src_iface,
+                                 dst_iface=ln.dst_iface, layer=layer,
+                                 outlet=ln.outlet)
+        if not ok:
+            raise HTTPException(
+                status_code=409,
+                detail=(f"Could not cable {device.name} → {dst.name} on the {layer} "
+                        f"layer — the port/outlet was taken, or {dst.name} has no free "
+                        f"receptacle for this PSU's inlet. Reopen Add Device to "
+                        f"re-read what is free."))
+        made.append((dst.id, layer))
+    # Record the A/B feed ids the same way fleet does: the live cascade runs off the
+    # power EDGES, but the DCIM/Redfish power-source view and the redundancy split
+    # read these fields.
+    pdus = [d for d, layer in made if layer == "power"]
+    upd = {}
+    if len(pdus) >= 1:
+        upd["power_source_a"] = pdus[0]
+    if len(pdus) >= 2:
+        upd["power_source_b"] = pdus[1]
+    if upd:
+        s.device_manager.update_device(device.id, **upd)
+    return made
+
+
+def _rollback_new_device(s, device, made: list) -> None:
+    """Undo a half-cabled add so a failed link never leaves an orphan behind.
+
+    Links are removed explicitly BEFORE the node: remove_device drops the edges with
+    it, but only remove_link clears the far end's cached connected_to_device — left
+    behind, a leaf port would read as occupied by a device that no longer exists and
+    the port picker would never offer it again."""
+    for dst_id, layer in made:
+        try:
+            s.topology.remove_link(device.id, dst_id, layer=layer)
+        except Exception:
+            pass
+    try:
+        s.device_manager.remove_device(device.id)
+        s.topology.remove_device(device.id)
+    except Exception:
+        pass
+    if s.ip_manager:
+        try:
+            s.ip_manager.release(device.ip_address)
+        except Exception:
+            pass
+    _invalidate_power(s)
+
+
 @router.post("", response_model=DeviceInfo)
 def add_device(req: AddDeviceRequest):
-    """Add a new device to the topology."""
+    """Add a new device to the topology, with its cabling, atomically."""
     s = _state()
     if s.device_manager is None or s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
@@ -610,6 +981,20 @@ def add_device(req: AddDeviceRequest):
         s.topology.add_device(device, x=px, y=py)
         if s.ip_manager:
             s.ip_manager.reserve(req.ip_address)
+        # Cable it before it goes live. Atomic with the add: any cable that will not
+        # physically go in rolls the whole device back, so a failed link can never
+        # leave a racked-but-dead node behind — the exact state the LINKS section
+        # exists to prevent. Rollback runs before commission, so a rolled-back device
+        # was never on the protocol sims either.
+        made: list = []
+        try:
+            _wire_new_device(s, device, req.links or [], made)
+        except HTTPException:
+            _rollback_new_device(s, device, made)
+            raise
+        except Exception as _e:
+            _rollback_new_device(s, device, made)
+            raise HTTPException(status_code=500, detail=f"Cabling {device.name}: {_e}")
         _invalidate_power(s)
         # Hot-commission onto the running protocol sims (SNMP/gNMI/Redfish/BACnet)
         # via the same path fleet churn uses, so a hand-added device answers
@@ -623,6 +1008,11 @@ def add_device(req: AddDeviceRequest):
             _clog.warning("[add_device] commission %s failed: %s", device.name, _e)
         s.notify_ui("sync_devices")
         return _device_to_info(device)
+    except HTTPException:
+        # A cabling refusal already carries its real status (404/409) and the reason
+        # an operator needs. Re-raise it untouched: the blanket handler below would
+        # otherwise relabel "PDU has no free C13 outlet" as an opaque 500.
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

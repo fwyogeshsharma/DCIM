@@ -167,6 +167,11 @@ export const api = {
   addDevice:  (d: unknown)            => post('/devices', d),
   rackOccupancy: (datacenter: string) =>
     get(`/devices/rack-occupancy?datacenter=${encodeURIComponent(datacenter)}`),
+  // The far ends a NEW device of this type/model, in this rack, must be cabled to
+  // — drives the Add-Device LINKS section. Only free ports/outlets come back.
+  linkCandidates: (q: Record<string, string | number>) =>
+    get(`/devices/link-candidates?${new URLSearchParams(
+      Object.entries(q).map(([k, v]) => [k, String(v)])).toString()}`),
   provisionRack: (datacenter: string, room?: string) =>
     post('/fleet/provision-rack', room ? { datacenter, room } : { datacenter }),
   provisionHall: (datacenter: string) => post('/fleet/provision-hall', { datacenter }),

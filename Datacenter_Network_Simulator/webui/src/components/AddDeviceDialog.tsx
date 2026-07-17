@@ -128,6 +128,52 @@ const MODEL_PORTS: Record<string, string[]> = {
 
 const PROD_IP_TYPES = new Set(['server', 'switch', 'router', 'firewall', 'load_balancer'])
 
+// The dedicated lights-out port each server vendor ships, on top of the data NICs in
+// MODEL_PORTS. Mirrors BMC_PORT_NAME in core/device_manager.py — the server is the
+// authority and actually builds the port; this only labels it, so the Port Config
+// display matches the device that gets created instead of under-counting by one.
+const BMC_PORT: Record<string, string> = {
+  'Dell Technologies':          'iDRAC',
+  'Hewlett Packard Enterprise': 'iLO',
+  'Lenovo':                     'XCC',
+  'Supermicro':                 'IPMI',
+  'IBM':                        'IMM',
+  'Cisco Systems':              'CIMC',
+}
+
+// Facility / electrical / mechanical gear: no data plane at all, so every port is a
+// monitoring NIC (SNMP/Modbus/BACnet) and the TYPE decides how many — 2 where a
+// redundant/cascade NMC ships (managed PDU, dual-NMC UPS, ATS, switchgear), else 1.
+// Mirrors FACILITY_MGMT_TYPES / FACILITY_REDUNDANT_MGMT_TYPES in core/device_manager.py.
+const FACILITY_MGMT_TYPES = new Set([
+  'pdu', 'floor_pdu', 'ups', 'rpp', 'ats', 'mcc', 'mpp', 'switchgear',
+  'utility_feed', 'generator', 'energy_monitor', 'sensor', 'crah', 'chiller',
+  'cooling_tower', 'pump', 'valve', 'cdu',
+])
+const FACILITY_REDUNDANT_MGMT_TYPES = new Set(['pdu', 'floor_pdu', 'ups', 'ats', 'switchgear'])
+
+// The dedicated OOB management port a device ships, or '' for none. Mirrors
+// mgmt_port_name() in core/device_manager.py. OOB switches and facility gear get
+// none on purpose — an OOB switch's management links ARE its data plane, and a
+// PDU/sensor's NICs are already its management NICs.
+function mgmtPortName(deviceType: string, vendor: string): string {
+  if (deviceType === 'server')        return BMC_PORT[vendor] || ''
+  if (deviceType === 'firewall')      return 'management'
+  if (deviceType === 'load_balancer') return 'mgmt'
+  if (deviceType === 'switch' || deviceType === 'router') {
+    if (vendor === 'Arista Networks')  return 'Management1'
+    if (vendor === 'Juniper Networks') return 'fxp0'
+    return 'mgmt0'
+  }
+  return ''
+}
+
+// Types the LINKS section covers, for the "pick a rack first" hint shown BEFORE the
+// candidates call can run. The server is the authority (_LINK_REQUIREMENTS in
+// api/routers/devices.py) and its supported=false answer is what actually hides the
+// section — this only decides whether to promise it before we have asked.
+const _LINKS_TYPES = new Set(['server'])
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function defaultVendorFor(type: string): string {
@@ -159,6 +205,27 @@ function vendorsFor(type: string): string[] {
 
 function modelsFor(type: string, vendor: string): string[] {
   return MODELS[`${type}:${vendor}`] || []
+}
+
+// MODEL_PORTS lists a SKU's data NICs and ends with a "Total:" line. A server, switch,
+// router, firewall or LB also gets a dedicated management port built for it, so splice
+// that in and re-total — otherwise the dialog promises 48 ports and the device arrives
+// with 49.
+function portConfigLines(f: Form): string[] {
+  const lines = MODEL_PORTS[f.model_name] || []
+  // Facility gear ignores the SKU's port line entirely — it has no data plane, and
+  // MODEL_PORTS under-counts the redundant-NMC units at 1 port when they ship 2.
+  if (FACILITY_MGMT_TYPES.has(f.device_type)) {
+    const n = FACILITY_REDUNDANT_MGMT_TYPES.has(f.device_type) ? 2 : 1
+    return [`${n} x 1GbE monitoring NIC${n > 1 ? 's (redundant)' : ''}`,
+            `Total: ${n} port${n > 1 ? 's' : ''}`]
+  }
+  const mgmt = mgmtPortName(f.device_type, f.vendor)
+  if (!mgmt) return lines
+  const data = lines.filter(l => !l.startsWith('Total:'))
+  const total = data.reduce((n, l) => n + (parseInt(l) || 0), 0) + 1
+  const kind = f.device_type === 'server' ? 'BMC' : 'OOB mgmt'
+  return [...data, `1 x 1GbE ${mgmt} (${kind})`, `Total: ${total} ports`]
 }
 
 function buildSysLocation(f: Form): string {
@@ -197,6 +264,23 @@ interface Form {
   rack_unit: number
   metrics_enabled: boolean
 }
+
+// ── Link candidates (LINKS section) ──────────────────────────────────────────
+// Shape of GET /devices/link-candidates. Each group is a layer, each slot is one
+// cable to create, each candidate a far-end device with the ports/outlets that are
+// actually free on it. The near end (this device's NIC / BMC port / PSU) is never
+// picked here — the device does not exist yet, so the server chooses it, the same
+// way fleet churn does.
+type LinkPort  = { value: number; label: string }
+type LinkCand  = { id: string; name: string; detail: string; ports: LinkPort[] }
+type LinkSlot  = { key: string; label: string; port_label: string
+                   near_end: string; candidates: LinkCand[] }
+type LinkGroup = { key: string; layer: string; label: string; help: string
+                   slots: LinkSlot[] }
+type LinkCands = { device_type: string; supported: boolean; groups: LinkGroup[] }
+
+// slot key -> chosen far end. Both halves must be set for the slot to count.
+type LinkPick  = { dst_id: string; port: number | null }
 
 interface Props { onClose: () => void }
 
@@ -257,6 +341,13 @@ export default function AddDeviceDialog({ onClose }: Props) {
   })
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState('')
+
+  // ── Links ────────────────────────────────────────────────────────────────
+  // Fetched once the rack is known: which leaf/OOB/PDU a device of this type in
+  // THIS rack can be cabled to, and what is free on each.
+  const [cands,    setCands]    = useState<LinkCands | null>(null)
+  const [linkBusy, setLinkBusy] = useState(false)
+  const [picks,    setPicks]    = useState<Record<string, LinkPick>>({})
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) =>
     setForm(f => ({ ...f, [k]: v }))
@@ -323,6 +414,63 @@ export default function AddDeviceDialog({ onClose }: Props) {
     return { ...f, rack_num: num, rack_unit: rk?.next_free ?? 0 }   // auto-fill next free U
   })
 
+  // Fetch the cabling candidates once the rack is fully known — a leaf/PDU choice
+  // is rack-specific (a cord never leaves the cabinet), so there is nothing to ask
+  // for until row+rack are picked. Re-fetches on type/model change: what a device
+  // must be cabled to, and which outlet its PSU inlet fits, both follow the model.
+  const rackReady = !!(form.datacenter && form.room && form.rack_row > 0 && form.rack_num > 0)
+  useEffect(() => {
+    if (!rackReady) { setCands(null); setPicks({}); return }
+    let live = true
+    setLinkBusy(true)
+    api.linkCandidates({
+      device_type: form.device_type, vendor: form.vendor, model_name: form.model_name,
+      datacenter: form.datacenter, room: form.room, floor: form.floor,
+      rack_row: form.rack_row, rack_num: form.rack_num,
+    })
+      .then((r: unknown) => { if (live) { setCands(r as LinkCands); setPicks({}) } })
+      .catch(() => { if (live) { setCands(null); setPicks({}) } })
+      .finally(() => { if (live) setLinkBusy(false) })
+    return () => { live = false }
+  }, [rackReady, form.device_type, form.vendor, form.model_name,
+      form.datacenter, form.room, form.floor, form.rack_row, form.rack_num])
+
+  const linkSlots = useMemo(
+    () => (cands?.supported ? cands.groups.flatMap(g => g.slots) : []),
+    [cands])
+  // A slot counts only with BOTH halves chosen: a device with no port names no
+  // actual termination.
+  const missingLinks = useMemo(
+    () => linkSlots.filter(s => {
+      const p = picks[s.key]
+      return !p || !p.dst_id || p.port === null
+    }),
+    [linkSlots, picks])
+  // Both cords on one PDU is not redundancy — it is a single point of failure
+  // wearing an A/B label. The backend refuses the duplicate power edge anyway;
+  // catching it here says why instead of failing at submit.
+  const powerGroup = cands?.groups.find(g => g.layer === 'power')
+  const feedClash = useMemo(() => {
+    const ids = (powerGroup?.slots || [])
+      .map(s => picks[s.key]?.dst_id).filter(Boolean)
+    return ids.length > 1 && new Set(ids).size !== ids.length
+  }, [powerGroup, picks])
+  // Hard block: a device racked without its cabling is a dead node — it answers
+  // SNMP but carries no traffic and draws no metered power.
+  const linksReady = cands
+    ? (!cands.supported || (missingLinks.length === 0 && !feedClash))
+    : true
+
+  const setPickDev = (slot: LinkSlot, dst_id: string) =>
+    setPicks(p => {
+      const cand = slot.candidates.find(c => c.id === dst_id)
+      // Auto-fill the first free port/outlet — the same "next free" the fleet takes,
+      // and what an operator patching a fresh rack does anyway. Still overridable.
+      return { ...p, [slot.key]: { dst_id, port: cand?.ports[0]?.value ?? null } }
+    })
+  const setPickPort = (slot: LinkSlot, port: number) =>
+    setPicks(p => ({ ...p, [slot.key]: { dst_id: p[slot.key]?.dst_id || '', port } }))
+
   function onTypeChange(newType: string) {
     const vendors = vendorsFor(newType)
     const vendor  = vendors.includes(form.vendor) ? form.vendor : (vendors[0] || form.vendor)
@@ -347,11 +495,27 @@ export default function AddDeviceDialog({ onClose }: Props) {
       setErr('A Rack Unit needs Datacenter, Room, Row and Rack set'); return
     }
     if ((rr > 0 || rn > 0) && (rr <= 0 || rn <= 0)) { setErr('Set both Row and Rack together'); return }
+    if (feedClash) { setErr('Feed A and Feed B must be different PDUs'); return }
+    if (!linksReady) {
+      setErr(`Cabling incomplete: ${missingLinks.map(s => s.label).join(', ')}`); return
+    }
+    // Layer comes from the slot's group, and outlet vs port from that layer: a power
+    // cord lands on an outlet, an Ethernet link on a port. Sent with the device so
+    // the whole thing lands or none of it does.
+    const links = (cands?.supported ? cands.groups : []).flatMap(g =>
+      g.slots.map(s => {
+        const p = picks[s.key]
+        if (!p || !p.dst_id || p.port === null) return null
+        return g.layer === 'power'
+          ? { layer: g.layer, dst_id: p.dst_id, outlet: p.port }
+          : { layer: g.layer, dst_id: p.dst_id, dst_iface: p.port }
+      }).filter(Boolean))
     setBusy(true); setErr('')
     try {
       await api.addDevice({
         ...form,
         metrics_enabled: form.metrics_enabled,
+        links,
       } as Parameters<typeof api.addDevice>[0])
       fetchGraph(); fetchDevices()
       onClose()
@@ -521,6 +685,88 @@ export default function AddDeviceDialog({ onClose }: Props) {
             </div>
           )}
 
+          {/* ── Links (cabling — created atomically with the device) ── */}
+          {(linkBusy || cands?.supported) && (
+            <>
+              <div style={sectionHeader}>Links</div>
+              {linkBusy && (
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 100 }}>
+                  loading cabling options…
+                </div>
+              )}
+              {!linkBusy && cands?.supported && cands.groups.length === 0 && (
+                <div style={{ fontSize: 10, color: '#f0a020', paddingLeft: 100 }}>
+                  Nothing to cable to in this rack — no leaf with a free downlink, no
+                  hall OOB and no rack PDU. Pick another rack.
+                </div>
+              )}
+              {!linkBusy && cands?.supported && cands.groups.map(g => (
+                <div key={g.key} style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', paddingLeft: 100,
+                                marginBottom: 3 }}>
+                    {g.label} — <span style={{ color: 'var(--text-dim)' }}>{g.help}</span>
+                  </div>
+                  {g.slots.map(s => {
+                    const pick = picks[s.key]
+                    const cand = s.candidates.find(c => c.id === pick?.dst_id)
+                    return (
+                      <div key={s.key}>
+                        <FormRow label={s.label}>
+                          <select style={{ flex: 1 }} value={pick?.dst_id || ''}
+                            onChange={e => setPickDev(s, e.target.value)}>
+                            <option value="">— select —</option>
+                            {s.candidates.map(c => (
+                              <option key={c.id} value={c.id}>{c.name} · {c.detail}</option>
+                            ))}
+                          </select>
+                        </FormRow>
+                        {s.candidates.length === 0 && (
+                          <div style={{ fontSize: 10, color: '#f0a020', paddingLeft: 104,
+                                        marginTop: -2, marginBottom: 4 }}>
+                            none available with a free port/outlet
+                          </div>
+                        )}
+                        {cand && (
+                          <FormRow label={s.port_label}>
+                            <select style={{ flex: 1 }} value={pick?.port ?? ''}
+                              onChange={e => setPickPort(s, parseInt(e.target.value))}>
+                              {cand.ports.map(p => (
+                                <option key={p.value} value={p.value}>{p.label}</option>
+                              ))}
+                            </select>
+                          </FormRow>
+                        )}
+                        {cand && (
+                          <div style={{ fontSize: 10, color: 'var(--text-dim)',
+                                        fontStyle: 'italic', paddingLeft: 104,
+                                        marginTop: -2, marginBottom: 4 }}>
+                            {s.near_end} → {cand.name}
+                            {pick?.port !== null && cand.ports.find(p => p.value === pick?.port)
+                              ? ` ${cand.ports.find(p => p.value === pick?.port)!.label}` : ''}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+              {feedClash && (
+                <div style={{ fontSize: 10, color: 'var(--red)', paddingLeft: 100 }}>
+                  Feed A and Feed B are the same PDU — that is not redundancy.
+                </div>
+              )}
+            </>
+          )}
+          {/* Links are rack-specific, so there is nothing to offer until a rack is set. */}
+          {!rackReady && _LINKS_TYPES.has(form.device_type) && (
+            <>
+              <div style={sectionHeader}>Links</div>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 100 }}>
+                Pick a rack above to choose the leaf, OOB switch and PDU feeds.
+              </div>
+            </>
+          )}
+
           {/* ── Interfaces ── */}
           <div style={sectionHeader}>Interfaces</div>
           <FormRow label="Port Config">
@@ -530,7 +776,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
               lineHeight: 1.6,
             }}>
               {form.model_name && MODEL_PORTS[form.model_name]
-                ? MODEL_PORTS[form.model_name].map((line, i, arr) => (
+                ? portConfigLines(form).map((line, i, arr) => (
                     <div key={i} style={{ color: i === arr.length - 1 ? 'var(--text-muted)' : 'var(--text)' }}>
                       {line}
                     </div>
@@ -556,7 +802,10 @@ export default function AddDeviceDialog({ onClose }: Props) {
 
         {/* Footer */}
         <div style={{ display: 'flex', gap: 8, padding: '8px 16px 12px', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
-          <button className="primary" style={{ flex: 1 }} onClick={submit} disabled={busy}>
+          <button className="primary" style={{ flex: 1 }} onClick={submit}
+            disabled={busy || !linksReady}
+            title={linksReady ? '' :
+              `Cabling incomplete: ${missingLinks.map(s => s.label).join(', ')}`}>
             {busy ? 'Adding…' : 'OK'}
           </button>
           <button style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
