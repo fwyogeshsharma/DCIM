@@ -96038,7 +96038,7 @@
       "device": {
         "name": "PDUB-DC1-CP",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -96050,7 +96050,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "47229389",
         "interfaces": [
@@ -96205,21 +96205,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -96267,62 +96267,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -96604,7 +96562,7 @@
       "device": {
         "name": "PDUB-DC1-NR-R1-01",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -96616,7 +96574,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "baa80dd4",
         "interfaces": [
@@ -96773,21 +96731,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -96835,62 +96793,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -97172,7 +97088,7 @@
       "device": {
         "name": "PDUB-DC1-NR-R1-02",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -97184,7 +97100,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "508ebad7",
         "interfaces": [
@@ -97341,21 +97257,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -97403,62 +97319,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -97740,7 +97614,7 @@
       "device": {
         "name": "PDUB-DC1-NR-R1-03",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -97752,7 +97626,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "c17af08a",
         "interfaces": [
@@ -97909,21 +97783,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -97971,62 +97845,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -98308,7 +98140,7 @@
       "device": {
         "name": "PDUB-DC1-NR-R1-04",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -98320,7 +98152,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "4b22d308",
         "interfaces": [
@@ -98385,6 +98217,269 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 2.1,
+        "floor_y": 1.8,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "rated_power_w": null,
+        "outlets": [
+          {
+            "index": 1,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 2,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 3,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 4,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 5,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 6,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 7,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 8,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 9,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 10,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 11,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 12,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 13,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 14,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 15,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 16,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 17,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 18,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 19,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 20,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 21,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 22,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 23,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 24,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          }
+        ],
+        "psus": []
+      }
+    },
+    {
+      "id": "9be578c7",
+      "position": {
+        "x": 0,
+        "y": 3965
+      },
+      "device": {
+        "name": "PDUA-DC1-HA-R1-01",
+        "device_type": "pdu",
+        "vendor": "Raritan",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.0.227",
+        "interface_count": 2,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 2
+          }
+        ],
+        "model_name": "Raritan PX2-5170CR",
+        "metrics_enabled": true,
+        "id": "9be578c7",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 925202440,
+            "out_octets": 533587376,
+            "in_errors": 18,
+            "out_errors": 78,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "4e:bf:52:00:a5:fa",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "92:67:16:b8:bb:90",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "mgmt_ip": "192.168.0.227",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "room": "Server Hall A",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 95,
+        "memory_total": 2147483648,
+        "memory_used": 1440373673,
+        "disk_total": 1073741824000,
+        "disk_used": 535151666049,
+        "sys_uptime": 6841584,
+        "cpu_temp": 47.4,
+        "inlet_temp": 34.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -98595,269 +98690,6 @@
           },
           {
             "index": 30,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          }
-        ],
-        "psus": []
-      }
-    },
-    {
-      "id": "9be578c7",
-      "position": {
-        "x": 0,
-        "y": 3965
-      },
-      "device": {
-        "name": "PDUA-DC1-HA-R1-01",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.0.227",
-        "interface_count": 2,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 2
-          }
-        ],
-        "model_name": "APC AP8941",
-        "metrics_enabled": true,
-        "id": "9be578c7",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "4e:bf:52:00:a5:fa",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          },
-          {
-            "index": 2,
-            "name": "eth1",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 0,
-            "out_octets": 0,
-            "in_errors": 0,
-            "out_errors": 0,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "92:67:16:b8:bb:90",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "192.168.0.227",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "Chicago",
-        "datacenter": "DC1",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1",
-        "rated_power_w": null,
-        "outlets": [
-          {
-            "index": 1,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 2,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 3,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 4,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 5,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 6,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 7,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 8,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 9,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 10,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 11,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 12,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 13,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 14,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 15,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 16,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 17,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 18,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 19,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 20,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 21,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 22,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 23,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 24,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -99181,7 +99013,7 @@
       "device": {
         "name": "PDUA-DC1-HA-R1-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -99193,7 +99025,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "c40db9b4",
         "interfaces": [
@@ -99350,21 +99182,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -99412,20 +99244,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -99749,7 +99623,7 @@
       "device": {
         "name": "PDUA-DC1-HA-R1-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -99761,7 +99635,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "1931e9ee",
         "interfaces": [
@@ -99918,21 +99792,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -99980,20 +99854,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -100317,7 +100233,7 @@
       "device": {
         "name": "PDUA-DC1-HA-R2-01",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -100329,7 +100245,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "57c700aa",
         "interfaces": [
@@ -100549,24 +100465,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -100626,6 +100542,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -100992,7 +100929,7 @@
       "device": {
         "name": "PDUA-DC1-HA-R2-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -101004,7 +100941,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "bdc14f1f",
         "interfaces": [
@@ -101224,24 +101161,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -101301,6 +101238,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -101667,7 +101625,7 @@
       "device": {
         "name": "PDUA-DC1-HA-R2-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -101679,7 +101637,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "dc570131",
         "interfaces": [
@@ -101899,24 +101857,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -101976,6 +101934,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -102342,7 +102321,7 @@
       "device": {
         "name": "PDUA-DC1-HA-R2-04",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -102354,7 +102333,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "ee49f329",
         "interfaces": [
@@ -102574,24 +102553,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -102651,6 +102630,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -103017,7 +103017,7 @@
       "device": {
         "name": "PDUA-DC1-HA-R2-05",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -103029,7 +103029,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "39118497",
         "interfaces": [
@@ -103249,24 +103249,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -103326,6 +103326,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -103692,7 +103713,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R2-01",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -103704,7 +103725,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "09cb3942",
         "interfaces": [
@@ -103924,24 +103945,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -104001,6 +104022,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -104367,7 +104409,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R2-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -104379,7 +104421,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "d9178793",
         "interfaces": [
@@ -104599,24 +104641,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -104676,6 +104718,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -105042,7 +105105,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R2-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -105054,7 +105117,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "001a9a8b",
         "interfaces": [
@@ -105274,24 +105337,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -105351,6 +105414,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -105717,7 +105801,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R2-04",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -105729,7 +105813,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "25b8fd4b",
         "interfaces": [
@@ -105949,24 +106033,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -106026,6 +106110,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -106392,7 +106497,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R2-05",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -106404,7 +106509,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "e2add909",
         "interfaces": [
@@ -106624,24 +106729,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -106701,6 +106806,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -107328,7 +107454,7 @@
       "device": {
         "name": "PDUB-DC2-CP",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -107340,7 +107466,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "2702878b",
         "interfaces": [
@@ -107495,21 +107621,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -107557,62 +107683,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -107894,7 +107978,7 @@
       "device": {
         "name": "PDUB-DC2-NR-R1-01",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -107906,7 +107990,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "7d7ddbed",
         "interfaces": [
@@ -108063,21 +108147,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -108125,62 +108209,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -108462,7 +108504,7 @@
       "device": {
         "name": "PDUB-DC2-NR-R1-02",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -108474,7 +108516,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "e1b294de",
         "interfaces": [
@@ -108631,21 +108673,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -108693,62 +108735,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -109030,7 +109030,7 @@
       "device": {
         "name": "PDUB-DC2-NR-R1-03",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -109042,7 +109042,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "e14eb70d",
         "interfaces": [
@@ -109199,21 +109199,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -109261,62 +109261,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -109598,7 +109556,7 @@
       "device": {
         "name": "PDUB-DC2-NR-R1-04",
         "device_type": "pdu",
-        "vendor": "Raritan",
+        "vendor": "APC by Schneider Electric",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -109610,7 +109568,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "APC AP8941",
         "metrics_enabled": true,
         "id": "b118f68d",
         "interfaces": [
@@ -109675,6 +109633,269 @@
         "sys_contact": "",
         "sys_location_override": "",
         "floor_x": 2.1,
+        "floor_y": 1.8,
+        "rack_facing": "S",
+        "cold_aisle": "CA1",
+        "rated_power_w": null,
+        "outlets": [
+          {
+            "index": 1,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 2,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 3,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 4,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 5,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 6,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 7,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 8,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 9,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 10,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 11,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 12,
+            "type": "C13",
+            "bank": 1,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 13,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 14,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 15,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 16,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 17,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 18,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 19,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 20,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 21,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 22,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 23,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 24,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          }
+        ],
+        "psus": []
+      }
+    },
+    {
+      "id": "7428a656",
+      "position": {
+        "x": 5600,
+        "y": 3835
+      },
+      "device": {
+        "name": "PDUA-DC2-HA-R1-01",
+        "device_type": "pdu",
+        "vendor": "Raritan",
+        "ip_address": "",
+        "snmp_port": 161,
+        "gnmi_port": 57400,
+        "snmp_community": "192.168.4.178",
+        "interface_count": 2,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 2
+          }
+        ],
+        "model_name": "Raritan PX2-5170CR",
+        "metrics_enabled": true,
+        "id": "7428a656",
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 925202440,
+            "out_octets": 533587376,
+            "in_errors": 18,
+            "out_errors": 78,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "9c:80:76:3d:62:a1",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          },
+          {
+            "index": 2,
+            "name": "eth1",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "3a:59:8f:a7:ae:b0",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "mgmt_ip": "192.168.4.178",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "ups_backup": "",
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "room": "Server Hall A",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "rack_unit": 0,
+        "cpu_usage": 95,
+        "memory_total": 2147483648,
+        "memory_used": 1440373673,
+        "disk_total": 1073741824000,
+        "disk_used": 535151666049,
+        "sys_uptime": 6841584,
+        "cpu_temp": 47.4,
+        "inlet_temp": 34.5,
+        "mid_temp": 0.0,
+        "outlet_temp": 0.0,
+        "humidity": 0.0,
+        "dewpoint": 0.0,
+        "airflow": 0.0,
+        "sys_contact": "",
+        "sys_location_override": "",
+        "floor_x": 0.3,
         "floor_y": 1.8,
         "rack_facing": "S",
         "cold_aisle": "CA1",
@@ -109885,269 +110106,6 @@
           },
           {
             "index": 30,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          }
-        ],
-        "psus": []
-      }
-    },
-    {
-      "id": "7428a656",
-      "position": {
-        "x": 5600,
-        "y": 3835
-      },
-      "device": {
-        "name": "PDUA-DC2-HA-R1-01",
-        "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
-        "ip_address": "",
-        "snmp_port": 161,
-        "gnmi_port": 57400,
-        "snmp_community": "192.168.4.178",
-        "interface_count": 2,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 2
-          }
-        ],
-        "model_name": "APC AP8941",
-        "metrics_enabled": true,
-        "id": "7428a656",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 925202440,
-            "out_octets": 533587376,
-            "in_errors": 18,
-            "out_errors": 78,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "9c:80:76:3d:62:a1",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          },
-          {
-            "index": 2,
-            "name": "eth1",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 0,
-            "out_octets": 0,
-            "in_errors": 0,
-            "out_errors": 0,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "3a:59:8f:a7:ae:b0",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "192.168.4.178",
-        "mgmt_vlan": 10,
-        "power_draw_w": 0,
-        "ups_backup": "",
-        "country": "USA",
-        "datacenter_city": "New York",
-        "datacenter": "DC2",
-        "room": "Server Hall A",
-        "floor": "1",
-        "rack_row": 1,
-        "rack_num": 1,
-        "rack_unit": 0,
-        "cpu_usage": 95,
-        "memory_total": 2147483648,
-        "memory_used": 1440373673,
-        "disk_total": 1073741824000,
-        "disk_used": 535151666049,
-        "sys_uptime": 6841584,
-        "cpu_temp": 47.4,
-        "inlet_temp": 34.5,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
-        "humidity": 0.0,
-        "dewpoint": 0.0,
-        "airflow": 0.0,
-        "sys_contact": "",
-        "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 1.8,
-        "rack_facing": "S",
-        "cold_aisle": "CA1",
-        "rated_power_w": null,
-        "outlets": [
-          {
-            "index": 1,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 2,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 3,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 4,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 5,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 6,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 7,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 8,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 9,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 10,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 11,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 12,
-            "type": "C13",
-            "bank": 1,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 13,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 14,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 15,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 16,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 17,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 18,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 19,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 20,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 21,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 22,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 23,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 24,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -110471,7 +110429,7 @@
       "device": {
         "name": "PDUA-DC2-HA-R1-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -110483,7 +110441,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "4bd6cee6",
         "interfaces": [
@@ -110640,21 +110598,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -110702,20 +110660,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -111039,7 +111039,7 @@
       "device": {
         "name": "PDUA-DC2-HA-R2-01",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -111051,7 +111051,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "b194990b",
         "interfaces": [
@@ -111271,24 +111271,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -111348,6 +111348,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -111714,7 +111735,7 @@
       "device": {
         "name": "PDUA-DC2-HA-R2-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -111726,7 +111747,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "c1a6423b",
         "interfaces": [
@@ -111946,24 +111967,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -112023,6 +112044,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -112389,7 +112431,7 @@
       "device": {
         "name": "PDUA-DC2-HA-R2-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -112401,7 +112443,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "8d605936",
         "interfaces": [
@@ -112621,24 +112663,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -112698,6 +112740,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -113064,7 +113127,7 @@
       "device": {
         "name": "PDUA-DC2-HA-R2-04",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -113076,7 +113139,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "8d1fb540",
         "interfaces": [
@@ -113296,24 +113359,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -113373,6 +113436,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -113739,7 +113823,7 @@
       "device": {
         "name": "PDUA-DC2-HB-R2-01",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -113751,7 +113835,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "6090d697",
         "interfaces": [
@@ -113971,24 +114055,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -114048,6 +114132,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -114414,7 +114519,7 @@
       "device": {
         "name": "PDUA-DC2-HB-R2-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -114426,7 +114531,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "d85480f0",
         "interfaces": [
@@ -114646,24 +114751,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -114723,6 +114828,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -115089,7 +115215,7 @@
       "device": {
         "name": "PDUA-DC2-HB-R2-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -115101,7 +115227,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "f4427e0b",
         "interfaces": [
@@ -115321,24 +115447,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -115398,6 +115524,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -115764,7 +115911,7 @@
       "device": {
         "name": "PDUA-DC2-HB-R2-04",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -115776,7 +115923,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8865",
+        "model_name": "Raritan PX3-5878",
         "metrics_enabled": true,
         "id": "e746ccb9",
         "interfaces": [
@@ -115996,24 +116143,24 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 24,
-            "type": "C19",
+            "type": "C13",
             "bank": 4,
             "phase": "L1-L2",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 25,
@@ -116073,6 +116220,27 @@
           },
           {
             "index": 33,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 34,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 35,
+            "type": "C19",
+            "bank": 6,
+            "phase": "L3-L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 36,
             "type": "C19",
             "bank": 6,
             "phase": "L3-L1",
@@ -135361,7 +135529,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R1-01",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -135373,7 +135541,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "21b06d34",
         "interfaces": [
@@ -135530,21 +135698,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -135592,20 +135760,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -135929,7 +136139,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R1-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -135941,7 +136151,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "d338713c",
         "interfaces": [
@@ -136098,21 +136308,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -136160,20 +136370,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -136497,7 +136749,7 @@
       "device": {
         "name": "PDUA-DC1-HB-R1-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -136509,7 +136761,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "e8496202",
         "interfaces": [
@@ -136666,21 +136918,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -136728,20 +136980,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -137065,7 +137359,7 @@
       "device": {
         "name": "PDUA-DC2-HB-R1-01",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -137077,7 +137371,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "101dc7fb",
         "interfaces": [
@@ -137234,21 +137528,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -137296,20 +137590,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -137633,7 +137969,7 @@
       "device": {
         "name": "PDUA-DC2-HB-R1-02",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -137645,7 +137981,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "86cf3fb2",
         "interfaces": [
@@ -137802,21 +138138,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -137864,20 +138200,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -152133,7 +152511,7 @@
       "device": {
         "name": "PDUA-DC2-HA-R1-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -152145,7 +152523,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "867a94ee",
         "interfaces": [
@@ -152302,21 +152680,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -152364,20 +152742,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -153815,7 +154235,7 @@
       "device": {
         "name": "PDUA-DC2-HB-R1-03",
         "device_type": "pdu",
-        "vendor": "APC by Schneider Electric",
+        "vendor": "Raritan",
         "ip_address": "",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -153827,7 +154247,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "Raritan PX2-5170CR",
         "metrics_enabled": true,
         "id": "3c957d66",
         "interfaces": [
@@ -153984,21 +154404,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 2,
+            "bank": 1,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -154046,20 +154466,62 @@
           },
           {
             "index": 22,
-            "type": "C19",
+            "type": "C13",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 16.0
+            "rated_a": 10.0
           },
           {
             "index": 23,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 24,
+            "type": "C13",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 10.0
+          },
+          {
+            "index": 25,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
             "rated_a": 16.0
           },
           {
-            "index": 24,
+            "index": 26,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 27,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 28,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 29,
+            "type": "C19",
+            "bank": 2,
+            "phase": "L1",
+            "rated_a": 16.0
+          },
+          {
+            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -160850,7 +161312,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "57c700aa",
       "load_node": "fe5b3521"
@@ -161290,7 +161752,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "bdc14f1f",
       "load_node": "93799524"
@@ -161730,7 +162192,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "dc570131",
       "load_node": "14de2793"
@@ -165184,7 +165646,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "b194990b",
       "load_node": "94ccacef"
@@ -165580,7 +166042,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "c1a6423b",
       "load_node": "c0b19b3a"
@@ -165976,7 +166438,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "8d605936",
       "load_node": "bb9206e3"
@@ -169226,7 +169688,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "09cb3942",
       "load_node": "311e2148"
@@ -169248,7 +169710,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "d9178793",
       "load_node": "c35f9db2"
@@ -169270,7 +169732,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "001a9a8b",
       "load_node": "0b5bbcb9"
@@ -169292,7 +169754,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "6090d697",
       "load_node": "1b18d1e3"
@@ -169314,7 +169776,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "d85480f0",
       "load_node": "4502bc22"
@@ -169336,7 +169798,7 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "power",
-      "outlet": 22,
+      "outlet": 25,
       "psu": 1,
       "supply_node": "f4427e0b",
       "load_node": "78c47782"
