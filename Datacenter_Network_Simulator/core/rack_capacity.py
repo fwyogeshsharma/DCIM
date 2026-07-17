@@ -70,24 +70,41 @@ _LEAF_PORT_ROLES = {
 _DEFAULT_UPLINKS = 6
 
 
+# Rack height (U) of the NON-server gear that gets racked, by type. Coarser than the
+# per-SKU server catalog on purpose: these types have one representative chassis each in
+# this sim, so a type answer is honest where a SKU catalog would be invented precision.
+#
+# Seeded from the 3D floor-plan viewer's own DEV_U table (webui/public/
+# floorplan_viewer.html), which has drawn these heights correctly since before the
+# backend modelled height at all — a 2U PA-5220 firewall and a 4U CoolIT CHx80 CDU are
+# real. The two must agree: the viewer now reads the u_height this produces, so a
+# divergence here silently redraws the estate.
+#
+# Absent = 1U. That covers the 1RU network gear and, harmlessly, the 0U side-rail PDUs
+# and aisle-mounted sensors, which carry rack_unit 0 and never span anything.
+_TYPE_U_HEIGHT = {
+    "firewall": 2,      # PA-5220 and friends are 2U NGFW appliances
+    "cdu":      4,      # CoolIT CHx80 — in-rack coolant distribution
+}
+
+
 def device_u_height(device_type, model_name: str = "") -> int:
     """Rack units a device's body occupies — from its SKU when we know it.
 
-    Height belongs to the MODEL: a DL360 is 1U, a DL380 2U, a DL560 4U. Only a server
-    whose SKU is not in MODEL_U_HEIGHT falls back to SERVER_U_HEIGHT, and everything
-    else in the U1–U40 face is treated as 1U (no per-SKU catalog for it, and the
-    facility/network gear racked here is 1U anyway).
+    Height belongs to the MODEL: a DL360 is 1U, a DL380 2U, a DL560 4U. A server whose
+    SKU is not in MODEL_U_HEIGHT falls back to SERVER_U_HEIGHT. Non-servers come from
+    _TYPE_U_HEIGHT, defaulting to 1U.
 
     Occupancy is a SPAN, not a point: a 2U server at U1 fills U1 AND U2, so anything
     asking "is this U free" must walk the whole body. Reading only each device's own
-    rack_unit left every even U looking free — and a 1U CDU at U38 looking like it
-    left room for a 2U server at U37.
+    rack_unit left every even U looking free — and a 4U CDU at U38 looking like it left
+    room for a 2U server at U39.
 
     Accepts a DeviceType or a plain string. device_models is imported lazily: it
     imports device_manager, so a module-level import here would risk a cycle."""
     dt = getattr(device_type, "value", device_type)
     if dt != "server":
-        return 1
+        return _TYPE_U_HEIGHT.get(dt, 1)
     if model_name:
         try:
             from core.device_models import MODEL_U_HEIGHT

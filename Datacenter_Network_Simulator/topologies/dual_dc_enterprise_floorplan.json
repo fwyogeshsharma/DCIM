@@ -667,7 +667,7 @@
       "device_count": 25,
       "it_power_draw_w": 13773,
       "servers_used": 18,
-      "server_capacity": 23,
+      "server_capacity": 21,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -715,7 +715,7 @@
       "device_count": 24,
       "it_power_draw_w": 14568,
       "servers_used": 18,
-      "server_capacity": 21,
+      "server_capacity": 20,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -763,7 +763,7 @@
       "device_count": 24,
       "it_power_draw_w": 14216,
       "servers_used": 18,
-      "server_capacity": 22,
+      "server_capacity": 21,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -901,7 +901,7 @@
       "device_count": 24,
       "it_power_draw_w": 14212,
       "servers_used": 18,
-      "server_capacity": 22,
+      "server_capacity": 21,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -948,7 +948,7 @@
       "device_count": 23,
       "it_power_draw_w": 14259,
       "servers_used": 18,
-      "server_capacity": 21,
+      "server_capacity": 20,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -994,7 +994,7 @@
       "device_count": 22,
       "it_power_draw_w": 14200,
       "servers_used": 18,
-      "server_capacity": 22,
+      "server_capacity": 21,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -1298,7 +1298,7 @@
       "device_count": 23,
       "it_power_draw_w": 12670,
       "servers_used": 16,
-      "server_capacity": 22,
+      "server_capacity": 20,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -1344,7 +1344,7 @@
       "device_count": 22,
       "it_power_draw_w": 12915,
       "servers_used": 16,
-      "server_capacity": 21,
+      "server_capacity": 20,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -1389,7 +1389,7 @@
       "device_count": 21,
       "it_power_draw_w": 13159,
       "servers_used": 16,
-      "server_capacity": 21,
+      "server_capacity": 20,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -1523,7 +1523,7 @@
       "device_count": 21,
       "it_power_draw_w": 13159,
       "servers_used": 16,
-      "server_capacity": 21,
+      "server_capacity": 20,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -1567,7 +1567,7 @@
       "device_count": 20,
       "it_power_draw_w": 12900,
       "servers_used": 16,
-      "server_capacity": 22,
+      "server_capacity": 20,
       "mlag_ready": true,
       "reserved_units": [
         41
@@ -3960,7 +3960,7 @@
       "model": "PA-5220",
       "rack_id": "DC1:NetworkRoom:F1:R1:RACK2",
       "rack_unit": 42,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC1-NR-R1-02",
       "feed_b": "PDUB-DC1-NR-R1-02"
@@ -3973,7 +3973,7 @@
       "model": "PA-5220",
       "rack_id": "DC1:NetworkRoom:F1:R1:RACK3",
       "rack_unit": 42,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC1-NR-R1-03",
       "feed_b": "PDUB-DC1-NR-R1-03"
@@ -6586,7 +6586,7 @@
       "model": "PA-5220",
       "rack_id": "DC2:NetworkRoom:F1:R1:RACK2",
       "rack_unit": 42,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC2-NR-R1-02",
       "feed_b": "PDUB-DC2-NR-R1-02"
@@ -6599,7 +6599,7 @@
       "model": "PA-5220",
       "rack_id": "DC2:NetworkRoom:F1:R1:RACK3",
       "rack_unit": 42,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC2-NR-R1-03",
       "feed_b": "PDUB-DC2-NR-R1-03"
@@ -9666,8 +9666,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK1",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HA-R2-01",
       "feed_b": "PDUB-DC1-HA-R2-01"
@@ -9679,8 +9679,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK2",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HA-R2-02",
       "feed_b": "PDUB-DC1-HA-R2-02"
@@ -9692,8 +9692,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallA:F1:R2:RACK3",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HA-R2-03",
       "feed_b": "PDUB-DC1-HA-R2-03"
@@ -9705,8 +9705,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK1",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HA-R2-01",
       "feed_b": "PDUB-DC2-HA-R2-01"
@@ -9718,8 +9718,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK2",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HA-R2-02",
       "feed_b": "PDUB-DC2-HA-R2-02"
@@ -9731,8 +9731,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallA:F1:R2:RACK3",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HA-R2-03",
       "feed_b": "PDUB-DC2-HA-R2-03"
@@ -10004,8 +10004,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R2:RACK1",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HB-R2-01",
       "feed_b": "PDUB-DC1-HB-R2-01"
@@ -10017,8 +10017,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R2:RACK2",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HB-R2-02",
       "feed_b": "PDUB-DC1-HB-R2-02"
@@ -10030,8 +10030,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC1:ServerHallB:F2:R2:RACK3",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC1-HB-R2-03",
       "feed_b": "PDUB-DC1-HB-R2-03"
@@ -10095,8 +10095,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R2:RACK1",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HB-R2-01",
       "feed_b": "PDUB-DC2-HB-R2-01"
@@ -10108,8 +10108,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R2:RACK2",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HB-R2-02",
       "feed_b": "PDUB-DC2-HB-R2-02"
@@ -10121,8 +10121,8 @@
       "vendor": "CoolIT Systems",
       "model": "CoolIT CHx80",
       "rack_id": "DC2:ServerHallB:F2:R2:RACK3",
-      "rack_unit": 38,
-      "u_height": 1,
+      "rack_unit": 37,
+      "u_height": 4,
       "power_draw_w": 1800,
       "feed_a": "PDUA-DC2-HB-R2-03",
       "feed_b": "PDUB-DC2-HB-R2-03"
@@ -12189,7 +12189,7 @@
       "model": "PA-5220",
       "rack_id": "DC1:NetworkRoom:F1:R1:RACK2",
       "rack_unit": 38,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC1-NR-R1-02",
       "feed_b": "PDUB-DC1-NR-R1-02"
@@ -12202,7 +12202,7 @@
       "model": "PA-5220",
       "rack_id": "DC1:NetworkRoom:F1:R1:RACK3",
       "rack_unit": 38,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC1-NR-R1-03",
       "feed_b": "PDUB-DC1-NR-R1-03"
@@ -12241,7 +12241,7 @@
       "model": "PA-5220",
       "rack_id": "DC2:NetworkRoom:F1:R1:RACK2",
       "rack_unit": 38,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC2-NR-R1-02",
       "feed_b": "PDUB-DC2-NR-R1-02"
@@ -12254,7 +12254,7 @@
       "model": "PA-5220",
       "rack_id": "DC2:NetworkRoom:F1:R1:RACK3",
       "rack_unit": 38,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC2-NR-R1-03",
       "feed_b": "PDUB-DC2-NR-R1-03"
@@ -12293,7 +12293,7 @@
       "model": "PA-5220",
       "rack_id": "DC1:NetworkRoom:F1:R1:RACK1",
       "rack_unit": 34,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC1-NR-R1-01",
       "feed_b": "PDUB-DC1-NR-R1-01"
@@ -12306,7 +12306,7 @@
       "model": "PA-5220",
       "rack_id": "DC1:NetworkRoom:F1:R1:RACK4",
       "rack_unit": 34,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC1-NR-R1-04",
       "feed_b": "PDUB-DC1-NR-R1-04"
@@ -12358,7 +12358,7 @@
       "model": "PA-5220",
       "rack_id": "DC2:NetworkRoom:F1:R1:RACK1",
       "rack_unit": 34,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC2-NR-R1-01",
       "feed_b": "PDUB-DC2-NR-R1-01"
@@ -12371,7 +12371,7 @@
       "model": "PA-5220",
       "rack_id": "DC2:NetworkRoom:F1:R1:RACK4",
       "rack_unit": 34,
-      "u_height": 1,
+      "u_height": 2,
       "power_draw_w": 500,
       "feed_a": "PDUA-DC2-NR-R1-04",
       "feed_b": "PDUB-DC2-NR-R1-04"

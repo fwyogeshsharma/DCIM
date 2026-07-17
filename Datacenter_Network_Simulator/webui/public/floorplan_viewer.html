@@ -254,7 +254,11 @@ function aggLive(rid, fields, agg){ if(typeof fields==='string') fields=[fields]
 }
 
 /* ===================== metrics (heatmap_design sec 7.1 / 7.4) ===================== */
-function occupiedU(rid){ return (devByRack[rid]||[]).filter(d=>(d.rack_unit||0)>=1).length; }
+// Rack units CONSUMED, not devices installed — the metric is labelled "%RU". Summing
+// bodies (devU) not headcount: a rack of eighteen 2U servers fills 36U, not 18, and a
+// 4U CDU is not one unit. Counting devices under-reported every rack by roughly half.
+function occupiedU(rid){ return (devByRack[rid]||[])
+  .reduce((s,d)=>s+((d.rack_unit||0)>=1 ? devU(d) : 0), 0); }
 function rackKW(r){ return (r.it_power_draw_w||0)/1000; }
 // Offline inlet ESTIMATE on an ABSOLUTE scale (not room-relative): a typical
 // cold-aisle supply setpoint plus a recirculation rise that grows with the
@@ -446,7 +450,14 @@ function draw2D(){
 
 /* ===================== 3D render (Three.js) — realistic raised-floor hall ===================== */
 const U_M=0.0445, RF=0.5, RACK_U=42, RACK_H=RACK_U*U_M;   // 1U, raised-floor/plenum height, 42U cabinet
+// FALLBACK ONLY. Height is a fact about the MODEL, not the type — a DL360 is 1U where a
+// DL380 is 2U — so the asset doc carries `u_height` per device (core.rack_capacity.
+// device_u_height: per-SKU for servers, per-type for the rest) and devU() below prefers
+// it. This table stays for the floor-plan snapshot baked in at build time, which predates
+// the field. Keep it in step with core/rack_capacity.py's _TYPE_U_HEIGHT.
 const DEV_U={server:2,switch:1,router:1,firewall:2,load_balancer:1,oob_switch:1,cdu:4,energy_monitor:1};
+// One height rule for the whole viewer: the served value, else the type fallback, else 1U.
+function devU(d){ return (d && d.u_height) || DEV_U[d && d.device_type] || 1; }
 let three=null;
 function mat3(color,opts){ return new THREE.MeshStandardMaterial(Object.assign({color,metalness:0.35,roughness:0.6},opts||{})); }
 function box3(parent,w,h,d,x,y,z,material){ const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material); me.position.set(x,y,z); parent.add(me); return me; }
@@ -579,7 +590,7 @@ function makeRack(r,ds,m){ const grp=new THREE.Group(); const W=FOOT.width,D=FOO
           mat3(col,{emissive:emi(col,0.45)}));
       }
       sb.userData.device=d; si++; continue; }
-    const u=DEV_U[t]||1, base=d.rack_unit||0; if(base<1) continue;
+    const u=devU(d), base=d.rack_unit||0; if(base<1) continue;
     const hh=u*U_M*0.9, y=0.06+(base-1)*U_M+hh/2;
     const dm=darkMat(), fm=frontMat(t,u), rm=rearMat(t,u);                          // front panel + rear exhaust face
     const chassis=new THREE.Mesh(new THREE.BoxGeometry(W*0.92,hh,D*0.82),[dm,dm,dm,dm,fm,rm]);
@@ -952,7 +963,7 @@ function focusRack(r){ if(!three || three.cx==null) return;
 function devY(d){ const t=d.device_type;
   if(t==='pdu') return RACK_H*0.5+0.06;                          // full-height 0U strip
   if(t==='sensor') return d.mounting==='underfloor' ? -RF*0.5 : 0.25;
-  const u=DEV_U[t]||1, base=d.rack_unit||0;
+  const u=devU(d), base=d.rack_unit||0;
   if(base<1) return RACK_H*0.5;                                  // zero-U / unplaced -> mid rack
   const hh=u*U_M*0.9; return 0.06+(base-1)*U_M+hh/2; }
 // fly the camera in to frame ONE device at its real RU height (tighter than a rack focus).
