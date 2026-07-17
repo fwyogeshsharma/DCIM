@@ -167,11 +167,15 @@ services:
       POSTGRES_USER: dcim
       POSTGRES_PASSWORD: dcim_pas
       REDIS_URL: redis://redis:6379
-      # MongoDB — periodic metric summary documents (metricsSummary worker)
+      # MongoDB — periodic metric summary documents (metricsSummary worker).
+      # Tiered rollups: 5m docs live 24h → hourly docs live 7d → daily docs
+      # live 180d. Each tier is aggregated into the next before it expires.
       MONGO_URL: mongodb://mongo:27017
       MONGO_DB: dcim_aggregator
       METRICS_SUMMARY_INTERVAL_MINUTES: "5"
-      METRICS_SUMMARY_RETENTION_DAYS: "180"
+      METRICS_SUMMARY_5M_RETENTION_HOURS: "24"
+      METRICS_SUMMARY_HOURLY_RETENTION_DAYS: "7"
+      METRICS_SUMMARY_DAILY_RETENTION_DAYS: "180"
       # DCIM Server endpoints (comma-separated for multi-server awareness)
       DCIM_SERVER_URLS: "http://dcim-server-a:8080,http://dcim-server-b:8080,http://dcim-server-c:8080"
       # API key for the external ingest endpoint — change before going to production
