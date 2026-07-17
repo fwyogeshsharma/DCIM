@@ -118,11 +118,12 @@ def _rack_response(eng, rack: dict, message: str) -> dict:
     free server-U it opened up, so the Floor-Plan page can report it and Add Device
     can deep-link straight into it."""
     from core.rack_capacity import FIRST_SERVER_UNIT, LAST_SERVER_UNIT
-    dc, row, num = rack["key"]
+    # 5-tuple: a rack is only unique within its hall — see FleetLifecycleEngine._rack_key.
+    dc, floor, room, row, num = rack["key"]
     free = list(range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT + 1))
     return {"ok": True, "message": message,
-            "rack": {"datacenter": dc, "room": rack.get("room", ""),
-                     "floor": rack.get("floor", ""), "rack_row": row, "rack_num": num,
+            "rack": {"datacenter": dc, "room": rack.get("room", room),
+                     "floor": rack.get("floor", floor), "rack_row": row, "rack_num": num,
                      "free_units": free, "next_free": free[0] if free else None},
             "total_servers": len(eng._servers())}
 
@@ -147,7 +148,7 @@ def fleet_provision_rack(body: ProvisionBody):
         raise HTTPException(status_code=409, detail=(
             f"No rack space in {where} (grid, spine fabric or rack power all full). "
             f"Try another hall or provision a new hall to add capacity."))
-    dc_, row, num = rack["key"]
+    _dc, _floor, _room, row, num = rack["key"]
     return _rack_response(_engine(), rack,
                           f"Provisioned rack R{row}-{num:02d} in {dc}/{rack.get('room','')}.")
 

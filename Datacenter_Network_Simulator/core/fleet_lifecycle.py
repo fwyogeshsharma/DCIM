@@ -43,7 +43,7 @@ from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
     RACK_POWER_BUDGET_W_DEFAULT,
     TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
-    SERVER_U_HEIGHT,
+    SERVER_U_HEIGHT, device_u_height,
 )
 from core import hall_geometry as geo
 
@@ -362,7 +362,20 @@ class FleetLifecycleEngine:
 
     @staticmethod
     def _rack_key(d: Device) -> tuple:
-        return (d.datacenter or "", d.rack_row or 0, d.rack_num or 0)
+        """Physically-unique rack id: (dc, floor, room, row, num).
+
+        Floor + room are part of the identity for the same reason _phys_row_key needs
+        them: a DC's halls each number their rows and racks from 1, so Server Hall A
+        (floor 1) R2-01 and Server Hall B (floor 2) R2-01 are two different racks in
+        two different halls. Keyed on (dc, row, num) alone they collapsed into ONE —
+        which merged both halls' servers, so _next_free_unit read a U as taken because
+        the OTHER hall's rack used it, _rack_with_space double-counted the fill, and
+        _find_in_rack could hand back a template from the wrong hall.
+
+        Callers unpack this — keep the 5-tuple shape in step with them (_add_server,
+        _new_rack, api/routers/fleet._rack_response)."""
+        return (d.datacenter or "", str(d.floor or ""), d.room or "",
+                d.rack_row or 0, d.rack_num or 0)
 
     @staticmethod
     def _phys_row_key(d: Device) -> tuple:
@@ -1833,7 +1846,8 @@ class FleetLifecycleEngine:
         self._commission(leaf)
         summ.expanded_racks.append(f"{dc}:{room}:R{row}:RACK{num}")
         self._log(f"[Fleet] new rack {dc}/F{floor}/{room} R{row} RACK{num} (leaf+{len(pdus)}PDU)")
-        return {"key": (dc, row, num), "floor": floor, "room": room,
+        return {"key": (dc, str(floor or ""), room or "", row, num),
+                "floor": floor, "room": room,
                 "tor": leaf, "pdus": pdus, "server_tmpl": infra["srv_tmpl"],
                 "fx": fx, "fy": fy, "hot": hot, "cold": cold, "facing": facing}
 
@@ -2089,18 +2103,27 @@ class FleetLifecycleEngine:
         when the rack is space-full — all U1..U40 slots taken — so a rack fills to
         its real physical U capacity (~20 servers) instead of the old 1U cadence
         that packed to the power cap and stranded rack U. U41/U42 stay clear for
-        the ToR pair."""
-        used = {d.rack_unit for d in self._rack_devices(key) if d.rack_unit}
+        the ToR pair.
+
+        Every occupant is measured by its BODY, not its rack_unit alone: a 1U CDU at
+        U38 blocks a 2U server at U37, and reading points instead of spans put one
+        straight through it. Same rule the Add-Device picker uses (device_u_height),
+        so hand-placed and fleet-placed servers agree on what is free."""
+        used: set = set()
+        for d in self._rack_devices(key):
+            if not d.rack_unit or d.rack_unit <= 0:
+                continue                      # 0U side-rail PDUs occupy no U
+            used.update(range(d.rack_unit, d.rack_unit + device_u_height(d.device_type)))
         u = FIRST_SERVER_UNIT
         while u <= LAST_SERVER_UNIT - (SERVER_U_HEIGHT - 1):
-            if u not in used:
+            if all(cu not in used for cu in range(u, u + SERVER_U_HEIGHT)):
                 return u
             u += SERVER_U_HEIGHT
         return None
 
     def _add_server(self, rack: dict) -> Optional[Device]:
         tmpl: Device = rack["server_tmpl"]
-        dc, row, num = rack["key"]
+        dc, _floor, _room, row, num = rack["key"]   # see _rack_key: hall-unique
         unit = self._next_free_unit(rack["key"])
         if unit is None:
             return None                       # rack U-space full (all 2U slots taken)

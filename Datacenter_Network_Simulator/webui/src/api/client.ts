@@ -165,8 +165,11 @@ export const api = {
   devices:    (layer?: string)        => get(`/devices${layer ? `?layer=${layer}` : ''}`),
   device:     (id: string)            => get(`/devices/${id}`),
   addDevice:  (d: unknown)            => post('/devices', d),
-  rackOccupancy: (datacenter: string) =>
-    get(`/devices/rack-occupancy?datacenter=${encodeURIComponent(datacenter)}`),
+  // device_type decides which U's are pickable: a 2U server needs a free PAIR, so the
+  // fittable set is not just "unoccupied U". Omit it for 1U semantics.
+  rackOccupancy: (datacenter: string, deviceType = '') =>
+    get(`/devices/rack-occupancy?datacenter=${encodeURIComponent(datacenter)}`
+        + (deviceType ? `&device_type=${encodeURIComponent(deviceType)}` : '')),
   // The far ends a NEW device of this type/model, in this rack, must be cabled to
   // — drives the Add-Device LINKS section. Only free ports/outlets come back.
   linkCandidates: (q: Record<string, string | number>) =>

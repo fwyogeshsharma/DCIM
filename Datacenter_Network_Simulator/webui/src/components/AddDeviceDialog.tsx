@@ -309,8 +309,13 @@ const spinnerStyle: React.CSSProperties = { width: 72 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+// `units` is the rack's whole U1–U40 face, each slot flagged with its occupant —
+// shown in full (a rack face has no gaps) with the taken U's disabled. `free_units`
+// remains the pickable set and drives the room/floor/row/rack cascade.
+type RackUnit = { unit: number; used: boolean; occupant: string | null }
 type RackOcc = { room: string; floor: string; rack_row: number; rack_num: number
                  used: number; total: number; free_units: number[]
+                 units: RackUnit[]
                  next_free: number | null; full: boolean }
 
 export default function AddDeviceDialog({ onClose }: Props) {
@@ -373,17 +378,19 @@ export default function AddDeviceDialog({ onClose }: Props) {
       && d.datacenter_city === form.datacenter_city).map(d => d.datacenter)),
     [devices, form.country, form.datacenter_city])
 
-  // Fetch this DC's rack occupancy whenever the DC changes.
+  // Fetch this DC's rack occupancy whenever the DC changes. Re-fetches on type change
+  // too: which U's are pickable depends on the device's height (a 2U server needs a
+  // free pair), so the same rack offers a different set for a server than a switch.
   useEffect(() => {
     if (!form.datacenter) { setRacks([]); return }
     let live = true
     setLocBusy(true)
-    api.rackOccupancy(form.datacenter)
+    api.rackOccupancy(form.datacenter, form.device_type)
       .then((r: unknown) => { if (live) setRacks(((r as { racks?: RackOcc[] }).racks) || []) })
       .catch(() => { if (live) setRacks([]) })
       .finally(() => { if (live) setLocBusy(false) })
     return () => { live = false }
-  }, [form.datacenter])
+  }, [form.datacenter, form.device_type])
 
   const withSpace = (r: RackOcc) => r.free_units.length > 0
   const roomsWithSpace = useMemo(() =>
@@ -513,6 +520,15 @@ export default function AddDeviceDialog({ onClose }: Props) {
       setErr('A Rack Unit needs Datacenter, Room, Row and Rack set'); return
     }
     if ((rr > 0 || rn > 0) && (rr <= 0 || rn <= 0)) { setErr('Set both Row and Rack together'); return }
+    // The U list disables slots this device can't take; a stale view could still hold
+    // one. Names the occupant rather than failing with a bare collision at OK.
+    if (ru > 0 && chosenRack && !chosenRack.free_units.includes(ru)) {
+      const at = chosenRack.units?.find(x => x.unit === ru)
+      setErr(at?.used
+        ? `U${ru} is occupied by ${at.occupant || 'another device'} — pick a free unit`
+        : `U${ru} has no room for a ${form.device_type} — pick another unit`)
+      return
+    }
     if (feedClash) { setErr('Feed A and Feed B must be different PDUs'); return }
     if (takenPicks.length) {
       setErr(`Already in use: ${takenPicks.map(s => s.label).join(', ')} — pick a free port`)
@@ -696,8 +712,21 @@ export default function AddDeviceDialog({ onClose }: Props) {
           )}
           {form.rack_num > 0 && chosenRack && (
             <FormRow label="Unit (U)">
+              {/* The whole rack face — the elevation an operator reads before racking.
+                  Selectable = free_units (where this device's full height FITS), not
+                  merely "unoccupied": a lone free U between two 2U servers, or U40
+                  with nothing above it, holds no 2U box. */}
               <select style={{ flex: 1 }} value={form.rack_unit || ''} onChange={e => set('rack_unit', parseInt(e.target.value) || 0)}>
-                {chosenRack.free_units.map(u => <option key={u} value={u}>U{u}</option>)}
+                {(chosenRack.units || []).map(u => {
+                  const fits = chosenRack.free_units.includes(u.unit)
+                  const why = u.used ? ` — ${u.occupant || 'occupied'}`
+                            : fits ? '' : ` — no room for a ${form.device_type}`
+                  return (
+                    <option key={u.unit} value={u.unit} disabled={!fits}>
+                      U{u.unit}{why}
+                    </option>
+                  )
+                })}
               </select>
             </FormRow>
           )}

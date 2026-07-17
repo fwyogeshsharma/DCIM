@@ -70,6 +70,22 @@ _LEAF_PORT_ROLES = {
 _DEFAULT_UPLINKS = 6
 
 
+def device_u_height(device_type) -> int:
+    """Rack units a device's body occupies. Servers are SERVER_U_HEIGHT; everything
+    else in the U1–U40 face is treated as 1U.
+
+    Occupancy is a SPAN, not a point: a 2U server at U1 fills U1 AND U2, so anything
+    asking "is this U free" must walk the whole body. Reading only each device's own
+    rack_unit left every even U looking free — and a 1U CDU at U38 looking like it
+    left room for a 2U server at U37.
+
+    Accepts a DeviceType or a plain string so callers on either side of the
+    device_manager import can use it without a cycle. There is no per-device height
+    field; this is the one rule."""
+    dt = getattr(device_type, "value", device_type)
+    return SERVER_U_HEIGHT if dt == "server" else 1
+
+
 def leaf_port_roles(model_name: str, interface_count: int = 54) -> tuple[int, int]:
     """Return (downlink_ports, uplink_ports) for a leaf switch.
 
