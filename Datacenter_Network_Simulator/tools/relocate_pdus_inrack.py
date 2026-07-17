@@ -17,8 +17,11 @@ Edits topology (nodes + power/management edges) and the DCIM floor-plan asset
 file, then the viewer is regenerated separately.
 """
 from __future__ import annotations
-import json, sys, random, copy
+import json, os, sys, random, copy
 from collections import defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from tools._power_edges import fed_by  # noqa: E402
 
 random.seed(42)   # deterministic ids/macs/ip ordering
 TOPO = "topologies/dual_dc_enterprise.json"
@@ -77,9 +80,10 @@ def main():
 
     used_ids = set(dev.keys())
 
-    # target racks = racks holding >=1 device currently fed by a PDU
-    fed_devices = [d for d in dev.values()
-                   if d.get("power_source_a") in old_pdu or d.get("power_source_b") in old_pdu]
+    # target racks = racks holding >=1 device currently fed by a PDU. Read from the
+    # CORDS — there is no power_source_a/b field to ask (it was a cache of exactly this
+    # and it drifted; see tools/_power_edges.py and Device in core/device_manager.py).
+    fed_devices = fed_by(topo, old_pdu, dev)
     def rkey(d): return (d["datacenter"], d["room"], str(d.get("floor")), d.get("rack_row"), d.get("rack_num"))
     target_racks = {}
     for d in fed_devices:
@@ -113,8 +117,7 @@ def main():
                 "datacenter_city": sample.get("datacenter_city"),
                 "country": sample.get("country"),
                 "rack_row": row, "rack_num": num, "rack_unit": 0,
-                "power_draw_w": 0, "power_source": "",
-                "power_source_a": "", "power_source_b": "",
+                "power_draw_w": 0,
             })
             nd["id"] = nid
             nd["position"] = {"x": 0, "y": 0}   # placed by tools/layout_canvas.py
@@ -135,11 +138,11 @@ def main():
                                   "dst_iface": port, "layer": "management"})
         rack_pdu[rk] = (made["A"][0], made["B"][0], made["A"][1], made["B"][1])
 
-    # repoint every fed device to its rack's A/B PDU + rebuild downstream edges
+    # Re-cord every fed device onto its rack's A/B PDU. The edges ARE the record —
+    # there is no field to repoint alongside them.
     for rk, members in target_racks.items():
         a_id, b_id, *_ = rack_pdu[rk]
         for d in members:
-            d["power_source_a"], d["power_source_b"] = a_id, b_id
             for pid in (a_id, b_id):
                 new_edges.append({"src": pid, "dst": d["id"], "src_iface": 0,
                                   "dst_iface": 0, "layer": "power"})

@@ -113,8 +113,11 @@ def main() -> None:
             continue
         drop_power_edges(s["id"])
         add_power_edge(pdu["id"], s["id"])
-        s["power_source_a"] = pdu["id"]
-        s["power_source_b"] = None
+        # No power_source_a/b. A DPX2 has no PSU — it plugs into the PDU's SENSOR port
+        # (RJ-12) and is powered over it, which is why PSU_COUNT_BY_TYPE gives it none
+        # and TopologyEngine._power_ends leaves this edge null-terminated. Recording an
+        # A-side "feed" for it claimed a cord that does not exist. The edge above says
+        # which PDU it hangs off; power_feeds correctly reports no cord.
         refed += 1
 
     with open(TOPO, "w", encoding="utf-8") as f:

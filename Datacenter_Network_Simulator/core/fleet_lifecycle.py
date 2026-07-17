@@ -950,18 +950,15 @@ class FleetLifecycleEngine:
                                       fy=getattr(dev, "floor_y", None))
         if a is None and b is None:
             return
-        upd = {}
-        for pdu, key in ((a, "power_source_a"), (b, "power_source_b")):
+        # The cord IS the record — nothing to write back. add_link stamps
+        # supply_node/load_node/outlet/psu on the edge, and power_feeds reads the A/B
+        # side off that. (There used to be a power_source_a/b field mirrored here; it
+        # drifted the moment anything cloned or re-corded a device. See Device.)
+        for pdu in (a, b):
             if pdu is None:
                 continue
             try:
                 self.s.topology.add_link(dev.id, pdu.id, layer="power")
-                upd[key] = pdu.id
-            except Exception:
-                pass
-        if upd:
-            try:
-                self.s.device_manager.update_device(dev.id, **upd)
             except Exception:
                 pass
 
@@ -977,7 +974,6 @@ class FleetLifecycleEngine:
             return
         try:
             self.s.topology.add_link(dev.id, pdub.id, layer="power")
-            self.s.device_manager.update_device(dev.id, power_source_b=pdub.id)
         except Exception:
             pass
 
@@ -1833,19 +1829,11 @@ class FleetLifecycleEngine:
 
         # Cord the leaf to its OWN rack's A/B PDUs, like a curated ToR — otherwise
         # the switch draws no power and its load never reaches the PDU/RPP/UPS.
-        if pdus:
-            upd = {}
-            for pdu, key in zip(pdus, ("power_source_a", "power_source_b")):
-                try:
-                    self.s.topology.add_link(leaf.id, pdu.id, layer="power")
-                    upd[key] = pdu.id
-                except Exception:
-                    pass
-            if upd:
-                try:
-                    self.s.device_manager.update_device(leaf.id, **upd)
-                except Exception:
-                    pass
+        for pdu in pdus:
+            try:
+                self.s.topology.add_link(leaf.id, pdu.id, layer="power")
+            except Exception:
+                pass
         self._commission(leaf)
         summ.expanded_racks.append(f"{dc}:{room}:R{row}:RACK{num}")
         self._log(f"[Fleet] new rack {dc}/F{floor}/{room} R{row} RACK{num} (leaf+{len(pdus)}PDU)")
@@ -2156,15 +2144,10 @@ class FleetLifecycleEngine:
                 self.s.topology.add_link(dev.id, p.id, layer="power")
         except Exception as e:
             self._log(f"[Fleet] wiring {dev.name} failed: {e}")
-        # Record the A/B feed ids too (DCIM/Redfish power-source view + redundancy
-        # split); the cascade itself runs off the edges above.
-        upd = {}
-        if len(pdus) >= 1:
-            upd["power_source_a"] = pdus[0].id
-        if len(pdus) >= 2:
-            upd["power_source_b"] = pdus[1].id
-        if upd:
-            self.s.device_manager.update_device(dev.id, **upd)
+        # No feed to record: the cords above ARE the record. add_link stamps
+        # supply_node/psu/outlet on each edge, and everything that wants the A/B split
+        # (Redfish PSUs, /power-terminations, the floor-plan export, the cascade) reads
+        # it back with power_feeds. See Device for why the mirrored field is gone.
         # Server BMC (iDRAC/iLO/XCC) onto a hall OOB management port, like a real
         # server that answers Redfish/IPMI out-of-band. This is what ties the OOB
         # switch count to the server count: each BMC eats one management port, so

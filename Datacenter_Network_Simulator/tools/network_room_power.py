@@ -29,6 +29,7 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import hall_geometry as geo  # noqa: E402
+from tools._power_edges import feed_ids  # noqa: E402
 
 TOPO = "topologies/dual_dc_enterprise.json"
 FLOOR = "topologies/dual_dc_enterprise_floorplan.json"
@@ -129,8 +130,15 @@ def main() -> None:
         netdevs = [d for d in by_id.values()
                    if d.get("room") == NEW_ROOM and d.get("datacenter") == dc
                    and d.get("device_type") in ("router", "firewall", "load_balancer")]
-        a_pdus = {d.get("power_source_a") for d in netdevs if d.get("power_source_a")}
-        b_pdus = {d.get("power_source_b") for d in netdevs if d.get("power_source_b")}
+        # Which PDUs feed them, read from their CORDS — there is no power_source_a/b
+        # field to ask (it was a cache and it drifted; see tools/_power_edges.py).
+        a_pdus, b_pdus = set(), set()
+        for d in netdevs:
+            a, b = feed_ids(topo, d.get("id"), by_id)
+            if a:
+                a_pdus.add(a)
+            if b:
+                b_pdus.add(b)
         for pdu_id, rpp in [(p, rpp_a) for p in a_pdus] + [(p, rpp_b) for p in b_pdus]:
             pdu = by_id.get(pdu_id)
             if pdu is None:

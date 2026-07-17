@@ -1,6 +1,15 @@
 """
 Topology generator script - produces large example JSON files.
-Run from the project root:  python generate_topology.py
+
+    PYTHONPATH=. python tools/generate_topology.py     (from the repo root)
+
+WARNING: this OVERWRITES topologies/dual_dc_enterprise.json with a freshly generated
+~462-device topology. The committed one is ~659 devices — the generator's output plus a
+long series of tools/ passes (re-SKU, per-SKU power, port/role fit-out, U re-seat, BMS
+split, spine unification...). Regenerating throws all of that away. Back the file up
+first, and only run this to build a NEW example topology.
+
+Output goes next to this file's project (see TOPOLOGIES_DIR), never relative to the CWD.
 """
 import math
 import sys, json, random
@@ -40,7 +49,13 @@ _SENSOR_MODELS = {
     Vendor.APC:     "APC NetBotz 250",
 }
 
-TOPOLOGIES_DIR = Path("../topologies")
+# Anchored to THIS FILE, not the CWD. It used to be Path("../topologies"), which
+# resolves against wherever you happen to stand: run the documented way (from the repo
+# root) and "../topologies" is the repo's PARENT — so it silently created a stray
+# topologies/ dir OUTSIDE the project and wrote five files into it, while the real ones
+# sat untouched and the run looked successful. Only `cd tools && python
+# generate_topology.py` landed in the right place.
+TOPOLOGIES_DIR = Path(__file__).resolve().parent.parent / "topologies"
 TOPOLOGIES_DIR.mkdir(exist_ok=True)
 
 
@@ -510,8 +525,10 @@ class TopologyBuilder:
                 # no dedicated per-sensor PDU pair is ever created for them.
                 if dnode["device"].get("model_name") == "Raritan DPX2-CC2":
                     continue
-                dnode["device"]["power_source_a"] = pdu_a.id
-                dnode["device"]["power_source_b"] = pdu_b.id
+                # The cords ARE the record — no power_source_a/b to mirror. Which PDU
+                # feeds a device is a fact about the cord, read back from the power edge
+                # (TopologyEngine.power_feeds). See Device in core/device_manager.py for
+                # why the mirrored field is gone.
                 self.link(pdu_a, device, layer="power")
                 self.link(pdu_b, device, layer="power")
 
@@ -619,9 +636,9 @@ class TopologyBuilder:
                 if rack_x_start <= dx < rack_x_end:
                     for node in self.nodes:
                         if node["id"] == device.id:
-                            node["device"]["power_source"] = rack_pdu.id
                             node["device"]["ups_backup"] = ups.id
                             break
+                    # No power_source to set — the link below is the record.
                     self.link(rack_pdu, device, layer="power")
 
         return {"floor_pdu": floor_pdu, "ups_list": ups_list, "rack_pdus": rack_pdus}

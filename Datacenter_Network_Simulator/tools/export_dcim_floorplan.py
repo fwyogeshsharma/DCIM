@@ -92,10 +92,31 @@ def build(topology: dict) -> "OrderedDict":
         id_to_name[n["id"]] = dev.get("name")
         id_to_dev[dev.get("id", n["id"])] = dev
 
-    def feed_name(ref):
-        if not ref:
-            return None
-        return id_to_name.get(ref, ref)
+    # A/B feeds read from the CORDS, never from Device.power_source_a/b. That field is
+    # a cache, and it drifts exactly like Interface.connected_to_device: clone a device
+    # and it copies the template's feed, re-cord it and nothing updates the field. In
+    # this topology it had drifted four ways — 14 network devices naming the WRONG
+    # HALL's PDUs, 6 CDUs corded but unrecorded, 55 records for cords that do not
+    # exist, and 72 references to devices that no longer exist at all. The power edge
+    # carries supply_node/load_node/outlet/psu and cannot lie about what is plugged in.
+    # (core.topology_engine.power_feeds does the same thing at runtime; this is the
+    # offline twin, reading the raw topology's edges.)
+    cords_by_load: dict = {}
+    for e in topology.get("edges", []):
+        if e.get("layer") != "power":
+            continue
+        sup, load = e.get("supply_node"), e.get("load_node")
+        if not sup or not load:
+            continue          # upstream feed (rpp->pdu, mcc->pump): a breaker position,
+                              # not an outlet — it terminates on nothing, so no feed.
+        cords_by_load.setdefault(load, []).append((e.get("psu"), sup))
+
+    def feeds_of(dev_id):
+        """(feed_a, feed_b) — the PDUs actually corded to this device, ordered by the
+        PSU each cord lands on, so feed_a is PSU1's supply and feed_b is PSU2's."""
+        cs = sorted(cords_by_load.get(dev_id, []), key=lambda x: (x[0] is None, x[0]))
+        names = [id_to_name.get(sup, sup) for _psu, sup in cs]
+        return (names[0] if names else None, names[1] if len(names) > 1 else None)
 
     # Fleet-added rows carry synthetic rack_row labels >= _FLEET_ROW_BASE (chosen
     # globally-unique so a rack's internal (dc, row, num) key never collides across
@@ -180,8 +201,9 @@ def build(topology: dict) -> "OrderedDict":
                          if dev.get("rack_unit") else None),
             # power topology: which PDU feeds (A/B) this device draws from.
             "power_draw_w": dev.get("power_draw_w"),
-            "feed_a": feed_name(dev.get("power_source_a")),
-            "feed_b": feed_name(dev.get("power_source_b")),
+            # From the cords, not Device.power_source_a/b — see feeds_of().
+            "feed_a": feeds_of(dev.get("id", n["id"]))[0],
+            "feed_b": feeds_of(dev.get("id", n["id"]))[1],
         })
 
     # Per-rack derived inventory summary (asset reporting convenience).

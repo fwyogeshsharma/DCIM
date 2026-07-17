@@ -925,17 +925,10 @@ def _wire_new_device(s, device, links: list, made: list) -> list:
                         f"receptacle for this PSU's inlet. Reopen Add Device to "
                         f"re-read what is free."))
         made.append((dst.id, layer))
-    # Record the A/B feed ids the same way fleet does: the live cascade runs off the
-    # power EDGES, but the DCIM/Redfish power-source view and the redundancy split
-    # read these fields.
-    pdus = [d for d, layer in made if layer == "power"]
-    upd = {}
-    if len(pdus) >= 1:
-        upd["power_source_a"] = pdus[0]
-    if len(pdus) >= 2:
-        upd["power_source_b"] = pdus[1]
-    if upd:
-        s.device_manager.update_device(device.id, **upd)
+    # No feed to record — the cords ARE the record. add_link stamped supply_node/psu/
+    # outlet on each power edge, and Redfish, /power-terminations, the floor-plan export
+    # and the cascade all read the A/B split back with TopologyEngine.power_feeds. See
+    # Device for why the mirrored power_source_a/b field no longer exists.
     return made
 
 
@@ -1145,9 +1138,10 @@ def edit_device(device_id: str, req: EditDeviceRequest):
     try:
         for k, v in update.items():
             setattr(device, k, v)
-        if any(k in update for k in ("power_draw_w", "power_source_a",
-                                     "power_source_b", "power_source")):
-            _invalidate_power(s)        # power feeds/draw changed -> rebuild cascade
+        if "power_draw_w" in update:
+            _invalidate_power(s)        # draw changed -> rebuild cascade
+            # (Feeds are not editable here: a feed is the cord, so it changes by
+            # adding/removing a power link — which invalidates the cascade itself.)
         s.notify_ui("sync_devices")
         if s.topology is not None:
             try:

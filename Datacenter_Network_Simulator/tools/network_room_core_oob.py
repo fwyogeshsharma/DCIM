@@ -30,6 +30,7 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import hall_geometry as geo  # noqa: E402
+from tools._power_edges import feed_ids  # noqa: E402
 
 TOPO = "topologies/dual_dc_enterprise.json"
 NEW_ROOM = "Network Room"
@@ -103,8 +104,16 @@ def main() -> None:
             c["rack_row"], c["rack_num"] = 1, CORE_RACK
 
         # 2. Localise the core rack PDUs: relocate + re-feed from the room RPP.
-        a_pdus = {c.get("power_source_a") for c in cores if c.get("power_source_a")}
-        b_pdus = {c.get("power_source_b") for c in cores if c.get("power_source_b")}
+        # Which PDUs feed the cores, read from their CORDS — there is no
+        # power_source_a/b field to ask (it was a cache and it drifted; see
+        # tools/_power_edges.py and Device in core/device_manager.py).
+        a_pdus, b_pdus = set(), set()
+        for c in cores:
+            a, b = feed_ids(topo, c.get("id"), by_id)
+            if a:
+                a_pdus.add(a)
+            if b:
+                b_pdus.add(b)
         for pdu_ids, rpp in ((a_pdus, rpp_a), (b_pdus, rpp_b)):
             for pid in pdu_ids:
                 pdu = by_id.get(pid)
@@ -134,8 +143,8 @@ def main() -> None:
             oob["room"], oob["floor"] = NEW_ROOM, "1"
             oob["floor_x"], oob["floor_y"] = cx, cy
             oob["rack_row"], oob["rack_num"], oob["rack_unit"] = 1, CORE_RACK, 30
-            oob["power_source_a"] = next(iter(a_pdus), None)
-            oob["power_source_b"] = next(iter(b_pdus), None)
+            oob_pdu_a = next(iter(a_pdus), None)
+            oob_pdu_b = next(iter(b_pdus), None)
             for ifc in oob.get("interfaces", []):
                 ifc["connected_to_device"] = None
                 ifc["connected_to_iface"] = None
@@ -145,10 +154,11 @@ def main() -> None:
                           "device": oob})
             by_id[oob["id"]] = oob
             by_name[oob["name"]] = oob
-            if oob["power_source_a"]:
-                add_edge(oob["power_source_a"], oob["id"], "power")
-            if oob["power_source_b"]:
-                add_edge(oob["power_source_b"], oob["id"], "power")
+            # The cords ARE the record — add the edges and nothing else.
+            if oob_pdu_a:
+                add_edge(oob_pdu_a, oob["id"], "power")
+            if oob_pdu_b:
+                add_edge(oob_pdu_b, oob["id"], "power")
         if oob_core:
             add_edge(oob["id"], oob_core["id"], "management")   # uplink to OOB core
 

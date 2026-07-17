@@ -8551,7 +8551,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 5,
-      "feed_a": "PDUB-DC1-HA-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8564,7 +8564,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC1-HA-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8577,7 +8577,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC1-HA-R2-02",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8590,7 +8590,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 7,
-      "feed_a": "PDUB-DC1-HA-R2-03",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8603,7 +8603,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 4,
-      "feed_a": "PDUB-DC1-HB-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8681,7 +8681,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 7,
-      "feed_a": "PDUB-DC2-HA-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8694,7 +8694,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 4,
-      "feed_a": "PDUB-DC2-HA-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8707,7 +8707,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 6,
-      "feed_a": "PDUB-DC2-HA-R2-02",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -8720,7 +8720,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 4,
-      "feed_a": "PDUB-DC2-HB-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9240,8 +9240,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 145000,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "47bebbfb",
@@ -9253,8 +9253,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 145000,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "893e478e",
@@ -9266,8 +9266,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "c04f2280",
@@ -9279,8 +9279,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "c9bf2418",
@@ -9292,8 +9292,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "b17bfd83",
@@ -9305,8 +9305,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "f0c4e963",
@@ -9318,8 +9318,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "b04435fb",
@@ -9331,8 +9331,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 30000,
-      "feed_a": "ec1b8ca1",
-      "feed_b": "a9488d99"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "01154b78",
@@ -9344,8 +9344,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 30000,
-      "feed_a": "ec1b8ca1",
-      "feed_b": "a9488d99"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "60d8fc26",
@@ -9357,8 +9357,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 0,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "69d174b4",
@@ -9370,8 +9370,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 0,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "e667fbd5",
@@ -9383,8 +9383,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "6b30c89c",
@@ -9396,8 +9396,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 8,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "bea56af1",
@@ -9409,8 +9409,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 7,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "f8b995ba",
@@ -9435,8 +9435,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 145000,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "d0558940",
@@ -9448,8 +9448,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 145000,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "f8eb42ae",
@@ -9461,8 +9461,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "cc17f464",
@@ -9474,8 +9474,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "53f15d15",
@@ -9487,8 +9487,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "fa708342",
@@ -9500,8 +9500,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "96796119",
@@ -9513,8 +9513,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "02407220",
@@ -9526,8 +9526,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 30000,
-      "feed_a": "c4536f1d",
-      "feed_b": "edcb8cb6"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "7b33144e",
@@ -9539,8 +9539,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 30000,
-      "feed_a": "c4536f1d",
-      "feed_b": "edcb8cb6"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "e13dfcba",
@@ -9552,8 +9552,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 0,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "774f3d06",
@@ -9565,8 +9565,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 0,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "77a2c912",
@@ -9578,8 +9578,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 6,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "fa7bff58",
@@ -9591,8 +9591,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 6,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "85377da7",
@@ -9604,8 +9604,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 7,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "7ea9beb5",
@@ -9617,8 +9617,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 145000,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "79712904",
@@ -9630,8 +9630,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "1ff1caaf",
@@ -9643,8 +9643,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 145000,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "97d819aa",
@@ -9656,8 +9656,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "fe5b3521",
@@ -9747,7 +9747,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 8,
-      "feed_a": "PDUB-DC1-HB-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9760,7 +9760,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC1-HB-R2-02",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9773,7 +9773,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 8,
-      "feed_a": "PDUB-DC2-HB-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9786,7 +9786,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC2-HB-R2-02",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9799,7 +9799,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC1-HA-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9812,7 +9812,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC1-HA-R2-02",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9825,7 +9825,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC1-HA-R2-03",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9838,7 +9838,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC2-HA-R2-01",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9851,7 +9851,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC2-HA-R2-02",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -9864,7 +9864,7 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 9,
-      "feed_a": "PDUB-DC2-HA-R2-03",
+      "feed_a": null,
       "feed_b": null
     },
     {
@@ -10007,8 +10007,8 @@
       "rack_unit": 38,
       "u_height": 1,
       "power_draw_w": 1800,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDUA-DC1-HB-R2-01",
+      "feed_b": "PDUB-DC1-HB-R2-01"
     },
     {
       "id": "c35f9db2",
@@ -10020,8 +10020,8 @@
       "rack_unit": 38,
       "u_height": 1,
       "power_draw_w": 1800,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDUA-DC1-HB-R2-02",
+      "feed_b": "PDUB-DC1-HB-R2-02"
     },
     {
       "id": "0b5bbcb9",
@@ -10033,8 +10033,8 @@
       "rack_unit": 38,
       "u_height": 1,
       "power_draw_w": 1800,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDUA-DC1-HB-R2-03",
+      "feed_b": "PDUB-DC1-HB-R2-03"
     },
     {
       "id": "c7052214",
@@ -10098,8 +10098,8 @@
       "rack_unit": 38,
       "u_height": 1,
       "power_draw_w": 1800,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDUA-DC2-HB-R2-01",
+      "feed_b": "PDUB-DC2-HB-R2-01"
     },
     {
       "id": "4502bc22",
@@ -10111,8 +10111,8 @@
       "rack_unit": 38,
       "u_height": 1,
       "power_draw_w": 1800,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDUA-DC2-HB-R2-02",
+      "feed_b": "PDUB-DC2-HB-R2-02"
     },
     {
       "id": "78c47782",
@@ -10124,8 +10124,8 @@
       "rack_unit": 38,
       "u_height": 1,
       "power_draw_w": 1800,
-      "feed_a": null,
-      "feed_b": null
+      "feed_a": "PDUA-DC2-HB-R2-03",
+      "feed_b": "PDUB-DC2-HB-R2-03"
     },
     {
       "id": "f1e1dc00",
@@ -11307,8 +11307,8 @@
       "rack_unit": 40,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-HB-R1-03",
+      "feed_b": "PDUB-DC1-HB-R1-03"
     },
     {
       "id": "94013dbb",
@@ -11320,8 +11320,8 @@
       "rack_unit": 38,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-HB-R1-03",
+      "feed_b": "PDUB-DC1-HB-R1-03"
     },
     {
       "id": "99dc3982",
@@ -11333,8 +11333,8 @@
       "rack_unit": 36,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-HB-R1-03",
+      "feed_b": "PDUB-DC1-HB-R1-03"
     },
     {
       "id": "cda18b53",
@@ -11346,8 +11346,8 @@
       "rack_unit": 34,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-HB-R1-03",
+      "feed_b": "PDUB-DC1-HB-R1-03"
     },
     {
       "id": "cd338026",
@@ -11359,8 +11359,8 @@
       "rack_unit": 32,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-HB-R1-03",
+      "feed_b": "PDUB-DC1-HB-R1-03"
     },
     {
       "id": "435a447b",
@@ -11372,8 +11372,8 @@
       "rack_unit": 42,
       "u_height": 1,
       "power_draw_w": 250,
-      "feed_a": "PDUA-DC1-HA-R1-01",
-      "feed_b": "PDUB-DC1-HA-R1-01"
+      "feed_a": "PDUA-DC1-HB-R1-01",
+      "feed_b": "PDUB-DC1-HB-R1-01"
     },
     {
       "id": "f477eddb",
@@ -11385,8 +11385,8 @@
       "rack_unit": 41,
       "u_height": 1,
       "power_draw_w": 250,
-      "feed_a": "PDUA-DC1-HA-R1-01",
-      "feed_b": "PDUB-DC1-HA-R1-01"
+      "feed_a": "PDUA-DC1-HB-R1-01",
+      "feed_b": "PDUB-DC1-HB-R1-01"
     },
     {
       "id": "2fa9ed08",
@@ -11398,8 +11398,8 @@
       "rack_unit": 42,
       "u_height": 1,
       "power_draw_w": 250,
-      "feed_a": "PDUA-DC1-HA-R1-02",
-      "feed_b": "PDUB-DC1-HA-R1-02"
+      "feed_a": "PDUA-DC1-HB-R1-02",
+      "feed_b": "PDUB-DC1-HB-R1-02"
     },
     {
       "id": "d978c160",
@@ -11411,8 +11411,8 @@
       "rack_unit": 41,
       "u_height": 1,
       "power_draw_w": 250,
-      "feed_a": "PDUA-DC1-HA-R1-02",
-      "feed_b": "PDUB-DC1-HA-R1-02"
+      "feed_a": "PDUA-DC1-HB-R1-02",
+      "feed_b": "PDUB-DC1-HB-R1-02"
     },
     {
       "id": "e66fa645",
@@ -11476,8 +11476,8 @@
       "rack_unit": 42,
       "u_height": 1,
       "power_draw_w": 250,
-      "feed_a": "PDUA-DC2-HA-R1-01",
-      "feed_b": "PDUB-DC2-HA-R1-01"
+      "feed_a": "PDUA-DC2-HB-R1-01",
+      "feed_b": "PDUB-DC2-HB-R1-01"
     },
     {
       "id": "f3c1624e",
@@ -11489,8 +11489,8 @@
       "rack_unit": 41,
       "u_height": 1,
       "power_draw_w": 250,
-      "feed_a": "PDUA-DC2-HA-R1-01",
-      "feed_b": "PDUB-DC2-HA-R1-01"
+      "feed_a": "PDUA-DC2-HB-R1-01",
+      "feed_b": "PDUB-DC2-HB-R1-01"
     },
     {
       "id": "52153252",
@@ -11658,8 +11658,8 @@
       "rack_unit": 2,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-HB-R1-03",
+      "feed_b": "PDUB-DC1-HB-R1-03"
     },
     {
       "id": "2aaa46a5",
@@ -11931,8 +11931,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "a3b1799d",
-      "feed_b": "6c031199"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "85c24dde",
@@ -11944,8 +11944,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 30000,
-      "feed_a": "ec1b8ca1",
-      "feed_b": "a9488d99"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "dc38cb1c",
@@ -11957,8 +11957,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 18500,
-      "feed_a": "7631de9d",
-      "feed_b": "53ac2ab9"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "2789b5e1",
@@ -11970,8 +11970,8 @@
       "rack_unit": 0,
       "u_height": null,
       "power_draw_w": 30000,
-      "feed_a": "c4536f1d",
-      "feed_b": "edcb8cb6"
+      "feed_a": null,
+      "feed_b": null
     },
     {
       "id": "df0ecde8",
@@ -12399,8 +12399,8 @@
       "rack_unit": 34,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC1-HA-R1-03",
-      "feed_b": "PDUB-DC1-HA-R1-03"
+      "feed_a": "PDUA-DC1-NR-R1-03",
+      "feed_b": "PDUB-DC1-NR-R1-03"
     },
     {
       "id": "7342643e",
@@ -12412,8 +12412,8 @@
       "rack_unit": 34,
       "u_height": 1,
       "power_draw_w": 90,
-      "feed_a": "PDUA-DC2-HA-R1-02",
-      "feed_b": "PDUB-DC2-HA-R1-02"
+      "feed_a": "PDUA-DC2-NR-R1-03",
+      "feed_b": "PDUB-DC2-NR-R1-03"
     },
     {
       "id": "867a94ee",

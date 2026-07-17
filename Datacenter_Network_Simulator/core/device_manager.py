@@ -918,9 +918,21 @@ class Device:
     # nameplate sum (÷0.8) and freeze at that install baseline. IT devices leave
     # this 0 (they are loads, not distribution nodes).
     rated_power_w: int = 0
-    power_source: str = ""  # device ID of rack PDU feeding this device
-    power_source_a: str = ""  # device ID of A-side rack PDU (dual-feed)
-    power_source_b: str = ""  # device ID of B-side rack PDU (dual-feed)
+    # NO power_source / power_source_a / power_source_b. Which PDU feeds a device is a
+    # fact about the CORD, so it is read from the power edge — TopologyEngine.power_feeds
+    # (psu index -> supply id/name/model, outlet, A|B side) — exactly as PowerSupply
+    # carries no `feed` field, and for the same reason:
+    #
+    #   "Cached here they would be right until the first re-cord and wrong forever
+    #    after — the same trap as Interface.connected_to_device."
+    #
+    # These fields WERE that trap. Cross-checking them against the cords in 2026-07
+    # found 14 network devices naming the wrong HALL's PDUs (their pod was cloned and
+    # the record came along while the cords were redone), 6 CDUs corded but unrecorded,
+    # 55 records for cords that do not exist, and 72 references to devices that had been
+    # deleted. Every cord was correct; only the cache lied. Nothing read them at runtime
+    # (Redfish and /power-terminations already went to power_feeds), so they were
+    # write-only drift. Ask the edges.
     ups_backup: str = ""    # device ID of UPS protecting this device
     power_state: str = "On"  # chassis power ("On"/"Off") — driven by Redfish ops
 
