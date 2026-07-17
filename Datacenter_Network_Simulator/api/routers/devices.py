@@ -401,10 +401,21 @@ def _probe_device(device_type: str, vendor: str, model_name: str, interface_coun
         return None
 
 
-def _free_ports(s, dev, lo: int = 0, hi: int | None = None, role: str = "data") -> list:
-    """Free ports on *dev* within the [lo, hi) index window, as picker options.
+def _port_options(s, dev, lo: int = 0, hi: int | None = None, role: str = "data") -> list:
+    """EVERY port on *dev* in the [lo, hi) index window, each flagged used/free with
+    its peer — the same contract as GET /topology/devices/{id}/ports.
 
-    Free is judged from the EDGES (_port_terminations), never from the interface's
+    All ports are listed, not just the free ones: an operator patching a rack reads
+    the port map to see what the switch is actually carrying, and a dropdown that
+    silently omits the taken ports makes port 22 look like port 1's neighbour and
+    hides WHY the obvious port is unavailable. The UI shows them disabled with their
+    peer; only free ports can be picked, and add_link/_wire_new_device refuse a taken
+    one anyway.
+
+    The window and *role* still filter: those ports are not "taken", they are not
+    candidates at all (a leaf's spine-facing uplinks, a dedicated mgmt port).
+
+    Used is judged from the EDGES (_port_terminations), never from the interface's
     cached connected_to_device — that field holds only the last write and reads as
     occupied long after a link is gone."""
     from api.routers.topology import _port_terminations
@@ -414,12 +425,21 @@ def _free_ports(s, dev, lo: int = 0, hi: int | None = None, role: str = "data") 
     hi = len(ifaces) if hi is None else min(hi, len(ifaces))
     for i in range(lo, hi):
         itf = ifaces[i]
-        if term.get(i):
-            continue
         if role and (getattr(itf, "role", "data") or "data") != role:
             continue
-        out.append({"value": i, "label": itf.name})
+        conns = term.get(i) or []
+        peer = None
+        if conns:
+            # Prefer the production peer so a ToR/uplink is what's named; a port can
+            # carry a data link and a console on different layers.
+            c = next((c for c in conns if c["layer"] == "production"), conns[0])
+            peer = f"{c['peer']} {c['peer_iface']}" if c["peer_iface"] else c["peer"]
+        out.append({"value": i, "label": itf.name, "used": bool(conns), "peer": peer})
     return out
+
+
+def _free_count(ports: list) -> int:
+    return sum(1 for p in ports if not p["used"])
 
 
 def _leaf_slot(s, devs, rk: tuple, rack: tuple, near_label: str) -> dict:
@@ -441,14 +461,21 @@ def _leaf_slot(s, devs, rk: tuple, rack: tuple, near_label: str) -> dict:
             continue                       # spine — leaf-facing, never server-facing
         downlink, _uplink = leaf_port_roles(getattr(d, "model_name", "") or "",
                                             getattr(d, "interface_count", 54) or 54)
-        ports = _free_ports(s, d, 0, downlink, role="data")
-        if not ports:
-            continue                       # leaf downlinks exhausted
+        ports = _port_options(s, d, 0, downlink, role="data")
+        # Ports inside the downlink range that actually carry a spine uplink or the
+        # peer-link are fabric, not server slots — don't count them as capacity. They
+        # still SHOW (used, named by their spine): they are real ports an operator
+        # reading the map expects to see, they just were never free to take.
+        fabric = s.topology.fabric_ifaces(d.id)
+        slots = [p for p in ports if p["value"] not in fabric]
+        free = _free_count(slots)
+        if not free:
+            continue                       # leaf downlinks exhausted — nothing to pick
         same_rack = _rack_of(d) == rack
         cands.append({
             "id": d.id, "name": d.name, "same_rack": same_rack,
             "detail": f"R{d.rack_row or 0}-{str(d.rack_num or 0).zfill(2)}"
-                      f" · {len(ports)}/{downlink} downlinks free"
+                      f" · {free}/{len(slots)} downlinks free"
                       + (" · this rack" if same_rack else ""),
             "ports": ports,
         })
@@ -472,11 +499,12 @@ def _oob_slot(s, devs, rk: tuple, near_label: str) -> dict:
             continue
         # OOB-plane switches carry the mgmt plane on DATA-role ports by design —
         # their own 'mgmt' port is the switch's console, not an access port.
-        ports = _free_ports(s, d, role="data")
-        if not ports:
+        ports = _port_options(s, d, role="data")
+        free = _free_count(ports)
+        if not free:
             continue
         cands.append({"id": d.id, "name": d.name, "same_rack": False,
-                      "detail": f"{len(ports)} ports free",
+                      "detail": f"{free}/{len(ports)} ports free",
                       "ports": ports})
     cands.sort(key=lambda c: c["name"])
     return {"key": "mgmt0", "label": "OOB switch", "port_label": "Access port",
@@ -502,14 +530,26 @@ def _pdu_slots(s, devs, rk: tuple, rack: tuple, probe) -> list:
             continue
         if _room_key(d) != rk or _rack_of(d) != rack:
             continue
+        # Every outlet of the right type, taken ones included and flagged — same
+        # reasoning as _port_options: an operator reads the strip to see what is on
+        # it. Outlets of the WRONG type are omitted entirely: a C19 is not a busy
+        # C13, it is a receptacle this cord physically cannot enter.
         used, _ = s.topology._used_power_terminations(d.id)
-        outs = [{"value": o.index, "label": f"Outlet {o.index} ({o.type})"}
-                for o in (getattr(d, "outlets", None) or [])
-                if o.type == want and o.index not in used]
-        if not outs:
+        peer_of = {}
+        for _u, _v, ed in s.topology.get_links():
+            if (ed.get("layer") == "power" and ed.get("supply_node") == d.id
+                    and ed.get("outlet") is not None):
+                load = s.device_manager.get_device(ed.get("load_node"))
+                peer_of[ed["outlet"]] = (f"{load.name} PSU{ed.get('psu')}"
+                                         if load else ed.get("load_node"))
+        outs = [{"value": o.index, "label": f"Outlet {o.index} ({o.type})",
+                 "used": o.index in used, "peer": peer_of.get(o.index)}
+                for o in (getattr(d, "outlets", None) or []) if o.type == want]
+        free = _free_count(outs)
+        if not free:
             continue                       # no receptacle this cord can go in
         cand = {"id": d.id, "name": d.name, "same_rack": True,
-                "detail": f"{len(outs)} × {want} free", "ports": outs}
+                "detail": f"{free}/{len(outs)} × {want} free", "ports": outs}
         by_side.setdefault(feed_side(d.name) or "?", []).append(cand)
     slots = []
     for i, p in enumerate(psus):
@@ -825,6 +865,16 @@ def _wire_new_device(s, device, links: list, made: list) -> list:
                     detail=f"{device.name} has no free port left for the {layer} link "
                            f"to {dst.name}")
             taken.add(src_iface)
+        # Same gate POST /topology/links/create uses — it must run here too. add_link
+        # takes an explicit dst_iface ON TRUST and overwrites whatever termination is
+        # already on it, so without this a stale picker (or a direct API call) could
+        # silently steal a leaf port from a live server. It also names the reason,
+        # which add_link's bare False cannot.
+        from api.routers.topology import validate_link, CreateLinkRequest
+        validate_link(s, CreateLinkRequest(
+            src_id=device.id, dst_id=dst.id, layer=layer,
+            src_iface=src_iface, dst_iface=ln.dst_iface,
+            outlet=ln.outlet, psu=None))
         ok = s.topology.add_link(device.id, dst.id, src_iface=src_iface,
                                  dst_iface=ln.dst_iface, layer=layer,
                                  outlet=ln.outlet)

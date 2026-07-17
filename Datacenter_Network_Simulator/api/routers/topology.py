@@ -488,12 +488,14 @@ def _validate_power_link(s, req: "CreateLinkRequest"):
                    f"({len(load.psus)} PSUs)")
 
 
-@router.post("/links/create", response_model=OkResponse)
-def create_link(req: CreateLinkRequest):
-    """Create a new link between two devices, optionally on explicit ports."""
-    s = _state()
-    if s.topology is None:
-        raise HTTPException(status_code=503, detail="Topology not loaded")
+def validate_link(s, req: "CreateLinkRequest") -> None:
+    """Reject a link that could not physically be made, naming the real reason.
+
+    Shared by POST /links/create and the Add-Device cabling path (which builds its
+    links itself and would otherwise skip every one of these checks — add_link takes
+    an explicit port on trust and silently OVERWRITES whatever was on it). Any caller
+    passing explicit ports/outlets to add_link must come through here first.
+    """
     # Power and cooling links don't terminate on an interface — a power link is a
     # cord to a PDU outlet, a cooling link is a pipe. Naming a port for one is a
     # category error, so reject it outright rather than accept a value add_link
@@ -511,8 +513,8 @@ def create_link(req: CreateLinkRequest):
     if req.layer == "power":
         _validate_power_link(s, req)
     # Validate any explicitly-chosen port: it must exist and be free. The UI only
-    # offers free ports, but a stale view (or a direct API call) could still target
-    # an occupied one, and add_link would otherwise silently overwrite it.
+    # lets a free port be picked, but a stale view (or a direct API call) could still
+    # target an occupied one, and add_link would otherwise silently overwrite it.
     for who, dev_id, iface in (("Source", req.src_id, req.src_iface),
                                ("Destination", req.dst_id, req.dst_iface)):
         if iface is None:
@@ -539,6 +541,15 @@ def create_link(req: CreateLinkRequest):
         if iface in _port_terminations(s, dev_id):
             raise HTTPException(status_code=409,
                                 detail=f"{who} port {dev.interfaces[iface].name} is already in use")
+
+
+@router.post("/links/create", response_model=OkResponse)
+def create_link(req: CreateLinkRequest):
+    """Create a new link between two devices, optionally on explicit ports."""
+    s = _state()
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+    validate_link(s, req)
     ok = s.topology.add_link(req.src_id, req.dst_id,
                              src_iface=req.src_iface, dst_iface=req.dst_iface,
                              layer=req.layer,

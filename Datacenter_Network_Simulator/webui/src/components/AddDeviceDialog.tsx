@@ -271,7 +271,10 @@ interface Form {
 // actually free on it. The near end (this device's NIC / BMC port / PSU) is never
 // picked here — the device does not exist yet, so the server chooses it, the same
 // way fleet churn does.
-type LinkPort  = { value: number; label: string }
+// Every port/outlet in the picker's window, taken ones included: the dropdown shows
+// the whole port map (so the operator sees what the switch carries and why the
+// obvious port is unavailable) but only lets a free one be picked.
+type LinkPort  = { value: number; label: string; used: boolean; peer: string | null }
 type LinkCand  = { id: string; name: string; detail: string; ports: LinkPort[] }
 type LinkSlot  = { key: string; label: string; port_label: string
                    near_end: string; candidates: LinkCand[] }
@@ -446,6 +449,18 @@ export default function AddDeviceDialog({ onClose }: Props) {
       return !p || !p.dst_id || p.port === null
     }),
     [linkSlots, picks])
+  // A pick can point at a port that reads used — the dropdown lists taken ports (the
+  // UI disables them, but a stale view or a keyboard pick could still land on one).
+  // The backend refuses it; catching it here names the port instead of failing at OK.
+  const takenPicks = useMemo(
+    () => linkSlots.filter(s => {
+      const p = picks[s.key]
+      if (!p || p.port === null) return false
+      const cand = s.candidates.find(c => c.id === p.dst_id)
+      return !!cand?.ports.find(pt => pt.value === p.port)?.used
+    }),
+    [linkSlots, picks])
+
   // Both cords on one PDU is not redundancy — it is a single point of failure
   // wearing an A/B label. The backend refuses the duplicate power edge anyway;
   // catching it here says why instead of failing at submit.
@@ -458,15 +473,18 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // Hard block: a device racked without its cabling is a dead node — it answers
   // SNMP but carries no traffic and draws no metered power.
   const linksReady = cands
-    ? (!cands.supported || (missingLinks.length === 0 && !feedClash))
+    ? (!cands.supported
+       || (missingLinks.length === 0 && takenPicks.length === 0 && !feedClash))
     : true
 
   const setPickDev = (slot: LinkSlot, dst_id: string) =>
     setPicks(p => {
       const cand = slot.candidates.find(c => c.id === dst_id)
-      // Auto-fill the first free port/outlet — the same "next free" the fleet takes,
+      // Auto-fill the first FREE port/outlet — the same "next free" the fleet takes,
       // and what an operator patching a fresh rack does anyway. Still overridable.
-      return { ...p, [slot.key]: { dst_id, port: cand?.ports[0]?.value ?? null } }
+      // Must skip used ports: they are in the list now, and ports[0] is often taken.
+      const first = cand?.ports.find(pt => !pt.used)
+      return { ...p, [slot.key]: { dst_id, port: first?.value ?? null } }
     })
   const setPickPort = (slot: LinkSlot, port: number) =>
     setPicks(p => ({ ...p, [slot.key]: { dst_id: p[slot.key]?.dst_id || '', port } }))
@@ -496,6 +514,10 @@ export default function AddDeviceDialog({ onClose }: Props) {
     }
     if ((rr > 0 || rn > 0) && (rr <= 0 || rn <= 0)) { setErr('Set both Row and Rack together'); return }
     if (feedClash) { setErr('Feed A and Feed B must be different PDUs'); return }
+    if (takenPicks.length) {
+      setErr(`Already in use: ${takenPicks.map(s => s.label).join(', ')} — pick a free port`)
+      return
+    }
     if (!linksReady) {
       setErr(`Cabling incomplete: ${missingLinks.map(s => s.label).join(', ')}`); return
     }
@@ -728,10 +750,14 @@ export default function AddDeviceDialog({ onClose }: Props) {
                         )}
                         {cand && (
                           <FormRow label={s.port_label}>
+                            {/* Whole port map, taken ones disabled with their peer —
+                                shows WHY a port is unavailable instead of hiding it. */}
                             <select style={{ flex: 1 }} value={pick?.port ?? ''}
                               onChange={e => setPickPort(s, parseInt(e.target.value))}>
                               {cand.ports.map(p => (
-                                <option key={p.value} value={p.value}>{p.label}</option>
+                                <option key={p.value} value={p.value} disabled={p.used}>
+                                  {p.label}{p.used ? ` — in use${p.peer ? ` by ${p.peer}` : ''}` : ''}
+                                </option>
                               ))}
                             </select>
                           </FormRow>

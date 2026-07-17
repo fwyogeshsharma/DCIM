@@ -452,10 +452,21 @@ class FleetLifecycleEngine:
         """Physical per-rack server ceiling: the leaf's server-facing downlink
         ports. Flip-invariant across single/dual-homing (a dual-homed server uses
         one downlink on each of the two leaves, so the count is unchanged). This
-        is a hard co-limit alongside the power budget."""
+        is a hard co-limit alongside the power budget.
+
+        Ports inside the downlink range that already carry a spine uplink or the
+        peer-link are subtracted: leaf_port_roles splits by a real chassis layout
+        (a 93180YC-FX's 48×25G before its 6×100G), but this topology's spines land on
+        ports 0-3 — the FRONT of that range. Counting them would promise 48 server
+        slots on a leaf that physically has 44 left, and fill the rack past its own
+        fabric ports."""
         downlink, _ = leaf_port_roles(getattr(tor, "model_name", "") or "",
                                       getattr(tor, "interface_count", 54))
-        return max(0, downlink)
+        try:
+            fabric = self.s.topology.fabric_ifaces(tor.id)
+        except Exception:
+            fabric = set()
+        return max(0, downlink - sum(1 for i in fabric if i < downlink))
 
     def _neighbor(self, dev: Device, layer: str, types: tuple) -> Optional[Device]:
         """First neighbour of *dev* on *layer* whose type is in *types*."""

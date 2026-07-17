@@ -100,6 +100,39 @@ class TopologyEngine:
                 return dst_dev, src_dev, False
         return None
 
+    def fabric_ifaces(self, device_id: str) -> set:
+        """Iface indices on *device_id* carrying a production link to ANOTHER SWITCH —
+        a leaf's spine uplinks and its MLAG peer-link.
+
+        These are fabric ports, not server slots, and they must not be counted as
+        server-facing capacity. Index position cannot answer this: core.rack_capacity's
+        (downlink, uplink) split assumes a real chassis layout (a 93180YC-FX's 48×25G
+        come before its 6×100G uplinks), but the curated topology wires its spines onto
+        ports 0-3 — the FIRST ports of the downlink range. So the question "is this port
+        facing the fabric?" is answered by what is actually plugged into it, read from
+        the EDGES, not by where it sits.
+
+        Read via src_node/dst_node, never the (u, v) the graph reports: the graph is
+        undirected, so edges() names each link from whichever end networkx walks first,
+        which is not the end src_iface was recorded against.
+        """
+        out: set = set()
+        with self._lock:
+            if not self.graph.has_node(device_id):
+                return out
+            for peer in self.graph[device_id]:
+                peer_dev = self.get_device(peer)
+                if peer_dev is None or peer_dev.device_type != DeviceType.SWITCH:
+                    continue
+                for _key, d in self.graph[device_id][peer].items():
+                    if d.get("layer") != "production":
+                        continue
+                    myif = (d.get("src_iface") if d.get("src_node") == device_id
+                            else d.get("dst_iface"))
+                    if myif is not None:
+                        out.add(myif)
+        return out
+
     def _used_power_terminations(self, device_id: str):
         """(outlet indices, psu indices) already taken on this device, read from the
         EDGES — the same source of truth the Ethernet port picker uses."""
