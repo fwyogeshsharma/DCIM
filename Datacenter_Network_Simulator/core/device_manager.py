@@ -366,10 +366,10 @@ MODEL_SYSDESCR = {
     "Dell EMC PowerSwitch Z9332F-ON": "Enterprise SONiC Distribution by Dell Technologies - 4.2.0 - HwSku: DellEMC-Z9332f-ON - Distribution: Debian - Kernel: 5.10.0-18-2-amd64",
     # APC Rack PDU
     "APC AP8941":      "APC Rack PDU 2G, Switched, ZeroU, 30A, 208V, (21)C13&(3)C19, NMC3 fw v1.4.2",
-    "APC AP8886":      "APC Rack PDU 2G, Metered, ZeroU, 20A, 208V, (21)C13&(3)C19, NMC3 fw v1.4.2",
+    "APC AP8886":      "APC Rack PDU 2G, Metered, ZeroU, 22.0kW(32A), 230V 3-phase, (30)C13&(12)C19, NMC3 fw v1.4.2",
     "APC AP8959":      "APC Rack PDU 2G, Switched, 1U, 30A, 208V, (12)C13&(4)C19, NMC3 fw v1.4.2",
     "APC AP8681":      "APC Rack PDU 2G, Metered-by-Outlet, 1U, 16A, 230V, (12)C13&(4)C19, NMC3 fw v1.4.2",
-    "APC AP8865":      "APC Rack PDU 2G, Metered, ZeroU, 32A, 415V 3-phase, (21)C13&(12)C19, NMC3 fw v1.4.2",
+    "APC AP8865":      "APC Rack PDU 2G, Metered, ZeroU, 8.6kW, 208V 3-phase, 30A, (36)C13&(6)C19&(2)5-20R, NMC3 fw v1.4.2",
     # Raritan PX3
     "Raritan PX3-5878":   "Raritan PX3 Rack PDU, 0U, 32A, 415V 3-phase, (24)C13&(12)C19, fw 3.7.0",
     "Raritan PX3-5190R":  "Raritan PX3 Rack PDU, 1U, 30A, 208V, (24)C13&(6)C19, fw 3.7.0",
@@ -540,9 +540,18 @@ class PowerSupply:
         return asdict(self)
 
 
-# Outlet layout per rack-PDU SKU. Counts are the ones this repo already commits to
-# in MODEL_SYSDESCR (which is what an operator polling sysDescr sees) — kept in one
-# place so the two cannot drift.
+# Outlet layout per rack-PDU SKU: (C13 count, C19 count, phases, input A, input V).
+#
+# `volts` is the INPUT nameplate (line-to-line for 3-phase), NOT what an outlet
+# delivers — see outlet_voltage(), which does that conversion.
+#
+# PROVENANCE: entries marked "verified" were checked against the vendor's own datasheet
+# on 2026-07-17 and the source is named. The rest are UNVERIFIED and were inherited from
+# MODEL_SYSDESCR — which is a string this repo wrote, so agreeing with it proves nothing.
+# That circularity hid three wrong SKUs: the AP8865 was modelled as a 415V/32A 22 kW
+# strip with 21 C13 when it is really a 208V/30A 8.6 kW strip with 36 C13, and the
+# AP8886 was modelled as a 20A/208V unit when it is really the 22 kW/32A 3-phase one
+# this fleet needs. Do not add or trust a row here without a datasheet.
 #
 # banks/phases: the phase count and current rating come from the SKU. The BANK
 # COUNT is a modelled convention, NOT a datasheet figure: a 1-phase 30A rPDU is
@@ -551,9 +560,19 @@ class PowerSupply:
 # on bank identity for breaker simulation.
 PDU_OUTLET_CATALOG = {
     # model_name:        (C13 count, C19 count, phases, rating A, volts)
+    # VERIFIED — se.com/us/en/product/AP8941: "(21) C13 & (3) C19", 30A, 200/208V,
+    # NEMA L6-30P (single-phase), 4992 VA.
     "APC AP8941":        (21,  3, 1, 30, 208),
-    "APC AP8865":        (21, 12, 3, 32, 415),
-    "APC AP8959":        (12,  4, 1, 30, 208),
+    # VERIFIED — apc.com/us/en/product/AP8865: "0U, 8.6kW, 208V, 3 phase, 30A, 36 C13,
+    # 6 C19 and 2 NEMA 5-20R outlets". The 2 NEMA 5-20R are not modelled (nothing here
+    # takes one). Was fabricated as (21,12,3,32,415)/22kW — a strip that does not exist.
+    "APC AP8865":        (36,  6, 3, 30, 208),
+    # VERIFIED — apc.com .../P-AP8886 + AP8886 datasheet: "0U, 3PH, 22kW 230V 32A or
+    # 17.3kW 230V 24A, x30 C13 and x12 C19, IEC 309 3P+N+PE". 230V is the OUTLET (L-N)
+    # voltage of a 400V wye, so the input nameplate here is 400 (400/sqrt(3) = 231V).
+    # Was fabricated as a 20A/208V (21)C13 unit.
+    "APC AP8886":        (30, 12, 3, 32, 400),
+    "APC AP8959":        (12,  4, 1, 30, 208),   # UNVERIFIED
     "Raritan PX2-5170CR": (24,  6, 1, 30, 208),
     "Raritan PX3-5878":  (24, 12, 3, 32, 415),
     "Raritan PX3-5190R": (24,  6, 1, 30, 208),
@@ -579,7 +598,16 @@ def outlet_voltage(model_name: str) -> int:
     if not spec:
         return 230                      # unknown SKU: nominal
     _c13, _c19, phases, _a, volts = spec
-    return round(volts / math.sqrt(3)) if phases == 3 else volts
+    # 3-phase is NOT enough to imply a line-to-neutral outlet. Two different animals:
+    #   400/415V WYE (EU/hyperscale): outlets are wired L-N -> 400/sqrt(3) = 231V.
+    #   208V 3-phase (US):            outlets are wired L-L  -> 208V as-is. A C13 here
+    #                                 sees 208V; L-N would be 120V, which no C13 load in
+    #                                 a rack runs on.
+    # Testing `phases == 3` alone gave the real 208V/3-phase AP8865 a 120V outlet. The
+    # split is the voltage, not the phase count.
+    if phases == 3 and volts >= 380:
+        return round(volts / math.sqrt(3))
+    return volts
 
 
 def feed_side(pdu_name: str) -> str:
@@ -778,11 +806,16 @@ def nameplate_power_w(device_type: "DeviceType", model_name: str = "") -> int:
 #   • Utility feed : the service transformer's rating (kVA → kW at 0.9 PF).
 _MODEL_RATED_W = {
     # ── Rack PDU (0U/1U) ──
-    "ap8865":       22000,   # APC Metered ZeroU, 415V 32A 3-phase
-    "px3-5878":     22000,   # Raritan three-phase 32A
-    "ap8959":        8600,   # APC Switched 1U, 30A 3-phase 208V
-    "ap8941":        8600,   # APC Switched ZeroU, 30A 3-phase 208V
-    "ap8886":        7100,   # APC Metered ZeroU, 20A 3-phase 208V
+    # VERIFIED 2026-07-17 against the vendor datasheets. The three below were not just
+    # wrong, they were SHUFFLED: ap8941 carried the real ap8865's 8.6 kW, ap8865 carried
+    # a 22 kW that belongs to the ap8886, and the ap8886 — the only strip in this
+    # catalog that can actually 2N a 17.6 kW rack — was buried at 7.1 kW. Their comments
+    # were wrong too (the ap8941 is L6-30P SINGLE-phase, not 3-phase).
+    "ap8886":       22000,   # APC Metered ZeroU, 22.0kW(32A) 230V 3-phase, (30)C13&(12)C19
+    "ap8865":        8600,   # APC Metered ZeroU, 8.6kW 208V 3-phase 30A, (36)C13&(6)C19
+    "ap8941":        4992,   # APC Switched ZeroU, 208V 1-phase 30A (L6-30P), 4992 VA
+    "px3-5878":     22000,   # UNVERIFIED — real unit looks like 6xC13/18xC19 @415V, not this
+    "ap8959":        8600,   # UNVERIFIED
     "ap8681":        3700,   # APC Metered-by-Outlet 1U, 16A 230V single-phase
     "px3-5190r":     8600,   # Raritan Switched 1U, 30A 208V
     "px3-5161r":     5700,   # Raritan Switched 1U, 16A 208V
