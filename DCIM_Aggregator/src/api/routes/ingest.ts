@@ -343,20 +343,38 @@ export function createIngestRouter(dbPool: Pool): Router {
       for (const dev of body.devices ?? []) {
         // Stable-identity upsert. Match an existing row first by mgmt_ip (stable
         // across BOTH a hostname change and a DCS DB reset, which regenerates
-        // device ids), then by hostname. The matched row is UPDATEd in place — so
-        // a rename never inserts a duplicate, and a forwarded id that no longer
-        // matches any row (post-reset) never trips the uix_devices_identity
-        // hostname index (the cause of the duplicate-key 500s). Only a genuinely
-        // new device is INSERTed, adopting the forwarded id.
-        const found = await client.query<{ id: string }>(
-            `SELECT id FROM devices
-             WHERE org_id = $1 AND network_id = $2 AND group_id = $3
+        // device ids), then by hostname, then by the forwarded id itself. The
+        // matched row is UPDATEd in place — so a rename never inserts a
+        // duplicate, and a forwarded id that no longer matches any row
+        // (post-reset) never trips the uix_devices_identity hostname index (the
+        // cause of the duplicate-key 500s). Only a genuinely new device is
+        // INSERTed, adopting the forwarded id.
+        //
+        // The id arm is scope-free and matches last: the scoped arms miss a
+        // device that moved scope (group/network/datacenter/floor) or changed
+        // hostname AND mgmt_ip together, which sent a known id down the INSERT
+        // path and violated devices_pkey. Matching it here can only find the row
+        // that id already names.
+        //
+        // in_scope reports whether the winning row was reached by a scoped arm.
+        // A row reached ONLY by id sits in a stale scope and is re-scoped below;
+        // that can't trip uix_devices_identity, because the scoped arms missing
+        // proves no row holds this (org, dc, floor, network, group, hostname).
+        const found = await client.query<{ id: string, in_scope: boolean }>(
+            `SELECT id,
+                    ( org_id = $1 AND network_id = $2 AND group_id = $3
+                      AND ( ($4::inet IS NOT NULL AND mgmt_ip = $4::inet)
+                      OR (datacenter_id = $5 AND floor_id = $6 AND hostname = $7) ) ) AS in_scope
+             FROM devices
+             WHERE ( org_id = $1 AND network_id = $2 AND group_id = $3
                AND ( ($4::inet IS NOT NULL AND mgmt_ip = $4::inet)
-               OR (datacenter_id = $5 AND floor_id = $6 AND hostname = $7) )
-             ORDER BY ($4::inet IS NOT NULL AND mgmt_ip = $4::inet) DESC
+               OR (datacenter_id = $5 AND floor_id = $6 AND hostname = $7) ) )
+               OR ($8::uuid IS NOT NULL AND id = $8::uuid)
+             ORDER BY in_scope DESC,
+                      ($4::inet IS NOT NULL AND mgmt_ip = $4::inet) DESC
                LIMIT 1`,
             [body.org_id, body.network_id, body.group_id, dev.mgmt_ip ?? null,
-              body.datacenter_id, body.floor_id, dev.hostname],
+              body.datacenter_id, body.floor_id, dev.hostname, dev.id ?? null],
         )
 
         // Shared column values $1..$31 — identical for the UPDATE and the INSERT.
@@ -379,8 +397,11 @@ export function createIngestRouter(dbPool: Pool): Router {
         let deviceId: string
         if (found.rows[0]) {
           deviceId = found.rows[0].id
+          const reScope = !found.rows[0].in_scope
           await client.query(`
             UPDATE devices SET
+                             ${reScope ? `org_id=$35, datacenter_id=$36, floor_id=$37,
+                                          network_id=$38, group_id=$39,` : ''}
                              hostname=$1, device_type=$2,
                              vendor=COALESCE($3,vendor), model_name=COALESCE($4,model_name),
                              os_name=COALESCE($5,os_name), os_version=COALESCE($6,os_version),
@@ -399,7 +420,10 @@ export function createIngestRouter(dbPool: Pool): Router {
                              role_overridden=COALESCE($33,role_overridden),
                              last_seen_at=now(), updated_at=now()
             WHERE id=$34
-          `, [...dp, deviceId])
+          `, reScope
+              ? [...dp, deviceId, body.org_id, body.datacenter_id, body.floor_id,
+                body.network_id, body.group_id]
+              : [...dp, deviceId])
         } else {
           const { rows } = await client.query<{ id: string }>(`
             INSERT INTO devices (
