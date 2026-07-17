@@ -37,6 +37,48 @@ def _g(iface_type: InterfaceType, count: int) -> dict:
     return {"iface_type": iface_type, "count": count}
 
 
+# Rack height (U) per server SKU, from the vendor datasheets. Height is a fact about
+# the MODEL, not the device type: a DL360 is 1U and a DL560 is 4U, and a rack of the
+# first holds four times the compute of a rack of the second. Modelling every server
+# at a flat 2U wastes a U under every 1U box and silently runs every 4U box two units
+# into its neighbour.
+#
+# The product names encode it, which is a useful sanity check: DL3*6*0 = 1U vs
+# DL3*8*0 = 2U, SR6*3*0 = 1U vs SR6*5*0 = 2U, SYS-*1*20U = 1U vs SYS-*2*20U = 2U,
+# C*2*20 = 1U vs C*2*40 = 2U.
+#
+# Blades (UCS B200, FlexSystem x240) are deliberately absent: they mount in a chassis,
+# not on rack rails, so they have no rack height of their own. They fall back to the
+# SERVER_U_HEIGHT default — a fiction, but this topology racks none of them.
+MODEL_U_HEIGHT = {
+    # Cisco UCS
+    "Cisco UCS C220 M6":            1,
+    "Cisco UCS C240 M6":            2,
+    # HPE ProLiant
+    "HPE ProLiant DL360 Gen10":     1,
+    "HPE ProLiant DL380 Gen10":     2,
+    "HPE ProLiant DL380 Gen11":     2,
+    "HPE ProLiant DL560 Gen10":     4,   # 4-socket
+    # Dell PowerEdge
+    "Dell PowerEdge R640":          1,
+    "Dell PowerEdge R740":          2,
+    "Dell PowerEdge R750":          2,
+    "Dell PowerEdge R940":          3,   # 4-socket
+    "Dell PowerEdge R7525":         2,
+    # Lenovo ThinkSystem
+    "Lenovo ThinkSystem SR630 V2":  1,
+    "Lenovo ThinkSystem SR650 V2":  2,
+    "Lenovo ThinkSystem SR860 V2":  4,   # 4-socket
+    # Supermicro
+    "Supermicro SYS-120U-TNR":      1,
+    "Supermicro SYS-220U-TNR":      2,
+    "Supermicro AS-4124GS-TNR":     4,   # dense-GPU chassis
+    # IBM
+    "IBM Power System S922":        2,
+    "IBM System x3850 X6":          4,   # 4-socket
+}
+
+
 # ── shorthand aliases ─────────────────────────────────────────────────────────
 _FE   = InterfaceType.FAST_ETHERNET
 _GE   = InterfaceType.GIGABIT_ETHERNET

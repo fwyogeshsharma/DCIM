@@ -266,16 +266,17 @@ async def get_all_devices(device_type: str = None, layer: str = None):
     )
 
 
-def _u_height(device_type) -> int:
-    """How many rack units a device of this type physically occupies — the shared rule
-    from core.rack_capacity, which fleet's _next_free_unit uses too, so hand-placed and
+def _u_height(device_type, model_name: str = "") -> int:
+    """How many rack units a device physically occupies — the shared per-SKU rule from
+    core.rack_capacity, which fleet's _next_free_unit uses too, so hand-placed and
     fleet-placed servers agree on what is free."""
     from core.rack_capacity import device_u_height
-    return device_u_height(device_type)
+    return device_u_height(device_type, model_name)
 
 
 @router.get("/rack-occupancy")
-def rack_occupancy(datacenter: str, room: str = "", device_type: str = ""):
+def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
+                   model_name: str = ""):
     """Per-rack server-U occupancy across a datacenter (optionally one room), for
     the Add-Device cascading location picker.
 
@@ -295,10 +296,10 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = ""):
     its own rack_unit left every even U reading free, so the picker offered — and
     next_free defaulted to — a slot INSIDE the chassis above it.
 
-    `free_units` is what a device of *device_type* can actually be racked at: its whole
-    height must fit in free U's without running off U40. So for a server it lists only
-    U's with a free pair, which is what makes a rack hold ~20 servers rather than 40.
-    Omit device_type for 1U semantics (any physically free U)."""
+    `free_units` is what a device of *device_type* / *model_name* can actually be racked
+    at: its whole height must fit in free U's without running off U40. Height comes from
+    the SKU, so the answer differs per model — a 1U DL360 fits a lone free U that a 2U
+    R750 cannot. Omit both for 1U semantics (any physically free U)."""
     s = _state()
     if s.device_manager is None:
         raise HTTPException(status_code=503, detail="Device manager not initialized")
@@ -306,7 +307,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = ""):
     from core.device_manager import DeviceType
     total = LAST_SERVER_UNIT - FIRST_SERVER_UNIT + 1
     try:
-        want_h = _u_height(DeviceType(device_type.lower())) if device_type else 1
+        want_h = _u_height(DeviceType(device_type.lower()), model_name) if device_type else 1
     except ValueError:
         want_h = 1
     racks: dict = {}
@@ -325,7 +326,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = ""):
         if u <= 0:
             continue                        # 0U side-rail PDUs occupy no U
         # Every U this device's body covers, each naming it as the occupant.
-        for cu in range(u, u + _u_height(d.device_type)):
+        for cu in range(u, u + _u_height(d.device_type, getattr(d, "model_name", "") or "")):
             if FIRST_SERVER_UNIT <= cu <= LAST_SERVER_UNIT:
                 occ[cu] = d.name
     out = []
@@ -339,7 +340,10 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = ""):
                     "used": len(occ), "total": total, "free_units": free,
                     "units": units,
                     "next_free": (free[0] if free else None), "full": not free})
-    return {"datacenter": datacenter, "racks": out,
+    # The height the free_units above were computed for, so the picker can name the
+    # SPAN a pick takes ("U39–U40") instead of just its anchor U. A rack_unit is the
+    # BOTTOM of the device, which is not self-evident from a bare "U39".
+    return {"datacenter": datacenter, "racks": out, "device_u_height": want_h,
             "all_full": bool(out) and all(r["full"] for r in out)}
 
 
@@ -997,7 +1001,7 @@ def add_device(req: AddDeviceRequest):
         # Overlap, not equality: a 2U server occupies U..U+1, so racking one at U2 when
         # U1 holds a 2U box puts it inside that chassis. An equality check let that
         # through — every even U read free, which is also why next_free pointed at one.
-        new_h = _u_height(device_type)
+        new_h = _u_height(device_type, req.model_name)
         new_span = range(req.rack_unit, req.rack_unit + new_h)
         if req.rack_unit + new_h - 1 > 40:
             raise HTTPException(
@@ -1013,7 +1017,9 @@ def add_device(req: AddDeviceRequest):
                     and str(getattr(d, "floor", "") or "") == str(req.floor or "")
                     and (getattr(d, "rack_row", 0) or 0) == req.rack_row
                     and (getattr(d, "rack_num", 0) or 0) == req.rack_num
-                    and set(new_span) & set(range(du, du + _u_height(d.device_type)))):
+                    and set(new_span) & set(range(
+                        du, du + _u_height(d.device_type,
+                                           getattr(d, "model_name", "") or "")))):
                 raise HTTPException(
                     status_code=409,
                     detail=(f"Rack unit U{req.rack_unit} in {req.datacenter}/{req.room} "

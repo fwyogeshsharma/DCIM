@@ -329,6 +329,9 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // Room→Floor→Row→Rack→Unit cascade — deeper levels appear only where there's space.
   const [racks,   setRacks]   = useState<RackOcc[]>([])
   const [locBusy, setLocBusy] = useState(false)
+  // Height the server computed free_units for — lets the picker name the SPAN a pick
+  // occupies rather than only its anchor U.
+  const [uHeight, setUHeight] = useState(1)
 
   // Upper location levels come straight from the live inventory (cascading distinct).
   const uniq = (xs: (string | undefined)[]) =>
@@ -378,19 +381,24 @@ export default function AddDeviceDialog({ onClose }: Props) {
       && d.datacenter_city === form.datacenter_city).map(d => d.datacenter)),
     [devices, form.country, form.datacenter_city])
 
-  // Fetch this DC's rack occupancy whenever the DC changes. Re-fetches on type change
-  // too: which U's are pickable depends on the device's height (a 2U server needs a
-  // free pair), so the same rack offers a different set for a server than a switch.
+  // Fetch this DC's rack occupancy whenever the DC changes. Re-fetches on type AND
+  // model change: height is per-SKU, so the pickable U's differ between a 1U DL360 and
+  // a 2U R750 in the very same rack.
   useEffect(() => {
     if (!form.datacenter) { setRacks([]); return }
     let live = true
     setLocBusy(true)
-    api.rackOccupancy(form.datacenter, form.device_type)
-      .then((r: unknown) => { if (live) setRacks(((r as { racks?: RackOcc[] }).racks) || []) })
+    api.rackOccupancy(form.datacenter, form.device_type, form.model_name)
+      .then((r: unknown) => {
+        if (!live) return
+        const d = r as { racks?: RackOcc[]; device_u_height?: number }
+        setRacks(d.racks || [])
+        setUHeight(d.device_u_height || 1)
+      })
       .catch(() => { if (live) setRacks([]) })
       .finally(() => { if (live) setLocBusy(false) })
     return () => { live = false }
-  }, [form.datacenter, form.device_type])
+  }, [form.datacenter, form.device_type, form.model_name])
 
   const withSpace = (r: RackOcc) => r.free_units.length > 0
   const roomsWithSpace = useMemo(() =>
@@ -711,19 +719,29 @@ export default function AddDeviceDialog({ onClose }: Props) {
             </FormRow>
           )}
           {form.rack_num > 0 && chosenRack && (
-            <FormRow label="Unit (U)">
+            <FormRow label={uHeight > 1 ? `Unit (${uHeight}U, bottom)` : 'Unit (U)'}>
               {/* The whole rack face — the elevation an operator reads before racking.
-                  Selectable = free_units (where this device's full height FITS), not
-                  merely "unoccupied": a lone free U between two 2U servers, or U40
-                  with nothing above it, holds no 2U box. */}
+                  A rack_unit is the device's BOTTOM, so a selectable slot is labelled
+                  with the SPAN it will occupy (U39–U40 for a 2U box), not just its
+                  anchor. Selectable = free_units (where the whole height FITS): a lone
+                  free U between two 2U servers, or U40 with only the ToR reserve above
+                  it, is free yet cannot start a 2U box. */}
               <select style={{ flex: 1 }} value={form.rack_unit || ''} onChange={e => set('rack_unit', parseInt(e.target.value) || 0)}>
                 {(chosenRack.units || []).map(u => {
                   const fits = chosenRack.free_units.includes(u.unit)
+                  const top  = u.unit + uHeight - 1
+                  const span = uHeight > 1 && fits ? `U${u.unit}–U${top}` : `U${u.unit}`
+                  // Name the actual obstacle: the U above is taken, or the body would
+                  // overrun the rack. "No room" alone reads as "this U is dead".
+                  const blocker = chosenRack.units.find(
+                    x => x.unit > u.unit && x.unit <= top && x.used)
                   const why = u.used ? ` — ${u.occupant || 'occupied'}`
-                            : fits ? '' : ` — no room for a ${form.device_type}`
+                    : fits ? ''
+                    : blocker ? ` — blocked by ${blocker.occupant} at U${blocker.unit}`
+                    : ` — needs ${uHeight}U, would overrun U${chosenRack.total}`
                   return (
                     <option key={u.unit} value={u.unit} disabled={!fits}>
-                      U{u.unit}{why}
+                      {span}{why}
                     </option>
                   )
                 })}

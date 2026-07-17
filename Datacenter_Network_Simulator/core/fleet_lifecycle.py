@@ -436,8 +436,11 @@ class FleetLifecycleEngine:
                 continue
             if count >= self._port_cap(tor):
                 continue                       # leaf downlink ports exhausted
-            if self._next_free_unit(key) is None:
-                continue                       # rack U-space full (2U servers, ~20 max)
+            # Ask for a gap that fits the SKU this rack actually clones (its height is
+            # the template's), not a nominal 2U one.
+            if self._next_free_unit(key, device_u_height(
+                    tmpl.device_type, getattr(tmpl, "model_name", "") or "")) is None:
+                continue                       # rack U-space full for this box
             pdus = self._neighbors(tmpl, "power", (DeviceType.PDU, DeviceType.FLOOR_PDU))
             add_w = float(getattr(tmpl, "power_draw_w", 0) or 0)
             if not rack_has_power_headroom(racks_w.get(key, 0.0), add_w,
@@ -2097,13 +2100,14 @@ class FleetLifecycleEngine:
             n += 1
         return f"PDU-{dc}-{hall}-R{rrank}-{n}-{side}"
 
-    def _next_free_unit(self, key: tuple) -> Optional[int]:
-        """Next free rack unit for a SERVER_U_HEIGHT-U server, on the curated 2U
-        cadence (servers sit on odd units 1,3,5… and occupy U..U+1). Returns None
-        when the rack is space-full — all U1..U40 slots taken — so a rack fills to
-        its real physical U capacity (~20 servers) instead of the old 1U cadence
-        that packed to the power cap and stranded rack U. U41/U42 stay clear for
-        the ToR pair.
+    def _next_free_unit(self, key: tuple, height: int = SERVER_U_HEIGHT) -> Optional[int]:
+        """Lowest U where a *height*-U server's whole body fits, or None when the rack
+        has no such gap. U41/U42 stay clear for the ToR pair.
+
+        First-fit scanning by 1U, not by a fixed 2U cadence: heights are per-SKU now
+        (a DL360 is 1U, a DL560 4U), so there is no single stride that is right for
+        every box — and a 1U server must be allowed to take the 1U gap a 1U neighbour
+        left, which a 2U stride would step straight over.
 
         Every occupant is measured by its BODY, not its rack_unit alone: a 1U CDU at
         U38 blocks a 2U server at U37, and reading points instead of spans put one
@@ -2113,18 +2117,23 @@ class FleetLifecycleEngine:
         for d in self._rack_devices(key):
             if not d.rack_unit or d.rack_unit <= 0:
                 continue                      # 0U side-rail PDUs occupy no U
-            used.update(range(d.rack_unit, d.rack_unit + device_u_height(d.device_type)))
-        u = FIRST_SERVER_UNIT
-        while u <= LAST_SERVER_UNIT - (SERVER_U_HEIGHT - 1):
-            if all(cu not in used for cu in range(u, u + SERVER_U_HEIGHT)):
+            used.update(range(d.rack_unit,
+                              d.rack_unit + device_u_height(d.device_type,
+                                                            getattr(d, "model_name", "") or "")))
+        h = max(1, int(height or SERVER_U_HEIGHT))
+        for u in range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT - h + 2):
+            if all(cu not in used for cu in range(u, u + h)):
                 return u
-            u += SERVER_U_HEIGHT
         return None
 
     def _add_server(self, rack: dict) -> Optional[Device]:
         tmpl: Device = rack["server_tmpl"]
         dc, _floor, _room, row, num = rack["key"]   # see _rack_key: hall-unique
-        unit = self._next_free_unit(rack["key"])
+        # The clone inherits the template's SKU, so it inherits its height — ask for a
+        # gap that fits THAT box, not a nominal 2U one.
+        unit = self._next_free_unit(rack["key"],
+                                    device_u_height(tmpl.device_type,
+                                                    getattr(tmpl, "model_name", "") or ""))
         if unit is None:
             return None                       # rack U-space full (all 2U slots taken)
         # New halls/racks carry an explicit floor+room; filling an existing rack

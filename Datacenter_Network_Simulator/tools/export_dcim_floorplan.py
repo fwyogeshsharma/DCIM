@@ -28,14 +28,15 @@ from __future__ import annotations
 
 import json
 import sys
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from pathlib import Path
 
 # Make `core` importable whether run as `python tools/export_dcim_floorplan.py`
 # or `python -m tools.export_dcim_floorplan`.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.rack_capacity import (  # noqa: E402
-    leaf_port_roles, rack_server_capacity, POWER_CAP_DEFAULT,
+    leaf_port_roles, device_u_height, SERVER_U_HEIGHT,
+    FIRST_SERVER_UNIT, LAST_SERVER_UNIT, RACK_POWER_BUDGET_W_DEFAULT,
 )
 
 
@@ -45,9 +46,42 @@ def rack_id(dc: str, room: str, floor: str, row, num) -> str:
     return f"{dc}:{room_slug}:F{floor}:R{row}:RACK{num}"
 
 
+def fabric_ifaces(topology: dict) -> dict:
+    """device id -> iface indices carrying a production link to ANOTHER switch.
+
+    A leaf's spine uplinks and its MLAG peer-link are fabric ports, not server slots,
+    so they must not be counted as server-facing capacity. Index position cannot
+    answer this — leaf_port_roles splits by a real chassis layout (48x25G before
+    6x100G) while this topology wires its spines onto ports 0-3, the FRONT of the
+    downlink range — so it is read from the edges. Mirrors
+    TopologyEngine.fabric_ifaces, which the live API and fleet use.
+
+    Reads the raw topology's src/dst, where src_iface belongs to src (unambiguous,
+    unlike a networkx MultiGraph's edge iteration order)."""
+    sw = {i for i, d in _devices_by_id(topology).items()
+          if d.get("device_type") == "switch"}
+    out: dict = {}
+    for e in topology.get("edges", []):
+        if e.get("layer", "production") != "production":
+            continue
+        s, d = e.get("src"), e.get("dst")
+        if s not in sw or d not in sw:
+            continue                       # only switch-to-switch is fabric
+        if e.get("src_iface") is not None:
+            out.setdefault(s, set()).add(e["src_iface"])
+        if e.get("dst_iface") is not None:
+            out.setdefault(d, set()).add(e["dst_iface"])
+    return out
+
+
+def _devices_by_id(topology: dict) -> dict:
+    return {n["device"].get("id", n["id"]): n["device"] for n in topology["nodes"]}
+
+
 def build(topology: dict) -> "OrderedDict":
     nodes = topology["nodes"]
     fp = topology.get("floorplan", {})
+    fabric = fabric_ifaces(topology)
 
     # id -> device name, for resolving power-feed references to PDU names.
     id_to_name = {}
@@ -137,6 +171,13 @@ def build(topology: dict) -> "OrderedDict":
             # device-side hint (Redfish Location.Placement / SNMP sysLocation).
             "rack_id": rid,
             "rack_unit": dev.get("rack_unit"),
+            # Height of the body, so an importer can draw the elevation. rack_unit is
+            # only the BOTTOM of the device: a 2U server at U39 fills U39 AND U40, and
+            # a DCIM told only "U39" would draw it 1U tall and leave U40 bookable.
+            # Per-SKU (core/device_models.MODEL_U_HEIGHT) — a DL360 is 1U, a DL560 4U.
+            "u_height": (device_u_height(dev.get("device_type"),
+                                         dev.get("model_name") or "")
+                         if dev.get("rack_unit") else None),
             # power topology: which PDU feeds (A/B) this device draws from.
             "power_draw_w": dev.get("power_draw_w"),
             "feed_a": feed_name(dev.get("power_source_a")),
@@ -152,19 +193,54 @@ def build(topology: dict) -> "OrderedDict":
 
         # Compute-rack capacity + dual-homing (MLAG) readiness. Only racks with a
         # leaf switch get a server_capacity; non-compute racks leave it null.
-        # server_capacity = min(leaf downlink ports, power cap) and is
-        # flip-invariant — it does not change when dual-homing is adopted later.
-        full = [id_to_dev[i] for i in ids if i in id_to_dev]
-        leaf = next((d for d in full if d.get("device_type") == "switch"
-                     and d.get("mlag_ready")), None)
-        if leaf is None:
-            leaf = next((d for d in full if d.get("device_type") == "switch"), None)
-        servers_used = sum(1 for d in full if d.get("device_type") == "server")
+        #
+        # Capacity is the binding minimum of the THREE real limits, measured against
+        # what this rack actually holds — not a flat constant. It used to report
+        # POWER_CAP_DEFAULT (22), which bakes in ~800W a server and ignores U-space
+        # entirely; now that power and height both follow the SKU, 22 is right for no
+        # rack at all: a rack of 500W 1U DL360s takes 35, one of 1000W 2U R7525s takes
+        # 17. Still flip-invariant — a dual-homed server uses one downlink on EACH of
+        # two leaves, so the count does not change when MLAG is adopted.
+        #   ports  — the leaf's server-facing downlinks, less any already carrying a
+        #            spine uplink or the peer-link (those are fabric, not server slots)
+        #   U      — whole rack units left, divided by what one more of THIS rack's
+        #            server actually stands (2U for most, 1U for a DL360)
+        #   power  — headroom in the per-rack budget, divided by that server's real
+        #            nameplate
+        # device_ids is a list and keeps insertion order — iterate THAT, not the set,
+        # or `full` (and every choice made from it) comes out in arbitrary order and
+        # this export stops being reproducible.
+        full = [id_to_dev[i] for i in r["device_ids"] if i in id_to_dev]
+        sw_ids = [i for i in r["device_ids"] if i in id_to_dev
+                  and id_to_dev[i].get("device_type") == "switch"]
+        leaf_id = next((i for i in sw_ids if id_to_dev[i].get("mlag_ready")),
+                       sw_ids[0] if sw_ids else None)
+        leaf = id_to_dev[leaf_id] if leaf_id else None
+        servers = [d for d in full if d.get("device_type") == "server"]
+        servers_used = len(servers)
         r["servers_used"] = servers_used
         if leaf is not None and servers_used > 0:
             downlink, _ = leaf_port_roles(leaf.get("model_name") or "",
                                           leaf.get("interface_count") or 54)
-            r["server_capacity"] = rack_server_capacity(downlink, POWER_CAP_DEFAULT)
+            downlink -= sum(1 for i in fabric.get(leaf_id, ()) if i < downlink)
+            downlink = max(0, downlink)
+            # "One more of what this rack already holds" is the unit of capacity — the
+            # same thing the fleet does when it clones a rack's template. A rack with a
+            # mixed fit-out has no single answer, so take its DOMINANT SKU (mode, ties
+            # broken by name): deterministic, and representative of the rack.
+            skus = Counter(d.get("model_name") or "" for d in servers)
+            top = min(skus.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+            tmpl = next(d for d in servers if (d.get("model_name") or "") == top)
+            u_each = device_u_height("server", top) or SERVER_U_HEIGHT
+            w_each = int(tmpl.get("power_draw_w") or 0) or 1
+            u_used = sum(device_u_height(d.get("device_type"), d.get("model_name") or "")
+                         for d in full if (d.get("rack_unit") or 0) > 0
+                         and (d.get("rack_unit") or 0) <= LAST_SERVER_UNIT)
+            u_free = max(0, (LAST_SERVER_UNIT - FIRST_SERVER_UNIT + 1) - u_used)
+            w_free = max(0, RACK_POWER_BUDGET_W_DEFAULT - r["it_power_draw_w"])
+            r["server_capacity"] = servers_used + min(downlink - servers_used,
+                                                      u_free // u_each,
+                                                      w_free // w_each)
             r["mlag_ready"] = bool(leaf.get("mlag_ready"))
             peer = leaf.get("mlag_peer_unit") or 0
             r["reserved_units"] = [peer] if peer else []

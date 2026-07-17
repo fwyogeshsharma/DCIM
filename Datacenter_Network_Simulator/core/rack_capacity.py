@@ -70,20 +70,33 @@ _LEAF_PORT_ROLES = {
 _DEFAULT_UPLINKS = 6
 
 
-def device_u_height(device_type) -> int:
-    """Rack units a device's body occupies. Servers are SERVER_U_HEIGHT; everything
-    else in the U1–U40 face is treated as 1U.
+def device_u_height(device_type, model_name: str = "") -> int:
+    """Rack units a device's body occupies — from its SKU when we know it.
+
+    Height belongs to the MODEL: a DL360 is 1U, a DL380 2U, a DL560 4U. Only a server
+    whose SKU is not in MODEL_U_HEIGHT falls back to SERVER_U_HEIGHT, and everything
+    else in the U1–U40 face is treated as 1U (no per-SKU catalog for it, and the
+    facility/network gear racked here is 1U anyway).
 
     Occupancy is a SPAN, not a point: a 2U server at U1 fills U1 AND U2, so anything
     asking "is this U free" must walk the whole body. Reading only each device's own
     rack_unit left every even U looking free — and a 1U CDU at U38 looking like it
     left room for a 2U server at U37.
 
-    Accepts a DeviceType or a plain string so callers on either side of the
-    device_manager import can use it without a cycle. There is no per-device height
-    field; this is the one rule."""
+    Accepts a DeviceType or a plain string. device_models is imported lazily: it
+    imports device_manager, so a module-level import here would risk a cycle."""
     dt = getattr(device_type, "value", device_type)
-    return SERVER_U_HEIGHT if dt == "server" else 1
+    if dt != "server":
+        return 1
+    if model_name:
+        try:
+            from core.device_models import MODEL_U_HEIGHT
+        except Exception:
+            return SERVER_U_HEIGHT
+        h = MODEL_U_HEIGHT.get(model_name)
+        if h:
+            return h
+    return SERVER_U_HEIGHT
 
 
 def leaf_port_roles(model_name: str, interface_count: int = 54) -> tuple[int, int]:
