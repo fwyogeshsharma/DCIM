@@ -2,7 +2,6 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { api, clearToken, AUTH_EXPIRED_EVENT } from '../api/client'
 import { useStore } from '../store/useStore'
 import AddDeviceDialog from './AddDeviceDialog'
-import BulkAddDeviceDialog from './BulkAddDeviceDialog'
 
 interface MenuItem {
   label: string
@@ -184,7 +183,6 @@ export default function MenuBar() {
   const menuBarRef = useRef<HTMLDivElement>(null)
   const [openMenu,  setOpenMenu]  = useState<string | null>(null)
   const [showAdd,   setShowAdd]   = useState(false)
-  const [showBulk,  setShowBulk]  = useState(false)
   const [showAbout, setShowAbout] = useState(false)
 
   const {
@@ -321,7 +319,6 @@ export default function MenuBar() {
   ]
   const devMenuItems: MenuItem[] = [
     { label: 'Add Device',        action: () => setShowAdd(true)  },
-    { label: 'Bulk Add Devices',  action: () => setShowBulk(true) },
     { label: '', divider: true, action: () => {} },
     { label: 'Remove Selected', action: removeSelected, disabled: !selectedDeviceId },
     { label: '', divider: true, action: () => {} },
@@ -483,7 +480,6 @@ export default function MenuBar() {
       />
 
       {showAdd  && <AddDeviceDialog     onClose={() => setShowAdd(false)}  />}
-      {showBulk && <BulkAddDeviceDialog onClose={() => setShowBulk(false)} />}
     </div>
   )
 }

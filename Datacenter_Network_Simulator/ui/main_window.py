@@ -389,47 +389,6 @@ class ForceLayoutWorker(QObject):
 
 
 # ------------------------------------------------------------------ #
-#  Bulk Device Dialog                                                  #
-# ------------------------------------------------------------------ #
-
-class BulkAddDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Bulk Add Devices")
-        self.setMinimumWidth(300)
-        layout = QVBoxLayout(self)
-        form = QFormLayout()
-
-        self.type_combo = QComboBox()
-        for dt in DeviceType:
-            self.type_combo.addItem(dt.value.capitalize(), dt)
-        form.addRow("Device Type:", self.type_combo)
-
-        self.vendor_combo = QComboBox()
-        for v in Vendor:
-            self.vendor_combo.addItem(v.value, v)
-        form.addRow("Vendor:", self.vendor_combo)
-
-        self.count_spin = QSpinBox()
-        self.count_spin.setRange(1, 500)
-        self.count_spin.setValue(10)
-        form.addRow("Count:", self.count_spin)
-
-        layout.addLayout(form)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-
-    def get_values(self):
-        return {
-            "device_type": self.type_combo.currentData(),
-            "vendor": self.vendor_combo.currentData(),
-            "count": self.count_spin.value(),
-        }
-
-
-# ------------------------------------------------------------------ #
 #  Main Window                                                         #
 # ------------------------------------------------------------------ #
 
@@ -1238,10 +1197,8 @@ class MainWindow(QMainWindow):
         # Device
         dev_menu = menubar.addMenu("&Devices")
         self._act_add_device = QAction("&Add Device...", self, shortcut="Ctrl+D")
-        self._act_bulk_add      = QAction("Bulk Add Devices...", self)
         self._act_remove_selected = QAction("&Remove Selected", self, shortcut="Del")
         dev_menu.addAction(self._act_add_device)
-        dev_menu.addAction(self._act_bulk_add)
         dev_menu.addSeparator()
         dev_menu.addAction(self._act_remove_selected)
 
@@ -1317,7 +1274,6 @@ class MainWindow(QMainWindow):
         self._act_close_topo.triggered.connect(self._close_topology)
         self._act_export_json.triggered.connect(self._export_json)
         self._act_add_device.triggered.connect(self._add_device)
-        self._act_bulk_add.triggered.connect(self._bulk_add)
         self._act_remove_selected.triggered.connect(self._remove_selected)
         self._act_link_mode.toggled.connect(self._toggle_link_mode)
         self._act_fit_view.triggered.connect(self._topology_view.fit_view)
@@ -1586,36 +1542,6 @@ class MainWindow(QMainWindow):
                     device_ids.append(dev_id)
         for dev_id in device_ids:
             self._remove_device(dev_id)
-
-    def _bulk_add(self):
-        dlg = BulkAddDialog(self)
-        if dlg.exec() == QDialog.Accepted:
-            values = dlg.get_values()
-            devices = self.device_manager.bulk_add(
-                values["device_type"], values["vendor"],
-                values["count"], self.ip_manager
-            )
-            # Place devices in grid layout on canvas
-            cols = max(1, int(values["count"] ** 0.5))
-            view_center = self._topology_view.mapToScene(
-                self._topology_view.viewport().rect().center()
-            )
-            spacing = 150
-            for i, device in enumerate(devices):
-                col = i % cols
-                row = i // cols
-                x = view_center.x() + (col - cols / 2) * spacing
-                y = view_center.y() + row * spacing
-                self.topology.add_device(device, x, y)
-                self._topology_view.topology_scene.add_device_node(device, x, y)
-            self._refresh_device_table()
-            self._refresh_stats()
-
-            self._console_panel.log(
-                f"Added {len(devices)} devices ({values['device_type'].value}s)",
-                "success"
-            )
-
 
     # ------------------------------------------------------------------ #
     #  Topology operations                                                 #
@@ -2417,7 +2343,6 @@ class MainWindow(QMainWindow):
         """Enable/disable topology-editing actions based on simulator state."""
         sim_active = self.snmpsim.is_running() or self.gnmi.is_running()
         self._act_add_device.setEnabled(not sim_active)
-        self._act_bulk_add.setEnabled(not sim_active)
         self._act_remove_selected.setEnabled(not sim_active)
 
     def _launch_snmpsim(self, bound_ips: list):

@@ -1463,29 +1463,6 @@ class DeviceManager:
         for device in devs:
             device.randomize_metrics()
 
-    def bulk_add(self, device_type: DeviceType, vendor: Vendor,
-                 count: int, ip_manager) -> List[Device]:
-        """Add many devices at once."""
-        devices = []
-        type_prefix = device_type.value[:1].upper()
-        for i in range(count):
-            existing = [d.name for d in self._devices.values()]
-            idx = 1
-            while f"{type_prefix}{idx}" in existing:
-                idx += 1
-            name = f"{type_prefix}{idx + i}"
-            ip = ip_manager.next_ip()
-            device = Device(
-                name=name,
-                device_type=device_type,
-                vendor=vendor,
-                ip_address=ip,
-                interface_count=random.choice([4, 8, 12, 24]),
-            )
-            self.add_device(device)
-            devices.append(device)
-        return devices
-
     def to_list(self) -> List[dict]:
         with self._lock:
             devs = list(self._devices.values())
