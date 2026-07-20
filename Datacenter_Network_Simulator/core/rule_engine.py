@@ -308,6 +308,25 @@ class RuleEngine:
     def get_rule_state(self, device_id: str, rule_name: str) -> Optional[RuleState]:
         return self._rule_states.get(device_id, {}).get(rule_name)
 
+    def get_alerting(self) -> Dict[str, List[str]]:
+        """{device_id: [rule_name, …]} for every rule currently in alert.
+
+        in_alert spans exactly "the alert trap fired" to "the recovery rule
+        fired", so this is the alarm state an NMS would colour a node by — not
+        the same thing as a metric merely heading toward its threshold.
+
+        Snapshot the dicts under the lock: the tick thread inserts new
+        device/rule keys as the fleet grows, and iterating live would risk a
+        "dictionary changed size during iteration" in the API thread.
+        """
+        with self._states_lock:
+            snapshot = {d: dict(rules) for d, rules in self._rule_states.items()}
+        return {
+            dev: names
+            for dev, rules in snapshot.items()
+            if (names := sorted(n for n, st in rules.items() if st.in_alert))
+        }
+
     def record_manual_fire(self, rule_name: str):
         """Register a test/manual fire so get_total_fired_count stays authoritative."""
         self._manual_fire_counts[rule_name] += 1

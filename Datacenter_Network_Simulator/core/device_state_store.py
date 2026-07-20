@@ -3067,15 +3067,14 @@ class DeviceStateStore:
 
         Fleet-wide so the topology canvas can mark faulted nodes from ONE poll —
         per-device get_faults() would be a request per node (~1000 of them).
-        Ramps that are clearing are excluded: the metric is already heading back
-        to baseline, so the node should stop signalling before the ramp record
-        is finally dropped.
+
+        Ramps that are CLEARING are included on purpose. A ramp is only the
+        injection, not the alarm: the caller gates on the rule engine's in_alert
+        so the node lights when the trap actually fires and goes out when the
+        recovery fires. During a clear the metric is still above the recovery
+        threshold for several ticks, and the alarm is genuinely still up then.
         """
-        return {
-            dev_id: sorted(m for m, r in ramps.items() if not r.get("clearing"))
-            for dev_id, ramps in self._fault_ramps.items()
-            if any(not r.get("clearing") for r in ramps.values())
-        }
+        return {dev_id: sorted(ramps) for dev_id, ramps in self._fault_ramps.items() if ramps}
 
     def _pin_value(self, device: "Device", metric: str) -> "Optional[float]":
         """Current pinned value of a device-field metric (Metric-Tick override or

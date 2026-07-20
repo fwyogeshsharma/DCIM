@@ -668,12 +668,17 @@ def link_candidates(device_type: str, datacenter: str, room: str, floor: str = "
 
 @router.get("/faulted")
 def get_faulted_devices():
-    """Every device with an active injected CONDITION, in one call.
+    """Devices whose injected CONDITION is currently IN ALARM, in one call.
 
     Feeds the topology canvas's faulted-node styling. Covers both condition
-    families the Simulate Fault submenu can start: SNMP metric ramps (keyed by
-    device id) and plant BACnet point overrides (stored by IP, mapped back to
-    ids here so the canvas only ever deals in ids).
+    families the Simulate Fault submenu can start:
+
+      * SNMP metric ramps — gated on the rule engine's in_alert, so the node
+        lights when the threshold is crossed and the trap fires (not when the
+        ramp starts) and goes dark when the recovery trap fires (not when the
+        operator clicks Normal). Both edges lag the click by design.
+      * Plant BACnet point overrides — forcing a point is instantaneous and
+        does not go through the SNMP rule engine, so those signal immediately.
 
     Declared before /{device_id}/faults so "faulted" is not captured as a
     device_id by the path parameter.
@@ -683,7 +688,25 @@ def get_faulted_devices():
     if st is None:
         return {"faulted": {}}
 
-    faulted: dict[str, list] = {k: list(v) for k, v in st.get_all_faulted().items()}
+    # A node signals ALARM state, not injection state. Starting a ramp only
+    # begins pushing the metric; the alarm exists once the threshold is actually
+    # crossed and the trap fires, and it ends when the recovery trap fires — not
+    # when the operator clicks Normal (the ramp back down takes ticks too).
+    # So: an injected ramp says "the operator caused this", and the rule engine's
+    # in_alert says "the trap has fired and not yet cleared". Require both.
+    ramps = st.get_all_faulted()                  # keyed by device.id
+    engine = getattr(s, "rule_engine", None)
+    alerting = engine.get_alerting() if engine is not None else {}   # keyed by device.name
+
+    faulted: dict[str, list] = {}
+    if ramps and alerting and s.device_manager:
+        # The two registries key differently: fault ramps by stable device id,
+        # rule states by device name (DeviceFact.device_id IS device.name).
+        name_by_id = {d.id: d.name for d in s.device_manager.get_all_devices()}
+        for dev_id, metrics in ramps.items():
+            rules = alerting.get(name_by_id.get(dev_id, ""))
+            if rules:
+                faulted[dev_id] = sorted(metrics)
 
     # Plant devices are forced by BACnet point, and that map is keyed by IP.
     plant_ov = getattr(st, "plant_alarm_overrides", {}) or {}
