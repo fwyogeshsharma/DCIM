@@ -180,25 +180,70 @@ select option { background: #131f30; color: var(--text); }
   50%       { box-shadow: 0 0 9px var(--green), 0 0 2px #a7f3d0; }
 }
 
-/* Injected-CONDITION node: red ring that blinks while the fault is active, so a
-   deliberately-simulated condition is obvious on a dense canvas. Ends the moment
-   the condition returns to normal. Held at a calm 1.4s — faster reads as a
-   rendering glitch on a floor full of nodes. */
-.node-faulted { animation: fault-blink 1.4s ease-in-out infinite; }
+/* Injected-CONDITION node: hard alarm blink while the fault is active, ending
+   the moment it returns to normal.
+
+   A glow-only pulse was near-invisible: the node is already red, so animating a
+   red ring on a red body changes almost no luminance. Visibility comes from
+   CONTRAST, not glow, so this drives three channels at once —
+     * body swings bright red -> near-white (big luminance swing, reads at a
+       glance and survives being zoomed out to a thumbnail),
+     * a white outline snaps on at the peak (edge definition against neighbours),
+     * a halo ring expands and fades outward (motion in peripheral vision).
+   1s cycle: roughly the 1 Hz an NMS/BMS alarm blinks at, urgent without
+   strobing. `steps()`-like hard cuts beat ease — a soft fade is what made the
+   first attempt read as a rendering artefact rather than an alarm. */
+.node-faulted { animation: fault-blink 1s linear infinite; }
+
+/* Lift the whole React Flow node wrapper, not the inner div: each node is its
+   own stacking context, so an inner z-index cannot raise the halo above a
+   neighbouring node that paints later. */
+.react-flow__node:has(.node-faulted) { z-index: 10 !important; }
 
 @keyframes fault-blink {
-  0%, 100% { box-shadow: 0 0 0 2px var(--red), 0 0 10px 2px rgba(239, 68, 68, 0.75); }
-  50%      { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35); }
+  0%, 44% {
+    background: #ef4444;
+    border-color: #fecaca;
+    box-shadow: 0 0 0 3px #ef4444, 0 0 16px 4px rgba(239, 68, 68, 0.9);
+  }
+  50%, 94% {
+    background: #fff1f2;
+    border-color: #ef4444;
+    box-shadow: 0 0 0 4px #fff1f2, 0 0 26px 10px rgba(239, 68, 68, 0.55);
+  }
+  95%, 100% {
+    background: #ef4444;
+    border-color: #fecaca;
+    box-shadow: 0 0 0 3px #ef4444, 0 0 16px 4px rgba(239, 68, 68, 0.9);
+  }
 }
 
-/* Respect a reduced-motion preference: keep the red ring, drop the blink. */
+/* Node label sits on the body, which goes near-white at the peak — flip the
+   text dark in that half of the cycle or it vanishes into the background. */
+.node-faulted > div:not(.react-flow__handle) { animation: fault-blink-text 1s linear infinite; }
+
+@keyframes fault-blink-text {
+  0%, 44%   { color: #fff; }
+  50%, 94%  { color: #7f1d1d; }
+  95%, 100% { color: #fff; }
+}
+
+/* Respect a reduced-motion preference: no flashing, but keep a strong static
+   alarm treatment so the faulted node is still unmistakable. */
 @media (prefers-reduced-motion: reduce) {
-  .node-faulted { animation: none !important; }
+  .node-faulted,
+  .node-faulted > div:not(.react-flow__handle) { animation: none !important; }
+  .node-faulted {
+    background: #ef4444 !important;
+    border-color: #fff1f2 !important;
+    box-shadow: 0 0 0 4px #ef4444, 0 0 20px 6px rgba(239, 68, 68, 0.85) !important;
+  }
 }
 
 /* Pause blinking while panning/zooming, same as the flow dashes below — the
    repaint is what makes a large canvas stutter during interaction. */
-.rf-interacting .node-faulted { animation-play-state: paused !important; }
+.rf-interacting .node-faulted,
+.rf-interacting .node-faulted > div:not(.react-flow__handle) { animation-play-state: paused !important; }
 
 /* Cooling-layer water-flow animation: marching dashes in flow direction.
    Dash+gap = 7+5 = 12, so offsetting by -12 loops seamlessly toward target. */
