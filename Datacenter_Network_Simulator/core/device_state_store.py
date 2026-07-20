@@ -3244,7 +3244,7 @@ class DeviceStateStore:
         if dt == DeviceType.UPS:
             if st.get("ups_output_load", 0.0) > 89.9:             # overload > 90
                 st["ups_output_load"] = 89.9; changed = True
-            clamp("ups_input_voltage", 365.1, 434.9, 400.0)        # >435 / <365
+            clamp("ups_input_voltage", 360.1, 439.9, 400.0)        # >440 / <360
             clamp("ups_input_frequency", 49.1, 50.9, 50.0)         # OOR <49 / >51
             if st.get("ups_battery_health", 100.0) < 50.1:         # low health < 50
                 st["ups_battery_health"] = 50.1; changed = True

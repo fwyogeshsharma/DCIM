@@ -247,6 +247,10 @@ def _run_headless():
     )
     api_state.rule_engine_enabled = True
     trap_engine.trap_sent.connect(api_state.record_trap)
+    # Headless has no trap panel, so trap_error had no subscriber at all — every
+    # failed send was discarded silently, leaving the trap history frozen with
+    # nothing in the log to explain it. Route it to the logger.
+    trap_engine.trap_error.connect(lambda msg: log.error("[TrapEngine] %s", msg))
     state_store.set_tick_callback(lambda: api_state.notify_ui("sync_devices"))
     state_store.set_link_callback(
         lambda src, dst, broken: api_state.notify_ui("link_changed", src, dst, broken))

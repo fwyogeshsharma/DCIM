@@ -97,11 +97,24 @@ class TrapEngine(QObject):
         self._device_manager: Optional["DeviceManager"] = None
         self._rule_engine_enabled: bool = False
 
+        # Shared pysnmp stack. Building an SnmpEngine costs ~0.2 s because pysnmp
+        # reloads its whole MIB tree from disk, so one is built lazily on the trap
+        # loop and reused for every trap; only the per-community target registration
+        # is incremental. All of these are touched ONLY from the trap loop thread.
+        self._snmp_engine = None
+        self._dispatcher  = None
+        self._targets: dict[str, str] = {}   # community → pysnmp target-address name
+        self._engine_lock: Optional[asyncio.Lock] = None
+        self._engine_epoch = 0    # bumped by configure() to force a rebuild
+        self._built_epoch  = -1
+
     # ── Configuration ─────────────────────────────────────────────────────────
 
     def configure(self, ip: str, port: int):
         self._receiver_ip   = ip
         self._receiver_port = port
+        # Targets embed the receiver address, so the shared stack must be rebuilt.
+        self._engine_epoch += 1
 
     def set_rule_engine(self, engine: "RuleEngine", device_manager: "DeviceManager"):
         """Attach a rule engine and device manager for rule-driven trap dispatch."""
@@ -134,9 +147,15 @@ class TrapEngine(QObject):
 
     def stop(self):
         if self._loop:
+            # Close the shared transport on the loop thread that owns it, then
+            # stop the loop. Ordering matters: call_soon_threadsafe callbacks run
+            # in FIFO order, so the teardown lands before the loop halts.
+            self._loop.call_soon_threadsafe(self._teardown_stack)
             self._loop.call_soon_threadsafe(self._loop.stop)
         self._loop   = None
         self._thread = None
+        self._engine_lock = None
+        self._built_epoch = -1
 
     def _run_loop(self):
         asyncio.set_event_loop(self._loop)
@@ -228,45 +247,87 @@ class TrapEngine(QObject):
             self._send_async(device, trap_type, **kwargs), self._loop
         )
 
+    # ── Shared pysnmp stack ───────────────────────────────────────────────────
+
+    def _teardown_stack(self):
+        """Drop the shared engine/dispatcher. Trap loop thread only."""
+        try:
+            if self._dispatcher is not None:
+                self._dispatcher.close_dispatcher()
+            if self._snmp_engine is not None:
+                self._snmp_engine.unregister_transport_dispatcher()
+        except Exception:
+            pass
+        self._snmp_engine = None
+        self._dispatcher  = None
+        self._targets     = {}
+
+    async def _ensure_target(self, community: str) -> str:
+        """Return the pysnmp target-address name for `community`, building the
+        shared engine/dispatcher/transport on first use.
+
+        The trap source IP doubles as the v1 community (same convention as the
+        poll side), so one target is registered per distinct source IP — bounded
+        by device count, and far cheaper than a fresh SnmpEngine per trap.
+        """
+        from pysnmp.entity.engine import SnmpEngine
+        from pysnmp.entity import config as snmp_config
+        from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
+        from pysnmp.carrier.asyncio.dgram import udp as udp_mod
+
+        if self._engine_lock is None:
+            self._engine_lock = asyncio.Lock()
+
+        async with self._engine_lock:
+            if self._built_epoch != self._engine_epoch:
+                self._teardown_stack()
+                self._built_epoch = self._engine_epoch
+
+            if self._snmp_engine is None:
+                engine = SnmpEngine()
+                dispatcher = AsyncioDispatcher(loop=asyncio.get_running_loop())
+                engine.register_transport_dispatcher(dispatcher)
+                snmp_config.add_transport(
+                    engine, udp_mod.DOMAIN_NAME,
+                    udp_mod.UdpAsyncioTransport().open_client_mode(),
+                )
+                self._snmp_engine = engine
+                self._dispatcher  = dispatcher
+                self._targets     = {}
+
+            name = self._targets.get(community)
+            if name is None:
+                idx = len(self._targets)
+                sec, params, addr = f'tc{idx}', f'tp{idx}', f'tt{idx}'
+                snmp_config.add_v1_system(self._snmp_engine, sec, community)
+                snmp_config.add_target_parameters(
+                    self._snmp_engine, params, sec, 'noAuthNoPriv', 1,
+                )
+                snmp_config.add_target_address(
+                    self._snmp_engine, addr, udp_mod.DOMAIN_NAME,
+                    (self._receiver_ip, self._receiver_port),
+                    params, tagList='trap-tag',
+                    timeout=100, retryCount=0,
+                )
+                self._targets[community] = addr
+                name = addr
+            return name
+
     # ── Async send internals ──────────────────────────────────────────────────
 
     async def _send_async(self, device: Device, trap_type: TrapType, **kwargs):
         defn = TRAP_DEFINITIONS[trap_type]
-        snmp_engine = None
-        dispatcher = None
         try:
-            from pysnmp.entity.engine import SnmpEngine
-            from pysnmp.entity import config as snmp_config
             from pysnmp.entity.rfc3413 import ntforg
-            from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
-            from pysnmp.carrier.asyncio.dgram import udp as udp_mod
             from pysnmp.proto.api import v2c as proto_v2c
             from pysnmp.proto import rfc1902
             from pyasn1.type import univ
 
-            loop = asyncio.get_running_loop()
-
-            snmp_engine = SnmpEngine()
-            dispatcher = AsyncioDispatcher(loop=loop)
-            snmp_engine.register_transport_dispatcher(dispatcher)
-            snmp_config.add_transport(
-                snmp_engine, udp_mod.DOMAIN_NAME,
-                udp_mod.UdpAsyncioTransport().open_client_mode(),
-            )
             # Community mirrors the firing agent's IP (server OS → prod IP,
             # BMC → mgmt IP) — same convention as the poll side.
-            snmp_config.add_v1_system(
-                snmp_engine, 'trap-comm',
-                _trap_source_ip(device, trap_type) or device.snmp_community)
-            snmp_config.add_target_parameters(
-                snmp_engine, 'trap-params', 'trap-comm', 'noAuthNoPriv', 1,
-            )
-            snmp_config.add_target_address(
-                snmp_engine, 'trap-target', udp_mod.DOMAIN_NAME,
-                (self._receiver_ip, self._receiver_port),
-                'trap-params', tagList='trap-tag',
-                timeout=100, retryCount=0,
-            )
+            community = (_trap_source_ip(device, trap_type)
+                         or device.snmp_community)
+            target = await self._ensure_target(community)
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
@@ -281,66 +342,41 @@ class TrapEngine(QObject):
             proto_v2c.apiPDU.set_varbinds(pdu, all_varbinds)
 
             ntforg.NotificationOriginator().send_pdu(
-                snmp_engine, 'trap-target', None, b'', pdu,
+                self._snmp_engine, target, None, b'', pdu,
             )
-            await asyncio.sleep(0.3)
 
         except Exception as ex:
             self.trap_error.emit(
                 f"Trap exception ({device.name} / {trap_type.value}): {ex}"
             )
             return
-        finally:
-            try:
-                if dispatcher is not None:
-                    dispatcher.close_dispatcher()
-                if snmp_engine is not None:
-                    snmp_engine.unregister_transport_dispatcher()
-            except Exception:
-                pass
 
         if not kwargs.get("no_table"):
+            # Guarded: a formatting error here must not swallow the trap record
+            # nor escape into the loop as an unretrieved task exception.
             rule_name = kwargs.get("rule_name", "")
-            details = self._format_details(device, trap_type, **kwargs)
+            try:
+                details = self._format_details(device, trap_type, **kwargs)
+            except Exception as ex:
+                self.trap_error.emit(
+                    f"Trap detail format failed ({device.name} / {trap_type.value}): {ex}"
+                )
+                details = ""
             self.trap_sent.emit(TrapEvent(device, trap_type, details, rule_name,
                                           iface_index=kwargs.get("iface_index")))
 
     async def _send_raw_trap_async(self, device: Device, oid: str, extra: dict,
                                    rule_name: str = ""):
         """Send a trap for an OID that has no TrapType mapping."""
-        snmp_engine = None
-        dispatcher = None
         try:
-            from pysnmp.entity.engine import SnmpEngine
-            from pysnmp.entity import config as snmp_config
             from pysnmp.entity.rfc3413 import ntforg
-            from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
-            from pysnmp.carrier.asyncio.dgram import udp as udp_mod
             from pysnmp.proto.api import v2c as proto_v2c
             from pysnmp.proto import rfc1902
             from pyasn1.type import univ
 
-            loop = asyncio.get_running_loop()
-            snmp_engine = SnmpEngine()
-            dispatcher = AsyncioDispatcher(loop=loop)
-            snmp_engine.register_transport_dispatcher(dispatcher)
-            snmp_config.add_transport(
-                snmp_engine, udp_mod.DOMAIN_NAME,
-                udp_mod.UdpAsyncioTransport().open_client_mode(),
-            )
             # Raw OIDs are rule-driven → always the OS/NOS agent, never BMC.
-            snmp_config.add_v1_system(
-                snmp_engine, 'trap-comm',
-                _trap_source_ip(device, None) or device.snmp_community)
-            snmp_config.add_target_parameters(
-                snmp_engine, 'trap-params', 'trap-comm', 'noAuthNoPriv', 1,
-            )
-            snmp_config.add_target_address(
-                snmp_engine, 'trap-target', udp_mod.DOMAIN_NAME,
-                (self._receiver_ip, self._receiver_port),
-                'trap-params', tagList='trap-tag',
-                timeout=100, retryCount=0,
-            )
+            community = _trap_source_ip(device, None) or device.snmp_community
+            target = await self._ensure_target(community)
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
@@ -354,20 +390,11 @@ class TrapEngine(QObject):
             ]
             proto_v2c.apiPDU.set_varbinds(pdu, varbinds)
             ntforg.NotificationOriginator().send_pdu(
-                snmp_engine, 'trap-target', None, b'', pdu,
+                self._snmp_engine, target, None, b'', pdu,
             )
-            await asyncio.sleep(0.3)
         except Exception as ex:
             self.trap_error.emit(f"Raw trap error ({device.name} / {oid}): {ex}")
             return
-        finally:
-            try:
-                if dispatcher is not None:
-                    dispatcher.close_dispatcher()
-                if snmp_engine is not None:
-                    snmp_engine.unregister_transport_dispatcher()
-            except Exception:
-                pass
 
     # ── Varbind builders ──────────────────────────────────────────────────────
 
@@ -596,16 +623,21 @@ class TrapEngine(QObject):
         if trap_type == TrapType.UPS_BATTERY_HEALTH_RESTORED:
             val = kwargs.get("metric_value", "—")
             return f"Battery health recovered to {float(val):.1f}%"
-        if trap_type == TrapType.UPS_INPUT_VOLTAGE_HIGH:
-            val = kwargs.get("metric_value", "—")
-            return f"Input voltage {float(val):.1f} V L-L  (threshold 440 V)"
-        if trap_type == TrapType.UPS_INPUT_VOLTAGE_LOW:
-            val = kwargs.get("metric_value", "—")
-            return f"Input voltage {float(val):.1f} V L-L  (threshold 360 V)"
-        if trap_type in (TrapType.UPS_INPUT_VOLTAGE_NORMAL,
+        # Manual injection (context menu) carries no metric_value, so these must
+        # degrade to "—" rather than raise inside the trap dispatch path.
+        if trap_type in (TrapType.UPS_INPUT_VOLTAGE_HIGH, TrapType.UPS_INPUT_VOLTAGE_LOW,
+                         TrapType.UPS_INPUT_VOLTAGE_NORMAL,
                          TrapType.UPS_INPUT_VOLTAGE_LOW_CLEARED):
-            val = kwargs.get("metric_value", "—")
-            return f"Input voltage back in band at {float(val):.1f} V L-L"
+            raw = kwargs.get("metric_value")
+            try:
+                val = f"{float(raw):.1f}"
+            except (TypeError, ValueError):
+                val = "—"
+            if trap_type == TrapType.UPS_INPUT_VOLTAGE_HIGH:
+                return f"Input voltage {val} V L-L  (threshold 440 V)"
+            if trap_type == TrapType.UPS_INPUT_VOLTAGE_LOW:
+                return f"Input voltage {val} V L-L  (threshold 360 V)"
+            return f"Input voltage back in band at {val} V L-L"
         # Sensor mid/outlet temp
         if trap_type == TrapType.SENSOR_MID_TEMP_HIGH:
             val = kwargs.get("metric_value", "—")
