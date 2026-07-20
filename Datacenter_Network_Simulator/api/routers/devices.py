@@ -666,6 +666,41 @@ def link_candidates(device_type: str, datacenter: str, room: str, floor: str = "
     return {"device_type": dt, "supported": True, "groups": groups}
 
 
+@router.get("/faulted")
+def get_faulted_devices():
+    """Every device with an active injected CONDITION, in one call.
+
+    Feeds the topology canvas's faulted-node styling. Covers both condition
+    families the Simulate Fault submenu can start: SNMP metric ramps (keyed by
+    device id) and plant BACnet point overrides (stored by IP, mapped back to
+    ids here so the canvas only ever deals in ids).
+
+    Declared before /{device_id}/faults so "faulted" is not captured as a
+    device_id by the path parameter.
+    """
+    s = _state()
+    st = getattr(s, "state_store", None)
+    if st is None:
+        return {"faulted": {}}
+
+    faulted: dict[str, list] = {k: list(v) for k, v in st.get_all_faulted().items()}
+
+    # Plant devices are forced by BACnet point, and that map is keyed by IP.
+    plant_ov = getattr(st, "plant_alarm_overrides", {}) or {}
+    if plant_ov and s.device_manager:
+        by_ip = {}
+        for d in s.device_manager.get_all_devices():
+            for ip in (getattr(d, "mgmt_ip", None), getattr(d, "ip_address", None)):
+                if ip:
+                    by_ip.setdefault(ip, d.id)
+        for ip, points in plant_ov.items():
+            dev_id = by_ip.get(ip)
+            if dev_id and points:
+                faulted.setdefault(dev_id, []).extend(sorted(points))
+
+    return {"faulted": faulted}
+
+
 @router.get("/{device_id}", response_model=DeviceInfo)
 async def get_device(device_id: str):
     """Get a specific device by ID."""

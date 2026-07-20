@@ -186,6 +186,8 @@ export const api = {
   setDeviceOverride: (id: string, metric: string, value: number | string | null) =>
     post(`/devices/${id}/override`, { metric, value }),
   deviceFaults:      (id: string)     => get(`/devices/${id}/faults`),
+  // Fleet-wide active CONDITIONS in one call — per-device would be a request per node.
+  faultedDevices:    ()               => get('/devices/faulted'),
   setDeviceFault:    (id: string, fault: string, action: 'start' | 'clear') =>
     post(`/devices/${id}/fault`, { fault, action }),
 

@@ -3062,6 +3062,21 @@ class DeviceStateStore:
         return {m: {"target": r["target"], "clearing": r["clearing"]}
                 for m, r in self._fault_ramps.get(device_id, {}).items()}
 
+    def get_all_faulted(self) -> dict:
+        """{device_id: [metric, …]} for every device with an injected ramp.
+
+        Fleet-wide so the topology canvas can mark faulted nodes from ONE poll —
+        per-device get_faults() would be a request per node (~1000 of them).
+        Ramps that are clearing are excluded: the metric is already heading back
+        to baseline, so the node should stop signalling before the ramp record
+        is finally dropped.
+        """
+        return {
+            dev_id: sorted(m for m, r in ramps.items() if not r.get("clearing"))
+            for dev_id, ramps in self._fault_ramps.items()
+            if any(not r.get("clearing") for r in ramps.values())
+        }
+
     def _pin_value(self, device: "Device", metric: str) -> "Optional[float]":
         """Current pinned value of a device-field metric (Metric-Tick override or
         active Inject-Fault ramp), or None if not pinned. Override wins. Used to

@@ -1,6 +1,7 @@
 import { memo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { useStore } from '../../store/useStore'
 
 const TYPE_COLOR: Record<string, string> = {
   router:        '#c0621a',
@@ -60,8 +61,14 @@ export interface DeviceNodeData {
   [key: string]: unknown
 }
 
-function DeviceNode({ data, selected, dragging }: NodeProps) {
+function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   const d = data as DeviceNodeData
+  // Per-node selector: only the node whose fault state changed re-renders,
+  // rather than rebuilding every node on the canvas.
+  // Joined string, not the array: a fresh [] each poll would fail reference
+  // equality and re-render every node on every tick.
+  const faultKeys = useStore(s => (s.faulted[id] || []).join(', '))
+  const faulted = faultKeys.length > 0
   const col  = TYPE_COLOR[d.device_type] || '#555'
   const icon = TYPE_ICON[d.device_type]  || '□'
   const poweredOff = d.power_state === 'Off'
@@ -77,6 +84,7 @@ function DeviceNode({ data, selected, dragging }: NodeProps) {
     ['Vendor', d.vendor],
   ]
   if (poweredOff) rows.push(['Power', 'Off (Redfish)'])
+  if (faulted)    rows.push(['Condition', faultKeys])
   if (d.os_name)    rows.push(['OS',      d.os_name])
   if (d.os_version) rows.push(['Version', d.os_version])
   if (d.ip_address) rows.push(['Prod IP', d.ip_address])
@@ -102,7 +110,11 @@ function DeviceNode({ data, selected, dragging }: NodeProps) {
         position: 'relative',
         opacity: poweredOff ? 0.35 : 1,
         filter: poweredOff ? 'grayscale(0.7)' : undefined,
+        // An injected CONDITION outranks the normal type colour: the node turns
+        // red and blinks until the condition is returned to normal.
+        ...(faulted ? { background: 'var(--red)', borderColor: 'var(--red)' } : null),
       }}
+      className={faulted ? 'node-faulted' : undefined}
       onMouseEnter={onEnter}
       onMouseMove={onMove}
       onMouseLeave={onLeave}

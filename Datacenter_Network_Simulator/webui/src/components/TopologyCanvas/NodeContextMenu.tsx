@@ -641,7 +641,7 @@ interface Props {
 }
 
 export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelName, x, y, onClose, onLocate, onEditDevice, onShowInfo }: Props) {
-  const { snmp, fetchGraph, fetchDevices } = useStore()
+  const { snmp, fetchGraph, fetchDevices, fetchFaulted } = useStore()
   const menuRef  = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pos,     setPos]    = useState({ x, y })
@@ -716,7 +716,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   async function toggleEvent(ev: PlantEvent) {
     const active = ev.point in overrides
     setEvBusy(ev.point)
-    try { await api.setPlantOverride(nodeId, ev.point, active ? null : ev.value); await loadOverrides() }
+    try { await api.setPlantOverride(nodeId, ev.point, active ? null : ev.value); await loadOverrides(); fetchFaulted() }
     catch (e) { alert(String(e)) }
     finally { setEvBusy(null) }
   }
@@ -726,7 +726,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   async function toggleFault(fault: string) {
     const active = faultsActive.includes(fault)
     setFltBusy(fault)
-    try { await api.setDeviceFault(nodeId, fault, active ? 'clear' : 'start'); await loadFaults() }
+    try { await api.setDeviceFault(nodeId, fault, active ? 'clear' : 'start'); await loadFaults(); fetchFaulted() }
     catch (e) { alert(String(e)) }
     finally { setFltBusy(null) }
   }
@@ -798,6 +798,13 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
         toggle: () => { if (!fltBusy) toggleFault(f.fault) },
       }))
 
+  // Metric-backed conditions get an explicit "return to normal" action rather
+  // than relying on click-again-to-toggle, which gave no hint whether a second
+  // click re-asserted or cleared. Only currently-active ones are listed, so the
+  // submenu stays short when nothing is injected. Clearing ramps the metric back
+  // across the recovery threshold, so the recovery trap fires for real.
+  const normals = conditions.filter(c => c.on)
+
   // One-shot events: drop trap types already represented as a Condition so the
   // two groups never list the same fault twice.
   const FAULT_TRAP: Record<string, string> = {
@@ -865,12 +872,30 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    onMouseDown={e => { e.preventDefault(); c.toggle() }}
+                    onMouseDown={e => { e.preventDefault(); if (!c.on) c.toggle() }}
                   >
                     <span>{c.label}</span>
                     <span style={{ fontSize: 9, color: c.on ? '#f87171' : 'var(--text-dim)' }}>
                       {c.busy ? '…' : c.on ? 'ACTIVE' : ''}
                     </span>
+                  </div>
+                ))}
+
+                {normals.length > 0 && <div style={GROUP_HDR}>Return to Normal</div>}
+                {normals.map(c => (
+                  <div
+                    key={`normal-${c.key}`}
+                    style={{
+                      padding: '5px 14px', cursor: busyAny ? 'wait' : 'pointer',
+                      color: '#4ade80', whiteSpace: 'nowrap',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseDown={e => { e.preventDefault(); c.toggle() }}
+                  >
+                    <span>{c.label} Normal</span>
+                    <span style={{ fontSize: 9, color: 'var(--text-dim)' }}>{c.busy ? '…' : 'CLEAR'}</span>
                   </div>
                 ))}
 

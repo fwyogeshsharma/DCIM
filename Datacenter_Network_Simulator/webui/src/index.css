@@ -180,6 +180,26 @@ select option { background: #131f30; color: var(--text); }
   50%       { box-shadow: 0 0 9px var(--green), 0 0 2px #a7f3d0; }
 }
 
+/* Injected-CONDITION node: red ring that blinks while the fault is active, so a
+   deliberately-simulated condition is obvious on a dense canvas. Ends the moment
+   the condition returns to normal. Held at a calm 1.4s — faster reads as a
+   rendering glitch on a floor full of nodes. */
+.node-faulted { animation: fault-blink 1.4s ease-in-out infinite; }
+
+@keyframes fault-blink {
+  0%, 100% { box-shadow: 0 0 0 2px var(--red), 0 0 10px 2px rgba(239, 68, 68, 0.75); }
+  50%      { box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35); }
+}
+
+/* Respect a reduced-motion preference: keep the red ring, drop the blink. */
+@media (prefers-reduced-motion: reduce) {
+  .node-faulted { animation: none !important; }
+}
+
+/* Pause blinking while panning/zooming, same as the flow dashes below — the
+   repaint is what makes a large canvas stutter during interaction. */
+.rf-interacting .node-faulted { animation-play-state: paused !important; }
+
 /* Cooling-layer water-flow animation: marching dashes in flow direction.
    Dash+gap = 7+5 = 12, so offsetting by -12 loops seamlessly toward target. */
 @keyframes flow-dash {

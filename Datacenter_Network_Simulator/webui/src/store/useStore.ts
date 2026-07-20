@@ -37,6 +37,8 @@ interface Store {
 
   // devices list
   devices:    DeviceInfo[]
+  /** device id → active injected CONDITION keys (metrics / plant points). */
+  faulted:    Record<string, string[]>
   ev2Metrics:   EV2DeviceSnapshot[]
   plantMetrics: PlantDeviceSnapshot[]
   electricalMetrics: ElectricalDeviceSnapshot[]
@@ -157,6 +159,7 @@ interface Store {
 
   fetchGraph:   () => Promise<void>
   fetchDevices: () => Promise<void>
+  fetchFaulted: () => Promise<void>
   fetchSnmp:    () => Promise<void>
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
@@ -184,6 +187,7 @@ export const useStore = create<Store>((set, get) => ({
   graphLinks:   [],
   activeLayer:  'all',
   devices:      [],
+  faulted:      {},
   ev2Metrics:   [],
   plantMetrics: [],
   electricalMetrics: [],
@@ -353,6 +357,15 @@ export const useStore = create<Store>((set, get) => ({
     } catch { /* ignore */ }
   },
 
+  // Devices with an active injected CONDITION, so the canvas can mark them.
+  // One fleet-wide call on the devices cadence — never one per node.
+  fetchFaulted: async () => {
+    try {
+      const data = await api.faultedDevices() as { faulted: Record<string, string[]> }
+      set({ faulted: data.faulted || {} })
+    } catch { /* ignore */ }
+  },
+
   fetchSnmp: async () => {
     try { set({ snmp: await fetchWithAbort<SnmpStatus>('/snmp/status') }) } catch { /* ignore */ }
   },
@@ -428,6 +441,7 @@ export const useStore = create<Store>((set, get) => ({
     // Initial load
     s.fetchGraph()
     s.fetchDevices()
+    s.fetchFaulted()
     s.fetchSnmp()
     s.fetchGnmi()
     s.fetchSflow()
@@ -485,7 +499,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'redfish')  { s.fetchRedfish(); s.fetchGraph() }  // power ops fade/unfade nodes
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()
-            if (t === 'devices')  { s.fetchDevices(); set(st => ({ tickSeq: st.tickSeq + 1 })) }
+            if (t === 'devices')  { s.fetchDevices(); s.fetchFaulted(); set(st => ({ tickSeq: st.tickSeq + 1 })) }
             if (t === 'topology') s.fetchGraph()
             if (t === 'traps')    s.fetchTraps()
           } else if (ev.type === 'link_changed') {
