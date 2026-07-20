@@ -328,6 +328,7 @@ class EV2TelemetryEngine:
             i_avg = (self._ia + self._ib + self._ic) / 3.0
             panel_kw = round(v_avg * i_avg * self._pf * math.sqrt(3) / 1000.0, 3)
 
+        self._release_forced(forced)
         if forced:
             panel_kw = self._apply_forced_conditions(forced, panel_kw)
 
@@ -698,6 +699,31 @@ class EV2TelemetryEngine:
                 cs.thd  = self._ema(raw_thd, cs.thd, alpha=0.15)
                 cs.thd  = max(1.0, min(12.0, cs.thd))
 
+    def _release_forced(self, forced: set | None) -> None:
+        """Undo state a cleared force would otherwise leave stranded.
+
+        Currents recover on their own — they EMA toward whatever the live load
+        implies. Phase VOLTAGES do not: _step_voltages only pulls a phase back
+        hard when it is >5 V from nominal, and inside that band the correction is
+        gap*0.02, so a released imbalance decays to ~8 V of spread and then
+        crawls, holding a false alarm for many minutes after the fault cleared.
+        Snap them back explicitly instead.
+        """
+        prev = getattr(self, "_forced_prev", frozenset())
+        now = frozenset(forced or ())
+        released = prev - now
+        if "Alarm_VoltageImbalance" in released or "Alarm_PhaseLoss" in released:
+            self._va = self._vb = self._vc = self._v_nominal
+        # Voltage THD is a pure random walk (raw = present +/- 0.03) clamped to
+        # [0.5, 8.0] with NO pull toward nominal, so a released HighTHD pinned it
+        # at the 8.0 ceiling — permanently above the 7.0 alarm threshold. Sensor
+        # Fault zeroes it, which the walk would likewise never climb back from.
+        # Current THD and the harmonics are re-derived from load each tick and do
+        # recover on their own.
+        if "Alarm_HighTHD" in released or "Alarm_SensorFault" in released:
+            self._v_thd = 2.0
+        self._forced_prev = now
+
     def _kw_from_phases(self) -> float:
         """Panel kW implied by the present per-phase currents: P = V·I·PF·sqrt(3).
 
@@ -738,10 +764,17 @@ class EV2TelemetryEngine:
         # DEFINITION is spread between phases, so spread them either side of
         # nominal, comfortably past VOLTAGE_IMBALANCE_THRESH.
         if "Alarm_VoltageImbalance" in forced:
-            mid = (self._va + self._vb + self._vc) / 3.0
-            self._va = mid + self.VOLTAGE_IMBALANCE_THRESH * 0.8
-            self._vb = mid
-            self._vc = mid - self.VOLTAGE_IMBALANCE_THRESH * 0.8
+            # Spread around NOMINAL (not the present mid, which would drift), and
+            # by more than 5 V per phase on purpose: _step_voltages only pulls a
+            # phase back hard once it is >5 V from nominal, so a smaller offset
+            # sits in the gentle gap*0.02 band and crawls back over many minutes,
+            # leaving a false imbalance alarm behind long after the fault cleared.
+            # +/-6 V is ~5 % of a 230 V nominal — a genuinely severe imbalance, and
+            # it de-latches within a few ticks of clearing.
+            off = self.VOLTAGE_IMBALANCE_THRESH * 1.2
+            self._va = self._v_nominal + off
+            self._vb = self._v_nominal
+            self._vc = self._v_nominal - off
 
         # High THD — harmonic distortion from nonlinear loads (server PSUs, VFDs).
         # The alarm is on VOLTAGE THD per IEEE-519, but a real event shows on both,
