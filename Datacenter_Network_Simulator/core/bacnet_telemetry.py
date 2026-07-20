@@ -264,7 +264,8 @@ class EV2TelemetryEngine:
     # ─────────────────────────────────────────────────────────────
 
     def tick(self, dt: float, live_kw: float | None = None,
-             circuit_kw: list | None = None) -> Dict[str, float]:
+             circuit_kw: list | None = None,
+             forced: set | None = None) -> Dict[str, float]:
         """
         Advance simulation by *dt* seconds.
 
@@ -277,6 +278,14 @@ class EV2TelemetryEngine:
         REAL draw of its branch PDU (an empty branch reads ~0, a full one its live
         kW) instead of a panel-scaled random walk, and the circuits sum to the
         panel. Branches beyond the list are spare CTs and read 0.
+
+        *forced* — alarm point names the operator has forced on. An EV2 is a CT
+        submeter: it does not carry power, it observes it, so forcing an alarm
+        must not invent a downstream effect. Instead the ELECTRICAL CONDITION the
+        alarm represents is applied to the measured quantities, and the normal
+        derivation in _update_alarms() then raises the alarm off those readings.
+        Without this the forced bit sat next to perfectly nominal readings — an
+        overcurrent alarm reporting 40 A — which no real meter would ever publish.
 
         Returns a flat dict of all object names → new present values.
         Boolean alarm values are returned as 0.0 / 1.0.
@@ -318,6 +327,9 @@ class EV2TelemetryEngine:
             v_avg = (self._va + self._vb + self._vc) / 3.0
             i_avg = (self._ia + self._ib + self._ic) / 3.0
             panel_kw = round(v_avg * i_avg * self._pf * math.sqrt(3) / 1000.0, 3)
+
+        if forced:
+            panel_kw = self._apply_forced_conditions(forced, panel_kw)
 
         # Alarms read the (now summed) per-phase currents, so evaluate after the
         # panel is resolved.
@@ -685,6 +697,97 @@ class EV2TelemetryEngine:
                 raw_thd = cs.thd + random.uniform(-0.05, 0.05)
                 cs.thd  = self._ema(raw_thd, cs.thd, alpha=0.15)
                 cs.thd  = max(1.0, min(12.0, cs.thd))
+
+    def _kw_from_phases(self) -> float:
+        """Panel kW implied by the present per-phase currents: P = V·I·PF·sqrt(3).
+
+        Used after a forced condition rewrites the currents, so the reported power
+        follows the readings instead of being scaled off a stale value.
+        """
+        v_avg = (self._va + self._vb + self._vc) / 3.0
+        i_avg = (self._ia + self._ib + self._ic) / 3.0
+        return round(v_avg * i_avg * self._pf * math.sqrt(3) / 1000.0, 3)
+
+    def _apply_forced_conditions(self, forced: set, panel_kw: float) -> float:
+        """Impose the electrical condition each forced EV2 alarm represents.
+
+        The meter derives its alarms FROM its measurements, so the honest way to
+        simulate one is to put the panel into that state and let the derivation
+        raise the bit — not to flip the bit and leave the readings nominal.
+
+        Deliberately NOT modelled here: any downstream effect. An EV2 is a CT
+        submeter clamped around branch circuits; it observes power, it does not
+        carry it. A meter alarm cannot de-energise a rack. Real phase loss belongs
+        on the RPP/panel in the power topology, where the conductors actually are.
+        """
+        # Overcurrent — load beyond the CT/breaker rating. Current is what the
+        # meter measures, so push it past the alarm threshold; PF sags a little
+        # under the heavier draw and the panel kW follows the current.
+        if "Alarm_Overcurrent" in forced:
+            # ABSOLUTE target, never a multiplier on the present reading: the
+            # per-phase currents EMA from their previous value, so scaling them
+            # each tick compounds — it ran 62 A to the 1368 A clamp in six ticks,
+            # fault-current territory that also wrecked the kW/kWh series.
+            # Capped at 2x nominal so an overload stays an overload, not a short.
+            tgt = min(self._overcurrent_thresh * 1.12, self._i_nominal * 2.0)
+            self._ia, self._ib, self._ic = tgt, tgt * 0.97, tgt * 0.99
+            self._pf = max(0.80, self._pf - 0.03)
+            panel_kw = self._kw_from_phases()
+
+        # Voltage imbalance — unequal phase loading or a weak supply leg. The
+        # DEFINITION is spread between phases, so spread them either side of
+        # nominal, comfortably past VOLTAGE_IMBALANCE_THRESH.
+        if "Alarm_VoltageImbalance" in forced:
+            mid = (self._va + self._vb + self._vc) / 3.0
+            self._va = mid + self.VOLTAGE_IMBALANCE_THRESH * 0.8
+            self._vb = mid
+            self._vc = mid - self.VOLTAGE_IMBALANCE_THRESH * 0.8
+
+        # High THD — harmonic distortion from nonlinear loads (server PSUs, VFDs).
+        # The alarm is on VOLTAGE THD per IEEE-519, but a real event shows on both,
+        # with the odd triplen harmonics dominating and displacement PF degrading.
+        if "Alarm_HighTHD" in forced:
+            self._v_thd = max(self._v_thd, self.HIGH_THD_THRESH * 1.35)
+            self._i_thd = max(self._i_thd, 18.0)
+            self._h3 = max(self._h3, 14.0)
+            self._h5 = max(self._h5, 9.0)
+            self._h7 = max(self._h7, 5.5)
+            self._h9 = max(self._h9, 3.0)
+            self._pf = max(0.75, self._pf - 0.08)
+
+        # Phase loss (single-phasing) — one leg is gone: its voltage collapses and
+        # it carries no current, so the panel loses roughly a third of its load.
+        # The surviving legs pick up, which is precisely why single-phasing burns
+        # out three-phase motors. Extreme imbalance follows for free, and that is
+        # correct: a real meter reports BOTH alarms in this condition.
+        if "Alarm_PhaseLoss" in forced:
+            # Surviving legs pick up the redistributed single-phase load — the
+            # reason single-phasing destroys three-phase motors. Referenced to
+            # nominal, not to the present reading, so it cannot compound.
+            self._vc = 1.5
+            self._ic = 0.0
+            # Referenced to NOMINAL only. Anything that reads back self._ia
+            # compounds, because the phase currents EMA from their previous
+            # value — max(present, nominal) * 1.15 still ran away to the clamp.
+            tgt = min(self._i_clamp, self._i_nominal * 1.15)
+            self._ia = self._ib = tgt
+            panel_kw = round(self._kw_from_phases() * 0.67, 3)
+
+        # Sensor fault — the CT or its input has failed. NOTHING happens
+        # electrically; what fails is the MEASUREMENT. A dead channel reads zero,
+        # so the panel under-reports rather than reporting a real condition. This
+        # is the one EV2 alarm that must not move the physics.
+        if "Alarm_SensorFault" in forced:
+            # A failed CT/input reads nothing, so the derived quantities that
+            # depend on it go invalid rather than wrong-but-plausible. Scoped to
+            # ONE channel: a single bad CT on a 42-circuit panel slightly
+            # under-reports the mains, it does not remove a third of the load.
+            self._v_thd = 0.0
+            self._i_thd = 0.0
+            self._h3 = self._h5 = self._h7 = self._h9 = 0.0
+            panel_kw = round(panel_kw * 0.97, 3)
+
+        return panel_kw
 
     def _update_alarms(self):
         """Evaluate alarm conditions with debounce — N consecutive ticks required."""

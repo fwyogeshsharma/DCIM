@@ -650,7 +650,19 @@ class BACnetController:
                     _ip = getattr(dev, "device_ip", "")
                     _lkw = (live_kw_by_ip or {}).get(_ip)
                     _ckw = (circuit_kw_by_ip or {}).get(_ip)
-                    values = engine.tick(dt, live_kw=_lkw, circuit_kw=_ckw)
+                    # Forced EV2 alarms drive the electrical condition they
+                    # represent, so the meter's own readings stay consistent with
+                    # the bit it is asserting. Same two sources as the plant path:
+                    # a per-device override, or a type-wide Limits lock.
+                    _ev_forced = {p for p, v in ovr.items()
+                                  if p.startswith("Alarm_") and float(v) >= 0.5}
+                    if metric_limits:
+                        for _k, _lim in metric_limits.items():
+                            if (_k.startswith("ev2:") and _lim.get("enabled")
+                                    and str(_lim.get("lock")) == "on"):
+                                _ev_forced.add(_k[len("ev2:"):])
+                    values = engine.tick(dt, live_kw=_lkw, circuit_kw=_ckw,
+                                         forced=_ev_forced or None)
                 if metric_flags:
                     values = {
                         k: v for k, v in values.items()
