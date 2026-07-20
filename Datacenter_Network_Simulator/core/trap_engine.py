@@ -596,6 +596,16 @@ class TrapEngine(QObject):
         if trap_type == TrapType.UPS_BATTERY_HEALTH_RESTORED:
             val = kwargs.get("metric_value", "—")
             return f"Battery health recovered to {float(val):.1f}%"
+        if trap_type == TrapType.UPS_INPUT_VOLTAGE_HIGH:
+            val = kwargs.get("metric_value", "—")
+            return f"Input voltage {float(val):.1f} V L-L  (threshold 440 V)"
+        if trap_type == TrapType.UPS_INPUT_VOLTAGE_LOW:
+            val = kwargs.get("metric_value", "—")
+            return f"Input voltage {float(val):.1f} V L-L  (threshold 360 V)"
+        if trap_type in (TrapType.UPS_INPUT_VOLTAGE_NORMAL,
+                         TrapType.UPS_INPUT_VOLTAGE_LOW_CLEARED):
+            val = kwargs.get("metric_value", "—")
+            return f"Input voltage back in band at {float(val):.1f} V L-L"
         # Sensor mid/outlet temp
         if trap_type == TrapType.SENSOR_MID_TEMP_HIGH:
             val = kwargs.get("metric_value", "—")

@@ -114,7 +114,7 @@ const METRIC_GROUPS: MetricGroup[] = [
     { key: 'ups_status',           label: 'UPS Power Status',        tip: 'normal → on_battery (0.1%) → low_battery state machine' },
     { key: 'ups_output_load',      label: 'Output Load %',           tip: '±3% walk; 0.5% spike >90%' },
     { key: 'ups_battery_status',   label: 'Battery Hardware Status', tip: 'normal / failure (0.05%) / disconnected' },
-    { key: 'ups_input_voltage',    label: 'Input Voltage',           tip: '±2V walk; 0.3% spike outside 200–240V' },
+    { key: 'ups_input_voltage',    label: 'Input Voltage',           tip: '400V L-L mean-revert, 388–412V; 0.3% swell/sag to 436–450V or 350–364V' },
     { key: 'ups_input_frequency',  label: 'Input Frequency',         tip: '±0.05Hz walk; 0.2% spike outside 49.5–50.5Hz' },
     { key: 'ups_fan_status',       label: 'Cooling Fan Status',      tip: 'ok / failure — 0.1% chance; recovers 15%' },
     { key: 'ups_charger_status',   label: 'Battery Charger Status',  tip: 'ok / failure — 0.1% chance; recovers 15%' },
@@ -305,7 +305,7 @@ const LIMIT_GROUPS: LimitGroup[] = [
   ]},
   { gid: 'ups', title: 'UPS Devices', rows: [
     { key: 'ups_output_load',     label: 'Output Load %',          kind: 'num',   absMin: 0,   absMax: 100, step: 1,   decimals: 1, suffix: '%',  defMin: 0,    defMax: 100  },
-    { key: 'ups_input_voltage',   label: 'Input Voltage',          kind: 'num',   absMin: 200, absMax: 260, step: 1,   decimals: 1, suffix: 'V',  defMin: 200,  defMax: 240  },
+    { key: 'ups_input_voltage',   label: 'Input Voltage',          kind: 'num',   absMin: 340, absMax: 460, step: 1,   decimals: 1, suffix: 'V',  defMin: 388,  defMax: 412  },
     { key: 'ups_input_frequency', label: 'Input Frequency',        kind: 'num',   absMin: 47,  absMax: 53,  step: 0.1, decimals: 2, suffix: 'Hz', defMin: 49.5, defMax: 50.5 },
     { key: 'ups_status',          label: 'UPS Power Status',       kind: 'state', options: ['normal', 'on_battery', 'low_battery'] },
     { key: 'ups_battery_status',  label: 'Battery Hardware Status',kind: 'state', options: ['normal', 'failure', 'disconnected'] },

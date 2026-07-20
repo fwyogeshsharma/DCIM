@@ -188,17 +188,35 @@ DEFAULT_RULES: List[Rule] = [
           severity="critical", priority=190,
           device_types=["ups"]),
 
+    # UPS input is the 400 V (L-L) LV bus off its ATS, not a 230 V single-phase
+    # feed — alarm at ±10% of nominal (440 / 360 V), the usual vendor input
+    # over/under-voltage band. The clears sit ~2.5% inside the alarm points so a
+    # sag/swell riding the threshold cannot chatter alarm/clear every tick.
     _rule("UPSInputVoltageHigh",
-          _threshold("ups_input_voltage", ">", 250.0),
+          _threshold("ups_input_voltage", ">", 440.0),
           "1.3.6.1.4.1.99999.2.9",
           severity="major", priority=180,
           device_types=["ups"]),
 
+    _rule("UPSInputVoltageNormal",
+          _threshold("ups_input_voltage", "<", 430.0),
+          "1.3.6.1.4.1.99999.2.18",
+          severity="informational", priority=100,
+          device_types=["ups"],
+          recovery=True, recovery_of="UPSInputVoltageHigh"),
+
     _rule("UPSInputVoltageLow",
-          _threshold("ups_input_voltage", "<", 190.0),
+          _threshold("ups_input_voltage", "<", 360.0),
           "1.3.6.1.4.1.99999.2.10",
           severity="major", priority=180,
           device_types=["ups"]),
+
+    _rule("UPSInputVoltageLowCleared",
+          _threshold("ups_input_voltage", ">", 370.0),
+          "1.3.6.1.4.1.99999.2.19",
+          severity="informational", priority=100,
+          device_types=["ups"],
+          recovery=True, recovery_of="UPSInputVoltageLow"),
 
     _rule("UPSFrequencyOutOfRange",
           _composite(

@@ -100,6 +100,9 @@ class TrapType(str, Enum):
     UPS_BATTERY_HEALTH_RESTORED = "batteryHealthRestored"
     UPS_BYPASS_ACTIVE         = "bypassActive"
     UPS_BYPASS_CLEARED        = "bypassCleared"
+    # UPS input-voltage alarm clears (1.3.6.1.4.1.99999.2.18–2.19)
+    UPS_INPUT_VOLTAGE_NORMAL  = "inputVoltageNormal"
+    UPS_INPUT_VOLTAGE_LOW_CLEARED = "inputVoltageLowCleared"
     # Sensor mid/outlet temp traps (1.3.6.1.4.1.99999.1.9–1.12)
     SENSOR_MID_TEMP_HIGH      = "sensorMidTempHigh"
     SENSOR_OUTLET_TEMP_HIGH   = "sensorOutletTempHigh"
@@ -404,10 +407,10 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
         "Charger Failure", "UPS battery charger fault", "critical"),
     TrapType.UPS_INPUT_VOLTAGE_HIGH: TrapDefinition(
         TrapType.UPS_INPUT_VOLTAGE_HIGH, "1.3.6.1.4.1.99999.2.9",
-        "Input Voltage High", "UPS input voltage exceeds upper threshold (250 V)", "major"),
+        "Input Voltage High", "UPS input voltage exceeds upper threshold (440 V L-L)", "major"),
     TrapType.UPS_INPUT_VOLTAGE_LOW: TrapDefinition(
         TrapType.UPS_INPUT_VOLTAGE_LOW, "1.3.6.1.4.1.99999.2.10",
-        "Input Voltage Low", "UPS input voltage below lower threshold (190 V)", "major"),
+        "Input Voltage Low", "UPS input voltage below lower threshold (360 V L-L)", "major"),
     TrapType.UPS_FREQUENCY_OUT_RANGE: TrapDefinition(
         TrapType.UPS_FREQUENCY_OUT_RANGE, "1.3.6.1.4.1.99999.2.11",
         "Frequency Out of Range", "UPS input frequency outside 49–51 Hz band", "major"),
@@ -487,6 +490,16 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
     TrapType.UPS_BYPASS_CLEARED: TrapDefinition(
         TrapType.UPS_BYPASS_CLEARED, "1.3.6.1.4.1.99999.2.17",
         "Bypass Cleared", "UPS has exited bypass mode", "informational"),
+    TrapType.UPS_INPUT_VOLTAGE_NORMAL: TrapDefinition(
+        TrapType.UPS_INPUT_VOLTAGE_NORMAL, "1.3.6.1.4.1.99999.2.18",
+        "Input Voltage Normal",
+        "UPS input voltage returned below the over-voltage reset point (430 V L-L)",
+        "informational"),
+    TrapType.UPS_INPUT_VOLTAGE_LOW_CLEARED: TrapDefinition(
+        TrapType.UPS_INPUT_VOLTAGE_LOW_CLEARED, "1.3.6.1.4.1.99999.2.19",
+        "Input Voltage Low Cleared",
+        "UPS input voltage returned above the under-voltage reset point (370 V L-L)",
+        "informational"),
     TrapType.SENSOR_MID_TEMP_HIGH: TrapDefinition(
         TrapType.SENSOR_MID_TEMP_HIGH, "1.3.6.1.4.1.99999.1.9",
         "Mid-Rack Temp High", "Mid-rack temperature probe has exceeded 38°C", "major"),
@@ -629,6 +642,7 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.TEMPERATURE_ALERT,
         TrapType.UPS_BATTERY_LOW_HEALTH, TrapType.UPS_BATTERY_HEALTH_RESTORED,
         TrapType.UPS_BYPASS_ACTIVE, TrapType.UPS_BYPASS_CLEARED,
+        TrapType.UPS_INPUT_VOLTAGE_NORMAL, TrapType.UPS_INPUT_VOLTAGE_LOW_CLEARED,
     ],
     "pdu": [
         TrapType.COLD_START,

@@ -42,7 +42,7 @@ const CATEGORIES: [string, string[]][] = [
   ['CPU',                       ['HighCPU','HighCPUSustained','CPUNormal']],
   ['Memory',                    ['HighMemory','MemoryNormal']],
   ['Temperature',               ['HighTemperature','TemperatureNormal','CriticalCPUAndTemp']],
-  ['Power / UPS',               ['UPSOnBattery','UPSLowBattery','UPSBatteryNormal','UPSUtilityRestored','UPSOutputOverload','UPSOutputNormal','UPSFanFailure','UPSBatteryFailure','UPSBatteryDisconnected','UPSChargerFailure','UPSInputVoltageHigh','UPSInputVoltageLow','UPSFrequencyOutOfRange','UPSRectifierFailure','UPSPhaseFailure']],
+  ['Power / UPS',               ['UPSOnBattery','UPSLowBattery','UPSBatteryNormal','UPSUtilityRestored','UPSOutputOverload','UPSOutputNormal','UPSFanFailure','UPSBatteryFailure','UPSBatteryDisconnected','UPSChargerFailure','UPSInputVoltageHigh','UPSInputVoltageNormal','UPSInputVoltageLow','UPSInputVoltageLowCleared','UPSFrequencyOutOfRange','UPSRectifierFailure','UPSPhaseFailure']],
   ['Power / PDU',               ['PDUOutletOn','PDUOutletOff','PDUBreakerTripped','PDULoadHigh','PDULoadCritical','PDUVoltageHigh','PDUVoltageLow','PDUPhaseImbalance','PDUPowerFactorLow','PDUOutletFailure','PDUSmokeDetected','PDUOutletCurrentHigh','PDUGroundFault']],
   ['Routing',                   ['BGPSessionDown']],
   ['Infrastructure',            ['RackFailure']],

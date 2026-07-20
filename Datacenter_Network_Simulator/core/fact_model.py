@@ -60,7 +60,7 @@ class DeviceFact:
     # UPS extended metrics (populated only for DeviceType.UPS)
     ups_output_load: float = 0.0          # % output load
     ups_battery_status: str = "normal"    # normal | failure | disconnected
-    ups_input_voltage: float = 220.0      # V (nominal 220V)
+    ups_input_voltage: float = 400.0      # V L-L (nominal 400V, 3-phase LV bus)
     ups_input_frequency: float = 50.0     # Hz (nominal 50Hz)
     ups_fan_status: str = "ok"            # ok | failure
     ups_charger_status: str = "ok"        # ok | failure
