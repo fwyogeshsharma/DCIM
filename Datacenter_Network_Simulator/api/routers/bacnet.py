@@ -554,3 +554,48 @@ def set_plant_override(body: PlantOverride):
         return OkResponse(message=f"Cleared {body.point}")
     dev[body.point] = float(body.value)
     return OkResponse(message=f"Set {body.point}={body.value}")
+
+
+class ChillerReset(BaseModel):
+    device: str               # topology device id of the chiller
+
+
+@router.get("/plant/chiller-trips")
+def get_chiller_trips():
+    """Chillers latched out by their high head-pressure safety.
+
+    Autonomous protection, NOT an operator override: it fires when the condenser
+    loop overheats (typically because tower rejection was lost), so it does not
+    appear in /plant/overrides.
+    """
+    st = getattr(_state(), "state_store", None)
+    names = st.get_chiller_trips() if st else []
+    dm = _state().device_manager
+    ids = {}
+    if dm:
+        ids = {d.name: d.id for d in dm.get_all_devices() if d.name in set(names)}
+    return {"tripped": [{"name": n, "device": ids.get(n)} for n in names]}
+
+
+@router.post("/plant/chiller-reset", response_model=OkResponse)
+def reset_chiller_trip(body: ChillerReset):
+    """Manually reset a latched high head-pressure trip.
+
+    Refuses while condenser water is still hot: a real HP cutout will not hold in
+    until head pressure has actually come down, and restarting into the same
+    condition would only trip the machine again.
+    """
+    s = _state()
+    st = getattr(s, "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    dev = s.device_manager.get_device(body.device) if s.device_manager else None
+    if dev is None:
+        raise HTTPException(status_code=404, detail=f"Device '{body.device}' not found")
+    result = st.reset_chiller_trip(dev.name)
+    if result == "reset":
+        s.notify_ui("sync_devices")
+        return OkResponse(message=f"{dev.name} high-pressure trip reset")
+    if result == "not tripped":
+        raise HTTPException(status_code=400, detail=f"{dev.name} is not tripped")
+    raise HTTPException(status_code=409, detail=f"Reset refused — {result}")

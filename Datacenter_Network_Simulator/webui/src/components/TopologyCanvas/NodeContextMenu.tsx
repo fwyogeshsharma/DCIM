@@ -654,6 +654,27 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const snmpRunning = snmp?.running ?? false
   const plantEvents = PLANT_EVENTS[deviceType] ?? []
 
+  // Latched high head-pressure trip (chillers only). Autonomous protection, so
+  // it is separate from the operator's forced-point overrides.
+  const [hpTripped, setHpTripped] = useState(false)
+  const [hpBusy,    setHpBusy]    = useState(false)
+
+  async function loadChillerTrip() {
+    if (deviceType !== 'chiller') return
+    try {
+      const r = await api.chillerTrips() as { tripped: { name: string; device: string }[] }
+      setHpTripped((r.tripped ?? []).some(t => t.device === nodeId))
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { loadChillerTrip() }, [deviceType, nodeId])
+
+  async function resetHpTrip() {
+    setHpBusy(true)
+    try { await api.resetChillerTrip(nodeId); await loadChillerTrip(); fetchFaulted() }
+    catch (e) { alert(errorMessage(e)) }
+    finally { setHpBusy(false) }
+  }
+
   // Load active fault overrides so the submenu can show ACTIVE state (plant only)
   async function loadOverrides() {
     try {
@@ -861,6 +882,23 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                 onMouseEnter={openSub}
                 onMouseLeave={closeSub}
               >
+                {hpTripped && <div style={GROUP_HDR}>Safety Trip</div>}
+                {hpTripped && (
+                  <div
+                    style={{
+                      padding: '5px 14px', cursor: hpBusy ? 'wait' : 'pointer',
+                      color: '#fbbf24', whiteSpace: 'nowrap',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseDown={e => { e.preventDefault(); if (!hpBusy) resetHpTrip() }}
+                  >
+                    <span>Reset High Head Pressure</span>
+                    <span style={{ fontSize: 9, color: '#fbbf24' }}>{hpBusy ? '…' : 'LOCKED OUT'}</span>
+                  </div>
+                )}
+
                 {conditions.length > 0 && <div style={GROUP_HDR}>Conditions</div>}
                 {conditions.map(c => (
                   <div

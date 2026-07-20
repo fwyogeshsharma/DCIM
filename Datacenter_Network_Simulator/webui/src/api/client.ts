@@ -234,6 +234,10 @@ export const api = {
   plantOverrides:   (device: string)      => get('/bacnet/plant/overrides?device=' + encodeURIComponent(device)),
   setPlantOverride: (device: string, point: string, value: number | null) =>
     post('/bacnet/plant/overrides', { device, point, value }),
+  // Chillers latched out by their own high head-pressure safety. Autonomous
+  // protection, not an operator override — so it is NOT in /plant/overrides.
+  chillerTrips:     ()                    => get('/bacnet/plant/chiller-trips'),
+  resetChillerTrip: (device: string)      => post('/bacnet/plant/chiller-reset', { device }),
 
   // redfish
   redfishStatus:   ()                     => get('/redfish/status'),

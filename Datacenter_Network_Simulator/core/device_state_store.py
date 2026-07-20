@@ -47,6 +47,14 @@ log = logging.getLogger(__name__)
 # envelope (18–27 °C). Override-friendly single source of truth.
 _SUPPLY_SETPOINT_C = 22.0
 
+# Airflow a CRAH loses to a clogged filter, as a fraction of its design flow.
+# Must match the Filter_Dirty derate applied in core/bacnet_plant_generator.py:
+# that side moves the published Airflow point, this side turns the same derate
+# into lost room cooling. A filthy filter is a PARTIAL capacity loss — the unit
+# still delivers cold air, just less of it — which is why it cannot be handled
+# by the binary off/no-airflow path.
+_CRAH_FILTER_DERATE = 0.20
+
 # Fraction of a direct-to-chip (CDU cold-plate) server's heat that still leaves
 # via AIR. Cold plates capture ~70 % of the load (CPU/GPU) into the liquid loop;
 # the residual (VRMs, DIMMs, drives, PSUs) is air-cooled, so the air-side exhaust
@@ -130,6 +138,20 @@ class DeviceStateStore:
         # temperature penalty (°C), ramped each tick toward the fault target.
         self._cool_ctx: Optional[dict] = None
         self._chw_pen: Dict[str, float] = {}
+
+        # ── Condenser-water loop + chiller head-pressure protection ──────────
+        # The towers reject the chillers' condenser heat. Lose tower capacity and
+        # condenser water temperature climbs, which raises refrigerant condensing
+        # pressure, and every centrifugal machine protects itself against that:
+        # first by UNLOADING (capacity limit), then by tripping its high-pressure
+        # safety. Without this the plant modelled a physically impossible state —
+        # chillers happily making chilled water with nowhere to reject the heat.
+        self._cond_water_c: Dict[str, float] = {}     # dc → condenser supply °C
+        self._chiller_derate: Dict[str, float] = {}   # chiller name → 0..1 capacity lost
+        self._chiller_hp_lockout: set = set()         # chiller names latched out
+        self._plant_auto_points: Dict[str, dict] = {} # device ip → {point: value}
+        self._cond_trip_s: Dict[str, float] = {}      # chiller name → s above trip temp
+        self._plant_ip_by_name: Dict[str, str] = {}   # plant device name → IP
 
         # Per-rack cold-aisle supply temperature: {rack_key: [temp, last_tick]}.
         # All devices in a rack share one baseline (same cold aisle); it advances
@@ -748,6 +770,13 @@ class DeviceStateStore:
                 elif dt in (DeviceType.CHILLER, DeviceType.PUMP,
                             DeviceType.COOLING_TOWER, DeviceType.VALVE):
                     plant_by_dc.setdefault(d.datacenter, {}).setdefault(dt.value, []).append(d.name)
+                # Plant overrides are keyed by IP, so the head-pressure model needs
+                # a name → IP map to publish its synthetic points.
+                if dt in (DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
+                          DeviceType.VALVE, DeviceType.CRAH, DeviceType.CDU):
+                    _ip = getattr(d, "mgmt_ip", None) or getattr(d, "ip_address", None)
+                    if _ip:
+                        self._plant_ip_by_name[d.name] = _ip
         except Exception:
             log.exception("[StateStore] cooling context build error")
         trains_by_dc: Dict[str, list] = {}
@@ -2281,6 +2310,165 @@ class DeviceStateStore:
     # no such grace — the rest of the plant has already been compensating for it.
     _CHW_RIDE_S = 60.0
 
+    # ── Chiller head-pressure protection ────────────────────────────────────
+    # Design condenser water is 29.4/35 °C (85/95 °F). Thresholds are expressed
+    # in condenser SUPPLY temperature because that is what the tower actually
+    # controls; Cond_Pressure is published alongside for the BACnet/SNMP view.
+    _COND_DESIGN_C = 30.5    # design condenser supply temp (matches the point base)
+    _COND_LIMIT_C  = 36.0    # capacity-limit onset — machine starts unloading
+    _COND_TRIP_C   = 42.0    # high-pressure safety trips here
+    _COND_RESET_C  = 33.0    # condenser must fall this low before a reset will hold
+    _COND_MAX_C    = 50.0    # ceiling once rejection is fully gone
+    _COND_RISE     = 0.35    # °C/s the loop heats with rejection fully lost
+    _COND_FALL     = 0.55    # °C/s it recovers once the towers are back
+    _COND_TRIP_S   = 5.0     # seconds above trip temp before the safety latches
+    _CHILLER_MIN_LOAD = 0.40 # capacity floor while limiting (40 % of nameplate)
+
+    def _compute_cond_loop(self) -> None:
+        """Per-tick: condenser-water temperature, then chiller head-pressure
+        protection (unload → trip → latched lockout).
+
+        Physical chain the towers sit in:
+            IT heat → chilled water → chiller evaporator → chiller condenser
+            → CONDENSER WATER → cooling tower → atmosphere
+
+        Kill the towers and the last hop is gone: condenser water has nowhere to
+        dump heat, so it climbs. Refrigerant condensing pressure tracks that
+        temperature, and a centrifugal chiller responds in two stages, which is
+        what real machines do:
+
+          * above _COND_LIMIT_C it UNLOADS to hold pressure down (capacity limit
+            — Trane/Carrier/York all do this before any safety acts), and
+          * above _COND_TRIP_C the high-pressure cutout latches it OFF.
+
+        The trip LATCHES: clearing the tower fault cools the loop but does not
+        restart the machine, matching a manual-reset HP cutout. That is the whole
+        point of modelling it — a lost-rejection event leaves the plant crippled
+        until someone resets it, instead of silently self-healing.
+
+        Emits synthetic BACnet points (keyed by device IP, merged with operator
+        overrides at the BACnet tick) so the trip is visible on the plant plane,
+        and a per-chiller derate that _compute_chw_penalty folds into cooling
+        loss — so unloading actually costs cooling rather than being cosmetic.
+        """
+        ctx = self._cooling_context()
+        dt = self._tick_interval
+        auto: Dict[str, dict] = {}
+        self._chiller_derate = {}
+
+        for dc, kinds in ctx["plant_by_dc"].items():
+            towers = [t for t in (kinds.get("cooling_tower") or [])
+                      if t not in self._plant_standby_names]
+            chillers = [c for c in (kinds.get("chiller") or [])
+                        if c not in self._plant_standby_names]
+            if not chillers:
+                continue
+
+            # Rejection capability = fraction of staged-on tower cells still
+            # moving air. An unpowered cell counts as lost the same as a faulted
+            # one: either way no air moves over the fill.
+            if towers:
+                ok = sum(1 for t in towers
+                         if not self._is_faulted(t)
+                         and t not in self._plant_unpowered_names)
+                reject = ok / len(towers)
+            else:
+                reject = 1.0        # no modelled towers → assume rejection is fine
+
+            # Loop temperature: heats toward the ceiling in proportion to lost
+            # rejection, cools back toward design when it returns. Rates are
+            # per-second so the behaviour does not change with tick interval.
+            cur = self._cond_water_c.get(dc, self._COND_DESIGN_C)
+            if reject >= 1.0:
+                cur += (self._COND_DESIGN_C - cur) * min(1.0, self._COND_FALL * dt)
+            else:
+                loss = 1.0 - reject
+                target = self._COND_DESIGN_C + (self._COND_MAX_C - self._COND_DESIGN_C) * loss
+                if cur < target:
+                    cur = min(target, cur + self._COND_RISE * loss * dt)
+                else:
+                    cur += (target - cur) * min(1.0, self._COND_FALL * dt)
+            cur = max(self._COND_DESIGN_C, min(self._COND_MAX_C, cur))
+            self._cond_water_c[dc] = round(cur, 2)
+
+            # Condensing pressure for the published point, as a linear fit through
+            # R-134a saturation. Running, the compressor adds lift on top of the
+            # loop temperature; this puts the _COND_TRIP_C threshold at ~1200 kPa,
+            # a textbook centrifugal HP cutout. A TRIPPED machine has no lift —
+            # the compressor is off and the refrigerant equalises — so it reads
+            # the loop's saturation pressure instead of continuing to climb.
+            cond_kpa_run  = 900.0 + (cur - self._COND_DESIGN_C) * 26.0
+            cond_kpa_idle = 700.0 + (cur - self._COND_DESIGN_C) * 18.0
+
+            over = cur >= self._COND_TRIP_C
+            for name in chillers:
+                ip = self._plant_ip_by_name.get(name)
+                latched = name in self._chiller_hp_lockout
+
+                if not latched and over:
+                    held = self._cond_trip_s.get(name, 0.0) + dt
+                    self._cond_trip_s[name] = held
+                    if held >= self._COND_TRIP_S:
+                        self._chiller_hp_lockout.add(name)
+                        latched = True
+                        log.warning("[Plant] %s tripped on HIGH HEAD PRESSURE "
+                                    "(condenser water %.1f C) — latched, manual reset", name, cur)
+                elif not over:
+                    self._cond_trip_s.pop(name, None)
+
+                if latched:
+                    # Locked out: the machine is off and its capacity is gone.
+                    self._chiller_derate[name] = 1.0
+                    if ip:
+                        auto[ip] = {"Chiller_Running": 0.0, "Alarm_HighPressure": 1.0,
+                                    "Cond_Pressure": round(cond_kpa_idle, 1),
+                                    "Cond_Supply_Temp": round(cur, 1),
+                                    "Compressor_Load": 0.0}
+                    continue
+
+                if cur > self._COND_LIMIT_C:
+                    # Capacity limit: unload linearly from full at the limit onset
+                    # down to the floor at the trip point.
+                    span = max(0.1, self._COND_TRIP_C - self._COND_LIMIT_C)
+                    frac = min(1.0, (cur - self._COND_LIMIT_C) / span)
+                    avail = 1.0 - (1.0 - self._CHILLER_MIN_LOAD) * frac
+                    self._chiller_derate[name] = round(1.0 - avail, 3)
+                    if ip:
+                        auto[ip] = {"Alarm_HighPressure": 1.0,
+                                    "Cond_Pressure": round(cond_kpa_run, 1),
+                                    "Cond_Supply_Temp": round(cur, 1),
+                                    "Compressor_Load": round(avail * 100.0, 1)}
+                elif ip:
+                    auto[ip] = {"Cond_Pressure": round(cond_kpa_run, 1),
+                                "Cond_Supply_Temp": round(cur, 1)}
+
+        self._plant_auto_points = auto
+
+    def reset_chiller_trip(self, name: str) -> str:
+        """Manual reset of a latched high-pressure trip.
+
+        Refuses while condenser water is still hot — a real HP cutout will not
+        hold in until the head pressure has actually come down, and letting it
+        restart into the same condition would just trip it again.
+        """
+        if name not in self._chiller_hp_lockout:
+            return "not tripped"
+        dc = None
+        for _dc, kinds in (self._cooling_context()["plant_by_dc"]).items():
+            if name in (kinds.get("chiller") or []):
+                dc = _dc
+                break
+        cond = self._cond_water_c.get(dc, self._COND_DESIGN_C) if dc else self._COND_DESIGN_C
+        if cond > self._COND_RESET_C:
+            return f"condenser water still {cond:.1f} C — must fall below {self._COND_RESET_C:.0f} C"
+        self._chiller_hp_lockout.discard(name)
+        self._cond_trip_s.pop(name, None)
+        return "reset"
+
+    def get_chiller_trips(self) -> list:
+        """Names of chillers latched out on high head pressure."""
+        return sorted(self._chiller_hp_lockout)
+
     def _compute_chw_penalty(self) -> None:
         """Per-tick: update the per-DC chilled-water temperature penalty.
 
@@ -2322,7 +2510,11 @@ class DeviceStateStore:
                 """
                 if name in self._plant_unpowered_names:
                     return ride
-                return 1.0 if self._is_faulted(name) else 0.0
+                if self._is_faulted(name):
+                    return 1.0
+                # A chiller riding its head-pressure limit is still running but
+                # has shed capacity — a PARTIAL loss, not a binary one.
+                return self._chiller_derate.get(name, 0.0)
 
             # ── Cooling loss, computed per TRAIN ─────────────────────────────
             # A train is a series chain in its own right: chiller → evaporator pump →
@@ -2384,24 +2576,38 @@ class DeviceStateStore:
         is OFF (Unit_Running=0) or has lost airflow delivers no cold air, so it is
         dropped from the average AND counts as lost cooling capacity — the room
         warms in proportion to the fraction of CRAHs down. The datacenter CHW
-        penalty (upstream chiller/pump/tower/valve faults) is added on top."""
+        penalty (upstream chiller/pump/tower/valve faults) is added on top.
+
+        Capacity loss is a FRACTION per unit, not a headcount, because a fault
+        can be partial: a clogged filter still blows cold air, just ~20% less of
+        it. Sensible cooling is mass-flow × ΔT, so losing flow loses capacity and
+        the room heats even though that CRAH's discharge temperature is fine —
+        which is exactly why a filter alarm has to act here rather than by
+        faking a Supply_Air_Temp rise (a real CRAH holds discharge setpoint on
+        its CHW valve; what collapses is delivered kW, not supply temp)."""
         ctx = self._cooling_context()
         crahs = ctx["crah_by_room"].get((device.datacenter, device.room))
         if not crahs:
             return self._rack_supply_temp(device) + self._chw_pen.get(device.datacenter, 0.0)
-        supplies, ndown = [], 0
+        supplies, deficit = [], 0.0
         for n in crahs:
             pv = _plant_state_cache.get(n) or {}
             off = float(pv.get("Unit_Running", 1.0)) < 0.5
             noair = float(pv.get("Alarm_AirflowLoss", 0.0)) >= 0.5
             if off or noair:               # not delivering cold air
-                ndown += 1
+                deficit += 1.0
                 continue
+            # Partial derate. Gated on the alarm flag rather than read back from
+            # the Airflow point: that point is a % of design carrying ±12 of
+            # tick noise, so a healthy unit dipping to 68% would otherwise be
+            # scored as a permanent 15% capacity loss.
+            if float(pv.get("Filter_Dirty", 0.0)) >= 0.5:
+                deficit += _CRAH_FILTER_DERATE
             sa = pv.get("Supply_Air_Temp")
             if sa is not None:
                 supplies.append(float(sa))
         base = sum(supplies) / len(supplies) if supplies else self._rack_supply_temp(device)
-        base += (ndown / len(crahs)) * 12.0      # lost capacity → room heats (all down → +12)
+        base += (deficit / len(crahs)) * 12.0    # lost capacity → room heats (all down → +12)
         return base + self._chw_pen.get(device.datacenter, 0.0)
 
     def _compute_leak_heat(self) -> None:
@@ -2424,6 +2630,9 @@ class DeviceStateStore:
     def _tick(self):
         devices = self._dm.get_all_devices()
         self._compute_leak_heat()
+        # Condenser loop BEFORE the CHW penalty: a chiller that trips or unloads
+        # on head pressure has to be reflected in this same tick's cooling loss.
+        self._compute_cond_loop()
         self._compute_chw_penalty()       # roll per-DC CHW penalty from upstream faults
         self._step_transfer()             # utility/genset transfer → who is energized
         self._compute_power_flow()        # live watts up the power graph (server→PDU→UPS→EV2)
@@ -2447,8 +2656,18 @@ class DeviceStateStore:
         # BACnet telemetry tick — advances EV2 + plant engines and dispatches COV
         if self._bacnet_ctrl:
             try:
+                # Autonomous plant protection (chiller head-pressure limit/trip)
+                # rides the same per-IP override channel, but is merged into a
+                # COPY: it must not leak into plant_alarm_overrides, which is the
+                # operator's own forced-point map behind the Simulate Fault
+                # menu's ACTIVE markers and the faulted-node canvas styling.
+                _plant_ovr = self.plant_alarm_overrides
+                if self._plant_auto_points:
+                    _plant_ovr = {ip: dict(pts) for ip, pts in _plant_ovr.items()}
+                    for _ip, _pts in self._plant_auto_points.items():
+                        _plant_ovr.setdefault(_ip, {}).update(_pts)
                 self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
-                                       self.plant_alarm_overrides, live_kw_by_ip=self._ev2_live_kw,
+                                       _plant_ovr, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
                                        plant_power_by_name=self._plant_power_by_name,
                                        plant_cop_by_name=self._plant_cop_by_name,

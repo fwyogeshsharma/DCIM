@@ -455,5 +455,13 @@ class PlantTelemetryEngine:
                     mul("Airflow", 1 - 0.60 * s); mul("Fan_Speed", 1 - 0.50 * s)
                     add("Supply_Air_Temp", 4.0 * s); add("Return_Air_Temp", 6.0 * s)
                 elif a == "Filter_Dirty":             # clogged filter → fan ramps to hold flow
+                    # Keep the 0.20 airflow derate in step with _CRAH_FILTER_DERATE
+                    # in core/device_state_store.py, which converts it into lost
+                    # room cooling.
                     mul("Airflow", 1 - 0.20 * s); add("Fan_Speed", 10.0 * s, 100.0)
                     mul("Fan_Power", 1 + 0.15 * s)
+                    # Less air over the coil = wider air-side ΔT and a hotter room
+                    # feeding the return. Discharge (Supply_Air_Temp) is deliberately
+                    # NOT raised: the CHW valve opens to hold discharge setpoint, so
+                    # what is actually lost is delivered kW, not supply temperature.
+                    add("Return_Air_Temp", 3.0 * s); add("CHW_Valve", 12.0 * s, 100.0)
