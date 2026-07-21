@@ -349,7 +349,12 @@ type RackOcc = { room: string; floor: string; rack_row: number; rack_num: number
                  // servers), network (spine/OOB/MDA gear), facility (RPP panel, CRAH,
                  // mechanical). A power-panel position reports 40 free U and would
                  // otherwise look like the emptiest rack in the hall.
-                 role?: 'compute' | 'network' | 'facility' 
+                 role?: 'compute' | 'spine' | 'oob' | 'facility'
+                 // Occupancy over the WHOLE 42U face. `used`/`total` cover only the
+                 // server area U1-40 and are what placement is judged against; this
+                 // is what the cabinet actually holds. A spine pair at U41/42 is
+                 // invisible to the former and the reason a 2-switch rack read 0/40.
+                 face_used?: number; face_total?: number 
                  units: RackUnit[]
                  liquid_ready?: boolean; cdu_name?: string | null
                  cdu_used?: number | null; cdu_ports?: number | null
@@ -384,6 +389,9 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // space rather than as missing data. Racks are not modelled as objects — only the
   // gear in them is — so an empty position is a place to provision, not a thing.
   const [rowPositions, setRowPositions] = useState<Record<string, number>>({})
+  // rack role -> device types it will take. Served by the API so the rule lives in
+  // one place; the picker only renders the verdict.
+  const [roleAccepts, setRoleAccepts] = useState<Record<string, string[]>>({})
 
   // Upper location levels come straight from the live inventory (cascading distinct).
   const uniq = (xs: (string | undefined)[]) =>
@@ -445,12 +453,14 @@ export default function AddDeviceDialog({ onClose }: Props) {
         if (!live) return
         const d = r as { racks?: RackOcc[]; device_u_height?: number
                          liquid_only?: boolean; no_liquid_racks?: boolean
-                         row_positions?: Record<string, number> }
+                         row_positions?: Record<string, number>
+                         role_accepts?: Record<string, string[]> }
         setRacks(d.racks || [])
         setUHeight(d.device_u_height || 1)
         setLiquidOnly(!!d.liquid_only)
         setNoLiquidRacks(!!d.no_liquid_racks)
         setRowPositions(d.row_positions || {})
+        setRoleAccepts(d.role_accepts || {})
       })
       .catch(() => { if (live) setRacks([]) })
       .finally(() => { if (live) setLocBusy(false) })
@@ -869,8 +879,12 @@ export default function AddDeviceDialog({ onClose }: Props) {
                   // Empty positions only in a row this device could actually use —
                   // a bare position in the CRAH row or on the power wall is not a
                   // server slot waiting to be provisioned.
+                  // A row qualifies for empty-position hints unless it is nothing but
+                  // facility gear (the CRAH perimeter, the power wall). The NETWORK
+                  // row does qualify: its leftover positions are compute floor, and
+                  // both the fleet and manual provisioning now build there.
                   const rowFits = racksInRow.length === 0
-                    || racksInRow.some(rackFits)
+                    || racksInRow.some(r => r.role !== 'facility')
                   const byNum = new Map(racksInRow.map(r => [r.rack_num, r]))
                   const total = Math.max(rowPositions[form.room] || 0,
                                          ...racksInRow.map(r => r.rack_num), 0)
@@ -906,12 +920,12 @@ export default function AddDeviceDialog({ onClose }: Props) {
                   else if (noCdu)   tail = 'no CDU — not liquid-ready'
                   else if (noAir)   tail = `no cooling headroom · air ${kw(r.air_used_w)}/${kw(r.air_budget_w)} kW`
                   else {
-                    // U occupancy only. It counts every body in U1-40 — the 4U CDU
-                    // included — because what matters at pick time is physical space.
-                    // A device COUNT was tried here and dropped: it said "4 devices"
-                    // for a rack whose spines sit at U41/42 and whose PDUs are 0U,
-                    // which answered a question nobody was asking.
-                    const bits = [`${r.used}/${r.total} U`]
+                    // Occupancy over the whole face, so a rack reads as full as it
+                    // actually is. Counts every body — the 4U CDU, the ToR at U42,
+                    // a spine pair at U41/42 — because what an operator asks here is
+                    // "how much of this cabinet is left", not "how much of the server
+                    // window". Placement still uses the server area; see free_units.
+                    const bits = [`${r.face_used ?? r.used}/${r.face_total ?? r.total} U`]
                     if (r.cdu_name) bits.push(`CDU ${r.cdu_used}/${r.cdu_ports}`)
                     if (r.air_budget_w) bits.push(`air ${kw(r.air_used_w)}/${kw(r.air_budget_w)} kW`)
                     tail = bits.join(' · ')

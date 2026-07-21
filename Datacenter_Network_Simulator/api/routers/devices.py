@@ -315,7 +315,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
     s = _state()
     if s.device_manager is None:
         raise HTTPException(status_code=503, detail="Device manager not initialized")
-    from core.rack_capacity import FIRST_SERVER_UNIT, LAST_SERVER_UNIT
+    from core.rack_capacity import FIRST_SERVER_UNIT, LAST_SERVER_UNIT, TOR_A_UNIT
     from core.device_manager import DeviceType
     total = LAST_SERVER_UNIT - FIRST_SERVER_UNIT + 1
     try:
@@ -323,6 +323,13 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
     except ValueError:
         want_h = 1
     racks: dict = {}
+    # Occupancy across the WHOLE rack face (U1-U42), as distinct from `racks` above,
+    # which counts only the server area U1-U40. The two differ exactly where it
+    # matters for a network rack: a spine pair sits at U41/U42, the reserved ToR
+    # positions, so a cabinet holding two spines reported 0/40 and read as empty.
+    # The server window is right for PLACEMENT (a server may not use U41/42) and
+    # wrong for DISPLAY, so both are carried.
+    faces: dict = {}
     roles: dict = {}          # rack key -> what the cabinet is FOR
     # Devices per rack, counting EVERYTHING in the cabinet — 0U side-rail PDUs and
     # gear at U41/42 included. Distinct from `used` below, which is server-U span
@@ -341,6 +348,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
             continue
         key = ((getattr(d, "room", "") or ""), str(getattr(d, "floor", "") or ""), rr, rn)
         occ = racks.setdefault(key, {})
+        face = faces.setdefault(key, {})
         counts[key] = counts.get(key, 0) + 1
         # A rack's ROLE comes from what is in it, and it decides what may be added.
         # A power-panel position (RPP + EV2, both 0U) reports 40 free U and would
@@ -348,11 +356,19 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
         # server on a panel. Compute wins over network wins over facility: a cabinet
         # holding servers is a compute rack even though its PDUs are facility gear.
         _dt = d.device_type.value
+        _cur = roles.get(key)
         if _dt in _COMPUTE_RACK_TYPES:
             roles[key] = "compute"
-        elif _dt in _NETWORK_RACK_TYPES and roles.get(key) != "compute":
-            roles[key] = "network"
-        elif roles.get(key) is None:
+        elif _dt == "switch" and _name_role(d).startswith("SP"):
+            if _cur != "compute":
+                roles[key] = "spine"
+        elif _dt == "oob_switch":
+            if _cur not in ("compute", "spine"):
+                roles[key] = "oob"
+        elif _dt in _NETWORK_RACK_TYPES:
+            if _cur is None:
+                roles[key] = "compute"      # a lone ToR marks a compute cabinet
+        elif _cur is None:
             roles[key] = "facility"
         u = getattr(d, "rack_unit", 0) or 0
         if u <= 0:
@@ -361,6 +377,8 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
         for cu in range(u, u + _u_height(d.device_type, getattr(d, "model_name", "") or "")):
             if FIRST_SERVER_UNIT <= cu <= LAST_SERVER_UNIT:
                 occ[cu] = d.name
+            if FIRST_SERVER_UNIT <= cu <= TOR_A_UNIT:
+                face[cu] = d.name
     # A direct-to-chip server needs more than free U: the rack must have a manifold
     # with a free UQD pair, which means an eligible CDU. Judged by _rack_cdus, the
     # same function the LINKS section uses, so a rack offered here always has a loop
@@ -406,6 +424,8 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
                     "used": len(occ), "total": total, "free_units": free,
                     "device_count": counts.get((rm, fl, rr, rn), 0),
                     "role": roles.get((rm, fl, rr, rn), "facility"),
+                    "face_used": len(faces.get((rm, fl, rr, rn), {})),
+                    "face_total": TOR_A_UNIT,
                     "units": units,
                     # liquid_ready is True for an air-cooled SKU: every rack takes it.
                     # For a DLC SKU it means "has a CDU with a free manifold pair",
@@ -441,6 +461,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
 
     return {"datacenter": datacenter, "racks": out, "device_u_height": want_h,
             "row_positions": grid,
+            "role_accepts": {k: sorted(v) for k, v in RACK_ROLE_ACCEPTS.items()},
             # Tells the dialog to apply liquid-ready filtering and to explain itself
             # when a hall comes back empty, rather than showing a bare empty list.
             "liquid_only": liquid,
@@ -466,12 +487,25 @@ _LINK_REQUIREMENTS = {
     "server": ("data", "mgmt", "power", "cooling"),
 }
 
-# What a rack is FOR, inferred from its occupants. Servers go in compute racks; a
-# spine/OOB (MDA) rack takes network gear but not compute; an RPP/CRAH/mechanical
-# position takes neither. PDUs and sensors are in every rack and decide nothing.
+# What a rack is FOR, inferred from its occupants — and therefore what may be added
+# to it. The MDA cabinets are not interchangeable: a spine rack carries the fabric
+# and its fibre plant, the OOB rack carries the management plane, and neither takes
+# compute. An RPP/CRAH position takes no IT gear at all. PDUs and sensors live in
+# every rack and decide nothing.
+#
+# Precedence when a rack holds several kinds: compute > spine > oob > facility. A
+# cabinet with servers in it is a compute rack even though its ToR is a switch.
 _COMPUTE_RACK_TYPES = frozenset({"server"})
 _NETWORK_RACK_TYPES = frozenset({"switch", "oob_switch", "router", "firewall",
                                  "load_balancer"})
+
+# Which device types each rack role will accept in the Add-Device picker.
+RACK_ROLE_ACCEPTS = {
+    "compute":  {"server", "switch", "sensor", "cdu", "pdu"},
+    "spine":    {"switch"},          # fabric cabinet — spines and their patch plant
+    "oob":      {"oob_switch"},      # management plane cabinet
+    "facility": set(),               # RPP panel / CRAH position — no IT gear
+}
 
 _OOB_ROLE = "OOB"     # IT access OOB. NOT OOBM (BMS plane) and NOT OOBC (cores).
 

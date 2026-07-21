@@ -1200,6 +1200,20 @@ class FleetLifecycleEngine:
         physical row hash to one slot regardless of tiny float differences."""
         return round(float(y), 2)
 
+    def _network_row_fy(self, rk: tuple) -> Optional[float]:
+        """floor_y of the hall's NETWORK row (the one holding its spines), or None
+        for a compute annex that has no local fabric and therefore no network row."""
+        ys = [d.floor_y for d in self.s.device_manager.get_all_devices()
+              if self._room_key(d) == rk and self._is_spine(d) and d.floor_y is not None]
+        return self._yk(min(ys)) if ys else None
+
+    def _network_row_label(self, rk: tuple) -> int:
+        """The rack_row the network row's own devices carry, so a compute rack placed
+        beside the spines inherits the SAME row number instead of inventing one."""
+        rows = [d.rack_row for d in self.s.device_manager.get_all_devices()
+                if self._room_key(d) == rk and self._is_spine(d) and (d.rack_row or 0) > 0]
+        return min(rows) if rows else 1
+
     def _next_compute_slot(self, rk: tuple):
         """The next free compute slot in hall *rk*, scanned ROW-MAJOR: fill every
         free rack in a compute row (front to back) BEFORE opening the next row —
@@ -1225,6 +1239,16 @@ class FleetLifecycleEngine:
             if (s.rack_row or 0) < self._FLEET_ROW_BASE and s.floor_y is not None:
                 cur_rows.setdefault(self._yk(s.floor_y), s.rack_row)
         rows: list = sorted(cur_rows.items())        # [(fy, rack_row)]
+        # The NETWORK row's leftover positions are compute floor too. Row 1 holds the
+        # spine cabinets, the OOB cabinet and an RPP panel at each end — typically 5
+        # of 13 positions — and the remaining 8 are simply empty floor. Leaving them
+        # unused wastes the best compute real estate in the hall: metres from the
+        # spines (short fabric runs) and between the two RPP panels (short power
+        # runs). `occ` below already marks every taken position, so the scan skips
+        # the network cabinets and offers only the genuinely free slots.
+        net_fy = self._network_row_fy(rk)
+        if net_fy is not None and not any(abs(fy - net_fy) < 1e-6 for fy, _ in rows):
+            rows.insert(0, (net_fy, self._network_row_label(rk)))
         # Then extend behind the back-most curated row with new fleet rows, up to
         # the hall's compute-row count (stop before the CRAH back wall).
         back = max(cur_rows) if cur_rows else None
@@ -1265,7 +1289,14 @@ class FleetLifecycleEngine:
             racks = {rk: v for rk, v in racks.items() if rk[2] == room}
         for rk in sorted(racks, key=lambda k: (-len(racks[k]), tuple(map(str, k)))):
             rpr, comp_rows, _first_row, _n_rows = self._hall_grid(rk)
-            if len(racks[rk]) >= rpr * comp_rows:
+            # The network row contributes its leftover positions to the compute grid
+            # (see _next_compute_slot), so the cap has to count them or the hall is
+            # declared full while row 1 still has floor. Counted as a whole extra row:
+            # this is only a cheap pre-filter — _next_compute_slot is authoritative
+            # and returns None when the floor is genuinely gone — so erring generous
+            # costs one wasted scan, while erring tight strands real capacity.
+            eff_rows = comp_rows + (1 if self._network_row_fy(rk) is not None else 0)
+            if len(racks[rk]) >= rpr * eff_rows:
                 continue                              # hall full to its cap
             infra = self._hall_infra(rk)
             if infra is None:
