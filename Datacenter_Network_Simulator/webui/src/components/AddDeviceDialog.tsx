@@ -343,6 +343,12 @@ type RackOcc = { room: string; floor: string; rack_row: number; rack_num: number
                  units: RackUnit[]
                  liquid_ready?: boolean; cdu_name?: string | null
                  cdu_used?: number | null; cdu_ports?: number | null
+                 // Air-side thermal co-limit: what this cabinet already rejects into
+                 // the room, its budget, and what the chosen SKU would add. air_ok is
+                 // the server's verdict — a liquid SKU adds only its residual
+                 // fraction, so it can fit where an air box of the same draw cannot.
+                 air_used_w?: number; air_budget_w?: number
+                 air_add_w?: number; air_ok?: boolean
                  next_free: number | null; full: boolean }
 
 export default function AddDeviceDialog({ onClose }: Props) {
@@ -439,7 +445,9 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // do for a rack with no space; the RACK level still lists the others, disabled, so
   // a cabinet never silently disappears without saying why.
   const withSpace = (r: RackOcc) =>
-    r.free_units.length > 0 && (!liquidOnly || r.liquid_ready !== false)
+    r.free_units.length > 0
+    && (!liquidOnly || r.liquid_ready !== false)
+    && r.air_ok !== false
 
   // An empty cascade has three different causes for a DLC SKU, each with a different
   // fix, so they must not share one message:
@@ -452,6 +460,14 @@ export default function AddDeviceDialog({ onClose }: Props) {
   const anyLiquidReady = useMemo(
     () => racks.some(r => r.liquid_ready !== false), [racks])
   const liquidRacksFull = liquidOnly && anyLiquidReady
+  // Out of COOLING rather than out of space: racks have free U (and a manifold, if
+  // this is a DLC SKU) but the room cannot carry any more heat from them. Different
+  // fix again — provisioning another rack helps, freeing a U does not.
+  const airBlocked = useMemo(
+    () => racks.length > 0
+      && racks.some(r => r.free_units.length > 0 && (!liquidOnly || r.liquid_ready !== false))
+      && !racks.some(withSpace),
+    [racks, liquidOnly])
   const roomsWithSpace = useMemo(() =>
     uniq(racks.filter(withSpace).map(r => r.room)), [racks])
   const floorsWithSpace = useMemo(() =>
@@ -476,10 +492,17 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // a cabinet it cannot be plumbed in. Clear back to the rack level and let the
   // operator re-pick from the filtered list.
   useEffect(() => {
-    if (!liquidOnly || !form.rack_num || !chosenRack) return
-    if (chosenRack.liquid_ready === false) {
+    if (!form.rack_num || !chosenRack) return
+    if (liquidOnly && chosenRack.liquid_ready === false) {
       setForm(f => ({ ...f, rack_row: 0, rack_num: 0, rack_unit: 0 }))
       setErr('That rack has no CDU — pick a liquid-ready rack for a direct-to-chip server')
+    } else if (chosenRack.air_ok === false) {
+      // Switching to a hotter SKU can exhaust a rack's air budget under a selection
+      // that was legal a moment ago — the same stale-location trap as the CDU case.
+      const kw = (w?: number) => ((w || 0) / 1000).toFixed(1)
+      setForm(f => ({ ...f, rack_row: 0, rack_num: 0, rack_unit: 0 }))
+      setErr(`That rack is out of air cooling (${kw(chosenRack.air_used_w)} of `
+             + `${kw(chosenRack.air_budget_w)} kW used) — pick another rack`)
     }
   }, [liquidOnly, chosenRack, form.rack_num])
 
@@ -754,7 +777,13 @@ export default function AddDeviceDialog({ onClose }: Props) {
                       is a different problem with a different fix (add a CDU, or pick
                       an air-cooled SKU), and conflating them would send them to the
                       wrong dialog. */}
-                  {noLiquidRacks
+                  {airBlocked
+                    ? `No rack in ${form.datacenter} has cooling headroom for ${form.model_name}
+                       (${((racks[0]?.air_budget_w || 0) / 1000).toFixed(0)} kW of air per rack).
+                       They have space, but the room cannot carry more heat from them —
+                       provision another rack to spread the load, or pick a direct-to-chip SKU,
+                       which puts only ~30% of its heat in the air.`
+                    : noLiquidRacks
                     ? `No liquid-ready racks in ${form.datacenter} — ${form.model_name} is a
                        direct-to-chip SKU and needs a rack with a CDU. Add a CDU, or choose an
                        air-cooled model.`
@@ -768,7 +797,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
                 {/* Provisioning adds racks and halls, which does not put a CDU in
                     one — offering it here would send the operator down a path that
                     cannot solve their problem. */}
-                {!noLiquidRacks && !liquidRacksFull && (
+                {(airBlocked || (!noLiquidRacks && !liquidRacksFull)) && (
                   <button type="button" onClick={goProvision} style={{
                     marginTop: 5, background: 'var(--accent)', border: '1px solid var(--accent)',
                     color: '#061018', borderRadius: 4, padding: '3px 9px', fontSize: 10,
@@ -808,19 +837,29 @@ export default function AddDeviceDialog({ onClose }: Props) {
                 {racksInRow.map(r => {
                   const noSpace = r.free_units.length === 0
                   const noCdu   = liquidOnly && r.liquid_ready === false
-                  // A rack with neither problem is pickable. The others stay VISIBLE
-                  // but disabled and labelled — an operator looking for R2-04 should
-                  // find it and read why it cannot take this server, rather than
-                  // wonder whether the cabinet exists at all.
-                  if (noSpace && !liquidOnly) return null
-                  const tail = noCdu ? 'no CDU — not liquid-ready'
-                    : noSpace ? 'full'
-                    : r.cdu_name
-                      ? `${r.used}/${r.total} used · ${r.cdu_name} ${r.cdu_used}/${r.cdu_ports} ports`
-                      : `${r.used}/${r.total} used`
+                  const noAir   = r.air_ok === false
+                  // A rack with none of the three problems is pickable. The others
+                  // stay VISIBLE but disabled and labelled — an operator looking for
+                  // R2-04 should find it and read why it cannot take this server,
+                  // rather than wonder whether the cabinet exists at all.
+                  if (noSpace && !liquidOnly && !noAir) return null
+                  const kw = (w?: number) => ((w || 0) / 1000).toFixed(1)
+                  // One reason, most fundamental first: no room beats no manifold
+                  // beats no cooling. Showing all three would be noise — the operator
+                  // needs the blocker, not an audit.
+                  let tail: string
+                  if (noSpace)      tail = 'full'
+                  else if (noCdu)   tail = 'no CDU — not liquid-ready'
+                  else if (noAir)   tail = `no cooling headroom · air ${kw(r.air_used_w)}/${kw(r.air_budget_w)} kW`
+                  else {
+                    const bits = [`${r.used}/${r.total} used`]
+                    if (r.cdu_name) bits.push(`CDU ${r.cdu_used}/${r.cdu_ports}`)
+                    if (r.air_budget_w) bits.push(`air ${kw(r.air_used_w)}/${kw(r.air_budget_w)} kW`)
+                    tail = bits.join(' · ')
+                  }
                   return (
                     <option key={r.rack_num} value={r.rack_num}
-                            disabled={noSpace || noCdu}>
+                            disabled={noSpace || noCdu || noAir}>
                       R{r.rack_row}-{String(r.rack_num).padStart(2, '0')} · {tail}
                     </option>
                   )

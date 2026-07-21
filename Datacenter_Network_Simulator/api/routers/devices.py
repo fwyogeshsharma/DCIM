@@ -346,8 +346,20 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
     # same function the LINKS section uses, so a rack offered here always has a loop
     # to join. Air-cooled SKUs skip all of this and see every rack as before.
     from core.device_models import is_liquid_cooled
+    from core.device_manager import nameplate_power_w
+    from core.rack_capacity import (RACK_AIR_BUDGET_W_DEFAULT, device_air_load_w,
+                                    rack_has_air_headroom)
     liquid = bool(model_name) and is_liquid_cooled(model_name)
-    all_devs = s.device_manager.get_all_devices() if liquid else []
+    all_devs = s.device_manager.get_all_devices()
+    # Heat the CANDIDATE would add to the room air. A liquid server adds only its
+    # residual fraction, which is why a DLC box fits in a rack that an air box of the
+    # same draw would not — the reason to plumb it in the first place.
+    try:
+        _add_dt = DeviceType(device_type.lower()) if device_type else None
+    except ValueError:
+        _add_dt = None
+    add_air_w = (device_air_load_w(_add_dt, nameplate_power_w(_add_dt, model_name), liquid)
+                 if _add_dt else 0.0)
 
     out = []
     for (rm, fl, rr, rn), occ in sorted(racks.items()):
@@ -356,6 +368,12 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
         # Pickable = the new device's full height fits here, entirely inside U1–U40.
         free = [u for u in range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT - want_h + 2)
                 if all(cu not in occ for cu in range(u, u + want_h))]
+        # Air-side co-limit: what this cabinet already puts in the room, and whether
+        # the candidate still fits. Independent of free U and of the power budget —
+        # a rack can have space and amps and still be out of cooling.
+        air_used = _rack_air_load_w(s, all_devs, (datacenter, str(fl), rm), (rr, rn))
+        air_ok = rack_has_air_headroom(air_used, add_air_w)
+
         cdu_name, cdu_used, cdu_ports, liquid_ready = None, None, None, True
         if liquid:
             cdus = _rack_cdus(s, all_devs, (datacenter, str(fl), rm), (rr, rn))
@@ -373,6 +391,8 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
                     # cabinet the server is joining.
                     "liquid_ready": liquid_ready, "cdu_name": cdu_name,
                     "cdu_used": cdu_used, "cdu_ports": cdu_ports,
+                    "air_used_w": round(air_used), "air_budget_w": RACK_AIR_BUDGET_W_DEFAULT,
+                    "air_add_w": round(add_air_w), "air_ok": air_ok,
                     "next_free": (free[0] if free else None), "full": not free})
     # The height the free_units above were computed for, so the picker can name the
     # SPAN a pick takes ("U39–U40") instead of just its anchor U. A rack_unit is the
@@ -604,6 +624,25 @@ def _cdu_loop_members(s, cdu_id: str) -> set:
         if od is not None and od.device_type == DeviceType.SERVER:
             members.add(od.id)
     return members
+
+
+def _rack_air_load_w(s, devs, rk: tuple, rack: tuple) -> float:
+    """Watts the kit in this rack rejects into the ROOM AIR.
+
+    Not the rack's electrical draw: a liquid server contributes only its residual air
+    fraction, and the CDU/PDUs/sensors contribute nothing (see device_air_load_w).
+    This is what the hall's air handling has to carry for this cabinet, and it is the
+    number the air budget is measured against."""
+    from core.rack_capacity import device_air_load_w
+    liquid = _liquid_servers()
+    total = 0.0
+    for d in devs:
+        if _room_key(d) != rk or _rack_of(d) != rack:
+            continue
+        total += device_air_load_w(d.device_type,
+                                   getattr(d, "power_draw_w", 0) or 0,
+                                   (d.name or "") in liquid)
+    return total
 
 
 def _rack_cdus(s, devs, rk: tuple, rack: tuple) -> list:
@@ -1237,6 +1276,31 @@ def add_device(req: AddDeviceRequest):
                 detail=(f"{req.model_name} is a direct-to-chip SKU and needs a coolant "
                         f"loop — add a cooling link to a CDU in its rack, or choose an "
                         f"air-cooled model."))
+
+    # Air-side thermal budget. The co-limit to free U and the power budget: the room
+    # can only carry so much heat away from one cabinet, and a hybrid rack spends part
+    # of that allowance on the residual air fraction of its liquid machines. Refusing
+    # here is the honest answer — the alternative is a rack that looks fine on paper
+    # and cooks.
+    if req.rack_row > 0 and req.rack_num > 0:
+        from core.device_manager import nameplate_power_w
+        from core.rack_capacity import (RACK_AIR_BUDGET_W_DEFAULT, device_air_load_w,
+                                        rack_has_air_headroom)
+        _rk = (req.datacenter or "", str(req.floor or ""), req.room or "")
+        _rack = (req.rack_row, req.rack_num)
+        _add_air = device_air_load_w(device_type,
+                                     nameplate_power_w(device_type, req.model_name),
+                                     is_liquid_cooled(req.model_name or ""))
+        _cur_air = _rack_air_load_w(s, existing, _rk, _rack)
+        if _add_air and not rack_has_air_headroom(_cur_air, _add_air):
+            raise HTTPException(
+                status_code=409,
+                detail=(f"Rack R{req.rack_row}-{req.rack_num:02d} is out of AIR cooling: "
+                        f"{_cur_air/1000:.1f} kW of {RACK_AIR_BUDGET_W_DEFAULT/1000:.0f} kW "
+                        f"used, this device adds {_add_air/1000:.1f} kW. Pick another "
+                        f"rack, or a direct-to-chip SKU — a liquid server puts only "
+                        f"~{int(100*_add_air/max(1, nameplate_power_w(device_type, req.model_name)))}% "
+                        f"of its heat in the air."))
 
     if req.rack_unit > 0:
         # Overlap, not equality: a 2U server occupies U..U+1, so racking one at U2 when

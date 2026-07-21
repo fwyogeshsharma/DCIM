@@ -59,7 +59,12 @@ _CRAH_FILTER_DERATE = 0.20
 # via AIR. Cold plates capture ~70 % of the load (CPU/GPU) into the liquid loop;
 # the residual (VRMs, DIMMs, drives, PSUs) is air-cooled, so the air-side exhaust
 # ΔT — and thus outlet_temp — is much lower than an all-air server's.
-_DTC_AIR_FRACTION = 0.30
+#
+# Imported, not redefined: core.rack_capacity uses the same number to size a rack's
+# AIR BUDGET. If the thermal model and the capacity model disagreed about how much
+# heat a liquid server puts in the room, a rack could be filled to a limit its own
+# exhaust math contradicts.
+from core.rack_capacity import DTC_AIR_FRACTION as _DTC_AIR_FRACTION
 
 # A direct-to-chip server's MINIMUM fan duty, as a fraction of the same chassis's
 # air-cooled minimum (core.device_manager.fan_rpm_range). Fans never stop on a live

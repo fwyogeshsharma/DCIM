@@ -140,6 +140,79 @@ def rack_server_capacity(downlink_ports: int,
     return max(0, min(downlink_ports, power_cap))
 
 
+# ── Air-side thermal budget ───────────────────────────────────────────────────
+#
+# A rack has TWO independent ceilings and the lower one binds. The electrical budget
+# above is what the PDU can deliver; this is what the room's air can carry away.
+#
+# Air cooling is limited by the airflow reaching the cabinet and the allowable rise
+# across it: Q = ṁ·cp·ΔT. A perimeter-CRAH hall with hot/cold-aisle containment
+# lands around 10-15 kW per rack; open-aisle halls are lower (5-8 kW), and pushing
+# air past ~25-30 kW per rack stops being practical at all — which is precisely why
+# direct-to-chip cooling exists.
+#
+# 15 kW sits in that contained-perimeter band and, being BELOW the 17.6 kW electrical
+# budget, is the constraint that actually binds in a dense rack. That is the honest
+# ordering: these halls run out of cooling before they run out of amps.
+#
+# Not lower: the curated all-air compute racks already run 12.6-12.8 kW, which is a
+# perfectly buildable contained rack. A 12 kW budget would have retroactively declared
+# a third of the estate illegal and refused every further server in it — a budget that
+# calls the existing plant impossible is measuring the wrong thing.
+#
+# A design parameter, not a measurement — a hall with in-row coolers or a taller ΔT
+# would carry more. Callers may pass their own budget.
+RACK_AIR_BUDGET_W_DEFAULT = 15000
+
+# Fraction of a direct-to-chip server's heat that still leaves via AIR. Cold plates
+# capture the CPU/GPU load into the coolant loop; the residual (VRMs, DIMMs, drives,
+# PSUs) is air-cooled. THE one definition — core.device_state_store imports it for
+# the exhaust-ΔT and fan curves, so the thermal model and the capacity model cannot
+# disagree about how much heat a liquid server puts in the room.
+DTC_AIR_FRACTION = 0.30
+
+# The IT gear whose heat a RACK's air budget actually has to carry. An allow-list,
+# not a deny-list, and that direction matters: the first cut excluded cdu/pdu/sensor
+# and so happily charged a Central Plant "rack" with 564 kW of chiller and the roof
+# with 90 kW of cooling tower. Plant equipment is not in a cabinet — its heat goes to
+# the condenser loop and outdoors — so a per-rack air budget is meaningless there.
+#
+# Excluded IT kit and why:
+#   cdu   — pump work goes into the coolant it is pumping and leaves via the facility
+#           water loop, not the cabinet's air.
+#   pdu   — a strip dissipates only its own I²R losses (~1-2 %), already inside the
+#           connected kit's nameplate for capacity purposes.
+#   sensor— milliwatts.
+_AIR_LOAD_TYPES = frozenset({
+    "server", "switch", "router", "firewall", "load_balancer", "oob_switch",
+})
+
+
+def device_air_load_w(device_type, draw_w: float, liquid_cooled: bool = False) -> float:
+    """Watts this device rejects into the ROOM AIR (not its total draw).
+
+    An air-cooled server, a switch and anything else with fans rejects all of it. A
+    direct-to-chip server rejects only DTC_AIR_FRACTION — that is the entire point of
+    plumbing it, and counting its full draw against the air budget would make a
+    liquid rack look as air-hungry as an all-air one."""
+    dt = getattr(device_type, "value", device_type)
+    if dt not in _AIR_LOAD_TYPES:
+        return 0.0
+    w = max(0.0, float(draw_w or 0.0))
+    return w * (DTC_AIR_FRACTION if (dt == "server" and liquid_cooled) else 1.0)
+
+
+def rack_has_air_headroom(current_air_w: float, add_air_w: float,
+                          budget_w: int = RACK_AIR_BUDGET_W_DEFAULT) -> bool:
+    """True if the rack's air-cooled heat stays inside what the room can carry.
+
+    The co-limit to rack_has_power_headroom: a hybrid rack can hold FEWER air-cooled
+    servers than an all-air one, because the liquid machines beside them still dump
+    their residual air fraction into the same cabinet. Not a ban on mixing — a budget
+    that mixing consumes."""
+    return (current_air_w + add_air_w) <= budget_w
+
+
 def rack_has_power_headroom(current_w: float, add_w: float,
                             budget_w: int = RACK_POWER_BUDGET_W_DEFAULT) -> bool:
     """True if adding a device drawing *add_w* watts keeps the rack's summed

@@ -41,7 +41,8 @@ from typing import TYPE_CHECKING, Optional
 from core.device_manager import Device, DeviceType, Vendor, Interface, InterfaceRole
 from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
-    RACK_POWER_BUDGET_W_DEFAULT,
+    rack_has_air_headroom, device_air_load_w,
+    RACK_POWER_BUDGET_W_DEFAULT, RACK_AIR_BUDGET_W_DEFAULT,
     TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, CDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
     SERVER_U_HEIGHT, device_u_height,
 )
@@ -121,13 +122,19 @@ class FleetConfig:
     minutes_per_day: float = 5.0       # wall-clock minutes that equal one sim-day
     provision_lambda: int = 3          # avg servers provisioned on a normal day
     decommission_lambda: int = 1       # avg servers decommissioned (net-positive)
-    # Per-rack fill is bound by TWO real limits, whichever binds first:
+    # Per-rack fill is bound by THREE real limits, whichever binds first:
     #   1. leaf downlink ports — physical, flip-invariant for dual-homing.
     #   2. rack_power_budget_w — summed nameplate draw of the rack's kit must stay
     #      within its provisioned power budget (17.6 kW usable = a 22 kW rack PDU
-    #      at the NEC 80% derate, the A/B single-feed ceiling). The usual binding
-    #      limit in an enterprise hall (power/thermal, not ports).
+    #      at the NEC 80% derate, the A/B single-feed ceiling).
+    #   3. rack_air_budget_w — heat the rack rejects into the ROOM AIR must stay
+    #      within what the hall's air handling carries for one cabinet. Lower than
+    #      the electrical budget, so in a dense rack this is what actually binds —
+    #      these halls run out of cooling before they run out of amps. A liquid
+    #      server spends only its residual air fraction of this, which is why a
+    #      hybrid rack fills further than an all-air one.
     rack_power_budget_w: int = RACK_POWER_BUDGET_W_DEFAULT
+    rack_air_budget_w: int = RACK_AIR_BUDGET_W_DEFAULT
     # Growth policy: each hall holds up to compute_rows_per_room x max_racks_per_row
     # compute racks. The fleet fills the racks already in a hall, then adds racks
     # up to that grid (curated racks count toward it), and only once every hall is
@@ -417,12 +424,21 @@ class FleetLifecycleEngine:
         racks_w: dict[tuple, float] = {}      # rack -> summed nameplate watts (all kit)
         for srv in self._servers():
             racks[self._rack_key(srv)] = racks.get(self._rack_key(srv), 0) + 1
+        racks_air: dict[tuple, float] = {}    # rack -> watts rejected into ROOM AIR
+        # Cold-plate loop membership: a liquid server's heat leaves through the water,
+        # so it must not be charged to the rack's air budget at full draw. Read off the
+        # cooling edges, the same source of truth the state store and the Add-Device
+        # picker use.
+        liquid_ids = self._liquid_server_ids()
         # Rack power is the summed nameplate draw of ALL its kit (servers + ToR),
         # not just servers — PDUs are 0U infra and read 0, so they don't inflate.
         for d in self.s.device_manager.get_all_devices():
             k = self._rack_key(d)
             if k in racks:                    # only racks that already hold servers
-                racks_w[k] = racks_w.get(k, 0.0) + float(getattr(d, "power_draw_w", 0) or 0)
+                w = float(getattr(d, "power_draw_w", 0) or 0)
+                racks_w[k] = racks_w.get(k, 0.0) + w
+                racks_air[k] = racks_air.get(k, 0.0) + device_air_load_w(
+                    d.device_type, w, d.id in liquid_ids)
         # Least-full first, so racks fill evenly. A rack's ToR/PDU are found by
         # following an existing peer server's real uplink — robust whether the
         # ToR is per-rack or per-row. A rack has room only if it clears BOTH the
@@ -447,8 +463,36 @@ class FleetLifecycleEngine:
             if not rack_has_power_headroom(racks_w.get(key, 0.0), add_w,
                                            self._rack_budget_w(pdus)):
                 continue                       # would exceed the rack power budget
+            # Air co-limit. Without it, churn happily fills a rack past what the hall
+            # can cool — the picker and the API refuse such a placement, so fleet
+            # growth would have been the one path that could still create it.
+            add_air = device_air_load_w(tmpl.device_type, add_w, tmpl.id in liquid_ids)
+            if not rack_has_air_headroom(racks_air.get(key, 0.0), add_air,
+                                         int(self.cfg.rack_air_budget_w)):
+                continue                       # would exceed the rack AIR budget
             return {"key": key, "tor": tor, "pdus": pdus, "server_tmpl": tmpl}
         return None
+
+    def _liquid_server_ids(self) -> set:
+        """Ids of servers on a CDU cold-plate loop, from the cooling edges.
+
+        Not cached: fleet churn adds and removes loops as racks fill, and a stale set
+        would charge a liquid server's full draw against the air budget (or worse,
+        exempt an air server), quietly mis-sizing every rack it touched."""
+        out: set = set()
+        try:
+            for u, v, _d in self.s.topology.get_edges_by_layer("cooling"):
+                du = self.s.device_manager.get_device(u)
+                dv = self.s.device_manager.get_device(v)
+                if du is None or dv is None:
+                    continue
+                if du.device_type == DeviceType.CDU and dv.device_type == DeviceType.SERVER:
+                    out.add(dv.id)
+                elif dv.device_type == DeviceType.CDU and du.device_type == DeviceType.SERVER:
+                    out.add(du.id)
+        except Exception:
+            pass
+        return out
 
     def _rack_budget_w(self, pdus: list) -> int:
         """Usable per-rack power budget: the operator's configured budget, capped
