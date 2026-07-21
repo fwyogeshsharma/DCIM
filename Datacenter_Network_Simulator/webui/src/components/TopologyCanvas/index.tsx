@@ -54,7 +54,6 @@ const I = {
   fit: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M21 16v3a2 2 0 0 1-2 2h-3" /></svg>,
   reset: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 16h5v5" /></svg>,
   close: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
-  link: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>,
   info: () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>,
 }
 
@@ -87,8 +86,6 @@ function tierLayout(devices: GraphDevice[]): Map<string, { x: number; y: number 
 function devicesToNodes(
   devices: GraphDevice[],
   positions: Map<string, { x: number; y: number }>,
-  linkMode: boolean,
-  linkSrc: string | null,
   activeLayer: string,
   bacnetInstByIp: Record<string, number>,
 ): Node[] {
@@ -114,8 +111,6 @@ function devicesToNodes(
         cpu_usage: d.cpu_usage,
         memory_used: d.memory_used,
         power_state: d.power_state || 'On',
-        linkMode,
-        isLinkSrc: d.id === linkSrc,
       },
     }
   })
@@ -143,45 +138,6 @@ function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edg
       },
     }
   })
-}
-
-const LINK_LAYERS = ['production', 'management', 'power', 'cooling']
-
-type Port = { iface: number; name: string; used: boolean; peer: string | null; role?: 'data' | 'mgmt' }
-// The power-layer equivalents: a cord runs from a PDU outlet to a load's PSU.
-type Outlet = { outlet: number; type: string; bank: number; phase: string
-                used: boolean; peer: string | null }
-type Psu = { psu: number; name: string; inlet: string; feed: string
-             used: boolean; peer: string | null }
-type PowerTerm = { outlets: Outlet[]; psus: Psu[] }
-
-// Only these layers terminate on an Ethernet port at all. A power link is a C13/C14
-// cord to a PDU OUTLET and a cooling link is a PIPE between loop connections —
-// neither has an ifIndex, so neither gets a port picker. The backend drops any iface
-// sent on those layers; the UI must not imply otherwise by offering one.
-const ETHERNET_LAYERS = ['production', 'management']
-const usesPorts = (layer: string) => ETHERNET_LAYERS.includes(layer)
-
-// Which ports a layer may terminate on. The asymmetry is physical, not cosmetic:
-//   production  — NEVER on a mgmt port. mgmt0 / iDRAC hangs off the management CPU,
-//                 not the switching ASIC; it cannot carry production traffic at all.
-//   management  — prefers the dedicated mgmt/BMC port, but data ports stay legal:
-//                 in-band management over a data VLAN is real, and the devices that
-//                 BUILD the OOB network (OOB switches, OOB firewalls/routers) carry
-//                 the mgmt plane on their data ports by design.
-// power/cooling don't terminate on Ethernet ports at all — a power link is a cord to
-// an outlet, a cooling link is a pipe. Their iface is a placeholder, so no filtering.
-const portsForLayer = (ports: Port[], layer: string): Port[] =>
-  layer === 'production' ? ports.filter(p => p.role !== 'mgmt') : ports
-
-// Preferred default: the first FREE port of the role this layer actually wants.
-// Null on power/cooling — carrying a stale iface across a layer switch would POST a
-// port on a link that cannot have one, which the API now rejects outright.
-const defaultPort = (ports: Port[], layer: string): number | null => {
-  if (!usesPorts(layer)) return null
-  const pool = portsForLayer(ports, layer)
-  const wanted = layer === 'management' ? pool.filter(p => p.role === 'mgmt') : pool
-  return (wanted.find(p => !p.used) ?? pool.find(p => !p.used))?.iface ?? null
 }
 
 function ToolBtn({ title, onClick, active, children, disabled }: {
@@ -221,7 +177,7 @@ function ZoomIndicator() {
 function Canvas() {
   const {
     graphDevices, graphLinks, activeLayer, setLayer, fetchGraph,
-    linkMode, setLinkMode, fitViewTrigger, focusNodeId, focusNodeNonce, layoutAlgo, setLayoutAlgo, bacnet,
+    fitViewTrigger, focusNodeId, focusNodeNonce, layoutAlgo, setLayoutAlgo, bacnet,
   } = useStore()
 
   // Map BACnet device IP → instance number (e.g. 40001) for tooltip display
@@ -236,21 +192,6 @@ function Canvas() {
   const { fitView, setNodes: rfSetNodes, zoomIn, zoomOut } = useReactFlow()
   const initialFit = useRef(false)
   const repositionPending = useRef(false)
-  const [linkSrc,    setLinkSrc]    = useState<string | null>(null)
-  const [linkDst,    setLinkDst]    = useState<string | null>(null)
-  const [linkLayer,  setLinkLayer]  = useState('production')
-  const [linkMsg,    setLinkMsg]    = useState('')
-  // Port pickers: full port list per end + the chosen port (null = auto next-free).
-  const [srcPorts,   setSrcPorts]   = useState<Port[]>([])
-  const [dstPorts,   setDstPorts]   = useState<Port[]>([])
-  const [srcPort,    setSrcPort]    = useState<number | null>(null)
-  const [dstPort,    setDstPort]    = useState<number | null>(null)
-  // Power terminations per end, and the chosen outlet/PSU (null = auto).
-  const [srcPower,   setSrcPower]   = useState<PowerTerm | null>(null)
-  const [dstPower,   setDstPower]   = useState<PowerTerm | null>(null)
-  const [linkOutlet, setLinkOutlet] = useState<number | null>(null)
-  const [linkPsu,    setLinkPsu]    = useState<number | null>(null)
-  const [linkBusy,   setLinkBusy]   = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [ctxMenu,      setCtxMenu]      = useState<{ nodeId: string; deviceType: string; deviceName: string; modelName: string; x: number; y: number } | null>(null)
@@ -275,7 +216,7 @@ function Canvas() {
   useEffect(() => {
     const nameById: Record<string, string> = {}
     for (const dev of graphDevices) nameById[dev.id] = dev.name
-    const built = devicesToNodes(graphDevices, positions, linkMode, linkSrc, activeLayer, bacnetInstByIp)
+    const built = devicesToNodes(graphDevices, positions, activeLayer, bacnetInstByIp)
     if (repositionPending.current) {
       repositionPending.current = false
       setNodes(built)
@@ -296,7 +237,7 @@ function Canvas() {
       initialFit.current = true
       setTimeout(() => fitView({ padding: 0.1, duration: 400 }), 100)
     }
-  }, [graphDevices, graphLinks, linkMode, linkSrc, activeLayer, bacnetInstByIp])
+  }, [graphDevices, graphLinks, activeLayer, bacnetInstByIp])
 
   useEffect(() => {
     if (fitViewTrigger > 0) fitView({ padding: 0.1, duration: 400 })
@@ -330,62 +271,16 @@ function Canvas() {
       .catch(console.error)
   }, [layoutAlgo])
 
-  const resetLink = useCallback((clearMsg = true) => {
-    setLinkSrc(null); setLinkDst(null)
-    setSrcPorts([]); setDstPorts([]); setSrcPort(null); setDstPort(null)
-    setSrcPower(null); setDstPower(null); setLinkOutlet(null); setLinkPsu(null)
-    if (clearMsg) setLinkMsg('')
-  }, [])
-
-  // Load a device's ports and default-select the first FREE port this layer wants.
-  // Power terminations come along too: which end is the PDU isn't known until both
-  // are picked, so fetch both and decide at render.
-  const loadPorts = useCallback((id: string, end: 'src' | 'dst') => {
-    api.devicePorts(id)
-      .then((r: unknown) => {
-        const ports = ((r as { ports?: Port[] }).ports) || []
-        const pick = defaultPort(ports, linkLayer)
-        if (end === 'src') { setSrcPorts(ports); setSrcPort(pick) }
-        else               { setDstPorts(ports); setDstPort(pick) }
-      })
-      .catch(() => { if (end === 'src') setSrcPorts([]); else setDstPorts([]) })
-    api.devicePower(id)
-      .then((r: unknown) => {
-        const p = r as PowerTerm
-        if (end === 'src') setSrcPower(p); else setDstPower(p)
-      })
-      .catch(() => { if (end === 'src') setSrcPower(null); else setDstPower(null) })
-  }, [linkLayer])
-
-  useEffect(() => {
-    if (!linkMode) resetLink()
-  }, [linkMode, resetLink])
-
-  // Switching layer can strand the selection on a port the new layer may not use
-  // (production cannot land on mgmt0), which would silently POST the old iface.
-  // Re-default both ends; the port LISTS are unchanged, only what's legal on them.
-  useEffect(() => {
-    setSrcPort(p => (p !== null ? defaultPort(srcPorts, linkLayer) : p))
-    setDstPort(p => (p !== null ? defaultPort(dstPorts, linkLayer) : p))
-    // An outlet/PSU chosen for a power link means nothing on any other layer, and
-    // the API rejects them outright — clear rather than carry them across.
-    setLinkOutlet(null); setLinkPsu(null)
-    // Ports are deliberately out of deps: they only change on a node click, which
-    // sets the default itself — re-running here would clobber a manual pick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linkLayer])
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (e.ctrlKey && e.key === 'l') { e.preventDefault(); setLinkMode(!linkMode) }
       if (e.ctrlKey && e.shiftKey && e.key === 'F') { e.preventDefault(); fitView({ padding: 0.1, duration: 400 }) }
       if (e.key === '/' && !e.ctrlKey) { e.preventDefault(); setSearchOpen(true) }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [linkMode])
+  }, [])
 
   // Search: dim non-matching nodes
   useEffect(() => {
@@ -405,37 +300,6 @@ function Canvas() {
     else setSearchText('')
   }, [searchOpen])
 
-  // Clicking canvas nodes FILLS the builder (source, then destination) instead of
-  // creating immediately — the operator then picks ports and hits Create Link.
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    if (!linkMode) return
-    if (!linkSrc || (linkSrc && linkDst)) {          // (re)start: this is the source
-      resetLink(false)
-      setLinkSrc(node.id); setLinkMsg('')
-      loadPorts(node.id, 'src')
-    } else if (node.id === linkSrc) {                // clicking source again clears it
-      resetLink()
-    } else {                                         // this is the destination
-      setLinkDst(node.id); setLinkMsg('')
-      loadPorts(node.id, 'dst')
-    }
-  }, [linkMode, linkSrc, linkDst, resetLink, loadPorts])
-
-  const doCreateLink = useCallback(() => {
-    if (!linkSrc || !linkDst || linkBusy) return
-    setLinkBusy(true)
-    const isPower = linkLayer === 'power'
-    api.createLink(linkSrc, linkDst, linkLayer,
-                   isPower ? undefined : srcPort ?? undefined,
-                   isPower ? undefined : dstPort ?? undefined,
-                   isPower ? linkOutlet ?? undefined : undefined,
-                   isPower ? linkPsu ?? undefined : undefined)
-      .then(() => { fetchGraph(); setLinkMsg('Link created'); resetLink(false) })
-      .catch(e => setLinkMsg(errorMessage(e)))
-      .finally(() => setLinkBusy(false))
-  }, [linkSrc, linkDst, linkLayer, srcPort, dstPort, linkOutlet, linkPsu,
-      linkBusy, fetchGraph, resetLink])
-
   // React Flow hands us every node that moved in this drag — one node normally,
   // the whole selection when several were shift-clicked. Persist them in a single
   // request so a 40-node move is one round trip, not forty.
@@ -450,7 +314,6 @@ function Canvas() {
 
   const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
     e.preventDefault()
-    if (linkMode) return
     setCtxMenu({
       nodeId: node.id,
       deviceType: String(node.data.device_type || ''),
@@ -459,10 +322,9 @@ function Canvas() {
       x: e.clientX,
       y: e.clientY,
     })
-  }, [linkMode])
+  }, [])
 
   const onEdgeDoubleClick = useCallback(async (_: React.MouseEvent, edge: Edge) => {
-    if (linkMode) return
     const data = edge.data as { layer: string; broken: boolean }
     // Only production links are breakable — ignore mgmt/power/cooling edges.
     if ((data?.layer ?? 'production') !== 'production') return
@@ -471,7 +333,7 @@ function Canvas() {
       else              await api.breakLink(edge.source, edge.target, 'production')
       fetchGraph()
     } catch (e) { console.error(e) }
-  }, [fetchGraph, linkMode])
+  }, [fetchGraph])
 
   // Pause the cooling flow-dash animation while the user pans/zooms — the
   // per-frame stroke-dashoffset repaint otherwise fights the viewport transform
@@ -571,172 +433,6 @@ function Canvas() {
         })}
       </div>
 
-      {/* ── Link mode builder ────────────────────────────────── */}
-      {linkMode && (() => {
-        const nm = (id: string | null) => id ? (graphDevices.find(d => d.id === id)?.name ?? id) : ''
-        const selStyle: React.CSSProperties = {
-          fontSize: 10, background: '#0f1f3a', border: '1px solid #1e6ec8',
-          color: '#dbeafe', borderRadius: 3, padding: '2px 4px', minWidth: 130,
-        }
-        const portOption = (p: Port) => (
-          <option key={p.iface} value={p.iface} disabled={p.used}>
-            {p.name}{p.used ? ` — in use${p.peer ? ` → ${p.peer}` : ''}` : ''}
-          </option>
-        )
-        // Grouped by role, mgmt first, when building a management link — the
-        // dedicated port is what an operator wants, but data ports stay pickable
-        // for in-band mgmt and for the OOB gear whose data plane IS the mgmt net.
-        // A production link never lists mgmt ports at all: it cannot use them.
-        // Power: the outlet belongs to whichever end is the PDU and the PSU to the
-        // other — not to "source" and "dest". Resolve by which end actually has
-        // outlets/PSUs, so clicking the server first works the same as the PDU.
-        const supplyEnd: 'src' | 'dst' | null =
-          srcPower?.outlets.length && dstPower?.psus.length ? 'src'
-          : dstPower?.outlets.length && srcPower?.psus.length ? 'dst'
-          : null
-        const powerSelect = (end: 'src' | 'dst') => {
-          if (supplyEnd === null) {
-            return (
-              <span style={{ fontSize: 10, color: '#7aa0c8', minWidth: 150, fontStyle: 'italic' }}>
-                {linkSrc && linkDst ? 'upstream feed — no outlet' : 'PDU outlet → PSU inlet'}
-              </span>
-            )
-          }
-          if (end === supplyEnd) {
-            const outs = (end === 'src' ? srcPower : dstPower)!.outlets
-            const load = (end === 'src' ? dstPower : srcPower)!.psus[0]
-            // A C14 inlet takes a C13 outlet, a C20 takes a C19 — never both.
-            const want = load?.inlet === 'C20' ? 'C19' : 'C13'
-            const fit = outs.filter(o => o.type === want)
-            return (
-              <select value={linkOutlet ?? ''} style={{ ...selStyle, minWidth: 150 }}
-                onChange={e => setLinkOutlet(e.target.value === '' ? null : parseInt(e.target.value))}>
-                <option value="">auto (next free {want})</option>
-                {fit.map(o => (
-                  <option key={o.outlet} value={o.outlet} disabled={o.used}>
-                    outlet {o.outlet} · {o.type} · bank {o.bank} · {o.phase}
-                    {o.used ? ` — in use${o.peer ? ` → ${o.peer}` : ''}` : ''}
-                  </option>
-                ))}
-              </select>
-            )
-          }
-          const psus = (end === 'src' ? srcPower : dstPower)!.psus
-          return (
-            <select value={linkPsu ?? ''} style={{ ...selStyle, minWidth: 150 }}
-              onChange={e => setLinkPsu(e.target.value === '' ? null : parseInt(e.target.value))}>
-              <option value="">auto (next free PSU)</option>
-              {psus.map(p => (
-                <option key={p.psu} value={p.psu} disabled={p.used}>
-                  {p.name} · {p.inlet}{p.feed ? ` · ${p.feed} feed` : ''}
-                  {p.used ? ` — in use${p.peer ? ` → ${p.peer}` : ''}` : ''}
-                </option>
-              ))}
-            </select>
-          )
-        }
-        const portSelect = (ports: Port[], port: number | null,
-                            setPort: (n: number | null) => void, disabled: boolean,
-                            end: 'src' | 'dst') => {
-          if (linkLayer === 'power') return powerSelect(end)
-          if (!usesPorts(linkLayer)) {
-            return (
-              <span style={{ fontSize: 10, color: '#7aa0c8', minWidth: 150, fontStyle: 'italic' }}>
-                pipe — no port
-              </span>
-            )
-          }
-          const pool = portsForLayer(ports, linkLayer)
-          const mgmt = pool.filter(p => p.role === 'mgmt')
-          const data = pool.filter(p => p.role !== 'mgmt')
-          const grouped = linkLayer === 'management' && mgmt.length > 0 && data.length > 0
-          return (
-            <select value={port ?? ''} disabled={disabled || !pool.length} style={{ ...selStyle, minWidth: 150 }}
-              onChange={e => setPort(e.target.value === '' ? null : parseInt(e.target.value))}>
-              <option value="">auto (next free)</option>
-              {grouped ? (
-                <>
-                  <optgroup label="Management ports">{mgmt.map(portOption)}</optgroup>
-                  <optgroup label="Data ports (in-band)">{data.map(portOption)}</optgroup>
-                </>
-              ) : pool.map(portOption)}
-            </select>
-          )
-        }
-        const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 }
-        const badge = (n: string, on: boolean): React.CSSProperties => ({
-          width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-          background: on ? '#1e6ec8' : '#24405f', color: on ? '#fff' : '#7aa0c8',
-          fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        })
-        return (
-          <div style={{
-            position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 10, background: 'rgba(20, 40, 68, 0.97)',
-            border: '1px solid #1e6ec8', borderRadius: 6, padding: '8px 12px',
-            display: 'flex', flexDirection: 'column', gap: 7,
-            boxShadow: '0 4px 18px rgba(0,0,0,0.5), 0 0 0 1px rgba(30,110,200,0.3)',
-            backdropFilter: 'blur(4px)',
-          }}>
-            <div style={{ ...rowStyle, justifyContent: 'space-between' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#93c5fd', fontSize: 11, fontWeight: 600 }}>
-                <I.link /> Link Builder
-              </span>
-              <button onClick={() => setLinkMode(false)} style={{
-                fontSize: 10, background: 'transparent', border: '1px solid #1e6ec8',
-                color: '#93c5fd', borderRadius: 3, padding: '1px 8px', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}><I.close /> Exit</button>
-            </div>
-
-            <div style={rowStyle}>
-              <span style={badge('1', !!linkSrc)}>1</span>
-              <span style={{ fontSize: 10, color: '#93c5fd', width: 34 }}>Source</span>
-              <span style={{ fontSize: 10, color: linkSrc ? '#dbeafe' : '#7aa0c8', width: 150, fontWeight: linkSrc ? 600 : 400,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {linkSrc ? nm(linkSrc) : 'click a node…'}
-              </span>
-              {portSelect(srcPorts, srcPort, setSrcPort, !linkSrc, 'src')}
-            </div>
-
-            <div style={rowStyle}>
-              <span style={badge('2', !!linkDst)}>2</span>
-              <span style={{ fontSize: 10, color: '#93c5fd', width: 34 }}>Dest</span>
-              <span style={{ fontSize: 10, color: linkDst ? '#dbeafe' : '#7aa0c8', width: 150, fontWeight: linkDst ? 600 : 400,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {linkDst ? nm(linkDst) : (linkSrc ? 'click a node…' : '—')}
-              </span>
-              {portSelect(dstPorts, dstPort, setDstPort, !linkDst, 'dst')}
-            </div>
-
-            <div style={{ ...rowStyle, justifyContent: 'space-between', borderTop: '1px solid #24405f', paddingTop: 7 }}>
-              <div style={rowStyle}>
-                <span style={{ fontSize: 10, color: '#93c5fd' }}>Layer</span>
-                <select value={linkLayer} onChange={e => setLinkLayer(e.target.value)} style={selStyle}>
-                  {LINK_LAYERS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
-              <div style={rowStyle}>
-                {linkSrc && <button onClick={() => resetLink()} style={{
-                  fontSize: 10, background: 'transparent', border: '1px solid #24405f',
-                  color: '#7aa0c8', borderRadius: 3, padding: '2px 8px', cursor: 'pointer',
-                }}>Clear</button>}
-                <button onClick={doCreateLink} disabled={!linkSrc || !linkDst || linkBusy} style={{
-                  fontSize: 10, fontWeight: 700, borderRadius: 3, padding: '2px 12px',
-                  border: '1px solid #1e6ec8',
-                  background: (!linkSrc || !linkDst || linkBusy) ? '#24405f' : '#1e6ec8',
-                  color: (!linkSrc || !linkDst || linkBusy) ? '#7aa0c8' : '#fff',
-                  cursor: (!linkSrc || !linkDst || linkBusy) ? 'not-allowed' : 'pointer',
-                }}>{linkBusy ? 'Creating…' : 'Create Link'}</button>
-              </div>
-            </div>
-
-            {linkMsg && <div style={{ fontSize: 10, color: linkMsg === 'Link created' ? '#4ade80' : '#fca5a5' }}>{linkMsg}</div>}
-          </div>
-        )
-      })()}
-
-
       {/* ── Empty state ──────────────────────────────────────── */}
       {graphDevices.length === 0 && (
         <div style={{
@@ -763,7 +459,7 @@ function Canvas() {
       )}
 
       {/* ── Bottom hint ──────────────────────────────────────── */}
-      {!linkMode && graphLinks.length > 0 && (
+      {graphLinks.length > 0 && (
         <div style={{
           position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
           zIndex: 10, fontSize: 9, color: 'var(--text-muted)',
@@ -783,7 +479,6 @@ function Canvas() {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
         onNodeDragStop={onNodeDragStop}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeDoubleClick={onEdgeDoubleClick}
@@ -798,10 +493,8 @@ function Canvas() {
         defaultEdgeOptions={{ type: 'link' }}
         style={{
           background: 'radial-gradient(ellipse at center, #0e151f 0%, var(--bg-base) 70%)',
-          cursor: linkMode ? 'crosshair' : 'default',
         }}
         proOptions={{ hideAttribution: true }}
-        nodesDraggable={!linkMode}
         // Shift+click adds a node to the selection (React Flow defaults this to
         // Ctrl/Cmd, which collides with browser and OS shortcuts). Shift+drag on
         // empty canvas still draws a selection box — same key, different target,
@@ -809,9 +502,6 @@ function Canvas() {
         // then moves the whole set.
         multiSelectionKeyCode="Shift"
         selectionKeyCode="Shift"
-        // Link mode consumes clicks to pick endpoints; a selection forming
-        // underneath it would be invisible and confusing.
-        elementsSelectable={!linkMode}
       >
         <Background variant={BackgroundVariant.Dots} color="#2d3f5540" gap={20} size={1} />
       </ReactFlow>

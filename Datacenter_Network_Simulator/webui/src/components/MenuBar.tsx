@@ -188,7 +188,7 @@ export default function MenuBar() {
   const {
     snmp, gnmi, sflow, bacnet, redfish, devices,
     fetchGraph, fetchDevices, fetchSnmp, selectedDeviceId,
-    linkMode, setLinkMode, triggerFitView, setLayoutAlgo, setRightTab, setActiveView,
+    triggerFitView, setLayoutAlgo, setRightTab, setActiveView,
   } = useStore()
 
   const closeAll = useCallback(() => setOpenMenu(null), [])
@@ -298,12 +298,11 @@ export default function MenuBar() {
       else if (ctrl && k === 'n') { e.preventDefault(); newTopology() }
       else if (ctrl && k === 'o') { e.preventDefault(); openFileDialog() }
       else if (ctrl && k === 's') { e.preventDefault(); saveTopology() }
-      else if (ctrl && k === 'l') { e.preventDefault(); setLinkMode(!linkMode) }
       else if (ctrl && k === 'f') { e.preventDefault(); setLayoutAlgo('spring') }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [linkMode, setLinkMode, triggerFitView, setLayoutAlgo, openFileDialog])
+  }, [triggerFitView, setLayoutAlgo, openFileDialog])
 
   const fileMenuItems: MenuItem[] = [
     { label: 'New Topology',    shortcut: 'Ctrl+N', action: newTopology    },
@@ -325,9 +324,6 @@ export default function MenuBar() {
     { label: 'Live Metrics',    action: () => setActiveView('metrics') },
   ]
   const topoMenuItems: MenuItem[] = [
-    { label: 'Link Mode', shortcut: 'Ctrl+L', checked: linkMode,
-      action: () => setLinkMode(!linkMode) },
-    { label: '', divider: true, action: () => {} },
     { label: 'Fit View', shortcut: 'Ctrl+Shift+F', action: () => triggerFitView() },
     { label: '', divider: true, action: () => {} },
     {
@@ -365,8 +361,7 @@ export default function MenuBar() {
   const menus: { name: string; label: string; items: MenuItem[]; badge?: { text: string; color: string } }[] = [
     { name: 'file', label: 'File',     items: fileMenuItems },
     { name: 'dev',  label: 'Devices',  items: devMenuItems  },
-    { name: 'topo', label: 'Topology', items: topoMenuItems,
-      badge: linkMode ? { text: 'LINK', color: '#db6d28' } : undefined },
+    { name: 'topo', label: 'Topology', items: topoMenuItems },
     { name: 'sim',  label: 'Simulation', items: simMenuItems },
     { name: 'help', label: 'Help',     items: helpMenuItems },
   ]
