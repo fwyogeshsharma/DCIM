@@ -808,6 +808,64 @@ def cooling_capacity_w(model_name: str = "") -> int:
         if key in m:
             return w
     return 0
+
+
+# CDU mounting class. An IN-RACK CDU (CoolIT CHx80: 4U, bolted into the cabinet it
+# serves) feeds that one rack's manifold — the cold-plate hoses land on UQDs inside
+# the cabinet and do not leave it. A ROW or FACILITY CDU (Vertiv XDU, nVent Modular,
+# Motivair, CoolIT's floor-standing CHx750) is a skid on the floor feeding a header
+# that several racks tap off, so it legitimately serves a whole row or hall.
+#
+# The distinction decides which CDUs a new liquid-cooled server may be plumbed into:
+# offering an in-rack unit from a different cabinet would draw a coolant hose across
+# the aisle, which is not a connection that exists.
+_IN_RACK_CDU_KEYS = ("chx80", "chx40", "chx150")
+
+
+# UQD hose pairs on the manifold a CDU feeds — the real limit on how many servers
+# can join a coolant loop, and the direct analogue of a PDU's outlet count. Thermal
+# capacity is almost never what binds: a CHx80 is rated 80 kW but its rack manifold
+# terminates a fixed number of dripless quick-disconnect pairs, so the loop runs out
+# of PORTS long before it runs out of kW (18 × ~900 W DLC servers is ~16 kW, a fifth
+# of the unit's rating).
+#
+# Counts are representative of a common configuration, not a fixed vendor spec —
+# manifolds are ordered per deployment in several port counts, and a rack can carry
+# more than one. Row/facility skids feed a header serving many racks, hence the much
+# larger counts.
+_MODEL_MANIFOLD_PORTS = {
+    "chx80":        18,    # 4U in-rack, vertical rack manifold
+    "chx40":        12,
+    "chx150":       24,
+    "chx750":       64,    # floor-standing row CDU
+    "xdu 1350":     96,
+    "cdu 600kw":    64,
+    "modular cdu":  96,
+}
+
+
+def cdu_manifold_ports(model_name: str = "") -> int:
+    """UQD hose pairs available on this CDU's manifold; 0 when the SKU is unknown.
+
+    Callers treat 0 as UNLIMITED rather than zero — the permissive default, for the
+    same reason as cdu_serves_own_rack_only: an unclassified CDU that reported no
+    ports would make every rack it serves un-buildable."""
+    m = (model_name or "").lower()
+    for key, n in _MODEL_MANIFOLD_PORTS.items():
+        if key in m:
+            return n
+    return 0
+
+
+def cdu_serves_own_rack_only(model_name: str = "") -> bool:
+    """True for a CDU that mounts inside the rack it cools (see _IN_RACK_CDU_KEYS).
+
+    Unknown models answer False — a CDU we cannot classify is treated as a floor
+    skid, which is the permissive answer. Getting that wrong offers an extra
+    candidate; the strict default would instead hide the only CDU in the hall and
+    make a legitimate DLC build impossible."""
+    m = (model_name or "").lower()
+    return any(k in m for k in _IN_RACK_CDU_KEYS)
 # Model-name keywords that imply a much higher draw (GPU / AI / accelerated),
 # used as a fallback for models not in the per-SKU table above.
 _HIGH_POWER_KEYWORDS = ("gpu", "dgx", "a100", "h100", "l40", "mi300", "accel", "ai-", "ml-")

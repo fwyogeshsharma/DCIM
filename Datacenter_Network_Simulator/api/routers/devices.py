@@ -341,6 +341,14 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
         for cu in range(u, u + _u_height(d.device_type, getattr(d, "model_name", "") or "")):
             if FIRST_SERVER_UNIT <= cu <= LAST_SERVER_UNIT:
                 occ[cu] = d.name
+    # A direct-to-chip server needs more than free U: the rack must have a manifold
+    # with a free UQD pair, which means an eligible CDU. Judged by _rack_cdus, the
+    # same function the LINKS section uses, so a rack offered here always has a loop
+    # to join. Air-cooled SKUs skip all of this and see every rack as before.
+    from core.device_models import is_liquid_cooled
+    liquid = bool(model_name) and is_liquid_cooled(model_name)
+    all_devs = s.device_manager.get_all_devices() if liquid else []
+
     out = []
     for (rm, fl, rr, rn), occ in sorted(racks.items()):
         units = [{"unit": u, "used": u in occ, "occupant": occ.get(u)}
@@ -348,14 +356,32 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
         # Pickable = the new device's full height fits here, entirely inside U1–U40.
         free = [u for u in range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT - want_h + 2)
                 if all(cu not in occ for cu in range(u, u + want_h))]
+        cdu_name, cdu_used, cdu_ports, liquid_ready = None, None, None, True
+        if liquid:
+            cdus = _rack_cdus(s, all_devs, (datacenter, str(fl), rm), (rr, rn))
+            liquid_ready = bool(cdus)
+            if cdus:
+                best = cdus[0]
+                cdu_name = best["dev"].name
+                cdu_used, cdu_ports = best["used"], best["ports"]
         out.append({"room": rm, "floor": fl, "rack_row": rr, "rack_num": rn,
                     "used": len(occ), "total": total, "free_units": free,
                     "units": units,
+                    # liquid_ready is True for an air-cooled SKU: every rack takes it.
+                    # For a DLC SKU it means "has a CDU with a free manifold pair",
+                    # and the cdu_* fields name that unit so the picker can show which
+                    # cabinet the server is joining.
+                    "liquid_ready": liquid_ready, "cdu_name": cdu_name,
+                    "cdu_used": cdu_used, "cdu_ports": cdu_ports,
                     "next_free": (free[0] if free else None), "full": not free})
     # The height the free_units above were computed for, so the picker can name the
     # SPAN a pick takes ("U39–U40") instead of just its anchor U. A rack_unit is the
     # BOTTOM of the device, which is not self-evident from a bare "U39".
     return {"datacenter": datacenter, "racks": out, "device_u_height": want_h,
+            # Tells the dialog to apply liquid-ready filtering and to explain itself
+            # when a hall comes back empty, rather than showing a bare empty list.
+            "liquid_only": liquid,
+            "no_liquid_racks": liquid and not any(r["liquid_ready"] for r in out),
             "all_full": bool(out) and all(r["full"] for r in out)}
 
 
@@ -563,53 +589,92 @@ def _oob_slot(s, devs, rk: tuple, near_label: str) -> dict:
             "near_end": near_label, "candidates": cands}
 
 
+def _cdu_loop_members(s, cdu_id: str) -> set:
+    """Server ids already on this CDU's cold-plate loop, read off the cooling edges —
+    the same source of truth DeviceStateStore._cdu_loop_servers uses."""
+    from core.device_manager import DeviceType
+    members = set()
+    for u, v, ed in s.topology.get_links():
+        if ed.get("layer") != "cooling":
+            continue
+        other = v if u == cdu_id else (u if v == cdu_id else None)
+        if other is None:
+            continue
+        od = s.device_manager.get_device(other)
+        if od is not None and od.device_type == DeviceType.SERVER:
+            members.add(od.id)
+    return members
+
+
+def _rack_cdus(s, devs, rk: tuple, rack: tuple) -> list:
+    """CDUs a liquid-cooled server in *rack* may join, with their loop occupancy.
+
+    THE one place that decides coolant-loop eligibility. Both the Add-Device LINKS
+    picker and the rack-occupancy cascade read it, so a rack the location picker
+    offers is guaranteed to have a CDU the LINKS section will then show — if these
+    were two implementations they would drift, and the operator would land on a rack
+    with no loop to join.
+
+    Eligibility is two rules:
+      * an IN-RACK CDU serves only its own cabinet's manifold, so it is a candidate
+        for this rack alone; a row/facility skid feeds a header and serves the hall.
+      * the manifold must have a free UQD pair. Ports, not kW, are what run out.
+    """
+    from core.device_manager import (DeviceType, cdu_manifold_ports,
+                                     cdu_serves_own_rack_only)
+    out = []
+    for d in devs:
+        if d.device_type != DeviceType.CDU or _room_key(d) != rk:
+            continue
+        model = getattr(d, "model_name", "") or ""
+        same_rack = _rack_of(d) == rack
+        if cdu_serves_own_rack_only(model) and not same_rack:
+            continue
+        used = len(_cdu_loop_members(s, d.id))
+        ports = cdu_manifold_ports(model)          # 0 = unknown ⇒ unlimited
+        if ports and used >= ports:
+            continue                               # manifold full — no pair to land on
+        out.append({"dev": d, "same_rack": same_rack, "used": used, "ports": ports})
+    out.sort(key=lambda c: (not c["same_rack"], c["dev"].name))
+    return out
+
+
 def _cdu_slot(s, devs, rk: tuple, rack: tuple) -> dict:
     """The coolant-loop slot: CDUs a direct-to-chip server in this rack can join.
 
     Only offered for a DLC SKU (see is_liquid_cooled) — an air-cooled server has no
     cold plate and no UQD to land on the manifold, so there is nothing to connect.
 
-    The rack's OWN in-rack CDU comes first, then the rest of the hall's. Real DLC
-    plumbing runs server cold plate → rack manifold → CDU; the manifold is not
-    modelled as a device here (the seed topology cables server↔CDU directly), so
-    the loop membership edge is the manifold's stand-in. An out-of-rack CDU is
-    still real — row-level and facility CDUs feed several racks off one skid —
-    it just needs the hose run, hence the this-rack-first ordering.
+    Eligibility itself lives in _rack_cdus, shared with the rack-occupancy picker so
+    the two cannot disagree about which racks are liquid-ready.
 
-    No ports: a cooling link is a PIPE. It has no ifIndex, and add_link/validate_link
-    both refuse an iface on a non-Ethernet layer, so the slot carries an empty port
-    list and the dialog shows no port picker.
+    Real DLC plumbing runs server cold plate → rack manifold → CDU. The manifold is
+    not a device here (the seed cables server↔CDU directly), so the loop edge stands
+    in for it and the manifold's PORT COUNT is what caps the loop.
 
-    Capacity is reported as loop members + rated heat-removal kW, which is what
-    actually limits a loop — a CHx80 is 80 kW, so ~9 × 900 W DLC servers is a
-    reasonable populated loop and the operator can see how close it is."""
-    from core.device_manager import DeviceType, cooling_capacity_w
+    No ports on the slot itself: a cooling link is a PIPE. It has no ifIndex, and
+    add_link/validate_link both refuse an iface on a non-Ethernet layer, so the slot
+    carries an empty port list and the dialog shows no port picker."""
+    from core.device_manager import cooling_capacity_w
     cands = []
-    for d in devs:
-        if d.device_type != DeviceType.CDU or _room_key(d) != rk:
-            continue
-        # Servers already on this CDU's loop, counted off the cooling edges — the
-        # same source of truth DeviceStateStore._cdu_loop_servers reads.
-        members = set()
-        for u, v, ed in s.topology.get_links():
-            if ed.get("layer") != "cooling":
-                continue
-            other = v if u == d.id else (u if v == d.id else None)
-            if other is None:
-                continue
-            od = s.device_manager.get_device(other)
-            if od is not None and od.device_type == DeviceType.SERVER:
-                members.add(od.id)
-        cap_kw = cooling_capacity_w(getattr(d, "model_name", "") or "") / 1000.0
-        same_rack = _rack_of(d) == rack
-        detail = f"{len(members)} on loop"
+    for c in _rack_cdus(s, devs, rk, rack):
+        d = c["dev"]
+        model = getattr(d, "model_name", "") or ""
+        cap_kw = cooling_capacity_w(model) / 1000.0
+        # Ports first — that is the number that actually runs out. kW is shown after
+        # it as context, not as the limit.
+        detail = (f"{c['used']}/{c['ports']} ports" if c["ports"]
+                  else f"{c['used']} on loop")
         if cap_kw:
             detail += f" · {cap_kw:.0f} kW"
+        # Name the mounting class on anything offered from OUTSIDE this rack, so the
+        # operator can see why a CDU in another cabinet is a legal choice here.
+        if not c["same_rack"]:
+            detail += " · row CDU"
         # No " · this rack" suffix: the dialog groups candidates under a "This rack"
         # heading off same_rack, so repeating it in the detail is noise.
-        cands.append({"id": d.id, "name": d.name, "same_rack": same_rack,
+        cands.append({"id": d.id, "name": d.name, "same_rack": c["same_rack"],
                       "detail": detail, "ports": []})
-    cands.sort(key=lambda c: (not c["same_rack"], c["name"]))
     return {"key": "cool0", "label": "CDU loop", "port_label": "",
             "near_end": "Cold plate (UQD)", "optional": True, "candidates": cands}
 

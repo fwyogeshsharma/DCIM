@@ -331,9 +331,16 @@ const spinnerStyle: React.CSSProperties = { width: 72 }
 // shown in full (a rack face has no gaps) with the taken U's disabled. `free_units`
 // remains the pickable set and drives the room/floor/row/rack cascade.
 type RackUnit = { unit: number; used: boolean; occupant: string | null }
+// liquid_ready is always true for an air-cooled SKU — every rack takes one. For a
+// direct-to-chip SKU it means the rack has a CDU with a free UQD pair on its
+// manifold, and the cdu_* fields name that unit so the picker can show which cabinet
+// the server is joining. The server decides this (see _rack_cdus) rather than the
+// dialog, so the rack list and the LINKS section cannot disagree.
 type RackOcc = { room: string; floor: string; rack_row: number; rack_num: number
                  used: number; total: number; free_units: number[]
                  units: RackUnit[]
+                 liquid_ready?: boolean; cdu_name?: string | null
+                 cdu_used?: number | null; cdu_ports?: number | null
                  next_free: number | null; full: boolean }
 
 export default function AddDeviceDialog({ onClose }: Props) {
@@ -350,6 +357,10 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // Height the server computed free_units for — lets the picker name the SPAN a pick
   // occupies rather than only its anchor U.
   const [uHeight, setUHeight] = useState(1)
+  // Set by the occupancy fetch when the chosen SKU is direct-to-chip: the cascade
+  // then only offers racks that can actually take a coolant hose.
+  const [liquidOnly,    setLiquidOnly]    = useState(false)
+  const [noLiquidRacks, setNoLiquidRacks] = useState(false)
 
   // Upper location levels come straight from the live inventory (cascading distinct).
   const uniq = (xs: (string | undefined)[]) =>
@@ -409,16 +420,24 @@ export default function AddDeviceDialog({ onClose }: Props) {
     api.rackOccupancy(form.datacenter, form.device_type, form.model_name)
       .then((r: unknown) => {
         if (!live) return
-        const d = r as { racks?: RackOcc[]; device_u_height?: number }
+        const d = r as { racks?: RackOcc[]; device_u_height?: number
+                         liquid_only?: boolean; no_liquid_racks?: boolean }
         setRacks(d.racks || [])
         setUHeight(d.device_u_height || 1)
+        setLiquidOnly(!!d.liquid_only)
+        setNoLiquidRacks(!!d.no_liquid_racks)
       })
       .catch(() => { if (live) setRacks([]) })
       .finally(() => { if (live) setLocBusy(false) })
     return () => { live = false }
   }, [form.datacenter, form.device_type, form.model_name])
 
-  const withSpace = (r: RackOcc) => r.free_units.length > 0
+  // "Usable" is free U AND — for a DLC SKU — a manifold to plug into. Upper levels
+  // (room/floor/row) hide when nothing under them qualifies, exactly as they already
+  // do for a rack with no space; the RACK level still lists the others, disabled, so
+  // a cabinet never silently disappears without saying why.
+  const withSpace = (r: RackOcc) =>
+    r.free_units.length > 0 && (!liquidOnly || r.liquid_ready !== false)
   const roomsWithSpace = useMemo(() =>
     uniq(racks.filter(withSpace).map(r => r.room)), [racks])
   const floorsWithSpace = useMemo(() =>
@@ -436,6 +455,19 @@ export default function AddDeviceDialog({ onClose }: Props) {
     racks.find(r => r.room === form.room && r.floor === form.floor
       && r.rack_row === form.rack_row && r.rack_num === form.rack_num),
     [racks, form.room, form.floor, form.rack_row, form.rack_num])
+
+  // Switching an already-located device to a DLC SKU can strand it in a rack with no
+  // manifold. The location fields are filled in ABOVE the model field's influence, so
+  // nothing else would notice — the form would look complete and submit a server into
+  // a cabinet it cannot be plumbed in. Clear back to the rack level and let the
+  // operator re-pick from the filtered list.
+  useEffect(() => {
+    if (!liquidOnly || !form.rack_num || !chosenRack) return
+    if (chosenRack.liquid_ready === false) {
+      setForm(f => ({ ...f, rack_row: 0, rack_num: 0, rack_unit: 0 }))
+      setErr('That rack has no CDU — pick a liquid-ready rack for a direct-to-chip server')
+    }
+  }, [liquidOnly, chosenRack, form.rack_num])
 
   // Cascade resets: picking an upper level clears everything below it.
   const setCountry = (v: string) => setForm(f => ({ ...f, country: v, datacenter_city: '', datacenter: '', room: '', floor: '', rack_row: 0, rack_num: 0, rack_unit: 0 }))
@@ -703,13 +735,27 @@ export default function AddDeviceDialog({ onClose }: Props) {
             ) : roomsWithSpace.length === 0 ? (
               <div style={{ paddingLeft: 100, marginTop: 4 }}>
                 <div style={{ fontSize: 10, color: '#f0a020' }}>
-                  No free rack space in {form.datacenter} — provision a rack/hall (or free a U) first.
+                  {/* Distinguish the two reasons a DC can come back empty. "No free
+                      space" sends the operator to Provision; "no liquid-ready rack"
+                      is a different problem with a different fix (add a CDU, or pick
+                      an air-cooled SKU), and conflating them would send them to the
+                      wrong dialog. */}
+                  {noLiquidRacks
+                    ? `No liquid-ready racks in ${form.datacenter} — ${form.model_name} is a
+                       direct-to-chip SKU and needs a rack with a CDU. Add a CDU, or choose an
+                       air-cooled model.`
+                    : `No free rack space in ${form.datacenter} — provision a rack/hall (or free a U) first.`}
                 </div>
-                <button type="button" onClick={goProvision} style={{
-                  marginTop: 5, background: 'var(--accent)', border: '1px solid var(--accent)',
-                  color: '#061018', borderRadius: 4, padding: '3px 9px', fontSize: 10,
-                  fontWeight: 700, cursor: 'pointer',
-                }}>Provision capacity →</button>
+                {/* Provisioning adds racks and halls, which does not put a CDU in
+                    one — offering it here would send the operator down a path that
+                    cannot solve their problem. */}
+                {!noLiquidRacks && (
+                  <button type="button" onClick={goProvision} style={{
+                    marginTop: 5, background: 'var(--accent)', border: '1px solid var(--accent)',
+                    color: '#061018', borderRadius: 4, padding: '3px 9px', fontSize: 10,
+                    fontWeight: 700, cursor: 'pointer',
+                  }}>Provision capacity →</button>
+                )}
               </div>
             ) : (
               <FormRow label="Room">
@@ -740,11 +786,26 @@ export default function AddDeviceDialog({ onClose }: Props) {
             <FormRow label="Rack">
               <select style={{ flex: 1 }} value={form.rack_num || ''} onChange={e => setRack(parseInt(e.target.value) || 0)}>
                 <option value="">— select —</option>
-                {racksInRow.filter(r => r.free_units.length > 0).map(r => (
-                  <option key={r.rack_num} value={r.rack_num}>
-                    R{r.rack_row}-{String(r.rack_num).padStart(2, '0')} · {r.used}/{r.total} used
-                  </option>
-                ))}
+                {racksInRow.map(r => {
+                  const noSpace = r.free_units.length === 0
+                  const noCdu   = liquidOnly && r.liquid_ready === false
+                  // A rack with neither problem is pickable. The others stay VISIBLE
+                  // but disabled and labelled — an operator looking for R2-04 should
+                  // find it and read why it cannot take this server, rather than
+                  // wonder whether the cabinet exists at all.
+                  if (noSpace && !liquidOnly) return null
+                  const tail = noCdu ? 'no CDU — not liquid-ready'
+                    : noSpace ? 'full'
+                    : r.cdu_name
+                      ? `${r.used}/${r.total} used · ${r.cdu_name} ${r.cdu_used}/${r.cdu_ports} ports`
+                      : `${r.used}/${r.total} used`
+                  return (
+                    <option key={r.rack_num} value={r.rack_num}
+                            disabled={noSpace || noCdu}>
+                      R{r.rack_row}-{String(r.rack_num).padStart(2, '0')} · {tail}
+                    </option>
+                  )
+                })}
               </select>
             </FormRow>
           )}
