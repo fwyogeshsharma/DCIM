@@ -32,6 +32,15 @@ def _temporal(event_type: str, count: int, window: float) -> Condition:
                      event_count=count, window_sec=window)
 
 
+def _quiet(event_type: str, window: float) -> Condition:
+    """True when *event_type* has NOT occurred for *window* seconds.
+
+    The inverse of _temporal, and the only way to express "the burst stopped".
+    An episodic alarm has no state to return to and no threshold to re-cross, so
+    silence is the only thing that can clear it."""
+    return Condition("quiet", event_type=event_type, window_sec=window)
+
+
 def _composite(*conds: Condition, logic: str = "AND") -> Condition:
     return Condition("composite", logic=logic, conditions=list(conds))
 
@@ -150,12 +159,45 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.4",
           severity="critical", priority=170),
 
+    # The one alarm no transition can clear. LinkUp is useless here: a flapping link
+    # comes up on every bounce, so clearing on LinkUp would clear the flap alarm in
+    # the middle of the flapping. The honest all-clear is silence — hence the quiet
+    # condition type, added for exactly this.
+    #
+    # 120 s = two full detection windows with no further linkDown. One window would
+    # be too eager: a link flapping every ~40 s clears and re-raises forever instead
+    # of reading as one sustained problem, which is what an operator needs to see to
+    # justify replacing the optic.
+    _rule("LinkFlapCleared",
+          _quiet("linkDown", window=120.0),
+          "1.3.6.1.4.1.99999.1.40",
+          severity="informational", priority=100,
+          recovery=True, recovery_of="LinkFlap"),
+
     # ── Enterprise: rack failure (cross-device correlation) ───────────────────
 
     _rule("RackFailure",
           _rack(min_devices=3),
           "1.3.6.1.4.1.99999.1.5",
           severity="critical", priority=190),
+
+    # Clears once FEWER THAN 2 devices in the rack are still impaired — the rack-rule
+    # threshold reads as a floor on a recovery (see RuleEngine._eval_rack_rule).
+    #
+    # 2, not 3, so there is a one-device dead band against the alarm: a rack sitting
+    # at exactly 3 impaired with one machine flapping in and out would otherwise
+    # raise and clear the correlation alarm on alternate ticks.
+    #
+    # Not zero either. This alarm exists to say "several machines in one cabinet went
+    # away together, suspect the PDU / ToR / breaker rather than the servers". Once
+    # only a single device is left down that inference no longer holds — it is an
+    # ordinary single-device failure, already reported by its own LinkDown — so the
+    # correlation alarm has done its job and should stand down.
+    _rule("RackRecovered",
+          _rack(min_devices=2),
+          "1.3.6.1.4.1.99999.1.39",
+          severity="informational", priority=100,
+          recovery=True, recovery_of="RackFailure"),
 
     # ── UPS traps (UPS-MIB) ───────────────────────────────────────────────────
 
@@ -583,6 +625,26 @@ DEFAULT_RULES: List[Rule] = [
           severity="critical", priority=200,
           device_types=["server", "switch", "router", "firewall", "load_balancer"]),
 
+    # OR, not AND — this is the De Morgan inverse of the alarm. The alarm means "CPU
+    # and temperature are BOTH critical", so it stops being true the moment EITHER
+    # recovers: NOT(A AND B) == NOT A OR NOT B. An AND clear would hold a
+    # "both critical" alarm raised on a device whose CPU is back at 50% just because
+    # it is still hot — and the heat alone is already HighTemperature's job to report.
+    #
+    # Thresholds reuse the existing clear points (CPUNormal 70, TemperatureNormal 85)
+    # so a device cannot sit in a state that is clear for one rule and alarmed for
+    # another, and each leg keeps its own hysteresis gap against the 90/90 alarm.
+    _rule("CriticalCPUAndTempCleared",
+          _composite(
+              _threshold("cpu_usage", "<", 70.0),
+              _threshold("temperature", "<", 85.0),
+              logic="OR",
+          ),
+          "1.3.6.1.4.1.99999.1.38",
+          severity="informational", priority=100,
+          device_types=["server", "switch", "router", "firewall", "load_balancer"],
+          recovery=True, recovery_of="CriticalCPUAndTemp"),
+
     # ── Recovery rules ────────────────────────────────────────────────────────
 
     _rule("CPUNormal",
@@ -596,6 +658,21 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.14",
           severity="informational", priority=100,
           recovery=True, recovery_of="HighMemory"),
+
+    # HighCPUSustained did not latch — the duration branch dropped its in_alert on
+    # its own — but nothing ever told the NMS: CPUNormal clears HighCPU, so the
+    # CRITICAL was raised on the wire and never explicitly cleared. Same 70% clear
+    # point as CPUNormal, since both track the one metric back to the same "healthy"
+    # definition; a separate rule only because recovery_of names one alarm.
+    #
+    # This rule REQUIRES the duration-branch change in RuleEngine: while an alarm has
+    # a registered recovery it must stop self-clearing, or this would be evaluated
+    # against an already-cleared alert and never fire.
+    _rule("CPUSustainedNormal",
+          _threshold("cpu_usage", "<", 70.0),
+          "1.3.6.1.4.1.99999.1.37",
+          severity="informational", priority=100,
+          recovery=True, recovery_of="HighCPUSustained"),
 
     # Recovery clears at 95, not 90: a fan hovering on the alarm threshold would
     # otherwise flap the trap pair every tick as the duty jitters across it.

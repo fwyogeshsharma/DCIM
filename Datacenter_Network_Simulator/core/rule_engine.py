@@ -56,6 +56,11 @@ class Condition:
     temporal        event_type occurs ≥ event_count times within window_sec
     composite       logic(AND|OR) of sub-conditions list
     rack_failure    ≥ threshold devices in same rack impaired
+    quiet           NO event_type has occurred for window_sec — an ABSENCE test,
+                    which every other type above is incapable of expressing. Used to
+                    clear episodic alarms (a flap stops being a flap once the link
+                    has been stable for a while); there is no transition and no
+                    metric crossing to detect, only the passage of quiet time.
     """
     condition_type: str
     metric: str = ""
@@ -191,6 +196,9 @@ class RuleEngine:
     def __init__(self):
         self._rules_lock = threading.Lock()
         self._rules: Dict[str, Rule] = {}
+        # Names that some registered rule declares itself the recovery of. None =
+        # not yet computed; invalidated whenever the rule set changes.
+        self._recovery_targets: Optional[set] = None
         self._device_thresh_lock = threading.Lock()
         self._device_thresholds: Dict[str, Dict[str, Dict[str, float]]] = {}
         self._action_cb: Optional[Callable[[TrapAction], None]] = None
@@ -218,6 +226,12 @@ class RuleEngine:
         self._event_windows: Dict[str, Dict[str, deque]] = defaultdict(
             lambda: defaultdict(deque)
         )
+
+        # device_id → event_type → timestamp of the MOST RECENT occurrence.
+        # Deliberately not derived from _event_windows: _eval_temporal_rule prunes
+        # that deque in place to its OWN window, so a quiet rule with a longer window
+        # reading it would see the history truncated and declare quiet too early.
+        self._last_event: Dict[str, Dict[str, float]] = defaultdict(dict)
 
         # Rack correlation: rack_id → set of device_ids that are impaired
         self._rack_impaired: Dict[str, Set[str]] = defaultdict(set)
@@ -262,11 +276,26 @@ class RuleEngine:
     def add_rule(self, rule: Rule):
         with self._rules_lock:
             self._rules[rule.rule_name] = rule
+            self._recovery_targets = None      # recomputed on next use
         log.debug("[RuleEngine] Rule added/updated: %s", rule.rule_name)
 
     def remove_rule(self, name: str):
         with self._rules_lock:
             self._rules.pop(name, None)
+            self._recovery_targets = None
+
+    def _has_recovery(self, rule_name: str) -> bool:
+        """True when some rule is registered as *rule_name*'s recovery.
+
+        Cached and invalidated on any rule add/remove — this is consulted once per
+        duration-rule evaluation per device per tick, so recomputing it by scanning
+        every rule each time would be needless work on a large fleet."""
+        targets = self._recovery_targets
+        if targets is None:
+            targets = {r.recovery_of for r in self._rules.values()
+                       if r.is_recovery and r.recovery_of}
+            self._recovery_targets = targets
+        return rule_name in targets
 
     def enable_rule(self, name: str, enabled: bool):
         with self._rules_lock:
@@ -383,6 +412,7 @@ class RuleEngine:
         self._prev_metrics.pop(device_id, None)
         self._prev_bgp.pop(device_id, None)
         self._event_windows.pop(device_id, None)
+        self._last_event.pop(device_id, None)
         self._link_down_pending_up = {p for p in self._link_down_pending_up if p[0] != device_id}
 
     # ── Main evaluation entry point ───────────────────────────────────────────
@@ -431,6 +461,11 @@ class RuleEngine:
 
             elif ct == "temporal":
                 act = self._eval_temporal_rule(rule, fact, now)
+                if act:
+                    actions.append(act)
+
+            elif ct == "quiet":
+                act = self._eval_quiet_rule(rule, fact, now)
                 if act:
                     actions.append(act)
 
@@ -562,7 +597,14 @@ class RuleEngine:
                 cond_met = (now - state.condition_true_since) >= rule.condition.duration_sec
             else:
                 state.condition_true_since = None
-                if state.in_alert:
+                # Self-clearing is only correct when NOTHING else will clear this
+                # alarm. A duration rule that HAS a recovery must keep in_alert set
+                # until that recovery evaluates — the recovery is gated on the alarm
+                # still being raised, so clearing here first would make it dead code
+                # and the clear trap would never be sent. (Rules are evaluated in
+                # priority order, and the alarm outranks its own recovery, so this
+                # runs first every time.)
+                if state.in_alert and not self._has_recovery(rule.rule_name):
                     state.in_alert = False
                 return None
 
@@ -595,9 +637,17 @@ class RuleEngine:
                                         rule.rule_name, "threshold")
         if cond_met and self._can_fire(state, rule, now):
             alert_state.in_alert = False
-            return self._do_fire(rule, fact, state, now, {
-                "metric_value": metrics.get(rule.condition.metric, 0)
-            })
+            # A composite has no metric of its own (condition.metric is ""), so the
+            # scalar lookup below would report metric_value 0 on every composite
+            # clear — a recovery trap claiming 0 Hz / 0 % rather than the values that
+            # actually cleared it. Report each leg instead, matching what the alarm
+            # path already does for composites.
+            if rule.condition.condition_type == "composite":
+                extra = {sub.metric: metrics.get(sub.metric, 0)
+                         for sub in rule.condition.conditions if sub.metric}
+            else:
+                extra = {"metric_value": metrics.get(rule.condition.metric, 0)}
+            return self._do_fire(rule, fact, state, now, extra)
         return None
 
     def _eval_condition(self, cond: Condition, metrics: Dict[str, Any],
@@ -663,6 +713,7 @@ class RuleEngine:
             # Record event for temporal rules (link flap detection)
             event_name = "linkDown" if iface.oper_status == 2 else "linkUp"
             self._event_windows[fact.device_id][event_name].append(now)
+            self._last_event[fact.device_id][event_name] = now
 
             pair_key = (fact.device_id, iface.index)
             going_up = (iface.oper_status == 1)
@@ -762,12 +813,67 @@ class RuleEngine:
 
         if len(window) >= cond.event_count:
             state = self._get_state(fact.device_id, rule.rule_name)
+            # A burst alarm is edge-triggered when something will clear it: the
+            # window keeps holding those N events until they age out, so a
+            # level-triggered version re-fires every tick for the rest of the window
+            # (a 60 s window on a 5 s tick = a dozen traps for one flap episode) and
+            # then a single clear arrives to close all of them.
+            #
+            # Only when a recovery exists, for the same reason the duration branch
+            # checks: a temporal rule with nothing to clear it would otherwise fire
+            # once and be permanently suppressed by its own in_alert.
+            if state.in_alert and self._has_recovery(rule.rule_name):
+                return None
             if self._can_fire(state, rule, now):
                 return self._do_fire(rule, fact, state, now, {
                     "flap_count": len(window),
                     "window_sec": cond.window_sec,
                 })
         return None
+
+    def _eval_quiet_rule(self, rule: Rule, fact: DeviceFact,
+                         now: float) -> Optional[TrapAction]:
+        """Fire when *event_type* has NOT occurred for window_sec.
+
+        The counterpart to _eval_temporal_rule: that one detects a burst, this one
+        detects the burst having stopped. A flap alarm cannot be cleared by any
+        transition-based rule, because the very thing it reports is a link that keeps
+        transitioning — LinkUp fires on every bounce. The only honest "all clear" is
+        a stretch of silence.
+
+        Reads _last_event rather than the temporal deque: that deque is pruned in
+        place by whichever temporal rule runs first, so a quiet window longer than
+        the temporal one would read a truncated history and clear early.
+        """
+        cond = rule.condition
+        last = self._last_event.get(fact.device_id, {}).get(cond.event_type)
+        # Never seen the event at all — vacuously quiet. Harmless in practice: a
+        # recovery is gated on its alarm being raised, and the alarm needed events.
+        quiet_for = float("inf") if last is None else (now - last)
+        if quiet_for < cond.window_sec:
+            return None
+
+        state = self._get_state(fact.device_id, rule.rule_name)
+
+        if rule.is_recovery:
+            target = self._rule_states.get(fact.device_id, {}).get(rule.recovery_of)
+            if target is None or not target.in_alert:
+                return None
+            target.in_alert = False
+        elif state.in_alert:
+            return None          # edge-triggered: one trap per quiet period
+
+        if not self._can_fire(state, rule, now):
+            return None
+        act = self._do_fire(rule, fact, state, now, {
+            "event_type": cond.event_type,
+            "quiet_sec":  round(quiet_for, 1) if last is not None else None,
+            "window_sec": cond.window_sec,
+        })
+        # _do_fire marks in_alert; a recovery is not itself an alarm.
+        if rule.is_recovery:
+            state.in_alert = False
+        return act
 
     # ── Rack failure (cross-device correlation) ───────────────────────────────
 
@@ -779,26 +885,53 @@ class RuleEngine:
 
         impaired_count = len(self._rack_impaired.get(rack_id, set()))
         threshold = max(2, int(rule.condition.threshold))
+        rack_key = f"rack:{rack_id}"
 
-        if impaired_count >= threshold:
-            state = self._get_state(f"rack:{rack_id}", rule.rule_name)
-            if self._can_fire(state, rule, now):
-                # Use a synthetic TrapAction; device_id is the triggering device
-                action = TrapAction(
-                    rule=rule,
-                    device_id=fact.device_id,
-                    extra={
-                        "rack_id":      rack_id,
-                        "down_count":   impaired_count,
-                        "down_devices": list(self._rack_impaired[rack_id]),
-                    },
-                )
-                state.fired_count += 1
-                state.in_alert = True
-                state.last_fire_ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now))
-                return action
+        # A rack rule is EDGE-triggered, not level-triggered. It is evaluated once
+        # per device per tick, but the condition it tests belongs to the RACK — so a
+        # level-triggered version emitted one trap per device per tick for as long as
+        # the rack stayed down (four servers on a 5 s tick = ~48 traps a minute for a
+        # single failure, burying the event it was meant to highlight). One alarm per
+        # episode and one clear is also what a real correlation engine emits.
+        if rule.is_recovery:
+            target = self._rule_states.get(rack_key, {}).get(rule.recovery_of)
+            if target is None or not target.in_alert:
+                return None
+            # For a RECOVERY rack rule the threshold reads the other way round: clear
+            # once FEWER than this many devices are still impaired. Keeping it in the
+            # condition (rather than deriving it from the alarm) leaves the dead band
+            # visible and tunable through the same JSON as every other threshold.
+            if impaired_count >= threshold:
+                return None
+            target.in_alert = False
+        else:
+            if impaired_count < threshold:
+                return None
+            state = self._get_state(rack_key, rule.rule_name)
+            if state.in_alert:
+                return None          # already reported for this episode
 
-        return None
+        state = self._get_state(rack_key, rule.rule_name)
+        if not self._can_fire(state, rule, now):
+            return None
+
+        action = TrapAction(
+            rule=rule,
+            device_id=fact.device_id,      # the device whose fact tripped the check
+            extra={
+                "rack_id":      rack_id,
+                "down_count":   impaired_count,
+                "down_devices": sorted(self._rack_impaired.get(rack_id, set())),
+            },
+        )
+        state.fired_count += 1
+        state.in_alert = not rule.is_recovery
+        state.last_fire_ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now))
+        # Without this the cooldown guard in _can_fire (which requires a non-zero
+        # last_fire_epoch) could never engage, so a configured cooldown_sec on a rack
+        # rule was silently ignored.
+        state.last_fire_epoch = now
+        return action
 
     # ── History updates ───────────────────────────────────────────────────────
 
