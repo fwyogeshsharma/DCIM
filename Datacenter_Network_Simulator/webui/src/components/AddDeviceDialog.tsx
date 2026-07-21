@@ -284,8 +284,10 @@ type LinkPort  = { value: number; label: string; used: boolean; peer: string | n
 // than left to be spotted in a suffix.
 type LinkCand  = { id: string; name: string; detail: string; same_rack?: boolean
                    ports: LinkPort[] }
-// `optional` slots may be left unset (the CDU coolant loop: a DLC server runs on
-// room air until it is plumbed, and hybrid air/liquid racks are real). A slot whose
+// `optional` slots may be left unset. Nothing declares itself optional today — the
+// coolant loop did until it was made required, because a cold-plated CPU has no air
+// heatsink and so cannot run unplumbed — but the mechanism stays for a slot that is
+// genuinely a choice. A slot whose
 // candidates carry no ports is a PIPE — a cooling link has no ifIndex, so there is
 // no port picker and the pick is complete with the far-end device alone.
 type LinkSlot  = { key: string; label: string; port_label: string
@@ -438,6 +440,18 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // a cabinet never silently disappears without saying why.
   const withSpace = (r: RackOcc) =>
     r.free_units.length > 0 && (!liquidOnly || r.liquid_ready !== false)
+
+  // An empty cascade has three different causes for a DLC SKU, each with a different
+  // fix, so they must not share one message:
+  //   no liquid-ready rack at all   → add a CDU, or pick an air-cooled model
+  //   liquid-ready racks, none free → free a U in one of them; provisioning a NEW
+  //                                   rack does not help, it would have no CDU
+  //   neither                       → ordinary out-of-space, Provision is the answer
+  // The middle case is easy to hit: a CDU rack can hold seven free U's and still
+  // have nowhere to put a 2U server if they are all isolated singles.
+  const anyLiquidReady = useMemo(
+    () => racks.some(r => r.liquid_ready !== false), [racks])
+  const liquidRacksFull = liquidOnly && anyLiquidReady
   const roomsWithSpace = useMemo(() =>
     uniq(racks.filter(withSpace).map(r => r.room)), [racks])
   const floorsWithSpace = useMemo(() =>
@@ -508,7 +522,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
     [cands])
   // A slot counts only with BOTH halves chosen: a device with no port names no
   // actual termination. Two exceptions:
-  //   optional slots — the coolant loop; leaving it unset is a valid air-cooled build
+  //   optional slots — may be left unset entirely (none are, currently)
   //   portless slots — a pipe has no ifIndex, so the far-end device IS the whole pick
   const missingLinks = useMemo(
     () => linkSlots.filter(s => {
@@ -744,12 +758,17 @@ export default function AddDeviceDialog({ onClose }: Props) {
                     ? `No liquid-ready racks in ${form.datacenter} — ${form.model_name} is a
                        direct-to-chip SKU and needs a rack with a CDU. Add a CDU, or choose an
                        air-cooled model.`
+                    : liquidRacksFull
+                    ? `${form.datacenter}'s liquid-ready racks have no room for a ${uHeight}U
+                       server. Free ${uHeight === 1 ? 'a U' : `${uHeight} contiguous U`} in a rack
+                       with a CDU${uHeight > 1 ? ', or pick a 1U DLC model' : ''} — a newly
+                       provisioned rack would have no CDU to plumb into.`
                     : `No free rack space in ${form.datacenter} — provision a rack/hall (or free a U) first.`}
                 </div>
                 {/* Provisioning adds racks and halls, which does not put a CDU in
                     one — offering it here would send the operator down a path that
                     cannot solve their problem. */}
-                {!noLiquidRacks && (
+                {!noLiquidRacks && !liquidRacksFull && (
                   <button type="button" onClick={goProvision} style={{
                     marginTop: 5, background: 'var(--accent)', border: '1px solid var(--accent)',
                     color: '#061018', borderRadius: 4, padding: '3px 9px', fontSize: 10,

@@ -675,8 +675,12 @@ def _cdu_slot(s, devs, rk: tuple, rack: tuple) -> dict:
         # heading off same_rack, so repeating it in the detail is noise.
         cands.append({"id": d.id, "name": d.name, "same_rack": c["same_rack"],
                       "detail": detail, "ports": []})
+    # NOT optional. A cold-plated CPU has no air heatsink, so a DLC server with no
+    # loop has no cooling path — "leave it unset and run on room air" is not a build
+    # that exists. Hybrid racks are still supported: that is an AIR SKU sharing the
+    # cabinet, not a DLC SKU left unplumbed.
     return {"key": "cool0", "label": "CDU loop", "port_label": "",
-            "near_end": "Cold plate (UQD)", "optional": True, "candidates": cands}
+            "near_end": "Cold plate (UQD)", "optional": False, "candidates": cands}
 
 
 def _pdu_slots(s, devs, rk: tuple, rack: tuple, probe) -> list:
@@ -804,8 +808,9 @@ def link_candidates(device_type: str, datacenter: str, room: str, floor: str = "
         if slot["candidates"]:
             groups.append({"key": "cooling", "layer": "cooling",
                            "label": "Coolant loop (DLC)",
-                           "help": "Cold plate → rack manifold → CDU. Optional: leave "
-                                   "unset to run this server on room air",
+                           "help": "Cold plate → rack manifold → CDU. Required: the "
+                                   "cold plates replace the heatsinks, so this server "
+                                   "cannot run unplumbed",
                            "slots": [slot]})
     return {"device_type": dt, "supported": True, "groups": groups}
 
@@ -1218,6 +1223,21 @@ def add_device(req: AddDeviceRequest):
                                   and req.rack_row > 0 and req.rack_num > 0):
         raise HTTPException(status_code=400,
                             detail="A Rack Unit needs Datacenter, Room, Row and Rack set")
+    # A direct-to-chip server MUST be plumbed. Its cold plates sit where an air-cooled
+    # machine has heatsinks, so with no coolant loop it has no cooling path at all —
+    # an unplumbed DLC box is not an air-cooled build, it is a server that cannot run.
+    # Enforced here rather than only in the dialog: this endpoint is callable directly,
+    # and the topology already carried four such servers before they were cleaned up.
+    from core.device_models import is_liquid_cooled
+    if device_type == DeviceType.SERVER and is_liquid_cooled(req.model_name or ""):
+        if not any((getattr(ln, "layer", "") or "").lower() == "cooling"
+                   for ln in (req.links or [])):
+            raise HTTPException(
+                status_code=422,
+                detail=(f"{req.model_name} is a direct-to-chip SKU and needs a coolant "
+                        f"loop — add a cooling link to a CDU in its rack, or choose an "
+                        f"air-cooled model."))
+
     if req.rack_unit > 0:
         # Overlap, not equality: a 2U server occupies U..U+1, so racking one at U2 when
         # U1 holds a 2U box puts it inside that chassis. An equality check let that
