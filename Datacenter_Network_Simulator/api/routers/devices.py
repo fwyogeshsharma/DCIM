@@ -1284,8 +1284,8 @@ def add_device(req: AddDeviceRequest):
     # and cooks.
     if req.rack_row > 0 and req.rack_num > 0:
         from core.device_manager import nameplate_power_w
-        from core.rack_capacity import (RACK_AIR_BUDGET_W_DEFAULT, device_air_load_w,
-                                        rack_has_air_headroom)
+        from core.rack_capacity import (DTC_AIR_FRACTION, RACK_AIR_BUDGET_W_DEFAULT,
+                                        device_air_load_w, rack_has_air_headroom)
         _rk = (req.datacenter or "", str(req.floor or ""), req.room or "")
         _rack = (req.rack_row, req.rack_num)
         _add_air = device_air_load_w(device_type,
@@ -1299,8 +1299,7 @@ def add_device(req: AddDeviceRequest):
                         f"{_cur_air/1000:.1f} kW of {RACK_AIR_BUDGET_W_DEFAULT/1000:.0f} kW "
                         f"used, this device adds {_add_air/1000:.1f} kW. Pick another "
                         f"rack, or a direct-to-chip SKU — a liquid server puts only "
-                        f"~{int(100*_add_air/max(1, nameplate_power_w(device_type, req.model_name)))}% "
-                        f"of its heat in the air."))
+                        f"~{int(100 * DTC_AIR_FRACTION)}% of its heat in the air."))
 
     if req.rack_unit > 0:
         # Overlap, not equality: a 2U server occupies U..U+1, so racking one at U2 when
