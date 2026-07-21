@@ -278,7 +278,12 @@ interface Form {
 // the whole port map (so the operator sees what the switch carries and why the
 // obvious port is unavailable) but only lets a free one be picked.
 type LinkPort  = { value: number; label: string; used: boolean; peer: string | null }
-type LinkCand  = { id: string; name: string; detail: string; ports: LinkPort[] }
+// `same_rack` drives the optgroup split below: the far end sitting in the very rack
+// being filled is the one an operator almost always wants (a cord or a coolant hose
+// that never leaves the cabinet), so it is called out under its own heading rather
+// than left to be spotted in a suffix.
+type LinkCand  = { id: string; name: string; detail: string; same_rack?: boolean
+                   ports: LinkPort[] }
 // `optional` slots may be left unset (the CDU coolant loop: a DLC server runs on
 // room air until it is plumbed, and hybrid air/liquid racks are real). A slot whose
 // candidates carry no ports is a PIPE — a cooling link has no ifIndex, so there is
@@ -811,9 +816,24 @@ export default function AddDeviceDialog({ onClose }: Props) {
                             <option value="">
                               {s.optional ? '— none (air-cooled) —' : '— select —'}
                             </option>
-                            {s.candidates.map(c => (
-                              <option key={c.id} value={c.id}>{c.name} · {c.detail}</option>
-                            ))}
+                            {(() => {
+                              // Split under headings only when there is a real choice
+                              // to make. A list that is entirely one or the other gets
+                              // no heading — a lone "This rack" group above a single
+                              // entry is noise, not information.
+                              const here = s.candidates.filter(c => c.same_rack)
+                              const away = s.candidates.filter(c => !c.same_rack)
+                              const opt = (c: LinkCand) => (
+                                <option key={c.id} value={c.id}>{c.name} · {c.detail}</option>
+                              )
+                              if (!here.length || !away.length) return s.candidates.map(opt)
+                              return (
+                                <>
+                                  <optgroup label="This rack">{here.map(opt)}</optgroup>
+                                  <optgroup label="Elsewhere in this hall">{away.map(opt)}</optgroup>
+                                </>
+                              )
+                            })()}
                           </select>
                         </FormRow>
                         {s.candidates.length === 0 && (

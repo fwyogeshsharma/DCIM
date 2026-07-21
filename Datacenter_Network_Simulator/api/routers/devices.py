@@ -525,9 +525,10 @@ def _leaf_slot(s, devs, rk: tuple, rack: tuple, near_label: str) -> dict:
         same_rack = _rack_of(d) == rack
         cands.append({
             "id": d.id, "name": d.name, "same_rack": same_rack,
+            # Suffix dropped for the same reason as the CDU slot — the dialog's
+            # "This rack" heading says it once, above the entry.
             "detail": f"R{d.rack_row or 0}-{str(d.rack_num or 0).zfill(2)}"
-                      f" · {free}/{len(slots)} downlinks free"
-                      + (" · this rack" if same_rack else ""),
+                      f" · {free}/{len(slots)} downlinks free",
             "ports": ports,
         })
     cands.sort(key=lambda c: (not c["same_rack"], c["name"]))
@@ -604,9 +605,10 @@ def _cdu_slot(s, devs, rk: tuple, rack: tuple) -> dict:
         detail = f"{len(members)} on loop"
         if cap_kw:
             detail += f" · {cap_kw:.0f} kW"
+        # No " · this rack" suffix: the dialog groups candidates under a "This rack"
+        # heading off same_rack, so repeating it in the detail is noise.
         cands.append({"id": d.id, "name": d.name, "same_rack": same_rack,
-                      "detail": detail + (" · this rack" if same_rack else ""),
-                      "ports": []})
+                      "detail": detail, "ports": []})
     cands.sort(key=lambda c: (not c["same_rack"], c["name"]))
     return {"key": "cool0", "label": "CDU loop", "port_label": "",
             "near_end": "Cold plate (UQD)", "optional": True, "candidates": cands}
