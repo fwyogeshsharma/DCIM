@@ -332,7 +332,11 @@ const spinnerStyle: React.CSSProperties = { width: 72 }
 // `units` is the rack's whole U1–U40 face, each slot flagged with its occupant —
 // shown in full (a rack face has no gaps) with the taken U's disabled. `free_units`
 // remains the pickable set and drives the room/floor/row/rack cascade.
-type RackUnit = { unit: number; used: boolean; occupant: string | null }
+// `reserved` marks U41/U42 — the ToR pair positions. They are part of the 42U face
+// and are shown, but no server may start there, so they render disabled with the
+// reason rather than being cropped out of the elevation.
+type RackUnit = { unit: number; used: boolean; occupant: string | null
+                  reserved?: boolean }
 // liquid_ready is always true for an air-cooled SKU — every rack takes one. For a
 // direct-to-chip SKU it means the rack has a CDU with a free UQD pair on its
 // manifold, and the cdu_* fields name that unit so the picker can show which cabinet

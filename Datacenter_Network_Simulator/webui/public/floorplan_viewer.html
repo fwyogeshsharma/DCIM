@@ -1044,8 +1044,28 @@ function selectRack(r){ S.sel=r.rack_id; S.selDev=null; render(); const d=$('#de
     `cold <b>${r.cold_aisle||'-'}</b> / hot <b>${r.hot_aisle||'-'}</b><br>`+
     `${ds.length} devices &middot; IT load <b>${kw} kW</b> &middot; ${occupiedU(r.rack_id)}/42 U`+
     `<br><span style="color:var(--muted)">click a unit for device detail</span></div>`;
-  for(const dv of ds){ const u=(dv.rack_unit!=null)?('U'+dv.rack_unit):'';
-    html+=`<div class="ru" style="cursor:pointer" onclick="showDev('${r.rack_id}','${dv.id}')"><span class="u">${u}</span>`+
+  // FULL 42U face, top down — an elevation, not a device list. Listing only the
+  // occupied slots made a rack appear to end wherever its top device sat: R1-03's
+  // highest OOB switch is at U40, so the panel stopped there and the cabinet read as
+  // 40U. Empty U are drawn, so U41/U42 (the ToR pair positions) are visibly present
+  // whether or not anything is in them.
+  const at={};                                  // U -> device whose BODY covers it
+  for(const dv of ds){ const b=dv.rack_unit||0; if(b<1) continue;
+    for(let k=0;k<devU(dv);k++) at[b+k]=dv; }
+  for(let u=RACK_U; u>=1; u--){
+    const dv=at[u];
+    if(!dv){ html+=`<div class="ru"><span class="u">U${u}</span><span class="mt">&mdash;</span></div>`; continue; }
+    if((dv.rack_unit||0)!==u) continue;         // continuation of the body below
+    const h=devU(dv), span=h>1?`U${u}&ndash;U${u+h-1}`:`U${u}`;
+    html+=`<div class="ru" style="cursor:pointer" onclick="showDev('${r.rack_id}','${dv.id}')"><span class="u">${span}</span>`+
+      `<span class="sw" style="background:${tcolor(dv.device_type)}"></span>`+
+      `<span><span class="nm">${dv.name||dv.id}</span> <span class="mt">${EMO[dv.device_type]||dv.device_type}`+
+      `${dv.model?' &middot; '+dv.model:''}</span></span>`+
+      `<span class="pw">${dv.power_draw_w?dv.power_draw_w+' W':''}</span></div>`; }
+  // 0U gear (side-rail PDUs, aisle sensors) occupies no slot in the face, so it is
+  // listed after it rather than being silently dropped.
+  for(const dv of ds){ if((dv.rack_unit||0)>=1) continue;
+    html+=`<div class="ru" style="cursor:pointer" onclick="showDev('${r.rack_id}','${dv.id}')"><span class="u">0U</span>`+
       `<span class="sw" style="background:${tcolor(dv.device_type)}"></span>`+
       `<span><span class="nm">${dv.name||dv.id}</span> <span class="mt">${EMO[dv.device_type]||dv.device_type}`+
       `${dv.model?' &middot; '+dv.model:''}</span></span>`+

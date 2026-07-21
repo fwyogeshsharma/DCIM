@@ -401,8 +401,15 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
 
     out = []
     for (rm, fl, rr, rn), occ in sorted(racks.items()):
-        units = [{"unit": u, "used": u in occ, "occupant": occ.get(u)}
-                 for u in range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT + 1)]
+        # The elevation is the WHOLE cabinet, U1-U42 — a rack is 42U, and drawing it
+        # 40U tall hid the ToR at U42 and the reserved MLAG position at U41, the two
+        # slots an operator most needs to see are spoken for. Occupancy comes from the
+        # full-face map; `free_units` below still limits PLACEMENT to the server area,
+        # so U41/42 render as present-but-unavailable rather than vanishing.
+        _face = faces.get((rm, fl, rr, rn), {})
+        units = [{"unit": u, "used": u in _face, "occupant": _face.get(u),
+                  "reserved": u > LAST_SERVER_UNIT}
+                 for u in range(FIRST_SERVER_UNIT, TOR_A_UNIT + 1)]
         # Pickable = the new device's full height fits here, entirely inside U1–U40.
         free = [u for u in range(FIRST_SERVER_UNIT, LAST_SERVER_UNIT - want_h + 2)
                 if all(cu not in occ for cu in range(u, u + want_h))]
