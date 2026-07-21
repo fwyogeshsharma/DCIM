@@ -96,6 +96,41 @@ class TrapEvent:
                 f"{self.device.name} {self.trap_type.value}>")
 
 
+class _RawDefn:
+    """Stand-in TrapDefinition for an OID with no TrapType, built from the rule."""
+    def __init__(self, oid: str, display_name: str, severity: str):
+        self.oid = oid
+        self.display_name = display_name
+        self.severity = severity
+
+
+class RawTrapEvent:
+    """History record for a trap whose OID has no TrapType mapping.
+
+    Duck-types TrapEvent for AppState.record_trap. Without it those traps went out
+    on the wire but never reached the UI's trap log, because only the typed path
+    emitted trap_sent — so an operator saw an alarm raised and never saw it clear.
+    That silence covered 27 of the 29 unmapped rules, nearly all of them recovery
+    rules on enterprise OIDs.
+
+    trap_type stays None (there genuinely isn't one); the panel falls back to
+    display_name, which carries the rule name."""
+    def __init__(self, device: Device, oid: str, details: str = "",
+                 rule_name: str = "", severity: str = "informational"):
+        self.timestamp   = datetime.now()
+        self.device      = device
+        self.trap_type   = None
+        self.defn        = _RawDefn(oid, rule_name or oid, severity)
+        self.details     = details
+        self.rule_name   = rule_name
+        self.iface_index = None
+        self.source_ip   = _trap_source_ip(device, None)
+
+    def __repr__(self):
+        return (f"<RawTrapEvent {self.timestamp:%H:%M:%S} "
+                f"{self.device.name} {self.defn.display_name}>")
+
+
 # ── Engine ────────────────────────────────────────────────────────────────────
 
 class TrapEngine(QObject):
@@ -228,7 +263,8 @@ class TrapEngine(QObject):
             # Unknown OID — send raw trap with auto-generated varbinds
             asyncio.run_coroutine_threadsafe(
                 self._send_raw_trap_async(device, oid, action.extra,
-                                         action.rule.rule_name),
+                                          action.rule.rule_name,
+                                          action.rule.severity),
                 self._loop,
             )
             return
@@ -395,7 +431,8 @@ class TrapEngine(QObject):
                                           iface_index=kwargs.get("iface_index")))
 
     async def _send_raw_trap_async(self, device: Device, oid: str, extra: dict,
-                                   rule_name: str = ""):
+                                   rule_name: str = "",
+                                   severity: str = "informational"):
         """Send a trap for an OID that has no TrapType mapping."""
         try:
             from pysnmp.entity.rfc3413 import ntforg
@@ -424,6 +461,13 @@ class TrapEngine(QObject):
         except Exception as ex:
             self.trap_error.emit(f"Raw trap error ({device.name} / {oid}): {ex}")
             return
+
+        # Record it the same way the typed path does, so the trap log shows the
+        # clear as well as the alarm. Formatting the detail must not be able to
+        # cost the record: build it defensively.
+        detail_bits = ", ".join(f"{k}={v}" for k, v in (extra or {}).items()
+                                if v is not None and k != "down_devices")
+        self.trap_sent.emit(RawTrapEvent(device, oid, detail_bits, rule_name, severity))
 
     # ── Varbind builders ──────────────────────────────────────────────────────
 
