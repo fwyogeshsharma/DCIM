@@ -323,6 +323,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
     except ValueError:
         want_h = 1
     racks: dict = {}
+    roles: dict = {}          # rack key -> what the cabinet is FOR
     # Devices per rack, counting EVERYTHING in the cabinet — 0U side-rail PDUs and
     # gear at U41/42 included. Distinct from `used` below, which is server-U span
     # occupancy: a network rack holding two spines at U41/42 and two 0U PDUs uses
@@ -341,6 +342,18 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
         key = ((getattr(d, "room", "") or ""), str(getattr(d, "floor", "") or ""), rr, rn)
         occ = racks.setdefault(key, {})
         counts[key] = counts.get(key, 0) + 1
+        # A rack's ROLE comes from what is in it, and it decides what may be added.
+        # A power-panel position (RPP + EV2, both 0U) reports 40 free U and would
+        # otherwise look like the emptiest rack in the hall — you cannot rack a
+        # server on a panel. Compute wins over network wins over facility: a cabinet
+        # holding servers is a compute rack even though its PDUs are facility gear.
+        _dt = d.device_type.value
+        if _dt in _COMPUTE_RACK_TYPES:
+            roles[key] = "compute"
+        elif _dt in _NETWORK_RACK_TYPES and roles.get(key) != "compute":
+            roles[key] = "network"
+        elif roles.get(key) is None:
+            roles[key] = "facility"
         u = getattr(d, "rack_unit", 0) or 0
         if u <= 0:
             continue                        # 0U side-rail PDUs occupy no U
@@ -392,6 +405,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
         out.append({"room": rm, "floor": fl, "rack_row": rr, "rack_num": rn,
                     "used": len(occ), "total": total, "free_units": free,
                     "device_count": counts.get((rm, fl, rr, rn), 0),
+                    "role": roles.get((rm, fl, rr, rn), "facility"),
                     "units": units,
                     # liquid_ready is True for an air-cooled SKU: every rack takes it.
                     # For a DLC SKU it means "has a CDU with a free manifold pair",
@@ -451,6 +465,13 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
 _LINK_REQUIREMENTS = {
     "server": ("data", "mgmt", "power", "cooling"),
 }
+
+# What a rack is FOR, inferred from its occupants. Servers go in compute racks; a
+# spine/OOB (MDA) rack takes network gear but not compute; an RPP/CRAH/mechanical
+# position takes neither. PDUs and sensors are in every rack and decide nothing.
+_COMPUTE_RACK_TYPES = frozenset({"server"})
+_NETWORK_RACK_TYPES = frozenset({"switch", "oob_switch", "router", "firewall",
+                                 "load_balancer"})
 
 _OOB_ROLE = "OOB"     # IT access OOB. NOT OOBM (BMS plane) and NOT OOBC (cores).
 
