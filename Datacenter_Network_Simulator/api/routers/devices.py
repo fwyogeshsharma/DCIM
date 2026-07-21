@@ -35,6 +35,18 @@ def _invalidate_power(s: AppState) -> None:
             pass
 
 
+def _invalidate_cooling(s: AppState) -> None:
+    """Drop the cached CDU cold-plate loop map after a cooling-topology change, so a
+    hot-added DLC server is counted on its CDU's loop (and off the room air balance)
+    from the next tick instead of only after a restart."""
+    ss = getattr(s, "state_store", None)
+    if ss is not None:
+        try:
+            ss.invalidate_cooling_context()
+        except Exception:
+            pass
+
+
 _NO_IFACE_TYPES = {"ups", "pdu", "floor_pdu", "rpp", "sensor", "generator"}
 
 
@@ -362,7 +374,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
 # Adding a type here is what turns its LINKS section on, so keep the requirement
 # list honest to how that type is really cabled — not to what is convenient.
 _LINK_REQUIREMENTS = {
-    "server": ("data", "mgmt", "power"),
+    "server": ("data", "mgmt", "power", "cooling"),
 }
 
 _OOB_ROLE = "OOB"     # IT access OOB. NOT OOBM (BMS plane) and NOT OOBC (cores).
@@ -550,6 +562,56 @@ def _oob_slot(s, devs, rk: tuple, near_label: str) -> dict:
             "near_end": near_label, "candidates": cands}
 
 
+def _cdu_slot(s, devs, rk: tuple, rack: tuple) -> dict:
+    """The coolant-loop slot: CDUs a direct-to-chip server in this rack can join.
+
+    Only offered for a DLC SKU (see is_liquid_cooled) — an air-cooled server has no
+    cold plate and no UQD to land on the manifold, so there is nothing to connect.
+
+    The rack's OWN in-rack CDU comes first, then the rest of the hall's. Real DLC
+    plumbing runs server cold plate → rack manifold → CDU; the manifold is not
+    modelled as a device here (the seed topology cables server↔CDU directly), so
+    the loop membership edge is the manifold's stand-in. An out-of-rack CDU is
+    still real — row-level and facility CDUs feed several racks off one skid —
+    it just needs the hose run, hence the this-rack-first ordering.
+
+    No ports: a cooling link is a PIPE. It has no ifIndex, and add_link/validate_link
+    both refuse an iface on a non-Ethernet layer, so the slot carries an empty port
+    list and the dialog shows no port picker.
+
+    Capacity is reported as loop members + rated heat-removal kW, which is what
+    actually limits a loop — a CHx80 is 80 kW, so ~9 × 900 W DLC servers is a
+    reasonable populated loop and the operator can see how close it is."""
+    from core.device_manager import DeviceType, cooling_capacity_w
+    cands = []
+    for d in devs:
+        if d.device_type != DeviceType.CDU or _room_key(d) != rk:
+            continue
+        # Servers already on this CDU's loop, counted off the cooling edges — the
+        # same source of truth DeviceStateStore._cdu_loop_servers reads.
+        members = set()
+        for u, v, ed in s.topology.get_links():
+            if ed.get("layer") != "cooling":
+                continue
+            other = v if u == d.id else (u if v == d.id else None)
+            if other is None:
+                continue
+            od = s.device_manager.get_device(other)
+            if od is not None and od.device_type == DeviceType.SERVER:
+                members.add(od.id)
+        cap_kw = cooling_capacity_w(getattr(d, "model_name", "") or "") / 1000.0
+        same_rack = _rack_of(d) == rack
+        detail = f"{len(members)} on loop"
+        if cap_kw:
+            detail += f" · {cap_kw:.0f} kW"
+        cands.append({"id": d.id, "name": d.name, "same_rack": same_rack,
+                      "detail": detail + (" · this rack" if same_rack else ""),
+                      "ports": []})
+    cands.sort(key=lambda c: (not c["same_rack"], c["name"]))
+    return {"key": "cool0", "label": "CDU loop", "port_label": "",
+            "near_end": "Cold plate (UQD)", "optional": True, "candidates": cands}
+
+
 def _pdu_slots(s, devs, rk: tuple, rack: tuple, probe) -> list:
     """One slot per PSU — a real server is dual-corded, PSU1 to the A-side rack PDU
     and PSU2 to the B side. That is the whole point of the 2N feed: a single cord
@@ -620,6 +682,7 @@ def link_candidates(device_type: str, datacenter: str, room: str, floor: str = "
     s = _state()
     if s.device_manager is None or s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
+    from core.device_models import is_liquid_cooled
     dt = (device_type or "").lower()
     need = _LINK_REQUIREMENTS.get(dt)
     if not need:
@@ -663,6 +726,20 @@ def link_candidates(device_type: str, datacenter: str, room: str, floor: str = "
                            "help": "Dual-corded: one cord per PSU, to opposite sides "
                                    "of the rack's A/B pair",
                            "slots": slots})
+    # Cooling is offered only when BOTH ends exist: a SKU that ships with cold plates
+    # AND a CDU to plumb it into. Either alone is not a loop — a DLC server in an
+    # air-cooled hall has nothing to connect to, and an air-cooled SKU has no cold
+    # plate to connect with. The slot stays OPTIONAL: hybrid racks (air servers
+    # sharing a cabinet with DLC ones) are real, and the server is a valid device
+    # either way — it just runs on room air until it is plumbed.
+    if "cooling" in need and is_liquid_cooled(model_name):
+        slot = _cdu_slot(s, devs, rk, rack)
+        if slot["candidates"]:
+            groups.append({"key": "cooling", "layer": "cooling",
+                           "label": "Coolant loop (DLC)",
+                           "help": "Cold plate → rack manifold → CDU. Optional: leave "
+                                   "unset to run this server on room air",
+                           "slots": [slot]})
     return {"device_type": dt, "supported": True, "groups": groups}
 
 
@@ -750,13 +827,19 @@ def overridable_metrics(device_type: str) -> list[dict]:
     """The metrics the Metric Tick window may force on a device, with how to
     render/validate each (numeric range or state options)."""
     if device_type in _PROD_TYPES:
-        return [
+        out = [
             _num("cpu_usage",  "CPU Usage",  "%",  0, 100),
             _num("memory_pct", "Memory",     "%",  0, 100),
             _num("disk_pct",   "Disk",       "%",  0, 100),
             _num("cpu_temp",   "CPU Temp",   "°C", 0, 120),
             _num("inlet_temp", "Inlet Temp", "°C", 0, 60),
         ]
+        # Servers only: fan_rpm is modelled for a server chassis and nothing else.
+        # Forcing it low is how a fan-bank fault is staged — the under-speed and
+        # failure rules read the resulting speed against the chassis's own floor.
+        if device_type == "server":
+            out.append(_num("fan_rpm", "Fan Speed", "RPM", 0, 25000))
+        return out
     if device_type == "sensor":
         return [
             _num("inlet_temp",  "Ambient Temp",  "°C",   0, 60),
@@ -770,7 +853,12 @@ def overridable_metrics(device_type: str) -> list[dict]:
         return [
             _state_m("ups_status",        "UPS Status",     ["normal", "on_battery", "low_battery"]),
             _state_m("ups_bypass_status", "Bypass",         ["off", "on"]),
-            _state_m("ups_fan_status",    "Fan",            ["ok", "fail"]),
+            # "failure", NOT "fail": the trap rule watches ok->failure, the state
+            # store's own option list and the snmprec encoder both compare against
+            # "failure". Offering "fail" here set a value nothing recognised, so the
+            # injection silently did nothing — no trap, and the SNMP fan OID kept
+            # reading OK while the UI showed the fault as applied.
+            _state_m("ups_fan_status",    "Fan",            ["ok", "failure"]),
             _num("ups_output_load",    "Output Load",    "%", 0, 120),
             _num("ups_input_voltage",  "Input Voltage",  "V", 180, 260),
             _num("ups_battery_health", "Battery Health", "%", 0, 100),
@@ -975,6 +1063,20 @@ def _wire_new_device(s, device, links: list, made: list) -> list:
         ok = s.topology.add_link(device.id, dst.id, src_iface=src_iface,
                                  dst_iface=ln.dst_iface, layer=layer,
                                  outlet=ln.outlet)
+        # A coolant loop is TWO pipes, not one: chilled supply from the CDU to the
+        # cold plate and warm return back to it. add_link keys cooling edges by
+        # direction precisely so both survive, and the curated topology carries the
+        # pair for every one of its loop servers. Making only the return here would
+        # leave a server that is plumbed but never fed.
+        # One rollback entry covers both pipes: the graph is an undirected
+        # MultiGraph, so remove_link(device, dst, "cooling") selects BY LAYER and
+        # takes both directional keys with it. Recorded BEFORE the supply half goes
+        # in, so a failure on the second pipe still rolls the first one back.
+        if ok and layer == "cooling":
+            made.append((dst.id, layer))
+            ok = s.topology.add_link(dst.id, device.id, layer="cooling")
+            if ok:
+                continue                # already recorded — don't append it twice
         if not ok:
             raise HTTPException(
                 status_code=409,
@@ -1013,6 +1115,7 @@ def _rollback_new_device(s, device, made: list) -> None:
         except Exception:
             pass
     _invalidate_power(s)
+    _invalidate_cooling(s)
 
 
 @router.post("", response_model=DeviceInfo)
@@ -1151,6 +1254,7 @@ def add_device(req: AddDeviceRequest):
             _rollback_new_device(s, device, made)
             raise HTTPException(status_code=500, detail=f"Cabling {device.name}: {_e}")
         _invalidate_power(s)
+        _invalidate_cooling(s)
         # Hot-commission onto the running protocol sims (SNMP/gNMI/Redfish/BACnet)
         # via the same path fleet churn uses, so a hand-added device answers
         # immediately — no regenerate + restart. Best-effort: a sim that isn't
@@ -1229,6 +1333,7 @@ def remove_device(device_id: str):
         if s.ip_manager:
             s.ip_manager.release(ip)
         _invalidate_power(s)
+        _invalidate_cooling(s)
         s.notify_ui("sync_devices")
         return OkResponse(message=f"Device '{device.name}' removed")
     except Exception as e:

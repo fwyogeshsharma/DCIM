@@ -44,6 +44,7 @@ const MODEL_PORTS: Record<string, string[]> = {
   'HPE ProLiant DL360 Gen10': ['2 x 10GbE','Total: 2 ports'],
   'HPE ProLiant DL380 Gen10': ['4 x 10GbE','Total: 4 ports'],
   'HPE ProLiant DL380 Gen11': ['4 x 25GbE','Total: 4 ports'],
+  'HPE ProLiant DL380a Gen11 DLC': ['2 x 100GbE','2 x 25GbE','Total: 4 ports'],
   'HPE ProLiant DL560 Gen10': ['4 x 25GbE','Total: 4 ports'],
   'Extreme SLX 9640': ['24 x 10GbE','4 x 100GbE','Total: 28 ports'],
   'Extreme X460-G2-48t': ['48 x 1GbE','4 x 10GbE','Total: 52 ports'],
@@ -63,12 +64,14 @@ const MODEL_PORTS: Record<string, string[]> = {
   'Dell PowerEdge R750': ['2 x 25GbE','Total: 2 ports'],
   'Dell PowerEdge R940': ['4 x 25GbE','Total: 4 ports'],
   'Dell PowerEdge R7525': ['4 x 25GbE','Total: 4 ports'],
+  'Dell PowerEdge R760 DLC': ['4 x 25GbE','Total: 4 ports'],
   'Lenovo ThinkSystem SR630 V2': ['2 x 10GbE','Total: 2 ports'],
   'Lenovo ThinkSystem SR650 V2': ['2 x 25GbE','Total: 2 ports'],
   'Lenovo ThinkSystem SR860 V2': ['4 x 25GbE','Total: 4 ports'],
   'Supermicro SYS-120U-TNR': ['2 x 10GbE','Total: 2 ports'],
   'Supermicro SYS-220U-TNR': ['4 x 25GbE','Total: 4 ports'],
   'Supermicro AS-4124GS-TNR': ['4 x 25GbE','Total: 4 ports'],
+  'Supermicro SYS-121H-TNR LCC': ['2 x 25GbE','Total: 2 ports'],
   'PA-820': ['4 x 1GbE','4 x 10GbE','Total: 8 ports'],
   'PA-3220': ['4 x 1GbE','8 x 10GbE','Total: 12 ports'],
   'PA-5220': ['8 x 10GbE','4 x 40GbE','Total: 12 ports'],
@@ -276,14 +279,24 @@ interface Form {
 // obvious port is unavailable) but only lets a free one be picked.
 type LinkPort  = { value: number; label: string; used: boolean; peer: string | null }
 type LinkCand  = { id: string; name: string; detail: string; ports: LinkPort[] }
+// `optional` slots may be left unset (the CDU coolant loop: a DLC server runs on
+// room air until it is plumbed, and hybrid air/liquid racks are real). A slot whose
+// candidates carry no ports is a PIPE — a cooling link has no ifIndex, so there is
+// no port picker and the pick is complete with the far-end device alone.
 type LinkSlot  = { key: string; label: string; port_label: string
-                   near_end: string; candidates: LinkCand[] }
+                   near_end: string; optional?: boolean; candidates: LinkCand[] }
 type LinkGroup = { key: string; layer: string; label: string; help: string
                    slots: LinkSlot[] }
 type LinkCands = { device_type: string; supported: boolean; groups: LinkGroup[] }
 
 // slot key -> chosen far end. Both halves must be set for the slot to count.
 type LinkPick  = { dst_id: string; port: number | null }
+
+// A slot whose candidates offer no ports at all terminates on nothing pickable — a
+// cooling pipe. Judged from the candidates rather than the layer so the dialog stays
+// generic: any future portless layer behaves the same without another special case.
+const isPortless = (s: LinkSlot) =>
+  s.candidates.length > 0 && s.candidates.every(c => c.ports.length === 0)
 
 interface Props { onClose: () => void }
 
@@ -457,11 +470,15 @@ export default function AddDeviceDialog({ onClose }: Props) {
     () => (cands?.supported ? cands.groups.flatMap(g => g.slots) : []),
     [cands])
   // A slot counts only with BOTH halves chosen: a device with no port names no
-  // actual termination.
+  // actual termination. Two exceptions:
+  //   optional slots — the coolant loop; leaving it unset is a valid air-cooled build
+  //   portless slots — a pipe has no ifIndex, so the far-end device IS the whole pick
   const missingLinks = useMemo(
     () => linkSlots.filter(s => {
       const p = picks[s.key]
-      return !p || !p.dst_id || p.port === null
+      if (s.optional) return false
+      if (!p || !p.dst_id) return true
+      return !isPortless(s) && p.port === null
     }),
     [linkSlots, picks])
   // A pick can point at a port that reads used — the dropdown lists taken ports (the
@@ -494,6 +511,9 @@ export default function AddDeviceDialog({ onClose }: Props) {
 
   const setPickDev = (slot: LinkSlot, dst_id: string) =>
     setPicks(p => {
+      // Clearing an optional slot drops the pick entirely — an empty dst_id would
+      // otherwise ride along to submit and POST a link to nowhere.
+      if (!dst_id) { const { [slot.key]: _drop, ...rest } = p; return rest }
       const cand = slot.candidates.find(c => c.id === dst_id)
       // Auto-fill the first FREE port/outlet — the same "next free" the fleet takes,
       // and what an operator patching a fresh rack does anyway. Still overridable.
@@ -548,10 +568,15 @@ export default function AddDeviceDialog({ onClose }: Props) {
     // Layer comes from the slot's group, and outlet vs port from that layer: a power
     // cord lands on an outlet, an Ethernet link on a port. Sent with the device so
     // the whole thing lands or none of it does.
+    // A cooling link carries NEITHER: it is a pipe, and the API rejects an iface or
+    // an outlet on that layer outright. Sent as a bare far end, which is also why an
+    // unset optional slot simply contributes nothing.
     const links = (cands?.supported ? cands.groups : []).flatMap(g =>
       g.slots.map(s => {
         const p = picks[s.key]
-        if (!p || !p.dst_id || p.port === null) return null
+        if (!p || !p.dst_id) return null
+        if (g.layer === 'cooling') return { layer: g.layer, dst_id: p.dst_id }
+        if (p.port === null) return null
         return g.layer === 'power'
           ? { layer: g.layer, dst_id: p.dst_id, outlet: p.port }
           : { layer: g.layer, dst_id: p.dst_id, dst_iface: p.port }
@@ -783,7 +808,9 @@ export default function AddDeviceDialog({ onClose }: Props) {
                         <FormRow label={s.label}>
                           <select style={{ flex: 1 }} value={pick?.dst_id || ''}
                             onChange={e => setPickDev(s, e.target.value)}>
-                            <option value="">— select —</option>
+                            <option value="">
+                              {s.optional ? '— none (air-cooled) —' : '— select —'}
+                            </option>
                             {s.candidates.map(c => (
                               <option key={c.id} value={c.id}>{c.name} · {c.detail}</option>
                             ))}
@@ -795,7 +822,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
                             none available with a free port/outlet
                           </div>
                         )}
-                        {cand && (
+                        {cand && !isPortless(s) && (
                           <FormRow label={s.port_label}>
                             {/* Whole port map, taken ones disabled with their peer —
                                 shows WHY a port is unavailable instead of hiding it. */}
@@ -814,7 +841,9 @@ export default function AddDeviceDialog({ onClose }: Props) {
                                         fontStyle: 'italic', paddingLeft: 104,
                                         marginTop: -2, marginBottom: 4 }}>
                             {s.near_end} → {cand.name}
-                            {pick?.port !== null && cand.ports.find(p => p.value === pick?.port)
+                            {isPortless(s) ? ' (supply + return)' : ''}
+                            {!isPortless(s) && pick?.port !== null
+                             && cand.ports.find(p => p.value === pick?.port)
                               ? ` ${cand.ports.find(p => p.value === pick?.port)!.label}` : ''}
                           </div>
                         )}

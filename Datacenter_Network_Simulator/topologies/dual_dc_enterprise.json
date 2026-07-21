@@ -17768,7 +17768,7 @@
       "device": {
         "name": "SRV01-DC1-HA-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.24",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -17780,7 +17780,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "fa03fbfd",
         "interfaces": [
@@ -17850,7 +17850,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -17867,7 +17867,7 @@
         ],
         "mgmt_ip": "192.168.0.29",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -17923,7 +17923,7 @@
       "device": {
         "name": "SRV02-DC1-HA-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.25",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -17939,7 +17939,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "ea0b996d",
         "interfaces": [
@@ -17977,7 +17977,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -17994,7 +17994,7 @@
         ],
         "mgmt_ip": "192.168.0.30",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18066,7 +18066,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "f6b0d184",
         "interfaces": [
@@ -18121,7 +18121,7 @@
         ],
         "mgmt_ip": "192.168.0.31",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18189,7 +18189,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R640",
+        "model_name": "Dell PowerEdge R660 DLC",
         "metrics_enabled": true,
         "id": "8ddd288f",
         "interfaces": [
@@ -18276,7 +18276,7 @@
         ],
         "mgmt_ip": "192.168.0.32",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 700,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18332,7 +18332,7 @@
       "device": {
         "name": "SRV05-DC1-HA-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.28",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -18344,7 +18344,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "8dfe44e4",
         "interfaces": [
@@ -18414,7 +18414,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -18431,7 +18431,7 @@
         ],
         "mgmt_ip": "192.168.0.33",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18487,7 +18487,7 @@
       "device": {
         "name": "SRV06-DC1-HA-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.29",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -18503,7 +18503,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "75e439a7",
         "interfaces": [
@@ -18541,7 +18541,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -18558,7 +18558,7 @@
         ],
         "mgmt_ip": "192.168.0.34",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18630,7 +18630,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "66339b29",
         "interfaces": [
@@ -18685,7 +18685,7 @@
         ],
         "mgmt_ip": "192.168.0.35",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18753,7 +18753,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "be0b84f7",
         "interfaces": [
@@ -18840,7 +18840,7 @@
         ],
         "mgmt_ip": "192.168.0.36",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18896,7 +18896,7 @@
       "device": {
         "name": "SRV09-DC1-HA-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.32",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -18912,7 +18912,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "e6393762",
         "interfaces": [
@@ -18950,7 +18950,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -18967,7 +18967,7 @@
         ],
         "mgmt_ip": "192.168.0.37",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -19023,7 +19023,7 @@
       "device": {
         "name": "SRV10-DC1-HA-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.33",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -19035,7 +19035,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "d4adce35",
         "interfaces": [
@@ -19105,7 +19105,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -19122,7 +19122,7 @@
         ],
         "mgmt_ip": "192.168.0.38",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -29599,7 +29599,7 @@
       "device": {
         "name": "SRV01-DC1-HB-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.109",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -29615,7 +29615,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "3972dd82",
         "interfaces": [
@@ -29653,7 +29653,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -29670,7 +29670,7 @@
         ],
         "mgmt_ip": "192.168.0.114",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -29742,7 +29742,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "424ba3be",
         "interfaces": [
@@ -29797,7 +29797,7 @@
         ],
         "mgmt_ip": "192.168.0.115",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -29865,7 +29865,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "708aea2e",
         "interfaces": [
@@ -29952,7 +29952,7 @@
         ],
         "mgmt_ip": "192.168.0.116",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30008,7 +30008,7 @@
       "device": {
         "name": "SRV04-DC1-HB-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.112",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -30024,7 +30024,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "a8228918",
         "interfaces": [
@@ -30062,7 +30062,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -30079,7 +30079,7 @@
         ],
         "mgmt_ip": "192.168.0.117",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30135,7 +30135,7 @@
       "device": {
         "name": "SRV05-DC1-HB-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.113",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -30151,7 +30151,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "81a4c6a5",
         "interfaces": [
@@ -30189,7 +30189,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -30206,7 +30206,7 @@
         ],
         "mgmt_ip": "192.168.0.118",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30278,7 +30278,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "671a0251",
         "interfaces": [
@@ -30333,7 +30333,7 @@
         ],
         "mgmt_ip": "192.168.0.119",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30405,7 +30405,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "205dcea5",
         "interfaces": [
@@ -30460,7 +30460,7 @@
         ],
         "mgmt_ip": "192.168.0.120",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30516,7 +30516,7 @@
       "device": {
         "name": "SRV08-DC1-HB-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.116",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -30528,7 +30528,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "5d057eef",
         "interfaces": [
@@ -30598,7 +30598,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -30615,7 +30615,7 @@
         ],
         "mgmt_ip": "192.168.0.121",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30671,7 +30671,7 @@
       "device": {
         "name": "SRV09-DC1-HB-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.117",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -30683,7 +30683,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "241765bf",
         "interfaces": [
@@ -30753,7 +30753,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -30770,7 +30770,7 @@
         ],
         "mgmt_ip": "192.168.0.122",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30842,7 +30842,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "7b5bd3fc",
         "interfaces": [
@@ -30897,7 +30897,7 @@
         ],
         "mgmt_ip": "192.168.0.123",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30965,7 +30965,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "defa1d3d",
         "interfaces": [
@@ -31052,7 +31052,7 @@
         ],
         "mgmt_ip": "192.168.0.124",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -31108,7 +31108,7 @@
       "device": {
         "name": "SRV12-DC1-HB-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.120",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -31120,7 +31120,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "3a53a5b7",
         "interfaces": [
@@ -31190,7 +31190,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -31207,7 +31207,7 @@
         ],
         "mgmt_ip": "192.168.0.125",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -31942,7 +31942,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "02de238d",
         "interfaces": [
@@ -31997,7 +31997,7 @@
         ],
         "mgmt_ip": "192.168.0.131",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32065,7 +32065,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R640",
+        "model_name": "Dell PowerEdge R660 DLC",
         "metrics_enabled": true,
         "id": "54162870",
         "interfaces": [
@@ -32152,7 +32152,7 @@
         ],
         "mgmt_ip": "192.168.0.132",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 700,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32208,7 +32208,7 @@
       "device": {
         "name": "SRV03-DC1-HB-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.128",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -32224,7 +32224,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "5f7ade3c",
         "interfaces": [
@@ -32262,7 +32262,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -32279,7 +32279,7 @@
         ],
         "mgmt_ip": "192.168.0.133",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32335,7 +32335,7 @@
       "device": {
         "name": "SRV04-DC1-HB-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.129",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -32347,7 +32347,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "946078c6",
         "interfaces": [
@@ -32417,7 +32417,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -32434,7 +32434,7 @@
         ],
         "mgmt_ip": "192.168.0.134",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32506,7 +32506,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "7bd9a89a",
         "interfaces": [
@@ -32561,7 +32561,7 @@
         ],
         "mgmt_ip": "192.168.0.135",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32629,7 +32629,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "fb588f8f",
         "interfaces": [
@@ -32716,7 +32716,7 @@
         ],
         "mgmt_ip": "192.168.0.136",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32772,7 +32772,7 @@
       "device": {
         "name": "SRV07-DC1-HB-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.132",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -32784,7 +32784,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "287249e1",
         "interfaces": [
@@ -32854,7 +32854,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -32871,7 +32871,7 @@
         ],
         "mgmt_ip": "192.168.0.137",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32927,7 +32927,7 @@
       "device": {
         "name": "SRV08-DC1-HB-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.133",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -32943,7 +32943,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "aef6407e",
         "interfaces": [
@@ -32981,7 +32981,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -32998,7 +32998,7 @@
         ],
         "mgmt_ip": "192.168.0.138",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33070,7 +33070,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "4f77cd6d",
         "interfaces": [
@@ -33125,7 +33125,7 @@
         ],
         "mgmt_ip": "192.168.0.139",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33197,7 +33197,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "bb295221",
         "interfaces": [
@@ -33252,7 +33252,7 @@
         ],
         "mgmt_ip": "192.168.0.140",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33308,7 +33308,7 @@
       "device": {
         "name": "SRV11-DC1-HB-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.136",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -33320,7 +33320,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "673bd9ba",
         "interfaces": [
@@ -33390,7 +33390,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -33407,7 +33407,7 @@
         ],
         "mgmt_ip": "192.168.0.141",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33463,7 +33463,7 @@
       "device": {
         "name": "SRV12-DC1-HB-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.137",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -33479,7 +33479,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "5e8834f9",
         "interfaces": [
@@ -33517,7 +33517,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -33534,7 +33534,7 @@
         ],
         "mgmt_ip": "192.168.0.142",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34325,7 +34325,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "18a9a712",
         "interfaces": [
@@ -34380,7 +34380,7 @@
         ],
         "mgmt_ip": "192.168.0.148",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34436,7 +34436,7 @@
       "device": {
         "name": "SRV02-DC1-HB-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.144",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -34452,7 +34452,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "29773896",
         "interfaces": [
@@ -34490,7 +34490,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -34507,7 +34507,7 @@
         ],
         "mgmt_ip": "192.168.0.149",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34563,7 +34563,7 @@
       "device": {
         "name": "SRV03-DC1-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.145",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -34579,7 +34579,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "e2e0fca1",
         "interfaces": [
@@ -34617,7 +34617,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -34634,7 +34634,7 @@
         ],
         "mgmt_ip": "192.168.0.150",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34706,7 +34706,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "a0aaadf5",
         "interfaces": [
@@ -34761,7 +34761,7 @@
         ],
         "mgmt_ip": "192.168.0.151",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34829,7 +34829,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R640",
+        "model_name": "Dell PowerEdge R660 DLC",
         "metrics_enabled": true,
         "id": "5ce37ba8",
         "interfaces": [
@@ -34916,7 +34916,7 @@
         ],
         "mgmt_ip": "192.168.0.152",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 700,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34972,7 +34972,7 @@
       "device": {
         "name": "SRV06-DC1-HB-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.148",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -34984,7 +34984,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "81d805c9",
         "interfaces": [
@@ -35054,7 +35054,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -35071,7 +35071,7 @@
         ],
         "mgmt_ip": "192.168.0.153",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35127,7 +35127,7 @@
       "device": {
         "name": "SRV07-DC1-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.149",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -35143,7 +35143,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "6e60fc59",
         "interfaces": [
@@ -35181,7 +35181,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -35198,7 +35198,7 @@
         ],
         "mgmt_ip": "192.168.0.154",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35270,7 +35270,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "6f9087fc",
         "interfaces": [
@@ -35325,7 +35325,7 @@
         ],
         "mgmt_ip": "192.168.0.155",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35393,7 +35393,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "202aa9cc",
         "interfaces": [
@@ -35480,7 +35480,7 @@
         ],
         "mgmt_ip": "192.168.0.156",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35536,7 +35536,7 @@
       "device": {
         "name": "SRV10-DC1-HB-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.152",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -35548,7 +35548,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "90fa2000",
         "interfaces": [
@@ -35618,7 +35618,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -35635,7 +35635,7 @@
         ],
         "mgmt_ip": "192.168.0.157",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35691,7 +35691,7 @@
       "device": {
         "name": "SRV11-DC1-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.153",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -35703,7 +35703,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "50006c53",
         "interfaces": [
@@ -35773,7 +35773,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -35790,7 +35790,7 @@
         ],
         "mgmt_ip": "192.168.0.158",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35862,7 +35862,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "40eaebe2",
         "interfaces": [
@@ -35917,7 +35917,7 @@
         ],
         "mgmt_ip": "192.168.0.159",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41390,7 +41390,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "3081e4b9",
         "interfaces": [
@@ -41445,7 +41445,7 @@
         ],
         "mgmt_ip": "192.168.0.199",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41513,7 +41513,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "83d517bd",
         "interfaces": [
@@ -41600,7 +41600,7 @@
         ],
         "mgmt_ip": "192.168.0.200",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41656,7 +41656,7 @@
       "device": {
         "name": "SRV18-DC1-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.196",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -41668,7 +41668,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "9e088f65",
         "interfaces": [
@@ -41738,7 +41738,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -41755,7 +41755,7 @@
         ],
         "mgmt_ip": "192.168.0.201",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41811,7 +41811,7 @@
       "device": {
         "name": "SRV18-DC1-HA-R2-04",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.197",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -41823,7 +41823,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "24c8ac3b",
         "interfaces": [
@@ -41893,7 +41893,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -41910,7 +41910,7 @@
         ],
         "mgmt_ip": "192.168.0.202",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41982,7 +41982,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "78684bb8",
         "interfaces": [
@@ -42037,7 +42037,7 @@
         ],
         "mgmt_ip": "192.168.0.203",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -42105,7 +42105,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R640",
+        "model_name": "Dell PowerEdge R660 DLC",
         "metrics_enabled": true,
         "id": "0eb906cb",
         "interfaces": [
@@ -42192,7 +42192,7 @@
         ],
         "mgmt_ip": "192.168.0.204",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 700,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -42248,7 +42248,7 @@
       "device": {
         "name": "SRV18-DC1-HB-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.200",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -42264,7 +42264,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "2aefd2f1",
         "interfaces": [
@@ -42302,7 +42302,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -42319,7 +42319,7 @@
         ],
         "mgmt_ip": "192.168.0.205",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -42375,7 +42375,7 @@
       "device": {
         "name": "SRV18-DC1-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.201",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -42387,7 +42387,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "3f91dc85",
         "interfaces": [
@@ -42457,7 +42457,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -42474,7 +42474,7 @@
         ],
         "mgmt_ip": "192.168.0.206",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -57566,7 +57566,7 @@
       "device": {
         "name": "SRV01-DC2-HA-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.223",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -57578,7 +57578,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "e8026ef2",
         "interfaces": [
@@ -57648,7 +57648,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -57665,7 +57665,7 @@
         ],
         "mgmt_ip": "192.168.4.25",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -57721,7 +57721,7 @@
       "device": {
         "name": "SRV02-DC2-HA-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.224",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -57737,7 +57737,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "2c2625ca",
         "interfaces": [
@@ -57775,7 +57775,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -57792,7 +57792,7 @@
         ],
         "mgmt_ip": "192.168.4.26",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -57864,7 +57864,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "a3443a39",
         "interfaces": [
@@ -57919,7 +57919,7 @@
         ],
         "mgmt_ip": "192.168.4.27",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -57987,7 +57987,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "620e2e0b",
         "interfaces": [
@@ -58074,7 +58074,7 @@
         ],
         "mgmt_ip": "192.168.4.28",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58130,7 +58130,7 @@
       "device": {
         "name": "SRV05-DC2-HA-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.227",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -58146,7 +58146,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "acdb545c",
         "interfaces": [
@@ -58184,7 +58184,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -58201,7 +58201,7 @@
         ],
         "mgmt_ip": "192.168.4.29",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58257,7 +58257,7 @@
       "device": {
         "name": "SRV06-DC2-HA-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.228",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -58273,7 +58273,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "bc7d373d",
         "interfaces": [
@@ -58311,7 +58311,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -58328,7 +58328,7 @@
         ],
         "mgmt_ip": "192.168.4.30",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58400,7 +58400,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "fe77700e",
         "interfaces": [
@@ -58455,7 +58455,7 @@
         ],
         "mgmt_ip": "192.168.4.31",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58527,7 +58527,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "42ce579d",
         "interfaces": [
@@ -58582,7 +58582,7 @@
         ],
         "mgmt_ip": "192.168.4.32",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58638,7 +58638,7 @@
       "device": {
         "name": "SRV09-DC2-HA-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.231",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -58650,7 +58650,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "19084277",
         "interfaces": [
@@ -58720,7 +58720,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -58737,7 +58737,7 @@
         ],
         "mgmt_ip": "192.168.4.33",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58793,7 +58793,7 @@
       "device": {
         "name": "SRV10-DC2-HA-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.0.232",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -58805,7 +58805,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "7527db7e",
         "interfaces": [
@@ -58875,7 +58875,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -58892,7 +58892,7 @@
         ],
         "mgmt_ip": "192.168.4.34",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -65886,7 +65886,7 @@
       "device": {
         "name": "SRV01-DC2-HB-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.27",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -65898,7 +65898,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "56eceacc",
         "interfaces": [
@@ -65968,7 +65968,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -65985,7 +65985,7 @@
         ],
         "mgmt_ip": "192.168.4.85",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66041,7 +66041,7 @@
       "device": {
         "name": "SRV02-DC2-HB-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.28",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -66057,7 +66057,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "06b47fce",
         "interfaces": [
@@ -66095,7 +66095,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -66112,7 +66112,7 @@
         ],
         "mgmt_ip": "192.168.4.86",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66184,7 +66184,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "6b045824",
         "interfaces": [
@@ -66239,7 +66239,7 @@
         ],
         "mgmt_ip": "192.168.4.87",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66307,7 +66307,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "be20df04",
         "interfaces": [
@@ -66394,7 +66394,7 @@
         ],
         "mgmt_ip": "192.168.4.88",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66450,7 +66450,7 @@
       "device": {
         "name": "SRV05-DC2-HB-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.31",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -66462,7 +66462,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "42b82ca8",
         "interfaces": [
@@ -66532,7 +66532,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -66549,7 +66549,7 @@
         ],
         "mgmt_ip": "192.168.4.89",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66605,7 +66605,7 @@
       "device": {
         "name": "SRV06-DC2-HB-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.32",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -66621,7 +66621,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "6dcaa8fe",
         "interfaces": [
@@ -66659,7 +66659,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -66676,7 +66676,7 @@
         ],
         "mgmt_ip": "192.168.4.90",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66748,7 +66748,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "5a5630a7",
         "interfaces": [
@@ -66803,7 +66803,7 @@
         ],
         "mgmt_ip": "192.168.4.91",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66875,7 +66875,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "01fcb97e",
         "interfaces": [
@@ -66930,7 +66930,7 @@
         ],
         "mgmt_ip": "192.168.4.92",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66986,7 +66986,7 @@
       "device": {
         "name": "SRV09-DC2-HB-R2-01",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.35",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -67002,7 +67002,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "5eac480b",
         "interfaces": [
@@ -67040,7 +67040,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -67057,7 +67057,7 @@
         ],
         "mgmt_ip": "192.168.4.93",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67113,7 +67113,7 @@
       "device": {
         "name": "SRV10-DC2-HB-R2-01",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.36",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -67125,7 +67125,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "e1520fb5",
         "interfaces": [
@@ -67195,7 +67195,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -67212,7 +67212,7 @@
         ],
         "mgmt_ip": "192.168.4.94",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67284,7 +67284,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "7861887a",
         "interfaces": [
@@ -67339,7 +67339,7 @@
         ],
         "mgmt_ip": "192.168.4.95",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67407,7 +67407,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "58cd0208",
         "interfaces": [
@@ -67494,7 +67494,7 @@
         ],
         "mgmt_ip": "192.168.4.96",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67975,7 +67975,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "8c766a43",
         "interfaces": [
@@ -68030,7 +68030,7 @@
         ],
         "mgmt_ip": "192.168.4.100",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68086,7 +68086,7 @@
       "device": {
         "name": "SRV02-DC2-HB-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.43",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -68098,7 +68098,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "1591a04b",
         "interfaces": [
@@ -68168,7 +68168,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -68185,7 +68185,7 @@
         ],
         "mgmt_ip": "192.168.4.101",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68241,7 +68241,7 @@
       "device": {
         "name": "SRV03-DC2-HB-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.44",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -68257,7 +68257,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "ff698dfd",
         "interfaces": [
@@ -68295,7 +68295,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -68312,7 +68312,7 @@
         ],
         "mgmt_ip": "192.168.4.102",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68384,7 +68384,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "03101de4",
         "interfaces": [
@@ -68439,7 +68439,7 @@
         ],
         "mgmt_ip": "192.168.4.103",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68507,7 +68507,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R640",
+        "model_name": "Dell PowerEdge R660 DLC",
         "metrics_enabled": true,
         "id": "266c363d",
         "interfaces": [
@@ -68594,7 +68594,7 @@
         ],
         "mgmt_ip": "192.168.4.104",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 700,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68650,7 +68650,7 @@
       "device": {
         "name": "SRV06-DC2-HB-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.47",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -68662,7 +68662,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "a6014530",
         "interfaces": [
@@ -68732,7 +68732,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -68749,7 +68749,7 @@
         ],
         "mgmt_ip": "192.168.4.105",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68805,7 +68805,7 @@
       "device": {
         "name": "SRV07-DC2-HB-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.48",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -68817,7 +68817,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "81cf8ff8",
         "interfaces": [
@@ -68887,7 +68887,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -68904,7 +68904,7 @@
         ],
         "mgmt_ip": "192.168.4.106",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68976,7 +68976,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "a270ef89",
         "interfaces": [
@@ -69031,7 +69031,7 @@
         ],
         "mgmt_ip": "192.168.4.107",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69099,7 +69099,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "eadc68e1",
         "interfaces": [
@@ -69186,7 +69186,7 @@
         ],
         "mgmt_ip": "192.168.4.108",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69242,7 +69242,7 @@
       "device": {
         "name": "SRV10-DC2-HB-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.51",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -69258,7 +69258,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "bb64b8f0",
         "interfaces": [
@@ -69296,7 +69296,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -69313,7 +69313,7 @@
         ],
         "mgmt_ip": "192.168.4.109",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69369,7 +69369,7 @@
       "device": {
         "name": "SRV11-DC2-HB-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.52",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -69385,7 +69385,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "a3f644bb",
         "interfaces": [
@@ -69423,7 +69423,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -69440,7 +69440,7 @@
         ],
         "mgmt_ip": "192.168.4.110",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69512,7 +69512,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "d08dac04",
         "interfaces": [
@@ -69567,7 +69567,7 @@
         ],
         "mgmt_ip": "192.168.4.111",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70048,7 +70048,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "a5eee128",
         "interfaces": [
@@ -70103,7 +70103,7 @@
         ],
         "mgmt_ip": "192.168.4.115",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70171,7 +70171,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "526c4793",
         "interfaces": [
@@ -70258,7 +70258,7 @@
         ],
         "mgmt_ip": "192.168.4.116",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70314,7 +70314,7 @@
       "device": {
         "name": "SRV03-DC2-HB-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.59",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -70326,7 +70326,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "04756996",
         "interfaces": [
@@ -70396,7 +70396,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -70413,7 +70413,7 @@
         ],
         "mgmt_ip": "192.168.4.117",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70469,7 +70469,7 @@
       "device": {
         "name": "SRV04-DC2-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.60",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -70481,7 +70481,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "59f2da4a",
         "interfaces": [
@@ -70551,7 +70551,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -70568,7 +70568,7 @@
         ],
         "mgmt_ip": "192.168.4.118",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70640,7 +70640,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "b61f88a5",
         "interfaces": [
@@ -70695,7 +70695,7 @@
         ],
         "mgmt_ip": "192.168.4.119",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70767,7 +70767,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "d53ad494",
         "interfaces": [
@@ -70822,7 +70822,7 @@
         ],
         "mgmt_ip": "192.168.4.120",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70878,7 +70878,7 @@
       "device": {
         "name": "SRV07-DC2-HB-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.63",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -70890,7 +70890,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "5666ba55",
         "interfaces": [
@@ -70960,7 +70960,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -70977,7 +70977,7 @@
         ],
         "mgmt_ip": "192.168.4.121",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71033,7 +71033,7 @@
       "device": {
         "name": "SRV08-DC2-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.64",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -71049,7 +71049,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "e112b707",
         "interfaces": [
@@ -71087,7 +71087,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -71104,7 +71104,7 @@
         ],
         "mgmt_ip": "192.168.4.122",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71176,7 +71176,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "5bd993c7",
         "interfaces": [
@@ -71231,7 +71231,7 @@
         ],
         "mgmt_ip": "192.168.4.123",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71299,7 +71299,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R640",
+        "model_name": "Dell PowerEdge R660 DLC",
         "metrics_enabled": true,
         "id": "98386d9f",
         "interfaces": [
@@ -71386,7 +71386,7 @@
         ],
         "mgmt_ip": "192.168.4.124",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 700,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71442,7 +71442,7 @@
       "device": {
         "name": "SRV11-DC2-HB-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.67",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -71458,7 +71458,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "d2320d92",
         "interfaces": [
@@ -71496,7 +71496,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -71513,7 +71513,7 @@
         ],
         "mgmt_ip": "192.168.4.125",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71569,7 +71569,7 @@
       "device": {
         "name": "SRV12-DC2-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.68",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -71585,7 +71585,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "ba5b1d64",
         "interfaces": [
@@ -71623,7 +71623,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -71640,7 +71640,7 @@
         ],
         "mgmt_ip": "192.168.4.126",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74218,7 +74218,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "59639ab5",
         "interfaces": [
@@ -74305,7 +74305,7 @@
         ],
         "mgmt_ip": "192.168.4.145",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74377,7 +74377,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "10ca468f",
         "interfaces": [
@@ -74432,7 +74432,7 @@
         ],
         "mgmt_ip": "192.168.4.146",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74488,7 +74488,7 @@
       "device": {
         "name": "SRV16-DC2-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.89",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -74500,7 +74500,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "49dbe1af",
         "interfaces": [
@@ -74570,7 +74570,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -74587,7 +74587,7 @@
         ],
         "mgmt_ip": "192.168.4.147",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74643,7 +74643,7 @@
       "device": {
         "name": "SRV16-DC2-HA-R2-04",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.90",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -74655,7 +74655,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL360 Gen10",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "29424174",
         "interfaces": [
@@ -74725,7 +74725,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -74742,7 +74742,7 @@
         ],
         "mgmt_ip": "192.168.4.148",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74810,7 +74810,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "d897d9ee",
         "interfaces": [
@@ -74897,7 +74897,7 @@
         ],
         "mgmt_ip": "192.168.4.149",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74969,7 +74969,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "72e30bfb",
         "interfaces": [
@@ -75024,7 +75024,7 @@
         ],
         "mgmt_ip": "192.168.4.150",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -75080,7 +75080,7 @@
       "device": {
         "name": "SRV16-DC2-HB-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.93",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -75096,7 +75096,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR630 V2",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "b410e1d0",
         "interfaces": [
@@ -75134,7 +75134,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -75151,7 +75151,7 @@
         ],
         "mgmt_ip": "192.168.4.151",
         "mgmt_vlan": 10,
-        "power_draw_w": 500,
+        "power_draw_w": 800,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -75207,7 +75207,7 @@
       "device": {
         "name": "SRV16-DC2-HB-R2-04",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.1.94",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -75223,7 +75223,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "64685735",
         "interfaces": [
@@ -75261,7 +75261,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -75278,7 +75278,7 @@
         ],
         "mgmt_ip": "192.168.4.152",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 900,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",

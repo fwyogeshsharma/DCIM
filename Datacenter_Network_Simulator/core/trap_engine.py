@@ -515,9 +515,10 @@ class TrapEngine(QObject):
                 (_oid('1.3.6.1.2.1.33.1.2.4.0'), rfc1902.Integer32(5)),
             ]
 
-        if trap_type == TrapType.BGP_DOWN:
+        if trap_type in (TrapType.BGP_DOWN, TrapType.BGP_UP):
             peer = kwargs.get("peer_addr", "10.0.0.1")
-            state = kwargs.get("bgp_state", "idle")
+            state = kwargs.get("bgp_state",
+                               "established" if trap_type == TrapType.BGP_UP else "idle")
             state_code = {"idle": 1, "connect": 2, "active": 3,
                           "opensent": 4, "openconfirm": 5, "established": 6}.get(state, 1)
             return [
@@ -590,6 +591,8 @@ class TrapEngine(QObject):
             return "UPS battery critically low"
         if trap_type == TrapType.BGP_DOWN:
             return f"Peer {kwargs.get('peer_addr', '?')} → {kwargs.get('bgp_state', 'idle')}"
+        if trap_type == TrapType.BGP_UP:
+            return f"Peer {kwargs.get('peer_addr', '?')} → established"
         if trap_type == TrapType.AUTH_FAILURE:
             return "Incorrect community string"
         if trap_type in (TrapType.COLD_START, TrapType.WARM_START):

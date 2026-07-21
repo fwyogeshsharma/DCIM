@@ -299,21 +299,49 @@ def _fans(device: "Device") -> list:
     """Per-fan RPMs spread around the chassis fan speed. Reads the ticker-driven
     ``fan_rpm`` (single source of truth); falls back to a temp-derived value if
     the ticker hasn't run yet."""
+    from core.device_manager import fan_rpm_range
     cid = member_id(device)
+    lo, hi = fan_rpm_range(getattr(device, "model_name", "") or "")
     base = float(getattr(device, "fan_rpm", 0) or 0)
     if base <= 0:
-        base = 3000 + max(0.0, device.cpu_temp - 40.0) * 95.0
+        base = lo + (hi - lo) * max(0.0, min(1.0, (device.cpu_temp - 40.0) / 45.0))
+    # Over-speed is judged against THIS chassis's full duty, not a flat number: a 1U
+    # runs to 20 krpm by design, so a fixed 14 krpm threshold would report every
+    # loaded 1U as Warning while never flagging a genuinely runaway 4U.
+    redline = hi * 1.05
+    # Under-speed floors. `lo` is the air-cooled minimum; a direct-to-chip chassis
+    # legitimately idles below it, so the floor is relaxed by the same factor the
+    # ticker uses. Imported here rather than duplicated — a fan must not read
+    # healthy over SNMP and failed over Redfish.
+    from core.device_state_store import _DTC_IDLE_FACTOR, _is_liquid_server
+    floor = lo * (_DTC_IDLE_FACTOR if _is_liquid_server(device.name) else 1.0)
+    off = getattr(device, "power_state", "On") == "Off"
     fans = []
     for i in range(4):
         rpm = int(base + (i - 1.5) * 110 + (device.cpu_usage % 7) * 18)
+        # A chassis the operator powered off has stopped fans by definition — that
+        # is not a fault, and reporting it as one would light up every server that
+        # is intentionally down.
+        if off:
+            state, health = "StandbyOffline", "OK"
+        elif rpm < floor * 0.25:
+            state, health = "Enabled", "Critical"      # stalled rotor / no drive
+        elif rpm < floor * 0.90:
+            state, health = "Enabled", "Warning"       # dragging below min duty
+        elif rpm >= redline:
+            state, health = "Enabled", "Warning"       # runaway
+        else:
+            state, health = "Enabled", "OK"
         fans.append({
             "@odata.id": f"/redfish/v1/Chassis/{cid}/Thermal#/Fans/{i}",
             "MemberId": str(i),
             "Name": f"Fan {i + 1}",
-            "Reading": rpm,
+            "Reading": 0 if off else rpm,
             "ReadingUnits": "RPM",
-            "Status": {"State": "Enabled",
-                       "Health": "OK" if rpm < 14000 else "Warning"},
+            "LowerThresholdCritical": int(floor * 0.25),
+            "LowerThresholdNonCritical": int(floor * 0.90),
+            "UpperThresholdNonCritical": int(redline),
+            "Status": {"State": state, "Health": health},
         })
     return fans
 
@@ -630,9 +658,18 @@ def _alarms(device: "Device") -> list[tuple[str, str]]:
     if _disk_pct(device) >= 90.0:
         al.append(("Warning", f"Disk utilization high: {_disk_pct(device):.0f}%"))
     for f in _fans(device):
-        if (f.get("Status") or {}).get("Health") != "OK":
-            al.append(("Warning", f"Fan over-speed: {f['Name']} {f['Reading']} RPM"))
-            break
+        health = (f.get("Status") or {}).get("Health")
+        if health == "OK":
+            continue
+        rpm = f["Reading"]
+        if rpm < f.get("LowerThresholdCritical", 0):
+            al.append(("Critical", f"Fan failed: {f['Name']} stopped ({rpm} RPM)"))
+        elif rpm < f.get("LowerThresholdNonCritical", 0):
+            al.append(("Warning", f"Fan speed low: {f['Name']} {rpm} RPM below "
+                                  f"minimum duty"))
+        else:
+            al.append(("Warning", f"Fan over-speed: {f['Name']} {rpm} RPM"))
+        break
     return al
 
 

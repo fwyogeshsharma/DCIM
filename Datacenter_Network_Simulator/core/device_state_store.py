@@ -31,7 +31,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, TYPE_CHECKING
 
-from core.device_manager import DeviceType, cooling_capacity_w
+from core.device_manager import DeviceType, cooling_capacity_w, fan_rpm_range
 
 if TYPE_CHECKING:
     from core.device_manager import Device, DeviceManager
@@ -61,6 +61,12 @@ _CRAH_FILTER_DERATE = 0.20
 # ΔT — and thus outlet_temp — is much lower than an all-air server's.
 _DTC_AIR_FRACTION = 0.30
 
+# A direct-to-chip server's MINIMUM fan duty, as a fraction of the same chassis's
+# air-cooled minimum (core.device_manager.fan_rpm_range). Fans never stop on a live
+# server — the DIMMs, VRs, NICs and drives have no liquid path — but with the CPU
+# heat in the coolant loop there is much less for them to hold at idle.
+_DTC_IDLE_FACTOR = 0.60
+
 # Plant running-status points: a value of 0 means the unit is stopped, which for
 # cooling gear is as much a loss of cooling as an alarm — see _is_faulted().
 _RUNNING_POINTS = frozenset({"Chiller_Running", "Run_Status", "Fan_Status", "Unit_Running"})
@@ -79,8 +85,19 @@ _ext_state_cache: Dict[str, dict] = {}
 _plant_state_cache: Dict[str, dict] = {}
 
 
+# Module-level mirror of the CDU cold-plate loop membership, republished each tick.
+# The dataset generators need it to know a server's fan floor (a direct-to-chip
+# chassis idles below an air-cooled one) but hold no reference to the store, so they
+# read it here — the same way they read _ext_state_cache.
+_liquid_server_cache: set = set()
+
+
 def _get_ext_state(device_name: str) -> dict:
     return _ext_state_cache.get(device_name, {})
+
+
+def _is_liquid_server(device_name: str) -> bool:
+    return device_name in _liquid_server_cache
 
 
 def _get_plant_state(device_name: str) -> dict:
@@ -664,12 +681,50 @@ class DeviceStateStore:
         self._cdu_loop_servers_cache = out
         return out
 
+    def fan_floor_rpm(self, device) -> float:
+        """This server's MINIMUM healthy fan speed, in RPM.
+
+        The chassis sets the range (fan_rpm_range: a 1U's 40 mm fans idle at 7 krpm,
+        a 4U's 92 mm at 3 krpm) and direct-to-chip lowers the floor again, because
+        with the CPU heat in the coolant loop the fans have far less to hold at idle.
+
+        This is the reference the under-speed rule, the Redfish per-fan Health and
+        the BMC SNMP fan status all measure against, so a fan that reads healthy on
+        one interface cannot read failed on another. 0 for non-servers."""
+        if device.device_type != DeviceType.SERVER:
+            return 0.0
+        lo, _hi = fan_rpm_range(getattr(device, "model_name", "") or "")
+        if device.name in self._liquid_cooled_servers():
+            lo *= _DTC_IDLE_FACTOR
+        return float(lo)
+
+    def _fan_speed_pct(self, device) -> float:
+        """Chassis fan speed as a % of this device's own minimum duty — the metric
+        the FanUnderSpeed/FanFailure rules evaluate. See DeviceFact.fan_speed_pct
+        for why the rules cannot use raw RPM.
+
+        A chassis that is POWERED OFF reports 100: its fans are stopped because the
+        operator turned it off, which is not a fan fault. Alarming on it would fire a
+        fan failure on every intentionally-powered-down server in the fleet."""
+        if device.device_type != DeviceType.SERVER:
+            return 100.0
+        if getattr(device, "power_state", "On") == "Off":
+            return 100.0
+        floor = self.fan_floor_rpm(device)
+        if floor <= 0:
+            return 100.0
+        return round(float(getattr(device, "fan_rpm", 0) or 0) / floor * 100.0, 1)
+
     def _liquid_cooled_servers(self) -> set:
         """Set of all server names sitting on a CDU cold-plate loop (direct-to-
         chip liquid cooling). Cached via the underlying CDU-loop map."""
         if self._liquid_servers_cache is None:
             self._liquid_servers_cache = set().union(*self._cdu_loop_servers().values()) \
                 if self._cdu_loop_servers() else set()
+            # Publish for the dataset generators, which have no store reference but
+            # must agree with it on where a server's fan floor sits.
+            global _liquid_server_cache
+            _liquid_server_cache = self._liquid_servers_cache
         return self._liquid_servers_cache
 
     # ── Plant-wide cooling cascade ──────────────────────────────────────────
@@ -1127,6 +1182,16 @@ class DeviceStateStore:
                            "id_type": dict(id_type)}
         self._power_ctx_sig = _sig
         return self._power_ctx
+
+    def invalidate_cooling_context(self) -> None:
+        """Drop the cached CDU cold-plate loop map so it rebuilds from the cooling
+        edges. Call this whenever a cooling link changes — a liquid-cooled server
+        joins or leaves a CDU loop, or a CDU is added/removed. Both maps are built
+        once per run, so without this a hot-added DLC server keeps reading as
+        air-cooled: its heat would go on the room air balance instead of its CDU's
+        loop, and the CDU would report a loop load that is missing a member."""
+        self._cdu_loop_servers_cache = None
+        self._liquid_servers_cache = None
 
     def invalidate_power_context(self) -> None:
         """Drop the cached power graph so it rebuilds on the next tick. Call this
@@ -3037,10 +3102,52 @@ class DeviceStateStore:
             if _cputemp_pin is not None:
                 device.cpu_temp = round(max(20.0, min(95.0, _cputemp_pin)), 1)
 
-        # Chassis fan speed — servers only; rises with CPU temperature so it
-        # tracks load. Single source of truth: Redfish _fans() reads this.
+        # Chassis fan speed — servers only. Single source of truth: Redfish _fans()
+        # and the BMC SNMP dataset both read this, so the two agents agree.
+        #
+        # An AIR-cooled server's fans remove the whole load, and its control loop
+        # chases the die: speed tracks cpu_temp, which already carries both load and
+        # intake temperature.
+        #
+        # A DIRECT-TO-CHIP server's fans do not. The cold plate takes the CPU/GPU
+        # heat into the coolant loop, leaving the fans only the ~30 % air fraction
+        # (_DTC_AIR_FRACTION) that VRs, DIMMs, NICs and drives put into the air —
+        # the same split the exhaust ΔT above already uses. Two consequences, and
+        # both matter:
+        #   * the RAMP is scaled by that fraction, so a loaded DLC box sits far
+        #     below an air box at the same utilisation, which is the observable
+        #     signature of DLC on the floor (and a chunk of its fan-power saving);
+        #   * the DRIVER is load + INTAKE AIR, not cpu_temp. A cold-plate die is
+        #     thermally decoupled from the fans — it barely moves with load, and
+        #     spinning up for it would chase heat the fans cannot remove anyway.
+        #     Intake is what actually threatens the air-cooled components, so a
+        #     DLC chassis in a warming hall still ramps hard to save its DIMMs.
         if mf["fan_rpm"] and device.device_type == DeviceType.SERVER:
-            _fan = 3000.0 + max(0.0, device.cpu_temp - 40.0) * 95.0 + random.uniform(-60, 60)
+            # Absolute speeds come from the chassis: a 1U's 40 mm fans run 7-20 krpm,
+            # a 4U's 92 mm fans 3-9 krpm for the same duty (fan_rpm_range). The curve
+            # below computes a DUTY FRACTION and maps it onto that range, so the same
+            # thermal logic gives a 1U and a 4U their own realistic speeds.
+            _fan_pin = self._pin_value(device, "fan_rpm")
+            if _fan_pin is not None:
+                # An operator-forced speed IS the fault: a stalled rotor or a failed
+                # fan board holds the chassis below its floor no matter what the
+                # thermal loop asks for. Pinned last so the curve cannot overwrite it.
+                _fan = max(0.0, _fan_pin)
+            else:
+                _lo, _hi = fan_rpm_range(getattr(device, "model_name", "") or "")
+                if device.name in self._liquid_cooled_servers():
+                    # Duty tracks load + intake, scaled by the air fraction. Min duty
+                    # is lower than an air box's: with the CPU heat in the loop there
+                    # is far less for the fans to hold at idle.
+                    _duty = (device.cpu_usage * 0.45
+                             + max(0.0, (device.inlet_temp or 22.0) - 22.0) * 3.0) / 45.0
+                    _duty = max(0.0, min(1.0, _duty)) * _DTC_AIR_FRACTION
+                    _lo *= _DTC_IDLE_FACTOR
+                else:
+                    # Duty tracks the die: min duty at 40 °C, full duty by 85 °C — the
+                    # span between a warm idle and the Warning threshold.
+                    _duty = max(0.0, min(1.0, (device.cpu_temp - 40.0) / 45.0))
+                _fan = _lo + (_hi - _lo) * _duty + random.uniform(-90, 90)
             device.fan_rpm = int(max(0.0, self._num_limit("fan_rpm", _fan)))
 
         # Chassis inlet temperature — servers/network gear only. COLD-AISLE
@@ -3193,6 +3300,8 @@ class DeviceStateStore:
                 device.cpu_temp = round(max(0.0, min(120.0, v)), 1)
             elif metric == "inlet_temp":
                 device.inlet_temp = round(max(0.0, min(60.0, v)), 1)
+            elif metric == "fan_rpm":
+                device.fan_rpm = int(max(0.0, min(25000.0, v)))
             elif metric == "humidity":
                 device.humidity = round(max(0.0, min(100.0, v)), 1)
             elif metric == "dewpoint":
@@ -4007,6 +4116,7 @@ class DeviceStateStore:
                     airflow=float(device.airflow),
                     mid_temp=float(device.mid_temp),
                     outlet_temp=float(device.outlet_temp),
+                    fan_speed_pct=self._fan_speed_pct(device),
                     ups_status=ext.get("ups_status", "normal"),
                     ups_output_load=float(ext.get("ups_output_load", 0.0)),
                     ups_battery_status=ext.get("ups_battery_status", "normal"),

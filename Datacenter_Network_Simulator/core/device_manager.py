@@ -643,6 +643,44 @@ PSU_COUNT_BY_TYPE = {
 C13_CONTINUOUS_W = 1660
 
 
+# Chassis fan speed range (min duty RPM, full duty RPM), keyed by rack height.
+#
+# Fan RPM is a property of the FAN, and fan diameter is set by how much room the
+# chassis has. A 1U lid leaves ~40 mm; a 4U leaves 80-92 mm. To push air through the
+# same restrictive heatsink stack, the small fan must spin several times faster —
+# which is why a 1U server screams at 18-20 krpm under load while a 4U at the same
+# load sits under 9 krpm. Modelling every server on one 3000-7000 RPM curve got the
+# ratio between load levels right but every absolute number wrong: a real 1U idles
+# above where that curve topped out.
+#
+# Representative of 2-socket rack servers at min duty and full duty (Dell R6xx/R7xx,
+# HPE DL360/DL380, Supermicro 1U/2U service manuals). Deliberately the FAN's range,
+# not a specific SKU's — exact tables are per-model and per-fan-part-number.
+FAN_RPM_BY_U = {
+    1: (7000, 20000),   # 40 mm high-static-pressure
+    2: (4800, 14000),   # 60 mm
+    3: (3800, 11000),   # 60-80 mm
+    4: (3000,  9000),   # 80-92 mm
+}
+_FAN_RPM_DEFAULT = FAN_RPM_BY_U[2]
+
+
+def fan_rpm_range(model_name: str = "") -> tuple[int, int]:
+    """(min duty, full duty) chassis fan RPM for a server SKU, by its rack height.
+
+    Chassis heights over 4U clamp to the 4U profile — bigger boxes take bigger fans,
+    but the curve flattens out rather than continuing to fall. device_models is
+    imported lazily: it imports this module, so a module-level import would cycle."""
+    try:
+        from core.device_models import MODEL_U_HEIGHT
+    except Exception:
+        return _FAN_RPM_DEFAULT
+    u = MODEL_U_HEIGHT.get(model_name or "")
+    if not u:
+        return _FAN_RPM_DEFAULT
+    return FAN_RPM_BY_U.get(min(u, 4), _FAN_RPM_DEFAULT)
+
+
 @dataclass
 class Interface:
     index: int
@@ -707,6 +745,7 @@ _MODEL_NAMEPLATE_W = {
     "ucs c240":      650,   # 2U 2S
     "ucs b200":      500,   # 2S blade (chassis-fed; represent per-blade)
     # HPE ProLiant  (gen11 before gen10 so the more-specific key matches first)
+    "dl380a gen11": 2800,   # 4U 4-GPU, direct liquid cooled — GPUs dominate the draw
     "dl380 gen11":   750,   # 2U 2S, Sapphire Rapids — higher TDP
     "dl360 gen10":   500,   # 1U 2S
     "dl380 gen10":   650,   # 2U 2S
@@ -717,6 +756,8 @@ _MODEL_NAMEPLATE_W = {
     "poweredge r750":  750,  # 2U 2S, newer
     "poweredge r940": 1200,  # 3U 4S
     "poweredge r7525":1000,  # 2U dual-Epyc, GPU-capable
+    "poweredge r760": 900,   # 2U 2S DLC — cold plates carry a higher-TDP CPU pair
+    "poweredge r660": 700,   # 1U 2S DLC
     # Lenovo ThinkSystem
     "sr630":  500,   # 1U 2S
     "sr650":  700,   # 2U 2S
@@ -724,6 +765,8 @@ _MODEL_NAMEPLATE_W = {
     # Supermicro
     "sys-120u": 550,  # 1U 2S
     "sys-220u": 700,  # 2U 2S
+    "sys-121h": 800,  # 1U 2S liquid-cooled chassis, high-TDP pair
+    "sys-221h": 900,  # 2U 2S liquid-cooled chassis
     "as-4124gs":6000, # 4U dual-Epyc + up to 8 GPU — dense accelerated
     # IBM
     "power system s922": 1000,  # 2U 2S POWER9
@@ -1347,7 +1390,14 @@ class Device:
         self.cpu_temp    = round(38.0 + self.cpu_usage * 0.45 + random.uniform(-3, 3), 1)
         self.inlet_temp  = round(22.0 + self.cpu_usage * 0.12 + random.uniform(-1, 1), 1)
         if self.device_type == DeviceType.SERVER:
-            self.fan_rpm = int(3000.0 + max(0.0, self.cpu_temp - 40.0) * 95.0)
+            # Air-cooled curve over this chassis's own RPM range. A Device cannot know
+            # whether it sits on a CDU loop — that is a property of the cooling EDGES,
+            # not the device — so the direct-to-chip curve lives in DeviceStateStore,
+            # which can read them. This value is a seed: the ticker overwrites it on
+            # its first pass.
+            _lo, _hi = fan_rpm_range(self.model_name or "")
+            self.fan_rpm = int(_lo + (_hi - _lo)
+                               * max(0.0, min(1.0, (self.cpu_temp - 40.0) / 45.0)))
         if self.device_type == DeviceType.SENSOR:
             self.humidity = round(random.uniform(30.0, 70.0), 1)
             self.dewpoint = round(self.inlet_temp - ((100.0 - self.humidity) / 5.0), 1)

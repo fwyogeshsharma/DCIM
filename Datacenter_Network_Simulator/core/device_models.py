@@ -16,6 +16,11 @@ class DeviceModel:
     device_type: DeviceType
     interface_groups: List[dict]   # [{"iface_type": InterfaceType, "count": int}, ...]
     description: str = ""
+    # True only for SKUs the vendor actually ships with direct-to-chip cold plates
+    # (Dell DLC, HPE DLC, Supermicro LCC). A DLC server has no path to a CDU without
+    # them: the cold plate and its UQD quick-disconnects are factory-fitted hardware,
+    # not a field option, so an air-cooled SKU cannot join a coolant loop at all.
+    liquid_cooled: bool = False
 
     @property
     def total_ports(self) -> int:
@@ -58,6 +63,7 @@ MODEL_U_HEIGHT = {
     "HPE ProLiant DL360 Gen10":     1,
     "HPE ProLiant DL380 Gen10":     2,
     "HPE ProLiant DL380 Gen11":     2,
+    "HPE ProLiant DL380a Gen11 DLC": 4,  # 4U GPU chassis
     "HPE ProLiant DL560 Gen10":     4,   # 4-socket
     # Dell PowerEdge
     "Dell PowerEdge R640":          1,
@@ -65,6 +71,8 @@ MODEL_U_HEIGHT = {
     "Dell PowerEdge R750":          2,
     "Dell PowerEdge R940":          3,   # 4-socket
     "Dell PowerEdge R7525":         2,
+    "Dell PowerEdge R660 DLC":      1,
+    "Dell PowerEdge R760 DLC":      2,
     # Lenovo ThinkSystem
     "Lenovo ThinkSystem SR630 V2":  1,
     "Lenovo ThinkSystem SR650 V2":  2,
@@ -73,6 +81,8 @@ MODEL_U_HEIGHT = {
     "Supermicro SYS-120U-TNR":      1,
     "Supermicro SYS-220U-TNR":      2,
     "Supermicro AS-4124GS-TNR":     4,   # dense-GPU chassis
+    "Supermicro SYS-121H-TNR LCC":  1,
+    "Supermicro SYS-221H-TNR LCC":  2,
     # IBM
     "IBM Power System S922":        2,
     "IBM System x3850 X6":          4,   # 4-socket
@@ -243,6 +253,10 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("HPE ProLiant DL380 Gen11", Vendor.HPE, DeviceType.SERVER,
                     [_g(_25G, 4)],
                     "4 × 25GE"),
+        DeviceModel("HPE ProLiant DL380a Gen11 DLC", Vendor.HPE, DeviceType.SERVER,
+                    [_g(_100G, 2), _g(_25G, 2)],
+                    "2 × 100GE + 2 × 25GE, direct liquid cooled (GPU + CPU cold plates)",
+                    liquid_cooled=True),
         DeviceModel("HPE ProLiant DL560 Gen10", Vendor.HPE, DeviceType.SERVER,
                     [_g(_25G, 4)],
                     "4 × 25GE"),
@@ -328,6 +342,14 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Dell PowerEdge R7525", Vendor.DELL, DeviceType.SERVER,
                     [_g(_25G, 4)],
                     "4 × 25GE (AMD EPYC)"),
+        DeviceModel("Dell PowerEdge R660 DLC", Vendor.DELL, DeviceType.SERVER,
+                    [_g(_25G, 2)],
+                    "2 × 25GE, 1U direct liquid cooled (CPU cold plates)",
+                    liquid_cooled=True),
+        DeviceModel("Dell PowerEdge R760 DLC", Vendor.DELL, DeviceType.SERVER,
+                    [_g(_25G, 4)],
+                    "4 × 25GE, direct liquid cooled (CPU cold plates)",
+                    liquid_cooled=True),
     ],
 
     # ── Lenovo — Servers ──────────────────────────────────────────────────────
@@ -354,6 +376,14 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Supermicro AS-4124GS-TNR", Vendor.SUPERMICRO, DeviceType.SERVER,
                     [_g(_25G, 4)],
                     "4 × 25GE (GPU optimized)"),
+        DeviceModel("Supermicro SYS-121H-TNR LCC", Vendor.SUPERMICRO, DeviceType.SERVER,
+                    [_g(_25G, 2)],
+                    "2 × 25GE, 1U liquid cooled chassis (CPU cold plates)",
+                    liquid_cooled=True),
+        DeviceModel("Supermicro SYS-221H-TNR LCC", Vendor.SUPERMICRO, DeviceType.SERVER,
+                    [_g(_25G, 4)],
+                    "4 × 25GE, 2U liquid cooled chassis (CPU cold plates)",
+                    liquid_cooled=True),
     ],
 
     # ── Palo Alto Networks — Firewalls ────────────────────────────────────────
@@ -754,3 +784,21 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         ),
     ],
 }
+
+
+def is_liquid_cooled(model_name: str) -> bool:
+    """True when *model_name* is a SKU that ships with direct-to-chip cold plates.
+
+    Gates the Add-Device CDU slot: only a DLC SKU has the UQD quick-disconnects a
+    rack manifold plugs into, so only a DLC SKU may join a CDU's coolant loop. An
+    unknown model reads False — an air-cooled server wrongly put on a loop would
+    have its heat counted twice (once as CDU loop load, once as room air load)."""
+    want = (model_name or "").strip().lower()
+    if not want:
+        return False
+    for models in DEVICE_MODELS.values():
+        for m in models:
+            if m.name.lower() == want:
+                return m.liquid_cooled
+    return False
+

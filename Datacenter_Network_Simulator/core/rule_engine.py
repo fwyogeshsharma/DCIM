@@ -468,6 +468,7 @@ class RuleEngine:
             "humidity":     fact.humidity,
             "dewpoint":     fact.dewpoint,
             "airflow":      fact.airflow,
+            "fan_speed_pct": fact.fan_speed_pct,
             "ups_status":   fact.ups_status,
             # UPS extended
             "ups_output_load":       fact.ups_output_load,
@@ -674,16 +675,34 @@ class RuleEngine:
 
             state_key = f"{rule.rule_name}:if{iface.index}"
             state = self._get_state(fact.device_id, state_key)
-            if self._can_fire(state, rule, now):
-                actions.append(self._do_fire(rule, fact, state, now, {
-                    "iface_index": iface.index,
-                    "iface_name":  iface.name,
-                    "iface_oper":  iface.oper_status,
-                }))
-                if going_up:
-                    self._link_down_pending_up.discard(pair_key)
-                else:
-                    self._link_down_pending_up.add(pair_key)
+            if not self._can_fire(state, rule, now):
+                continue
+
+            # Interface rules never reach _eval_recovery_rule — they are dispatched
+            # on cond.metric before the generic evaluator — so recovery has to be
+            # handled here or a LinkUp marked recovery=True would clear nothing and
+            # the LinkDown would stay in_alert for the rest of the run.
+            #
+            # The target's state is keyed PER INTERFACE, and so is the clear: eth3
+            # coming back must not clear a LinkDown that is still raised on eth7 of
+            # the same switch. That is exactly what a single device-level alert flag
+            # would get wrong on a multi-port device.
+            if rule.is_recovery:
+                target = self._rule_states.get(fact.device_id, {}).get(
+                    f"{rule.recovery_of}:if{iface.index}")
+                if target is None or not target.in_alert:
+                    continue          # nothing raised on this port — no clear to send
+                target.in_alert = False
+
+            actions.append(self._do_fire(rule, fact, state, now, {
+                "iface_index": iface.index,
+                "iface_name":  iface.name,
+                "iface_oper":  iface.oper_status,
+            }))
+            if going_up:
+                self._link_down_pending_up.discard(pair_key)
+            else:
+                self._link_down_pending_up.add(pair_key)
 
         return actions
 
@@ -706,11 +725,28 @@ class RuleEngine:
                 continue
             state_key = f"{rule.rule_name}:bgp:{sess.peer_addr}"
             state = self._get_state(fact.device_id, state_key)
-            if self._can_fire(state, rule, now):
-                actions.append(self._do_fire(rule, fact, state, now, {
-                    "peer_addr": sess.peer_addr,
-                    "bgp_state": curr_state,
-                }))
+            if not self._can_fire(state, rule, now):
+                continue
+
+            # BGP rules are dispatched on cond.metric before the generic evaluator,
+            # so _eval_recovery_rule never sees them — recovery has to be handled
+            # here, exactly as it is for interface rules.
+            #
+            # Cleared PER PEER: a router holding sessions to two peers and losing
+            # both must not have the second session's alarm cleared just because the
+            # first came back. The state key already carries the peer address; the
+            # clear has to use the same one.
+            if rule.is_recovery:
+                target = self._rule_states.get(fact.device_id, {}).get(
+                    f"{rule.recovery_of}:bgp:{sess.peer_addr}")
+                if target is None or not target.in_alert:
+                    continue          # this peer never went down — nothing to clear
+                target.in_alert = False
+
+            actions.append(self._do_fire(rule, fact, state, now, {
+                "peer_addr": sess.peer_addr,
+                "bgp_state": curr_state,
+            }))
 
         return actions
 

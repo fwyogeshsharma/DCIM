@@ -528,11 +528,44 @@ class SNMPRecGenerator:
             _oid_entry(f"{BMC_BASE}.2.1.0", "2", str(int(round((device.inlet_temp or 0.0) * 10)))),
             _oid_entry(f"{BMC_BASE}.2.2.0", "2", str(int(round((device.cpu_temp or 0.0) * 10)))),
         ]
-        # Fans ×4 (RPM, gauge) — stopped while the chassis is Off
-        base_rpm = 3000.0 + max(0.0, (device.cpu_temp or 20.0) - 40.0) * 95.0
+        # Fans ×4 (RPM, gauge) — stopped while the chassis is Off.
+        # Reads the ticker-driven fan_rpm, the same single source of truth Redfish
+        # _fans() uses, so the BMC's two agents cannot disagree about the same
+        # chassis. That matters now that the curve is cooling-dependent: a
+        # direct-to-chip server runs its fans far slower than an air-cooled one at
+        # the same load, and recomputing an air-cooled curve here would report a
+        # DLC box spinning at speeds its cold-plated CPU never asks for.
+        # Falls back to the air-cooled curve only when no tick has run yet.
+        base_rpm = float(getattr(device, "fan_rpm", 0) or 0)
+        if base_rpm <= 0:
+            from core.device_manager import fan_rpm_range
+            _lo, _hi = fan_rpm_range(getattr(device, "model_name", "") or "")
+            base_rpm = _lo + (_hi - _lo) * max(
+                0.0, min(1.0, ((device.cpu_temp or 20.0) - 40.0) / 45.0))
+        # Per-fan STATUS alongside the tach reading (1=ok 2=underSpeed 3=failed),
+        # mirroring the PSU status/watts pair below and what a real BMC MIB carries
+        # (IDRAC coolingDeviceStatus, cpqHeFltTolFanCondition). A bare RPM gauge
+        # cannot be alarmed on generically — the healthy range depends on chassis
+        # height and cooling type — so the BMC publishes its own verdict, computed
+        # from the same floor the rule engine and Redfish use.
+        from core.device_state_store import _DTC_IDLE_FACTOR, _is_liquid_server
+        from core.device_manager import fan_rpm_range as _fr
+        _flo, _ = _fr(getattr(device, "model_name", "") or "")
+        if _is_liquid_server(device.name):
+            _flo *= _DTC_IDLE_FACTOR
         for i in range(1, 5):
             rpm = 0 if off else max(0, int(base_rpm + (i - 2.5) * 110))
             entries.append(_oid_entry(f"{BMC_BASE}.3.1.{i}", "42", str(rpm)))
+            # A powered-off chassis has stopped fans by design, not by fault.
+            if off:
+                st = "1"
+            elif rpm < _flo * 0.25:
+                st = "3"
+            elif rpm < _flo * 0.90:
+                st = "2"
+            else:
+                st = "1"
+            entries.append(_oid_entry(f"{BMC_BASE}.3.2.{i}", "2", st))
         # PSUs ×2 — status (1=ok) + output watts (chassis load split)
         for i in range(1, 3):
             entries.append(_oid_entry(f"{BMC_BASE}.4.1.{i}", "2", "1"))

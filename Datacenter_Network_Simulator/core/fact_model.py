@@ -53,6 +53,13 @@ class DeviceFact:
     airflow: float = 0.0           # m/s (APC NetBotz only)
     mid_temp: float = 0.0          # °C mid-rack temp (Raritan DPX2-T3H1 probe 2)
     outlet_temp: float = 0.0       # °C exhaust temp (Raritan DPX2-T3H1 probe 3)
+    # Chassis fan speed as a % of THIS chassis's minimum duty, not raw RPM. A raw
+    # threshold cannot work fleet-wide: 3000 RPM is a healthy 4U at idle and a
+    # stalled 1U, and a direct-to-chip server's minimum is lower again. Normalising
+    # against the device's own expected floor makes one rule correct for every
+    # chassis height and both cooling types. 100 = at minimum duty, <100 = below it,
+    # ~0 = stopped. Servers only; everything else reports 100 (never alarms).
+    fan_speed_pct: float = 100.0
 
     # Power / UPS
     ups_status: str = "normal"  # normal | on_battery | low_battery
