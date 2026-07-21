@@ -340,6 +340,11 @@ type RackUnit = { unit: number; used: boolean; occupant: string | null }
 // dialog, so the rack list and the LINKS section cannot disagree.
 type RackOcc = { room: string; floor: string; rack_row: number; rack_num: number
                  used: number; total: number; free_units: number[]
+                 // Everything in the cabinet, including 0U side-rail PDUs and gear at
+                 // U41/42. `used` counts only SERVER-U spans, so a network rack of
+                 // spines and PDUs reads 0/40 while holding four devices — showing
+                 // just that made a populated rack look empty.
+                 device_count?: number
                  units: RackUnit[]
                  liquid_ready?: boolean; cdu_name?: string | null
                  cdu_used?: number | null; cdu_ports?: number | null
@@ -369,6 +374,11 @@ export default function AddDeviceDialog({ onClose }: Props) {
   // then only offers racks that can actually take a coolant hose.
   const [liquidOnly,    setLiquidOnly]    = useState(false)
   const [noLiquidRacks, setNoLiquidRacks] = useState(false)
+  // room -> how many rack POSITIONS the hall's floor width fits. Positions with no
+  // rack in them are shown greyed, so a gap in the numbering reads as free floor
+  // space rather than as missing data. Racks are not modelled as objects — only the
+  // gear in them is — so an empty position is a place to provision, not a thing.
+  const [rowPositions, setRowPositions] = useState<Record<string, number>>({})
 
   // Upper location levels come straight from the live inventory (cascading distinct).
   const uniq = (xs: (string | undefined)[]) =>
@@ -429,11 +439,13 @@ export default function AddDeviceDialog({ onClose }: Props) {
       .then((r: unknown) => {
         if (!live) return
         const d = r as { racks?: RackOcc[]; device_u_height?: number
-                         liquid_only?: boolean; no_liquid_racks?: boolean }
+                         liquid_only?: boolean; no_liquid_racks?: boolean
+                         row_positions?: Record<string, number> }
         setRacks(d.racks || [])
         setUHeight(d.device_u_height || 1)
         setLiquidOnly(!!d.liquid_only)
         setNoLiquidRacks(!!d.no_liquid_racks)
+        setRowPositions(d.row_positions || {})
       })
       .catch(() => { if (live) setRacks([]) })
       .finally(() => { if (live) setLocBusy(false) })
@@ -834,7 +846,26 @@ export default function AddDeviceDialog({ onClose }: Props) {
             <FormRow label="Rack">
               <select style={{ flex: 1 }} value={form.rack_num || ''} onChange={e => setRack(parseInt(e.target.value) || 0)}>
                 <option value="">— select —</option>
-                {racksInRow.map(r => {
+                {(() => {
+                  // One list in rack-number order, real cabinets and empty floor
+                  // positions interleaved — R1-04 must not appear after R1-13 just
+                  // because one is populated and the other is not.
+                  const byNum = new Map(racksInRow.map(r => [r.rack_num, r]))
+                  const total = Math.max(rowPositions[form.room] || 0,
+                                         ...racksInRow.map(r => r.rack_num), 0)
+                  return Array.from({ length: total }, (_, i) => i + 1)
+                    .map(num => byNum.get(num) ?? num)
+                })().map(entry => {
+                  // A bare number is a position with no rack in it. Never selectable:
+                  // there is no PDU or ToR there, so anything racked would be dead.
+                  if (typeof entry === 'number') {
+                    return (
+                      <option key={`empty-${entry}`} value={entry} disabled>
+                        R{form.rack_row}-{String(entry).padStart(2, '0')} · empty floor position — provision a rack first
+                      </option>
+                    )
+                  }
+                  const r = entry
                   const noSpace = r.free_units.length === 0
                   const noCdu   = liquidOnly && r.liquid_ready === false
                   const noAir   = r.air_ok === false
@@ -852,7 +883,12 @@ export default function AddDeviceDialog({ onClose }: Props) {
                   else if (noCdu)   tail = 'no CDU — not liquid-ready'
                   else if (noAir)   tail = `no cooling headroom · air ${kw(r.air_used_w)}/${kw(r.air_budget_w)} kW`
                   else {
-                    const bits = [`${r.used}/${r.total} used`]
+                    // Device count first — it is what "is this rack empty?" means to
+                    // an operator. The U figure follows, explicitly labelled U so it
+                    // is not misread as a device tally.
+                    const n = r.device_count ?? 0
+                    const bits = [`${n} device${n === 1 ? '' : 's'}`,
+                                  `${r.used}/${r.total} U`]
                     if (r.cdu_name) bits.push(`CDU ${r.cdu_used}/${r.cdu_ports}`)
                     if (r.air_budget_w) bits.push(`air ${kw(r.air_used_w)}/${kw(r.air_budget_w)} kW`)
                     tail = bits.join(' · ')

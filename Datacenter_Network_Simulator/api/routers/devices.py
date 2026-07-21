@@ -323,6 +323,12 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
     except ValueError:
         want_h = 1
     racks: dict = {}
+    # Devices per rack, counting EVERYTHING in the cabinet — 0U side-rail PDUs and
+    # gear at U41/42 included. Distinct from `used` below, which is server-U span
+    # occupancy: a network rack holding two spines at U41/42 and two 0U PDUs uses
+    # zero server U, so reporting only `used` made a 4-device rack read "0/40" and
+    # look empty.
+    counts: dict = {}
     for d in s.device_manager.get_all_devices():
         if (getattr(d, "datacenter", "") or "") != datacenter:
             continue
@@ -334,6 +340,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
             continue
         key = ((getattr(d, "room", "") or ""), str(getattr(d, "floor", "") or ""), rr, rn)
         occ = racks.setdefault(key, {})
+        counts[key] = counts.get(key, 0) + 1
         u = getattr(d, "rack_unit", 0) or 0
         if u <= 0:
             continue                        # 0U side-rail PDUs occupy no U
@@ -384,6 +391,7 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
                 cdu_used, cdu_ports = best["used"], best["ports"]
         out.append({"room": rm, "floor": fl, "rack_row": rr, "rack_num": rn,
                     "used": len(occ), "total": total, "free_units": free,
+                    "device_count": counts.get((rm, fl, rr, rn), 0),
                     "units": units,
                     # liquid_ready is True for an air-cooled SKU: every rack takes it.
                     # For a DLC SKU it means "has a CDU with a free manifold pair",
@@ -397,7 +405,28 @@ def rack_occupancy(datacenter: str, room: str = "", device_type: str = "",
     # The height the free_units above were computed for, so the picker can name the
     # SPAN a pick takes ("U39–U40") instead of just its anchor U. A rack_unit is the
     # BOTTOM of the device, which is not self-evident from a bare "U39".
+    # Physical rack POSITIONS per row, per room — how many cabinets the hall's floor
+    # width actually fits. Lets the picker show unoccupied positions greyed out, so a
+    # gap in the rack list reads as "floor space, provision a rack" rather than as
+    # missing data. Derived the same way _hall_grid does it: the stored racks_per_row
+    # can drift below what the width really fits, so the larger wins.
+    grid: dict = {}
+    fp = getattr(s.topology, "floorplan", None) or {}
+    for _key, _ext in ((fp.get("rooms") or {}) if isinstance(fp, dict) else {}).items():
+        _dc, _, _rm = str(_key).partition("/")
+        if _dc != datacenter or (room and _rm != room):
+            continue
+        try:
+            from core.hall_geometry import racks_for_width
+            _phys = racks_for_width(_ext.get("width_m")) if _ext.get("width_m") else 0
+        except Exception:
+            _phys = 0
+        _n = max(int(_ext.get("racks_per_row") or 0), int(_phys or 0))
+        if _n:
+            grid[_rm] = _n
+
     return {"datacenter": datacenter, "racks": out, "device_u_height": want_h,
+            "row_positions": grid,
             # Tells the dialog to apply liquid-ready filtering and to explain itself
             # when a hall comes back empty, rather than showing a bare empty list.
             "liquid_only": liquid,
