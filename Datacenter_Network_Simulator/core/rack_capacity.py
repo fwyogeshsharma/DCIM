@@ -37,6 +37,12 @@ TOR_B_UNIT = 41            # RESERVED for the future MLAG peer leaf — keep emp
 PDU_UNIT = 0               # rack PDUs are 0U vertical side-rail mounts (no RU)
 FIRST_SERVER_UNIT = 1
 LAST_SERVER_UNIT = 40      # U41/U42 reserved for the ToR pair
+# In-rack CDU (4U) sits at the TOP of the server area, directly under the reserved
+# ToR pair — U37-40. High placement keeps the coolant hoses short to the manifold
+# and out of the way of server rails, and matches where the curated CDUs were
+# re-seated to (tools/reseat_cdu_below_tor_reserve.py). It consumes server U, so a
+# liquid rack holds correspondingly fewer machines.
+CDU_UNIT = 37
 # Modeled rack-server form factor. The curated topology uses 2U 2-socket servers
 # (~650 W), placed on a 2U cadence (odd units 1,3,5…), so U1..U40 holds
 # 40 / 2 = 20 servers. The fleet engine steps placement by this height so its

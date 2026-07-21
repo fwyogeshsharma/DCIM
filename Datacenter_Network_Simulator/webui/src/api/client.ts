@@ -176,8 +176,9 @@ export const api = {
   linkCandidates: (q: Record<string, string | number>) =>
     get(`/devices/link-candidates?${new URLSearchParams(
       Object.entries(q).map(([k, v]) => [k, String(v)])).toString()}`),
-  provisionRack: (datacenter: string, room?: string) =>
-    post('/fleet/provision-rack', room ? { datacenter, room } : { datacenter }),
+  provisionRack: (datacenter: string, room?: string, withCdu?: boolean) =>
+    post('/fleet/provision-rack',
+         { datacenter, ...(room ? { room } : {}), ...(withCdu ? { with_cdu: true } : {}) }),
   provisionHall: (datacenter: string) => post('/fleet/provision-hall', { datacenter }),
   editDevice: (id: string, d: unknown)=> put(`/devices/${id}`, d),
   delDevice:  (id: string)            => del(`/devices/${id}`),

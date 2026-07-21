@@ -53,6 +53,11 @@ export default function ProvisionDialog({ onClose }: Props) {
   const datacenters = useMemo(() => uniq(devices.map(d => d.datacenter)), [devices])
   const [dc, setDc] = useState('')
   const [room, setRoom] = useState('')   // target hall for Add Rack; '' = busiest
+  // Rack type. A rack either has a coolant manifold or it does not, and that is
+  // decided when the cabinet is built — not later, per server. Picking 'liquid'
+  // installs an in-rack CDU alongside the leaf and PDUs and plumbs it to the hall's
+  // chilled-water headers, which is what makes direct-to-chip servers rackable here.
+  const [rackKind, setRackKind] = useState<'air' | 'liquid'>('air')
   const [mode, setMode] = useState<'rack' | 'hall'>('rack')
 
   const [racks, setRacks] = useState<RackOcc[]>([])
@@ -111,7 +116,7 @@ export default function ProvisionDialog({ onClose }: Props) {
     setBusy(true); setErr(''); setResult(null)
     try {
       const r = (mode === 'rack'
-        ? await api.provisionRack(dc, room || undefined)
+        ? await api.provisionRack(dc, room || undefined, rackKind === 'liquid')
         : await api.provisionHall(dc)) as ProvResult
       setResult(r)
       await Promise.all([fetchGraph(), fetchDevices(), loadCapacity(dc)])
@@ -174,6 +179,24 @@ export default function ProvisionDialog({ onClose }: Props) {
                 ))}
               </select>
             </Row>
+          )}
+
+          {/* Rack type — only meaningful for Add Rack; a new hall's first rack is
+              always air (its CDU story starts when a liquid rack is added to it). */}
+          {mode === 'rack' && (
+            <Row label="Rack type">
+              <select style={{ flex: 1 }} value={rackKind}
+                onChange={e => { setRackKind(e.target.value as 'air' | 'liquid'); setResult(null); setErr('') }}>
+                <option value="air">Compute (air-cooled) — leaf + A/B PDUs</option>
+                <option value="liquid">Compute (liquid / DLC) — leaf + A/B PDUs + in-rack CDU</option>
+              </select>
+            </Row>
+          )}
+          {mode === 'rack' && rackKind === 'liquid' && (
+            <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 100, marginTop: -4, marginBottom: 4 }}>
+              CDU is cloned from this DC's standard unit, takes U37–U40, and is plumbed to
+              the hall's CHW supply/return headers. Costs 4U of server space.
+            </div>
           )}
 
           {result && (

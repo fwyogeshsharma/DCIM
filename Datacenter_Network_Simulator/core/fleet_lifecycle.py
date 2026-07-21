@@ -42,7 +42,7 @@ from core.device_manager import Device, DeviceType, Vendor, Interface, Interface
 from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
     RACK_POWER_BUDGET_W_DEFAULT,
-    TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
+    TOR_A_UNIT, TOR_B_UNIT, PDU_UNIT, CDU_UNIT, FIRST_SERVER_UNIT, LAST_SERVER_UNIT,
     SERVER_U_HEIGHT, device_u_height,
 )
 from core import hall_geometry as geo
@@ -257,7 +257,8 @@ class FleetLifecycleEngine:
                     self._log(f"[Fleet] snmp reload submit: {e}")
 
     # ── user-driven provisioning (manual capacity, off the day scheduler) ─────
-    def provision_rack(self, dc: str, room: Optional[str] = None) -> Optional[dict]:
+    def provision_rack(self, dc: str, room: Optional[str] = None,
+                       with_cdu: bool = False) -> Optional[dict]:
         """Add ONE empty compute rack (leaf + A/B rack PDUs, wired to the pod
         fabric + RPP feeds) to a hall in *dc* that still has grid space and
         fabric/power headroom — the SAME fill path day-churn uses, so every cap
@@ -267,7 +268,7 @@ class FleetLifecycleEngine:
         DC) has room. Hot-commissions the rack's gear onto the live sims."""
         with self._lock:
             summ = DaySummary(day=self.day)
-            rack = self._fill_hall_grid(summ, dc=dc, room=room)
+            rack = self._fill_hall_grid(summ, dc=dc, room=room, with_cdu=with_cdu)
             if rack is None:
                 return None
             summ.total_servers = len(self._servers())
@@ -1201,7 +1202,8 @@ class FleetLifecycleEngine:
         return None
 
     def _fill_hall_grid(self, summ: DaySummary, dc: Optional[str] = None,
-                        room: Optional[str] = None) -> Optional[dict]:
+                        room: Optional[str] = None,
+                        with_cdu: bool = False) -> Optional[dict]:
         """Add the next compute rack to a hall that's still under its grid cap.
         Most-occupied hall first, so one hall fills before the next is touched.
         Racks fill ROW-MAJOR (each compute row packs full before the next opens),
@@ -1233,7 +1235,8 @@ class FleetLifecycleEngine:
             if slot is None:
                 continue                              # grid full (hit CRAH wall)
             rack_row, num, coords = slot
-            return self._build_compute_rack(rk, rack_row, num, infra, summ, 0, coords)
+            return self._build_compute_rack(rk, rack_row, num, infra, summ, 0, coords,
+                                            with_cdu=with_cdu)
         return None
 
     # ── CRAH provisioning (install a hall's full complement, sized to load) ──────
@@ -1762,7 +1765,8 @@ class FleetLifecycleEngine:
 
     def _build_compute_rack(self, rk: tuple, row: int, num: int, infra: dict,
                             summ: DaySummary, vrow: int,
-                            coords: Optional[tuple] = None) -> Optional[dict]:
+                            coords: Optional[tuple] = None,
+                            with_cdu: bool = False) -> Optional[dict]:
         """Materialise a compute rack (leaf + dual rack PDUs) in hall *rk*, fully
         wired: leaf → every spine + the OOB switch; each PDU → an RPP feed so
         server load reaches the UPS. Placed on the floor grid at *coords*
@@ -1835,12 +1839,111 @@ class FleetLifecycleEngine:
             except Exception:
                 pass
         self._commission(leaf)
+
+        # Optional in-rack CDU — what makes this a LIQUID rack. Installed at
+        # commissioning like the PDUs and the ToR, not bolted on later: the manifold
+        # and hoses are part of the cabinet build, and a direct-to-chip server cannot
+        # be racked until they exist.
+        cdu = (self._build_rack_cdu(rk, row, num, infra, coords, pdus)
+               if with_cdu else None)
+
         summ.expanded_racks.append(f"{dc}:{room}:R{row}:RACK{num}")
-        self._log(f"[Fleet] new rack {dc}/F{floor}/{room} R{row} RACK{num} (leaf+{len(pdus)}PDU)")
+        self._log(f"[Fleet] new rack {dc}/F{floor}/{room} R{row} RACK{num} "
+                  f"(leaf+{len(pdus)}PDU{'+CDU' if cdu else ''})")
         return {"key": (dc, str(floor or ""), room or "", row, num),
                 "floor": floor, "room": room,
-                "tor": leaf, "pdus": pdus, "server_tmpl": infra["srv_tmpl"],
+                "tor": leaf, "pdus": pdus, "cdu": cdu,
+                "server_tmpl": infra["srv_tmpl"],
                 "fx": fx, "fy": fy, "hot": hot, "cold": cold, "facing": facing}
+
+    def _dc_cdu(self, dc: str) -> Optional[Device]:
+        """An IN-RACK CDU in *dc* to clone a new rack's unit from.
+
+        Restricted to in-rack units on purpose. A rack CDU is bolted into the
+        cabinet at U37-40, so cloning a row or facility skid into that slot would be
+        wrong twice over: a floor-standing 1 MW unit does not fit a 4U rack space,
+        and its capacity belongs to a whole row rather than one cabinet.
+
+        Among in-rack units the highest manifold port count wins, mirroring _dc_pdu's
+        rule of cloning the BEST available rather than whichever sorts first — that
+        one exists because alphabetical order once handed every fleet rack an
+        undersized PDU, and the same trap applies here.
+
+        None when the DC has no in-rack CDU at all; the caller then provisions the
+        rack air-cooled rather than inventing hardware."""
+        from core.device_manager import cdu_manifold_ports, cdu_serves_own_rack_only
+        in_rack = [d for d in self.s.device_manager.get_all_devices()
+                   if d.device_type == DeviceType.CDU and (d.datacenter or "") == dc
+                   and cdu_serves_own_rack_only(getattr(d, "model_name", "") or "")]
+        if not in_rack:
+            return None
+        return sorted(in_rack,
+                      key=lambda d: (-cdu_manifold_ports(getattr(d, "model_name", "") or ""),
+                                     d.name or ""))[0]
+
+    def _build_rack_cdu(self, rk: tuple, row: int, num: int, infra: dict,
+                        coords: Optional[tuple],
+                        pdus: Optional[list] = None) -> Optional[Device]:
+        """Install an in-rack CDU and connect all three services it needs.
+
+        A CDU is not a standalone box: it sits between the FACILITY chilled-water
+        loop and the rack's own cold-plate loop, so it needs the CHW supply and
+        return headers as well as power and management. Wiring only the servers to
+        it would leave a unit that removes heat into nothing.
+
+          facility water  CHWS header → CDU → CHWR header  (the primary side)
+          power           dual-corded to this rack's own A/B PDUs, like the ToR
+          management      the hall's BMS OOB — a CDU answers BACnet/Modbus on the
+                          facility plane, not the IT OOB
+
+        The cold-plate side is left empty on purpose: servers join the loop as they
+        are racked, which is what the Add-Device CDU picker does.
+        """
+        dc, floor, room = rk
+        tmpl = self._dc_cdu(dc)
+        if tmpl is None:
+            # Distinguish the two reasons, because they call for different actions.
+            # A DC whose only CDUs are row/facility skids does not WANT a unit in the
+            # cabinet — those already serve the hall, so racks there are liquid-ready
+            # through the row header and the rack just needs a manifold (which this
+            # model does not carry as a device).
+            any_cdu = any(d.device_type == DeviceType.CDU and (d.datacenter or "") == dc
+                          for d in self.s.device_manager.get_all_devices())
+            self._log(
+                f"[Fleet] {dc} has CDUs but none is an in-rack unit — rack left "
+                f"without its own CDU; the row/facility unit already serves this hall"
+                if any_cdu else
+                f"[Fleet] no CDU in {dc} to clone — rack provisioned air-cooled")
+            return None
+        fx, fy, hot, cold, facing = coords or self._rack_coords(rk, 0, num)
+        unit = int(getattr(tmpl, "rack_unit", CDU_UNIT) or CDU_UNIT)
+        cdu = self._clone(tmpl, dc, row, num, unit, prefix="cdu",
+                          floor=floor, room=room, fx=fx, fy=fy,
+                          hot=hot, cold=cold, facing=facing)
+        if cdu is None:
+            return None
+        try:
+            chw_s, chw_r = infra.get("chw_supply"), infra.get("chw_return")
+            if chw_s is not None:
+                self.s.topology.add_link(chw_s.id, cdu.id, layer="cooling")
+            if chw_r is not None:
+                self.s.topology.add_link(cdu.id, chw_r.id, layer="cooling")
+            if chw_s is None or chw_r is None:
+                self._log(f"[Fleet] {cdu.name}: CHW header missing — primary side "
+                          f"unconnected, its loop will remove heat into nothing")
+        except Exception as e:
+            self._log(f"[Fleet] CDU water {cdu.name}: {e}")
+        # Dual-corded to this rack's own A/B PDUs, exactly like the ToR. Its pumps
+        # are a real load (a CHx80 draws ~1.8 kW) — uncorded, that load would never
+        # reach the PDU/RPP/UPS cascade and the rack would under-report.
+        for pdu in (pdus or []):
+            try:
+                self.s.topology.add_link(cdu.id, pdu.id, layer="power")
+            except Exception as e:
+                self._log(f"[Fleet] CDU power {cdu.name}: {e}")
+        self._wire_facility_mgmt(cdu, rk, infra)      # BACnet/Modbus on the BMS plane
+        self._commission(cdu)
+        return cdu
 
     def _dc_pdu(self, dc: str) -> Optional[Device]:
         """A rack PDU in *dc* to clone the new COMPUTE rack's PDU from. Must be a

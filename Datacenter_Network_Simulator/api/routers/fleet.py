@@ -111,6 +111,11 @@ def fleet_advance():
 class ProvisionBody(BaseModel):
     datacenter: str
     room: str | None = None   # target hall for provision-rack; None = busiest hall
+    # Build this rack as a LIQUID rack: an in-rack CDU is installed alongside the
+    # leaf and PDUs, plumbed to the hall's CHW headers. This is a commissioning-time
+    # decision — a rack either has a manifold or it does not — and it is what makes
+    # direct-to-chip servers placeable there at all.
+    with_cdu: bool = False
 
 
 def _rack_response(eng, rack: dict, message: str) -> dict:
@@ -134,7 +139,12 @@ def fleet_provision_rack(body: ProvisionBody):
     and RPP feeds) to a hall in *datacenter* that still has grid space. Reuses the
     fleet fill path, so spine/OOB/grid/power caps are all honoured, and the gear is
     hot-commissioned onto the live sims. 409 when every hall in the DC is full —
-    the caller should open a new hall instead."""
+    the caller should open a new hall instead.
+
+    with_cdu makes it a LIQUID rack: an in-rack CDU is installed with the rest of
+    the rack BOM and plumbed to the hall's chilled-water headers. Direct-to-chip
+    servers can only be racked where such a unit exists, so this is the decision
+    that opens (or does not open) the rack to liquid cooling."""
     s = _state()
     if s.device_manager is None or s.topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
@@ -142,15 +152,17 @@ def fleet_provision_rack(body: ProvisionBody):
     if not dc:
         raise HTTPException(status_code=422, detail="datacenter is required")
     room = (body.room or "").strip() or None
-    rack = _engine().provision_rack(dc, room=room)
+    rack = _engine().provision_rack(dc, room=room, with_cdu=bool(body.with_cdu))
     if rack is None:
         where = f"{dc}/{room}" if room else dc
         raise HTTPException(status_code=409, detail=(
             f"No rack space in {where} (grid, spine fabric or rack power all full). "
             f"Try another hall or provision a new hall to add capacity."))
     _dc, _floor, _room, row, num = rack["key"]
+    kind = "liquid rack (CDU installed)" if rack.get("cdu") else "rack"
     return _rack_response(_engine(), rack,
-                          f"Provisioned rack R{row}-{num:02d} in {dc}/{rack.get('room','')}.")
+                          f"Provisioned {kind} R{row}-{num:02d} in "
+                          f"{dc}/{rack.get('room','')}.")
 
 
 @router.post("/provision-hall")
