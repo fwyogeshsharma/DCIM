@@ -23,6 +23,7 @@ class TrapType(str, Enum):
     AUTH_FAILURE      = "authenticationFailure"
     # Routing protocol traps
     BGP_DOWN          = "bgpSessionDown"
+    BGP_UP            = "bgpEstablished"
 # UPS-MIB power traps
     UPS_ON_BATTERY    = "upsOnBattery"
     UPS_LOW_BATTERY   = "upsLowBattery"
@@ -190,6 +191,17 @@ TRAP_DEFINITIONS: dict[TrapType, TrapDefinition] = {
         "BGP Session Down",
         "A BGP peer session has transitioned to Idle/Active",
         "critical",
+    ),
+    # bgpEstablished. Defined so the recovery carries the SAME bgpPeerIdentifier /
+    # bgpPeerState varbinds as the backward transition — an NMS with BGP4-MIB loaded
+    # correlates the pair on the peer address, which an untyped raw trap would not
+    # carry.
+    TrapType.BGP_UP: TrapDefinition(
+        TrapType.BGP_UP,
+        "1.3.6.1.2.1.15.0.1",
+        "BGP Session Established",
+        "A BGP peer session has reached the Established state",
+        "informational",
     ),
 TrapType.UPS_ON_BATTERY: TrapDefinition(
         TrapType.UPS_ON_BATTERY,
@@ -582,7 +594,7 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.LINK_DOWN, TrapType.LINK_UP,
         TrapType.AUTH_FAILURE,
         TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,
-        TrapType.BGP_DOWN,
+        TrapType.BGP_DOWN, TrapType.BGP_UP,
     ],
     "switch": [
         TrapType.COLD_START, TrapType.WARM_START,
@@ -603,7 +615,7 @@ APPLICABLE_TRAPS: dict[str, list[TrapType]] = {
         TrapType.LINK_DOWN, TrapType.LINK_UP,
         TrapType.AUTH_FAILURE,
         TrapType.CPU_HIGH, TrapType.TEMPERATURE_ALERT,
-        TrapType.BGP_DOWN,
+        TrapType.BGP_DOWN, TrapType.BGP_UP,
     ],
     "load_balancer": [
         TrapType.COLD_START,
@@ -746,4 +758,6 @@ def get_applicable_traps(device_type: str, vendor: str,
     if device_type == "switch" and any(kw in model_name for kw in _BGP_CAPABLE_SWITCH_MODELS):
         if TrapType.BGP_DOWN not in base:
             base.append(TrapType.BGP_DOWN)
+        if TrapType.BGP_UP not in base:
+            base.append(TrapType.BGP_UP)
     return base
