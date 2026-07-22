@@ -371,7 +371,18 @@ type RackOcc = { room: string; floor: string; rack_row: number; rack_num: number
                  next_free: number | null; full: boolean }
 
 export default function AddDeviceDialog({ onClose }: Props) {
-  const { fetchGraph, fetchDevices, devices, setActiveView, setProvisionOpen } = useStore()
+  // Per-slice selectors, NOT a bare useStore() destructure: the bare form
+  // subscribes to the WHOLE store, so the 4s status poll (snmp/gnmi/bacnet/… each
+  // set()) re-rendered this dialog every tick, rebuilding every <option> child. A
+  // re-render while a native <select> popup is open makes Chrome repaint the popup —
+  // the blank-then-fill flash. Actions are stable refs and `devices` only changes on
+  // an SSE 'devices' event, so the dialog now re-renders only when its data actually
+  // changes.
+  const devices          = useStore(s => s.devices)
+  const fetchGraph       = useStore(s => s.fetchGraph)
+  const fetchDevices     = useStore(s => s.fetchDevices)
+  const setActiveView    = useStore(s => s.setActiveView)
+  const setProvisionOpen = useStore(s => s.setProvisionOpen)
 
   // Deep-link to the Floor-Plan page's Provision dialog when a DC is out of rack
   // space (Add Device is placement-only — provisioning lives there).
