@@ -32,18 +32,18 @@ const LAYER_BTN: { id: string; label: string; color: string }[] = [
 ]
 
 const NODE_TYPE_COLOR: Record<string, string> = {
-  router:        '#a05f28',
-  switch:        '#41684f',
-  server:        '#3f4a5c',
-  firewall:      '#8a3b2e',
-  load_balancer: '#6a5384',
-  oob_switch:    '#3d6470',
-  pdu:           '#7a5c2c',
-  floor_pdu:     '#a34a5e',
-  rpp:           '#6a4a63',
-  generator:     '#3d3620',
-  ups:           '#cbb04a',
-  sensor:        '#3a3c40',
+  router:        'var(--node-router)',
+  switch:        'var(--node-switch)',
+  server:        'var(--node-server)',
+  firewall:      'var(--node-firewall)',
+  load_balancer: 'var(--node-lb)',
+  oob_switch:    'var(--node-oob)',
+  pdu:           'var(--node-pdu)',
+  floor_pdu:     'var(--node-floor-pdu)',
+  rpp:           'var(--node-rpp)',
+  generator:     'var(--node-generator)',
+  ups:           'var(--node-ups)',
+  sensor:        'var(--node-sensor)',
 }
 
 // ── Icons ──────────────────────────────────────────────────

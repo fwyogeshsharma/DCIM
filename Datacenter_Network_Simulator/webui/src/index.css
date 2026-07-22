@@ -20,16 +20,48 @@
   --yellow:       #cbb04a;
   --orange:       #d98040;
 
-  /* node colors */
-  --node-router:   #a05f28;
-  --node-switch:   #41684f;
-  --node-server:   #3f4a5c;
-  --node-firewall: #8a3b2e;
-  --node-lb:       #6a5384;
-  --node-oob:      #3d6470;
-  --node-pdu:      #7a5c2c;
-  --node-ups:      #6e5c30;
-  --node-sensor:   #3a3c40;
+  /* ─── node colors ───
+     Single source of truth: DeviceNode, DeviceList, TopologyCanvas and
+     StatusBar all read these, so a type keeps one colour everywhere.
+
+     Grouped by plane so the canvas reads at a glance, with lightness varying
+     inside each group — hue alone was not enough separation at 659 nodes.
+       IT / network  → blue through violet
+       Power chain   → warm, roughly dark upstream to light downstream
+       Cooling       → cyan through teal-green                              */
+
+  /* IT / network */
+  --node-server:   #46536b;  /* muted on purpose — by far the most numerous */
+  --node-switch:   #2a72a8;
+  --node-router:   #5b5fc7;
+  --node-oob:      #7b4bab;
+  --node-lb:       #a44bab;
+  --node-firewall: #c0392f;
+  --node-sensor:   #6e6a63;
+
+  /* power chain */
+  --node-utility:    #4a3a18;
+  --node-switchgear: #7a5a24;
+  --node-ats:        #a8830f;
+  --node-generator:  #6e6b2a;
+  --node-ups:        #d4a52a;
+  --node-mcc:        #8a4a3a;
+  --node-mpp:        #bd7a55;
+  --node-rpp:        #9c3a5c;
+  --node-pdu:        #c85a1e;
+  --node-floor-pdu:  #c25580;
+  --node-emeter:     #a09472;
+
+  /* cooling */
+  --node-crah:    #1a8a9c;
+  --node-chiller: #0d7d99;
+  --node-ctower:  #2a7d7a;
+  --node-pump:    #2a8a5e;
+  --node-valve:   #55b08a;
+  --node-cdu:     #14595e;
+
+  /* fills light enough that white node labels fall under 4.5:1 */
+  --node-ink-dark: #17130a;
 
   /* layer colors */
   --layer-prod: #e0a33c;
