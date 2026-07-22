@@ -4,30 +4,24 @@ import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useStore } from '../../store/useStore'
 
 const TYPE_COLOR: Record<string, string> = {
-  router:        'var(--node-router)',
-  switch:        'var(--node-switch)',
-  server:        'var(--node-server)',
-  firewall:      'var(--node-firewall)',
-  load_balancer: 'var(--node-lb)',
-  oob_switch:    'var(--node-oob)',
-  pdu:           'var(--node-pdu)',
-  floor_pdu:     'var(--node-floor-pdu)',
-  rpp:           'var(--node-rpp)',
-  generator:     'var(--node-generator)',
-  ups:           'var(--node-ups)',
-  utility_feed:  'var(--node-utility)',
-  switchgear:    'var(--node-switchgear)',
-  ats:           'var(--node-ats)',
-  mcc:           'var(--node-mcc)',
-  mpp:           'var(--node-mpp)',
-  sensor:        'var(--node-sensor)',
+  router:        '#a05f28',
+  switch:        '#41684f',
+  server:        '#3f4a5c',
+  firewall:      '#8a3b2e',
+  load_balancer: '#6a5384',
+  oob_switch:    '#3d6470',
+  pdu:           '#7a5c2c',
+  floor_pdu:     '#7a5c2c',
+  rpp:           '#6a4a63',
+  generator:     '#3d3620',
+  ups:           '#6e5c30',
+  utility_feed:  '#3a3c40',
+  switchgear:    '#4d4f52',
+  ats:           '#4a3d1c',
+  mcc:           '#33535d',
+  mpp:           '#3d6470',
+  sensor:        '#3a3c40',
 }
-
-// Types whose fill is light enough that a white label drops below 4.5:1.
-const DARK_LABEL = new Set([
-  'ups', 'ats', 'mpp', 'pdu', 'floor_pdu',
-  'energy_monitor', 'crah', 'pump', 'valve',
-])
 
 const TYPE_ICON: Record<string, string> = {
   router:        '⬡',
@@ -76,10 +70,6 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   const faultKeys = useStore(s => (s.faulted[id] || []).join(', '))
   const faulted = faultKeys.length > 0
   const col  = TYPE_COLOR[d.device_type] || '#4d4f52'
-  const darkLabel = DARK_LABEL.has(d.device_type)
-  const ink       = darkLabel ? 'var(--node-ink-dark)'   : '#fff'
-  const subInk    = darkLabel ? 'rgba(23,19,10,0.78)'    : 'rgba(255,255,255,0.7)'
-  const subInkDim = darkLabel ? 'rgba(23,19,10,0.55)'    : 'rgba(255,255,255,0.5)'
   const icon = TYPE_ICON[d.device_type]  || '□'
   const poweredOff = d.power_state === 'Off'
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null)
@@ -139,7 +129,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
       <div style={{
         fontSize: 9,
         fontWeight: 700,
-        color: ink,
+        color: '#fff',
         marginTop: 2,
         maxWidth: 72,
         overflow: 'hidden',
@@ -153,20 +143,20 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
         const prod  = d.ip_address
         const mgmt  = d.mgmt_ip || ''
         if (layer === 'production') {
-          return <div style={{ fontSize: 8, color: subInk }}>{prod}</div>
+          return <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{prod}</div>
         }
         if (layer === 'management' || layer === 'power') {
-          return <div style={{ fontSize: 8, color: subInk }}>{mgmt || prod}</div>
+          return <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{mgmt || prod}</div>
         }
         if (prod && mgmt) {
           return (
             <>
-              <div style={{ fontSize: 8, color: subInk }}>{prod}</div>
-              <div style={{ fontSize: 7, color: subInkDim }}>{mgmt}</div>
+              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{prod}</div>
+              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)' }}>{mgmt}</div>
             </>
           )
         }
-        return <div style={{ fontSize: 8, color: subInk }}>{prod || mgmt}</div>
+        return <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{prod || mgmt}</div>
       })()}
 
       {typeof d.cpu_usage === 'number' && d.cpu_usage > 0 && (
