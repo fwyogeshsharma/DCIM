@@ -4,23 +4,23 @@ import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useStore } from '../../store/useStore'
 
 const TYPE_COLOR: Record<string, string> = {
-  router:        '#c0621a',
-  switch:        '#1a7a3c',
-  server:        '#1a5faa',
-  firewall:      '#9b1c1c',
-  load_balancer: '#6b21a8',
-  oob_switch:    '#0e7490',
-  pdu:           '#b45309',
-  floor_pdu:     '#b45309',
-  rpp:           '#7c2d6e',
-  generator:     '#713f12',
-  ups:           '#a16207',
-  utility_feed:  '#3f3f46',
-  switchgear:    '#57534e',
-  ats:           '#92400e',
-  mcc:           '#155e75',
-  mpp:           '#0e7490',
-  sensor:        '#374151',
+  router:        '#a05f28',
+  switch:        '#41684f',
+  server:        '#3f4a5c',
+  firewall:      '#8a3b2e',
+  load_balancer: '#6a5384',
+  oob_switch:    '#3d6470',
+  pdu:           '#7a5c2c',
+  floor_pdu:     '#7a5c2c',
+  rpp:           '#6a4a63',
+  generator:     '#3d3620',
+  ups:           '#6e5c30',
+  utility_feed:  '#3a3c40',
+  switchgear:    '#4d4f52',
+  ats:           '#4a3d1c',
+  mcc:           '#33535d',
+  mpp:           '#3d6470',
+  sensor:        '#3a3c40',
 }
 
 const TYPE_ICON: Record<string, string> = {
@@ -69,7 +69,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   // equality and re-render every node on every tick.
   const faultKeys = useStore(s => (s.faulted[id] || []).join(', '))
   const faulted = faultKeys.length > 0
-  const col  = TYPE_COLOR[d.device_type] || '#555'
+  const col  = TYPE_COLOR[d.device_type] || '#4d4f52'
   const icon = TYPE_ICON[d.device_type]  || '□'
   const poweredOff = d.power_state === 'Off'
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null)
@@ -167,7 +167,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
           <div style={{
             height: '100%',
             width: `${Math.min(100, d.cpu_usage)}%`,
-            background: d.cpu_usage > 80 ? '#f85149' : '#3fb950',
+            background: d.cpu_usage > 80 ? '#d95d52' : '#5fb37e',
             borderRadius: 1,
           }} />
         </div>
@@ -179,8 +179,8 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
           left: tipPos.x,
           top: tipPos.y,
           zIndex: 9999,
-          background: '#0d1525',
-          border: '1px solid #1e3048',
+          background: '#191b1f',
+          border: '1px solid #2c3037',
           borderRadius: 6,
           padding: '8px 10px',
           boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
@@ -189,9 +189,9 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}>
           <div style={{
-            fontWeight: 700, color: '#e6edf3', fontSize: 12,
+            fontWeight: 700, color: '#dcdbd7', fontSize: 12,
             marginBottom: 6, paddingBottom: 4,
-            borderBottom: '1px solid #1e3048',
+            borderBottom: '1px solid #2c3037',
           }}>
             {d.name}
           </div>
@@ -200,9 +200,9 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
               display: 'flex', justifyContent: 'space-between',
               gap: 16, lineHeight: 1.85, fontSize: 10.5,
             }}>
-              <span style={{ color: '#8b949e' }}>{k}:</span>
+              <span style={{ color: '#8b8d8c' }}>{k}:</span>
               <span style={{
-                color: '#e6edf3',
+                color: '#dcdbd7',
                 fontFamily: (k.includes('IP') || k.includes('Port'))
                   ? 'Consolas, monospace' : undefined,
               }}>

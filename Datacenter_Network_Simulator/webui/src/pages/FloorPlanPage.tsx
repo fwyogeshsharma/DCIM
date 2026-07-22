@@ -26,10 +26,10 @@ export default function FloorPlanPage() {
   }, [])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#0e1116' }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#131417' }}>
       <div style={{
         height: 36, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12,
-        padding: '0 12px', background: 'linear-gradient(180deg,#0b1628,#080f1e)',
+        padding: '0 12px', background: 'linear-gradient(180deg,#191b1f,#0e0f11)',
         borderBottom: '1px solid var(--border)',
       }}>
         <button onClick={() => setActiveView('main')} style={{
@@ -39,14 +39,14 @@ export default function FloorPlanPage() {
         <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>Floor Plan &amp; Heatmap</span>
         <div style={{ flex: 1 }} />
         <button onClick={() => setProvisionOpen(true)} style={{
-          background: 'var(--accent)', border: '1px solid var(--accent)', color: '#061018',
+          background: 'var(--accent)', border: '1px solid var(--accent)', color: '#0e0f11',
           borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
         }}>＋ Provision Capacity</button>
       </div>
       <iframe
         title="Floor Plan"
         src={src}
-        style={{ flex: 1, width: '100%', border: 'none', background: '#0e1116' }}
+        style={{ flex: 1, width: '100%', border: 'none', background: '#131417' }}
       />
       {provisionOpen && <ProvisionDialog onClose={() => setProvisionOpen(false)} />}
     </div>

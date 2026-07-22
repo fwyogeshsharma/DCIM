@@ -44,16 +44,16 @@ function pct(used: number, total: number): number {
 }
 
 function metricColor(v: number, warn: number, crit: number): string {
-  if (v >= crit) return '#f85149'
-  if (v >= warn) return '#d29922'
-  return '#3fb950'
+  if (v >= crit) return '#d95d52'
+  if (v >= warn) return '#cbb04a'
+  return '#5fb37e'
 }
 
 const TYPE_BADGE: Record<string, string> = {
-  switch: '#1e6ec8', router: '#8b5cf6', server: '#059669',
-  firewall: '#dc2626', load_balancer: '#d97706', ups: '#0891b2',
-  pdu: '#065f46', floor_pdu: '#064e3b', rpp: '#4a044e', generator: '#713f12', oob_switch: '#4b5563', sensor: '#92400e',
-  utility_feed: '#3f3f46', switchgear: '#57534e', ats: '#92400e', mcc: '#155e75', mpp: '#0e7490',
+  switch: '#c78a2d', router: '#8a76a6', server: '#4a8f70',
+  firewall: '#c2493f', load_balancer: '#b39a3f', ups: '#5c8592',
+  pdu: '#1f4535', floor_pdu: '#1a3a2d', rpp: '#3a2a3d', generator: '#3d3620', oob_switch: '#4d4f52', sensor: '#4a3d1c',
+  utility_feed: '#3a3c40', switchgear: '#4d4f52', ats: '#4a3d1c', mcc: '#33535d', mpp: '#3d6470',
 }
 
 const ROW_STYLE = (i: number): React.CSSProperties => ({
@@ -78,9 +78,9 @@ function StatePill({ val, okStates }: { val?: string; okStates: string[] }) {
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
       fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-      background: ok ? '#3fb95022' : '#f8514922',
-      border: `1px solid ${ok ? '#3fb95044' : '#f8514944'}`,
-      color: ok ? '#3fb950' : '#f85149',
+      background: ok ? '#5fb37e22' : '#d95d5222',
+      border: `1px solid ${ok ? '#5fb37e44' : '#d95d5244'}`,
+      color: ok ? '#5fb37e' : '#d95d52',
     }}>{val}</span>
   )
 }
@@ -129,7 +129,7 @@ function NameCell({ d }: { d: DeviceInfo }) {
 }
 
 function TypeBadge({ dt }: { dt: string }) {
-  const c = TYPE_BADGE[dt] ?? '#4b5563'
+  const c = TYPE_BADGE[dt] ?? '#4d4f52'
   return (
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3,
@@ -184,7 +184,7 @@ function SortTH({ label, id, sort, align = 'left', minW, title }: {
     }}>
       {title
         ? <span title={title} style={{ cursor: 'help' }}>
-            {label}<span style={{ marginLeft: 3, fontSize: 8, color: '#58a6ff', fontStyle: 'normal', textTransform: 'none', letterSpacing: 0 }}>ⓘ</span>
+            {label}<span style={{ marginLeft: 3, fontSize: 8, color: '#e8b366', fontStyle: 'normal', textTransform: 'none', letterSpacing: 0 }}>ⓘ</span>
           </span>
         : label}
       <span style={{ marginLeft: 3, opacity: active ? 1 : 0.3, fontSize: 8 }}>
@@ -199,14 +199,14 @@ function SortTH({ label, id, sort, align = 'left', minW, title }: {
 function IfaceSubTable({ ifaces, colSpan }: { ifaces: IfaceStats[]; colSpan: number }) {
   return (
     <tr>
-      <td colSpan={colSpan} style={{ padding: 0, background: '#0d1117' }}>
+      <td colSpan={colSpan} style={{ padding: 0, background: '#131417' }}>
         <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
           {/* sub-header */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '28px 120px 60px 80px 100px 100px 90px 90px 70px 70px 70px 70px',
             padding: '4px 0',
-            background: '#161b22',
+            background: '#191b1f',
             borderBottom: '1px solid var(--border)',
           }}>
             {['', 'Interface', 'Status', 'Speed', 'In Octets', 'Out Octets', 'In Pkts', 'Out Pkts', 'In Err', 'Out Err', 'In Disc', 'Out Disc']
@@ -237,9 +237,9 @@ function IfaceSubTable({ ifaces, colSpan }: { ifaces: IfaceStats[]; colSpan: num
                 <div style={{ padding: '0 8px' }}>
                   <span style={{
                     fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3,
-                    background: up ? '#3fb95022' : '#f8514922',
-                    border: `1px solid ${up ? '#3fb95044' : '#f8514944'}`,
-                    color: up ? '#3fb950' : '#f85149',
+                    background: up ? '#5fb37e22' : '#d95d5222',
+                    border: `1px solid ${up ? '#5fb37e44' : '#d95d5244'}`,
+                    color: up ? '#5fb37e' : '#d95d52',
                   }}>{up ? 'UP' : 'DOWN'}</span>
                 </div>
                 <div style={{ padding: '0 8px', fontSize: 9, color: 'var(--text-muted)' }}>{fmtSpeed(iface.speed)}</div>
@@ -247,10 +247,10 @@ function IfaceSubTable({ ifaces, colSpan }: { ifaces: IfaceStats[]; colSpan: num
                 <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(iface.out_octets)}</div>
                 <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtNum(iface.in_unicast_pkts)}</div>
                 <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtNum(iface.out_unicast_pkts)}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_errors > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_errors > 0 ? fmtNum(iface.in_errors) : '—'}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_errors > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_errors > 0 ? fmtNum(iface.out_errors) : '—'}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_discards > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_discards > 0 ? fmtNum(iface.in_discards) : '—'}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_discards > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_discards > 0 ? fmtNum(iface.out_discards) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_errors > 0 ? '#cbb04a' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_errors > 0 ? fmtNum(iface.in_errors) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_errors > 0 ? '#cbb04a' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_errors > 0 ? fmtNum(iface.out_errors) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_discards > 0 ? '#cbb04a' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_discards > 0 ? fmtNum(iface.in_discards) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_discards > 0 ? '#cbb04a' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_discards > 0 ? fmtNum(iface.out_discards) : '—'}</div>
               </div>
             )
           })}
@@ -404,8 +404,8 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
           const discards = d.total_discards ?? 0
           const ifUp     = d.interfaces_up ?? 0
           const ifTot    = d.interfaces_total ?? 0
-          const bgpColor = bgpTot === 0 ? 'var(--text-muted)' : bgpUp === bgpTot ? '#3fb950' : bgpUp === 0 ? '#f85149' : '#d29922'
-          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? '#3fb950' : ifUp === 0 ? '#f85149' : '#d29922'
+          const bgpColor = bgpTot === 0 ? 'var(--text-muted)' : bgpUp === bgpTot ? '#5fb37e' : bgpUp === 0 ? '#d95d52' : '#cbb04a'
+          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? '#5fb37e' : ifUp === 0 ? '#d95d52' : '#cbb04a'
           const hasIfaces = (d.iface_stats?.length ?? 0) > 0
           const isExpanded = expanded.has(d.id)
 
@@ -436,10 +436,10 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
               <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(d.total_rx_bytes)}</td>
               <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(d.total_tx_bytes)}</td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                <span style={{ color: errors > 0 ? '#d29922' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{errors > 0 ? fmtNum(errors) : '—'}</span>
+                <span style={{ color: errors > 0 ? '#cbb04a' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{errors > 0 ? fmtNum(errors) : '—'}</span>
               </td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                <span style={{ color: discards > 0 ? '#d29922' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{discards > 0 ? fmtNum(discards) : '—'}</span>
+                <span style={{ color: discards > 0 ? '#cbb04a' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{discards > 0 ? fmtNum(discards) : '—'}</span>
               </td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                 {bgpTot === 0
@@ -528,7 +528,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
           const cpuPct   = Math.round(d.cpu_usage)
           const ifUp     = d.interfaces_up ?? 0
           const ifTot    = d.interfaces_total ?? 0
-          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? '#3fb950' : ifUp === 0 ? '#f85149' : '#d29922'
+          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? '#5fb37e' : ifUp === 0 ? '#d95d52' : '#cbb04a'
           const hasIfaces = (d.iface_stats?.length ?? 0) > 0
           const isExpanded = expanded.has(d.id)
 
@@ -548,7 +548,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
                   ? <span style={{
                       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
                       fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-                      background: '#0891b222', border: '1px solid #0891b255', color: '#22d3ee',
+                      background: '#5c859222', border: '1px solid #5c859255', color: '#93b6bf',
                     }}>Liquid</span>
                   : <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>Air</span>}
               </td>
@@ -867,9 +867,9 @@ function AlarmPill({ label, active }: { label: string; active: boolean }) {
     <span style={{
       display: 'inline-block', padding: '2px 7px', borderRadius: 10, fontSize: 9,
       fontWeight: 600, marginRight: 4,
-      background: active ? '#c0392b22' : 'var(--bg-card)',
-      color: active ? '#e74c3c' : 'var(--text-muted)',
-      border: `1px solid ${active ? '#e74c3c' : 'var(--border)'}`,
+      background: active ? '#8a3b3122' : 'var(--bg-card)',
+      color: active ? '#d95d52' : 'var(--text-muted)',
+      border: `1px solid ${active ? '#d95d52' : 'var(--border)'}`,
     }}>{label}</span>
   )
 }
@@ -878,8 +878,8 @@ function StatCell({ label, value, unit, warn, crit, loWarn, loCrit }: { label: s
   // Two-sided: red/orange when the value runs ABOVE warn/crit OR (for voltage &
   // frequency) BELOW loWarn/loCrit — real power quality flags sag/under-freq too.
   const color = value == null ? 'var(--text-muted)'
-    : (crit != null && value >= crit) || (loCrit != null && value <= loCrit) ? '#e74c3c'
-    : (warn != null && value >= warn) || (loWarn != null && value <= loWarn) ? '#f39c12'
+    : (crit != null && value >= crit) || (loCrit != null && value <= loCrit) ? '#d95d52'
+    : (warn != null && value >= warn) || (loWarn != null && value <= loWarn) ? '#cbb04a'
     : 'var(--text)'
   return (
     <div style={{ minWidth: 80, padding: '6px 10px', borderRight: '1px solid var(--border)' }}>
@@ -999,7 +999,7 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
               )}
               <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>{snap.circuits} circuits</span>
               <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>inst {snap.instance}</span>
-              {anyAlarm && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#c0392b22', border: '1px solid #e74c3c', color: '#e74c3c', fontWeight: 700 }}>ALARM</span>}
+              {anyAlarm && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#8a3b3122', border: '1px solid #d95d52', color: '#d95d52', fontWeight: 700 }}>ALARM</span>}
             </div>
 
             {/* Panel summary */}
@@ -1173,9 +1173,9 @@ function PlantBinCell({ val, mode }: { val?: number; mode: 'run' | 'alarm' }) {
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
       fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-      background: good ? '#3fb95022' : '#f8514922',
-      border: `1px solid ${good ? '#3fb95044' : '#f8514944'}`,
-      color: good ? '#3fb950' : '#f85149',
+      background: good ? '#5fb37e22' : '#d95d5222',
+      border: `1px solid ${good ? '#5fb37e44' : '#d95d5244'}`,
+      color: good ? '#5fb37e' : '#d95d52',
     }}>{text}</span>
   )
 }
@@ -1339,9 +1339,9 @@ const ELEC_COLUMNS: Record<string, ElecCol[]> = {
 function ElecStatusCell({ raw, col }: { raw: unknown; col: ElecCol }) {
   const s = col.states?.[String(raw)]
   if (!s) return <span style={{ color: 'var(--text-dim)' }}>—</span>
-  const color = s.good === true ? '#3fb950' : s.good === false ? '#f85149' : 'var(--text-muted)'
-  const bg    = s.good === true ? '#3fb95022' : s.good === false ? '#f8514922' : 'var(--bg-card)'
-  const bd    = s.good === true ? '#3fb95044' : s.good === false ? '#f8514944' : 'var(--border)'
+  const color = s.good === true ? '#5fb37e' : s.good === false ? '#d95d52' : 'var(--text-muted)'
+  const bg    = s.good === true ? '#5fb37e22' : s.good === false ? '#d95d5222' : 'var(--bg-card)'
+  const bd    = s.good === true ? '#5fb37e44' : s.good === false ? '#d95d5244' : 'var(--border)'
   return (
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,

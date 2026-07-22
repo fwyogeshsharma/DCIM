@@ -24,26 +24,26 @@ const nodeTypes = { device: DeviceNode }
 const edgeTypes = { link: LinkEdge }
 
 const LAYER_BTN: { id: string; label: string; color: string }[] = [
-  { id: 'all',        label: 'All',   color: '#1e6ec8' },
+  { id: 'all',        label: 'All',   color: '#8b8d8c' },
   { id: 'production', label: 'Prod',  color: 'var(--layer-prod)' },
   { id: 'management', label: 'Mgmt',  color: 'var(--layer-mgmt)' },
   { id: 'power',      label: 'Power', color: 'var(--layer-power)' },
-  { id: 'cooling',    label: 'Cool',  color: '#22d3ee' },
+  { id: 'cooling',    label: 'Cool',  color: '#93b6bf' },
 ]
 
 const NODE_TYPE_COLOR: Record<string, string> = {
-  router:        '#c0621a',
-  switch:        '#1a7a3c',
-  server:        '#1a5faa',
-  firewall:      '#9b1c1c',
-  load_balancer: '#6b21a8',
-  oob_switch:    '#0e7490',
-  pdu:           '#b45309',
-  floor_pdu:     '#b03060',
-  rpp:           '#7c2d6e',
-  generator:     '#713f12',
-  ups:           '#c9a227',
-  sensor:        '#374151',
+  router:        '#a05f28',
+  switch:        '#41684f',
+  server:        '#3f4a5c',
+  firewall:      '#8a3b2e',
+  load_balancer: '#6a5384',
+  oob_switch:    '#3d6470',
+  pdu:           '#7a5c2c',
+  floor_pdu:     '#a34a5e',
+  rpp:           '#6a4a63',
+  generator:     '#3d3620',
+  ups:           '#cbb04a',
+  sensor:        '#3a3c40',
 }
 
 // ── Icons ──────────────────────────────────────────────────
@@ -423,7 +423,7 @@ function Canvas() {
               padding: '3px 10px', fontSize: 10,
               background: isActive ? b.color : 'transparent',
               border: `1px solid ${isActive ? b.color : 'var(--border)'}`,
-              color: isActive ? '#fff' : 'var(--text-muted)',
+              color: isActive ? 'var(--accent-on)' : 'var(--text-muted)',
               borderRadius: 4, cursor: 'pointer',
               transition: 'background 0.15s, color 0.15s',
             }}>
@@ -443,7 +443,7 @@ function Canvas() {
           padding: 24,
           border: '1px dashed var(--border)',
           borderRadius: 8,
-          background: 'rgba(13, 17, 23, 0.6)',
+          background: 'rgba(19, 20, 23, 0.6)',
           backdropFilter: 'blur(4px)',
           zIndex: 5,
         }}>
@@ -492,7 +492,7 @@ function Canvas() {
         onMoveEnd={onMoveEnd}
         defaultEdgeOptions={{ type: 'link' }}
         style={{
-          background: 'radial-gradient(ellipse at center, #0e151f 0%, var(--bg-base) 70%)',
+          background: 'radial-gradient(ellipse at center, #191b1f 0%, var(--bg-base) 70%)',
         }}
         proOptions={{ hideAttribution: true }}
         // Shift+click adds a node to the selection (React Flow defaults this to
@@ -503,7 +503,7 @@ function Canvas() {
         multiSelectionKeyCode="Shift"
         selectionKeyCode="Shift"
       >
-        <Background variant={BackgroundVariant.Dots} color="#2d3f5540" gap={20} size={1} />
+        <Background variant={BackgroundVariant.Dots} color="#3d434c40" gap={20} size={1} />
       </ReactFlow>
 
       {ctxMenu && (

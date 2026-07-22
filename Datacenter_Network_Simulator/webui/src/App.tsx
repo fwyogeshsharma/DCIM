@@ -43,7 +43,7 @@ export default function App() {
       <div style={{
         position: 'fixed', inset: 0, display: 'flex',
         alignItems: 'center', justifyContent: 'center',
-        background: '#060b16', color: 'var(--text-muted, #8aa0bd)', fontSize: 12,
+        background: '#0e0f11', color: 'var(--text-muted, #8b8d8c)', fontSize: 12,
       }}>
         Loading…
       </div>

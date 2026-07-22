@@ -148,7 +148,7 @@ export default function ProvisionDialog({ onClose }: Props) {
               {loadingCap ? 'reading rack capacity…'
                 : `${totalRacks} racks · ${racksWithSpace} with free U · ${freeUnits} free server-U total`}
               {allFull && !loadingCap && (
-                <span style={{ color: '#f0a020' }}> — every rack full; open a new hall.</span>
+                <span style={{ color: '#cbb04a' }}> — every rack full; open a new hall.</span>
               )}
             </div>
           )}
@@ -201,7 +201,7 @@ export default function ProvisionDialog({ onClose }: Props) {
 
           {result && (
             <div style={{ marginTop: 10, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-hover)' }}>
-              <div style={{ fontSize: 11, color: 'var(--green, #35c26b)', fontWeight: 600 }}>✓ {result.message}</div>
+              <div style={{ fontSize: 11, color: 'var(--green, #5fb37e)', fontWeight: 600 }}>✓ {result.message}</div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
                 {result.rack.datacenter} · {result.rack.room} · Row {result.rack.rack_row} · Rack {result.rack.rack_num}
                 {' — now selectable in Add Device.'}

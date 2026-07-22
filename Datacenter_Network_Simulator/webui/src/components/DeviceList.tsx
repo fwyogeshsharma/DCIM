@@ -9,18 +9,18 @@ const DEFAULT_WIDTH = 260
 const STORAGE_KEY = 'dcim:device-list-width'
 
 const TYPE_COLOR: Record<string, string> = {
-  router:        '#c0621a',
-  switch:        '#1a7a3c',
-  server:        '#1a5faa',
-  firewall:      '#9b1c1c',
-  load_balancer: '#6b21a8',
-  oob_switch:    '#0e7490',
-  pdu:           '#b45309',
-  floor_pdu:     '#b03060',
-  rpp:           '#7c2d6e',
-  generator:     '#713f12',
-  ups:           '#c9a227',
-  sensor:        '#374151',
+  router:        '#a05f28',
+  switch:        '#41684f',
+  server:        '#3f4a5c',
+  firewall:      '#8a3b2e',
+  load_balancer: '#6a5384',
+  oob_switch:    '#3d6470',
+  pdu:           '#7a5c2c',
+  floor_pdu:     '#a34a5e',
+  rpp:           '#6a4a63',
+  generator:     '#3d3620',
+  ups:           '#cbb04a',
+  sensor:        '#3a3c40',
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -253,7 +253,7 @@ export default function DeviceList() {
           </thead>
           <tbody>
             {filtered.map(d => {
-              const col = TYPE_COLOR[d.device_type] || '#555'
+              const col = TYPE_COLOR[d.device_type] || '#4d4f52'
               const selected = selectedDeviceId === d.id
               return (
                 <tr

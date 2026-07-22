@@ -14,7 +14,7 @@ interface MenuItem {
 }
 
 const MENU_STYLE: React.CSSProperties = {
-  background: '#111827',
+  background: '#1f2126',
   border: '1px solid var(--border)',
   borderRadius: 4,
   minWidth: 210,
@@ -26,12 +26,12 @@ const MENU_STYLE: React.CSSProperties = {
 // Small network-logo (three connected nodes)
 const Logo = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-    <circle cx="5"  cy="6"  r="2.2" fill="#3fb950" />
-    <circle cx="19" cy="6"  r="2.2" fill="#1e6ec8" />
-    <circle cx="12" cy="18" r="2.2" fill="#db6d28" />
-    <line x1="5"  y1="6"  x2="12" y2="18" stroke="#2d3f55" strokeWidth="1.4" />
-    <line x1="19" y1="6"  x2="12" y2="18" stroke="#2d3f55" strokeWidth="1.4" />
-    <line x1="5"  y1="6"  x2="19" y2="6"  stroke="#2d3f55" strokeWidth="1.4" />
+    <circle cx="5"  cy="6"  r="2.2" fill="#5fb37e" />
+    <circle cx="19" cy="6"  r="2.2" fill="#c78a2d" />
+    <circle cx="12" cy="18" r="2.2" fill="#c07a3a" />
+    <line x1="5"  y1="6"  x2="12" y2="18" stroke="#3d434c" strokeWidth="1.4" />
+    <line x1="19" y1="6"  x2="12" y2="18" stroke="#3d434c" strokeWidth="1.4" />
+    <line x1="5"  y1="6"  x2="19" y2="6"  stroke="#3d434c" strokeWidth="1.4" />
   </svg>
 )
 
@@ -158,8 +158,8 @@ function StatusChip({ label, dot, value, color }: {
       style={{
         display: 'flex', alignItems: 'center', gap: 5,
         padding: '0 9px', height: 22,
-        background: active ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${active ? 'rgba(34,197,94,0.25)' : 'var(--border)'}`,
+        background: active ? 'rgba(95, 179, 126,0.07)' : 'rgba(255,255,255,0.03)',
+        border: `1px solid ${active ? 'rgba(95, 179, 126,0.25)' : 'var(--border)'}`,
         borderRadius: 11,
         fontSize: 10, color: color ?? 'var(--text-muted)',
         fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
@@ -369,7 +369,7 @@ export default function MenuBar() {
   return (
     <div ref={menuBarRef} style={{
       height: 36,
-      background: 'linear-gradient(180deg, #0b1628 0%, #080f1e 100%)',
+      background: 'linear-gradient(180deg, #191b1f 0%, #0e0f11 100%)',
       borderBottom: '1px solid var(--border)',
       boxShadow: '0 1px 0 rgba(255,255,255,0.03)',
       display: 'flex',
@@ -392,9 +392,9 @@ export default function MenuBar() {
         </span>
         <span style={{
           padding: '2px 7px', borderRadius: 4,
-          background: 'rgba(37,99,235,0.15)',
-          border: '1px solid rgba(37,99,235,0.35)',
-          color: '#93c5fd',
+          background: 'rgba(224, 163, 60,0.15)',
+          border: '1px solid rgba(224, 163, 60,0.35)',
+          color: '#eec98a',
           fontSize: 9, fontWeight: 700,
           fontFamily: 'Consolas, monospace',
           letterSpacing: '0.4px',
@@ -508,9 +508,9 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
             </span>
             <span style={{
               padding: '1px 6px', borderRadius: 3,
-              background: 'rgba(30,110,200,0.18)',
-              border: '1px solid rgba(30,110,200,0.4)',
-              color: '#93c5fd', fontSize: 9, fontWeight: 700,
+              background: 'rgba(199, 138, 45,0.18)',
+              border: '1px solid rgba(199, 138, 45,0.4)',
+              color: '#eec98a', fontSize: 9, fontWeight: 700,
               fontFamily: 'Consolas, monospace',
             }}>v5.0</span>
           </div>
