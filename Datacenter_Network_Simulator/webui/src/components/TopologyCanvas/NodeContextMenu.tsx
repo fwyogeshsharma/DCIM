@@ -172,7 +172,7 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
 // ── Shared menu styles ────────────────────────────────────────────────────────
 
 const MENU_S: React.CSSProperties = {
-  background: '#1f2126',
+  background: '#111827',
   border: '1px solid var(--border)',
   borderRadius: 4,
   boxShadow: '0 10px 28px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4)',
@@ -201,7 +201,7 @@ function MenuItem({
       style={{
         padding: '6px 14px',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        color: disabled ? 'var(--text-dim)' : danger ? '#d95d52' : 'var(--text)',
+        color: disabled ? 'var(--text-dim)' : danger ? '#f87171' : 'var(--text)',
         background: hov && !disabled ? 'rgba(255,255,255,0.06)' : 'transparent',
       }}
     >
@@ -495,7 +495,7 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
   }
 
   const LAYER_COLOR: Record<string, string> = {
-    production: '#e8b366', management: '#5fb37e', power: '#cbb04a',
+    production: '#4a9eff', management: '#3fb950', power: '#f59e0b',
   }
 
   return createPortal(
@@ -536,7 +536,7 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
                     Neighbors · {neighbors.length}
                   </div>
                   {neighbors.map((n, i) => {
-                    const col = LAYER_COLOR[n.layer] || '#e8b366'
+                    const col = LAYER_COLOR[n.layer] || '#4a9eff'
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, padding: '3px 0' }}>
                         <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1 }}>{n.name}</span>
@@ -887,7 +887,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                   <div
                     style={{
                       padding: '5px 14px', cursor: hpBusy ? 'wait' : 'pointer',
-                      color: '#ddc36a', whiteSpace: 'nowrap',
+                      color: '#fbbf24', whiteSpace: 'nowrap',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
@@ -895,7 +895,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     onMouseDown={e => { e.preventDefault(); if (!hpBusy) resetHpTrip() }}
                   >
                     <span>Reset High Head Pressure</span>
-                    <span style={{ fontSize: 9, color: '#ddc36a' }}>{hpBusy ? '…' : 'LOCKED OUT'}</span>
+                    <span style={{ fontSize: 9, color: '#fbbf24' }}>{hpBusy ? '…' : 'LOCKED OUT'}</span>
                   </div>
                 )}
 
@@ -905,7 +905,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     key={c.key}
                     style={{
                       padding: '5px 14px', cursor: busyAny ? 'wait' : 'pointer',
-                      color: c.on ? '#d95d52' : 'var(--text)', whiteSpace: 'nowrap',
+                      color: c.on ? '#f87171' : 'var(--text)', whiteSpace: 'nowrap',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
@@ -913,7 +913,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     onMouseDown={e => { e.preventDefault(); if (!c.on) c.toggle() }}
                   >
                     <span>{c.label}</span>
-                    <span style={{ fontSize: 9, color: c.on ? '#d95d52' : 'var(--text-dim)' }}>
+                    <span style={{ fontSize: 9, color: c.on ? '#f87171' : 'var(--text-dim)' }}>
                       {c.busy ? '…' : c.on ? 'ACTIVE' : ''}
                     </span>
                   </div>
@@ -925,7 +925,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     key={`normal-${c.key}`}
                     style={{
                       padding: '5px 14px', cursor: busyAny ? 'wait' : 'pointer',
-                      color: '#7cc296', whiteSpace: 'nowrap',
+                      color: '#4ade80', whiteSpace: 'nowrap',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}

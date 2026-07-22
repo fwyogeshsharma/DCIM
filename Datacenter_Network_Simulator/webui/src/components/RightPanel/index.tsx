@@ -40,7 +40,7 @@ const TABS: Tab[] = [
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
   { id: 'fleet',   icon: '📈',  label: 'Fleet Lifecycle', component: <FleetPanel /> },
-  { id: 'console', icon: '>_',  iconColor: '#c4c3bf', label: 'Console', component: <ConsolePanel /> },
+  { id: 'console', icon: '>_',  iconColor: '#c9d1d9', label: 'Console', component: <ConsolePanel /> },
 ]
 
 function TabButton({
@@ -219,7 +219,7 @@ export default function RightPanel() {
       {/* Icon tab strip */}
       <div style={{
         width: 54,
-        background: 'linear-gradient(180deg, #131417 0%, #0e0f11 100%)',
+        background: 'linear-gradient(180deg, #0c1220 0%, #0a0f1a 100%)',
         borderLeft: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',

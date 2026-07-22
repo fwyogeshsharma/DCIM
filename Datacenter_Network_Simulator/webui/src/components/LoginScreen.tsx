@@ -3,12 +3,12 @@ import { api, setToken, type ApiError } from '../api/client'
 
 const Logo = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-    <circle cx="5"  cy="6"  r="2.2" fill="#5fb37e" />
-    <circle cx="19" cy="6"  r="2.2" fill="#c78a2d" />
-    <circle cx="12" cy="18" r="2.2" fill="#c07a3a" />
-    <line x1="5"  y1="6"  x2="12" y2="18" stroke="#3d434c" strokeWidth="1.4" />
-    <line x1="19" y1="6"  x2="12" y2="18" stroke="#3d434c" strokeWidth="1.4" />
-    <line x1="5"  y1="6"  x2="19" y2="6"  stroke="#3d434c" strokeWidth="1.4" />
+    <circle cx="5"  cy="6"  r="2.2" fill="#3fb950" />
+    <circle cx="19" cy="6"  r="2.2" fill="#1e6ec8" />
+    <circle cx="12" cy="18" r="2.2" fill="#db6d28" />
+    <line x1="5"  y1="6"  x2="12" y2="18" stroke="#2d3f55" strokeWidth="1.4" />
+    <line x1="19" y1="6"  x2="12" y2="18" stroke="#2d3f55" strokeWidth="1.4" />
+    <line x1="5"  y1="6"  x2="19" y2="6"  stroke="#2d3f55" strokeWidth="1.4" />
   </svg>
 )
 
@@ -39,14 +39,14 @@ export default function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: 'radial-gradient(circle at 50% 30%, #1f2126 0%, #0e0f11 70%)',
+      background: 'radial-gradient(circle at 50% 30%, #0d1b30 0%, #060b16 70%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'system-ui, sans-serif',
     }}>
       <form onSubmit={submit} style={{
         width: 340,
-        background: 'var(--bg-card, #1f2126)',
-        border: '1px solid var(--border, #272a30)',
+        background: 'var(--bg-card, #0f1a2e)',
+        border: '1px solid var(--border, #1e2d44)',
         borderRadius: 8,
         boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
         padding: '28px 28px 24px',
@@ -54,10 +54,10 @@ export default function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <Logo />
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #dcdbd7)', textAlign: 'center' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text, #e5edf7)', textAlign: 'center' }}>
             Datacenter Network Simulator
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted, #8b8d8c)' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #8aa0bd)' }}>
             Sign in to continue
           </div>
         </div>
@@ -72,8 +72,8 @@ export default function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
           style={{
             padding: '9px 11px', fontSize: 12,
             background: 'rgba(255,255,255,0.04)',
-            border: `1px solid ${error ? 'var(--red, #d95d52)' : 'var(--border, #272a30)'}`,
-            borderRadius: 5, color: 'var(--text, #dcdbd7)', outline: 'none',
+            border: `1px solid ${error ? 'var(--red, #db4f4f)' : 'var(--border, #1e2d44)'}`,
+            borderRadius: 5, color: 'var(--text, #e5edf7)', outline: 'none',
           }}
         />
 
@@ -86,14 +86,14 @@ export default function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
           style={{
             padding: '9px 11px', fontSize: 12,
             background: 'rgba(255,255,255,0.04)',
-            border: `1px solid ${error ? 'var(--red, #d95d52)' : 'var(--border, #272a30)'}`,
-            borderRadius: 5, color: 'var(--text, #dcdbd7)', outline: 'none',
+            border: `1px solid ${error ? 'var(--red, #db4f4f)' : 'var(--border, #1e2d44)'}`,
+            borderRadius: 5, color: 'var(--text, #e5edf7)', outline: 'none',
             marginTop: -4,
           }}
         />
 
         {error && (
-          <div style={{ fontSize: 11, color: 'var(--red, #d95d52)', textAlign: 'center', marginTop: -6 }}>
+          <div style={{ fontSize: 11, color: 'var(--red, #f87171)', textAlign: 'center', marginTop: -6 }}>
             {error}
           </div>
         )}

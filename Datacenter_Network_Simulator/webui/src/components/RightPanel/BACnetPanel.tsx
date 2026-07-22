@@ -139,7 +139,7 @@ function DeviceCounts({ devices }: { devices: BacnetDevice[] }) {
         <StatRow key={label} label={`${label}:`} value={counts.get(label) ?? 0} />
       ))}
       <div style={{ height: 4 }} />
-      <StatRow label="Total:" value={total} labelColor="#7fa3ad" valueColor="#7fa3ad" />
+      <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
     </>
   )
 }

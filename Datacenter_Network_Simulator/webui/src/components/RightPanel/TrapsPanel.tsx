@@ -4,10 +4,10 @@ import { useStore } from '../../store/useStore'
 
 // Mirrors core/trap_definitions.py SEVERITY_COLOR
 const SEVERITY_COLOR: Record<string, string> = {
-  informational: '#5fb37e',
-  minor:         '#cbb04a',
-  major:         '#c8813f',
-  critical:      '#d95d52',
+  informational: '#2ecc71',
+  minor:         '#f39c12',
+  major:         '#e67e22',
+  critical:      '#e74c3c',
 }
 const SEVERITY_ORDER = ['informational', 'minor', 'major', 'critical'] as const
 
@@ -169,7 +169,7 @@ export default function TrapsPanel() {
                   flex: 1, padding: '4px 6px',
                   background: active ? SEVERITY_COLOR[sev] : hexToRgba(SEVERITY_COLOR[sev], 0.25),
                   border: `1px solid ${active ? SEVERITY_COLOR[sev] : 'transparent'}`,
-                  borderRadius: 3, color: active ? 'var(--accent-on)' : 'var(--text)',
+                  borderRadius: 3, color: '#fff',
                   fontSize: 10, fontWeight: 700, lineHeight: 1.2,
                   fontVariantNumeric: 'tabular-nums', cursor: 'pointer',
                   textTransform: 'uppercase', letterSpacing: '0.3px',
@@ -239,7 +239,7 @@ export default function TrapsPanel() {
             <tbody>
               {visible.map((t, i) => {
                 const sev = t.severity || 'informational'
-                const sevColor = SEVERITY_COLOR[sev] || '#7d7f7e'
+                const sevColor = SEVERITY_COLOR[sev] || '#888'
                 const bg = hexToRgba(sevColor, 0.12)
                 return (
                   <tr key={`${t.timestamp}-${i}`} style={{ background: bg }}>
@@ -249,7 +249,7 @@ export default function TrapsPanel() {
                     <td>
                       <span style={{
                         display: 'inline-block',
-                        background: sevColor, color: 'var(--accent-on)',
+                        background: sevColor, color: '#fff',
                         padding: '1px 6px', borderRadius: 3,
                         fontSize: 9, fontWeight: 700,
                         whiteSpace: 'nowrap',

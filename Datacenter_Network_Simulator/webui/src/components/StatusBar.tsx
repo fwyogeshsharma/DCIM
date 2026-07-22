@@ -20,9 +20,9 @@ function fmtKW(w: number): string {
 // PUE colour band: efficient (<1.4) green, typical (1.4–2.0) amber, poor (>2.0) red
 function pueColor(pue: number): string {
   if (pue <= 0) return 'var(--text-dim)'
-  if (pue < 1.4) return '#5fb37e'
-  if (pue < 2.0) return '#cbb04a'
-  return '#d95d52'
+  if (pue < 1.4) return '#3fb950'
+  if (pue < 2.0) return '#d29922'
+  return '#f85149'
 }
 
 function PowerReadout() {
@@ -73,17 +73,17 @@ const DEVICE_TYPE_COLOR: Record<string, string> = {
   oob_switch:    'var(--node-oob)',
   pdu:           'var(--node-pdu)',
   floor_pdu:     'var(--node-pdu)',
-  rpp:           '#6a4a63',
-  generator:     '#3d3620',
+  rpp:           '#7c2d6e',
+  generator:     '#713f12',
   ups:           'var(--node-ups)',
   sensor:        'var(--node-sensor)',
-  energy_monitor:'#3d6470',
-  crah:          '#5c8592',
-  chiller:       '#33535d',
-  pump:          '#c78a2d',
-  cooling_tower: '#2c454e',
-  valve:         '#3a2a3d',
-  cdu:           '#e0a33c',
+  energy_monitor:'#0e7490',
+  crah:          '#0891b2',
+  chiller:       '#155e75',
+  pump:          '#1e6ec8',
+  cooling_tower: '#164e63',
+  valve:         '#4a044e',
+  cdu:           '#2563eb',
 }
 
 const DEVICE_TYPE_SHORT: Record<string, string> = {
@@ -117,7 +117,7 @@ export default function StatusBar() {
   return (
     <div style={{
       height: 26,
-      background: 'linear-gradient(180deg, #0e0f11 0%, #0e0f11 100%)',
+      background: 'linear-gradient(180deg, #08101a 0%, #060b13 100%)',
       borderTop: '1px solid var(--border)',
       display: 'flex',
       alignItems: 'center',
@@ -136,7 +136,7 @@ export default function StatusBar() {
         }} title={t}>
           <span style={{
             width: 7, height: 7, borderRadius: 2,
-            background: DEVICE_TYPE_COLOR[t] || '#4d4f52',
+            background: DEVICE_TYPE_COLOR[t] || '#555',
           }} />
           <span style={{ color: 'var(--text-muted)' }}>{DEVICE_TYPE_SHORT[t] || t}</span>
           <span style={{

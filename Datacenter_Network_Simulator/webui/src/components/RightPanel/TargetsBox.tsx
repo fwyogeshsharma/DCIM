@@ -33,7 +33,7 @@ export default function TargetsBox({ rows, total, footer }: {
       {rows.map(r => (
         <StatRow key={r.label} label={r.label} value={r.value} />
       ))}
-      <StatRow label="Total:" value={total} labelColor="#7fa3ad" valueColor="#7fa3ad" />
+      <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
       {footer}
     </div>
   )

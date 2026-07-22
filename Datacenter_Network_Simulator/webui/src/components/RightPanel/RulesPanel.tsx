@@ -4,10 +4,10 @@ import { api } from '../../api/client'
 import type { Rule } from '../../api/types'
 
 const SEVERITY_COLOR: Record<string, string> = {
-  informational: '#5fb37e',
-  minor:         '#cbb04a',
-  major:         '#c8813f',
-  critical:      '#d95d52',
+  informational: '#2ecc71',
+  minor:         '#f39c12',
+  major:         '#e67e22',
+  critical:      '#e74c3c',
 }
 
 const METRIC_LABEL: Record<string, [string, string]> = {
@@ -114,7 +114,7 @@ function groupRules(rules: Rule[]): [string, Rule[]][] {
 
 function RuleRow({ r, onToggle }: { r: Rule; onToggle: () => void }) {
   const sev = r.severity
-  const sevColor = sev ? (SEVERITY_COLOR[sev] || '#7d7f7e') : undefined
+  const sevColor = sev ? (SEVERITY_COLOR[sev] || '#888') : undefined
   const oid = extractOid(r.actions)
   const threshold = formatThreshold(r.conditions)
 
@@ -134,7 +134,7 @@ function RuleRow({ r, onToggle }: { r: Rule; onToggle: () => void }) {
         {sev && sevColor && (
           <span style={{
             display: 'inline-block',
-            background: sevColor, color: 'var(--accent-on)',
+            background: sevColor, color: '#fff',
             padding: '1px 4px', borderRadius: 3,
             fontSize: 9, fontWeight: 700,
             textTransform: 'uppercase',

@@ -813,7 +813,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
               <div style={{ fontSize: 10, color: 'var(--text-dim)', paddingLeft: 100, marginTop: 4 }}>loading rack capacity…</div>
             ) : roomsWithSpace.length === 0 ? (
               <div style={{ paddingLeft: 100, marginTop: 4 }}>
-                <div style={{ fontSize: 10, color: '#cbb04a' }}>
+                <div style={{ fontSize: 10, color: '#f0a020' }}>
                   {/* Distinguish the two reasons a DC can come back empty. "No free
                       space" sends the operator to Provision; "no liquid-ready rack"
                       is a different problem with a different fix (add a CDU, or pick
@@ -842,7 +842,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
                 {(airBlocked || (!noLiquidRacks && !liquidRacksFull)) && (
                   <button type="button" onClick={goProvision} style={{
                     marginTop: 5, background: 'var(--accent)', border: '1px solid var(--accent)',
-                    color: '#0e0f11', borderRadius: 4, padding: '3px 9px', fontSize: 10,
+                    color: '#061018', borderRadius: 4, padding: '3px 9px', fontSize: 10,
                     fontWeight: 700, cursor: 'pointer',
                   }}>Provision capacity →</button>
                 )}
@@ -990,7 +990,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
                 </div>
               )}
               {!linkBusy && cands?.supported && cands.groups.length === 0 && (
-                <div style={{ fontSize: 10, color: '#cbb04a', paddingLeft: 100 }}>
+                <div style={{ fontSize: 10, color: '#f0a020', paddingLeft: 100 }}>
                   Nothing to cable to in this rack — no leaf with a free downlink, no
                   hall OOB and no rack PDU. Pick another rack.
                 </div>
@@ -1033,7 +1033,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
                           </select>
                         </FormRow>
                         {s.candidates.length === 0 && (
-                          <div style={{ fontSize: 10, color: '#cbb04a', paddingLeft: 104,
+                          <div style={{ fontSize: 10, color: '#f0a020', paddingLeft: 104,
                                         marginTop: -2, marginBottom: 4 }}>
                             none available with a free port/outlet
                           </div>

@@ -129,7 +129,7 @@ export default function FleetPanel() {
             </span>
           : connErr && !status
           ? <span className="badge stopped" title={connErr}>
-              <span className="status-dot" style={{ background: '#cbb04a', boxShadow: '0 0 4px #cbb04a' }} />
+              <span className="status-dot" style={{ background: '#f59e0b', boxShadow: '0 0 4px #f59e0b' }} />
               Unreachable
             </span>
           : <span className={`badge ${running ? 'running' : 'stopped'}`} title={connErr || undefined}>
@@ -146,9 +146,9 @@ export default function FleetPanel() {
             running, the panel just can't read it. */}
         {connErr && (
           <div style={{
-            background: 'rgba(203, 176, 74,0.12)', border: '1px solid #cbb04a',
+            background: 'rgba(245,158,11,0.12)', border: '1px solid #f59e0b',
             borderRadius: 5, padding: '7px 9px', fontSize: 10, lineHeight: 1.5,
-            color: '#cbb04a',
+            color: '#f59e0b',
           }}>
             <strong>Can't reach the fleet backend.</strong> Status below may be stale or unknown —
             this is not the same as the scheduler being stopped.
@@ -248,13 +248,13 @@ export default function FleetPanel() {
                     value={cfg[f.key] ?? 0}
                     onChange={n => setField(f.key, n)}
                     style={{
-                      width: 72, background: '#131417', border: '1px solid var(--border)', borderRadius: 4,
+                      width: 72, background: '#0d1117', border: '1px solid var(--border)', borderRadius: 4,
                       color: 'var(--text)', fontSize: 12, fontFamily: 'monospace', padding: '3px 7px', outline: 'none',
                     }}
                   />
                 </div>
                 {showHint && (
-                  <div style={{ fontSize: 10, color: overCap ? '#cbb04a' : 'var(--text-dim)', marginTop: 2, lineHeight: 1.3 }}>
+                  <div style={{ fontSize: 10, color: overCap ? '#f59e0b' : 'var(--text-dim)', marginTop: 2, lineHeight: 1.3 }}>
                     rack PDU delivers {(pduW / 1000).toFixed(1)} kW → max {(cap / 1000).toFixed(1)} kW/rack (A/B failover)
                     {overCap && ` — clamped to ${(cap / 1000).toFixed(1)} kW`}
                   </div>
@@ -280,7 +280,7 @@ export default function FleetPanel() {
             <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>Loading…</div>
           )}
           {!status && connErr && (
-            <div style={{ fontSize: 10, color: '#cbb04a' }}>Backend unreachable — activity unknown.</div>
+            <div style={{ fontSize: 10, color: '#f59e0b' }}>Backend unreachable — activity unknown.</div>
           )}
           {status && status.history.length === 0 && (
             <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>No days elapsed yet.</div>
@@ -301,10 +301,10 @@ export default function FleetPanel() {
                   {hasDetail ? (open ? '▾' : '▸') : ''}
                 </span>
                 <span style={{ color: 'var(--text-dim)', width: 34 }}>D{d.day}</span>
-                <span style={{ color: '#5fb37e' }}>+{d.added.length}</span>
-                <span style={{ color: '#d95d52' }}>-{d.removed.length}</span>
+                <span style={{ color: '#3fb950' }}>+{d.added.length}</span>
+                <span style={{ color: '#f87171' }}>-{d.removed.length}</span>
                 {d.expanded_racks.length > 0 &&
-                  <span style={{ color: '#cbb04a' }} title={d.expanded_racks.join(', ')}>+{d.expanded_racks.length} rack</span>}
+                  <span style={{ color: '#d29922' }} title={d.expanded_racks.join(', ')}>+{d.expanded_racks.length} rack</span>}
                 <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>{d.total_servers} srv</span>
               </div>
               {open && hasDetail && (
@@ -317,7 +317,7 @@ export default function FleetPanel() {
                       fontSize: 10, fontFamily: 'monospace', padding: '1px 0',
                       color: 'var(--text-muted)',
                     }}>
-                      <span style={{ color: x.op === '+' ? '#5fb37e' : '#d95d52' }}>{x.op}</span>
+                      <span style={{ color: x.op === '+' ? '#3fb950' : '#f87171' }}>{x.op}</span>
                       <span style={{ color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {x.device_type && <span style={{ color: 'var(--text-dim)' }}>{x.device_type} </span>}
                         {x.name} <span style={{ color: 'var(--text-dim)' }}>· {x.vendor || '—'}</span>
