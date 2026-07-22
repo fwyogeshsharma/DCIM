@@ -48,7 +48,13 @@ const uniq = (xs: (string | undefined)[]) =>
   [...new Set(xs.filter((x): x is string => !!x))].sort()
 
 export default function ProvisionDialog({ onClose }: Props) {
-  const { devices, fetchGraph, fetchDevices } = useStore()
+  // Per-slice selectors, NOT a bare useStore() destructure. The bare form subscribes
+  // to the WHOLE store, so the 4s status poll re-rendered this dialog every tick and
+  // rebuilt every <option> child — a re-render while a native <select> popup is open
+  // makes Chrome repaint it (the blank-then-fill flash). Same fix as AddDeviceDialog.
+  const devices      = useStore(s => s.devices)
+  const fetchGraph   = useStore(s => s.fetchGraph)
+  const fetchDevices = useStore(s => s.fetchDevices)
 
   const datacenters = useMemo(() => uniq(devices.map(d => d.datacenter)), [devices])
   const [dc, setDc] = useState('')
