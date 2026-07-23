@@ -240,9 +240,16 @@ def _run_headless():
         "returned_to_auto":       _TT.ATS_RETURNED_TO_AUTO,
         "fail_to_transfer":       _TT.ATS_FAIL_TO_TRANSFER,
         "transfer_fault_cleared": _TT.ATS_TRANSFER_FAULT_CLEARED,
+        # Generator fail-to-start (overcrank).
+        "gen_fail_start":         _TT.GEN_OVERCRANK,
     }
     state_store.set_transfer_trap_callback(
         lambda dev, kind: trap_engine.send_trap(dev, _ATS_TRAP[kind]))
+
+    # Cold-start on power-loss recovery: a load that went dark from total power loss
+    # cold-boots when a feed returns (the recovery side of a blackout).
+    state_store.set_coldstart_callback(
+        lambda dev: trap_engine.send_trap(dev, _TT.COLD_START))
 
     from api.state import AppState
     api_state = AppState.get()

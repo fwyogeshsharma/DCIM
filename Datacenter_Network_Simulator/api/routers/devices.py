@@ -1200,6 +1200,11 @@ FAULT_MAP = {
                          "label": "Frequency Out of Range","types": ["ups"]},
     "ups_batt_health":  {"override": "ups_battery_health", "value": 30.0,
                          "label": "Battery Low Health",   "types": ["ups"]},
+    # Generator fail-to-start — the genset will not qualify the emergency source.
+    # With the utility also down and the UPS drained, this is the double failure
+    # that leads to a total blackout. Handled via the store's set_gen_failed path.
+    "gen_fail_start":   {"gen": "fail_start", "label": "Fail to Start",
+                         "types": ["generator"]},
 }
 
 # metric → fault id, to report active ramps back to the UI by fault id (metric-
@@ -1244,6 +1249,11 @@ def get_device_faults(device_id: str):
         if _bk:
             active += [k for k, v in FAULT_MAP.items()
                        if v.get("battery") == _bk and dtype in v["types"]]
+    # Generator fail-to-start injection.
+    if st and dtype == "generator" and hasattr(st, "is_gen_failed") \
+            and st.is_gen_failed(device_id):
+        active += [k for k, v in FAULT_MAP.items()
+                   if "gen" in v and dtype in v["types"]]
     return {"device": device_id, "available": available, "active": active}
 
 
@@ -1274,6 +1284,11 @@ def set_device_fault(device_id: str, body: FaultRequest):
     # so its real autonomy countdown runs (drain → low-battery → exhaustion → load drop).
     if "battery" in spec:
         st.set_ups_forced_battery(device_id, spec["battery"] if on else None)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # Generator fail-to-start toggles the un-startable set (feeds the double-failure).
+    if "gen" in spec:
+        st.set_gen_failed(device_id, on)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
     # Override conditions (UPS state alarms) pin the backing ext-state metric via the

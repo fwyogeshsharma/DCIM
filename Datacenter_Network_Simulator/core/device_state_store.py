@@ -353,6 +353,7 @@ class DeviceStateStore:
         self._ats_failed: Set[str] = set()            # ATS device ids failed by injection
         self._ats_not_in_auto: Set[str] = set()       # ATS ids in manual (annunciation only)
         self._ups_forced_battery: Dict[str, str] = {}  # UPS id → "on"|"low": injected on-battery
+        self._gen_failed: Set[str] = set()             # generator ids that will NOT start (injected)
         # Plant units whose MCC is currently de-energized. Distinct from
         # _plant_standby_names: a staged-OFF unit is a healthy BMS decision and does
         # NOT count as lost cooling, whereas an unpowered unit genuinely is not
@@ -445,6 +446,9 @@ class DeviceStateStore:
         # decoupled from core.trap_definitions; the wiring maps the kind to a
         # TrapType. Unset on the desktop path, so it is a no-op there.
         self._transfer_trap_cb: Optional[Callable[["Device", str], None]] = None
+        # Cold-start trap on power-loss recovery. cb(device) — fired when a load that
+        # went dark from total power loss gets a live feed back and reboots.
+        self._coldstart_cb: Optional[Callable[["Device"], None]] = None
 
         # Simulated extended states per device (not stored on Device object)
         # device.name → {ups_status, bgp_sessions: [{peer, state}]}
@@ -473,6 +477,11 @@ class DeviceStateStore:
         The rule engine evaluates the fact and fires appropriate traps.
         """
         self._rule_engine_cb = cb
+
+    def set_coldstart_callback(self, cb: Callable[["Device"], None]):
+        """cb(device) — fired when a load that had gone dark from total power loss
+        gets a live feed back and cold-boots (the recovery side of a blackout)."""
+        self._coldstart_cb = cb
 
     def set_transfer_trap_callback(self, cb: Callable[["Device", str], None]):
         """cb(ats_device, event_kind) — fired autonomously as a transfer switch's
@@ -909,6 +918,11 @@ class DeviceStateStore:
     # device_types scoping on trap_rules.HighTemperature.
     _CPU_BEARING_TYPES = (DeviceType.SERVER, DeviceType.SWITCH, DeviceType.ROUTER,
                           DeviceType.FIREWALL, DeviceType.LOAD_BALANCER)
+    # IT loads that go hard-dark when every power feed to them dies (total upstream
+    # failure). Facility gear reports its own energized/dead state separately.
+    _POWER_DEAD_TYPES = (DeviceType.SERVER, DeviceType.SWITCH, DeviceType.ROUTER,
+                         DeviceType.FIREWALL, DeviceType.LOAD_BALANCER,
+                         DeviceType.OOB_SWITCH)
     # Per-plant-type BACnet point that reports its live electrical draw (kW).
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
     # CPU die thermal time constant (s). The heatsink + chassis thermal mass mean
@@ -1459,6 +1473,22 @@ class DeviceStateStore:
         """Injected on-battery kind for this UPS ("on"/"low"), or None."""
         return self._ups_forced_battery.get(ups_id)
 
+    def set_gen_failed(self, gen_id: str, failed: bool) -> None:
+        """Inject or clear a genset fail-to-start. A failed genset never qualifies
+        the emergency source, so if the utility is also down the bus stays dead and
+        the UPS carries alone until it exhausts — the classic double power failure."""
+        if failed:
+            self._gen_failed.add(gen_id)
+        else:
+            self._gen_failed.discard(gen_id)
+        cb = self._transfer_trap_cb
+        dev = self._dm.get_device(gen_id) if self._dm else None
+        if cb and dev is not None and failed:
+            cb(dev, "gen_fail_start")   # overcrank: engine failed to start on demand
+
+    def is_gen_failed(self, gen_id: str) -> bool:
+        return gen_id in self._gen_failed
+
     def get_ats_conditions(self, ats_id: str) -> list:
         """Active stateful ATS conditions on this switch, for the fault UI."""
         out = []
@@ -1541,6 +1571,7 @@ class DeviceStateStore:
             # the first tick after load doesn't read as a site-wide failed start.
             gens_startable = any(
                 self._gen_state(gid).get("gen_fuel_pct", 100.0) > 0.5
+                and gid not in self._gen_failed
                 for gid in dc_gens.get(dc, [])
             )
             st = self._transfer.step(dc, utility_ok, gens_startable, self._tick_interval)
@@ -2019,8 +2050,12 @@ class DeviceStateStore:
         thr   = self._through_live.get(device.id, 0.0)
         dt_h  = self._tick_interval / 3600.0
         out_of_fuel = st.get("gen_fuel_pct", 100.0) <= 0.5
+        # An injected fail-to-start keeps the engine faulted: the ATS asserts its
+        # start contact but the genset never reaches voltage, so the emergency source
+        # never qualifies and the bus stays dead (utility+gen = the double failure).
+        failed = device.id in self._gen_failed
 
-        if out_of_fuel:
+        if out_of_fuel or failed:
             st["gen_was_running"] = False
             st["gen_status"] = "fault"
             st["gen_load_pct"] = 0.0
@@ -3060,6 +3095,52 @@ class DeviceStateStore:
         })
 
         mf = self.metric_flags
+
+        # ── Total power loss ────────────────────────────────────────────────────
+        # An IT load whose every power feed has died — utility AND genset both failed
+        # and the UPS exhausted — goes hard-dark: no OS/NOS, all uplinks down, until a
+        # feed returns. A dead box cannot send a trap, so the loss shows only as its
+        # neighbours' linkDown; on recovery it cold-boots (COLD_START). This is the
+        # power-graph blackout reaching the IT layer. Distinct from a Redfish chassis
+        # power-off (operator action, handled just below).
+        if device.device_type in self._POWER_DEAD_TYPES:
+            _admin_off = (device.device_type == DeviceType.SERVER
+                          and getattr(device, "power_state", "On") == "Off")
+            if not self._energized.get(device.id, True):
+                if not ext.get("pwr_dead"):
+                    ext["pwr_dead"] = True
+                    # admin-off already broke this box's links; don't double-break.
+                    ext["pwr_dead_links"] = (
+                        [] if _admin_off else self._break_server_links(device))
+                device.cpu_usage = 0
+                device.memory_used = 0
+                device.sys_uptime = 0
+                if mf["cpu_temp"]:
+                    device.cpu_temp = round(
+                        max(0.0, device.cpu_temp - random.uniform(1.5, 3.5)), 1)
+                for iface in device.interfaces:
+                    iface.oper_status = 2
+                return
+            if ext.pop("pwr_dead", False):
+                # A feed came back. If the box is still admin-off, leave it dark for
+                # the Redfish block below; otherwise bring it back and cold-boot it.
+                _links = ext.pop("pwr_dead_links", [])
+                if not _admin_off:
+                    for peer_id in _links:
+                        self._topology.restore_link(device.id, peer_id, "production")
+                        if self._link_cb:
+                            try:
+                                self._link_cb(device.id, peer_id, False)
+                            except Exception:
+                                pass
+                    for iface in device.interfaces:
+                        iface.oper_status = 1
+                    device.sys_uptime = 0
+                    if self._coldstart_cb:
+                        try:
+                            self._coldstart_cb(device)
+                        except Exception:
+                            pass
 
         # Powered-off server (Redfish chassis state): no OS, no load, no
         # traffic — metrics go dark instead of random-walking.
@@ -4230,6 +4311,10 @@ class DeviceStateStore:
                 # a dead host. The BMC power trap uses the direct send path.
                 if (device.device_type == DeviceType.SERVER
                         and getattr(device, "power_state", "On") == "Off"):
+                    continue
+                # A load that has lost all power is dark — no agent, publish nothing.
+                if (device.device_type in self._POWER_DEAD_TYPES
+                        and not self._energized.get(device.id, True)):
                     continue
                 ext = self._ext_states.get(device.name, {})
                 mem_pct = (device.memory_used / max(1, device.memory_total)) * 100.0
