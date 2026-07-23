@@ -68,8 +68,8 @@ MECH_BLOCKS = (
 
 # Retransfer + cooldown. Real ATS ships with TDEN at 30 min; compressed here so a
 # simulated outage is observable end-to-end inside a session.
-TDEN_S      = 300.0      # time delay emergency→normal, after the utility returns
-COOLDOWN_S  = 300.0      # unloaded genset run after retransfer, before shutdown
+TDEN_S      = 15.0       # TEMP test value (real 300) — time delay emergency→normal
+COOLDOWN_S  = 15.0       # TEMP test value (real 300) — unloaded genset run after retransfer
 
 # Genset states exposed to the generator telemetry step.
 GEN_STANDBY  = "standby"
