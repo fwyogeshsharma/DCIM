@@ -1735,11 +1735,18 @@ class DeviceStateStore:
                 if _estart and not st.get("_ats_estart", False):
                     _cb(device, "engine_start")         # engine-start contact asserted
                 st["_ats_estart"] = _estart
+                # A retransfer is an OPEN transition (dead-bus): pos steps
+                # emergency → none → normal, so the landing edge's prev is "none",
+                # not "emergency". Latch that we transferred to the genset and clear
+                # it only once we're back on normal, so the retransfer trap fires
+                # regardless of the dead-bus step in between.
                 if pos != prev:
                     if pos == "emergency":
                         _cb(device, "transfer_emergency")   # load → generator
-                    elif pos == "normal" and prev == "emergency":
+                        st["_ats_on_emg"] = True
+                    elif pos == "normal" and st.get("_ats_on_emg", False):
                         _cb(device, "transfer_normal")      # retransfer → utility
+                        st["_ats_on_emg"] = False
             live_ats = ats.source_live and not failed
             st["ats_position"] = pos
             st["ats_state"] = "failed" if failed else ats.state
