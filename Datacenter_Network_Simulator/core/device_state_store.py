@@ -909,6 +909,13 @@ class DeviceStateStore:
                           DeviceType.FIREWALL, DeviceType.LOAD_BALANCER)
     # Per-plant-type BACnet point that reports its live electrical draw (kW).
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
+    # CPU die thermal time constant (s). The heatsink + chassis thermal mass mean
+    # the die does not track its instantaneous target immediately: cpu_temp relaxes
+    # toward the target with this first-order lag. Sized so a brief cooling gap (a
+    # genset transfer's ~10-15 s dead-bus window) barely moves the die, while a
+    # sustained cooling failure (CDU/CHW fault over minutes) still heats it fully and
+    # trips HighTemperature. Steady-state is unchanged — only transients lag.
+    _CPU_THERMAL_TAU_S = 150.0
     _UPS_DESIGN_MIN  = 8.0      # UPS autonomy (min) at full load, healthy battery
     # Fraction of the frozen autonomy at which the low-battery alarm asserts. Real
     # UPS ship this as a time-remaining threshold (typically the last 2-3 min of an
@@ -3139,7 +3146,17 @@ class DeviceStateStore:
             # This cancels the liquid advantage above, as a real leak would.
             if device.device_type == DeviceType.SERVER and self._leak_heat:
                 _cpu_t += self._leak_heat.get(device.name, 0.0) * 38.0
-            device.cpu_temp = round(max(20.0, min(95.0, _cpu_t)), 1)
+            # First-order thermal lag: the die relaxes toward its target rather than
+            # snapping to it, so a short intake excursion (a transfer's dead-bus gap)
+            # does not instantly spike cpu_temp and false-alarm, while a sustained
+            # cooling loss still heats it to target and trips the trap. Symmetric, so
+            # recovery lags too — the die cools over a minute, as real hardware does.
+            _target = max(20.0, min(95.0, _cpu_t))
+            _prev = getattr(device, "cpu_temp", None)
+            if _prev is None:
+                _prev = _target
+            _alpha = min(1.0, self._tick_interval / self._CPU_THERMAL_TAU_S)
+            device.cpu_temp = round(_prev + (_target - _prev) * _alpha, 1)
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
             # A pinned (injected/overridden) cpu_temp wins, so the fan below ramps
             # to cool the hot die — the realistic response to a thermal fault.
