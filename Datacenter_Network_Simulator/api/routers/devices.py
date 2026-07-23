@@ -1161,10 +1161,21 @@ FAULT_MAP = {
                       "label": "Output Overload",    "types": ["ups"]},
     "pdu_load_high": {"metric": "pdu_load",            "target": 85.0, "rate": 8.0,
                       "label": "Load High",          "types": ["pdu", "floor_pdu"]},
+    # ATS latching conditions — stateful toggles, not metric ramps (marked by
+    # "state"). Handled through the store's set_ats_condition path, not set_fault.
+    "ats_not_in_auto":  {"state": "not_in_auto",     "label": "Not in Automatic",
+                         "types": ["ats"]},
+    "ats_fail_transfer":{"state": "fail_to_transfer","label": "Fail to Transfer",
+                         "types": ["ats"]},
+    "ats_source_lost":  {"state": "source_lost",     "label": "Normal Source Lost",
+                         "types": ["ats"]},
 }
 
-# metric → fault id, to report active ramps back to the UI by fault id
-_METRIC_TO_FAULT = {v["metric"]: k for k, v in FAULT_MAP.items()}
+# metric → fault id, to report active ramps back to the UI by fault id (metric-
+# backed faults only; state conditions carry no metric and are reported separately).
+_METRIC_TO_FAULT = {v["metric"]: k for k, v in FAULT_MAP.items() if "metric" in v}
+# state-condition kind → fault id, for reporting active ATS conditions to the UI.
+_STATE_TO_FAULT = {v["state"]: k for k, v in FAULT_MAP.items() if "state" in v}
 
 
 class FaultRequest(BaseModel):
@@ -1185,6 +1196,10 @@ def get_device_faults(device_id: str):
     st = getattr(s, "state_store", None)
     active_metrics = st.get_faults(device_id) if st else {}
     active = [_METRIC_TO_FAULT[m] for m in active_metrics if m in _METRIC_TO_FAULT]
+    # Latching state conditions (ATS) are tracked separately from metric ramps.
+    if st and dtype == "ats" and hasattr(st, "get_ats_conditions"):
+        active += [_STATE_TO_FAULT[k] for k in st.get_ats_conditions(device_id)
+                   if k in _STATE_TO_FAULT]
     return {"device": device_id, "available": available, "active": active}
 
 
@@ -1204,7 +1219,14 @@ def set_device_fault(device_id: str, body: FaultRequest):
     st = getattr(s, "state_store", None)
     if st is None:
         raise HTTPException(status_code=503, detail="State store not initialized")
-    if body.action == "clear":
+    on = body.action != "clear"
+    # State conditions (latching ATS faults) toggle a modeled state rather than
+    # ramping a metric; the store fires the raise/clear trap and runs any cascade.
+    if "state" in spec:
+        st.set_ats_condition(device_id, spec["state"], on)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    if not on:
         st.clear_fault(device_id, spec["metric"])
         return OkResponse(message=f"Clearing {spec['label']} on {dev.name}")
     st.set_fault(device_id, spec["metric"], spec["target"], spec["rate"])

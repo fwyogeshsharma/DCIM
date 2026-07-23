@@ -140,13 +140,13 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
   energy_monitor: [],
   // ATS is the one electrical-upstream device that natively speaks SNMP
   // (ASCO 7000 ACC / Eaton ATC-900): source-loss, transfer, fail-to-transfer.
+  // EVENTS only — one-shot transfers/signals. The latching faults (Normal Source
+  // Lost, Fail to Transfer, Not in Automatic) are CONDITIONS, served from the
+  // backend FAULT_MAP and shown under the Conditions group instead.
   ats: [
-    { type: 'ATS_SOURCE_LOST',        label: 'Normal Source Lost' },
     { type: 'ATS_ENGINE_START',       label: 'Engine Start Signal' },
     { type: 'ATS_TRANSFER_EMERGENCY', label: 'Transferred to Emergency' },
     { type: 'ATS_TRANSFER_NORMAL',    label: 'Transferred to Normal' },
-    { type: 'ATS_FAIL_TO_TRANSFER',   label: 'Fail to Transfer' },
-    { type: 'ATS_NOT_IN_AUTO',        label: 'Not in Automatic' },
   ],
   // Utility meter / switchgear trip unit / MCC / mech panelboard are Modbus/DNP3
   // gear — no native SNMP traps. Explicit [] so they don't fall to the generic

@@ -130,6 +130,10 @@ class TrapType(str, Enum):
     ATS_FAIL_TO_TRANSFER   = "atsFailToTransfer"
     ATS_NOT_IN_AUTO        = "atsNotInAuto"
     ATS_ENGINE_START       = "atsEngineStart"
+    # Condition clears — a transfer switch asserts an alarm point and later clears
+    # it. These are the paired recoveries for the two latching ATS conditions.
+    ATS_RETURNED_TO_AUTO       = "atsReturnedToAuto"
+    ATS_TRANSFER_FAULT_CLEARED = "atsTransferFaultCleared"
 
 
 SEVERITY_COLOR = {
@@ -579,6 +583,14 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
         TrapType.ATS_NOT_IN_AUTO, "1.3.6.1.4.1.99999.13.6",
         "Not in Automatic",
         "ATS control switch is not in the automatic position", "minor"),
+    TrapType.ATS_RETURNED_TO_AUTO: TrapDefinition(
+        TrapType.ATS_RETURNED_TO_AUTO, "1.3.6.1.4.1.99999.13.7",
+        "Returned to Automatic",
+        "ATS control switch returned to the automatic position", "informational"),
+    TrapType.ATS_TRANSFER_FAULT_CLEARED: TrapDefinition(
+        TrapType.ATS_TRANSFER_FAULT_CLEARED, "1.3.6.1.4.1.99999.13.8",
+        "Transfer Fault Cleared",
+        "ATS fail-to-transfer fault has cleared", "informational"),
 }
 
 # Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)

@@ -351,6 +351,7 @@ class DeviceStateStore:
         self._transfer = TransferController()
         self._utility_failed: Dict[str, bool] = {}    # DC → injected utility outage
         self._ats_failed: Set[str] = set()            # ATS device ids failed by injection
+        self._ats_not_in_auto: Set[str] = set()       # ATS ids in manual (annunciation only)
         # Plant units whose MCC is currently de-energized. Distinct from
         # _plant_standby_names: a staged-OFF unit is a healthy BMS decision and does
         # NOT count as lost cooling, whereas an unpowered unit genuinely is not
@@ -1397,6 +1398,53 @@ class DeviceStateStore:
         else:
             self._ats_failed.discard(ats_id)
 
+    def set_ats_condition(self, ats_id: str, kind: str, on: bool) -> None:
+        """Raise or clear a stateful ATS condition (the Simulate-Fault menu's
+        latching ATS faults). Each holds until cleared and fires a raise trap on
+        assert and a clear trap on deassert — the way a real ASCO 7000 annunciates.
+
+          not_in_auto     — control switch in manual. Annunciation only: no cascade,
+                            the switch just stops auto-transferring (a latent risk).
+          fail_to_transfer— latched transfer fault. Reuses the _ats_failed model, so
+                            it cascades: this switch's UPS drops to battery and its
+                            MCC's mechanical leg stops (2N contains it to one side).
+          source_lost     — the ATS's normal (utility) source is gone. Drives the
+                            real genset/transfer/ride-through sequence for its DC;
+                            the autonomous ATS/UPS traps annunciate it.
+        """
+        dev = self._dm.get_device(ats_id) if self._dm else None
+        cb = self._transfer_trap_cb
+        if kind == "not_in_auto":
+            if on:
+                self._ats_not_in_auto.add(ats_id)
+            else:
+                self._ats_not_in_auto.discard(ats_id)
+            if cb and dev is not None:
+                cb(dev, "not_in_auto" if on else "returned_to_auto")
+        elif kind == "fail_to_transfer":
+            self.set_ats_failed(ats_id, on)
+            if cb and dev is not None:
+                cb(dev, "fail_to_transfer" if on else "transfer_fault_cleared")
+        elif kind == "source_lost":
+            # Real source loss for this switch's DC — reuse the utility-outage path
+            # so the full EPS cascade + its autonomous SOURCE_LOST/transfer traps run.
+            dc = getattr(dev, "datacenter", None) if dev is not None else None
+            if dc:
+                self.set_utility_outage(dc, on)
+
+    def get_ats_conditions(self, ats_id: str) -> list:
+        """Active stateful ATS conditions on this switch, for the fault UI."""
+        out = []
+        if ats_id in self._ats_not_in_auto:
+            out.append("not_in_auto")
+        if ats_id in self._ats_failed:
+            out.append("fail_to_transfer")
+        dev = self._dm.get_device(ats_id) if self._dm else None
+        dc = getattr(dev, "datacenter", None) if dev is not None else None
+        if dc and self._utility_failed.get(dc, False):
+            out.append("source_lost")
+        return out
+
     def get_electrical_status(self) -> dict:
         """Per-DC view of the utility/generator transfer state, for the API."""
         ctx = self._power_context() or {}
@@ -1795,6 +1843,11 @@ class DeviceStateStore:
             on_emg = pos == "emergency" and not failed
             st["ats_time_on_emergency"] = round(
                 (st.get("ats_time_on_emergency", 0.0) + 1.0 / 60.0) if on_emg else 0.0, 2)
+            # Latching condition points (ASCO ACC discrete inputs): 1 = asserted.
+            # not-in-auto is annunciation only; fail-to-transfer is the failed state.
+            st["ats_not_in_auto"] = 1.0 if device.id in self._ats_not_in_auto else 0.0
+            st["ats_fail_to_transfer"] = 1.0 if failed else 0.0
+            st["ats_in_auto"] = 0.0 if device.id in self._ats_not_in_auto else 1.0
 
         elif dtv == "mpp":
             # A hall's mechanical panelboard with a panel-main meter (Schneider

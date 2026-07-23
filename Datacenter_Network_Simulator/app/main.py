@@ -235,6 +235,11 @@ def _run_headless():
         "engine_start":       _TT.ATS_ENGINE_START,
         "transfer_emergency": _TT.ATS_TRANSFER_EMERGENCY,
         "transfer_normal":    _TT.ATS_TRANSFER_NORMAL,
+        # Latching-condition raise/clear pairs (Simulate-Fault menu).
+        "not_in_auto":            _TT.ATS_NOT_IN_AUTO,
+        "returned_to_auto":       _TT.ATS_RETURNED_TO_AUTO,
+        "fail_to_transfer":       _TT.ATS_FAIL_TO_TRANSFER,
+        "transfer_fault_cleared": _TT.ATS_TRANSFER_FAULT_CLEARED,
     }
     state_store.set_transfer_trap_callback(
         lambda dev, kind: trap_engine.send_trap(dev, _ATS_TRAP[kind]))
