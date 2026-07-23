@@ -354,6 +354,8 @@ class DeviceStateStore:
         self._ats_not_in_auto: Set[str] = set()       # ATS ids in manual (annunciation only)
         self._ups_forced_battery: Dict[str, str] = {}  # UPS id → "on"|"low": injected on-battery
         self._gen_failed: Set[str] = set()             # generator ids that will NOT start (injected)
+        self._ups_input_live: Dict[str, bool] = {}     # UPS id → rectifier input path live (graph)
+        self._broken_power: Set[frozenset] = set()     # power feeders currently open (this tick)
         # Plant units whose MCC is currently de-energized. Distinct from
         # _plant_standby_names: a staged-OFF unit is a healthy BMS decision and does
         # NOT count as lost cooling, whereas an unpowered unit genuinely is not
@@ -1463,7 +1465,8 @@ class DeviceStateStore:
             dev = self._dm.get_device(ups_id) if self._dm else None
             st = self._ext_states.get(dev.name) if dev is not None else None
             if st is not None:
-                autonomy = 20.0  # TEMP test (real: max(60, runtime_min*60))
+                autonomy = max(60.0, float(
+                    st.get("ups_runtime_min", self._UPS_DESIGN_MIN)) * 60.0)
                 st["ups_autonomy_s"] = autonomy
                 # Just past the low-battery fraction, so the next tick alarms low and
                 # the short remaining stretch drains to exhaustion.
@@ -1488,6 +1491,41 @@ class DeviceStateStore:
 
     def is_gen_failed(self, gen_id: str) -> bool:
         return gen_id in self._gen_failed
+
+    def break_power_feed(self, device_id: str, which: str, on: bool) -> None:
+        """Open (on) or restore a power feeder into a device. `which`:
+          "input"     — every upstream power feeder (a single-source load's only cord,
+                        or a switchgear's utility/generator feed).
+          "normal"    — an ATS's normal (utility-board) feeder only.
+          "emergency" — an ATS's emergency (generator-board) feeder only.
+        Energization follows intact feeders (see _compute_energized), so an open feeder
+        de-energizes everything strictly downstream of it — and drops any UPS below it
+        to battery — with the sources still healthy, which is the real cause of most
+        on-battery events."""
+        topo = self._topology
+        if topo is None:
+            return
+        ctx = self._power_context() or {}
+        if which in ("normal", "emergency"):
+            board = ctx.get("ats_src_swgr", {}).get(device_id, {}).get(which)
+            edges = [(device_id, board)] if board else []
+        else:
+            edges = [(device_id, p)
+                     for p in ctx.get("parents", {}).get(device_id, [])]
+        for a, b in edges:
+            if on:
+                topo.break_link(a, b, "power")
+            else:
+                topo.restore_link(a, b, "power")
+
+    def is_power_feed_broken(self, device_id: str, which: str) -> bool:
+        """Whether the named power feeder into this device is currently open."""
+        ctx = self._power_context() or {}
+        if which in ("normal", "emergency"):
+            board = ctx.get("ats_src_swgr", {}).get(device_id, {}).get(which)
+            return board is not None and frozenset((device_id, board)) in self._broken_power
+        return any(frozenset((device_id, p)) in self._broken_power
+                   for p in ctx.get("parents", {}).get(device_id, []))
 
     def get_ats_conditions(self, ats_id: str) -> list:
         """Active stateful ATS conditions on this switch, for the fault UI."""
@@ -1629,16 +1667,33 @@ class DeviceStateStore:
         string physically drains to exhaustion."""
         if device.id in self._ups_forced_battery:
             return False
+        # Input-side faults the rectifier cannot ride: a dead rectifier, a lost phase,
+        # or an input voltage/frequency out of the acceptance window all make the UPS
+        # reject the feeder and run from battery even though the cord is live. Read
+        # from the injected override (the operator's intent), not the mid-tick walk,
+        # so it is stable and never trips on the healthy ±V jitter. Thresholds match
+        # the trap rules, so the alarm and the battery agree.
+        ov = self.device_overrides.get(device.id)
+        if ov:
+            if ov.get("ups_rectifier_status") == "failure":
+                return False
+            if ov.get("ups_phase_status") == "failure":
+                return False
+            _v = ov.get("ups_input_voltage")
+            if _v is not None and (_v > 440.0 or _v < 360.0):
+                return False
+            _f = ov.get("ups_input_frequency")
+            if _f is not None and (_f < 49.0 or _f > 51.0):
+                return False
         ctx = self._power_context() or {}
         dc = getattr(device, "datacenter", None) or "?"
         if dc not in ctx.get("dc_utility", {}) and dc not in ctx.get("dc_gens", {}):
             return True                      # not wired into a modeled electrical plant
-        _ty = ctx.get("id_type", {})
-        ats = next((p for p in ctx.get("parents", {}).get(device.id, [])
-                    if _ty.get(p) == "ats"), None)
-        if ats is not None and ats in self._ats_failed:
-            return False
-        return self._transfer.status(dc).ups_input_ok
+        # Graph-accurate: the rectifier sees a source iff an INTACT feeder reaches a
+        # live ATS output (computed edge-aware in _compute_energized). This captures
+        # EVERY cause of on-battery — a source loss, a failed or mid-transfer ATS, OR a
+        # broken feeder anywhere on util→switchgear→ATS→UPS — not just a DC-wide event.
+        return self._ups_input_live.get(device.id, True)
 
     def _step_grid_freq(self, grid_key: str) -> float:
         """Advance one grid region's frequency by a small mean-reverting random walk
@@ -2127,7 +2182,27 @@ class DeviceStateStore:
         rank = ctx.get("rank", {})
         parents = ctx.get("parents", {})
         id_type = ctx.get("id_type", {})
+        ats_src_swgr = ctx.get("ats_src_swgr", {})
+        # Broken power feeders, read LIVE this tick: a cable break flips the edge's
+        # `broken` flag without changing the ctx cache signature (the edge count is
+        # unchanged), so energization must consult the topology directly, not ctx.
+        broken: Set[frozenset] = set()
+        topo = self._topology
+        if topo is not None:
+            try:
+                for u, v, w in topo.get_edges_by_layer("power"):
+                    if w.get("broken"):
+                        broken.add(frozenset((u, v)))
+            except Exception:
+                pass
+        self._broken_power = broken
+
+        def _intact(nid):
+            return [p for p in parents.get(nid, [])
+                    if frozenset((nid, p)) not in broken]
+
         en: Dict[str, bool] = {}
+        input_live: Dict[str, bool] = {}
         for nid in sorted(rank, key=lambda x: rank.get(x, self._LEAF_RANK)):
             dtv = id_type.get(nid)
             if dtv == "utility_feed":
@@ -2135,9 +2210,28 @@ class DeviceStateStore:
             elif dtv == "generator":
                 en[nid] = self._transfer.status(self._dc_of(nid)).gen_at_voltage
             elif dtv == "ats":
+                # Live only if it is not failed, the transfer sequence has it closed
+                # onto a source, AND that source's switchgear is reachable through an
+                # INTACT feeder and is itself energized. The last clause is what makes
+                # a switchgear↔ATS (or any upstream) cable break drop the ATS output —
+                # and so its UPS to battery — even with the source perfectly healthy.
+                stt = self._transfer.status(self._dc_of(nid))
+                sel = ats_src_swgr.get(nid, {}).get(stt.source)
+                # Additive gate only: when the selected board IS identified, require an
+                # intact feeder to a live board. When it is not (unmapped ATS, or the
+                # dead-bus "none" source), fall back to the transfer verdict so this can
+                # never manufacture a false blackout on gear it doesn't understand.
+                src_reachable = (True if sel is None else
+                                 (frozenset((nid, sel)) not in broken
+                                  and en.get(sel, False)))
                 en[nid] = (nid not in self._ats_failed
-                           and self._transfer.status(self._dc_of(nid)).source_live)
+                           and stt.source_live and src_reachable)
             elif dtv == "ups":
+                # Rectifier input = an intact feeder to a live ATS. This drives the
+                # battery drain (see _ups_source_ok). The UPS still DELIVERS downstream
+                # on battery until the string is exhausted, so its own energized state
+                # is the battery state, not the input.
+                input_live[nid] = any(en.get(p, False) for p in _intact(nid))
                 d = self._dm.get_device(nid)
                 ext = (self._ext_states.get(d.name) if d else None) or {}
                 en[nid] = not ext.get("ups_battery_exhausted", False)
@@ -2150,8 +2244,14 @@ class DeviceStateStore:
                 live_ats = any(en.get(a, False) for a in ctx.get("dc_ats", {}).get(dc, []))
                 en[nid] = bool(src_ok.get(nid, True)) and live_ats
             else:
-                ps = parents.get(nid, [])
-                en[nid] = any(en.get(p, False) for p in ps) if ps else True
+                # A node with power parents is live iff at least one INTACT feeder
+                # reaches a live parent; break every feeder and it goes dark. A node
+                # with no power parents at all (never wired in) is left live so this
+                # never zeroes gear that simply isn't in the power graph.
+                full = parents.get(nid, [])
+                en[nid] = (any(en.get(p, False) for p in _intact(nid))
+                           if full else True)
+        self._ups_input_live = input_live
         return en
 
     def _active_parents(self, nid: str, ctx: dict) -> list:
@@ -2176,17 +2276,19 @@ class DeviceStateStore:
         if not ps:
             return ps
         dtv = ctx.get("id_type", {}).get(nid)
+        _bp = self._broken_power
         if dtv == "ats":
             if nid in self._ats_failed:
                 return []
             src = self._transfer.status(self._dc_of(nid)).source   # normal|emergency|none
             board = ctx.get("ats_src_swgr", {}).get(nid, {}).get(src)
-            return [board] if board else []
+            # An open feeder to the selected board carries nothing.
+            return ([board] if board and frozenset((nid, board)) not in _bp else [])
         if dtv == "ups":
             d = self._dm.get_device(nid)
             if d is not None and not self._ups_source_ok(d):
-                return []
-            return ps
+                return []                     # running on battery — load stops here
+            return [p for p in ps if frozenset((nid, p)) not in _bp]
         if dtv == "mcc":
             # With the bus tie closed, this MCC's watts come from a SIBLING's transfer
             # switch, not from its own dead one. Without this the mechanical load would
@@ -2200,7 +2302,8 @@ class DeviceStateStore:
             live = [a for a in siblings
                     if a and a not in self._ats_failed and self._energized.get(a, False)]
             return live[:1]
-        return [p for p in ps if self._energized.get(p, True)]
+        return [p for p in ps if self._energized.get(p, True)
+                and frozenset((nid, p)) not in _bp]
 
     def _compute_power_flow(self) -> None:
         """Per tick: sum live IT load bottom-up through the power graph so each
@@ -3982,7 +4085,8 @@ class DeviceStateStore:
                         # runtime estimate for the load it is carrying right now. A
                         # lightly-loaded string lasts far longer than its full-load
                         # rating, which is why a 2N site can ride a long outage.
-                        st["ups_autonomy_s"] = 20.0  # TEMP test (real: max(60, runtime_min*60))
+                        st["ups_autonomy_s"] = max(60.0, float(
+                            st.get("ups_runtime_min", self._UPS_DESIGN_MIN)) * 60.0)
                     st["ups_on_battery_s"] = on_batt
                     autonomy = st.get("ups_autonomy_s", self._UPS_DESIGN_MIN * 60.0)
                     # Past autonomy the string is flat and the inverter drops the

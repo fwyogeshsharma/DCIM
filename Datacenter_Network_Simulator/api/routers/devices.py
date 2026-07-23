@@ -1205,6 +1205,15 @@ FAULT_MAP = {
     # that leads to a total blackout. Handled via the store's set_gen_failed path.
     "gen_fail_start":   {"gen": "fail_start", "label": "Fail to Start",
                          "types": ["generator"]},
+    # Power-feeder cable breaks. Energization follows intact feeders, so opening one
+    # de-energizes everything downstream and drops any UPS below it to battery — with
+    # the sources healthy. Combine with source faults for any real double-failure.
+    "cable_input_break":     {"cable": "input", "label": "Input Feed Cable Break",
+                              "types": ["ups", "switchgear", "rpp", "pdu", "floor_pdu"]},
+    "cable_normal_break":    {"cable": "normal", "label": "Normal Feed Cable Break",
+                              "types": ["ats"]},
+    "cable_emergency_break": {"cable": "emergency", "label": "Emergency Feed Cable Break",
+                              "types": ["ats"]},
 }
 
 # metric → fault id, to report active ramps back to the UI by fault id (metric-
@@ -1254,6 +1263,11 @@ def get_device_faults(device_id: str):
             and st.is_gen_failed(device_id):
         active += [k for k, v in FAULT_MAP.items()
                    if "gen" in v and dtype in v["types"]]
+    # Power-feeder cable breaks.
+    if st and hasattr(st, "is_power_feed_broken"):
+        active += [k for k, v in FAULT_MAP.items()
+                   if "cable" in v and dtype in v["types"]
+                   and st.is_power_feed_broken(device_id, v["cable"])]
     return {"device": device_id, "available": available, "active": active}
 
 
@@ -1290,6 +1304,12 @@ def set_device_fault(device_id: str, body: FaultRequest):
     if "gen" in spec:
         st.set_gen_failed(device_id, on)
         verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # Power-feeder cable break — opens/restores a feeder; energization follows intact
+    # feeders so the downstream consequences (UPS on battery, blackout) run themselves.
+    if "cable" in spec:
+        st.break_power_feed(device_id, spec["cable"], on)
+        verb = "Breaking" if on else "Restoring"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
     # Override conditions (UPS state alarms) pin the backing ext-state metric via the
     # same device_overrides path the Metric-Tick panel uses; the rule engine then
