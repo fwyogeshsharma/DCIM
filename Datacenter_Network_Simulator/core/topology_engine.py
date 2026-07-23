@@ -383,37 +383,40 @@ class TopologyEngine:
         return dict(edges[first_key])
 
     def break_link(self, src_id: str, dst_id: str, layer: Optional[str] = None):
-        """Mark the production link as broken; sets oper_status=2 on its interfaces.
-
-        Only production links are breakable. Management, power and cooling/water
+        """Mark the link as broken. A production link also drops its interfaces
+        (oper_status=2); a power link (a feeder/cord) has no interfaces, it just
+        opens — energization follows intact power edges. Management and cooling/water
         links stay up regardless of the requested layer.
         """
-        if layer not in (None, "production"):
+        if layer not in (None, "production", "power"):
             return
+        sel = "power" if layer == "power" else "production"
         with self._lock:
             if not self.graph.has_edge(src_id, dst_id):
                 return
             edges = self.graph[src_id][dst_id]
-            targets = self._select_edges(edges, "production")
+            targets = self._select_edges(edges, sel)
             for key, edge in targets.items():
                 edge["broken"] = True
-                self._set_iface_oper_status(src_id, dst_id, edge, 2)
+                if sel == "production":
+                    self._set_iface_oper_status(src_id, dst_id, edge, 2)
 
     def restore_link(self, src_id: str, dst_id: str, layer: Optional[str] = None):
-        """Restore the broken production link; sets oper_status=1 on its interfaces.
-
-        Mirrors break_link — only production links are affected.
+        """Restore a broken link. Mirrors break_link — production links come back with
+        their interfaces (oper_status=1); a power feeder just recloses.
         """
-        if layer not in (None, "production"):
+        if layer not in (None, "production", "power"):
             return
+        sel = "power" if layer == "power" else "production"
         with self._lock:
             if not self.graph.has_edge(src_id, dst_id):
                 return
             edges = self.graph[src_id][dst_id]
-            targets = self._select_edges(edges, "production")
+            targets = self._select_edges(edges, sel)
             for key, edge in targets.items():
                 edge["broken"] = False
-                self._set_iface_oper_status(src_id, dst_id, edge, 1)
+                if sel == "production":
+                    self._set_iface_oper_status(src_id, dst_id, edge, 1)
 
     def is_link_broken(self, src_id: str, dst_id: str,
                        layer: Optional[str] = None) -> bool:
