@@ -444,10 +444,6 @@ class DeviceStateStore:
         # TrapType. Unset on the desktop path, so it is a no-op there.
         self._transfer_trap_cb: Optional[Callable[["Device", str], None]] = None
 
-        # Autonomous UPS ride-through traps. cb(ups_device, event_kind) — same
-        # decoupled pattern; kind ∈ {"on_battery","low_battery","utility_restored"}.
-        self._ups_trap_cb: Optional[Callable[["Device", str], None]] = None
-
         # Simulated extended states per device (not stored on Device object)
         # device.name → {ups_status, bgp_sessions: [{peer, state}]}
         self._ext_states: Dict[str, dict] = {}
@@ -482,13 +478,6 @@ class DeviceStateStore:
         sequence lights up SNMP the way a real ATS does. event_kind is one of:
         "source_lost", "engine_start", "transfer_emergency", "transfer_normal"."""
         self._transfer_trap_cb = cb
-
-    def set_ups_trap_callback(self, cb: Callable[["Device", str], None]):
-        """cb(ups_device, event_kind) — fired autonomously as a UPS rides through a
-        loss of input: "on_battery" when its source dies and it drops to battery,
-        "low_battery" when the string nears exhaustion, "utility_restored" when a
-        valid source (utility or accepted genset) returns and it is back on mains."""
-        self._ups_trap_cb = cb
 
     # ── Tick runtime controls ──────────────────────────────────────────────
 
@@ -3824,24 +3813,6 @@ class DeviceStateStore:
                                         else "on_battery")
             if mf["ups_status"]:
                 st["ups_status"] = self._state_lock("ups_status", st["ups_status"])
-
-            # Autonomous UPS ride-through notifications (APC PowerNet upsOnBattery /
-            # Eaton / Vertiv). The UPS emits these itself over SNMP as it drops to
-            # battery on a source loss and returns to mains once a valid source (the
-            # utility or an accepted genset) is back. Fired once per edge; prev-state
-            # lives in this UPS's own ext_state.
-            _ucb = self._ups_trap_cb
-            if _ucb is not None:
-                _cur = st.get("ups_status", "normal")
-                _prev = st.get("_ups_trap_prev", "normal")
-                if _cur != _prev:
-                    if _cur == "on_battery" and _prev == "normal":
-                        _ucb(device, "on_battery")          # source lost → battery
-                    elif _cur == "low_battery":
-                        _ucb(device, "low_battery")         # string nearing exhaustion
-                    elif _cur == "normal" and _prev in ("on_battery", "low_battery"):
-                        _ucb(device, "utility_restored")    # valid source back → on mains
-                st["_ups_trap_prev"] = _cur
 
             if mf["ups_output_load"]:
                 _rated, _thr = _ups_rated, _ups_thr

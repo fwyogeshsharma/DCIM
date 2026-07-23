@@ -239,17 +239,6 @@ def _run_headless():
     state_store.set_transfer_trap_callback(
         lambda dev, kind: trap_engine.send_trap(dev, _ATS_TRAP[kind]))
 
-    # Autonomous UPS ride-through traps: the UPS drops to battery when its input
-    # source dies and returns to mains when a valid source (utility or accepted
-    # genset) is back — it emits these SNMP notifications itself.
-    _UPS_TRAP = {
-        "on_battery":       _TT.UPS_ON_BATTERY,
-        "low_battery":      _TT.UPS_LOW_BATTERY,
-        "utility_restored": _TT.UPS_UTILITY_RESTORED,
-    }
-    state_store.set_ups_trap_callback(
-        lambda dev, kind: trap_engine.send_trap(dev, _UPS_TRAP[kind]))
-
     from api.state import AppState
     api_state = AppState.get()
     api_state.register(
