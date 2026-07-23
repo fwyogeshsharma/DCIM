@@ -439,6 +439,11 @@ class DeviceStateStore:
         # Rule engine integration
         self._rule_engine_cb: Optional[Callable] = None
 
+        # Autonomous ATS event traps. cb(ats_device, event_kind) — the store stays
+        # decoupled from core.trap_definitions; the wiring maps the kind to a
+        # TrapType. Unset on the desktop path, so it is a no-op there.
+        self._transfer_trap_cb: Optional[Callable[["Device", str], None]] = None
+
         # Simulated extended states per device (not stored on Device object)
         # device.name → {ups_status, bgp_sessions: [{peer, state}]}
         self._ext_states: Dict[str, dict] = {}
@@ -466,6 +471,13 @@ class DeviceStateStore:
         The rule engine evaluates the fact and fires appropriate traps.
         """
         self._rule_engine_cb = cb
+
+    def set_transfer_trap_callback(self, cb: Callable[["Device", str], None]):
+        """cb(ats_device, event_kind) — fired autonomously as a transfer switch's
+        source/position changes, so the utility-outage → genset → retransfer
+        sequence lights up SNMP the way a real ATS does. event_kind is one of:
+        "source_lost", "engine_start", "transfer_emergency", "transfer_normal"."""
+        self._transfer_trap_cb = cb
 
     # ── Tick runtime controls ──────────────────────────────────────────────
 
@@ -1708,6 +1720,26 @@ class DeviceStateStore:
             prev = st.get("ats_position", "normal")
             if pos != prev and pos in ("normal", "emergency"):
                 st["ats_transfer_count"] = int(st.get("ats_transfer_count", 0)) + 1
+            # Autonomous ATS event notifications (ASCO 7000 ACC / Eaton ATC-900).
+            # A transfer switch natively speaks SNMP and emits these itself as its
+            # source and position change — no operator action. Each edge fires once;
+            # prev-state flags live in this device's own ext_state. A failed switch
+            # in a 2N plant reports nothing (its ACC card is dead with its side).
+            _cb = self._transfer_trap_cb
+            if _cb is not None and not failed:
+                _norm_ok = bool(utility_ok)
+                if st.get("_ats_norm_ok", True) and not _norm_ok:
+                    _cb(device, "source_lost")          # normal (utility) source lost
+                st["_ats_norm_ok"] = _norm_ok
+                _estart = (not _norm_ok) and ats.gen_status in ("cranking", "running")
+                if _estart and not st.get("_ats_estart", False):
+                    _cb(device, "engine_start")         # engine-start contact asserted
+                st["_ats_estart"] = _estart
+                if pos != prev:
+                    if pos == "emergency":
+                        _cb(device, "transfer_emergency")   # load → generator
+                    elif pos == "normal" and prev == "emergency":
+                        _cb(device, "transfer_normal")      # retransfer → utility
             live_ats = ats.source_live and not failed
             st["ats_position"] = pos
             st["ats_state"] = "failed" if failed else ats.state

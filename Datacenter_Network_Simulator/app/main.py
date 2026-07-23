@@ -228,6 +228,17 @@ def _run_headless():
             dev, _TT.SERVER_POWER_ON if is_on else _TT.SERVER_POWER_OFF,
             reset_type=rt))
 
+    # Autonomous ATS transfer traps: the transfer switch emits its own SNMP
+    # notifications as the utility-outage → genset → retransfer sequence plays out.
+    _ATS_TRAP = {
+        "source_lost":        _TT.ATS_SOURCE_LOST,
+        "engine_start":       _TT.ATS_ENGINE_START,
+        "transfer_emergency": _TT.ATS_TRANSFER_EMERGENCY,
+        "transfer_normal":    _TT.ATS_TRANSFER_NORMAL,
+    }
+    state_store.set_transfer_trap_callback(
+        lambda dev, kind: trap_engine.send_trap(dev, _ATS_TRAP[kind]))
+
     from api.state import AppState
     api_state = AppState.get()
     api_state.register(
