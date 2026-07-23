@@ -1169,6 +1169,37 @@ FAULT_MAP = {
                          "types": ["ats"]},
     "ats_source_lost":  {"state": "source_lost",     "label": "Normal Source Lost",
                          "types": ["ats"]},
+    # UPS latching conditions — reuse the existing ext-state override path + the
+    # rule engine's raise/clear pairs (marked by "override"). Toggling one pins the
+    # backing metric so its rule fires the alarm; clearing releases it so the metric
+    # returns to nominal and the recovery rule fires. No new traps, no new state.
+    # On-battery is PHYSICAL, not a status pin: it forces the UPS's source to lost so
+    # the real autonomy countdown runs — the string drains, escalates to low-battery,
+    # and finally exhausts, dropping the load (a dual-corded 2N feed then carries it).
+    "ups_on_battery":   {"battery": "on",  "label": "On Battery",   "types": ["ups"]},
+    "ups_low_battery":  {"battery": "low", "label": "Low Battery",  "types": ["ups"]},
+    "ups_bypass":       {"override": "ups_bypass_status",  "value": "on",
+                         "label": "Bypass Active",        "types": ["ups"]},
+    "ups_fan_fail":     {"override": "ups_fan_status",     "value": "failure",
+                         "label": "Fan Failure",          "types": ["ups"]},
+    "ups_batt_fail":    {"override": "ups_battery_status", "value": "failure",
+                         "label": "Battery Failure",      "types": ["ups"]},
+    "ups_batt_disc":    {"override": "ups_battery_status", "value": "disconnected",
+                         "label": "Battery Disconnected", "types": ["ups"]},
+    "ups_charger_fail": {"override": "ups_charger_status", "value": "failure",
+                         "label": "Charger Failure",      "types": ["ups"]},
+    "ups_rect_fail":    {"override": "ups_rectifier_status","value": "failure",
+                         "label": "Rectifier Failure",    "types": ["ups"]},
+    "ups_phase_fail":   {"override": "ups_phase_status",   "value": "failure",
+                         "label": "Phase Failure",        "types": ["ups"]},
+    "ups_vin_high":     {"override": "ups_input_voltage",  "value": 450.0,
+                         "label": "Input Voltage High",   "types": ["ups"]},
+    "ups_vin_low":      {"override": "ups_input_voltage",  "value": 350.0,
+                         "label": "Input Voltage Low",    "types": ["ups"]},
+    "ups_freq_out":     {"override": "ups_input_frequency","value": 48.5,
+                         "label": "Frequency Out of Range","types": ["ups"]},
+    "ups_batt_health":  {"override": "ups_battery_health", "value": 30.0,
+                         "label": "Battery Low Health",   "types": ["ups"]},
 }
 
 # metric → fault id, to report active ramps back to the UI by fault id (metric-
@@ -1200,6 +1231,19 @@ def get_device_faults(device_id: str):
     if st and dtype == "ats" and hasattr(st, "get_ats_conditions"):
         active += [_STATE_TO_FAULT[k] for k in st.get_ats_conditions(device_id)
                    if k in _STATE_TO_FAULT]
+    # Override conditions (UPS) are active when their backing metric is pinned to
+    # this fault's alarm value in device_overrides.
+    ov_dev = getattr(st, "device_overrides", {}).get(device_id, {}) if st else {}
+    if ov_dev:
+        active += [k for k, v in FAULT_MAP.items()
+                   if "override" in v and dtype in v["types"]
+                   and ov_dev.get(v["override"]) == v["value"]]
+    # Physical on-battery injection (UPS) — active for the kind that was injected.
+    if st and dtype == "ups" and hasattr(st, "get_ups_forced_battery"):
+        _bk = st.get_ups_forced_battery(device_id)
+        if _bk:
+            active += [k for k, v in FAULT_MAP.items()
+                       if v.get("battery") == _bk and dtype in v["types"]]
     return {"device": device_id, "available": available, "active": active}
 
 
@@ -1224,6 +1268,27 @@ def set_device_fault(device_id: str, body: FaultRequest):
     # ramping a metric; the store fires the raise/clear trap and runs any cascade.
     if "state" in spec:
         st.set_ats_condition(device_id, spec["state"], on)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # On-battery is a physical drain, not a status pin: force the UPS source to lost
+    # so its real autonomy countdown runs (drain → low-battery → exhaustion → load drop).
+    if "battery" in spec:
+        st.set_ups_forced_battery(device_id, spec["battery"] if on else None)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # Override conditions (UPS state alarms) pin the backing ext-state metric via the
+    # same device_overrides path the Metric-Tick panel uses; the rule engine then
+    # fires the alarm's own raise trap on set and its recovery trap on clear.
+    if "override" in spec:
+        ov = st.device_overrides
+        if on:
+            ov.setdefault(device_id, {})[spec["override"]] = spec["value"]
+        else:
+            dov = ov.get(device_id)
+            if dov:
+                dov.pop(spec["override"], None)
+                if not dov:
+                    ov.pop(device_id, None)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
     if not on:

@@ -352,6 +352,7 @@ class DeviceStateStore:
         self._utility_failed: Dict[str, bool] = {}    # DC → injected utility outage
         self._ats_failed: Set[str] = set()            # ATS device ids failed by injection
         self._ats_not_in_auto: Set[str] = set()       # ATS ids in manual (annunciation only)
+        self._ups_forced_battery: Dict[str, str] = {}  # UPS id → "on"|"low": injected on-battery
         # Plant units whose MCC is currently de-energized. Distinct from
         # _plant_standby_names: a staged-OFF unit is a healthy BMS decision and does
         # NOT count as lost cooling, whereas an unpowered unit genuinely is not
@@ -1432,6 +1433,33 @@ class DeviceStateStore:
             if dc:
                 self.set_utility_outage(dc, on)
 
+    def set_ups_forced_battery(self, ups_id: str, kind: "str | None") -> None:
+        """Inject (kind="on"|"low") or clear (kind=None) an on-battery fault on one
+        UPS. It flips the rectifier's source to 'lost' for THIS unit, so the real
+        drain machinery runs: the string counts its finite autonomy down, escalates
+        to low-battery, and finally exhausts — at which point the inverter drops the
+        load and, on a dual-corded 2N feed, the other side carries it. "low" pre-ages
+        the string to its low-battery threshold so the alarm and the drop come quickly
+        instead of after the full autonomy (~8 min at load, longer part-loaded)."""
+        if kind not in ("on", "low"):
+            self._ups_forced_battery.pop(ups_id, None)
+            return
+        self._ups_forced_battery[ups_id] = kind
+        if kind == "low":
+            dev = self._dm.get_device(ups_id) if self._dm else None
+            st = self._ext_states.get(dev.name) if dev is not None else None
+            if st is not None:
+                autonomy = max(60.0, float(
+                    st.get("ups_runtime_min", self._UPS_DESIGN_MIN)) * 60.0)
+                st["ups_autonomy_s"] = autonomy
+                # Just past the low-battery fraction, so the next tick alarms low and
+                # the short remaining stretch drains to exhaustion.
+                st["ups_on_battery_s"] = autonomy * self._UPS_LOW_BATT_FRAC + 1.0
+
+    def get_ups_forced_battery(self, ups_id: str) -> "str | None":
+        """Injected on-battery kind for this UPS ("on"/"low"), or None."""
+        return self._ups_forced_battery.get(ups_id)
+
     def get_ats_conditions(self, ats_id: str) -> list:
         """Active stateful ATS conditions on this switch, for the fault UI."""
         out = []
@@ -1566,7 +1594,11 @@ class DeviceStateStore:
     def _ups_source_ok(self, device: "Device") -> bool:
         """Is this UPS's rectifier seeing a qualified source right now? False while
         its ATS is mid-transfer, its own ATS has failed, or the whole DC is riding
-        a dead bus — which is precisely when a real UPS drops to battery."""
+        a dead bus — which is precisely when a real UPS drops to battery. An injected
+        On-Battery fault forces this False so the real autonomy countdown runs and the
+        string physically drains to exhaustion."""
+        if device.id in self._ups_forced_battery:
+            return False
         ctx = self._power_context() or {}
         dc = getattr(device, "datacenter", None) or "?"
         if dc not in ctx.get("dc_utility", {}) and dc not in ctx.get("dc_gens", {}):
