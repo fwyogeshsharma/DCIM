@@ -1465,7 +1465,8 @@ class DeviceStateStore:
             dev = self._dm.get_device(ups_id) if self._dm else None
             st = self._ext_states.get(dev.name) if dev is not None else None
             if st is not None:
-                autonomy = 20.0  # TEMP test (real: max(60, runtime_min*60))
+                autonomy = max(60.0, float(
+                    st.get("ups_runtime_min", self._UPS_DESIGN_MIN)) * 60.0)
                 st["ups_autonomy_s"] = autonomy
                 # Just past the low-battery fraction, so the next tick alarms low and
                 # the short remaining stretch drains to exhaustion.
@@ -4084,7 +4085,8 @@ class DeviceStateStore:
                         # runtime estimate for the load it is carrying right now. A
                         # lightly-loaded string lasts far longer than its full-load
                         # rating, which is why a 2N site can ride a long outage.
-                        st["ups_autonomy_s"] = 20.0  # TEMP test (real: max(60, runtime_min*60))
+                        st["ups_autonomy_s"] = max(60.0, float(
+                            st.get("ups_runtime_min", self._UPS_DESIGN_MIN)) * 60.0)
                     st["ups_on_battery_s"] = on_batt
                     autonomy = st.get("ups_autonomy_s", self._UPS_DESIGN_MIN * 60.0)
                     # Past autonomy the string is flat and the inverter drops the
