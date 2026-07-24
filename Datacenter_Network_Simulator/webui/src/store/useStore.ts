@@ -39,6 +39,9 @@ interface Store {
   devices:    DeviceInfo[]
   /** device id → active injected CONDITION keys (metrics / plant points). */
   faulted:    Record<string, string[]>
+  /** chillers latched out on a high head-pressure trip (need manual reset).
+   *  `degraded` = no standby could cover this trip, so cooling is genuinely short. */
+  chillerTrips: { name: string; device: string; dc?: string; degraded?: boolean }[]
   ev2Metrics:   EV2DeviceSnapshot[]
   plantMetrics: PlantDeviceSnapshot[]
   electricalMetrics: ElectricalDeviceSnapshot[]
@@ -158,6 +161,8 @@ interface Store {
   fetchGraph:   () => Promise<void>
   fetchDevices: () => Promise<void>
   fetchFaulted: () => Promise<void>
+  fetchChillerTrips: () => Promise<void>
+  resetChillerTrip: (device: string) => Promise<void>
   fetchSnmp:    () => Promise<void>
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
@@ -186,6 +191,7 @@ export const useStore = create<Store>((set, get) => ({
   activeLayer:  'all',
   devices:      [],
   faulted:      {},
+  chillerTrips: [],
   ev2Metrics:   [],
   plantMetrics: [],
   electricalMetrics: [],
@@ -362,6 +368,19 @@ export const useStore = create<Store>((set, get) => ({
     } catch { /* ignore */ }
   },
 
+  // Latched chiller HP trips — polled on the devices cadence so the warning banner
+  // appears within a tick of a trip and clears when reset.
+  fetchChillerTrips: async () => {
+    try {
+      const data = await api.chillerTrips() as { tripped: { name: string; device: string; dc?: string; degraded?: boolean }[] }
+      set({ chillerTrips: data.tripped || [] })
+    } catch { /* ignore */ }
+  },
+  resetChillerTrip: async (device: string) => {
+    try { await api.resetChillerTrip(device); await get().fetchChillerTrips() }
+    catch (e) { alert(String(e)) }
+  },
+
   fetchSnmp: async () => {
     try { set({ snmp: await fetchWithAbort<SnmpStatus>('/snmp/status') }) } catch { /* ignore */ }
   },
@@ -438,6 +457,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchGraph()
     s.fetchDevices()
     s.fetchFaulted()
+    s.fetchChillerTrips()
     s.fetchSnmp()
     s.fetchGnmi()
     s.fetchSflow()
@@ -495,7 +515,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'redfish')  { s.fetchRedfish(); s.fetchGraph() }  // power ops fade/unfade nodes
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()
-            if (t === 'devices')  { s.fetchDevices(); s.fetchFaulted(); set(st => ({ tickSeq: st.tickSeq + 1 })) }
+            if (t === 'devices')  { s.fetchDevices(); s.fetchFaulted(); s.fetchChillerTrips(); set(st => ({ tickSeq: st.tickSeq + 1 })) }
             if (t === 'topology') s.fetchGraph()
             if (t === 'traps')    s.fetchTraps()
           } else if (ev.type === 'link_changed') {

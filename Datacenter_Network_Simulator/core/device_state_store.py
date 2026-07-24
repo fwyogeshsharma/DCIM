@@ -171,6 +171,7 @@ class DeviceStateStore:
         self._cond_water_c: Dict[str, float] = {}     # dc → condenser supply °C
         self._chiller_derate: Dict[str, float] = {}   # chiller name → 0..1 capacity lost
         self._chiller_hp_lockout: set = set()         # chiller names latched out
+        self._train_run_hours: Dict[str, float] = {}  # chiller name → accrued lead run-hours
         self._plant_auto_points: Dict[str, dict] = {} # device ip → {point: value}
         self._cond_trip_s: Dict[str, float] = {}      # chiller name → s above trip temp
         self._plant_ip_by_name: Dict[str, str] = {}   # plant device name → IP
@@ -2557,15 +2558,35 @@ class DeviceStateStore:
                     def _fitness(i_tr):
                         i, tr = i_tr
                         dead = any(m in self._plant_unpowered_names for m in tr["members"])
+                        # A latched HP trip is read straight from the lockout set, not
+                        # via its alarm point — the trip is set later in the tick, so a
+                        # point-only check could still rank a tripped chiller as lead and
+                        # never fail over. Marking its train bad promotes a standby (N+1).
                         bad = any(m not in self._plant_unpowered_names
-                                  and self._is_faulted(m) for m in tr["members"])
-                        # (unpowered, faulted, install order) — install order is the
-                        # tiebreak, so a healthy plant always runs its lead trains.
-                        return (dead, bad, i)
+                                  and (self._is_faulted(m) or m in self._chiller_hp_lockout)
+                                  for m in tr["members"])
+                        _ch = tr.get("chiller")
+                        # LEAST-SWITCHING: a train already running outranks an equal idle
+                        # one, so a recovered chiller does NOT displace the standby that
+                        # took over — no pointless swap-back on reset.
+                        running = (_ch is not None and float(_plant_state_cache.get(
+                            _ch, {}).get("Chiller_Running", 0.0)) >= 0.5)
+                        # RUNTIME EQUALIZATION: among equal-rank trains, start the one
+                        # with the fewest accrued lead-hours and shed the most-run first,
+                        # balancing wear across the natural stage up/down cycles.
+                        rh = self._train_run_hours.get(_ch, 0.0) if _ch else 0.0
+                        return (dead, bad, not running, rh, i)
 
                     _order = [i for i, _ in sorted(enumerate(_trains), key=_fitness)]
                     _run_idx = set(_order[:_n_run])
                     self._plant_trains_run[_dc] = [_trains[i] for i in _order[:_n_run]]
+                    # Accrue lead run-hours for the trains actually carrying the load,
+                    # so the equalization key reflects real duty.
+                    _dt_h = self._tick_interval / 3600.0
+                    for tr in self._plant_trains_run[_dc]:
+                        _ch = tr.get("chiller")
+                        if _ch:
+                            self._train_run_hours[_ch] = self._train_run_hours.get(_ch, 0.0) + _dt_h
                     for i, tr in enumerate(_trains):
                         if i not in _run_idx:
                             self._plant_standby_names |= set(tr["members"])
@@ -2860,8 +2881,12 @@ class DeviceStateStore:
                     if held >= self._COND_TRIP_S:
                         self._chiller_hp_lockout.add(name)
                         latched = True
-                        log.warning("[Plant] %s tripped on HIGH HEAD PRESSURE "
-                                    "(condenser water %.1f C) — latched, manual reset", name, cur)
+                        _msg = (f"{name} tripped on HIGH HEAD PRESSURE "
+                                f"(condenser water {cur:.1f} C) — latched, manual reset")
+                        log.warning("[Plant] %s", _msg)
+                        if self._log_cb:                # surface in the UI event log
+                            try: self._log_cb(_msg, "warning")
+                            except Exception: pass
                 elif not over:
                     self._cond_trip_s.pop(name, None)
 
@@ -2917,6 +2942,32 @@ class DeviceStateStore:
     def get_chiller_trips(self) -> list:
         """Names of chillers latched out on high head pressure."""
         return sorted(self._chiller_hp_lockout)
+
+    def cooling_degraded(self, dc: str) -> bool:
+        """True if this DC's cooling is genuinely SHORT right now — the plant could not
+        fill its required run set with a HEALTHY train, so a running lead train still
+        carries an unpowered / latched-out / actively-alarmed member. False when a
+        standby covered a trip (N+1 held): only redundancy is lost, not cooling.
+
+        Checks real faults only — NOT a unit's running-status bit — so a healthy
+        standby that was just promoted (running=0 for one tick) never reads as short,
+        and a fully-staged plant at high load is not flagged unless a member truly
+        faults."""
+        for tr in self._plant_trains_run.get(dc, []):
+            for m in tr["members"]:
+                if m in self._plant_unpowered_names or m in self._chiller_hp_lockout:
+                    return True
+                pv = _plant_state_cache.get(m)
+                if pv and any(k.startswith("Alarm_") and float(pv.get(k, 0.0)) >= 0.5
+                              for k in pv):
+                    return True
+        return False
+
+    def _dc_of_chiller(self, name: str) -> "str | None":
+        for _dc, kinds in (self._cooling_context().get("plant_by_dc", {})).items():
+            if name in (kinds.get("chiller") or []):
+                return _dc
+        return None
 
     def _compute_chw_penalty(self) -> None:
         """Per-tick: update the per-DC chilled-water temperature penalty.

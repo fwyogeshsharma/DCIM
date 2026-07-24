@@ -574,7 +574,13 @@ def get_chiller_trips():
     ids = {}
     if dm:
         ids = {d.name: d.id for d in dm.get_all_devices() if d.name in set(names)}
-    return {"tripped": [{"name": n, "device": ids.get(n)} for n in names]}
+    out = []
+    for n in names:
+        dc = st._dc_of_chiller(n) if st and hasattr(st, "_dc_of_chiller") else None
+        degraded = bool(dc and hasattr(st, "cooling_degraded") and st.cooling_degraded(dc))
+        out.append({"name": n, "device": ids.get(n), "dc": dc, "degraded": degraded})
+    # A trip is a real cooling loss only where no standby could cover it.
+    return {"tripped": out, "degraded": any(t["degraded"] for t in out)}
 
 
 @router.post("/plant/chiller-reset", response_model=OkResponse)
