@@ -651,7 +651,11 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
 
   async function resetHpTrip() {
     setHpBusy(true)
-    try { await api.resetChillerTrip(nodeId); await loadChillerTrip(); fetchFaulted() }
+    try {
+      const r = await api.resetChillerTrip(nodeId) as { ok: boolean; message: string }
+      if (r && r.ok === false) alert(r.message || 'Reset refused')
+      await loadChillerTrip(); fetchFaulted()
+    }
     catch (e) { alert(errorMessage(e)) }
     finally { setHpBusy(false) }
   }

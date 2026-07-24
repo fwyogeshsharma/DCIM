@@ -2845,6 +2845,21 @@ class DeviceStateStore:
             else:
                 reject = 1.0        # no modelled towers → assume rejection is fine
 
+            # Heat rejection needs BOTH tower air AND condenser-water flow. A stopped,
+            # faulted, or unpowered CW pump means the loop water is not carrying heat to
+            # the tower, so head pressure climbs the same as a stalled fan. The weaker
+            # link caps rejection. (Chilled-water pumps are the evaporator side — a
+            # different loop — so only the condenser pumps count here.)
+            _cw_names = {tr.get("cwp") for tr in ctx.get("trains_by_dc", {}).get(dc, [])
+                         if tr.get("cwp")}
+            cwps = [p for p in (kinds.get("pump") or [])
+                    if p in _cw_names and p not in self._plant_standby_names]
+            if cwps:
+                cw_ok = sum(1 for p in cwps
+                            if not self._is_faulted(p)
+                            and p not in self._plant_unpowered_names)
+                reject = min(reject, cw_ok / len(cwps))
+
             # Loop temperature: heats toward the ceiling in proportion to lost
             # rejection, cools back toward design when it returns. Rates are
             # per-second so the behaviour does not change with tick interval.

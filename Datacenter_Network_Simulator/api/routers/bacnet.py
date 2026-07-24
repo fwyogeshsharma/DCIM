@@ -602,6 +602,9 @@ def reset_chiller_trip(body: ChillerReset):
     if result == "reset":
         s.notify_ui("sync_devices")
         return OkResponse(message=f"{dev.name} high-pressure trip reset")
+    # A refused reset is an EXPECTED outcome (loop still hot / not tripped), not an
+    # error — return it as ok:false with the real reason so the UI can show it,
+    # instead of a generic 4xx the frontend flattens to "conflicts with state".
     if result == "not tripped":
-        raise HTTPException(status_code=400, detail=f"{dev.name} is not tripped")
-    raise HTTPException(status_code=409, detail=f"Reset refused — {result}")
+        return OkResponse(ok=False, message=f"{dev.name} is not tripped")
+    return OkResponse(ok=False, message=f"Reset refused — {result}")

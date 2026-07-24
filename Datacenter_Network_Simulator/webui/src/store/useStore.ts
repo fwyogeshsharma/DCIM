@@ -377,8 +377,11 @@ export const useStore = create<Store>((set, get) => ({
     } catch { /* ignore */ }
   },
   resetChillerTrip: async (device: string) => {
-    try { await api.resetChillerTrip(device); await get().fetchChillerTrips() }
-    catch (e) { alert(String(e)) }
+    try {
+      const r = await api.resetChillerTrip(device) as { ok: boolean; message: string }
+      if (r && r.ok === false) alert(r.message || 'Reset refused')
+      await get().fetchChillerTrips()
+    } catch (e) { alert(errorMessage(e)) }
   },
 
   fetchSnmp: async () => {
