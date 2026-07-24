@@ -57,12 +57,15 @@ export default function App() {
   const page = activeView === 'metrics' ? <LiveMetricsPage />
              : activeView === 'floorplan' ? <FloorPlanPage />
              : <MainPage />
-  return <>{page}<ChillerTripBanner /></>
+  // On the topology canvas the trip is annunciated by a callout anchored to the
+  // chiller node (see DeviceNode). Off-canvas (metrics / floor plan) there are no
+  // nodes to point at, so fall back to the site-wide banner there.
+  const offCanvas = activeView === 'metrics' || activeView === 'floorplan'
+  return <>{page}{offCanvas && <ChillerTripBanner />}</>
 }
 
-// Persistent warning while any chiller is latched out on a high head-pressure trip.
-// A latched trip does NOT self-heal — cooling stays degraded until reset — so it must
-// be annunciated site-wide, not just on the chiller's own right-click menu.
+// Site-wide warning while any chiller is latched out — shown only off the canvas,
+// where there is no node to anchor the callout to.
 function ChillerTripBanner() {
   const { chillerTrips, resetChillerTrip } = useStore()
   if (!chillerTrips.length) return null

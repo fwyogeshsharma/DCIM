@@ -1,6 +1,6 @@
 import { memo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { Handle, Position, NodeToolbar, type NodeProps } from '@xyflow/react'
 import { useStore } from '../../store/useStore'
 
 const TYPE_COLOR: Record<string, string> = {
@@ -69,6 +69,12 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   // equality and re-render every node on every tick.
   const faultKeys = useStore(s => (s.faulted[id] || []).join(', '))
   const faulted = faultKeys.length > 0
+  // This chiller latched out on a high head-pressure trip → anchor a warning callout
+  // to THIS node (not a global banner) so the operator sees which unit and can reset.
+  // Primitive selectors keep it a per-node re-render.
+  const tripped     = useStore(s => s.chillerTrips.some(c => c.device === id))
+  const tripDegraded = useStore(s => !!s.chillerTrips.find(c => c.device === id)?.degraded)
+  const resetTrip   = useStore(s => s.resetChillerTrip)
   const col  = TYPE_COLOR[d.device_type] || '#555'
   const icon = TYPE_ICON[d.device_type]  || '□'
   const poweredOff = d.power_state === 'Off'
@@ -96,6 +102,35 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
     rows.push(['BACnet Instance', String(d.bacnet_instance)])
 
   return (
+    <>
+    {tripped && (
+      <NodeToolbar isVisible position={Position.Top} offset={12}>
+        <div style={{
+          position: 'relative',
+          background: tripDegraded ? '#7a1d1d' : '#7a5a12',
+          border: `1px solid ${tripDegraded ? '#f85149' : '#e3b341'}`,
+          borderRadius: 6, padding: '6px 10px', maxWidth: 220,
+          color: tripDegraded ? '#ffdede' : '#ffeec2', fontSize: 11,
+          boxShadow: '0 4px 14px rgba(0,0,0,0.55)',
+          display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
+        }}>
+          <span style={{ fontSize: 13 }}>⚠</span>
+          <span>High head-pressure trip{tripDegraded ? ' — cooling reduced' : ' — on standby'}</span>
+          <button onClick={() => resetTrip(id)} style={{
+            background: tripDegraded ? '#f85149' : '#e3b341', border: 'none',
+            borderRadius: 4, color: tripDegraded ? '#fff' : '#3a2a00',
+            padding: '2px 9px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          }}>Reset</button>
+          {/* caret pointing down at the node */}
+          <div style={{
+            position: 'absolute', bottom: -6, left: '50%', marginLeft: -6,
+            width: 0, height: 0, borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderTop: `6px solid ${tripDegraded ? '#f85149' : '#e3b341'}`,
+          }} />
+        </div>
+      </NodeToolbar>
+    )}
     <div
       style={{
         background: col,
@@ -110,11 +145,11 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
         position: 'relative',
         opacity: poweredOff ? 0.35 : 1,
         filter: poweredOff ? 'grayscale(0.7)' : undefined,
-        // An injected CONDITION outranks the normal type colour: the node turns
-        // red and blinks until the condition is returned to normal.
-        ...(faulted ? { background: 'var(--red)', borderColor: 'var(--red)' } : null),
+        // An injected CONDITION — or a latched chiller trip — outranks the normal type
+        // colour: the node turns red and blinks until it's cleared / reset.
+        ...(faulted || tripped ? { background: 'var(--red)', borderColor: 'var(--red)' } : null),
       }}
-      className={faulted ? 'node-faulted' : undefined}
+      className={faulted || tripped ? 'node-faulted' : undefined}
       onMouseEnter={onEnter}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
@@ -214,6 +249,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
         document.body
       )}
     </div>
+    </>
   )
 }
 
