@@ -188,17 +188,28 @@ class TransferController:
                 self._enter(st, "emergency")
 
         elif st.state == "emergency":
-            st.source = "emergency"
-            st.source_live = True
-            st.gen_demand = True
-            st.gen_at_voltage = True
-            st.gen_status = GEN_RUNNING
-            # UPS rectifier needs a few seconds of stable source before it stops
-            # discharging and returns to double-conversion.
-            st.ups_input_ok = st.since_transfer >= UPS_ACCEPT_S
-            st.mech_blocks_on = sum(1 for b in MECH_BLOCK_S if st.since_transfer >= b)
-            if utility_ok:
-                self._enter(st, "retransfer", keep_transfer=True)
+            if not gens_startable:
+                # The gensets carrying the load have tripped or failed (over-temp,
+                # low coolant, flat battery, out of fuel). The emergency source is
+                # lost: the output bus goes dead and the UPS rides battery. Fall back
+                # to crank so the ATS keeps trying to restart — it stays dead while
+                # they are unavailable, and recovers if one comes back or utility does.
+                self._dead_bus(st)
+                st.gen_demand = True
+                st.gen_status = GEN_STANDBY
+                self._enter(st, "crank")
+            else:
+                st.source = "emergency"
+                st.source_live = True
+                st.gen_demand = True
+                st.gen_at_voltage = True
+                st.gen_status = GEN_RUNNING
+                # UPS rectifier needs a few seconds of stable source before it stops
+                # discharging and returns to double-conversion.
+                st.ups_input_ok = st.since_transfer >= UPS_ACCEPT_S
+                st.mech_blocks_on = sum(1 for b in MECH_BLOCK_S if st.since_transfer >= b)
+                if utility_ok:
+                    self._enter(st, "retransfer", keep_transfer=True)
 
         elif st.state == "retransfer":
             # Utility is back but we stay on the genset until TDEN expires, so a
