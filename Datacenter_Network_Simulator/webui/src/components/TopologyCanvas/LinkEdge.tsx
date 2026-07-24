@@ -1,5 +1,6 @@
 import { memo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useStore } from '../../store/useStore'
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -41,6 +42,7 @@ export interface LinkEdgeData {
   srcName?: string
   dstName?: string
   flow?: 'hot' | 'cold'
+  standby?: boolean          // cooling loop through a staged-off train (no flow)
   [key: string]: unknown
 }
 
@@ -59,6 +61,11 @@ function LinkEdge(props: EdgeProps) {
   const dstName = d.dstName || target
 
   const isCool = layer === 'cooling'
+  // A cooling loop through a staged-off train carries no flow — draw it dim and
+  // static (no flow animation) so it reads as idle. Live per-edge selector, but a
+  // stable boolean, so cooling edges re-render only when standby actually flips —
+  // never on the per-tick metrics churn.
+  const standby = useStore(s => isCool && (s.plantStandby.includes(source) || s.plantStandby.includes(target)))
   const hot    = isCool && d.flow === 'hot'
   const color  = broken ? '#f85149'
                : isCool  ? (hot ? COOL_HOT : COOL_COLD)
@@ -100,9 +107,10 @@ function LinkEdge(props: EdgeProps) {
           stroke: color,
           strokeWidth: selected ? 2.5 : (isCool ? 2.4 : 1.5),
           strokeDasharray: broken ? '5,3' : (isCool ? '7,5' : undefined),
-          // Animate dashes along source→target = water flow direction.
-          animation: (isCool && !broken) ? 'flow-dash 0.7s linear infinite' : undefined,
-          opacity: broken ? 0.6 : (layer === 'management' ? 0.7 : 1),
+          // Animate dashes along source→target = water flow direction. A standby
+          // loop is NOT flowing, so it stays static.
+          animation: (isCool && !broken && !standby) ? 'flow-dash 0.7s linear infinite' : undefined,
+          opacity: broken ? 0.6 : standby ? 0.28 : (layer === 'management' ? 0.7 : 1),
         }}
       />
 

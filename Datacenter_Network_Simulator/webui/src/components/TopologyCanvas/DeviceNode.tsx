@@ -58,6 +58,7 @@ export interface DeviceNodeData {
   cpu_usage?: number
   memory_used?: number
   power_state?: string
+  standby?: boolean
   [key: string]: unknown
 }
 
@@ -78,6 +79,10 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   const col  = TYPE_COLOR[d.device_type] || '#555'
   const icon = TYPE_ICON[d.device_type]  || '□'
   const poweredOff = d.power_state === 'Off'
+  // Staged-OFF cooling unit (N+1 spare) — healthy but idle, so fade it. Live per-node
+  // selector (stable boolean) so the fade tracks failover/staging without re-fetching
+  // the graph. A tripped or faulted unit stays prominent (its red styling wins).
+  const standby = useStore(s => s.plantStandby.includes(id)) && !tripped && !faulted
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null)
 
   const onEnter   = useCallback((e: React.MouseEvent) => setTipPos({ x: e.clientX + 14, y: e.clientY + 14 }), [])
@@ -147,8 +152,8 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
         boxShadow: selected ? `0 0 0 2px #fff4` : `0 2px 6px rgba(0,0,0,0.5)`,
         transition: 'box-shadow 0.15s, opacity 0.3s, filter 0.3s',
         position: 'relative',
-        opacity: poweredOff ? 0.35 : 1,
-        filter: poweredOff ? 'grayscale(0.7)' : undefined,
+        opacity: poweredOff ? 0.35 : (standby ? 0.5 : 1),
+        filter: poweredOff ? 'grayscale(0.7)' : (standby ? 'grayscale(0.55)' : undefined),
         // An injected CONDITION — or a latched chiller trip — outranks the normal type
         // colour: the node turns red and blinks until it's cleared / reset.
         ...(faulted || tripped ? { background: 'var(--red)', borderColor: 'var(--red)' } : null),

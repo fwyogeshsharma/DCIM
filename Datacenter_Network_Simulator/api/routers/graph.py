@@ -20,6 +20,13 @@ def get_graph(layer: str = None):
 
     raw_links = s.topology.get_edges_by_layer(layer) if layer else s.topology.get_links()
 
+    # Cooling-plant units the BMS has staged OFF (the N+1 standby train). They are
+    # healthy but idle — no flow through them — so the canvas fades them and stops
+    # their loop animation. Names, resolved to ids for the cooling-link flags.
+    _st = getattr(s, "state_store", None)
+    standby = set(getattr(_st, "_plant_standby_names", set())) if _st else set()
+    id_name = {d.id: d.name for d in s.topology.get_all_devices()}
+
     if layer:
         linked_ids: set[str] = set()
         for src_id, dst_id, _ in raw_links:
@@ -51,6 +58,7 @@ def get_graph(layer: str = None):
             "gnmi_port": getattr(device, "gnmi_port", 57400),
             "model_name": getattr(device, "model_name", ""),
             "power_state": getattr(device, "power_state", "On"),
+            "standby": device.name in standby,
         })
 
     links_out = []
@@ -82,6 +90,10 @@ def get_graph(layer: str = None):
             "src_iface": edge_data.get("src_iface"),
             "dst_iface": edge_data.get("dst_iface"),
         }
+        # A cooling loop through a staged-off train carries no flow — flag it so the
+        # canvas draws it dim and static instead of animating a live flow.
+        if link_layer == "cooling":
+            link["standby"] = (id_name.get(a) in standby) or (id_name.get(b) in standby)
         # A power cord's terminations are an outlet and a PSU, not ifaces. They ride
         # alongside src_iface/dst_iface rather than reusing them: the pair is only
         # meaningful with supply_node/load_node, since which end feeds which is not

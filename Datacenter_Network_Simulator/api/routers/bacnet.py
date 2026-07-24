@@ -583,6 +583,18 @@ def get_chiller_trips():
     return {"tripped": out, "degraded": any(t["degraded"] for t in out)}
 
 
+@router.get("/plant/standby")
+def get_plant_standby():
+    """Cooling-plant units the BMS has staged OFF (the N+1 standby train) — device
+    ids, so the canvas can fade them and stop their loop animation. Polled on the
+    device cadence so the fade tracks failover/staging live."""
+    st = getattr(_state(), "state_store", None)
+    names = set(getattr(st, "_plant_standby_names", set())) if st else set()
+    dm = _state().device_manager
+    ids = [d.id for d in dm.get_all_devices() if d.name in names] if dm else []
+    return {"standby": ids}
+
+
 @router.post("/plant/chiller-reset", response_model=OkResponse)
 def reset_chiller_trip(body: ChillerReset):
     """Manually reset a latched high head-pressure trip.

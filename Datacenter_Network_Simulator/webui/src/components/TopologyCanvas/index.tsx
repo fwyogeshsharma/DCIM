@@ -111,6 +111,7 @@ function devicesToNodes(
         cpu_usage: d.cpu_usage,
         memory_used: d.memory_used,
         power_state: d.power_state || 'On',
+        standby: Boolean(d.standby),
       },
     }
   })
@@ -135,6 +136,7 @@ function linksToEdges(links: GraphLink[], nameById: Record<string, string>): Edg
         srcName: nameById[l.src_id] || l.src_id,
         dstName: nameById[l.dst_id] || l.dst_id,
         flow: isCool ? (hot ? 'hot' : 'cold') : undefined,
+        standby: Boolean(l.standby),
       },
     }
   })

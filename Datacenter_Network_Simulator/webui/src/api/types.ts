@@ -119,6 +119,7 @@ export interface GraphDevice {
   gnmi_port?: number
   model_name?: string
   power_state?: string
+  standby?: boolean          // cooling-plant unit staged OFF (N+1 spare)
 }
 
 export interface GraphLink {
@@ -127,6 +128,7 @@ export interface GraphLink {
   dst_id: string
   layer: string
   broken: boolean
+  standby?: boolean          // cooling loop through a staged-off train (no flow)
   // Ethernet layers only (production/management) — null on power/cooling, which
   // terminate on an outlet or a pipe rather than an interface.
   src_iface?: number | null

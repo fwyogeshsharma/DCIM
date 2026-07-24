@@ -42,6 +42,8 @@ interface Store {
   /** chillers latched out on a high head-pressure trip (need manual reset).
    *  `degraded` = no standby could cover this trip, so cooling is genuinely short. */
   chillerTrips: { name: string; device: string; dc?: string; degraded?: boolean }[]
+  /** device ids of cooling-plant units staged OFF (N+1 standby) — faded on canvas. */
+  plantStandby: string[]
   ev2Metrics:   EV2DeviceSnapshot[]
   plantMetrics: PlantDeviceSnapshot[]
   electricalMetrics: ElectricalDeviceSnapshot[]
@@ -163,6 +165,7 @@ interface Store {
   fetchFaulted: () => Promise<void>
   fetchChillerTrips: () => Promise<void>
   resetChillerTrip: (device: string) => Promise<void>
+  fetchPlantStandby: () => Promise<void>
   fetchSnmp:    () => Promise<void>
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
@@ -192,6 +195,7 @@ export const useStore = create<Store>((set, get) => ({
   devices:      [],
   faulted:      {},
   chillerTrips: [],
+  plantStandby: [],
   ev2Metrics:   [],
   plantMetrics: [],
   electricalMetrics: [],
@@ -383,6 +387,17 @@ export const useStore = create<Store>((set, get) => ({
       await get().fetchChillerTrips()
     } catch (e) { alert(errorMessage(e)) }
   },
+  fetchPlantStandby: async () => {
+    try {
+      const data = await api.plantStandby() as { standby: string[] }
+      const next = data.standby || []
+      // Only replace when the SET changed, so the stable-boolean node/edge selectors
+      // don't see a fresh array reference every tick.
+      const cur = get().plantStandby
+      if (next.length !== cur.length || next.some((x, i) => x !== cur[i]))
+        set({ plantStandby: next })
+    } catch { /* ignore */ }
+  },
 
   fetchSnmp: async () => {
     try { set({ snmp: await fetchWithAbort<SnmpStatus>('/snmp/status') }) } catch { /* ignore */ }
@@ -461,6 +476,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchDevices()
     s.fetchFaulted()
     s.fetchChillerTrips()
+    s.fetchPlantStandby()
     s.fetchSnmp()
     s.fetchGnmi()
     s.fetchSflow()
@@ -518,7 +534,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'redfish')  { s.fetchRedfish(); s.fetchGraph() }  // power ops fade/unfade nodes
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()
-            if (t === 'devices')  { s.fetchDevices(); s.fetchFaulted(); s.fetchChillerTrips(); set(st => ({ tickSeq: st.tickSeq + 1 })) }
+            if (t === 'devices')  { s.fetchDevices(); s.fetchFaulted(); s.fetchChillerTrips(); s.fetchPlantStandby(); set(st => ({ tickSeq: st.tickSeq + 1 })) }
             if (t === 'topology') s.fetchGraph()
             if (t === 'traps')    s.fetchTraps()
           } else if (ev.type === 'link_changed') {

@@ -239,6 +239,7 @@ export const api = {
   // protection, not an operator override — so it is NOT in /plant/overrides.
   chillerTrips:     ()                    => get('/bacnet/plant/chiller-trips'),
   resetChillerTrip: (device: string)      => post('/bacnet/plant/chiller-reset', { device }),
+  plantStandby:     ()                    => get('/bacnet/plant/standby'),
 
   // redfish
   redfishStatus:   ()                     => get('/redfish/status'),
