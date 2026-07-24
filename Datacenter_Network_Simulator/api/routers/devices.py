@@ -1217,15 +1217,16 @@ FAULT_MAP = {
                          "types": ["generator"]},
     "gen_over_temp":    {"gencond": "over_temp",      "label": "Temperature Alert",
                          "types": ["generator"]},
-    # Power-feeder cable breaks. Energization follows intact feeders, so opening one
-    # de-energizes everything downstream and drops any UPS below it to battery — with
-    # the sources healthy. Combine with source faults for any real double-failure.
-    "cable_input_break":     {"cable": "input", "label": "Input Feed Cable Break",
-                              "types": ["ups", "switchgear", "rpp", "pdu", "floor_pdu"]},
-    "cable_normal_break":    {"cable": "normal", "label": "Normal Feed Cable Break",
-                              "types": ["ats"]},
-    "cable_emergency_break": {"cable": "emergency", "label": "Emergency Feed Cable Break",
-                              "types": ["ats"]},
+    # Switchgear main-breaker trip / bus fault — takes the board dead (ATS loses that
+    # source, UPS drops to battery) + fires a protective-relay raise/clear trap.
+    "swgr_breaker_trip": {"swgrcond": "breaker_trip", "label": "Main Breaker Trip",
+                          "types": ["switchgear"]},
+    "swgr_bus_fault":    {"swgrcond": "bus_fault",    "label": "Bus Fault",
+                          "types": ["switchgear"]},
+    # NOTE: a power-feeder cable break is NOT a device fault — a cable is a link, so it
+    # is broken by double-clicking the power edge on the canvas (api.breakLink on the
+    # 'power' layer). Energization follows intact feeders, so opening one de-energizes
+    # everything downstream and drops any UPS below it to battery.
 }
 
 # metric → fault id, to report active ramps back to the UI by fault id (metric-
@@ -1280,11 +1281,11 @@ def get_device_faults(device_id: str):
         _gc = set(st.get_gen_conditions(device_id))
         active += [k for k, v in FAULT_MAP.items()
                    if v.get("gencond") in _gc and dtype in v["types"]]
-    # Power-feeder cable breaks.
-    if st and hasattr(st, "is_power_feed_broken"):
+    # Switchgear faults.
+    if st and dtype == "switchgear" and hasattr(st, "get_swgr_conditions"):
+        _sc = set(st.get_swgr_conditions(device_id))
         active += [k for k, v in FAULT_MAP.items()
-                   if "cable" in v and dtype in v["types"]
-                   and st.is_power_feed_broken(device_id, v["cable"])]
+                   if v.get("swgrcond") in _sc and dtype in v["types"]]
     return {"device": device_id, "available": available, "active": active}
 
 
@@ -1327,11 +1328,10 @@ def set_device_fault(device_id: str, body: FaultRequest):
         st.set_gen_condition(device_id, spec["gencond"], on)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
-    # Power-feeder cable break — opens/restores a feeder; energization follows intact
-    # feeders so the downstream consequences (UPS on battery, blackout) run themselves.
-    if "cable" in spec:
-        st.break_power_feed(device_id, spec["cable"], on)
-        verb = "Breaking" if on else "Restoring"
+    # Switchgear breaker-trip / bus-fault.
+    if "swgrcond" in spec:
+        st.set_swgr_condition(device_id, spec["swgrcond"], on)
+        verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
     # Override conditions (UPS state alarms) pin the backing ext-state metric via the
     # same device_overrides path the Metric-Tick panel uses; the rule engine then

@@ -256,6 +256,11 @@ def _run_headless():
         "gen_transfer_switch_clear":    _TT.GEN_TRANSFER_CLEARED,
         "gen_over_temp":                _TT.GEN_TEMP_HIGH,
         "gen_over_temp_clear":          _TT.GEN_TEMP_NORMAL,
+        # Switchgear breaker / bus faults — raise/clear pairs.
+        "swgr_breaker_trip":            _TT.SWGR_BREAKER_TRIP,
+        "swgr_breaker_trip_clear":      _TT.SWGR_BREAKER_CLOSED,
+        "swgr_bus_fault":               _TT.SWGR_BUS_FAULT,
+        "swgr_bus_fault_clear":         _TT.SWGR_BUS_NORMAL,
     }
     state_store.set_transfer_trap_callback(
         lambda dev, kind: trap_engine.send_trap(dev, _ATS_TRAP[kind]))

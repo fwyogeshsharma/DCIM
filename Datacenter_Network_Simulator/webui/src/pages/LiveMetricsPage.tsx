@@ -1269,7 +1269,7 @@ const ELEC_COLUMNS: Record<string, ElecCol[]> = {
     { key: 'util_energy_kwh',    label: 'Energy',  unit: ' kWh', decimals: 0 },
   ],
   switchgear: [
-    { key: 'swgr_bus_status',      label: 'Bus',      states: { energized: OK('ENERGIZED'), dead: BAD('DEAD') } },
+    { key: 'swgr_bus_status',      label: 'Bus',      states: { energized: OK('ENERGIZED'), dead: BAD('DEAD'), fault: BAD('FAULT') } },
     { key: 'swgr_va',              label: 'Va', unit: ' V', decimals: 0 },
     { key: 'swgr_vb',              label: 'Vb', unit: ' V', decimals: 0 },
     { key: 'swgr_vc',              label: 'Vc', unit: ' V', decimals: 0 },
@@ -1284,7 +1284,7 @@ const ELEC_COLUMNS: Record<string, ElecCol[]> = {
     { key: 'swgr_power_factor',    label: 'PF',   decimals: 2 },
     { key: 'swgr_load_pct',        label: 'Load',     unit: '%', decimals: 0, warn: 80, crit: 95 },
     { key: 'swgr_energy_kwh',      label: 'Energy', unit: ' kWh', decimals: 0 },
-    { key: 'swgr_breaker_status',  label: 'Breaker',  states: { closed: OK('CLOSED'), open: BAD('OPEN') } },
+    { key: 'swgr_breaker_status',  label: 'Breaker',  states: { closed: OK('CLOSED'), open: BAD('OPEN'), tripped: BAD('TRIPPED') } },
     { key: 'swgr_source',          label: 'Source',   states: { utility: NEU('UTILITY'), generator: NEU('GEN') } },
   ],
   ats: [

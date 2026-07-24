@@ -355,6 +355,7 @@ class DeviceStateStore:
         self._ups_forced_battery: Dict[str, str] = {}  # UPS id → "on"|"low": injected on-battery
         self._gen_failed: Set[str] = set()             # generator ids that will NOT start (injected)
         self._gen_conditions: Dict[str, set] = {}      # generator id → active alarm conditions
+        self._swgr_conditions: Dict[str, set] = {}     # switchgear id → breaker-trip / bus-fault
         self._ups_input_live: Dict[str, bool] = {}     # UPS id → rectifier input path live (graph)
         self._broken_power: Set[frozenset] = set()     # power feeders currently open (this tick)
         # Plant units whose MCC is currently de-energized. Distinct from
@@ -1538,6 +1539,26 @@ class DeviceStateStore:
     def get_gen_conditions(self, gen_id: str) -> list:
         return sorted(self._gen_conditions.get(gen_id, set()))
 
+    def set_swgr_condition(self, swgr_id: str, kind: str, on: bool) -> None:
+        """Raise or clear a switchgear fault (Simulate-Fault menu). Either fault takes
+        the board out of service — the bus goes dead and everything it feeds (its ATS's
+        source, so the UPS below) de-energizes — and fires a raise/clear trap, the way
+        a Digitrip / protective relay annunciates. kind ∈ {breaker_trip, bus_fault}."""
+        conds = self._swgr_conditions.setdefault(swgr_id, set())
+        if on:
+            conds.add(kind)
+        else:
+            conds.discard(kind)
+            if not conds:
+                self._swgr_conditions.pop(swgr_id, None)
+        cb = self._transfer_trap_cb
+        dev = self._dm.get_device(swgr_id) if self._dm else None
+        if cb and dev is not None:
+            cb(dev, f"swgr_{kind}" if on else f"swgr_{kind}_clear")
+
+    def get_swgr_conditions(self, swgr_id: str) -> list:
+        return sorted(self._swgr_conditions.get(swgr_id, set()))
+
     def break_power_feed(self, device_id: str, which: str, on: bool) -> None:
         """Open (on) or restore a power feeder into a device. `which`:
           "input"     — every upstream power feeder (a single-source load's only cord,
@@ -1879,10 +1900,14 @@ class DeviceStateStore:
                 return p is not None and p.device_type == DeviceType.GENERATOR
 
             gen_side = any(_is_gen(p) for p in ctx.get("parents", {}).get(device.id, []))
-            live = ats.gen_at_voltage if gen_side else utility_ok
+            _swc = self._swgr_conditions.get(device.id, set())
+            _tripped, _busfault = "breaker_trip" in _swc, "bus_fault" in _swc
+            live = (ats.gen_at_voltage if gen_side else utility_ok) and not (_tripped or _busfault)
             st["swgr_source"] = "generator" if gen_side else "utility"
-            st["swgr_bus_status"] = "energized" if live else "dead"
-            st["swgr_breaker_status"] = "closed" if live else "open"
+            st["swgr_bus_status"] = ("fault" if _busfault
+                                     else "energized" if live else "dead")
+            st["swgr_breaker_status"] = ("tripped" if _tripped
+                                         else "closed" if live else "open")
             # Eaton Magnum DS main / ASCO paralleling board — a Digitrip trip unit with
             # energy metering (~class 1, ±0.5 %). Reports per-phase V/I, imbalance, PF,
             # kW/kVAR/kVA and kWh, but NOT the revenue-grade PQ (THD, peak demand) of
@@ -2286,6 +2311,15 @@ class DeviceStateStore:
                 en[nid] = not self._utility_failed.get(self._dc_of(nid), False)
             elif dtv == "generator":
                 en[nid] = self._transfer.status(self._dc_of(nid)).gen_at_voltage
+            elif dtv == "switchgear":
+                # Live if it has an intact feeder to a live source (utility board ←
+                # utility feed, paralleling board ← generators) AND its own main breaker
+                # hasn't tripped / bus isn't faulted. A trip/fault takes the board dead,
+                # so its ATS loses that source and the UPS below drops to battery.
+                full = parents.get(nid, [])
+                _src_live = (any(en.get(p, False) for p in _intact(nid))
+                             if full else True)
+                en[nid] = _src_live and not self._swgr_conditions.get(nid)
             elif dtv == "ats":
                 # Live only if it is not failed, the transfer sequence has it closed
                 # onto a source, AND that source's switchgear is reachable through an

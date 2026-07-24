@@ -141,6 +141,12 @@ class TrapType(str, Enum):
     # it. These are the paired recoveries for the two latching ATS conditions.
     ATS_RETURNED_TO_AUTO       = "atsReturnedToAuto"
     ATS_TRANSFER_FAULT_CLEARED = "atsTransferFaultCleared"
+    # Switchgear (LV main / paralleling board) — a Digitrip/protective relay traps
+    # on a main-breaker trip or a bus fault. 1.3.6.1.4.1.99999.14.x.
+    SWGR_BREAKER_TRIP          = "switchgearBreakerTrip"
+    SWGR_BREAKER_CLOSED        = "switchgearBreakerClosed"
+    SWGR_BUS_FAULT             = "switchgearBusFault"
+    SWGR_BUS_NORMAL            = "switchgearBusNormal"
 
 
 SEVERITY_COLOR = {
@@ -616,6 +622,22 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
         TrapType.ATS_TRANSFER_FAULT_CLEARED, "1.3.6.1.4.1.99999.13.8",
         "Transfer Fault Cleared",
         "ATS fail-to-transfer fault has cleared", "informational"),
+    TrapType.SWGR_BREAKER_TRIP: TrapDefinition(
+        TrapType.SWGR_BREAKER_TRIP, "1.3.6.1.4.1.99999.14.1",
+        "Main Breaker Trip",
+        "Switchgear main breaker tripped — bus de-energized downstream", "critical"),
+    TrapType.SWGR_BREAKER_CLOSED: TrapDefinition(
+        TrapType.SWGR_BREAKER_CLOSED, "1.3.6.1.4.1.99999.14.2",
+        "Main Breaker Closed",
+        "Switchgear main breaker reclosed — bus re-energized", "informational"),
+    TrapType.SWGR_BUS_FAULT: TrapDefinition(
+        TrapType.SWGR_BUS_FAULT, "1.3.6.1.4.1.99999.14.3",
+        "Bus Fault",
+        "Switchgear bus fault (protection operated) — bus dead", "critical"),
+    TrapType.SWGR_BUS_NORMAL: TrapDefinition(
+        TrapType.SWGR_BUS_NORMAL, "1.3.6.1.4.1.99999.14.4",
+        "Bus Normal",
+        "Switchgear bus fault cleared", "informational"),
 }
 
 # Reverse lookup: OID string → TrapType  (used by rule engine to map OIDs)

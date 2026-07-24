@@ -326,11 +326,14 @@ function Canvas() {
 
   const onEdgeDoubleClick = useCallback(async (_: React.MouseEvent, edge: Edge) => {
     const data = edge.data as { layer: string; broken: boolean }
-    // Only production links are breakable — ignore mgmt/power/cooling edges.
-    if ((data?.layer ?? 'production') !== 'production') return
+    // Production links (a network cable) and power links (a feeder / cord) are
+    // breakable here — breaking a power feeder de-energizes everything downstream
+    // and drops any UPS below it to battery. Mgmt/cooling edges are not breakable.
+    const layer = data?.layer ?? 'production'
+    if (layer !== 'production' && layer !== 'power') return
     try {
-      if (data?.broken) await api.restoreLink(edge.source, edge.target, 'production')
-      else              await api.breakLink(edge.source, edge.target, 'production')
+      if (data?.broken) await api.restoreLink(edge.source, edge.target, layer)
+      else              await api.breakLink(edge.source, edge.target, layer)
       fetchGraph()
     } catch (e) { console.error(e) }
   }, [fetchGraph])
@@ -468,7 +471,7 @@ function Canvas() {
           display: 'flex', alignItems: 'center', gap: 5,
         }}>
           <I.info />
-          Double-click a production link to break / restore it
+          Double-click a production or power link to break / restore it
           <span style={{ opacity: 0.5 }}>·</span>
           <span><b>Shift</b>+click or <b>Shift</b>+drag to select several nodes, then drag to move them together</span>
         </div>
