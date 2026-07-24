@@ -1499,20 +1499,27 @@ class DeviceStateStore:
         annunciation only, like a real genset controller's discrete alarm inputs.
         kind ∈ {low_fuel, low_coolant, battery_failure, transfer_switch, over_temp}."""
         conds = self._gen_conditions.setdefault(gen_id, set())
+        dev = self._dm.get_device(gen_id) if self._dm else None
+        st = self._ext_states.get(dev.name) if dev is not None else None
         if on:
             conds.add(kind)
+            # Low fuel is a real tank level, not just an alarm bit: drop the gauge to
+            # the alarm level NOW — before the trap fires — so a poll on trap receipt
+            # already reads low. The alarm asserts BECAUSE the tank is low.
+            if kind == "low_fuel" and st is not None:
+                st["gen_fuel_pct"] = min(st.get("gen_fuel_pct", 100.0), 8.0)
+                st["gen_alarm_low_fuel"] = 1.0
+                _ext_state_cache[dev.name] = dict(st)
         else:
             conds.discard(kind)
-            if kind == "low_fuel":
+            if kind == "low_fuel" and st is not None:
                 # Clearing = refuelled. Restore the gauge (the walk holds it there).
-                dev = self._dm.get_device(gen_id) if self._dm else None
-                st = self._ext_states.get(dev.name) if dev is not None else None
-                if st is not None:
-                    st["gen_fuel_pct"] = 100.0
+                st["gen_fuel_pct"] = 100.0
+                st["gen_alarm_low_fuel"] = 0.0
+                _ext_state_cache[dev.name] = dict(st)
             if not conds:
                 self._gen_conditions.pop(gen_id, None)
         cb = self._transfer_trap_cb
-        dev = self._dm.get_device(gen_id) if self._dm else None
         if cb and dev is not None:
             cb(dev, f"gen_{kind}" if on else f"gen_{kind}_clear")
 
@@ -1635,9 +1642,14 @@ class DeviceStateStore:
             # paralleling bus, one is enough to qualify the emergency source. A
             # genset the tick loop has not initialised yet is assumed fuelled, so
             # the first tick after load doesn't read as a site-wide failed start.
+            # A genset can crank only with fuel, a healthy starting battery, and no
+            # injected fail-to-start. A dead start battery cannot turn the engine —
+            # so a battery-failure alarm makes that set unstartable, exactly like a
+            # real controller reporting overcrank on a flat battery.
             gens_startable = any(
                 self._gen_state(gid).get("gen_fuel_pct", 100.0) > 0.5
                 and gid not in self._gen_failed
+                and "battery_failure" not in self._gen_conditions.get(gid, set())
                 for gid in dc_gens.get(dc, [])
             )
             st = self._transfer.step(dc, utility_ok, gens_startable, self._tick_interval)
