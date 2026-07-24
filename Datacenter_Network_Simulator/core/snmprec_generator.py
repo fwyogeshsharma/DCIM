@@ -945,6 +945,13 @@ class SNMPRecGenerator:
                     updates[f"{_GEN_ENT}.5.0"]  = ("2", str(int(round(ext.get("gen_kw", 0.0)))))
                     updates[f"{_GEN_ENT}.13.0"] = ("2", str(int(ext.get("gen_start_attempts", 0))))
                     updates[f"{_GEN_ENT}.14.0"] = ("2", str(int(round(ext.get("gen_runtime_min", 0.0)))))
+                    # Discrete alarm points (0 = clear, 1 = active) — pollable, so an
+                    # NMS reads the same condition it was trapped on.
+                    updates[f"{_GEN_ENT}.15.0"] = ("2", str(int(ext.get("gen_alarm_low_fuel", 0.0))))
+                    updates[f"{_GEN_ENT}.16.0"] = ("2", str(int(ext.get("gen_alarm_low_coolant", 0.0))))
+                    updates[f"{_GEN_ENT}.17.0"] = ("2", "1" if ext.get("gen_battery_status") == "failure" else "0")
+                    updates[f"{_GEN_ENT}.18.0"] = ("2", str(int(ext.get("gen_alarm_transfer", 0.0))))
+                    updates[f"{_GEN_ENT}.19.0"] = ("2", str(int(ext.get("gen_alarm_temp", 0.0))))
 
             # Electrical upstream pollable OIDs — utility feed / switchgear / ATS / MCC.
             if device.device_type in (DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,

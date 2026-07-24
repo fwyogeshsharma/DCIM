@@ -354,6 +354,7 @@ class DeviceStateStore:
         self._ats_not_in_auto: Set[str] = set()       # ATS ids in manual (annunciation only)
         self._ups_forced_battery: Dict[str, str] = {}  # UPS id → "on"|"low": injected on-battery
         self._gen_failed: Set[str] = set()             # generator ids that will NOT start (injected)
+        self._gen_conditions: Dict[str, set] = {}      # generator id → active alarm conditions
         self._ups_input_live: Dict[str, bool] = {}     # UPS id → rectifier input path live (graph)
         self._broken_power: Set[frozenset] = set()     # power feeders currently open (this tick)
         # Plant units whose MCC is currently de-energized. Distinct from
@@ -1492,6 +1493,32 @@ class DeviceStateStore:
     def is_gen_failed(self, gen_id: str) -> bool:
         return gen_id in self._gen_failed
 
+    def set_gen_condition(self, gen_id: str, kind: str, on: bool) -> None:
+        """Raise or clear a genset alarm condition (Simulate-Fault menu). Each holds
+        until cleared and fires a raise trap on assert and a clear trap on deassert —
+        annunciation only, like a real genset controller's discrete alarm inputs.
+        kind ∈ {low_fuel, low_coolant, battery_failure, transfer_switch, over_temp}."""
+        conds = self._gen_conditions.setdefault(gen_id, set())
+        if on:
+            conds.add(kind)
+        else:
+            conds.discard(kind)
+            if kind == "low_fuel":
+                # Clearing = refuelled. Restore the gauge (the walk holds it there).
+                dev = self._dm.get_device(gen_id) if self._dm else None
+                st = self._ext_states.get(dev.name) if dev is not None else None
+                if st is not None:
+                    st["gen_fuel_pct"] = 100.0
+            if not conds:
+                self._gen_conditions.pop(gen_id, None)
+        cb = self._transfer_trap_cb
+        dev = self._dm.get_device(gen_id) if self._dm else None
+        if cb and dev is not None:
+            cb(dev, f"gen_{kind}" if on else f"gen_{kind}_clear")
+
+    def get_gen_conditions(self, gen_id: str) -> list:
+        return sorted(self._gen_conditions.get(gen_id, set()))
+
     def break_power_feed(self, device_id: str, which: str, on: bool) -> None:
         """Open (on) or restore a power feeder into a device. `which`:
           "input"     — every upstream power feeder (a single-source load's only cord,
@@ -1562,10 +1589,11 @@ class DeviceStateStore:
 
     def get_electrical_device_metrics(self) -> list:
         """Per-device live metrics for the electrical upstream (utility feed /
-        switchgear / ATS / MCC / MPP) — the same values served over SNMP, for the
-        Live Metrics page tabs. Each row carries the device's own metric fields."""
+        switchgear / ATS / MCC / MPP / generator) — the same values served over SNMP,
+        for the Live Metrics page tabs. Each row carries the device's own metric
+        fields."""
         _pfx = {"utility_feed": "util_", "switchgear": "swgr_", "ats": "ats_",
-                "mcc": "mcc_", "mpp": "mpp_"}
+                "mcc": "mcc_", "mpp": "mpp_", "generator": "gen_"}
         dm = getattr(self, "_dm", None)
         if dm is None:
             return []
@@ -2143,6 +2171,31 @@ class DeviceStateStore:
             st["gen_load_pct"] = 0.0
             st["gen_kw"] = 0.0
             st["gen_runtime_min"] = 0.0
+
+        # Injected alarm conditions → discrete controller alarm points (annunciation).
+        _gc = self._gen_conditions.get(device.id, set())
+        st["gen_alarm_low_fuel"]    = 1.0 if "low_fuel" in _gc else 0.0
+        st["gen_alarm_low_coolant"] = 1.0 if "low_coolant" in _gc else 0.0
+        st["gen_battery_status"]    = "failure" if "battery_failure" in _gc else "ok"
+        st["gen_alarm_transfer"]    = 1.0 if "transfer_switch" in _gc else 0.0
+        st["gen_alarm_temp"]        = 1.0 if "over_temp" in _gc else 0.0
+        if "low_fuel" in _gc:       # gauge sits at the low-fuel alarm level, still running
+            st["gen_fuel_pct"] = min(st.get("gen_fuel_pct", 100.0), 8.0)
+
+        # Autonomous running/stopped notifications: the genset emits these itself as it
+        # starts on the ATS start-contact and stops after the utility returns. Fired on
+        # the edge into/out of "running", once each.
+        _cb = self._transfer_trap_cb
+        if _cb is not None:
+            _now = st["gen_status"]
+            _prev = st.get("_gen_run_prev", "standby")
+            if _now != _prev:
+                if _now == "running":
+                    _cb(device, "gen_running")
+                elif _prev == "running":
+                    _cb(device, "gen_stopped")
+            st["_gen_run_prev"] = _now
+
         _ext_state_cache[device.name] = dict(st)
 
     def _plant_watts(self, name: str) -> float:

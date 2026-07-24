@@ -1317,6 +1317,20 @@ const ELEC_COLUMNS: Record<string, ElecCol[]> = {
     { key: 'mcc_tie',       label: 'Tie Bkr', states: { open: NEU('OPEN'), closed: NEU('CLOSED') } },
     { key: 'mcc_source',    label: 'Source',  states: { normal: OK('NORMAL'), tie: NEU('TIE'), none: BAD('NONE') } },
   ],
+  generator: [
+    { key: 'gen_status',        label: 'Status',  states: { standby: NEU('STANDBY'), cranking: NEU('CRANKING'), running: OK('RUNNING'), cooldown: NEU('COOLDOWN'), fault: BAD('FAULT') } },
+    { key: 'gen_load_pct',      label: 'Load',    unit: '%', decimals: 0, warn: 80, crit: 95 },
+    { key: 'gen_kw',            label: 'Power',   unit: ' kW', decimals: 0 },
+    { key: 'gen_fuel_pct',      label: 'Fuel',    unit: '%', decimals: 0 },
+    { key: 'gen_runtime_min',   label: 'Runtime', unit: ' min', decimals: 0 },
+    { key: 'gen_run_hours',     label: 'Run Hrs', decimals: 0 },
+    { key: 'gen_start_attempts', label: 'Starts', decimals: 0 },
+    { key: 'gen_battery_status', label: 'Battery', states: { ok: OK('OK'), failure: BAD('FAIL') } },
+    { key: 'gen_alarm_low_fuel', label: 'Low Fuel', states: { '0': OK('OK'), '1': BAD('LOW') } },
+    { key: 'gen_alarm_low_coolant', label: 'Coolant', states: { '0': OK('OK'), '1': BAD('LOW') } },
+    { key: 'gen_alarm_temp',    label: 'Temp',    states: { '0': OK('OK'), '1': BAD('HIGH') } },
+    { key: 'gen_alarm_transfer', label: 'Xfer Sw', states: { '0': OK('OK'), '1': BAD('FAULT') } },
+  ],
   mpp: [
     { key: 'mpp_status',      label: 'Status',  states: { energized: OK('ENERGIZED'), dead: BAD('DEAD') } },
     { key: 'mpp_va',          label: 'Va', unit: ' V', decimals: 0 },
@@ -1405,15 +1419,15 @@ function ElectricalTable({ type, rows }: { type: string; rows: ElectricalDeviceS
 
 type Tab = 'all' | 'network' | 'server' | 'ups' | 'pdu' | 'sensor' | 'energy'
         | 'crah' | 'chiller' | 'pump' | 'cooling_tower' | 'valve' | 'cdu'
-        | 'utility_feed' | 'switchgear' | 'ats' | 'mcc' | 'mpp'
+        | 'utility_feed' | 'switchgear' | 'ats' | 'mcc' | 'mpp' | 'generator'
 
 const PLANT_TABS: Tab[] = ['crah', 'chiller', 'pump', 'cooling_tower', 'valve', 'cdu']
-const ELEC_TABS: Tab[] = ['utility_feed', 'switchgear', 'ats', 'mcc', 'mpp']
+const ELEC_TABS: Tab[] = ['utility_feed', 'switchgear', 'ats', 'generator', 'mcc', 'mpp']
 
 const TAB_LABELS: Record<Tab, string> = {
   all: 'All', network: 'Network', server: 'Server', ups: 'UPS', pdu: 'PDU', sensor: 'Sensor', energy: 'Energy (EV2)',
   crah: 'CRAH', chiller: 'Chiller', pump: 'Pump', cooling_tower: 'Cooling Tower', valve: 'Valve', cdu: 'CDU',
-  utility_feed: 'Utility', switchgear: 'Switchgear', ats: 'ATS', mcc: 'MCC', mpp: 'MPP',
+  utility_feed: 'Utility', switchgear: 'Switchgear', ats: 'ATS', generator: 'Generator', mcc: 'MCC', mpp: 'MPP',
 }
 
 const TAB_TYPES: Record<Tab, string[]> = {
@@ -1425,7 +1439,7 @@ const TAB_TYPES: Record<Tab, string[]> = {
   sensor:  ['sensor'],
   energy:  [],   // data comes from ev2Metrics, not devices[]
   crah:    [], chiller: [], pump: [], cooling_tower: [], valve: [], cdu: [],  // data from plantMetrics
-  utility_feed: [], switchgear: [], ats: [], mcc: [], mpp: [],                // data from electricalMetrics
+  utility_feed: [], switchgear: [], ats: [], generator: [], mcc: [], mpp: [],  // data from electricalMetrics
 }
 
 // ── main page ─────────────────────────────────────────────────────────────────
@@ -1473,6 +1487,7 @@ export default function LiveMetricsPage() {
     utility_feed:  electricalMetrics.filter(p => p.device_type === 'utility_feed').length,
     switchgear:    electricalMetrics.filter(p => p.device_type === 'switchgear').length,
     ats:           electricalMetrics.filter(p => p.device_type === 'ats').length,
+    generator:     electricalMetrics.filter(p => p.device_type === 'generator').length,
     mcc:           electricalMetrics.filter(p => p.device_type === 'mcc').length,
     mpp:           electricalMetrics.filter(p => p.device_type === 'mpp').length,
   }), [devices, ev2Metrics, plantMetrics, electricalMetrics])

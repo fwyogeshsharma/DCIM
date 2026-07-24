@@ -140,17 +140,13 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
   switchgear: [],
   mcc: [],
   mpp: [],
+  // EVENTS only. Running/Stopped fire AUTONOMOUSLY from the transfer sequence (not
+  // injectable). The genset faults — Fail to Start (overcrank), Low Fuel, Low Coolant,
+  // Battery Failure, Transfer Switch Fault, Temperature — are CONDITIONS, served from
+  // the backend FAULT_MAP and shown under the Conditions group with a raise/clear.
   generator: [
-    { type: 'COLD_START',          label: 'Cold Start' },
-    { type: 'AUTH_FAILURE',        label: 'Auth Failure' },
-    { type: 'TEMPERATURE_ALERT',   label: 'Temperature Alert' },
-    { type: 'GEN_RUNNING',         label: 'Generator Running' },
-    { type: 'GEN_STOPPED',         label: 'Generator Stopped' },
-    { type: 'GEN_LOW_FUEL',        label: 'Low Fuel' },
-    { type: 'GEN_LOW_COOLANT',     label: 'Low Coolant' },
-    { type: 'GEN_BATTERY_FAILURE', label: 'Battery Failure' },
-    { type: 'GEN_TRANSFER_SWITCH', label: 'Transfer Switch Fault' },
-    { type: 'GEN_OVERCRANK',       label: 'Overcrank' },
+    { type: 'COLD_START',   label: 'Cold Start' },
+    { type: 'AUTH_FAILURE', label: 'Auth Failure' },
   ],
 }
 

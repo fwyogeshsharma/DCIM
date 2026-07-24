@@ -242,6 +242,20 @@ def _run_headless():
         "transfer_fault_cleared": _TT.ATS_TRANSFER_FAULT_CLEARED,
         # Generator fail-to-start (overcrank).
         "gen_fail_start":         _TT.GEN_OVERCRANK,
+        # Genset auto-status (fired from the transfer sequence).
+        "gen_running":            _TT.GEN_RUNNING,
+        "gen_stopped":            _TT.GEN_STOPPED,
+        # Genset alarm conditions — raise/clear pairs.
+        "gen_low_fuel":                 _TT.GEN_LOW_FUEL,
+        "gen_low_fuel_clear":           _TT.GEN_FUEL_NORMAL,
+        "gen_low_coolant":              _TT.GEN_LOW_COOLANT,
+        "gen_low_coolant_clear":        _TT.GEN_COOLANT_NORMAL,
+        "gen_battery_failure":          _TT.GEN_BATTERY_FAILURE,
+        "gen_battery_failure_clear":    _TT.GEN_BATTERY_NORMAL,
+        "gen_transfer_switch":          _TT.GEN_TRANSFER_SWITCH,
+        "gen_transfer_switch_clear":    _TT.GEN_TRANSFER_CLEARED,
+        "gen_over_temp":                _TT.GEN_TEMP_HIGH,
+        "gen_over_temp_clear":          _TT.GEN_TEMP_NORMAL,
     }
     state_store.set_transfer_trap_callback(
         lambda dev, kind: trap_engine.send_trap(dev, _ATS_TRAP[kind]))

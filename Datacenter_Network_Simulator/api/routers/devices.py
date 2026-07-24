@@ -1205,6 +1205,18 @@ FAULT_MAP = {
     # that leads to a total blackout. Handled via the store's set_gen_failed path.
     "gen_fail_start":   {"gen": "fail_start", "label": "Fail to Start",
                          "types": ["generator"]},
+    # Genset alarm conditions — annunciation (raise/clear trap + controller alarm
+    # point), handled through the store's set_gen_condition path.
+    "gen_low_fuel":     {"gencond": "low_fuel",       "label": "Low Fuel",
+                         "types": ["generator"]},
+    "gen_low_coolant":  {"gencond": "low_coolant",    "label": "Low Coolant",
+                         "types": ["generator"]},
+    "gen_battery_fail": {"gencond": "battery_failure","label": "Battery Failure",
+                         "types": ["generator"]},
+    "gen_xfer_fault":   {"gencond": "transfer_switch","label": "Transfer Switch Fault",
+                         "types": ["generator"]},
+    "gen_over_temp":    {"gencond": "over_temp",      "label": "Temperature Alert",
+                         "types": ["generator"]},
     # Power-feeder cable breaks. Energization follows intact feeders, so opening one
     # de-energizes everything downstream and drops any UPS below it to battery — with
     # the sources healthy. Combine with source faults for any real double-failure.
@@ -1263,6 +1275,11 @@ def get_device_faults(device_id: str):
             and st.is_gen_failed(device_id):
         active += [k for k, v in FAULT_MAP.items()
                    if "gen" in v and dtype in v["types"]]
+    # Genset alarm conditions.
+    if st and dtype == "generator" and hasattr(st, "get_gen_conditions"):
+        _gc = set(st.get_gen_conditions(device_id))
+        active += [k for k, v in FAULT_MAP.items()
+                   if v.get("gencond") in _gc and dtype in v["types"]]
     # Power-feeder cable breaks.
     if st and hasattr(st, "is_power_feed_broken"):
         active += [k for k, v in FAULT_MAP.items()
@@ -1303,6 +1320,11 @@ def set_device_fault(device_id: str, body: FaultRequest):
     # Generator fail-to-start toggles the un-startable set (feeds the double-failure).
     if "gen" in spec:
         st.set_gen_failed(device_id, on)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # Genset alarm conditions (low fuel / coolant / battery / transfer / temp).
+    if "gencond" in spec:
+        st.set_gen_condition(device_id, spec["gencond"], on)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
     # Power-feeder cable break — opens/restores a feeder; energization follows intact

@@ -121,6 +121,13 @@ class TrapType(str, Enum):
     GEN_BATTERY_FAILURE   = "generatorBatteryFailure"
     GEN_TRANSFER_SWITCH   = "generatorTransferSwitch"
     GEN_OVERCRANK         = "generatorOvercrank"
+    # Condition clears + a dedicated genset over-temp pair (raise/clear).
+    GEN_FUEL_NORMAL       = "generatorFuelNormal"
+    GEN_COOLANT_NORMAL    = "generatorCoolantNormal"
+    GEN_BATTERY_NORMAL    = "generatorBatteryNormal"
+    GEN_TRANSFER_CLEARED  = "generatorTransferCleared"
+    GEN_TEMP_HIGH         = "generatorTempHigh"
+    GEN_TEMP_NORMAL       = "generatorTempNormal"
     # ATS enterprise traps (1.3.6.1.4.1.99999.13.x) — ASCO 7000 ACC / Eaton ATC-900.
     # An automatic transfer switch is the one electrical-upstream device that
     # natively speaks SNMP (source-loss, transfer, fail-to-transfer, not-in-auto).
@@ -550,6 +557,24 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
     TrapType.GEN_OVERCRANK: TrapDefinition(
         TrapType.GEN_OVERCRANK, "1.3.6.1.4.1.99999.3.7",
         "Overcrank", "Generator failed to start after maximum crank attempts", "critical"),
+    TrapType.GEN_FUEL_NORMAL: TrapDefinition(
+        TrapType.GEN_FUEL_NORMAL, "1.3.6.1.4.1.99999.3.8",
+        "Fuel Normal", "Generator fuel level returned to normal", "informational"),
+    TrapType.GEN_COOLANT_NORMAL: TrapDefinition(
+        TrapType.GEN_COOLANT_NORMAL, "1.3.6.1.4.1.99999.3.9",
+        "Coolant Normal", "Generator coolant level returned to normal", "informational"),
+    TrapType.GEN_BATTERY_NORMAL: TrapDefinition(
+        TrapType.GEN_BATTERY_NORMAL, "1.3.6.1.4.1.99999.3.10",
+        "Battery Normal", "Generator starting battery fault cleared", "informational"),
+    TrapType.GEN_TRANSFER_CLEARED: TrapDefinition(
+        TrapType.GEN_TRANSFER_CLEARED, "1.3.6.1.4.1.99999.3.11",
+        "Transfer Switch Cleared", "Generator transfer switch fault cleared", "informational"),
+    TrapType.GEN_TEMP_HIGH: TrapDefinition(
+        TrapType.GEN_TEMP_HIGH, "1.3.6.1.4.1.99999.3.12",
+        "High Temperature", "Generator coolant/engine temperature high", "major"),
+    TrapType.GEN_TEMP_NORMAL: TrapDefinition(
+        TrapType.GEN_TEMP_NORMAL, "1.3.6.1.4.1.99999.3.13",
+        "Temperature Normal", "Generator temperature returned to normal", "informational"),
     TrapType.SERVER_POWER_OFF: TrapDefinition(
         TrapType.SERVER_POWER_OFF, "1.3.6.1.4.1.99999.26.0.1",
         "Server Powered Off",
