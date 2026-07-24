@@ -2145,10 +2145,12 @@ class DeviceStateStore:
         thr   = self._through_live.get(device.id, 0.0)
         dt_h  = self._tick_interval / 3600.0
         out_of_fuel = st.get("gen_fuel_pct", 100.0) <= 0.5
-        # An injected fail-to-start keeps the engine faulted: the ATS asserts its
-        # start contact but the genset never reaches voltage, so the emergency source
-        # never qualifies and the bus stays dead (utility+gen = the double failure).
-        failed = device.id in self._gen_failed
+        # This engine cannot come online — an injected fail-to-start, or a failed
+        # starting battery that cannot crank it. The ATS may assert its start contact
+        # and a healthy SIBLING can still qualify the emergency source, but THIS set
+        # reports its own fault, not the shared bus status.
+        failed = (device.id in self._gen_failed
+                  or "battery_failure" in self._gen_conditions.get(device.id, set()))
 
         if out_of_fuel or failed:
             st["gen_was_running"] = False
