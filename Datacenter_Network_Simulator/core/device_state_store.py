@@ -941,6 +941,11 @@ class DeviceStateStore:
     # 8-min string); expressed as a fraction so it tracks a part-loaded string too.
     _UPS_LOW_BATT_FRAC = 0.75
     _GEN_FULL_HOURS  = 24.0     # genset full-tank runtime (h) at full load
+    # Injected conditions that take a genset OUT of service: a flat starting battery
+    # (cannot crank) plus the two engine-protection shutdowns — low coolant and high
+    # temperature — which trip a running set and lock out a start. All render the set
+    # non-operational, so it neither starts nor keeps running.
+    _GEN_TRIP_CONDS = frozenset({"battery_failure", "low_coolant", "over_temp"})
     _DEFAULT_PDU_RATED_W = 7360.0   # rack-PDU breaker default: 32 A @ 230 V single-phase
 
     def _power_context(self) -> dict:
@@ -1493,6 +1498,13 @@ class DeviceStateStore:
     def is_gen_failed(self, gen_id: str) -> bool:
         return gen_id in self._gen_failed
 
+    def _gen_offline(self, gen_id: str) -> bool:
+        """A genset that cannot be online — an injected fail-to-start, or a trip
+        condition (flat battery, low coolant, over-temp). It will not start, and a
+        running set trips out."""
+        return (gen_id in self._gen_failed
+                or bool(self._gen_conditions.get(gen_id, set()) & self._GEN_TRIP_CONDS))
+
     def set_gen_condition(self, gen_id: str, kind: str, on: bool) -> None:
         """Raise or clear a genset alarm condition (Simulate-Fault menu). Each holds
         until cleared and fires a raise trap on assert and a clear trap on deassert —
@@ -1642,14 +1654,13 @@ class DeviceStateStore:
             # paralleling bus, one is enough to qualify the emergency source. A
             # genset the tick loop has not initialised yet is assumed fuelled, so
             # the first tick after load doesn't read as a site-wide failed start.
-            # A genset can crank only with fuel, a healthy starting battery, and no
-            # injected fail-to-start. A dead start battery cannot turn the engine —
-            # so a battery-failure alarm makes that set unstartable, exactly like a
-            # real controller reporting overcrank on a flat battery.
+            # A genset can crank only with fuel and no out-of-service condition — a
+            # fail-to-start, a flat starting battery, or an engine-protection lockout
+            # (low coolant / over-temp). Either machine on the paralleling bus is
+            # enough to qualify the emergency source.
             gens_startable = any(
                 self._gen_state(gid).get("gen_fuel_pct", 100.0) > 0.5
-                and gid not in self._gen_failed
-                and "battery_failure" not in self._gen_conditions.get(gid, set())
+                and not self._gen_offline(gid)
                 for gid in dc_gens.get(dc, [])
             )
             st = self._transfer.step(dc, utility_ok, gens_startable, self._tick_interval)
@@ -2145,12 +2156,11 @@ class DeviceStateStore:
         thr   = self._through_live.get(device.id, 0.0)
         dt_h  = self._tick_interval / 3600.0
         out_of_fuel = st.get("gen_fuel_pct", 100.0) <= 0.5
-        # This engine cannot come online — an injected fail-to-start, or a failed
-        # starting battery that cannot crank it. The ATS may assert its start contact
-        # and a healthy SIBLING can still qualify the emergency source, but THIS set
-        # reports its own fault, not the shared bus status.
-        failed = (device.id in self._gen_failed
-                  or "battery_failure" in self._gen_conditions.get(device.id, set()))
+        # This engine cannot be online — a fail-to-start, a flat starting battery, or
+        # an engine-protection trip (low coolant / over-temp) that shuts a running set
+        # down and locks out a start. A healthy SIBLING can still qualify the emergency
+        # source, but THIS set reports its own fault, not the shared bus status.
+        failed = self._gen_offline(device.id)
 
         if out_of_fuel or failed:
             st["gen_was_running"] = False
