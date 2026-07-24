@@ -483,6 +483,11 @@ class SnmpSetAgent:
             except socket.timeout:
                 continue
             except OSError as e:
+                # stop() flips _running False BEFORE closing the socket, so a socket
+                # error once we're already stopping is just that expected close
+                # (Errno 9 Bad file descriptor) racing an in-flight recvfrom — quiet.
+                if not self._running:
+                    break
                 log.warning("[SnmpSetAgent] socket error: %s", e)
                 break
 
