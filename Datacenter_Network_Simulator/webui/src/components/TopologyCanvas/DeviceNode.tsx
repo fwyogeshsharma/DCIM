@@ -107,19 +107,23 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
       <NodeToolbar isVisible position={Position.Top} offset={12}>
         <div style={{
           position: 'relative',
+          width: 172,
           background: tripDegraded ? '#7a1d1d' : '#7a5a12',
           border: `1px solid ${tripDegraded ? '#f85149' : '#e3b341'}`,
-          borderRadius: 6, padding: '6px 10px', maxWidth: 220,
-          color: tripDegraded ? '#ffdede' : '#ffeec2', fontSize: 11,
+          borderRadius: 6, padding: '8px 10px',
+          color: tripDegraded ? '#ffdede' : '#ffeec2', fontSize: 11, lineHeight: 1.35,
           boxShadow: '0 4px 14px rgba(0,0,0,0.55)',
-          display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap',
+          display: 'flex', flexDirection: 'column', gap: 7,
         }}>
-          <span style={{ fontSize: 13 }}>⚠</span>
-          <span>High head-pressure trip{tripDegraded ? ' — cooling reduced' : ' — on standby'}</span>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <span style={{ fontSize: 13, lineHeight: '15px' }}>⚠</span>
+            <span>High head-pressure trip{tripDegraded ? ' — cooling reduced' : ' — on standby'}</span>
+          </div>
           <button onClick={() => resetTrip(id)} style={{
+            alignSelf: 'flex-start',
             background: tripDegraded ? '#f85149' : '#e3b341', border: 'none',
             borderRadius: 4, color: tripDegraded ? '#fff' : '#3a2a00',
-            padding: '2px 9px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            padding: '3px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>Reset</button>
           {/* caret pointing down at the node */}
           <div style={{
