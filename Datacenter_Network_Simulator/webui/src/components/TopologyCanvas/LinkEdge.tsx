@@ -25,6 +25,7 @@ export function isHotFlow(src: string, dst: string): boolean {
   if (s.startsWith('CRAH')) return true            // CHW return: CRAH → CHWR
   if (s.includes('CHWR') || t.includes('CHWR')) return true
   if (s.includes('CWP') || t.includes('CWP')) return true   // condenser-water pump (hot loop)
+  if (s.includes('CWR') || t.includes('CWR')) return true   // condenser-water RETURN (hot)
   if (/^CT\d/.test(t)) return true                 // to a cooling tower (CT1/CT2…) = hot
   if (s.startsWith('VCW') || t.startsWith('VCW')) return true   // condenser-water (VCW) valve
   if (t.startsWith('CDU') && s.startsWith('SRV')) return true   // cold-plate return: server → CDU (hot)
