@@ -238,7 +238,8 @@ class PlantTelemetryEngine:
              live_power: float | None = None,
              live_cop: float | None = None,
              plant_load_frac: float | None = None,
-             live_heat: float | None = None) -> Dict[str, float]:
+             live_heat: float | None = None,
+             running: bool = True) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
         # "on" for this device (Limits tab). Back-compat: force_leak maps to it.
         # `live_power` (kW) — when supplied, the primary electrical-power point is
@@ -252,7 +253,14 @@ class PlantTelemetryEngine:
         _pwr_out: float | None = None
         for name, base, amp, is_load, is_hours in self._points:
             if is_hours:
-                self._values[name] += dt / 3600.0          # accumulate run-hours
+                # A runtime meter counts RUNNING time, not wall-clock: a machine the
+                # BMS has staged off (or that has lost power) accrues nothing while it
+                # sits. Counting regardless made every standby unit tick up in lockstep
+                # with the duty unit, which is both wrong on the panel and corrosive —
+                # lead/lag rotation is decided on accrued runtime, so equal-for-everyone
+                # hours quietly defeat the equalization they are supposed to drive.
+                if running:
+                    self._values[name] += dt / 3600.0
                 out[name] = round(self._values[name], 2)
                 continue
             if live_power is not None and name == self._power_point:

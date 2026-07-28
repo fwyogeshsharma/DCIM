@@ -591,9 +591,14 @@ class BACnetController:
                     _cop = (plant_cop_by_name or {}).get(_nm)
                     _lf = (plant_loadfrac_by_name or {}).get(_nm)
                     _hl = (plant_heat_by_name or {}).get(_nm)
+                    # Decided BEFORE the tick, because the engine needs it: a stopped
+                    # machine must not accrue run-hours. Zeroing the published points
+                    # afterwards was never enough — the counter had already advanced.
+                    _off = ((plant_standby_names and _nm in plant_standby_names)
+                            or (plant_unpowered_names and _nm in plant_unpowered_names))
                     values = engine.tick(dt, forced=forced, live_power=_pw,
                                          live_cop=_cop, plant_load_frac=_lf,
-                                         live_heat=_hl)
+                                         live_heat=_hl, running=not _off)
                     # Staged-OFF (standby) chiller / pump: sequenced down
                     # by the BMS (lead/lag), not faulted. Report the unit STOPPED and
                     # its dynamic signals at rest — so a staged-off unit reads "off",
@@ -605,8 +610,6 @@ class BACnetController:
                     # difference is upstream: the store excludes standby names from
                     # the cooling-loss penalty but NOT unpowered ones, because a
                     # unit that isn't turning genuinely isn't rejecting heat.
-                    _off = ((plant_standby_names and _nm in plant_standby_names)
-                            or (plant_unpowered_names and _nm in plant_unpowered_names))
                     if _off:
                         for _pt in list(values.keys()):
                             if _pt in ("Chiller_Running", "Run_Status",

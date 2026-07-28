@@ -2609,6 +2609,15 @@ class DeviceStateStore:
                 for _tn in _towers_run:
                     self._tower_run_hours[_tn] = self._tower_run_hours.get(_tn, 0.0) + _dt_h
                 self._tower_cells[_dc] = (_cells_need, _cells_run)
+                # A CYCLED-OFF cell is staged off by the BMS — precisely what standby
+                # means — so it belongs in the standby set even though the bank as a
+                # whole is unstaged. Decoupling the towers removed the WRONG membership
+                # (staged with a chiller); dropping them from the set entirely went too
+                # far and left an idle cell advertising Fan_Status=1 with zero speed and
+                # zero draw. Membership zeroes its points and fades it on the canvas,
+                # exactly like a standby chiller. Rejection capability is unaffected:
+                # _compute_cond_loop counts cells by health and power, not by staging.
+                self._plant_standby_names |= (set(_towers_ok) - set(_towers_run))
                 _cond_f = (tower_chiller_factor(_cells_need, _cells_run)
                            if _cells_run else 1.0)
                 total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc),
@@ -2850,8 +2859,10 @@ class DeviceStateStore:
 
     # Lead/lag rotation periods (hours of accrued runtime). Weekly is the common BMS
     # default for both chiller trains and heat-rejection cells.
-    _TOWER_ROTATE_H = 168.0
-    _TRAIN_ROTATE_H = 168.0
+    # !!! TEMPORARY TEST VALUES — restore to 168.0 before this is used for anything.
+    # 0.02 h = 72 s of accrued lead runtime, so handover is observable live.
+    _TOWER_ROTATE_H = 0.02
+    _TRAIN_ROTATE_H = 0.02
 
     # The plant is installed for the fleet's ULTIMATE server cap and staged; sized
     # here so it never truly runs out of modules before the cap is hit.
@@ -3048,12 +3059,20 @@ class DeviceStateStore:
             # the plant page contradicting itself. Cold basin / tower outlet IS the
             # condenser supply; the hot inlet sits a design range above it (the CW
             # pumps are VFD and track load, so the range stays near design).
+            _cells_on = self._tower_running_now.get(dc) or set(towers)
             for _tn in towers:
                 _tip = self._plant_ip_by_name.get(_tn)
                 if _tip:
+                    # A cell the bank has cycled OFF is valved out with its fan stopped:
+                    # it rejects nothing, so its inlet, outlet and basin all sit at loop
+                    # temperature with no range. Publishing the running range on it would
+                    # claim heat rejection from a stopped cell — and the BACnet off-unit
+                    # handling would then average the pair into a temperature that
+                    # matches neither the loop nor the running cells.
+                    _rng = self._COND_RANGE_C if _tn in _cells_on else 0.0
                     auto.setdefault(_tip, {}).update({
                         "Cond_Water_Out": round(cur, 1),
-                        "Cond_Water_In": round(cur + self._COND_RANGE_C, 1),
+                        "Cond_Water_In": round(cur + _rng, 1),
                         "Basin_Temp": round(cur, 1)})
 
             # Condensing pressure for the published point, as a linear fit through
