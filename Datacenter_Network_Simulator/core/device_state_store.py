@@ -2579,9 +2579,13 @@ class DeviceStateStore:
                 # fill area buys colder condenser water (a compressor credit, applied to
                 # the DC total below so it reaches PUE rather than being normalised away).
                 _towers_all = [_n for _n, _w, _t in units if _t == "cooling_tower"]
+                # AVAILABLE cells — healthy and energized. A cell this bank cycled off
+                # last tick is stopped but perfectly available, so health is judged by
+                # alarms only; _is_faulted would drop it for being off, shrinking the
+                # bank to whatever is currently spinning and oscillating every tick.
                 _towers_ok = [_n for _n in _towers_all
                               if _n not in self._plant_unpowered_names
-                              and not self._is_faulted(_n)]
+                              and not self._is_alarmed(_n)]
                 _duty_inst = (itl / 1000.0) / max(1e-6, installed_kw)
                 _demand = tower_cell_demand(_duty_inst, len(_towers_all))
                 _cells_need = tower_cells_needed(_duty_inst, len(_towers_all))
@@ -2658,8 +2662,12 @@ class DeviceStateStore:
                         # via its alarm point — the trip is set later in the tick, so a
                         # point-only check could still rank a tripped chiller as lead and
                         # never fail over. Marking its train bad promotes a standby (N+1).
+                        # HEALTH, not run-state: a standby train is stopped on purpose.
+                        # Using _is_faulted here (which counts "stopped" as a fault)
+                        # marked every standby train bad, so no idle train could ever be
+                        # promoted and the lead never rotated.
                         bad = any(m not in self._plant_unpowered_names
-                                  and (self._is_faulted(m) or m in self._chiller_hp_lockout)
+                                  and (self._is_alarmed(m) or m in self._chiller_hp_lockout)
                                   for m in tr["members"])
                         _ch = tr.get("chiller")
                         # LEAST-SWITCHING: a train already running outranks an equal idle
@@ -2900,6 +2908,26 @@ class DeviceStateStore:
                 return True
         return False
 
+    @staticmethod
+    def _is_alarmed(name: str) -> bool:
+        """True if this plant device is genuinely UNHEALTHY — an Alarm_* point is set.
+
+        Deliberately narrower than _is_faulted: it does NOT treat a stopped unit as a
+        fault. The two questions are different and must not share an answer:
+
+          • "is this costing us cooling right now?"  — _is_faulted. A unit that should
+            be running but isn't IS a loss, so stopped counts. Right for the penalty.
+          • "can the BMS pick this unit?"            — _is_alarmed. A standby unit is
+            stopped ON PURPOSE and is perfectly healthy; that is the entire point of
+            N+1. Judging availability with _is_faulted disqualified every standby unit
+            for being on standby, so the lead could never rotate and cycled-off tower
+            cells oscillated in and out of the available set every tick.
+        """
+        pv = _plant_state_cache.get(name)
+        if not pv:
+            return False
+        return any(k.startswith("Alarm_") and float(v) >= 0.5 for k, v in pv.items())
+
     # Cooling penalty model constants.
     _COOL_TOL = 0.34     # cooling-loss fraction the plant rides out (N+1 + thermal mass)
     _COOL_RUN = 0.20     # runaway integration gain (°C/tick per unit deficit)
@@ -2995,8 +3023,12 @@ class DeviceStateStore:
             # the full bank, as this used to, read a healthy N+2 plant at half load as
             # 33 % short the moment one cell tripped.
             if towers:
+                # Cells are counted by AVAILABILITY, not by whether they happen to be
+                # spinning: a cell the bank cycled off is idle capacity that can start
+                # on demand. _is_faulted would read every cycled-off cell as lost
+                # rejection and drive a false cooling-degraded state.
                 ok = sum(1 for t in towers
-                         if not self._is_faulted(t)
+                         if not self._is_alarmed(t)
                          and t not in self._plant_unpowered_names)
                 _on = self._plant_stage_on.get(dc, 0)
                 _inst = self._plant_installed_mods.get(dc, 0)
