@@ -2630,6 +2630,13 @@ class DeviceStateStore:
                 _trains = cool_ctx["trains_by_dc"].get(_dc, [])
                 _spare_chwp = cool_ctx["spare_chwp"].get(_dc, [])
                 _n_run = 0
+                # Capture the CURRENT lead set before clearing it — least-switching is
+                # decided against what this store ran last tick, which is authoritative
+                # and always available. Reading it back off the BACnet cache instead
+                # made lead selection depend on the telemetry plane being up.
+                _prev_lead = {tr.get("chiller")
+                              for tr in self._plant_trains_run.get(_dc, [])
+                              if tr.get("chiller")}
                 self._plant_trains_run[_dc] = []
                 if _trains:
                     _n_run = max(1, min(len(_trains),
@@ -2649,13 +2656,29 @@ class DeviceStateStore:
                         # LEAST-SWITCHING: a train already running outranks an equal idle
                         # one, so a recovered chiller does NOT displace the standby that
                         # took over — no pointless swap-back on reset.
-                        running = (_ch is not None and float(_plant_state_cache.get(
-                            _ch, {}).get("Chiller_Running", 0.0)) >= 0.5)
-                        # RUNTIME EQUALIZATION: among equal-rank trains, start the one
-                        # with the fewest accrued lead-hours and shed the most-run first,
-                        # balancing wear across the natural stage up/down cycles.
+                        #
+                        # Sourced from THIS store's last-tick run set, not the BACnet
+                        # present-value cache. That cache is empty whenever the BACnet
+                        # controller is stopped (get_telemetry_snapshot returns [] when
+                        # not running), which made every train read "not running" and
+                        # killed the least-switching term — leaving raw run-hours to
+                        # decide, and those flip every tick because the current lead is
+                        # the only train accruing them. The result was a lead that
+                        # round-robined each tick until BACnet came up and froze it on
+                        # whichever train happened to hold it, so the boot-time lead
+                        # varied run to run and, with BACnet off, never settled at all.
+                        running = (_ch is not None
+                                   and (_ch in _prev_lead
+                                        or float(_plant_state_cache.get(_ch, {})
+                                                 .get("Chiller_Running", 0.0)) >= 0.5))
+                        # RUNTIME EQUALIZATION, BUCKETED. Ranking on raw hours would
+                        # swap the lead every tick for the same reason the tower bank
+                        # did. Whole rotation periods instead: inside a period the
+                        # running train holds, and only a train that has run a full
+                        # period more than an idle peer hands over. Chiller lead/lag is
+                        # rotated on a schedule in real plants, not continuously.
                         rh = self._train_run_hours.get(_ch, 0.0) if _ch else 0.0
-                        return (dead, bad, not running, rh, i)
+                        return (dead, bad, int(rh / self._TRAIN_ROTATE_H), not running, i)
 
                     _order = [i for i, _ in sorted(enumerate(_trains), key=_fitness)]
                     _run_idx = set(_order[:_n_run])
@@ -2825,9 +2848,10 @@ class DeviceStateStore:
                  for pid in pids]
             for ip, pids in ctx.get("ev2_circuit_pdus", {}).items()}
 
-    # Cooling-tower lead rotation period (hours of accrued runtime). Weekly is the
-    # common BMS default for heat-rejection lead/lag.
+    # Lead/lag rotation periods (hours of accrued runtime). Weekly is the common BMS
+    # default for both chiller trains and heat-rejection cells.
     _TOWER_ROTATE_H = 168.0
+    _TRAIN_ROTATE_H = 168.0
 
     # The plant is installed for the fleet's ULTIMATE server cap and staged; sized
     # here so it never truly runs out of modules before the cap is hit.
