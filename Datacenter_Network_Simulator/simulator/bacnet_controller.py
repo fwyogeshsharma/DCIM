@@ -594,7 +594,7 @@ class BACnetController:
                     values = engine.tick(dt, forced=forced, live_power=_pw,
                                          live_cop=_cop, plant_load_frac=_lf,
                                          live_heat=_hl)
-                    # Staged-OFF (standby) chiller / pump / tower cell: sequenced down
+                    # Staged-OFF (standby) chiller / pump: sequenced down
                     # by the BMS (lead/lag), not faulted. Report the unit STOPPED and
                     # its dynamic signals at rest — so a staged-off unit reads "off",
                     # not "running at 75 % speed" — without tripping the cooling-loss

@@ -169,6 +169,7 @@ class DeviceStateStore:
         # safety. Without this the plant modelled a physically impossible state —
         # chillers happily making chilled water with nowhere to reject the heat.
         self._cond_water_c: Dict[str, float] = {}     # dc → condenser supply °C
+        self._cond_base_c: Dict[str, float] = {}      # dc → CW the healthy bank can hold (wb+approach)
         self._chiller_derate: Dict[str, float] = {}   # chiller name → 0..1 capacity lost
         self._chiller_hp_lockout: set = set()         # chiller names latched out
         self._train_run_hours: Dict[str, float] = {}  # chiller name → accrued lead run-hours
@@ -337,6 +338,15 @@ class DeviceStateStore:
         self._plant_trains_run: Dict[str, list] = {}  # DC → cooling trains the BMS has ON
         self._plant_standby_names: set = set()        # chiller names staged OFF (not faulted)
         self._plant_overload_kw: Dict[str, float] = {} # DC → IT beyond full installed plant
+        # Anti-short-cycle timers: seconds since this DC's last stage UP / DOWN. Seeded
+        # large so the first stage change of a run is free; a compressor's minimum-off
+        # then gates every restart after it (core/cooling_model.stage_modules).
+        self._plant_stage_since: Dict[str, tuple] = {}   # DC → (since_up_s, since_down_s)
+        # Tower bank (NOT staged with the trains — every healthy cell runs slow):
+        # DC → (cells the load needs, cells actually turning).
+        self._tower_cells: Dict[str, tuple] = {}
+        self._tower_reject: Dict[str, float] = {}        # DC → tower rejection capability 0..1
+        self._tower_run_hours: Dict[str, float] = {}     # cell name → accrued run hours (rotation)
         # Per-DC installed module count is sized to the fleet server cap so the plant
         # never truly runs out until the cap; recomputed lazily from the live cap.
         self._plant_installed_mods: Dict[str, int] = {}
@@ -775,18 +785,25 @@ class DeviceStateStore:
     def _build_trains(self, dc: str, plant: Dict[str, list]) -> tuple:
         """Group this DC's plant into COOLING TRAINS from the cooling-loop topology.
 
-        A train is one complete heat path: a chiller, the evaporator (chilled-water)
-        pump that feeds it, the condenser-water pump that carries its condenser heat,
-        and the tower cell that rejects it. Lose any member and that train stops
-        cooling — which is why the electrical feed must follow the train, not the
-        device type. A plant with N+1 trains rides out the loss of any one of them.
+        A train is the STAGED heat path: a chiller, the evaporator (chilled-water)
+        pump that feeds it, and the condenser-water pump that carries its condenser
+        heat. Lose any member and that train stops cooling — which is why the
+        electrical feed must follow the train, not the device type. A plant with N+1
+        trains rides out the loss of any one of them.
+
+        The tower cell each chiller is piped to is recorded ("tower") for topology
+        and display, but it is NOT a train member and is NOT staged with the train:
+        cells sit on the common condenser-water header and ALL of them run, sharing
+        the airflow at low fan speed (see core/cooling_model — tower_cells_needed /
+        tower_cell_speed_frac). Rejection is therefore a header-level capability,
+        applied once per DC in _compute_cond_loop / _compute_chw_penalty.
 
         Chilled-water pumps beyond the one matching each chiller (CHWP4 on a
         three-chiller plant) sit on the common CHW header as the N+1 standby: any
         train's evaporator pump can be backed up by it.
 
         Returns (trains, spare_chwp). Each train is
-        {"chiller", "chwp", "cwp", "tower", "members"}.
+        {"chiller", "chwp", "cwp", "tower", "members"} — "members" excludes the tower.
         """
         trains: list = []
         spare: list = []
@@ -827,10 +844,12 @@ class DeviceStateStore:
                            cwps[0] if cwps else None)
                 tower = next((n for n in twrs if self._unit_index(n) == idx),
                              twrs[0] if twrs else None)
-                members = [m for m in (chiller, chwp, cwp, tower) if m]
+                # The tower is header equipment, not a train member: it neither stages
+                # with the train nor takes the train down on its own.
+                members = [m for m in (chiller, chwp, cwp) if m]
                 trains.append({"chiller": chiller, "chwp": chwp, "cwp": cwp,
                                "tower": tower, "members": members,
-                               "complete": bool(chwp and cwp and tower)})
+                               "complete": bool(chwp and cwp)})
             spare = sorted(n for n in pumps
                            if not is_cwp(n) and n not in claimed_chwp)
         except Exception:
@@ -844,15 +863,19 @@ class DeviceStateStore:
           plant_by_dc   {dc: {chiller|pump|cooling_tower: [names]}}
           trains_by_dc  {dc: [train dicts]}           — complete heat paths
           spare_chwp    {dc: [names]}                 — N+1 header standby pumps
+          city_by_dc    {dc: city}                    — site weather for the tower model
         Built once from the device inventory; used to propagate upstream faults.
         """
         if self._cool_ctx is not None:
             return self._cool_ctx
         crah_by_room: Dict[tuple, list] = {}
         plant_by_dc: Dict[str, Dict[str, list]] = {}
+        city_by_dc: Dict[str, str] = {}
         try:
             for d in self._dm.get_all_devices():
                 dt = d.device_type
+                if d.datacenter and d.datacenter not in city_by_dc:
+                    city_by_dc[d.datacenter] = getattr(d, "datacenter_city", None)
                 if dt == DeviceType.CRAH:
                     crah_by_room.setdefault((d.datacenter, d.room), []).append(d.name)
                 elif dt in (DeviceType.CHILLER, DeviceType.PUMP,
@@ -879,7 +902,8 @@ class DeviceStateStore:
                           "cdu_by_server": cdu_by_server,
                           "plant_by_dc": plant_by_dc,
                           "trains_by_dc": trains_by_dc,
-                          "spare_chwp": spare_chwp}
+                          "spare_chwp": spare_chwp,
+                          "city_by_dc": city_by_dc}
         return self._cool_ctx
 
     # Power-chain rank: source (0) → leaf load (4). A device's parents are its
@@ -2504,7 +2528,9 @@ class DeviceStateStore:
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
                 affinity_power_kw, chiller_electrical_w, chiller_cop,
                 stage_modules, installed_modules_for, PLANT_MODULE_KW,
-                PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR)
+                PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR,
+                tower_cell_demand, tower_cells_needed, tower_cells_running,
+                tower_cell_speed_frac, tower_chiller_factor)
             _oh_design = (OH_FLOOR + OH_VAR) or 0.47
             _VFD_FAN  = ("crah", "cooling_tower")   # centrifugal fans
             _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
@@ -2523,8 +2549,21 @@ class DeviceStateStore:
                 # collapsing (fleet overload → fake-low PUE) or spiking (full plant
                 # floor at light load). See core/cooling_model.stage_modules.
                 inst_mods = self._installed_modules(_dc)
-                on = stage_modules(itl / 1000.0, inst_mods,
-                                   self._plant_stage_on.get(_dc, 1))
+                # ANTI-SHORT-CYCLE TIMERS: a stage change is a compressor start/stop,
+                # not a spreadsheet edit. Age both timers by the tick, let the sequence
+                # decide, then zero whichever direction actually fired. Load hysteresis
+                # alone would let a sawtooth IT load bounce a stage every tick.
+                _t_up, _t_dn = self._plant_stage_since.get(_dc, (1e9, 1e9))
+                _t_up += self._tick_interval
+                _t_dn += self._tick_interval
+                _prev_on = self._plant_stage_on.get(_dc, 1)
+                on = stage_modules(itl / 1000.0, inst_mods, _prev_on,
+                                   since_up_s=_t_up, since_down_s=_t_dn)
+                if on > _prev_on:
+                    _t_up = 0.0
+                elif on < _prev_on:
+                    _t_dn = 0.0
+                self._plant_stage_since[_dc] = (_t_up, _t_dn)
                 self._plant_stage_on[_dc] = on
                 enabled_kw   = on * PLANT_MODULE_KW
                 installed_kw = inst_mods * PLANT_MODULE_KW
@@ -2532,16 +2571,47 @@ class DeviceStateStore:
                 # Overload: live IT beyond the FULL installed plant — every module is
                 # on and cooling still can't keep up (feeds the thermal backstop).
                 self._plant_overload_kw[_dc] = max(0.0, itl / 1000.0 - installed_kw)
-                total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc))
+                # ── TOWER BANK — decoupled from train staging ────────────────────
+                # Cells are header equipment: every healthy, energized cell runs, and
+                # the required airflow is shared across all of them at low fan speed.
+                # Cube-law fan power makes the surplus cells nearly free, and the extra
+                # fill area buys colder condenser water (a compressor credit, applied to
+                # the DC total below so it reaches PUE rather than being normalised away).
+                _towers_all = [_n for _n, _w, _t in units if _t == "cooling_tower"]
+                _towers_ok = [_n for _n in _towers_all
+                              if _n not in self._plant_unpowered_names
+                              and not self._is_faulted(_n)]
+                _duty_inst = (itl / 1000.0) / max(1e-6, installed_kw)
+                _demand = tower_cell_demand(_duty_inst, len(_towers_all))
+                _cells_need = tower_cells_needed(_duty_inst, len(_towers_all))
+                # Below the fan turndown the bank CYCLES cells rather than idling them
+                # all at min speed — running fewer cells at a controllable speed. The
+                # cycled-off cells stay healthy and available, so they still count as
+                # rejection capacity in _compute_cond_loop; only the approach credit
+                # (and their fan draw) goes away.
+                _cells_run = tower_cells_running(_demand, len(_towers_ok))
+                # RUNTIME EQUALIZATION: when the bank cycles, the cells that have run
+                # least go on first, so wear (fan motor, gearbox, fill fouling) spreads
+                # instead of always loading cells 1..N. Same policy the trains use.
+                _towers_ok.sort(key=lambda n: (self._tower_run_hours.get(n, 0.0), n))
+                _towers_run = _towers_ok[:_cells_run]
+                _dt_h = self._tick_interval / 3600.0
+                for _tn in _towers_run:
+                    self._tower_run_hours[_tn] = self._tower_run_hours.get(_tn, 0.0) + _dt_h
+                self._tower_cells[_dc] = (_cells_need, _cells_run)
+                _cond_f = (tower_chiller_factor(_cells_need, _cells_run)
+                           if _cells_run else 1.0)
+                total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc),
+                                               cond_factor=_cond_f)
                 _cool_model_w += total_w
                 # ── TRAIN STAGING ────────────────────────────────────────────────
                 # The plant stages whole COOLING TRAINS (chiller + its evaporator
-                # pump + its condenser pump + its tower cell), never individual
-                # devices: a chiller with no tower rejects nothing, and a tower with
-                # no chiller cools nothing. Running the "first N of each device type"
+                # pump + its condenser pump), never individual devices: a chiller with
+                # no pump moves no water. Running the "first N of each device type"
                 # independently — as this used to — can leave a running chiller whose
-                # tower is staged off, and made an electrical side-loss take out every
-                # stage at once.
+                # pump is staged off, and made an electrical side-loss take out every
+                # stage at once. Tower cells are deliberately NOT in this set: the
+                # bank is unstaged header equipment (see the tower block above).
                 #
                 # Trains are ordered lead/lag by their fitness: healthy and energized
                 # first. So when one MCC drops, the BMS runs the trains that still
@@ -2633,9 +2703,9 @@ class DeviceStateStore:
                              if inlet_n_dc.get(_dc) else 24.0)
                 for _n, w, _t in units:
                     if _t in _VFD_FAN or _t in _VFD_PUMP:
-                        # Staged-off pump / tower cell (sequenced down with its chiller):
-                        # standby, ~0 draw. CRAHs/CDUs are never in the standby set, so
-                        # they always run and just VFD-modulate below.
+                        # Staged-off pump (sequenced down with its chiller): standby,
+                        # ~0 draw. CRAHs, CDUs and tower cells are never in the standby
+                        # set — they always run and just VFD-modulate below.
                         if _n in self._plant_standby_names:
                             plant_power[_n] = 0.0
                             continue
@@ -2664,6 +2734,20 @@ class DeviceStateStore:
                             duty = (_live_hw / _nom_hw) if _nom_hw > 0 else lf
                             self._cdu_loop_heat_kw[_n] = _live_hw / 1000.0
                             plant_loadfrac[_n] = duty     # per-loop, not DC-wide lf
+                        elif _t == "cooling_tower":
+                            # Bank control: the airflow the load needs (duty × the
+                            # cells it requires) is SHARED across every running cell,
+                            # so each fan turns slower than it would carrying the duty
+                            # alone. P ∝ speed³ per cell, so the whole bank at low
+                            # speed costs (needed/running)² of the same rejection.
+                            # Faulted, de-energized, or cycled-off cells move no air and
+                            # draw nothing; the cells in _towers_run share the whole
+                            # airflow demand between them.
+                            spd = (tower_cell_speed_frac(_demand, _cells_run)
+                                   if _n in _towers_run else 0.0)
+                            plant_loadfrac[_n] = spd
+                            plant_power[_n] = affinity_power_kw(w, spd) / 1000.0 if spd else 0.0
+                            continue
                         else:
                             duty = lf
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
@@ -2681,8 +2765,8 @@ class DeviceStateStore:
                         # linear: nameplate at design, cheaper mid-load, penalised at
                         # very low PLR (fixed losses dominate). COP is the inverse —
                         # peaks mid-load, droops with a hot condenser.
-                        tgt_w = chiller_electrical_w(w, plr, _city)
-                        plant_cop[_n] = chiller_cop(plr, _city)
+                        tgt_w = chiller_electrical_w(w, plr, _city, cond_factor=_cond_f)
+                        plant_cop[_n] = chiller_cop(plr, _city, cond_factor=_cond_f)
                     else:
                         # Valve / other: negligible actuator draw — nameplate share.
                         base = total_w * (w / np_sum)
@@ -2784,10 +2868,25 @@ class DeviceStateStore:
     # Design condenser water is 29.4/35 °C (85/95 °F). Thresholds are expressed
     # in condenser SUPPLY temperature because that is what the tower actually
     # controls; Cond_Pressure is published alongside for the BACnet/SNMP view.
+    # _COND_DESIGN_C is the DESIGN point only (worst-case summer wet bulb + design
+    # approach). The loop's live base temperature is not this constant — it is
+    # cooling_model.cond_supply_c(city, cells): wet bulb + the approach the running
+    # cells achieve. So the published condenser water gets colder on a cold night,
+    # colder again when the bank shares the load across more cells, and only rises
+    # above the base when rejection is genuinely lost.
     _COND_DESIGN_C = 30.5    # design condenser supply temp (matches the point base)
+    # The three protection thresholds are the TEMPERATE selection (base 30.5 →
+    # 36 / 42 / 33). A machine bought for a humid site is selected for that site's
+    # design condition, so each threshold also rides the live base by the same
+    # spacing — otherwise a Singapore plant legitimately holding 34–35 °C water
+    # would sit in permanent capacity limit, which is a modelling artifact, not a
+    # fault. max() means the protection never gets TIGHTER on a cold night.
     _COND_LIMIT_C  = 36.0    # capacity-limit onset — machine starts unloading
     _COND_TRIP_C   = 42.0    # high-pressure safety trips here
     _COND_RESET_C  = 33.0    # condenser must fall this low before a reset will hold
+    _COND_LIMIT_MARGIN_C = 5.5  # limit onset, as °C above the site's live base
+    _COND_TRIP_MARGIN_C  = 11.5 # HP cutout, as °C above the site's live base
+    _COND_RESET_MARGIN_C = 2.5  # reset must fall this close to the site's live base
     _COND_MAX_C    = 50.0    # ceiling once rejection is fully gone
     _COND_RISE     = 0.35    # °C/s the loop heats with rejection fully lost
     _COND_FALL     = 0.55    # °C/s it recovers once the towers are back
@@ -2821,29 +2920,42 @@ class DeviceStateStore:
         and a per-chiller derate that _compute_chw_penalty folds into cooling
         loss — so unloading actually costs cooling rather than being cosmetic.
         """
+        from core.cooling_model import tower_cells_needed, cond_supply_c
         ctx = self._cooling_context()
+        city_by_dc = ctx.get("city_by_dc", {})
         dt = self._tick_interval
         auto: Dict[str, dict] = {}
         self._chiller_derate = {}
 
         for dc, kinds in ctx["plant_by_dc"].items():
-            towers = [t for t in (kinds.get("cooling_tower") or [])
-                      if t not in self._plant_standby_names]
+            # EVERY cell counts — the bank is not staged with the trains, so there is
+            # no "staged-off" cell to exclude. Cells beyond what the load needs are
+            # genuine N+x redundancy on the condenser side.
+            towers = list(kinds.get("cooling_tower") or [])
             chillers = [c for c in (kinds.get("chiller") or [])
                         if c not in self._plant_standby_names]
             if not chillers:
                 continue
 
-            # Rejection capability = fraction of staged-on tower cells still
-            # moving air. An unpowered cell counts as lost the same as a faulted
-            # one: either way no air moves over the fill.
+            # Rejection capability = cells still moving air ÷ cells the CURRENT load
+            # needs, not ÷ the whole bank. An unpowered cell counts as lost the same
+            # as a faulted one — either way no air crosses the fill — but losing a
+            # SURPLUS cell costs no rejection, it only gives back the approach credit
+            # (which _compute_power_flow already reprices). Sizing the denominator to
+            # the full bank, as this used to, read a healthy N+2 plant at half load as
+            # 33 % short the moment one cell tripped.
             if towers:
                 ok = sum(1 for t in towers
                          if not self._is_faulted(t)
                          and t not in self._plant_unpowered_names)
-                reject = ok / len(towers)
+                _on = self._plant_stage_on.get(dc, 0)
+                _inst = self._plant_installed_mods.get(dc, 0)
+                _duty = (_on / _inst) if _inst else 1.0
+                needed = tower_cells_needed(_duty, len(towers))
+                reject = min(1.0, ok / max(1, needed))
             else:
                 reject = 1.0        # no modelled towers → assume rejection is fine
+            self._tower_reject[dc] = reject
 
             # Heat rejection needs BOTH tower air AND condenser-water flow. A stopped,
             # faulted, or unpowered CW pump means the loop water is not carrying heat to
@@ -2860,20 +2972,35 @@ class DeviceStateStore:
                             and p not in self._plant_unpowered_names)
                 reject = min(reject, cw_ok / len(cwps))
 
+            # BASE loop temperature — what the healthy bank can actually hold right
+            # now: site wet bulb + the approach the running cells achieve. This is the
+            # floor the loop settles back to, replacing the old fixed 30.5 °C. It moves
+            # with the weather (a January night in Dublin makes ~15 °C water, a humid
+            # Singapore afternoon ~35 °C) and with how many cells share the load, so
+            # the published Cond_Supply_Temp corroborates the compressor saving that
+            # _compute_power_flow books instead of contradicting it.
+            _need_run = self._tower_cells.get(dc)
+            if _need_run:
+                _cn, _cr = _need_run
+            else:
+                _cn = _cr = max(1, len(towers))
+            base = cond_supply_c(city_by_dc.get(dc), _cn, _cr)
+            self._cond_base_c[dc] = round(base, 2)
+
             # Loop temperature: heats toward the ceiling in proportion to lost
-            # rejection, cools back toward design when it returns. Rates are
+            # rejection, cools back toward the base when it returns. Rates are
             # per-second so the behaviour does not change with tick interval.
-            cur = self._cond_water_c.get(dc, self._COND_DESIGN_C)
+            cur = self._cond_water_c.get(dc, base)
             if reject >= 1.0:
-                cur += (self._COND_DESIGN_C - cur) * min(1.0, self._COND_FALL * dt)
+                cur += (base - cur) * min(1.0, self._COND_FALL * dt)
             else:
                 loss = 1.0 - reject
-                target = self._COND_DESIGN_C + (self._COND_MAX_C - self._COND_DESIGN_C) * loss
+                target = base + (self._COND_MAX_C - base) * loss
                 if cur < target:
                     cur = min(target, cur + self._COND_RISE * loss * dt)
                 else:
                     cur += (target - cur) * min(1.0, self._COND_FALL * dt)
-            cur = max(self._COND_DESIGN_C, min(self._COND_MAX_C, cur))
+            cur = max(base, min(self._COND_MAX_C, cur))
             self._cond_water_c[dc] = round(cur, 2)
 
             # Condensing pressure for the published point, as a linear fit through
@@ -2885,7 +3012,10 @@ class DeviceStateStore:
             cond_kpa_run  = 900.0 + (cur - self._COND_DESIGN_C) * 26.0
             cond_kpa_idle = 700.0 + (cur - self._COND_DESIGN_C) * 18.0
 
-            over = cur >= self._COND_TRIP_C
+            # Site-adjusted protection thresholds (see the constants above).
+            lim_c  = max(self._COND_LIMIT_C, base + self._COND_LIMIT_MARGIN_C)
+            trip_c = max(self._COND_TRIP_C,  base + self._COND_TRIP_MARGIN_C)
+            over = cur >= trip_c
             for name in chillers:
                 ip = self._plant_ip_by_name.get(name)
                 latched = name in self._chiller_hp_lockout
@@ -2915,11 +3045,11 @@ class DeviceStateStore:
                                     "Compressor_Load": 0.0}
                     continue
 
-                if cur > self._COND_LIMIT_C:
+                if cur > lim_c:
                     # Capacity limit: unload linearly from full at the limit onset
                     # down to the floor at the trip point.
-                    span = max(0.1, self._COND_TRIP_C - self._COND_LIMIT_C)
-                    frac = min(1.0, (cur - self._COND_LIMIT_C) / span)
+                    span = max(0.1, trip_c - lim_c)
+                    frac = min(1.0, (cur - lim_c) / span)
                     avail = 1.0 - (1.0 - self._CHILLER_MIN_LOAD) * frac
                     self._chiller_derate[name] = round(1.0 - avail, 3)
                     if ip:
@@ -2948,8 +3078,15 @@ class DeviceStateStore:
                 dc = _dc
                 break
         cond = self._cond_water_c.get(dc, self._COND_DESIGN_C) if dc else self._COND_DESIGN_C
-        if cond > self._COND_RESET_C:
-            return f"condenser water still {cond:.1f} C — must fall below {self._COND_RESET_C:.0f} C"
+        # The reset threshold rides on the site's live base temperature, not a fixed
+        # 33 °C: a hot, humid site legitimately holds condenser water in the mid-30s,
+        # and an absolute limit below that would make the trip permanently unresettable.
+        # The margin is what proves head pressure has actually come down.
+        limit = max(self._COND_RESET_C,
+                    self._cond_base_c.get(dc, self._COND_DESIGN_C)
+                    + self._COND_RESET_MARGIN_C)
+        if cond > limit:
+            return f"condenser water still {cond:.1f} C — must fall below {limit:.0f} C"
         self._chiller_hp_lockout.discard(name)
         self._cond_trip_s.pop(name, None)
         return "reset"
@@ -2967,7 +3104,13 @@ class DeviceStateStore:
         Checks real faults only — NOT a unit's running-status bit — so a healthy
         standby that was just promoted (running=0 for one tick) never reads as short,
         and a fully-staged plant at high load is not flagged unless a member truly
-        faults."""
+        faults.
+
+        Tower cells are not train members (the bank is unstaged), so the condenser
+        side is checked once: short only when fewer cells are turning than the load
+        needs — losing a surplus cell costs efficiency, not cooling."""
+        if self._tower_reject.get(dc, 1.0) < 1.0:
+            return True
         for tr in self._plant_trains_run.get(dc, []):
             for m in tr["members"]:
                 if m in self._plant_unpowered_names or m in self._chiller_hp_lockout:
@@ -3047,7 +3190,7 @@ class DeviceStateStore:
                 for tr in trains_on:
                     worst = max((lost_weight(m) for m in tr["members"]), default=0.0)
                     if not tr["complete"]:
-                        worst = 1.0     # a chiller with no tower rejects nothing
+                        worst = 1.0     # a chiller with no pump moves no water
                     deficit += worst
                 loss = deficit / len(trains_on)
             else:
@@ -3064,7 +3207,13 @@ class DeviceStateStore:
                     return 0.0
                 return sum(lost_weight(n) for n in names) / len(names)
 
-            avail = (1.0 - loss) * (1.0 - 0.5 * frac("valve"))
+            # The TOWER BANK is header equipment too, now that cells no longer stage
+            # with their train: rejection is one per-DC capability (cells turning ÷
+            # cells the load needs, from _compute_cond_loop) applied to every train at
+            # once. Counting a cell inside its train would both understate a bank-wide
+            # loss and overstate the loss of one surplus cell.
+            avail = ((1.0 - loss) * (1.0 - 0.5 * frac("valve"))
+                     * max(0.0, min(1.0, self._tower_reject.get(dc, 1.0))))
             loss = max(0.0, 1.0 - avail)                  # 0 = full cooling, 1 = none
             # PLANT OVERLOAD: live IT beyond the FULL installed plant is heat nothing
             # can reject (every module already on) — treat the excess as a cooling

@@ -95,6 +95,31 @@ def ambient_c(city: str | None, now: float | None = None) -> float:
     return mean + seasonal + diurnal
 
 
+# ── Wet bulb: what a cooling tower actually chases ────────────────────────────
+# A tower is an evaporative machine, so its floor is the WET-bulb temperature, not
+# the dry bulb — which is why an arid site rejects heat far more cheaply than a
+# humid one at the same air temperature. Modelled as a per-city mean depression
+# (dry bulb − wet bulb): large where the air is dry (Phoenix ~14 °C), small where
+# it is saturated (Singapore/Dublin ~3 °C). A real psychrometric conversion needs
+# relative humidity, which the simulator does not carry; a per-site depression
+# reproduces the thing that matters — the ranking of sites and the seasonal swing.
+_WB_DEPRESSION_C = {
+    "phoenix": 14.0, "dallas": 8.0, "san jose": 8.0, "atlanta": 6.0,
+    "new york": 6.0, "chicago": 6.0, "ashburn": 6.0, "seattle": 5.0,
+    "london": 4.0, "frankfurt": 5.0, "amsterdam": 4.0, "stockholm": 5.0,
+    "dublin": 3.0, "singapore": 3.0, "mumbai": 4.0, "sydney": 5.0,
+    "tokyo": 4.0, "sao paulo": 5.0,
+}
+WB_DEPRESSION_DEFAULT = 5.0
+
+
+def wet_bulb_c(city: str | None, now: float | None = None) -> float:
+    """Approximate outdoor WET-bulb (°C) — the temperature a cooling tower can
+    approach but never beat."""
+    dep = _WB_DEPRESSION_C.get((city or "").strip().lower(), WB_DEPRESSION_DEFAULT)
+    return ambient_c(city, now) - dep
+
+
 def ambient_factor(ambient: float) -> float:
     """Overhead multiplier vs. ambient. 1.0 at REF_AMBIENT_C; <1 in the cold
     (economizer), >1 in the heat (chiller COP droop)."""
@@ -216,30 +241,38 @@ CHILLER_COP_RATED = 5.5    # water-cooled centrifugal at design (kW/ton ≈ 0.60
 
 
 def chiller_cop(plr: float, city: str | None, now: float | None = None,
-                cop_rated: float = CHILLER_COP_RATED) -> float:
+                cop_rated: float = CHILLER_COP_RATED,
+                cond_factor: float = 1.0) -> float:
     """Chiller coefficient of performance (COP = cooling ÷ electrical) at thermal
     part-load ratio *plr* and site ambient. COP is the inverse of kW/ton: it RISES
     at part load (the efficiency dip) and FALLS with a hot condenser (ambient
     lift). Equals cop_rated at the design point (PLR=1, reference ambient); clamped
-    to a physically sane band."""
+    to a physically sane band. *cond_factor* is the tower bank's condenser-water
+    credit — the same multiplier fed to chiller_electrical_w, so the published COP
+    and the metered kW stay consistent."""
     p = max(0.0, min(1.0, plr))
     if p <= 0.0:
         return 0.0
     pf  = chiller_power_frac(p)
-    amb = ambient_factor(ambient_c(city, now))
+    amb = ambient_factor(ambient_c(city, now)) * max(1e-6, cond_factor)
     cop = cop_rated * p / (pf * max(1e-6, amb))
     return max(2.0, min(9.0, cop))
 
 
 def chiller_electrical_w(nameplate_w: float, plr: float,
-                         city: str | None, now: float | None = None) -> float:
+                         city: str | None, now: float | None = None,
+                         cond_factor: float = 1.0) -> float:
     """Chiller electrical draw (W): nameplate × part-load power fraction (kW/ton
     curve) × ambient/condenser factor, capped at the compressor's nameplate. At
     the design point (PLR=1, reference ambient) it equals the nameplate, so the
-    plant PUE anchor is preserved."""
+    plant PUE anchor is preserved.
+
+    *cond_factor* (<1) is the condenser-water credit from the tower bank — surplus
+    cells running slow give colder CW and cheaper lift (see tower_chiller_factor)."""
     if plr <= 0.0 or nameplate_w <= 0.0:
         return 0.0
-    p = nameplate_w * chiller_power_frac(plr) * ambient_factor(ambient_c(city, now))
+    p = (nameplate_w * chiller_power_frac(plr)
+         * ambient_factor(ambient_c(city, now)) * max(0.0, cond_factor))
     return max(0.0, min(nameplate_w, p))
 
 
@@ -250,17 +283,24 @@ def cooling_floor_w(it_design_w: float) -> float:
 
 
 def cooling_electrical_w(it_live_w: float, it_design_w: float,
-                         city: str | None, now: float | None = None) -> float:
+                         city: str | None, now: float | None = None,
+                         cond_factor: float = 1.0) -> float:
     """Total cooling electrical draw (W): a fixed floor sized to the design IT
     plus a variable chiller term that tracks the live IT heat and site ambient.
 
     Never returns 0 while there is plant to run — even at zero IT the floor draws
-    power, which is what makes PUE spike at very low load."""
+    power, which is what makes PUE spike at very low load.
+
+    *cond_factor* scales the VARIABLE (compressor) term only — the tower bank's
+    condenser-water credit is a compressor saving, not a change to the pump/fan
+    floor. Applied here as well as per-chiller so the credit survives the per-DC
+    normalisation and actually shows up in PUE."""
     if it_design_w <= 0.0:
         it_design_w = it_live_w
     ambient = ambient_c(city, now)
     floor    = cooling_floor_w(it_design_w)
-    variable = max(0.0, it_live_w) * OH_VAR * ambient_factor(ambient)
+    variable = (max(0.0, it_live_w) * OH_VAR * ambient_factor(ambient)
+                * max(0.0, cond_factor))
     return floor + variable
 
 
@@ -288,6 +328,27 @@ STAGE_UP_FRAC      = 0.90      # add a module when live load > this × enabled c
 STAGE_DOWN_FRAC    = 0.60      # drop a module when live load < this × the smaller cap
 DESIGN_W_PER_SERVER = 714.0    # design (peak) IT heat per server the plant is sized to
 
+# ── Anti-short-cycle timers ───────────────────────────────────────────────────
+# Load hysteresis alone is not what keeps a real plant from short-cycling — TIMERS
+# are. Every chiller sequence (Trane Tracer, JCI Metasys, Daikin MicroTech, and the
+# ASHRAE Guideline 36 plant sequences) carries three:
+#
+#   • MINIMUM ON  — a compressor that just started must log runtime before it can
+#     be shed, so oil returns to the sump and the motor windings settle. 15 min is
+#     the common default (vendor range ~10–30).
+#   • MINIMUM OFF — a compressor that just stopped must rest before a restart.
+#     This is a HARD motor protection (anti-recycle timer / starts-per-hour limit),
+#     not an efficiency preference, so nothing overrides it.
+#   • STAGE INTERVAL — after any stage change, hold before the next one so the
+#     plant can actually pull the load down and the sequence does not chase its own
+#     transient. Sheds happen one unit at a time for the same reason.
+#
+# Without these a sawtooth IT load can bounce a stage every tick, which no real
+# plant would allow and which no chiller motor would survive.
+STAGE_MIN_ON_S   = 900.0   # min runtime before a just-started module can be shed
+STAGE_MIN_OFF_S  = 600.0   # min rest before a just-stopped module can restart (hard)
+STAGE_INTERVAL_S = 300.0   # settle time between any two stage changes
+
 
 def installed_modules_for(design_servers_dc: float,
                           module_kw: float = PLANT_MODULE_KW,
@@ -314,17 +375,162 @@ def crah_count_for(it_kw: float, per_crah_kw: float = CRAH_COOL_KW) -> int:
     return max(1, math.ceil(max(0.0, it_kw) / max(1e-6, per_crah_kw)) + 1)
 
 
+# ── Cooling-tower cells: run them ALL, slow ───────────────────────────────────
+# Tower cells sit on the COMMON condenser-water header, not behind one chiller, so
+# they are NOT staged with their train. Standard efficiency sequencing (ASHRAE 90.1
+# §6.5.5, ASHRAE Guideline 36 heat-rejection sequences, and every major plant
+# controller's "tower optimization" option) opens every AVAILABLE cell and drops the
+# fans to the lowest speed that holds the condenser-water setpoint, because:
+#
+#   • fan power is cube-law — the same airflow spread over N cells costs (1/N²) of
+#     pushing it through one cell, so idle cells are free capacity you already own;
+#   • more wetted fill area shrinks the APPROACH (CW supply − wet bulb), so the
+#     condenser water gets colder and the compressor lift gets cheaper. The plant
+#     rule of thumb is ~1.5 %/°F ≈ 2.5 %/°C of chiller power per degree of CW.
+#
+# Cells only drop out when faulted, unpowered, or isolated (basin freeze protection
+# in a cold ambient is the one real reason to close cells off — not modelled here).
+# Staging a cell off with its chiller, as this used to, buys nothing and costs both.
+TOWER_APPROACH_C   = 4.0    # design approach (CW supply − wet bulb) at the needed cells
+TOWER_APPROACH_EXP = 0.5    # approach shrinks as ~(needed/running)^exp with added area
+TOWER_APPROACH_MIN = 1.5    # physical floor — fill cannot beat the wet bulb
+TOWER_KW_PER_C     = 0.025  # chiller power change per °C of condenser-water shift
+TOWER_CREDIT_MAX   = 0.10   # cap the credit at 10 % of compressor power
+# Design CW supply = the ASHRAE design point: 26.5 °C wet bulb + a 4 °C approach.
+COND_DESIGN_C      = 30.5   # design condenser-water supply (the BACnet point base)
+COND_MIN_C         = 15.5   # minimum entering CW a centrifugal will take — see below
+
+
+def tower_cell_demand(duty_frac: float, cells_total: int) -> float:
+    """Heat-rejection airflow the plant needs, expressed in FULL-SPEED CELLS. The
+    bank is sized to the whole installed plant, so at *duty_frac* (live load ÷ full
+    installed plant) the demand is that fraction of the bank. Everything else here
+    — how many cells to turn, how fast, and how close to the wet bulb they get —
+    falls out of this one number."""
+    return max(0.0, min(1.0, duty_frac)) * max(0, cells_total)
+
+
+def tower_cells_needed(duty_frac: float, cells_total: int, min_cells: int = 1) -> int:
+    """Cells whose fill area the current duty REQUIRES (⌈demand⌉). This is the N in
+    the plant's N+x: losing a cell above this count costs no rejection capacity, it
+    only gives back some of the approach credit."""
+    if cells_total <= 0:
+        return 0
+    return max(min_cells, min(cells_total,
+                              math.ceil(tower_cell_demand(duty_frac, cells_total) - 1e-9)))
+
+
+def tower_cells_running(demand: float, cells_available: int,
+                        min_frac: float = FAN_MIN_SPEED) -> int:
+    """Cells to actually TURN for a *demand* of full-speed cells.
+
+    Run as many as the bank offers — surplus cells are nearly free (cube law) and
+    buy approach — but never so many that each fan would have to drop below its VFD
+    turndown. Past that point the sequence CYCLES cells off instead, which is what a
+    real tower does: a fan cannot modulate below ~30 % (blade stall, gearbox
+    lubrication, and on a cold day the drift freezes), so the plant closes cells and
+    runs the rest at a controllable speed rather than idling the whole bank at min.
+    """
+    if cells_available <= 0:
+        return 0
+    return max(1, min(cells_available, int(demand / max(1e-6, min_frac))))
+
+
+def tower_cell_speed_frac(demand: float, cells_running: int,
+                          min_frac: float = FAN_MIN_SPEED) -> float:
+    """Per-cell fan speed once *demand* full-speed cells' worth of airflow is SHARED
+    across *cells_running* cells: each fan turns at demand ÷ running, floored at the
+    VFD turndown and capped at 100 %."""
+    if cells_running <= 0:
+        return 0.0
+    return vfd_speed_frac(max(0.0, demand) / cells_running, min_frac)
+
+
+def tower_approach_c(cells_needed: int, cells_running: int,
+                     design_c: float = TOWER_APPROACH_C) -> float:
+    """Tower approach (°C above wet bulb) for a bank running *cells_running* cells
+    when *cells_needed* are required. Extra wetted area lowers the approach with
+    diminishing returns, floored at the physical minimum. Cycling cells off (running
+    < needed) gives the credit back but never pushes the approach past design."""
+    if cells_running <= 0 or cells_needed <= 0:
+        return design_c
+    ratio = min(1.0, cells_needed / cells_running)
+    return max(TOWER_APPROACH_MIN, design_c * ratio ** TOWER_APPROACH_EXP)
+
+
+def tower_chiller_factor(cells_needed: int, cells_running: int) -> float:
+    """Compressor-power multiplier bought by running the surplus cells: colder
+    condenser water → less lift. 1.0 when exactly the needed cells run, falling to
+    (1 − TOWER_CREDIT_MAX) as the whole bank shares the load.
+
+    This is the TOWER's own contribution — the approach delta at a given wet bulb.
+    The seasonal/weather part of the same physics already lives in ambient_factor()
+    (economizer knee + COP droop), so the two must stay separate or the site climate
+    would be counted twice.
+    """
+    colder = TOWER_APPROACH_C - tower_approach_c(cells_needed, cells_running)
+    return max(1.0 - TOWER_CREDIT_MAX, 1.0 - TOWER_KW_PER_C * max(0.0, colder))
+
+
+def cond_supply_c(city: str | None, cells_needed: int, cells_running: int,
+                  now: float | None = None) -> float:
+    """Condenser-water SUPPLY temperature the tower bank can hold (°C) = wet bulb +
+    approach, floored at the chiller's minimum entering condenser water.
+
+    This is what makes the plant page tell the truth: add cells and the approach —
+    and the published Cond_Supply_Temp — drops; run a hot, humid afternoon and it
+    climbs, without any fault. The floor is a real control limit, not a clamp: a
+    centrifugal needs condensing pressure to drive oil and refrigerant flow, so
+    below ~15 °C entering water the tower controls stop chasing the wet bulb
+    (bypass valve, fan cycling) and hold the machine's minimum instead.
+    """
+    return max(COND_MIN_C,
+               wet_bulb_c(city, now) + tower_approach_c(cells_needed, cells_running))
+
+
 def stage_modules(it_live_kw: float, installed_modules: int, prev_on: int,
-                  module_kw: float = PLANT_MODULE_KW, min_on: int = 1) -> int:
+                  module_kw: float = PLANT_MODULE_KW, min_on: int = 1,
+                  since_up_s: float | None = None,
+                  since_down_s: float | None = None,
+                  min_on_s: float = STAGE_MIN_ON_S,
+                  min_off_s: float = STAGE_MIN_OFF_S,
+                  interval_s: float = STAGE_INTERVAL_S) -> int:
     """Number of cooling modules to run for *it_live_kw*, with HYSTERESIS to avoid
     short-cycling at a stage boundary: add a module when load exceeds 90 % of the
     running capacity, drop one only when load falls below 60 % of the next-smaller
-    capacity. Bounded to [min_on, installed_modules]."""
+    capacity. Bounded to [min_on, installed_modules].
+
+    *since_up_s* / *since_down_s* are the seconds elapsed since the last stage-UP
+    and stage-DOWN. Pass both to enforce the anti-short-cycle TIMERS (the real
+    constraint in a BMS sequence — see the block comment above); pass neither and
+    the call stays purely load-driven, as before.
+
+      • stage UP    needs since_down_s ≥ min_off_s (compressor anti-recycle) and,
+        unless the plant is already in DEFICIT (live load past the running
+        capacity, i.e. a genuine shortfall), since_up_s ≥ interval_s.
+      • stage DOWN  needs since_up_s ≥ min_on_s (the last-started machine must log
+        its runtime) and since_down_s ≥ interval_s, so sheds go one at a time.
+
+    A deficit never bypasses min_off_s: that timer protects a motor, and a real
+    plant rides the deficit out rather than restarting a compressor early.
+    """
     installed_modules = max(min_on, int(installed_modules))
     prev_on = max(min_on, min(installed_modules, int(prev_on or min_on)))
-    on = prev_on
-    if prev_on < installed_modules and it_live_kw > STAGE_UP_FRAC * prev_on * module_kw:
-        on = prev_on + 1
-    elif prev_on > min_on and it_live_kw < STAGE_DOWN_FRAC * (prev_on - 1) * module_kw:
-        on = prev_on - 1
-    return max(min_on, min(installed_modules, on))
+    timed = since_up_s is not None and since_down_s is not None
+    want_up = (prev_on < installed_modules
+               and it_live_kw > STAGE_UP_FRAC * prev_on * module_kw)
+    want_down = (prev_on > min_on
+                 and it_live_kw < STAGE_DOWN_FRAC * (prev_on - 1) * module_kw)
+    if want_up:
+        if timed:
+            if since_down_s < min_off_s:
+                return prev_on                      # anti-recycle: hard hold
+            deficit = it_live_kw > prev_on * module_kw
+            if not deficit and since_up_s < interval_s:
+                return prev_on                      # let the last stage settle
+        return min(installed_modules, prev_on + 1)
+    if want_down:
+        if timed and (since_up_s < min_on_s or since_down_s < interval_s):
+            return prev_on                          # min-on / one-shed-at-a-time
+        return max(min_on, prev_on - 1)
+    return prev_on
