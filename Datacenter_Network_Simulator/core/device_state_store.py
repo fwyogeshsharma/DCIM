@@ -347,6 +347,7 @@ class DeviceStateStore:
         self._tower_cells: Dict[str, tuple] = {}
         self._tower_reject: Dict[str, float] = {}        # DC → tower rejection capability 0..1
         self._tower_run_hours: Dict[str, float] = {}     # cell name → accrued run hours (rotation)
+        self._tower_running_now: Dict[str, set] = {}     # DC → cells turning last tick (least-switching)
         # Per-DC installed module count is sized to the fleet server cap so the plant
         # never truly runs out until the cap; recomputed lazily from the live cap.
         self._plant_installed_mods: Dict[str, int] = {}
@@ -2590,11 +2591,20 @@ class DeviceStateStore:
                 # rejection capacity in _compute_cond_loop; only the approach credit
                 # (and their fan draw) goes away.
                 _cells_run = tower_cells_running(_demand, len(_towers_ok))
-                # RUNTIME EQUALIZATION: when the bank cycles, the cells that have run
-                # least go on first, so wear (fan motor, gearbox, fill fouling) spreads
-                # instead of always loading cells 1..N. Same policy the trains use.
-                _towers_ok.sort(key=lambda n: (self._tower_run_hours.get(n, 0.0), n))
+                # RUNTIME EQUALIZATION, bucketed. Sorting on raw run-hours would swap
+                # the lead cell EVERY TICK — the running cell accrues hours instantly
+                # and loses its place to an idle one — which is not rotation, it is
+                # chatter, and it smears one cell's duty across the whole bank. Real
+                # plants rotate the lead on a SCHEDULE (weekly is typical), so cells
+                # are ranked by whole rotation periods of accrued runtime and, within
+                # a period, an already-running cell outranks an idle one. The set then
+                # holds still until a cell has genuinely run a period longer.
+                _prev_run = self._tower_running_now.get(_dc, set())
+                _towers_ok.sort(key=lambda n: (
+                    int(self._tower_run_hours.get(n, 0.0) / self._TOWER_ROTATE_H),
+                    n not in _prev_run, n))
                 _towers_run = _towers_ok[:_cells_run]
+                self._tower_running_now[_dc] = set(_towers_run)
                 _dt_h = self._tick_interval / 3600.0
                 for _tn in _towers_run:
                     self._tower_run_hours[_tn] = self._tower_run_hours.get(_tn, 0.0) + _dt_h
@@ -2815,6 +2825,10 @@ class DeviceStateStore:
                  for pid in pids]
             for ip, pids in ctx.get("ev2_circuit_pdus", {}).items()}
 
+    # Cooling-tower lead rotation period (hours of accrued runtime). Weekly is the
+    # common BMS default for heat-rejection lead/lag.
+    _TOWER_ROTATE_H = 168.0
+
     # The plant is installed for the fleet's ULTIMATE server cap and staged; sized
     # here so it never truly runs out of modules before the cap is hit.
     _PLANT_DESIGN_SERVER_CAP = 3000
@@ -2888,6 +2902,7 @@ class DeviceStateStore:
     _COND_TRIP_MARGIN_C  = 11.5 # HP cutout, as °C above the site's live base
     _COND_RESET_MARGIN_C = 2.5  # reset must fall this close to the site's live base
     _COND_MAX_C    = 50.0    # ceiling once rejection is fully gone
+    _COND_RANGE_C  = 5.0     # condenser-water range (return − supply) at design flow
     _COND_RISE     = 0.35    # °C/s the loop heats with rejection fully lost
     _COND_FALL     = 0.55    # °C/s it recovers once the towers are back
     _COND_TRIP_S   = 5.0     # seconds above trip temp before the safety latches
@@ -3002,6 +3017,20 @@ class DeviceStateStore:
                     cur += (target - cur) * min(1.0, self._COND_FALL * dt)
             cur = max(base, min(self._COND_MAX_C, cur))
             self._cond_water_c[dc] = round(cur, 2)
+
+            # Publish the live loop on the TOWER cells too. The cells are the machines
+            # that set this temperature, so leaving them on their own synthetic curve
+            # made the bank claim 30 °C water while the chillers it feeds reported 24 —
+            # the plant page contradicting itself. Cold basin / tower outlet IS the
+            # condenser supply; the hot inlet sits a design range above it (the CW
+            # pumps are VFD and track load, so the range stays near design).
+            for _tn in towers:
+                _tip = self._plant_ip_by_name.get(_tn)
+                if _tip:
+                    auto.setdefault(_tip, {}).update({
+                        "Cond_Water_Out": round(cur, 1),
+                        "Cond_Water_In": round(cur + self._COND_RANGE_C, 1),
+                        "Basin_Temp": round(cur, 1)})
 
             # Condensing pressure for the published point, as a linear fit through
             # R-134a saturation. Running, the compressor adds lift on top of the
