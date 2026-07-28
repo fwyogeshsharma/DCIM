@@ -3041,6 +3041,31 @@ class DeviceStateStore:
             cond_kpa_run  = 900.0 + (cur - self._COND_DESIGN_C) * 26.0
             cond_kpa_idle = 700.0 + (cur - self._COND_DESIGN_C) * 18.0
 
+            # STAGED-OFF chillers sit on the same headers. Their condenser barrel is
+            # full of loop water — piped to the common condenser main, and even a shut
+            # isolation valve conducts — so it reads the LOOP temperature, not a
+            # synthetic curve of its own. Without this a standby machine claimed 33 °C
+            # condenser water while the running one beside it reported 24.5: the same
+            # self-contradiction the tower cells had, and one this model created by
+            # moving the live loop off the old fixed 30.5 °C base.
+            #
+            # A stopped machine also has no compressor lift, so its refrigerant sits at
+            # the loop's saturation pressure — the idle fit, not the running one. Only
+            # these BASE values go out; the BACnet layer still collapses an off unit's
+            # supply/return to one value (no flow → no ΔT) and zeroes run status, power
+            # and compressor load. The evaporator side is deliberately left alone: a
+            # staged-off chiller's CHW barrel is isolated by its own stopped pump and
+            # genuinely drifts warm, which is what it already reports.
+            for _cn2 in (kinds.get("chiller") or []):
+                if _cn2 not in self._plant_standby_names:
+                    continue
+                _cip = self._plant_ip_by_name.get(_cn2)
+                if _cip:
+                    auto.setdefault(_cip, {}).update({
+                        "Cond_Supply_Temp": round(cur, 1),
+                        "Cond_Return_Temp": round(cur, 1),
+                        "Cond_Pressure": round(cond_kpa_idle, 1)})
+
             # Site-adjusted protection thresholds (see the constants above).
             lim_c  = max(self._COND_LIMIT_C, base + self._COND_LIMIT_MARGIN_C)
             trip_c = max(self._COND_TRIP_C,  base + self._COND_TRIP_MARGIN_C)
@@ -3071,6 +3096,9 @@ class DeviceStateStore:
                         auto[ip] = {"Chiller_Running": 0.0, "Alarm_HighPressure": 1.0,
                                     "Cond_Pressure": round(cond_kpa_idle, 1),
                                     "Cond_Supply_Temp": round(cur, 1),
+                                    # Locked out: no compressor heat into the condenser,
+                                    # so the barrel sits at loop temperature — no range.
+                                    "Cond_Return_Temp": round(cur, 1),
                                     "Compressor_Load": 0.0}
                     continue
 
@@ -3085,10 +3113,18 @@ class DeviceStateStore:
                         auto[ip] = {"Alarm_HighPressure": 1.0,
                                     "Cond_Pressure": round(cond_kpa_run, 1),
                                     "Cond_Supply_Temp": round(cur, 1),
+                                    "Cond_Return_Temp": round(cur + self._COND_RANGE_C, 1),
                                     "Compressor_Load": round(avail * 100.0, 1)}
                 elif ip:
+                    # Supply and return move TOGETHER. Publishing only the supply left
+                    # the return on its own 35.5 °C curve, so once the live loop dropped
+                    # off the old fixed base the machine reported an ~11 °C condenser
+                    # range against a 5 °C design — the running chiller contradicting
+                    # its own tower. The CW pumps are VFD and track load, so the range
+                    # holds near design.
                     auto[ip] = {"Cond_Pressure": round(cond_kpa_run, 1),
-                                "Cond_Supply_Temp": round(cur, 1)}
+                                "Cond_Supply_Temp": round(cur, 1),
+                                "Cond_Return_Temp": round(cur + self._COND_RANGE_C, 1)}
 
         self._plant_auto_points = auto
 
