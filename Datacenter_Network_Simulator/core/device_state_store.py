@@ -141,7 +141,9 @@ class DeviceStateStore:
         self._dm              = device_manager
         self._topology        = topology
         self._datasets_dir    = str(Path(datasets_dir).resolve())
-        self._tick_interval   = tick_interval
+        self._tick_interval   = tick_interval    # configured CADENCE (the sleep)
+        self._last_tick_t     = None             # monotonic stamp of the previous tick
+        self._dt              = tick_interval    # MEASURED elapsed seconds this tick
         self._snmp_sync_every = snmp_sync_every
 
         # Direct-to-chip leak → CPU-temp coupling. A CDU leak starves the cold
@@ -655,10 +657,46 @@ class DeviceStateStore:
     #  Background ticker                                                   #
     # ------------------------------------------------------------------ #
 
+    # Simulated time advances by MEASURED elapsed seconds, not the configured cadence.
+    # A stall longer than this multiple of the interval is clamped, so one long gap
+    # cannot expire every timer at once.
+    _DT_MAX_MULT = 5.0
+
+    def _advance_clock(self) -> float:
+        """Seconds elapsed since the previous tick, from a monotonic clock.
+
+        The ticker sleeps `_tick_interval` and THEN does the tick's work, so the real
+        period is always interval + work — never the interval itself. Billing every
+        accumulator the configured constant made simulated time run SLOW by the work
+        fraction (measured ~80 % of real time here), and the error grows with the
+        topology: run-hours, stage timers, transfer sequencing, UPS autonomy, energy
+        registers and SNMP uptime all drifted against the wall clock by an amount that
+        varied with load and with the machine, so timing-sensitive runs were not
+        reproducible. Measuring the gap keeps simulated time locked to real time.
+
+        Clamped, because a debugger breakpoint, a laptop suspend or a long GC pause
+        would otherwise inject one enormous dt and expire every timer at once — a
+        UPS would drain to empty in a single tick. Under a stall, simulated time lags
+        rather than jumping.
+        """
+        now = time.monotonic()
+        prev = self._last_tick_t
+        self._last_tick_t = now
+        if prev is None:                       # first tick, or resuming from pause
+            self._dt = self._tick_interval
+        else:
+            self._dt = max(0.0, min(now - prev,
+                                    self._tick_interval * self._DT_MAX_MULT))
+        return self._dt
+
     def _ticker_loop(self):
         while not self._stop_ev.wait(self._tick_interval):
             if self._pause_ev.is_set():
+                # Drop the timestamp so the resuming tick is not billed for the whole
+                # pause — a paused simulator is stopped, not running slowly.
+                self._last_tick_t = None
                 continue
+            self._advance_clock()
             try:
                 self._tick()
             except Exception:
@@ -1710,7 +1748,7 @@ class DeviceStateStore:
                 and not self._gen_offline(gid)
                 for gid in dc_gens.get(dc, [])
             )
-            st = self._transfer.step(dc, utility_ok, gens_startable, self._tick_interval)
+            st = self._transfer.step(dc, utility_ok, gens_startable, self._dt)
             live_types = st.mech_types_on()
             dc_dark = 0
             src_ok, _tie = self._mcc_tie_state(dc, ctx)
@@ -1723,7 +1761,7 @@ class DeviceStateStore:
             # Ride-through clock: how long this DC's plant has been short of full
             # power. Reset the instant every unit is energized again.
             self._mech_dead_s[dc] = (0.0 if dc_dark == 0
-                                     else self._mech_dead_s.get(dc, 0.0) + self._tick_interval)
+                                     else self._mech_dead_s.get(dc, 0.0) + self._dt)
         self._plant_unpowered_names = unpowered
 
     def _mcc_tie_state(self, dc: str, ctx: dict) -> tuple:
@@ -2205,7 +2243,7 @@ class DeviceStateStore:
         ats = self._transfer.status(dc)
         rated = ctx.get("rated_w", {}).get(device.id, 0.0)
         thr   = self._through_live.get(device.id, 0.0)
-        dt_h  = self._tick_interval / 3600.0
+        dt_h  = self._dt / 3600.0
         out_of_fuel = st.get("gen_fuel_pct", 100.0) <= 0.5
         # This engine cannot be online — a fail-to-start, a flat starting battery, or
         # an engine-protection trip (low coolant / over-temp) that shuts a running set
@@ -2555,8 +2593,8 @@ class DeviceStateStore:
                 # decide, then zero whichever direction actually fired. Load hysteresis
                 # alone would let a sawtooth IT load bounce a stage every tick.
                 _t_up, _t_dn = self._plant_stage_since.get(_dc, (1e9, 1e9))
-                _t_up += self._tick_interval
-                _t_dn += self._tick_interval
+                _t_up += self._dt
+                _t_dn += self._dt
                 _prev_on = self._plant_stage_on.get(_dc, 1)
                 on = stage_modules(itl / 1000.0, inst_mods, _prev_on,
                                    since_up_s=_t_up, since_down_s=_t_dn)
@@ -2609,7 +2647,7 @@ class DeviceStateStore:
                     n not in _prev_run, n))
                 _towers_run = _towers_ok[:_cells_run]
                 self._tower_running_now[_dc] = set(_towers_run)
-                _dt_h = self._tick_interval / 3600.0
+                _dt_h = self._dt / 3600.0
                 for _tn in _towers_run:
                     self._tower_run_hours[_tn] = self._tower_run_hours.get(_tn, 0.0) + _dt_h
                 self._tower_cells[_dc] = (_cells_need, _cells_run)
@@ -2702,7 +2740,7 @@ class DeviceStateStore:
                     self._plant_trains_run[_dc] = [_trains[i] for i in _order[:_n_run]]
                     # Accrue lead run-hours for the trains actually carrying the load,
                     # so the equalization key reflects real duty.
-                    _dt_h = self._tick_interval / 3600.0
+                    _dt_h = self._dt / 3600.0
                     for tr in self._plant_trains_run[_dc]:
                         _ch = tr.get("chiller")
                         if _ch:
@@ -2999,7 +3037,7 @@ class DeviceStateStore:
         from core.cooling_model import tower_cells_needed, cond_supply_c
         ctx = self._cooling_context()
         city_by_dc = ctx.get("city_by_dc", {})
-        dt = self._tick_interval
+        dt = self._dt
         auto: Dict[str, dict] = {}
         self._chiller_derate = {}
 
@@ -3468,7 +3506,7 @@ class DeviceStateStore:
                     _plant_ovr = {ip: dict(pts) for ip, pts in _plant_ovr.items()}
                     for _ip, _pts in self._plant_auto_points.items():
                         _plant_ovr.setdefault(_ip, {}).update(_pts)
-                self._bacnet_ctrl.tick(self._tick_interval, self.metric_flags, self.metric_limits,
+                self._bacnet_ctrl.tick(self._dt, self.metric_flags, self.metric_limits,
                                        _plant_ovr, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
                                        plant_power_by_name=self._plant_power_by_name,
@@ -3836,7 +3874,7 @@ class DeviceStateStore:
 
         # Uptime
         if mf["sys_uptime"]:
-            device.sys_uptime += int(self._tick_interval * 100)
+            device.sys_uptime += int(self._dt * 100)
 
         # CPU/ASIC temperature — IT gear only (real die/ASIC sensor). Power and
         # cooling devices (RPP/PDU/UPS/CRAH/chiller/pump) have no CPU, so they must
@@ -3887,7 +3925,7 @@ class DeviceStateStore:
             _prev = getattr(device, "cpu_temp", None)
             if _prev is None:
                 _prev = _target
-            _alpha = min(1.0, self._tick_interval / self._CPU_THERMAL_TAU_S)
+            _alpha = min(1.0, self._dt / self._CPU_THERMAL_TAU_S)
             device.cpu_temp = round(_prev + (_target - _prev) * _alpha, 1)
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
             # A pinned (injected/overridden) cpu_temp wins, so the fan below ramps
@@ -4543,8 +4581,8 @@ class DeviceStateStore:
                     st["ups_battery_exhausted"] = False
                     st["ups_status"] = "normal"
                 else:
-                    on_batt = st.get("ups_on_battery_s", 0.0) + self._tick_interval
-                    if on_batt <= self._tick_interval:
+                    on_batt = st.get("ups_on_battery_s", 0.0) + self._dt
+                    if on_batt <= self._dt:
                         # Freeze the autonomy at the instant of drop-out, from the
                         # runtime estimate for the load it is carrying right now. A
                         # lightly-loaded string lasts far longer than its full-load
@@ -4826,7 +4864,7 @@ class DeviceStateStore:
                     pf_now   = st.get("pdu_power_factor", 0.95)
                     real_kw  = (volt_now * cur_now * pf_now) / 1000.0
                 st["pdu_energy_kwh"] = round(st.get("pdu_energy_kwh", 0.0)
-                                             + real_kw * self._tick_interval / 3600.0, 3)
+                                             + real_kw * self._dt / 3600.0, 3)
 
         # Update module-level cache so snmprec_generator can read UPS/PDU states
         _ext_state_cache[name] = dict(st)
