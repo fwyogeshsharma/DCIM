@@ -2867,10 +2867,8 @@ class DeviceStateStore:
 
     # Lead/lag rotation periods (hours of accrued runtime). Weekly is the common BMS
     # default for both chiller trains and heat-rejection cells.
-    # !!! TEMPORARY TEST VALUES — restore to 168.0 before this is used for anything.
-    # 0.02 h = 72 s of accrued lead runtime, so handover is observable live.
-    _TOWER_ROTATE_H = 0.02
-    _TRAIN_ROTATE_H = 0.02
+    _TOWER_ROTATE_H = 168.0
+    _TRAIN_ROTATE_H = 168.0
 
     # The plant is installed for the fleet's ULTIMATE server cap and staged; sized
     # here so it never truly runs out of modules before the cap is hit.
