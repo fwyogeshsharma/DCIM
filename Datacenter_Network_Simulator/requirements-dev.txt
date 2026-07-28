@@ -1,0 +1,4 @@
+# Development / test dependencies. Not needed to run the simulator.
+#   pip install -r requirements-dev.txt && pytest
+-r requirements.txt
+pytest>=8.0

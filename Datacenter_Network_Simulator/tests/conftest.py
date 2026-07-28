@@ -1,0 +1,145 @@
+"""Shared fixtures. Puts the repo root on sys.path so `core.*` imports work when
+pytest is run from anywhere."""
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+@pytest.fixture
+def plant_cache():
+    """The module-level BACnet present-value cache the store reads plant health from.
+
+    Yields a dict to seed as {device_name: {point: value}} and clears it afterwards,
+    so tests that fake alarm/run states cannot leak into one another.
+    """
+    from core.device_state_store import _plant_state_cache
+
+    _plant_state_cache.clear()
+    yield _plant_state_cache
+    _plant_state_cache.clear()
+
+
+# ── Fixture topology ─────────────────────────────────────────────────────────
+# A minimal but STRUCTURALLY REAL chiller plant: N complete cooling trains
+# (chiller + its evaporator pump + its condenser pump + its tower cell), a header
+# standby CHW pump, and enough servers to make a load. Wired on the `cooling` layer
+# exactly the way the shipped topology is, because _build_trains discovers trains by
+# walking those edges — a fixture that hand-assembled the trains instead would test
+# nothing about the discovery.
+
+CITY = "chicago"
+DC = "DC1"
+ROOM = "Hall A"
+CHILLER_W = 120_000      # nameplate electrical, per unit
+PUMP_W = 15_000
+TOWER_W = 45_000
+SERVER_W = 700
+
+
+def _device(dm, name, dtype, ip, watts, model="", room=ROOM):
+    from core.device_manager import Device, DeviceType, Vendor
+
+    d = Device(
+        name=name,
+        device_type=DeviceType(dtype),
+        vendor=Vendor.SUPERMICRO,
+        ip_address=ip,
+        model_name=model,
+        power_draw_w=watts,
+    )
+    d.datacenter = DC
+    d.datacenter_city = CITY
+    d.room = room
+    dm.add_device(d)
+    return d
+
+
+class PlantFixture:
+    """Handle on the built plant: the store plus name→device lookup."""
+
+    def __init__(self, store, dm, topo, trains):
+        self.store = store
+        self.dm = dm
+        self.topo = topo
+        self.trains = trains
+
+    def name(self, n):
+        return next(d for d in self.dm.get_all_devices() if d.name == n)
+
+    def tick(self):
+        """Run the per-tick cooling chain in the order the real ticker does."""
+        self.store._compute_cond_loop()
+        self.store._compute_chw_penalty()
+        self.store._compute_power_flow()
+
+    def stage_on(self, dc=DC):
+        return self.store._plant_stage_on.get(dc)
+
+    def standby(self):
+        return set(self.store._plant_standby_names)
+
+    def running_chillers(self):
+        return {t["chiller"] for t in self.store._plant_trains_run.get(DC, [])}
+
+    def power(self, n):
+        return self.store._plant_power_by_name.get(n, 0.0)
+
+
+def build_plant(tmp_path, trains=3, servers=40, installed_modules=6):
+    """Assemble a one-DC plant and return a PlantFixture.
+
+    `installed_modules` is forced rather than derived, so a test can put the plant
+    at a chosen duty without having to conjure thousands of servers.
+    """
+    from core.device_manager import DeviceManager
+    from core.device_state_store import DeviceStateStore
+    from core.topology_engine import TopologyEngine
+
+    dm, topo = DeviceManager(), TopologyEngine()
+    made = {}
+
+    for i in range(1, trains + 1):
+        made[f"CHL{i}"] = _device(dm, f"CHL{i}-{DC}-CP", "chiller",
+                                  f"10.0.1.{i}", CHILLER_W, model="chiller-1000t")
+        made[f"CHWP{i}"] = _device(dm, f"CHWP{i}-{DC}-CP", "pump", f"10.0.2.{i}", PUMP_W)
+        made[f"CWP{i}"] = _device(dm, f"CWP{i}-{DC}-CP", "pump", f"10.0.3.{i}", PUMP_W)
+        made[f"CT{i}"] = _device(dm, f"CT{i}-{DC}-RF", "cooling_tower",
+                                 f"10.0.4.{i}", TOWER_W, room="Roof")
+    # Header standby CHW pump — index beyond the trains, so _build_trains leaves it
+    # unclaimed and reports it as the N+1 spare.
+    spare = trains + 1
+    made[f"CHWP{spare}"] = _device(dm, f"CHWP{spare}-{DC}-CP", "pump",
+                                   f"10.0.2.{spare}", PUMP_W)
+
+    for i in range(1, servers + 1):
+        made[f"SRV{i}"] = _device(dm, f"SRV{i:02d}-{DC}-HA-R1-01", "server",
+                                  f"10.1.0.{i}", SERVER_W)
+
+    for d in dm.get_all_devices():
+        topo.add_device(d)
+
+    # Cooling-layer wiring: each chiller to its own pumps and cell, plus the spare
+    # CHW pump hung off train 1's header (mirrors the shipped topology).
+    for i in range(1, trains + 1):
+        c = made[f"CHL{i}"].id
+        for peer in (f"CHWP{i}", f"CWP{i}", f"CT{i}"):
+            topo.add_link(c, made[peer].id, layer="cooling")
+    topo.add_link(made["CHL1"].id, made[f"CHWP{spare}"].id, layer="cooling")
+
+    store = DeviceStateStore(dm, topo, str(tmp_path), tick_interval=1.0)
+    store._plant_installed_mods[DC] = installed_modules
+    return PlantFixture(store, dm, topo, trains)
+
+
+@pytest.fixture
+def plant(tmp_path, plant_cache):
+    """Default fixture plant: 3 trains, 40 servers, 6 installed modules.
+
+    Depends on plant_cache so the BACnet present-value cache is clean — the store
+    reads plant health from it, and a stale entry from another test would change
+    which trains are eligible.
+    """
+    return build_plant(tmp_path)
