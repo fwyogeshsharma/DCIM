@@ -488,6 +488,27 @@ def cond_supply_c(city: str | None, cells_needed: int, cells_running: int,
                wet_bulb_c(city, now) + tower_approach_c(cells_needed, cells_running))
 
 
+def rotation_rank(run_hours: float, is_running: bool, rotate_h: float) -> tuple:
+    """Lead/lag ordering key for one candidate machine: (periods run, is idle).
+    Sort ascending — lowest ranks first — and break remaining ties however the
+    caller wants (unit index, name).
+
+    Two rules, in this order:
+
+      1. WHOLE ROTATION PERIODS of accrued runtime, not raw hours. Ranking on raw
+         hours swaps the lead every tick, because the running unit is the only one
+         accruing them and instantly falls behind an idle peer. That is chatter,
+         not rotation — and every swap is a real compressor or fan start.
+      2. Inside a period, a RUNNING unit outranks an idle one (least-switching), so
+         the set holds still until someone has genuinely run a period longer.
+
+    Shared by the chiller trains and the tower cells so the two cannot drift apart.
+    """
+    if rotate_h <= 0.0:
+        return (0, not is_running)
+    return (int(max(0.0, run_hours) / rotate_h), not is_running)
+
+
 def stage_modules(it_live_kw: float, installed_modules: int, prev_on: int,
                   module_kw: float = PLANT_MODULE_KW, min_on: int = 1,
                   since_up_s: float | None = None,

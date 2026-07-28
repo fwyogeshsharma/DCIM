@@ -2569,7 +2569,7 @@ class DeviceStateStore:
                 stage_modules, installed_modules_for, PLANT_MODULE_KW,
                 PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR,
                 tower_cell_demand, tower_cells_needed, tower_cells_running,
-                tower_cell_speed_frac, tower_chiller_factor)
+                tower_cell_speed_frac, tower_chiller_factor, rotation_rank)
             _oh_design = (OH_FLOOR + OH_VAR) or 0.47
             _VFD_FAN  = ("crah", "cooling_tower")   # centrifugal fans
             _VFD_PUMP = ("pump", "cdu")             # centrifugal pumps
@@ -2643,8 +2643,8 @@ class DeviceStateStore:
                 # holds still until a cell has genuinely run a period longer.
                 _prev_run = self._tower_running_now.get(_dc, set())
                 _towers_ok.sort(key=lambda n: (
-                    int(self._tower_run_hours.get(n, 0.0) / self._TOWER_ROTATE_H),
-                    n not in _prev_run, n))
+                    *rotation_rank(self._tower_run_hours.get(n, 0.0),
+                                   n in _prev_run, self._TOWER_ROTATE_H), n))
                 _towers_run = _towers_ok[:_cells_run]
                 self._tower_running_now[_dc] = set(_towers_run)
                 _dt_h = self._dt / 3600.0
@@ -2733,7 +2733,8 @@ class DeviceStateStore:
                         # period more than an idle peer hands over. Chiller lead/lag is
                         # rotated on a schedule in real plants, not continuously.
                         rh = self._train_run_hours.get(_ch, 0.0) if _ch else 0.0
-                        return (dead, bad, int(rh / self._TRAIN_ROTATE_H), not running, i)
+                        return (dead, bad,
+                                *rotation_rank(rh, running, self._TRAIN_ROTATE_H), i)
 
                     _order = [i for i, _ in sorted(enumerate(_trains), key=_fitness)]
                     _run_idx = set(_order[:_n_run])
@@ -3007,6 +3008,30 @@ class DeviceStateStore:
     _COND_TRIP_S   = 5.0     # seconds above trip temp before the safety latches
     _CHILLER_MIN_LOAD = 0.40 # capacity floor while limiting (40 % of nameplate)
 
+    def _ensure_staging_primed(self) -> None:
+        """Make sure a staging decision exists before anything consumes one.
+
+        Staging is computed in _compute_power_flow, which runs LAST in the tick, so
+        the cooling passes ahead of it read the previous tick's decision. At steady
+        state that one-tick lag is immaterial. On the very FIRST tick there is no
+        previous decision at all: the standby set is empty, so every chiller looks
+        like it is running and gets published with a live condenser range and running
+        head pressure, and every tower cell reports its fan turning. It corrected
+        itself a second later, which is exactly what made it easy to miss — it showed
+        up as plant briefly reading "all running" after each restart.
+
+        Priming once is cheaper and safer than reordering the tick: moving power flow
+        ahead of the cooling passes would just hand the staleness to the penalty and
+        derate inputs it consumes, trading one transient for another. Idempotent —
+        after the first pass this is a dict check.
+        """
+        if self._plant_stage_on:
+            return
+        try:
+            self._compute_power_flow()
+        except Exception:
+            log.exception("[StateStore] staging prime failed")
+
     def _compute_cond_loop(self) -> None:
         """Per-tick: condenser-water temperature, then chiller head-pressure
         protection (unload → trip → latched lockout).
@@ -3035,6 +3060,7 @@ class DeviceStateStore:
         loss — so unloading actually costs cooling rather than being cosmetic.
         """
         from core.cooling_model import tower_cells_needed, cond_supply_c
+        self._ensure_staging_primed()
         ctx = self._cooling_context()
         city_by_dc = ctx.get("city_by_dc", {})
         dt = self._dt
