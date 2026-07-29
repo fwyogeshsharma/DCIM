@@ -173,6 +173,7 @@ UCD_MEM     = f"{UCD_BASE}.4"
 UCD_DISK    = f"{UCD_BASE}.9.1"
 
 # Vendor enterprise bases for environmental sensor OIDs
+_ENTITY_SENSOR  = "1.3.6.1.2.1.99.1.1.1"          # ENTITY-SENSOR-MIB entPhySensorEntry
 _RARITAN_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1"   # Raritan PX2/DPX2 external sensor table
 _GEIST_SENSOR   = "1.3.6.1.4.1.21239.5.1"           # Vertiv Geist probe tables
 _APC_NETBOTZ    = "1.3.6.1.4.1.318.1.1.10.4.2.2.1"  # APC NetBotz sensor value table
@@ -745,10 +746,21 @@ class SNMPRecGenerator:
 
             # Sensor environmental readings
             if device.device_type == DeviceType.SENSOR:
+                # Plant header instrument: one point, served on ENTITY-SENSOR-MIB.
+                # Must be patched here as well as generated, or a poll would keep
+                # returning the value the file was written with while the loop moved.
+                _probe = self._plant_probe_entries(device)
                 inlet_t10   = int(round(device.inlet_temp * 10))
                 humid_t10   = int(round(device.humidity   * 10))
                 dewpt_t10   = int(round(device.dewpoint   * 10))
                 airflow_t10 = int(round(device.airflow    * 10))
+            else:
+                _probe = None
+
+            if _probe is not None:
+                for _oid, _typ, _val in _probe:
+                    updates[_oid] = (_typ, _val)
+            elif device.device_type == DeviceType.SENSOR:
                 if device.vendor == Vendor.RARITAN:
                     if device.model_name == "Raritan DPX2-T3H1":
                         mid_t10     = int(round(device.mid_temp    * 10))
@@ -2006,6 +2018,43 @@ class SNMPRecGenerator:
             _oid_entry(f"{_CISCO_MEM_MIB}.6.1", "2", str(mem_free // (1024 * 1024))),     # free MB
         ]
 
+    @staticmethod
+    def _plant_probe_entries(device: Device) -> "Optional[List[OidEntry]]":
+        """OIDs for a chiller-plant header instrument, or None if this SENSOR is an
+        ordinary rack environmental probe.
+
+        A header instrument is ONE point — a thermowell in a water header or a
+        magnetic flow meter on the main. Falling through to the generic probe tables
+        below would publish humidity and dew point alongside it, which is a
+        fabrication: there is no hygrometer in a pipe. So the probe tables are
+        skipped and the single real reading is served on ENTITY-SENSOR-MIB, which is
+        the vendor-neutral place for one instrument with one value — and the right
+        model for a BMS-gatewayed point in any case.
+        """
+        from core.device_state_store import _get_ext_state   # circular at import time
+
+        st = _get_ext_state(device.name)
+        role = st.get("probe_role")
+        if not role:
+            return None
+        b = _ENTITY_SENSOR
+        if role == "chw_flow":
+            # entPhySensorType 12 = "other" (litres/second has no ENTITY enum),
+            # scale 9 = units, precision 2.
+            value = int(round(float(st.get("water_flow_lps", 0.0)) * 100))
+            stype, precision = "12", "2"
+        else:
+            # entPhySensorType 8 = celsius; ×10, so precision 1.
+            value = int(round(float(st.get("water_temp", 0.0)) * 10))
+            stype, precision = "8", "1"
+        return [
+            _oid_entry(f"{b}.1.1", "2", stype),        # entPhySensorType
+            _oid_entry(f"{b}.2.1", "2", "9"),          # entPhySensorScale = units
+            _oid_entry(f"{b}.3.1", "2", precision),    # entPhySensorPrecision
+            _oid_entry(f"{b}.4.1", "2", str(value)),   # entPhySensorValue
+            _oid_entry(f"{b}.5.1", "2", "1"),          # entPhySensorOperStatus = ok
+        ]
+
     def _sensor_entries(self, device: Device) -> List[OidEntry]:
         """Return vendor-specific OIDs for temp, humidity, dewpoint, and airflow."""
         entries: List[OidEntry] = []
@@ -2013,6 +2062,10 @@ class SNMPRecGenerator:
         humid_t10   = int(round(device.humidity   * 10))
         dewpt_t10   = int(round(device.dewpoint   * 10))
         airflow_t10 = int(round(device.airflow    * 10))
+
+        probe = self._plant_probe_entries(device)
+        if probe is not None:
+            return probe
 
         if device.vendor == Vendor.RARITAN:
             # Raritan PX2/DPX2 external sensor table (RARITAN-PX2-MIB)

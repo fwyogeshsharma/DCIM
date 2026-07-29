@@ -488,6 +488,86 @@ def cond_supply_c(city: str | None, cells_needed: int, cells_running: int,
                wet_bulb_c(city, now) + tower_approach_c(cells_needed, cells_running))
 
 
+# ── Chilled-water (evaporator) loop ───────────────────────────────────────────
+# The condenser side above is only half the plant. The EVAPORATOR side is what the
+# room actually feels, and in a modern primary-variable plant it behaves like this:
+#
+#   • CHW SUPPLY is a controlled setpoint (~7 °C). It does NOT drift with load —
+#     the chiller modulates to hold it. What load does is decide whether the plant
+#     CAN hold it: past capacity the machines run out of compressor and the supply
+#     temperature RISES off setpoint. That rise is the single most diagnostic
+#     high-load signature in a chiller plant, and it is what a BMS alarms on.
+#   • FLOW tracks load. Two-way modulating valves at every CRAH/CDU coil close as
+#     the load falls, the differential-pressure sensor sees head rise, and the VFD
+#     pumps slow down. So Q = ṁ·cp·ΔT with ΔT held near design and ṁ ∝ load.
+#   • ΔT holds at design (~5 K on a 7/12 plant) while the valves have authority.
+#     Below the pumps' minimum-flow bypass the loop recirculates, mixing supply into
+#     return, and the measured ΔT NARROWS — the classic "low-ΔT syndrome" that makes
+#     a lightly loaded plant look busier than it is.
+#
+# Everything here is a function of load, so the whole evaporator side moves when the
+# fleet grows. Nothing in it is a clock-driven walk.
+CHW_SETPOINT_C   = 7.0     # design chilled-water supply setpoint
+CHW_DESIGN_DT_C  = 5.0     # design loop ΔT (return − supply) at design flow
+CHW_MIN_FLOW_FRAC = 0.35   # primary-variable minimum-flow bypass (= PUMP_MIN_SPEED)
+CHW_SUPPLY_RISE_MAX_C = 12.0  # cap on how far off setpoint a starved plant drifts
+CP_WATER_KJ_KGK  = 4.186   # specific heat of water — 1 l ≈ 1 kg at loop temperature
+COND_DESIGN_RANGE_C = 5.0  # condenser-water range (return − supply) at design flow
+
+# Cooling-tower makeup. Evaporation carries the rejected heat away as latent heat
+# (~2.4 MJ/kg at loop temperature), and blowdown at ~4 cycles of concentration adds
+# a third on top. Works out at the plant rule of thumb — ~3 gpm per 100 tons.
+MAKEUP_LPM_PER_KW = 0.033
+
+
+def chw_flow_frac(duty_frac: float, min_frac: float = CHW_MIN_FLOW_FRAC) -> float:
+    """Loop flow as a fraction of design, for a plant at *duty_frac* of capacity.
+    Flow tracks load until the minimum-flow bypass takes over."""
+    return max(min_frac, min(1.0, max(0.0, duty_frac)))
+
+
+def chw_delta_t_c(duty_frac: float, design_dt: float = CHW_DESIGN_DT_C,
+                  min_frac: float = CHW_MIN_FLOW_FRAC) -> float:
+    """Measured loop ΔT at *duty_frac*.
+
+    At and above the minimum-flow point the valves have authority and the plant
+    holds design ΔT. Below it the bypass keeps flow up while the load keeps falling,
+    so supply water short-circuits into the return and the measured ΔT collapses in
+    proportion — low-ΔT syndrome, not a fault."""
+    d = max(0.0, min(1.0, duty_frac))
+    if d >= min_frac:
+        return design_dt
+    return max(0.3, design_dt * (d / max(1e-6, min_frac)))
+
+
+def chw_supply_c(shortfall_c: float, setpoint: float = CHW_SETPOINT_C) -> float:
+    """Chilled-water supply temperature: the setpoint, plus however far the plant
+    has been pushed off it. *shortfall_c* is the per-DC cooling penalty already
+    integrated by the thermal model, so the water the plant makes and the air the
+    room gets tell the same story."""
+    return setpoint + max(0.0, min(CHW_SUPPLY_RISE_MAX_C, shortfall_c))
+
+
+def water_flow_lps(heat_kw: float, delta_t_c: float) -> float:
+    """Volumetric flow (l/s) carrying *heat_kw* at *delta_t_c*: ṁ = Q / (cp·ΔT)."""
+    if heat_kw <= 0.0 or delta_t_c <= 0.0:
+        return 0.0
+    return heat_kw / (CP_WATER_KJ_KGK * delta_t_c)
+
+
+def makeup_flow_lpm(reject_kw: float) -> float:
+    """Cooling-tower makeup water (l/min) for *reject_kw* of heat rejection —
+    evaporation plus blowdown at ~4 cycles of concentration."""
+    return max(0.0, reject_kw) * MAKEUP_LPM_PER_KW
+
+
+def pump_head_frac(speed_frac: float) -> float:
+    """Pump differential pressure as a fraction of design head at *speed_frac*.
+    Affinity law: head ∝ speed² (flow ∝ speed, power ∝ speed³)."""
+    s = max(0.0, min(1.0, speed_frac))
+    return s * s
+
+
 def rotation_rank(run_hours: float, is_running: bool, rotate_h: float) -> tuple:
     """Lead/lag ordering key for one candidate machine: (periods run, is idle).
     Sort ascending — lowest ranks first — and break remaining ties however the

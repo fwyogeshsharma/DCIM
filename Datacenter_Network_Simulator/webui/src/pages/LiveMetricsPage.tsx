@@ -756,7 +756,42 @@ function PduTable({ rows }: { rows: DeviceInfo[] }) {
 
 // ── Sensor table ──────────────────────────────────────────────────────────────
 
-type SensorMetricCfg = { key: keyof DeviceInfo; label: string; unit: string; warn: number; crit: number }
+type SensorMetricCfg = {
+  key: keyof DeviceInfo; label: string; unit: string; warn: number; crit: number
+  // Low-side metric: colour when the value falls BELOW warn/crit rather than
+  // above it. Loop flow is the case — a busy plant moving a lot of water is
+  // healthy; flow going away is what an evaporator flow switch trips on.
+  invert?: boolean
+}
+
+// Chiller-plant header instruments. These are DeviceType.SENSOR like a rack air
+// probe, but they are thermowells and a flow meter on the water loops — so they
+// carry ONE point each, labelled for the header they sit in, and coloured against
+// the plant's own limits (see core/trap_rules.py, subtree .4) rather than the
+// cold-aisle envelope. A CW return legitimately runs in the low 30s.
+const PLANT_PROBE_METRICS: Record<string, SensorMetricCfg[]> = {
+  'Plant CHW Supply Temp': [
+    // The controlled variable — the plant modulates to hold ~7 °C, so drift off
+    // setpoint is the load symptom, not a band to sit inside.
+    { key: 'inlet_temp', label: 'CHW Supply', unit: '°C', warn: 9, crit: 13 },
+  ],
+  'Plant CHW Return Temp': [
+    { key: 'inlet_temp', label: 'CHW Return', unit: '°C', warn: 16, crit: 20 },
+  ],
+  'Plant CHW Flow Meter': [
+    { key: 'airflow', label: 'CHW Flow', unit: ' l/s', warn: 2, crit: 1, invert: true },
+  ],
+  'Plant CW Supply Temp': [
+    // Alarm point is where the chillers begin unloading on head pressure.
+    { key: 'inlet_temp', label: 'CW Supply', unit: '°C', warn: 36, crit: 41 },
+  ],
+  'Plant CW Return Temp': [
+    { key: 'inlet_temp', label: 'CW Return', unit: '°C', warn: 41, crit: 45 },
+  ],
+  'Plant CT Basin Temp': [
+    { key: 'inlet_temp', label: 'Basin Temp', unit: '°C', warn: 36, crit: 41 },
+  ],
+}
 
 const SENSOR_MODEL_METRICS: Record<string, SensorMetricCfg[]> = {
   'Raritan DPX2-T3H1': [
@@ -786,7 +821,7 @@ const SENSOR_MODEL_METRICS: Record<string, SensorMetricCfg[]> = {
 }
 
 function getSensorMetrics(model: string): SensorMetricCfg[] {
-  return SENSOR_MODEL_METRICS[model] ?? [
+  return PLANT_PROBE_METRICS[model] ?? SENSOR_MODEL_METRICS[model] ?? [
     { key: 'inlet_temp', label: 'Inlet Temp', unit: '°C', warn: 35, crit: 45 },
   ]
 }
@@ -841,7 +876,8 @@ function SensorTable({ rows }: { rows: DeviceInfo[] }) {
                     <IpCell d={d} />
                     {metrics.map(m => (
                       <td key={String(m.key)} style={{ padding: '6px 10px', textAlign: 'right' }}>
-                        <NumCell val={d[m.key] as number | undefined} unit={m.unit} warn={m.warn} crit={m.crit} />
+                        <NumCell val={d[m.key] as number | undefined} unit={m.unit}
+                                 warn={m.warn} crit={m.crit} invert={m.invert} />
                       </td>
                     ))}
                     <td style={{ padding: '6px 10px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtUptime(d.uptime)}</td>
@@ -1086,6 +1122,9 @@ const PLANT_COLUMNS: Record<string, PlantCol[]> = {
     { key: 'Alarm_HighTemp',   label: 'Hi Temp',    bin: 'alarm' },
     { key: 'Alarm_AirflowLoss',label: 'Airflow Loss', bin: 'alarm' },
     { key: 'Filter_Dirty',     label: 'Filter',     bin: 'alarm' },
+    // Distinct from Hi Temp: that one says the unit lost its ability to cool,
+    // this one says the unit is fine and the hot aisle feeding it is too hot.
+    { key: 'Alarm_HighReturnAir', label: 'Hi Return', bin: 'alarm' },
   ],
   chiller: [
     { key: 'CHW_Supply_Temp', label: 'CHW Supply', unit: '°C', warn: 9,  crit: 11, decimals: 1 },
@@ -1105,6 +1144,8 @@ const PLANT_COLUMNS: Record<string, PlantCol[]> = {
     { key: 'Alarm_HighPressure',label: 'Hi Press', bin: 'alarm' },
     { key: 'Alarm_LowEvapTemp', label: 'Lo Evap',  bin: 'alarm' },
     { key: 'Alarm_FlowLoss',    label: 'Flow Loss',bin: 'alarm' },
+    // The capacity alarm: at full compressor and still losing the setpoint.
+    { key: 'Alarm_HighCHWSupply', label: 'Hi CHWS', bin: 'alarm' },
   ],
   pump: [
     { key: 'Speed',             label: 'Speed',      unit: '%',  decimals: 0 },

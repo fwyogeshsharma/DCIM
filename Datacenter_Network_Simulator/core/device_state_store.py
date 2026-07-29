@@ -76,6 +76,61 @@ _DTC_IDLE_FACTOR = 0.60
 # cooling gear is as much a loss of cooling as an alarm — see _is_faulted().
 _RUNNING_POINTS = frozenset({"Chiller_Running", "Run_Status", "Fan_Status", "Unit_Running"})
 
+# CAPACITY alarms — the unit is healthy, it is simply outmatched by the load.
+# They must NOT be read as lost cooling capacity, for two reasons:
+#
+#   • They are the ANNOUNCEMENT of a shortfall the thermal model has already
+#     booked (_compute_chw_penalty). Counting them again would double-charge it.
+#   • Worse, it would close a positive feedback loop: shortfall → alarm → the
+#     alarm is scored as lost capacity → bigger shortfall → louder alarm, with
+#     nothing in the physics driving it. A plant at 100 % load would run itself
+#     to the thermal ceiling on its own annunciation.
+#
+# Nor should the BMS demote a train for one: a chiller at full compressor is the
+# machine you most want running. Health alarms (high head pressure, flow loss,
+# actuator fault, leak) keep their existing meaning.
+#
+# Kept deliberately small. Alarm_LowFlow is NOT here: on a pump that point means a
+# blocked strainer, a shut valve or a failed impeller, which genuinely does cost
+# cooling. A capacity alarm has to be a point that can ONLY mean "healthy but
+# outmatched" — otherwise exempting it would blind the store to a real fault.
+_CAPACITY_ALARMS = frozenset({"Alarm_HighCHWSupply", "Alarm_HighReturnAir"})
+
+# ── Plant header probes ───────────────────────────────────────────────────────
+# The chiller plant's headers carry instruments, not rack environmental probes:
+# supply/return thermowells on both water loops, a basin thermistor in the tower
+# sump, and a magnetic flow meter on the chilled-water main. In the topology they
+# are DeviceType.SENSOR devices whose name LEADS with the point's role code (the
+# unified naming scheme — see project docs), so the role is read off the name.
+#
+# In a real plant these are hardwired 4–20 mA / RTD inputs to the BMS controller,
+# not networked devices of their own; the simulator models them as devices so each
+# point is individually visible and alarmable. What matters is that they report the
+# LIVE loop (see _compute_chw_loop / _compute_cond_loop) rather than the cold-aisle
+# air a rack probe reads — a CHW supply thermowell has no opinion about room air.
+_PROBE_ROLES = {
+    "CHWS": "chw_supply",     # chilled-water supply header  (°C)
+    "CHWR": "chw_return",     # chilled-water return header  (°C)
+    "CWS":  "cw_supply",      # condenser-water supply       (°C)
+    "CWR":  "cw_return",      # condenser-water return       (°C)
+    "CTB":  "ct_basin",       # cooling-tower basin/sump     (°C)
+    "FLOW": "chw_flow",       # chilled-water main flow      (l/s)
+}
+# Model-name prefix every plant header probe carries. Used to keep the cold-aisle
+# air rules (ambient temp / humidity / dewpoint / airflow) off them: 35 °C condenser
+# return water is a perfectly healthy reading and must not raise a room-temperature
+# alarm, and a thermowell has no humidity to be "low".
+_PROBE_MODEL_PREFIX = "Plant "
+
+
+def _probe_role(device) -> "str | None":
+    """The plant-header point a SENSOR device represents, or None if it is an
+    ordinary rack environmental probe."""
+    if not str(getattr(device, "model_name", "")).startswith(_PROBE_MODEL_PREFIX):
+        return None
+    return _PROBE_ROLES.get(str(getattr(device, "name", "")).split("-")[0].upper())
+
+
 # UPS status progression
 _UPS_STATES = ("normal", "on_battery", "low_battery")
 # BGP session states
@@ -356,6 +411,30 @@ class DeviceStateStore:
         self._cool_model_w: float = 0.0  # staged-model cooling electrical (all DCs), for PUE
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
+
+        # ── Chilled-water (evaporator) loop, per DC ───────────────────────────
+        # The condenser side has its own state above (_cond_water_c). This is the
+        # side the room feels: what temperature water the plant is actually making,
+        # how much of it is moving, and how wide the loop ΔT has opened. All three
+        # are load-driven (see _compute_chw_loop / core.cooling_model), so they move
+        # when the fleet grows instead of walking on a clock.
+        self._chw_supply_c: Dict[str, float] = {}   # DC → CHW supply temp (°C)
+        self._chw_return_c: Dict[str, float] = {}   # DC → CHW return temp (°C)
+        self._chw_flow_lps: Dict[str, float] = {}   # DC → total loop flow (l/s)
+        self._chw_dt_c: Dict[str, float] = {}       # DC → measured loop ΔT (K)
+        self._it_live_by_dc: Dict[str, float] = {}  # DC → live IT heat (W)
+        self._plant_duty: Dict[str, float] = {}     # DC → running-plant duty fraction
+        self._cool_loss_frac: Dict[str, float] = {} # DC → cooling-loss fraction 0..1
+        self._room_inlet_c: Dict[tuple, float] = {} # (dc, room) → mean server inlet (°C)
+        self._room_outlet_c: Dict[tuple, float] = {} # (dc, room) → mean server exhaust (°C)
+        # Seconds each chiller has held CHW supply off setpoint (alarm dwell), so a
+        # momentary excursion during a stage change does not annunciate.
+        self._chw_high_s: Dict[str, float] = {}
+        self._chw_high_alarm: set = set()   # chillers currently annunciating it
+        # Live reading for each plant header probe (CHWS/CHWR/CWS/CWR/CTB/FLOW),
+        # keyed by device name → (role, value). Published by _compute_chw_loop and
+        # consumed by _step_device so the probes report the loop instead of air.
+        self._probe_reading: Dict[str, tuple] = {}
 
         # ── Utility → generator transfer ──────────────────────────────────────
         # One sequencer per DC, driven from the utility feed's health. Everything
@@ -903,6 +982,8 @@ class DeviceStateStore:
           trains_by_dc  {dc: [train dicts]}           — complete heat paths
           spare_chwp    {dc: [names]}                 — N+1 header standby pumps
           city_by_dc    {dc: city}                    — site weather for the tower model
+          np_kw_by_name {name: nameplate kW}          — plant unit rated draw
+          probes_by_dc  {dc: [(name, role)]}          — plant header instruments
         Built once from the device inventory; used to propagate upstream faults.
         """
         if self._cool_ctx is not None:
@@ -910,11 +991,20 @@ class DeviceStateStore:
         crah_by_room: Dict[tuple, list] = {}
         plant_by_dc: Dict[str, Dict[str, list]] = {}
         city_by_dc: Dict[str, str] = {}
+        np_kw_by_name: Dict[str, float] = {}
+        probes_by_dc: Dict[str, list] = {}
         try:
             for d in self._dm.get_all_devices():
                 dt = d.device_type
                 if d.datacenter and d.datacenter not in city_by_dc:
                     city_by_dc[d.datacenter] = getattr(d, "datacenter_city", None)
+                if dt == DeviceType.SENSOR:
+                    _role = _probe_role(d)
+                    if _role:
+                        probes_by_dc.setdefault(d.datacenter, []).append((d.name, _role))
+                if dt in (DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
+                          DeviceType.CRAH, DeviceType.CDU, DeviceType.VALVE):
+                    np_kw_by_name[d.name] = float(getattr(d, "power_draw_w", 0) or 0) / 1000.0
                 if dt == DeviceType.CRAH:
                     crah_by_room.setdefault((d.datacenter, d.room), []).append(d.name)
                 elif dt in (DeviceType.CHILLER, DeviceType.PUMP,
@@ -942,7 +1032,9 @@ class DeviceStateStore:
                           "plant_by_dc": plant_by_dc,
                           "trains_by_dc": trains_by_dc,
                           "spare_chwp": spare_chwp,
-                          "city_by_dc": city_by_dc}
+                          "city_by_dc": city_by_dc,
+                          "np_kw_by_name": np_kw_by_name,
+                          "probes_by_dc": probes_by_dc}
         return self._cool_ctx
 
     # Power-chain rank: source (0) → leaf load (4). A device's parents are its
@@ -2504,6 +2596,11 @@ class DeviceStateStore:
             # fans while a cool hall stays quiet.
             inlet_sum_room: Dict[tuple, float] = _dd(float)  # Σ inlet per (dc, room)
             inlet_n_room: Dict[tuple, int] = _dd(int)        # server count per (dc, room)
+            # Σ server EXHAUST per hall — what the CRAH return-air sensor is looking
+            # at once the hot aisle mixes. Air-side ΔT widens with load, so this is
+            # how a growing fleet shows up on the return-air point.
+            outlet_sum_room: Dict[tuple, float] = _dd(float)
+            outlet_n_room: Dict[tuple, int] = _dd(int)
             crah_room: Dict[str, tuple] = {}                 # CRAH name → (dc, room)
             dc_city: Dict[str, str] = {}
             plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
@@ -2532,6 +2629,10 @@ class DeviceStateStore:
                         _rk = (_dc, getattr(d, "room", "") or "")
                         inlet_sum_room[_rk] += float(_inl)
                         inlet_n_room[_rk] += 1
+                        _out = getattr(d, "outlet_temp", None)
+                        if _out is not None:
+                            outlet_sum_room[_rk] += float(_out)
+                            outlet_n_room[_rk] += 1
                 elif dtv in self._COOLING_TYPES:
                     # Cooling plant is also an electrical load on the power graph,
                     # so a facility meter downstream reads IT + cooling → PUE > 1.
@@ -2578,8 +2679,16 @@ class DeviceStateStore:
             plant_loadfrac: Dict[str, float] = {}   # {unit_name: its DC's plant duty}
             self._plant_standby_names = set()
             _cool_model_w = 0.0
+            # Per-room mean server inlet — the air a CRAH's return sensor sees.
+            # Kept for _compute_chw_loop so the return-air point tracks the hall
+            # instead of walking on a clock.
+            self._room_inlet_c = {rk: inlet_sum_room[rk] / n
+                                  for rk, n in inlet_n_room.items() if n}
+            self._room_outlet_c = {rk: outlet_sum_room[rk] / n
+                                   for rk, n in outlet_n_room.items() if n}
             for _dc, units in plant_dc.items():
                 itl = it_live_dc.get(_dc, 0.0)          # live IT heat (W)
+                self._it_live_by_dc[_dc] = itl
                 np_sum = sum(w for _n, w, _t in units) or 1.0
                 # ── STAGING: install for the fleet cap, sequence modules on with
                 # live load. it_design tracks the ENABLED (running) capacity, so the
@@ -2764,6 +2873,7 @@ class DeviceStateStore:
                 _running_np = sum(w for _n, w, _t in units
                                   if _n not in self._plant_standby_names) or np_sum
                 lf = min(1.0, total_w / _running_np)
+                self._plant_duty[_dc] = lf
                 # Cooling DEMAND fraction for this DC — drives modulating valve
                 # position (a control valve opens toward 100 % as load rises). Keyed
                 # per unit name so the BACnet controller can look it up like the power
@@ -2939,7 +3049,8 @@ class DeviceStateStore:
         if not pv:
             return False
         for k, v in pv.items():
-            if k.startswith("Alarm_") and float(v) >= 0.5:
+            if (k.startswith("Alarm_") and k not in _CAPACITY_ALARMS
+                    and float(v) >= 0.5):
                 return True
             if k in _RUNNING_POINTS and float(v) < 0.5:
                 return True
@@ -2963,7 +3074,8 @@ class DeviceStateStore:
         pv = _plant_state_cache.get(name)
         if not pv:
             return False
-        return any(k.startswith("Alarm_") and float(v) >= 0.5 for k, v in pv.items())
+        return any(k.startswith("Alarm_") and k not in _CAPACITY_ALARMS
+                   and float(v) >= 0.5 for k, v in pv.items())
 
     # Cooling penalty model constants.
     _COOL_TOL = 0.34     # cooling-loss fraction the plant rides out (N+1 + thermal mass)
@@ -3425,6 +3537,9 @@ class DeviceStateStore:
             if _ovl > 0.0:
                 _inst_kw = self._plant_installed_mods.get(dc, 1) * PLANT_MODULE_KW
                 loss = min(1.0, loss + _ovl / max(1.0, _inst_kw))
+            # Kept for the evaporator-side model: how short the plant is decides
+            # whether it can still hold its chilled-water setpoint.
+            self._cool_loss_frac[dc] = round(loss, 4)
             cur = self._chw_pen.get(dc, 0.0)
             deficit = loss - self._COOL_TOL
             if deficit <= 0.0:
@@ -3433,6 +3548,247 @@ class DeviceStateStore:
             else:
                 new = cur + self._COOL_RUN * deficit       # runaway: integrate heat upward
             self._chw_pen[dc] = round(min(new, self._COOL_MAX), 3)
+
+    # ── Chilled-water loop thresholds ─────────────────────────────────────────
+    # A BMS alarms the CHILLED-WATER SUPPLY, not the return: supply is the
+    # controlled variable, so a supply temperature off setpoint is by definition
+    # the plant failing to do its job. Deadbands are the usual vendor defaults
+    # (Trane Tracer / JCI Metasys chilled-water plant sequences): a couple of
+    # degrees of tolerance, held for a few minutes so a stage change or a valve
+    # step does not annunciate.
+    _CHW_HIGH_DB_C   = 2.0     # K above setpoint before the plant is "off setpoint"
+    _CHW_HIGH_S      = 180.0   # dwell before Alarm_HighCHWSupply latches
+    _CHW_CLEAR_DB_C  = 1.0     # hysteresis — must come back inside this to clear
+    # Return-air limit for a CRAH. ASHRAE A1 allowable tops out at 32 °C INLET; a
+    # return sensor sits in the hot aisle, so the alarm point is well above that.
+    _CRAH_RETURN_ALARM_C = 42.0
+    # Pump design points, matching the PLANT_SPEC bases in bacnet_plant_generator.
+    _PUMP_SUCTION_KPA   = 130.0
+    _PUMP_DIFF_KPA      = 300.0
+    # Air-side mixing: a hot aisle is never pure exhaust — some cold-aisle air
+    # bypasses the racks and dilutes what reaches the CRAH return.
+    _RETURN_MIX_FRAC = 0.85
+
+    def _compute_chw_loop(self) -> None:
+        """Per-tick: the EVAPORATOR side of the plant — what water the chillers are
+        actually making, how much of it is moving, and how wide the loop has opened.
+
+        The condenser side (_compute_cond_loop) models heat leaving the building.
+        This models heat arriving: IT load → CRAH/CDU coils → chilled-water return
+        → chiller evaporator. In a primary-variable plant that chain behaves as:
+
+            supply  = setpoint, until the plant runs out of capacity and drifts off it
+            ΔT      = design, until flow bottoms out on the minimum-flow bypass
+            flow    = Q / (cp·ΔT)  — so it tracks load, and pins at the bypass minimum
+
+        Published onto the running plant's BACnet points through the same per-IP
+        auto-point channel _compute_cond_loop uses, so CHW supply/return/flow, pump
+        flow and head, tower makeup and CRAH return air all move with the fleet
+        instead of walking on a clock. The load-driven plant alarms (CHW supply off
+        setpoint, CRAH return air over limit, pumps at full speed and still short)
+        are raised here too — they are the annunciation of the same physics.
+
+        Runs AFTER _compute_power_flow so it sees this tick's staging, duty and
+        per-unit draws, and MERGES into _plant_auto_points rather than replacing it.
+        """
+        from core.cooling_model import (
+            CHW_SETPOINT_C, COND_DESIGN_RANGE_C, chw_supply_c, chw_delta_t_c,
+            water_flow_lps, makeup_flow_lpm, pump_head_frac, affinity_speed_frac,
+            vfd_speed_frac, PUMP_MIN_SPEED)
+        ctx = self._cooling_context()
+        auto = self._plant_auto_points
+        dt = self._dt
+        # Drop the capacity alarms this pass owns before re-deriving them. In the
+        # normal tick order _compute_cond_loop has just replaced the whole map, so
+        # nothing is stale — but relying on that would mean a cleared alarm latches
+        # forever the moment anything reorders the chain. Owning our own keys keeps
+        # this pass correct on its own.
+        for _pts in auto.values():
+            for _k in _CAPACITY_ALARMS:
+                _pts.pop(_k, None)
+
+        for dc, kinds in ctx["plant_by_dc"].items():
+            itl_kw = self._it_live_by_dc.get(dc, 0.0) / 1000.0
+            duty = self._plant_duty.get(dc, 0.0)
+            # How far the plant has been pushed off its setpoint. The thermal model
+            # already integrates this (_chw_pen drives room supply temperature), so
+            # reusing it keeps the water the plant makes and the air the room gets
+            # telling one story instead of two.
+            pen = self._chw_pen.get(dc, 0.0)
+            supply = chw_supply_c(pen, CHW_SETPOINT_C)
+            d_t = chw_delta_t_c(duty)
+            flow = water_flow_lps(itl_kw, d_t)
+            ret = supply + d_t
+            self._chw_supply_c[dc] = round(supply, 2)
+            self._chw_return_c[dc] = round(ret, 2)
+            self._chw_dt_c[dc] = round(d_t, 2)
+            self._chw_flow_lps[dc] = round(flow, 2)
+
+            # Condenser side carries the IT heat PLUS the compressor work that moved
+            # it — that is why a condenser pump is always sized above its evaporator
+            # counterpart. Chiller draw comes from this tick's power flow.
+            chillers_all = list(kinds.get("chiller") or [])
+            comp_kw = sum(self._plant_power_by_name.get(c, 0.0) for c in chillers_all)
+            reject_kw = itl_kw + comp_kw
+            # The condenser range narrows at part load for the same reason the
+            # chilled-water ΔT does: its pumps are VFD too and ride their own
+            # minimum-flow floor, so below that point the loop recirculates and the
+            # measured range collapses. Shaping both loops with one curve is not a
+            # convenience — hold the condenser range fixed while the CHW ΔT narrows
+            # and a lightly loaded plant reports LESS condenser flow than evaporator
+            # flow, which is thermodynamically impossible (the condenser carries the
+            # IT heat plus the compressor work that moved it).
+            cw_flow = water_flow_lps(reject_kw, chw_delta_t_c(
+                duty, COND_DESIGN_RANGE_C))
+
+            # ── Chillers: supply/return/setpoint/flow on the RUNNING machines ──
+            # A staged-off machine's evaporator is isolated by its own stopped pump
+            # and genuinely drifts — _compute_cond_loop deliberately leaves its
+            # evaporator alone, and so do we.
+            running_ch = [c for c in chillers_all
+                          if c not in self._plant_standby_names
+                          and c not in self._chiller_hp_lockout
+                          and c not in self._plant_unpowered_names]
+            if running_ch:
+                per_ch = flow / len(running_ch)
+                for name in running_ch:
+                    ip = self._plant_ip_by_name.get(name)
+                    if not ip:
+                        continue
+                    pts = auto.setdefault(ip, {})
+                    pts.update({"CHW_Supply_Temp": round(supply, 1),
+                                "CHW_Return_Temp": round(ret, 1),
+                                "CHW_Setpoint": round(CHW_SETPOINT_C, 1),
+                                "CHW_Flow": round(per_ch, 1)})
+                    # Off-setpoint annunciation, with a dwell so a stage change or a
+                    # valve step cannot annunciate, and hysteresis so a plant sitting
+                    # on the deadband cannot chatter.
+                    #
+                    # Only ever PUBLISHED as 1.0, never as 0.0: these auto points are
+                    # merged over the operator's forced-alarm map, so writing an
+                    # explicit zero would stamp out a fault the operator injected from
+                    # the Limits tab. Dropping the key instead lets the engine's own
+                    # 0.0 show through, which is the clear.
+                    over = supply > (CHW_SETPOINT_C + self._CHW_HIGH_DB_C)
+                    held = (self._chw_high_s.get(name, 0.0) + dt) if over else 0.0
+                    self._chw_high_s[name] = held
+                    if held >= self._CHW_HIGH_S:
+                        self._chw_high_alarm.add(name)
+                    elif supply <= (CHW_SETPOINT_C + self._CHW_CLEAR_DB_C):
+                        self._chw_high_alarm.discard(name)
+                    if name in self._chw_high_alarm:
+                        pts["Alarm_HighCHWSupply"] = 1.0
+            for name in chillers_all:
+                if name not in running_ch:
+                    self._chw_high_s.pop(name, None)
+                    self._chw_high_alarm.discard(name)
+
+            # ── Pumps: real flow, and head from the affinity law ──────────────
+            trains = self._plant_trains_run.get(dc, [])
+            chwps = [tr["chwp"] for tr in trains if tr.get("chwp")]
+            cwps  = [tr["cwp"] for tr in trains if tr.get("cwp")]
+            for group, total, label in ((chwps, flow, "chw"), (cwps, cw_flow, "cw")):
+                live = [p for p in group
+                        if p not in self._plant_standby_names
+                        and p not in self._plant_unpowered_names]
+                if not live:
+                    continue
+                per_pump = total / len(live)
+                for name in live:
+                    ip = self._plant_ip_by_name.get(name)
+                    if not ip:
+                        continue
+                    # Speed back-derived from the draw this tick's power flow gave
+                    # the pump, so flow, head and kW cannot disagree.
+                    kw = self._plant_power_by_name.get(name, 0.0)
+                    npw = ctx["np_kw_by_name"].get(name, 0.0)
+                    spd = (affinity_speed_frac(kw, npw) if npw > 0
+                           else vfd_speed_frac(duty, PUMP_MIN_SPEED))
+                    diff = self._PUMP_DIFF_KPA * pump_head_frac(spd)
+                    pts = auto.setdefault(ip, {})
+                    pts.update({
+                        "Flow": round(per_pump, 1),
+                        "Diff_Pressure": round(diff, 1),
+                        "Suction_Pressure": round(self._PUMP_SUCTION_KPA, 1),
+                        "Discharge_Pressure": round(self._PUMP_SUCTION_KPA + diff, 1),
+                    })
+                    # Deliberately NO capacity alarm on the pump. It is tempting to
+                    # raise Alarm_LowFlow when a pump is pinned at 100 % and the
+                    # plant is still short, but that point already means something
+                    # else and something worse: a real low-flow alarm is a blocked
+                    # strainer, a shut isolation valve, a failed impeller — a fault
+                    # that costs cooling. Overloading it with "healthy pump, too much
+                    # load" would make the store stop scoring genuine pump faults as
+                    # lost capacity. The high-load condition is already annunciated
+                    # where it belongs (CHW supply off setpoint, above), and the
+                    # pump's own Speed point shows it pinned at full.
+
+            # ── Tower cells: makeup water tracks evaporation ──────────────────
+            cells = [t for t in (kinds.get("cooling_tower") or [])
+                     if t in (self._tower_running_now.get(dc) or set())]
+            if cells:
+                per_cell = makeup_flow_lpm(reject_kw / len(cells))
+                for name in cells:
+                    ip = self._plant_ip_by_name.get(name)
+                    if ip:
+                        auto.setdefault(ip, {})["Makeup_Flow"] = round(per_cell, 2)
+
+        # ── CRAH return air: the hall's own hot aisle ─────────────────────────
+        # Supply air is deliberately NOT touched here: _room_supply_temp reads the
+        # CRAH's Supply_Air_Temp back and adds the CHW penalty on top, so raising it
+        # here would double-count the very shortfall it already models.
+        for (dc, room), crahs in ctx["crah_by_room"].items():
+            rk = (dc, room)
+            inlet = self._room_inlet_c.get(rk)
+            outlet = self._room_outlet_c.get(rk)
+            # No measured exhaust warmer than the intake means the room's servers
+            # have not reported one yet (cold start, or a hall with no live load).
+            # There is no return-air temperature to publish, and inventing one from
+            # the intake alone would just restate the cold aisle.
+            if inlet is None or outlet is None or outlet <= inlet:
+                continue
+            ret_air = inlet + self._RETURN_MIX_FRAC * (outlet - inlet)
+            for name in crahs:
+                if (name in self._plant_standby_names
+                        or name in self._plant_unpowered_names):
+                    continue
+                ip = self._plant_ip_by_name.get(name)
+                if not ip:
+                    continue
+                pts = auto.setdefault(ip, {})
+                pts["Return_Air_Temp"] = round(ret_air, 1)
+                # Return-air high, NOT discharge high: the unit is holding its
+                # setpoint on the CHW valve, the hot aisle feeding it is too hot.
+                # Raised only (never zeroed) so an operator-forced alarm survives.
+                if ret_air >= self._CRAH_RETURN_ALARM_C:
+                    pts["Alarm_HighReturnAir"] = 1.0
+
+        # ── Plant header instruments ─────────────────────────────────────────
+        # Every one of these points is already computed above or by the condenser
+        # model; the probes just READ them. Publishing here (rather than letting
+        # _step_device walk them like a rack air probe) is the whole point: a
+        # thermowell on the CHW supply header reports the water the plant is
+        # making, and the flow meter on the CHW main reports the water it is
+        # moving, both of which move the moment the fleet does.
+        readings: Dict[str, tuple] = {}
+        for dc, probes in (ctx.get("probes_by_dc") or {}).items():
+            cond = self._cond_water_c.get(dc, self._COND_DESIGN_C)
+            src = {
+                "chw_supply": self._chw_supply_c.get(dc),
+                "chw_return": self._chw_return_c.get(dc),
+                "cw_supply":  cond,
+                "cw_return":  cond + self._COND_RANGE_C,
+                # The basin IS the tower's cold well — the same water the condenser
+                # supply header carries, which is why _compute_cond_loop publishes
+                # Basin_Temp and Cond_Water_Out as one value on the cells.
+                "ct_basin":   cond,
+                "chw_flow":   self._chw_flow_lps.get(dc),
+            }
+            for name, role in probes:
+                val = src.get(role)
+                if val is not None:
+                    readings[name] = (role, round(float(val), 2))
+        self._probe_reading = readings
 
     def _room_supply_temp(self, device: "Device") -> float:
         """Cold-aisle supply temperature for a device's room.
@@ -3502,6 +3858,10 @@ class DeviceStateStore:
         self._compute_chw_penalty()       # roll per-DC CHW penalty from upstream faults
         self._step_transfer()             # utility/genset transfer → who is energized
         self._compute_power_flow()        # live watts up the power graph (server→PDU→UPS→EV2)
+        # Evaporator side LAST: it reads this tick's staging, duty and per-unit
+        # draws, and merges its points into the same auto-point map the condenser
+        # model filled, so both halves of the plant publish together.
+        self._compute_chw_loop()
         for device in devices:
             self._step_device(device)
             self._step_ext_state(device)
@@ -4063,6 +4423,31 @@ class DeviceStateStore:
 
         # Environmental readings — sensor devices only
         if device.device_type == DeviceType.SENSOR:
+            # PLANT HEADER INSTRUMENT (CHWS/CHWR/CWS/CWR/CTB/FLOW): reads the live
+            # water loop, not room air. A thermowell in a chilled-water header has
+            # no cold-aisle setpoint to revert to and no humidity to report, so the
+            # air-probe walk below is skipped entirely and the RH/dew-point channels
+            # are left at zero — there is no sensor behind them. Instrument noise is
+            # the transmitter's own accuracy band (±0.1 K RTD, ±0.5 % mag meter),
+            # not a random walk that would drift off the loop it is measuring.
+            _probe = self._probe_reading.get(device.name)
+        else:
+            _probe = None
+
+        if device.device_type == DeviceType.SENSOR and _probe is not None:
+            _role, _val = _probe
+            if _role == "chw_flow":
+                device.airflow = round(max(0.0, _val * (1.0 + random.uniform(-0.005, 0.005))), 2)
+                device.inlet_temp = 0.0
+            else:
+                device.inlet_temp = round(_val + random.uniform(-0.1, 0.1), 1)
+                device.airflow = 0.0
+            device.humidity = 0.0
+            device.dewpoint = 0.0
+            device.mid_temp = 0.0
+            device.outlet_temp = 0.0
+
+        elif device.device_type == DeviceType.SENSOR:
             # Ambient temperature: a rack environmental probe reads the cold-aisle
             # air, so it mean-reverts to the CRAC supply setpoint (~22 °C) instead
             # of drifting freely — otherwise the random walk wanders up to 35 °C
@@ -4419,13 +4804,26 @@ class DeviceStateStore:
         # CDU leak, a CRAH/cooling fault, or Inject Fault — all of which SHOULD fire
         # the trap, so scrubbing it here would wrongly suppress them.
 
-        if dt == DeviceType.SENSOR:
+        # Plant header instruments are exempt. This scrub exists to tame a random
+        # WALK, and their readings are not walked — they are the live water loop,
+        # computed in _compute_chw_loop. Clamping them would not suppress a phantom
+        # alarm, it would FALSIFY a measurement: 35 °C condenser return water is a
+        # healthy design condition, and squeezing it to 31.9 (the cold-aisle
+        # ceiling) makes the plant page report a temperature the loop never had.
+        # Forcing 30.1 % RH onto a thermowell is worse — an instrument that does
+        # not exist reporting a value it cannot measure.
+        if dt == DeviceType.SENSOR and _probe_role(device) is None:
             device.inlet_temp  = min(device.inlet_temp, 31.9)        # ambient > 32
             device.humidity    = min(max(device.humidity, 30.1), 69.9)  # <30 / >70
             device.dewpoint    = min(device.dewpoint, 20.9)          # > 21
             device.airflow     = min(max(device.airflow, 0.31), 3.49)   # <0.3 / >3.5
             device.mid_temp    = min(device.mid_temp, 37.9)          # > 38
             device.outlet_temp = min(device.outlet_temp, 44.9)       # > 45
+        # Facility electrical loading (swgr_/mcc_/mpp_/gen_load_pct) is likewise NOT
+        # scrubbed, for the same reason: it is computed from the live power graph,
+        # not walked, so there is no spurious excursion to suppress. A board at 97 %
+        # is at 97 % because the fleet put it there, and hiding that would suppress
+        # exactly the behaviour this quiet mode is supposed to leave visible.
 
         st = self._ext_states.get(device.name)
         if st is None:
@@ -4895,6 +5293,22 @@ class DeviceStateStore:
         # Update module-level cache so snmprec_generator can read UPS/PDU states
         _ext_state_cache[name] = dict(st)
 
+        # ── Plant header instrument — publish the loop reading it represents ──
+        # Kept in ext_state (not just on the device's air-probe fields) so the
+        # DCIM/UI and the rule engine can read a CHW supply thermowell as WATER
+        # temperature rather than mistaking it for room ambient.
+        _probe = self._probe_reading.get(name)
+        if device.device_type == DeviceType.SENSOR and _probe is not None:
+            _role, _ = _probe
+            st["probe_role"] = _role
+            if _role == "chw_flow":
+                st["water_flow_lps"] = float(device.airflow)
+                st.pop("water_temp", None)
+            else:
+                st["water_temp"] = float(device.inlet_temp)
+                st.pop("water_flow_lps", None)
+            _ext_state_cache[name] = dict(st)
+
         # ── Sensor — water detection (Raritan DPX2-CC2 only) ─────────────
         if device.device_type == DeviceType.SENSOR and device.model_name == "Raritan DPX2-CC2":
             if mf["water_detection"]:
@@ -4932,6 +5346,18 @@ class DeviceStateStore:
     #  Rule engine fact publishing                                        #
     # ------------------------------------------------------------------ #
 
+    # Facility electrical gear → (ext_state key prefix for load %, health key).
+    # The ATS and the utility meter are deliberately absent: an ATS is a switch and
+    # does not meter load, and a revenue meter has no rating to load against — both
+    # already annunciate through their own dedicated paths (transfer traps / meter
+    # points), and inventing a load % for them would be fiction.
+    _ELEC_FACT_KEYS = {
+        "switchgear": ("swgr_", "swgr_bus_status"),
+        "mcc":        ("mcc_",  "mcc_status"),
+        "mpp":        ("mpp_",  "mpp_status"),
+        "generator":  ("gen_",  "gen_status"),
+    }
+
     def _publish_facts(self, devices: list):
         """Build a DeviceFact for each device and invoke the rule engine callback."""
         try:
@@ -4951,6 +5377,13 @@ class DeviceStateStore:
                 ext = self._ext_states.get(device.name, {})
                 mem_pct = (device.memory_used / max(1, device.memory_total)) * 100.0
                 disk_pct = (device.disk_used / max(1, device.disk_total)) * 100.0
+                # Facility electrical gear reports its bus loading and health under a
+                # per-type key prefix; normalise both onto one pair of metrics so the
+                # rules read the same way for every board.
+                _elec_pfx, _elec_st = self._ELEC_FACT_KEYS.get(
+                    device.device_type.value, (None, None))
+                _elec_load = float(ext.get(f"{_elec_pfx}load_pct", 0.0)) if _elec_pfx else 0.0
+                _elec_state = str(ext.get(_elec_st, "")) if _elec_st else ""
 
                 rack_id = ""
                 if device.datacenter and device.rack_row and device.rack_num:
@@ -5009,6 +5442,10 @@ class DeviceStateStore:
                     pdu_temperature=float(ext.get("pdu_temperature", 0.0)),
                     pdu_humidity=float(ext.get("pdu_humidity", 0.0)),
                     pdu_energy_kwh=float(ext.get("pdu_energy_kwh", 0.0)),
+                    water_temp=float(ext.get("water_temp", 0.0)),
+                    water_flow_lps=float(ext.get("water_flow_lps", 0.0)),
+                    elec_load_pct=_elec_load,
+                    elec_status=_elec_state,
                     bgp_sessions=[
                         BGPSessionFact(peer_addr=s["peer"], state=s["state"])
                         for s in ext.get("bgp_sessions", [])

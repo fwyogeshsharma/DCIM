@@ -95,6 +95,18 @@ class DeviceFact:
     pdu_humidity: float = 0.0             # % RH inside PDU
     pdu_energy_kwh: float = 0.0           # cumulative energy, kWh
 
+    # Plant header instruments (DeviceType.SENSOR whose model is a "Plant …" point).
+    # A thermowell on a water header has nothing to say about room air, so these are
+    # separate metrics — the cold-aisle rules are explicitly kept off these devices.
+    water_temp: float = 0.0        # °C — CHW/CW supply/return, tower basin
+    water_flow_lps: float = 0.0    # l/s — chilled-water main flow meter
+
+    # Facility electrical gear (switchgear / MCC / MPP / generator). One pair of
+    # metrics across all of them so one rule per device type covers that board,
+    # with each type carrying its own thresholds.
+    elec_load_pct: float = 0.0     # % of the board's / set's rating
+    elec_status: str = ""          # energized | dead | fault | running | standby …
+
     # Routing protocol sessions
     bgp_sessions: List[BGPSessionFact] = field(default_factory=list)
 

@@ -88,6 +88,13 @@ class Rule:
     priority: int = 100         # higher value = higher priority (fires first)
     device_types: List[str] = field(default_factory=list)  # empty = all types
     model_names: List[str] = field(default_factory=list)   # empty = all models
+    # Models this rule must NOT apply to. Needed because a device TYPE is not always
+    # a device ROLE: the plant's header instruments (CHW/CW thermowells, tower-basin
+    # probe, flow meter) are DeviceType.SENSOR like a rack air probe, but 35 °C
+    # condenser return water is a healthy reading that must never raise a room
+    # over-temperature alarm, and a thermowell has no humidity to be "low". Entries
+    # may end in "*" to match a model-name prefix.
+    model_names_exclude: List[str] = field(default_factory=list)
     is_recovery: bool = False
     recovery_of: str = ""       # alert rule name this rule recovers from
     cooldown_sec: float = 0.0   # 0 = fire every tick; >0 = re-notify interval
@@ -101,6 +108,7 @@ class Rule:
             "priority": self.priority,
             "device_types": self.device_types,
             "model_names": self.model_names,
+            "model_names_exclude": self.model_names_exclude,
             "is_recovery": self.is_recovery,
             "recovery_of": self.recovery_of,
             "cooldown_sec": self.cooldown_sec,
@@ -117,10 +125,27 @@ class Rule:
             enabled=d.get("enabled", True),
             priority=d.get("priority", 100),
             device_types=d.get("device_types", []),
+            # Both model filters must survive a round-trip: a ruleset exported and
+            # re-imported without them would silently re-apply the cold-aisle rules
+            # to the plant's water instruments.
+            model_names=d.get("model_names", []),
+            model_names_exclude=d.get("model_names_exclude", []),
             is_recovery=d.get("is_recovery", False),
             recovery_of=d.get("recovery_of", ""),
             cooldown_sec=float(d.get("cooldown_sec", 0)),
         )
+
+
+def _model_excluded(model_name: str, patterns: List[str]) -> bool:
+    """True when *model_name* matches any exclusion pattern. A trailing "*" makes
+    the entry a prefix match, so one entry covers a whole family of models."""
+    for p in patterns:
+        if p.endswith("*"):
+            if model_name.startswith(p[:-1]):
+                return True
+        elif model_name == p:
+            return True
+    return False
 
 
 def _condition_to_dict(c: Condition) -> dict:
@@ -449,6 +474,9 @@ class RuleEngine:
                 continue
             if rule.model_names and fact.model_name not in rule.model_names:
                 continue
+            if rule.model_names_exclude and _model_excluded(fact.model_name,
+                                                            rule.model_names_exclude):
+                continue
 
             cond = rule.condition
             ct = cond.condition_type
@@ -537,6 +565,12 @@ class RuleEngine:
             # Sensor extended
             "mid_temp":              fact.mid_temp,
             "outlet_temp":           fact.outlet_temp,
+            # Plant header instruments (water loops, not room air)
+            "water_temp":            fact.water_temp,
+            "water_flow_lps":        fact.water_flow_lps,
+            # Facility electrical gear (switchgear / MCC / MPP / generator)
+            "elec_load_pct":         fact.elec_load_pct,
+            "elec_status":           fact.elec_status,
         }
 
     # ── State helpers ─────────────────────────────────────────────────────────

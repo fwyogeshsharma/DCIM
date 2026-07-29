@@ -54,6 +54,7 @@ def _rule(name: str, cond: Condition, oid: str, *,
           priority: int = 100,
           device_types: list | None = None,
           model_names: list | None = None,
+          model_names_exclude: list | None = None,
           recovery: bool = False,
           recovery_of: str = "") -> Rule:
     return Rule(
@@ -64,9 +65,25 @@ def _rule(name: str, cond: Condition, oid: str, *,
         priority=priority,
         device_types=device_types or [],
         model_names=model_names or [],
+        model_names_exclude=model_names_exclude or [],
         is_recovery=recovery,
         recovery_of=recovery_of,
     )
+
+
+# The plant's header instruments are DeviceType.SENSOR but are NOT rack air probes
+# (see core/device_state_store._PROBE_ROLES). Every cold-aisle rule below carries
+# this exclusion so a 35 °C condenser-return thermowell cannot raise a room
+# over-temperature alarm and a flow meter cannot raise "humidity low".
+_AIR_PROBES_ONLY = ["Plant *"]
+
+# Plant header probe model names, for the water-loop rules that DO belong on them.
+_M_CHW_SUPPLY = ["Plant CHW Supply Temp"]
+_M_CHW_RETURN = ["Plant CHW Return Temp"]
+_M_CHW_FLOW   = ["Plant CHW Flow Meter"]
+_M_CW_SUPPLY  = ["Plant CW Supply Temp"]
+_M_CW_RETURN  = ["Plant CW Return Temp"]
+_M_CT_BASIN   = ["Plant CT Basin Temp"]
 
 
 # ── Default ruleset ───────────────────────────────────────────────────────────
@@ -722,17 +739,21 @@ DEFAULT_RULES: List[Rule] = [
 
     # ── Environmental sensor alerts ───────────────────────────────────────────
 
+    # These four are the only cold-aisle rules with no model include-list, so they
+    # are the ones that would have swept up the plant's water instruments (a CW
+    # return thermowell sits at ~35 °C by design). Excluded explicitly; the water
+    # loops get their own rules further down.
     _rule("SensorAmbientTempHigh",
           _threshold("ambient_temp", ">", 32.0),
           "1.3.6.1.4.1.99999.1.22",
           severity="major", priority=180,
-          device_types=["sensor"]),
+          device_types=["sensor"], model_names_exclude=_AIR_PROBES_ONLY),
 
     _rule("SensorAmbientTempCritical",
           _threshold("ambient_temp", ">", 38.0),
           "1.3.6.1.4.1.99999.1.23",
           severity="critical", priority=185,
-          device_types=["sensor"]),
+          device_types=["sensor"], model_names_exclude=_AIR_PROBES_ONLY),
 
     # Clears at 35 while SensorAmbientTempNormal holds the major until 28. During a
     # cooling recovery the operator sees the critical drop first and the major persist
@@ -742,13 +763,14 @@ DEFAULT_RULES: List[Rule] = [
           _threshold("ambient_temp", "<", 35.0),
           "1.3.6.1.4.1.99999.1.33",
           severity="informational", priority=100,
-          device_types=["sensor"],
+          device_types=["sensor"], model_names_exclude=_AIR_PROBES_ONLY,
           recovery=True, recovery_of="SensorAmbientTempCritical"),
 
     _rule("SensorAmbientTempNormal",
           _threshold("ambient_temp", "<", 28.0),
           "1.3.6.1.4.1.99999.1.16",
           severity="informational", priority=100,
+          model_names_exclude=_AIR_PROBES_ONLY,
           recovery=True, recovery_of="SensorAmbientTempHigh"),
 
     # ── Humidity alerts (Raritan + Vertiv + APC) ──────────────────────────────
@@ -977,6 +999,326 @@ DEFAULT_RULES: List[Rule] = [
           severity="informational", priority=100,
           device_types=["pdu", "floor_pdu"],
           recovery=True, recovery_of="PDULoadHigh"),
+
+    # ── Facility electrical gear (subtree .3) ────────────────────────────────
+    # Everything from the service entrance down to the mechanical panelboards is
+    # metered by the sim, but until now only the UPS and the rack PDUs annunciated
+    # — so a fleet that grew until the MCC or a hall's mechanical panel was near
+    # its rating produced the physics with no alarm attached. These are the load
+    # and health rules for the rest of the chain.
+    #
+    # Thresholds follow NEC 210.20(A)/215.3 practice: a bus feeding a continuous
+    # load is planned to 80 % of rating, so 85 % is the "you are out of planning
+    # headroom" alarm and 95 % is "you are about to trip a main". Clears sit
+    # inside the alarm points so a board riding a threshold cannot chatter.
+
+    _rule("SwitchgearBusOverload",
+          _threshold("elec_load_pct", ">", 85.0),
+          "1.3.6.1.4.1.99999.3.1",
+          severity="major", priority=190,
+          device_types=["switchgear"]),
+
+    _rule("SwitchgearBusOverloadCritical",
+          _threshold("elec_load_pct", ">", 95.0),
+          "1.3.6.1.4.1.99999.3.2",
+          severity="critical", priority=195,
+          device_types=["switchgear"]),
+
+    _rule("SwitchgearBusOverloadCriticalCleared",
+          _threshold("elec_load_pct", "<", 92.0),
+          "1.3.6.1.4.1.99999.3.3",
+          severity="informational", priority=100,
+          device_types=["switchgear"],
+          recovery=True, recovery_of="SwitchgearBusOverloadCritical"),
+
+    _rule("SwitchgearBusLoadNormal",
+          _threshold("elec_load_pct", "<", 80.0),
+          "1.3.6.1.4.1.99999.3.4",
+          severity="informational", priority=100,
+          device_types=["switchgear"],
+          recovery=True, recovery_of="SwitchgearBusOverload"),
+
+    # A dead LV main is the loudest thing a switchboard can say. State-change, not
+    # threshold: the bus is energized or it is not.
+    _rule("SwitchgearBusDead",
+          _state_change("elec_status", "energized", "dead"),
+          "1.3.6.1.4.1.99999.3.5",
+          severity="critical", priority=205,
+          device_types=["switchgear"]),
+
+    _rule("SwitchgearBusEnergized",
+          _state_change("elec_status", "dead", "energized"),
+          "1.3.6.1.4.1.99999.3.6",
+          severity="informational", priority=100,
+          device_types=["switchgear"],
+          recovery=True, recovery_of="SwitchgearBusDead"),
+
+    _rule("SwitchgearBusFault",
+          _state_change("elec_status", None, "fault"),
+          "1.3.6.1.4.1.99999.3.7",
+          severity="critical", priority=210,
+          device_types=["switchgear"]),
+
+    _rule("SwitchgearBusFaultCleared",
+          _state_change("elec_status", "fault", "energized"),
+          "1.3.6.1.4.1.99999.3.8",
+          severity="informational", priority=100,
+          device_types=["switchgear"],
+          recovery=True, recovery_of="SwitchgearBusFault"),
+
+    # MCC — the mechanical bus. It carries the whole cooling plant, so its loading
+    # is the direct electrical shadow of the IT load: grow the fleet, the plant
+    # ramps, this climbs. An MCC main-tie-main is rated for both buses, hence the
+    # same 85/95 ladder as the switchgear.
+    _rule("MCCOverload",
+          _threshold("elec_load_pct", ">", 85.0),
+          "1.3.6.1.4.1.99999.3.10",
+          severity="major", priority=190,
+          device_types=["mcc"]),
+
+    _rule("MCCOverloadCritical",
+          _threshold("elec_load_pct", ">", 95.0),
+          "1.3.6.1.4.1.99999.3.11",
+          severity="critical", priority=195,
+          device_types=["mcc"]),
+
+    _rule("MCCOverloadCriticalCleared",
+          _threshold("elec_load_pct", "<", 92.0),
+          "1.3.6.1.4.1.99999.3.12",
+          severity="informational", priority=100,
+          device_types=["mcc"],
+          recovery=True, recovery_of="MCCOverloadCritical"),
+
+    _rule("MCCLoadNormal",
+          _threshold("elec_load_pct", "<", 80.0),
+          "1.3.6.1.4.1.99999.3.13",
+          severity="informational", priority=100,
+          device_types=["mcc"],
+          recovery=True, recovery_of="MCCOverload"),
+
+    # A dead MCC is a cooling outage in waiting — the chilled-water loop's thermal
+    # mass buys about a minute, then the room starts warming.
+    _rule("MCCBusDead",
+          _state_change("elec_status", "energized", "dead"),
+          "1.3.6.1.4.1.99999.3.14",
+          severity="critical", priority=205,
+          device_types=["mcc"]),
+
+    _rule("MCCBusEnergized",
+          _state_change("elec_status", "dead", "energized"),
+          "1.3.6.1.4.1.99999.3.15",
+          severity="informational", priority=100,
+          device_types=["mcc"],
+          recovery=True, recovery_of="MCCBusDead"),
+
+    # MPP — a hall's mechanical panelboard, feeding that hall's CRAH fans. Fan
+    # power is cube-law, so this board loads up far faster than linearly once a
+    # hall gets hot and its fans ramp: it is the earliest electrical warning that
+    # a hall's air side is working harder than it should.
+    _rule("MPPOverload",
+          _threshold("elec_load_pct", ">", 85.0),
+          "1.3.6.1.4.1.99999.3.20",
+          severity="major", priority=185,
+          device_types=["mpp"]),
+
+    _rule("MPPOverloadCritical",
+          _threshold("elec_load_pct", ">", 95.0),
+          "1.3.6.1.4.1.99999.3.21",
+          severity="critical", priority=190,
+          device_types=["mpp"]),
+
+    _rule("MPPOverloadCriticalCleared",
+          _threshold("elec_load_pct", "<", 92.0),
+          "1.3.6.1.4.1.99999.3.22",
+          severity="informational", priority=100,
+          device_types=["mpp"],
+          recovery=True, recovery_of="MPPOverloadCritical"),
+
+    _rule("MPPLoadNormal",
+          _threshold("elec_load_pct", "<", 80.0),
+          "1.3.6.1.4.1.99999.3.23",
+          severity="informational", priority=100,
+          device_types=["mpp"],
+          recovery=True, recovery_of="MPPOverload"),
+
+    _rule("MPPBusDead",
+          _state_change("elec_status", "energized", "dead"),
+          "1.3.6.1.4.1.99999.3.24",
+          severity="major", priority=195,
+          device_types=["mpp"]),
+
+    _rule("MPPBusEnergized",
+          _state_change("elec_status", "dead", "energized"),
+          "1.3.6.1.4.1.99999.3.25",
+          severity="informational", priority=100,
+          device_types=["mpp"],
+          recovery=True, recovery_of="MPPBusDead"),
+
+    # Generator. A standby set is rated for its standby duty and is NOT meant to
+    # run near it — 90 % is the alarm every genset controller (DSE, ComAp, Woodward)
+    # ships with, because beyond it the governor loses the headroom to absorb the
+    # next block load. Held for 30 s so the transient of an ATS block-load pickup
+    # does not annunciate — a genset legitimately overshoots on load acceptance.
+    _rule("GeneratorOverload",
+          _threshold("elec_load_pct", ">", 90.0, duration=30.0),
+          "1.3.6.1.4.1.99999.3.30",
+          severity="critical", priority=200,
+          device_types=["generator"]),
+
+    _rule("GeneratorLoadNormal",
+          _threshold("elec_load_pct", "<", 80.0),
+          "1.3.6.1.4.1.99999.3.31",
+          severity="informational", priority=100,
+          device_types=["generator"],
+          recovery=True, recovery_of="GeneratorOverload"),
+
+    _rule("GeneratorFailedToStart",
+          _state_change("elec_status", None, "fault"),
+          "1.3.6.1.4.1.99999.3.32",
+          severity="critical", priority=215,
+          device_types=["generator"]),
+
+    _rule("GeneratorRecovered",
+          _state_change("elec_status", "fault", "standby"),
+          "1.3.6.1.4.1.99999.3.33",
+          severity="informational", priority=100,
+          device_types=["generator"],
+          recovery=True, recovery_of="GeneratorFailedToStart"),
+
+    # ── Chiller-plant water loops (subtree .4) ───────────────────────────────
+    # The header instruments. These are the points a plant operator actually
+    # watches, and every one of them moves with IT load (see
+    # core/device_state_store._compute_chw_loop).
+
+    # CHILLED-WATER SUPPLY is the controlled variable — the plant modulates to hold
+    # ~7 °C. So supply off setpoint means the plant has run out of capacity, and it
+    # is the single most diagnostic high-load symptom in a chiller plant. Two
+    # degrees is the usual control deadband; six means the room is already losing.
+    _rule("CHWSupplyTempHigh",
+          _threshold("water_temp", ">", 9.0, duration=180.0),
+          "1.3.6.1.4.1.99999.4.1",
+          severity="major", priority=195,
+          device_types=["sensor"], model_names=_M_CHW_SUPPLY),
+
+    _rule("CHWSupplyTempCritical",
+          _threshold("water_temp", ">", 13.0, duration=120.0),
+          "1.3.6.1.4.1.99999.4.2",
+          severity="critical", priority=200,
+          device_types=["sensor"], model_names=_M_CHW_SUPPLY),
+
+    _rule("CHWSupplyTempCriticalCleared",
+          _threshold("water_temp", "<", 11.0),
+          "1.3.6.1.4.1.99999.4.3",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CHW_SUPPLY,
+          recovery=True, recovery_of="CHWSupplyTempCritical"),
+
+    _rule("CHWSupplyTempNormal",
+          _threshold("water_temp", "<", 8.0),
+          "1.3.6.1.4.1.99999.4.4",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CHW_SUPPLY,
+          recovery=True, recovery_of="CHWSupplyTempHigh"),
+
+    # CHILLED-WATER RETURN carries the room's heat back. It rides ~5 K above supply
+    # by design, so an alarm here means either the supply has drifted up (already
+    # alarmed above) or the loop ΔT has opened past design — the coils are pulling
+    # more heat than the loop was sized for.
+    _rule("CHWReturnTempHigh",
+          _threshold("water_temp", ">", 16.0, duration=180.0),
+          "1.3.6.1.4.1.99999.4.5",
+          severity="major", priority=185,
+          device_types=["sensor"], model_names=_M_CHW_RETURN),
+
+    _rule("CHWReturnTempNormal",
+          _threshold("water_temp", "<", 14.0),
+          "1.3.6.1.4.1.99999.4.6",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CHW_RETURN,
+          recovery=True, recovery_of="CHWReturnTempHigh"),
+
+    # CONDENSER-WATER SUPPLY is what the tower bank can hold: wet bulb plus the
+    # approach. It legitimately runs in the high 20s / low 30s on a hot, humid
+    # afternoon, so the alarm sits where the chillers start unloading on head
+    # pressure (see _COND_LIMIT_C in the store) rather than at any room-air number.
+    _rule("CWSupplyTempHigh",
+          _threshold("water_temp", ">", 36.0, duration=120.0),
+          "1.3.6.1.4.1.99999.4.10",
+          severity="major", priority=190,
+          device_types=["sensor"], model_names=_M_CW_SUPPLY),
+
+    _rule("CWSupplyTempCritical",
+          _threshold("water_temp", ">", 41.0, duration=60.0),
+          "1.3.6.1.4.1.99999.4.11",
+          severity="critical", priority=200,
+          device_types=["sensor"], model_names=_M_CW_SUPPLY),
+
+    _rule("CWSupplyTempCriticalCleared",
+          _threshold("water_temp", "<", 39.0),
+          "1.3.6.1.4.1.99999.4.12",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CW_SUPPLY,
+          recovery=True, recovery_of="CWSupplyTempCritical"),
+
+    _rule("CWSupplyTempNormal",
+          _threshold("water_temp", "<", 34.0),
+          "1.3.6.1.4.1.99999.4.13",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CW_SUPPLY,
+          recovery=True, recovery_of="CWSupplyTempHigh"),
+
+    # CONDENSER-WATER RETURN runs a design range (~5 K) above supply.
+    _rule("CWReturnTempHigh",
+          _threshold("water_temp", ">", 41.0, duration=120.0),
+          "1.3.6.1.4.1.99999.4.14",
+          severity="major", priority=185,
+          device_types=["sensor"], model_names=_M_CW_RETURN),
+
+    _rule("CWReturnTempNormal",
+          _threshold("water_temp", "<", 39.0),
+          "1.3.6.1.4.1.99999.4.15",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CW_RETURN,
+          recovery=True, recovery_of="CWReturnTempHigh"),
+
+    # TOWER BASIN is the cold well the condenser pumps draw from — the same water
+    # the CW supply header carries, so it alarms on the same limit.
+    _rule("CTBasinTempHigh",
+          _threshold("water_temp", ">", 36.0, duration=120.0),
+          "1.3.6.1.4.1.99999.4.20",
+          severity="major", priority=185,
+          device_types=["sensor"], model_names=_M_CT_BASIN),
+
+    _rule("CTBasinTempNormal",
+          _threshold("water_temp", "<", 34.0),
+          "1.3.6.1.4.1.99999.4.21",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CT_BASIN,
+          recovery=True, recovery_of="CTBasinTempHigh"),
+
+    # CHILLED-WATER FLOW. A magnetic flow meter on the main, and a LOW alarm only:
+    # high flow is not a fault, it is a busy plant.
+    #
+    # Deliberately NOT a percent-of-design alarm. Loop flow legitimately falls to
+    # the minimum-flow bypass whenever the plant is lightly loaded, so any threshold
+    # set proportional to load would cry wolf on a quiet night — and one set to an
+    # absolute design fraction would go stale the moment the fleet grows. What this
+    # models is the evaporator FLOW SWITCH every chiller is interlocked to: it trips
+    # on LOSS of flow, near zero, which is unambiguous at any plant size. Loss of
+    # flow is a fault (dead pump, closed valve, air-bound loop), not a load symptom
+    # — the load symptom is CHW supply drifting off setpoint, alarmed above.
+    _rule("CHWFlowLoss",
+          _threshold("water_flow_lps", "<", 1.0, duration=60.0),
+          "1.3.6.1.4.1.99999.4.30",
+          severity="critical", priority=200,
+          device_types=["sensor"], model_names=_M_CHW_FLOW),
+
+    _rule("CHWFlowRestored",
+          _threshold("water_flow_lps", ">", 2.0),
+          "1.3.6.1.4.1.99999.4.31",
+          severity="informational", priority=100,
+          device_types=["sensor"], model_names=_M_CHW_FLOW,
+          recovery=True, recovery_of="CHWFlowLoss"),
 ]
 
 

@@ -36,6 +36,7 @@ ROOM = "Hall A"
 CHILLER_W = 120_000      # nameplate electrical, per unit
 PUMP_W = 15_000
 TOWER_W = 45_000
+CRAH_W = 11_000
 SERVER_W = 700
 
 
@@ -74,6 +75,12 @@ class PlantFixture:
         self.store._compute_cond_loop()
         self.store._compute_chw_penalty()
         self.store._compute_power_flow()
+        self.store._compute_chw_loop()
+
+    def auto_points(self, n):
+        """Synthetic BACnet points the store publishes for device *n* this tick."""
+        ip = self.store._plant_ip_by_name.get(n, "")
+        return self.store._plant_auto_points.get(ip, {})
 
     def stage_on(self, dc=DC):
         return self.store._plant_stage_on.get(dc)
@@ -88,11 +95,17 @@ class PlantFixture:
         return self.store._plant_power_by_name.get(n, 0.0)
 
 
-def build_plant(tmp_path, trains=3, servers=40, installed_modules=6):
+def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
+                probes=False):
     """Assemble a one-DC plant and return a PlantFixture.
 
     `installed_modules` is forced rather than derived, so a test can put the plant
     at a chosen duty without having to conjure thousands of servers.
+
+    `crahs` defaults to 0 — the air side is only needed by the tests that exercise
+    it, and adding CRAHs changes the plant's nameplate sum (and therefore its duty
+    fraction), which the staging/rotation tests are calibrated against. `probes`
+    likewise adds the plant's header instruments only where they are under test.
     """
     from core.device_manager import DeviceManager
     from core.device_state_store import DeviceStateStore
@@ -113,6 +126,25 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6):
     spare = trains + 1
     made[f"CHWP{spare}"] = _device(dm, f"CHWP{spare}-{DC}-CP", "pump",
                                    f"10.0.2.{spare}", PUMP_W)
+
+    if probes:
+        # Plant header instruments. Named with the role code leading, and carrying
+        # the "Plant …" model names, exactly as the shipped topology does — the
+        # store reads the role off both, so a fixture that shortcut either would
+        # test nothing about the dispatch.
+        for j, (code, model) in enumerate((
+                ("CHWS", "Plant CHW Supply Temp"),
+                ("CHWR", "Plant CHW Return Temp"),
+                ("FLOW", "Plant CHW Flow Meter"),
+                ("CWS", "Plant CW Supply Temp"),
+                ("CWR", "Plant CW Return Temp"),
+                ("CTB", "Plant CT Basin Temp")), start=1):
+            made[code] = _device(dm, f"{code}-{DC}-CP", "sensor", f"10.0.6.{j}", 0,
+                                 model=model, room="Central Plant")
+
+    for i in range(1, crahs + 1):
+        made[f"CRAH{i}"] = _device(dm, f"CRAH{i}-{DC}-HA-R1-01", "crah",
+                                   f"10.0.5.{i}", CRAH_W)
 
     for i in range(1, servers + 1):
         made[f"SRV{i}"] = _device(dm, f"SRV{i:02d}-{DC}-HA-R1-01", "server",

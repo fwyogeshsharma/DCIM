@@ -47,7 +47,18 @@ PLANT_SPEC: Dict[str, dict] = {
             ("Cond_Pressure",     _KPA,900.0,40.0),
             ("Run_Hours",         _H, 25000.0,0.0),
         ],
-        "bi": ["Chiller_Running", "Alarm_HighPressure", "Alarm_LowEvapTemp", "Alarm_FlowLoss"],
+        # Alarm_HighCHWSupply is appended LAST on purpose: BI instances are assigned
+        # in list order, so adding to the end leaves every existing point's instance
+        # number untouched.
+        #
+        # It is the plant's capacity alarm — chilled-water supply drifting off its
+        # setpoint means the machine is at full compressor and still losing. Every
+        # chiller controller carries the equivalent (Trane "Evaporator Water Temp
+        # High", York "Leaving Chilled Liquid Temp High"). Raised from the loop model
+        # in device_state_store._compute_chw_loop rather than here, because the
+        # condition is a property of the LOOP, not of one machine's random walk.
+        "bi": ["Chiller_Running", "Alarm_HighPressure", "Alarm_LowEvapTemp",
+               "Alarm_FlowLoss", "Alarm_HighCHWSupply"],
         "on": {"Chiller_Running"},
     },
     "pump": {
@@ -126,7 +137,17 @@ PLANT_SPEC: Dict[str, dict] = {
             ("Fan_Power",         _KW,  None, 0.15),
             ("Run_Hours",         _H, 18000.0, 0.0),
         ],
-        "bi": ["Unit_Running", "Alarm_HighTemp", "Alarm_AirflowLoss", "Filter_Dirty"],
+        # Alarm_HighReturnAir is appended LAST so existing BI instances don't move.
+        #
+        # It is deliberately a SEPARATE point from Alarm_HighTemp, exactly as Liebert
+        # and Stulz units carry separate "High Return Air" and "High Supply/Discharge
+        # Air" alarms. They mean opposite things: a high DISCHARGE means the unit has
+        # lost its ability to cool (its own fault), whereas a high RETURN means the
+        # unit is fine and holding setpoint — the hot aisle feeding it is too hot.
+        # Only the second one is a load symptom, and it is raised from the room model
+        # in device_state_store._compute_chw_loop.
+        "bi": ["Unit_Running", "Alarm_HighTemp", "Alarm_AirflowLoss", "Filter_Dirty",
+               "Alarm_HighReturnAir"],
         "on": {"Unit_Running"},
     },
 }
@@ -433,6 +454,15 @@ class PlantTelemetryEngine:
                 elif a == "Alarm_FlowLoss":           # evap flow lost → chiller sheds
                     mul("Cooling_Capacity", 1 - 0.70 * s); mul("Compressor_Load", 1 - 0.50 * s)
                     mul("Active_Power", 1 - 0.50 * s); add("Cond_Supply_Temp", 3.0 * s)
+                elif a == "Alarm_HighCHWSupply":      # at full compressor, still losing
+                    # Only the leaving-water temperatures move here. The machine is
+                    # not faulted, it is outmatched — and when the condition is real
+                    # its draw, COP and compressor load already come from the live
+                    # power model, which would only be contradicted by nudging them.
+                    # This branch exists for the OPERATOR-FORCED case, where there is
+                    # no real shortfall behind the alarm and the leaving water has to
+                    # move for the alarm to mean anything.
+                    add("CHW_Supply_Temp", 3.0 * s); add("CHW_Return_Temp", 3.0 * s)
             elif t == "pump":
                 if a == "Alarm_Fault":                # motor/pump failing
                     for k, f in (("Speed", .7), ("Flow", .7), ("Discharge_Pressure", .6),
@@ -462,6 +492,14 @@ class PlantTelemetryEngine:
                 elif a == "Alarm_AirflowLoss":        # fan/filter failure
                     mul("Airflow", 1 - 0.60 * s); mul("Fan_Speed", 1 - 0.50 * s)
                     add("Supply_Air_Temp", 4.0 * s); add("Return_Air_Temp", 6.0 * s)
+                elif a == "Alarm_HighReturnAir":      # hot aisle, healthy unit
+                    # Return climbs and the coil works harder to hold discharge —
+                    # so the CHW valve opens and delivered capacity rises. Supply
+                    # air deliberately does NOT move: the unit is still on setpoint,
+                    # which is the whole distinction from Alarm_HighTemp.
+                    add("Return_Air_Temp", 8.0 * s)
+                    add("CHW_Valve", 25.0 * s, 100.0)
+                    add("Cooling_Capacity", 20.0 * s, 100.0)
                 elif a == "Filter_Dirty":             # clogged filter → fan ramps to hold flow
                     # Keep the 0.20 airflow derate in step with _CRAH_FILTER_DERATE
                     # in core/device_state_store.py, which converts it into lost

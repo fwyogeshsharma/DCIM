@@ -28,6 +28,7 @@ const PLANT_FLAG_GROUPS: { gid: string; title: string; points: [string, string][
     ['Airflow', 'Airflow'], ['Fan_Power', 'Fan Power'], ['Run_Hours', 'Run Hours'],
     ['Unit_Running', 'Unit Running'], ['Alarm_HighTemp', 'Alarm: High Temp'],
     ['Alarm_AirflowLoss', 'Alarm: Airflow Loss'], ['Filter_Dirty', 'Filter Dirty'],
+    ['Alarm_HighReturnAir', 'Alarm: High Return Air'],
   ]},
   { gid: 'chiller', title: 'Chiller', points: [
     ['CHW_Supply_Temp', 'CHW Supply Temp'], ['CHW_Return_Temp', 'CHW Return Temp'],
@@ -38,7 +39,7 @@ const PLANT_FLAG_GROUPS: { gid: string; title: string; points: [string, string][
     ['Evap_Pressure', 'Evap Pressure'], ['Cond_Pressure', 'Cond Pressure'],
     ['Run_Hours', 'Run Hours'], ['Chiller_Running', 'Chiller Running'],
     ['Alarm_HighPressure', 'Alarm: High Pressure'], ['Alarm_LowEvapTemp', 'Alarm: Low Evap Temp'],
-    ['Alarm_FlowLoss', 'Alarm: Flow Loss'],
+    ['Alarm_FlowLoss', 'Alarm: Flow Loss'], ['Alarm_HighCHWSupply', 'Alarm: High CHW Supply'],
   ]},
   { gid: 'pump', title: 'Pump', points: [
     ['Speed', 'Speed'], ['Flow', 'Flow'], ['Discharge_Pressure', 'Discharge Pressure'],
@@ -197,6 +198,7 @@ const PLANT_LIMIT_SPEC: Record<string, { title: string; num: PNum[]; bin: [strin
   ], bin: [
     ['Unit_Running', 'Unit Running'], ['Alarm_HighTemp', 'Alarm: High Temp'],
     ['Alarm_AirflowLoss', 'Alarm: Airflow Loss'], ['Filter_Dirty', 'Filter Dirty'],
+    ['Alarm_HighReturnAir', 'Alarm: High Return Air'],
   ]},
   chiller: { title: 'Chiller', num: [
     ['CHW_Supply_Temp', 'CHW Supply Temp', '°C', 0, 20, 0.5, 1],
@@ -215,6 +217,7 @@ const PLANT_LIMIT_SPEC: Record<string, { title: string; num: PNum[]; bin: [strin
   ], bin: [
     ['Chiller_Running', 'Chiller Running'], ['Alarm_HighPressure', 'Alarm: High Pressure'],
     ['Alarm_LowEvapTemp', 'Alarm: Low Evap Temp'], ['Alarm_FlowLoss', 'Alarm: Flow Loss'],
+    ['Alarm_HighCHWSupply', 'Alarm: High CHW Supply'],
   ]},
   pump: { title: 'Pump', num: [
     ['Speed', 'Speed', '%', 0, 100, 1, 0],

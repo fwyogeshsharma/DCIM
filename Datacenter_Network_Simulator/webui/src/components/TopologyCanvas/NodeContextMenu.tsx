@@ -563,12 +563,19 @@ const PLANT_EVENTS: Record<string, PlantEvent[]> = {
     { label: 'High Supply Temp', point: 'Alarm_HighTemp',    value: 1, kind: 'alarm' },
     { label: 'Airflow Loss',     point: 'Alarm_AirflowLoss', value: 1, kind: 'alarm' },
     { label: 'Filter Clogged',   point: 'Filter_Dirty',      value: 1, kind: 'alarm' },
+    // Opposite meaning to High Supply Temp: the unit is holding setpoint and the
+    // hot aisle feeding it is too hot. Normally raised by the room model itself
+    // as load climbs; forcing it here exercises the same annunciation.
+    { label: 'High Return Air',  point: 'Alarm_HighReturnAir', value: 1, kind: 'alarm' },
     { label: 'Unit Trip',        point: 'Unit_Running',      value: 0, kind: 'trip'  },
   ],
   chiller: [
     { label: 'High Condenser Pressure', point: 'Alarm_HighPressure', value: 1, kind: 'alarm' },
     { label: 'Low Evap Temp',           point: 'Alarm_LowEvapTemp',  value: 1, kind: 'alarm' },
     { label: 'Flow Loss',               point: 'Alarm_FlowLoss',     value: 1, kind: 'alarm' },
+    // Capacity, not health: at full compressor and still losing the setpoint.
+    // The loop model raises this on its own once the fleet outgrows the plant.
+    { label: 'High CHW Supply',         point: 'Alarm_HighCHWSupply', value: 1, kind: 'alarm' },
     { label: 'Compressor Trip',         point: 'Chiller_Running',    value: 0, kind: 'trip'  },
   ],
   pump: [
