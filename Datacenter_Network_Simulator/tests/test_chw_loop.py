@@ -318,3 +318,39 @@ def test_crah_high_return_air_annunciates(tmp_path, plant_cache):
     assert pts["Return_Air_Temp"] >= p.store._CRAH_RETURN_ALARM_C
     assert pts["Alarm_HighReturnAir"] == 1.0
     assert "Alarm_HighTemp" not in pts
+
+
+def test_pump_head_and_speed_come_from_one_number(tmp_path, plant_cache):
+    """Head and Speed must be derived from the SAME value, not from two copies of
+    the draw that are smoothed differently.
+
+    They were both "from power", but the BACnet engine derived Speed from an
+    EMA-smoothed copy while the loop model derived head from the raw target. At
+    steady state they agreed, so the inconsistency only appeared during a load
+    transient — and in one captured run head FELL while speed ROSE, which is
+    impossible for a centrifugal pump. Publishing both from one number removes the
+    class of bug rather than just the instance."""
+    from core.cooling_model import pump_head_frac
+
+    p = build_plant(tmp_path, servers=400, installed_modules=6)
+    _settle(p, 6)
+    tr = p.store._plant_trains_run[DC][0]
+    for name in (tr['chwp'], tr['cwp']):
+        pts = p.auto_points(name)
+        implied = p.store._PUMP_DIFF_KPA * pump_head_frac(pts['Speed'] / 100.0)
+        assert pts['Diff_Pressure'] == pytest.approx(implied, abs=0.2), name
+        # And the drive frequency has to match the same speed.
+        assert pts['VFD_Frequency'] == pytest.approx(pts['Speed'] / 2.0, abs=0.2), name
+
+
+def test_pump_head_rises_monotonically_with_speed(tmp_path, plant_cache):
+    """Whatever the load does, a pump turning faster must develop more head."""
+    pts = []
+    for n in (40, 200, 600):
+        p = build_plant(tmp_path / f"n{n}", servers=n, installed_modules=6)
+        _settle(p, 6)
+        tr = p.store._plant_trains_run[DC][0]
+        a = p.auto_points(tr['chwp'])
+        pts.append((a['Speed'], a['Diff_Pressure']))
+    pts.sort()
+    assert all(b[1] >= a[1] for a, b in zip(pts, pts[1:])), pts

@@ -3711,6 +3711,15 @@ class DeviceStateStore:
                         "Diff_Pressure": round(diff, 1),
                         "Suction_Pressure": round(self._PUMP_SUCTION_KPA, 1),
                         "Discharge_Pressure": round(self._PUMP_SUCTION_KPA + diff, 1),
+                        # Publish SPEED from the same number that produced the head,
+                        # rather than leaving the BACnet engine to derive its own from
+                        # an EMA-smoothed copy of the draw. Both were "from power", but
+                        # one was smoothed and one was not, so during a load transient
+                        # the gauge set stopped adding up — head implying one speed
+                        # while the Speed point read another, and at one capture head
+                        # even fell while speed rose. One source of truth removes that.
+                        "Speed": round(spd * 100.0, 1),
+                        "VFD_Frequency": round(spd * 50.0, 1),
                     })
                     # Deliberately NO capacity alarm on the pump. It is tempting to
                     # raise Alarm_LowFlow when a pump is pinned at 100 % and the

@@ -290,7 +290,26 @@ class EV2TelemetryEngine:
         Returns a flat dict of all object names → new present values.
         Boolean alarm values are returned as 0.0 / 1.0.
         """
-        if live_kw is not None and self._rated_kw_peak > 0:
+        live_circuits = circuit_kw is not None
+        # Panel LOAD FRACTION — the basis for the panel's power-quality curves.
+        #
+        # It must be measured against the panel's BREAKER capacity, not against the
+        # downstream nameplate that happened to exist when this meter was
+        # commissioned. _rated_kw_peak is frozen at construction, so on a growing
+        # fleet the live load overruns it within a few racks and the fraction pins
+        # at the 1.25 clamp — leaving %THD-i stuck at its full-load floor no matter
+        # how lightly the panel is really loaded. That silently disabled the whole
+        # load-vs-distortion behaviour this meter exists to show.
+        #
+        # With a live branch map, the honest denominator is the capacity of the
+        # branches actually clamped (each on its 32 A breaker) — the same basis the
+        # per-circuit curves already use, so panel and branches finally agree.
+        if live_circuits:
+            _act = min(len(circuit_kw), self._circuits)
+            _cap = max(1e-6, _act * self._branch_rated_kw)
+            _live = sum(x for x in circuit_kw[:_act] if isinstance(x, (int, float)))
+            mul = max(0.0, min(1.25, _live / _cap))
+        elif live_kw is not None and self._rated_kw_peak > 0:
             mul = max(0.0, min(1.25, live_kw / self._rated_kw_peak))
         else:
             mul = self._diurnal()
@@ -299,7 +318,6 @@ class EV2TelemetryEngine:
         self._step_thd(mul)
         self._step_pf()
 
-        live_circuits = circuit_kw is not None
         if live_circuits:
             # The live branch map is the authority on how many CTs are clamped.
             # The fleet can add/remove downstream PDUs long after this engine was
