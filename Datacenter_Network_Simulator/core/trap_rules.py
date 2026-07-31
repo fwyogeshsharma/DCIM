@@ -1319,6 +1319,69 @@ DEFAULT_RULES: List[Rule] = [
           severity="informational", priority=100,
           device_types=["sensor"], model_names=_M_CHW_FLOW,
           recovery=True, recovery_of="CHWFlowLoss"),
+
+    # ── COOLING-PLANT MACHINES ────────────────────────────────────────────────
+    # Chillers, towers, pumps, valves and CRAHs publish live SNMP OIDs but carried
+    # no trap rules at all: sensors had 35, PDUs 30, UPSes 28, and every plant
+    # device zero. A fault campaign that latched three chillers out on high head
+    # pressure produced no chiller trap, and stopping seven CRAHs fired nothing.
+    #
+    # BACnet COV is the realistic PRIMARY path for plant alarms and it already
+    # works — present values change and notifications dispatch. This is the SNMP
+    # plane, which the simulator otherwise populates for these same machines, and
+    # which is what an NMS (rather than a BMS) would be watching.
+    #
+    # Written against plant_status, the machine's worst active condition, because
+    # the underlying health is a set of BACnet binaries and a trap needs one
+    # answer. Mirrors core.device_state_store._PLANT_STATUS_ORDER.
+    *[
+        r
+        for name, status, oid_hi, oid_lo, sev, dtypes in (
+            # Chiller safeties. A latched high-pressure trip is the most serious
+            # thing a chiller can report: it is off, and it stays off until someone
+            # resets it.
+            ("ChillerHighPressure", "hp_trip",      40, 41, "critical", ["chiller"]),
+            # Evaporator flow switch — the interlock that stops the machine before
+            # a frozen barrel splits its tubes.
+            ("ChillerFlowLoss",     "flow_loss",    42, 43, "critical",
+             ["chiller", "pump"]),
+            ("ChillerLowEvapTemp",  "low_evap_temp", 44, 45, "major", ["chiller"]),
+            # Tower mechanicals. Vibration is the classic bearing/imbalance fault;
+            # a low basin risks losing pump suction entirely.
+            ("TowerHighVibration",  "vibration",    46, 47, "major",
+             ["cooling_tower"]),
+            ("TowerLowBasin",       "low_basin",    48, 49, "major",
+             ["cooling_tower"]),
+            # Pumps. A unit fault and a low-flow alarm mean different things — a
+            # dead motor versus a running pump that is not moving water — so they
+            # are annunciated apart.
+            ("PumpFault",           "unit_fault",   50, 51, "major", ["pump"]),
+            ("PumpLowFlow",         "low_flow",     52, 53, "major", ["pump"]),
+            # Header valve actuator: not staged and not redundant, so it throttles
+            # every train downstream of it at once.
+            ("ValveActuatorFault",  "actuator_fault", 54, 55, "critical", ["valve"]),
+            # CRAH. Airflow loss is a total loss for that unit even though its coil
+            # is still cold — what the room needs is MOVED air. A dirty filter is
+            # partial: still cold, about a fifth less of it.
+            ("CRAHAirflowLoss",     "airflow_loss", 56, 57, "major", ["crah"]),
+            ("CRAHHighTemp",        "high_temp",    58, 59, "major", ["crah", "cdu"]),
+            ("CRAHFilterDirty",     "filter_dirty", 60, 61, "minor", ["crah"]),
+            # Any commanded machine reporting stopped. Distinct from an alarm: an
+            # alarm fails over in one tick, a silent stop is what the run-status
+            # proof timer exists to catch.
+            ("PlantUnitStopped",    "stopped",      62, 63, "major",
+             ["chiller", "cooling_tower", "pump", "valve", "crah", "cdu"]),
+        )
+        for r in (
+            _rule(name, _state_change("plant_status", None, status),
+                  f"1.3.6.1.4.1.99999.4.{oid_hi}",
+                  severity=sev, priority=195, device_types=dtypes),
+            _rule(f"{name}Cleared", _state_change("plant_status", status, "ok"),
+                  f"1.3.6.1.4.1.99999.4.{oid_lo}",
+                  severity="informational", priority=100, device_types=dtypes,
+                  recovery=True, recovery_of=name),
+        )
+    ],
 ]
 
 

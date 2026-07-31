@@ -571,6 +571,8 @@ class RuleEngine:
             # Facility electrical gear (switchgear / MCC / MPP / generator)
             "elec_load_pct":         fact.elec_load_pct,
             "elec_status":           fact.elec_status,
+            # Cooling-plant machine health (BACnet binaries → SNMP plane)
+            "plant_status":          fact.plant_status,
         }
 
     # ── State helpers ─────────────────────────────────────────────────────────

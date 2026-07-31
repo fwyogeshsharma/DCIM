@@ -74,7 +74,14 @@ _DTC_IDLE_FACTOR = 0.60
 
 # Plant running-status points: a value of 0 means the unit is stopped, which for
 # cooling gear is as much a loss of cooling as an alarm — see _is_faulted().
-_RUNNING_POINTS = frozenset({"Chiller_Running", "Run_Status", "Fan_Status", "Unit_Running"})
+#
+# One entry per device class in core.bacnet_plant_generator, whose "on" set marks
+# the binary that reads 1 on a healthy unit. Status_Modulating is the valve's,
+# and it was missing here, which made a SHUT header valve a complete no-op — the
+# one genuine single point of failure in a hydronic plant registering as nothing
+# at all. If a device class gains a running binary there, it belongs here too.
+_RUNNING_POINTS = frozenset({"Chiller_Running", "Run_Status", "Fan_Status",
+                             "Unit_Running", "Status_Modulating"})
 
 # CAPACITY alarms — the unit is healthy, it is simply outmatched by the load.
 # They must NOT be read as lost cooling capacity, for two reasons:
@@ -399,6 +406,28 @@ class DeviceStateStore:
         # large so the first stage change of a run is free; a compressor's minimum-off
         # then gates every restart after it (core/cooling_model.stage_modules).
         self._plant_stage_since: Dict[str, tuple] = {}   # DC → (since_up_s, since_down_s)
+        # RUN-STATUS PROOF. Seconds a unit has been COMMANDED ON while its running
+        # binary still reads 0. A machine that dies quietly raises no alarm, so the
+        # lead/lag ranking — which judges health by alarms — would leave it as lead
+        # forever while the cooling-loss model counted its capacity as gone. Every
+        # real chiller sequence (Trane Tracer, JCI Metasys, ASHRAE Guideline 36)
+        # closes that gap with a failure-to-start timer, and this is it. Keyed by
+        # device name; only units in a train the BMS has staged ON accumulate, so a
+        # standby stopped on purpose never times out.
+        self._run_proof_s: Dict[str, float] = {}
+        # Evaporator flow: surviving chilled-water pumping as a fraction of what the
+        # running trains require (0..1), the dwell timer behind the flow switch, and
+        # the chillers it has shed. See _FLOW_TRIP_FRAC.
+        self._chw_pump_frac: Dict[str, float] = {}
+        self._chw_flow_lost_s: Dict[str, float] = {}
+        self._chw_flow_interlock: set = set()
+        # DC → CRAH discharge air (setpoint + CHW penalty). Published on the units
+        # and read back by _room_supply_temp, so the penalty is counted once.
+        self._supply_air_c: Dict[str, float] = {}
+        # IT thermal protection: servers currently throttled (name → load factor)
+        # and those the platform has tripped off. See _apply_thermal_protection.
+        self._throttled: Dict[str, float] = {}
+        self._thermal_shutdown: set = set()
         # Tower bank (NOT staged with the trains — every healthy cell runs slow):
         # DC → (cells the load needs, cells actually turning).
         self._tower_cells: Dict[str, tuple] = {}
@@ -409,6 +438,10 @@ class DeviceStateStore:
         # never truly runs out until the cap; recomputed lazily from the live cap.
         self._plant_installed_mods: Dict[str, int] = {}
         self._cool_model_w: float = 0.0  # staged-model cooling electrical (all DCs), for PUE
+        # Same figure kept per DC, because the delivered-capacity scaling that makes
+        # it honest during a failure is per DC (_cool_loss_frac). See
+        # get_power_summary.
+        self._cool_model_w_by_dc: Dict[str, float] = {}
         self._facility_w: float = 0.0   # whole-DC draw (IT + cooling) for PUE
         self._it_w: float = 0.0         # IT-only draw for PUE denominator
 
@@ -989,6 +1022,7 @@ class DeviceStateStore:
         if self._cool_ctx is not None:
             return self._cool_ctx
         crah_by_room: Dict[tuple, list] = {}
+        cdu_by_dc: Dict[str, list] = {}
         plant_by_dc: Dict[str, Dict[str, list]] = {}
         city_by_dc: Dict[str, str] = {}
         np_kw_by_name: Dict[str, float] = {}
@@ -1007,6 +1041,12 @@ class DeviceStateStore:
                     np_kw_by_name[d.name] = float(getattr(d, "power_draw_w", 0) or 0) / 1000.0
                 if dt == DeviceType.CRAH:
                     crah_by_room.setdefault((d.datacenter, d.room), []).append(d.name)
+                elif dt == DeviceType.CDU:
+                    # Kept OUT of plant_by_dc on purpose: a CDU is not a cooling
+                    # train member and must not enter the train/loss arithmetic. It
+                    # is a heat exchanger hanging off the chilled-water loop, so it
+                    # needs its own per-DC list for the loop model to publish it.
+                    cdu_by_dc.setdefault(d.datacenter, []).append(d.name)
                 elif dt in (DeviceType.CHILLER, DeviceType.PUMP,
                             DeviceType.COOLING_TOWER, DeviceType.VALVE):
                     plant_by_dc.setdefault(d.datacenter, {}).setdefault(dt.value, []).append(d.name)
@@ -1029,6 +1069,7 @@ class DeviceStateStore:
                 cdu_by_server[s] = cdu_name
         self._cool_ctx = {"crah_by_room": crah_by_room,
                           "cdu_by_server": cdu_by_server,
+                          "cdu_by_dc": cdu_by_dc,
                           "plant_by_dc": plant_by_dc,
                           "trains_by_dc": trains_by_dc,
                           "spare_chwp": spare_chwp,
@@ -1421,16 +1462,45 @@ class DeviceStateStore:
         API-thread read never forces a rebuild racing the tick thread."""
         return {ip: list(slots) for ip, slots in self._ev2_circuit_order.items()}
 
+    # Chassis fan power. Fans are a few percent of a server's draw at a normal
+    # intake and a real cost at a hot one, because fan power is CUBE-LAW in speed:
+    # holding the same die temperature against warmer air means turning faster, and
+    # the watts go up with the cube of it. Vendors publish 5–15 % of platform power
+    # at elevated inlet, which is what this reproduces at the far end.
+    _FAN_BASE_FRAC = 0.04    # fraction of nameplate at the low speed a cool intake needs
+    _FAN_FULL_FRAC = 0.16    # fraction at full speed
+    _FAN_RAMP_LO_C = 25.0    # below this the fans sit at their floor
+    _FAN_RAMP_HI_C = 40.0    # by this the drive is at 100 %
+
+    def _fan_speed_frac(self, device: "Device") -> float:
+        """Fan drive speed 0..1 from intake temperature."""
+        inlet = float(getattr(device, "inlet_temp", None) or _SUPPLY_SETPOINT_C)
+        span = self._FAN_RAMP_HI_C - self._FAN_RAMP_LO_C
+        return max(0.0, min(1.0, (inlet - self._FAN_RAMP_LO_C) / span))
+
     def _server_live_watts(self, device: "Device") -> float:
         """Per-leaf live draw: nameplate scaled by CPU load (idle ~55 %, full
-        100 %) — the same curve Redfish _live_watts reports. 0 if powered off."""
+        100 %) — the same curve Redfish _live_watts reports — PLUS chassis fan
+        power, which rises with intake temperature. 0 if powered off.
+
+        The fan term is what makes a cooling failure reach the power chain. Without
+        it server draw was a function of CPU load alone, so the campaign could push
+        fans +925 rpm at a 42.7 °C inlet and watch IT kW, PDU kW and UPS load stay
+        flat within noise across all 38 scenarios. On a real floor a cooling event
+        is visible on the UPS, and that is the mechanism.
+        """
         if getattr(device, "power_state", "On") == "Off":
             return 0.0
         nominal = float(getattr(device, "power_draw_w", 0) or 0)
         if nominal <= 0:
             return 0.0
         load = max(0.0, min(1.0, getattr(device, "cpu_usage", 0) / 100.0))
-        return nominal * (0.55 + 0.45 * load)
+        # Compute draw, with the base fan allowance already inside the published
+        # nameplate curve — so only the RISE above that floor is added on top.
+        compute_w = nominal * (0.55 + 0.45 * load)
+        spd = self._fan_speed_frac(device)
+        fan_w = nominal * (self._FAN_FULL_FRAC - self._FAN_BASE_FRAC) * (spd ** 3)
+        return compute_w + fan_w
 
     def _native_power_points(self) -> Optional[dict]:
         """Facility / IT / mechanical kW read off the electrical gear's OWN meters.
@@ -1540,8 +1610,20 @@ class DeviceStateStore:
         # latter is capped by the small curated device nameplates, which understates
         # cooling and collapses PUE toward 1.0 as the fleet outgrows the curated
         # plant. Take the larger so a genuinely higher metered draw still wins.
-        cool_model_kw = max(0.0, self._cool_model_w) / 1000.0
-        cool_for_pue = max(cool_m, cool_model_kw)
+        # The model term is scaled by DELIVERED capacity, per DC. It answers "what
+        # would a healthy plant draw for this load" — a demand figure — so on its own
+        # it cannot see a plant that has stopped running. During a total loss of
+        # chilled water it held PUE flat while the branch meters showed the
+        # mechanical panel fall by a third; a DCIM integrating meters and one reading
+        # this headline disagreed by ~15 % during exactly the failure the simulator
+        # exists to rehearse.
+        #
+        # Scaled, NOT replaced by the meters. The max() below is deliberate: metered
+        # plant draw is capped by the small curated device nameplates and collapses
+        # PUE toward 1.0 as the fleet outgrows the plant. Dropping it reintroduces
+        # that bug. Scaling keeps a healthy plant on today's behaviour and lets the
+        # meters through once the plant is genuinely short.
+        cool_for_pue = max(cool_m, self.cooling_model_kw())
         sub_fac = it_m + cool_for_pue
         fac_m = max(sub_fac, main_m)
         # A trustworthy facility reading must be ≥ IT (the facility carries IT +
@@ -2679,6 +2761,7 @@ class DeviceStateStore:
             plant_loadfrac: Dict[str, float] = {}   # {unit_name: its DC's plant duty}
             self._plant_standby_names = set()
             _cool_model_w = 0.0
+            _cool_model_by_dc: Dict[str, float] = {}
             # Per-room mean server inlet — the air a CRAH's return sensor sees.
             # Kept for _compute_chw_loop so the return-air point tracks the hall
             # instead of walking on a clock.
@@ -2774,6 +2857,7 @@ class DeviceStateStore:
                 total_w = cooling_electrical_w(itl, itd, dc_city.get(_dc),
                                                cond_factor=_cond_f)
                 _cool_model_w += total_w
+                _cool_model_by_dc[_dc] = _cool_model_by_dc.get(_dc, 0.0) + total_w
                 # ── TRAIN STAGING ────────────────────────────────────────────────
                 # The plant stages whole COOLING TRAINS (chiller + its evaporator
                 # pump + its condenser pump), never individual devices: a chiller with
@@ -2797,6 +2881,13 @@ class DeviceStateStore:
                 _prev_lead = {tr.get("chiller")
                               for tr in self._plant_trains_run.get(_dc, [])
                               if tr.get("chiller")}
+                # RUN-STATUS PROOF, accrued against last tick's COMMANDED set. Only
+                # units the BMS actually asked to run can fail to start, so the timer
+                # is driven from the previous run set rather than from every unit in
+                # the plant — a standby is stopped on purpose and must never time out.
+                self._accrue_run_proof(
+                    m for tr in self._plant_trains_run.get(_dc, [])
+                    for m in tr["members"])
                 self._plant_trains_run[_dc] = []
                 if _trains:
                     _n_run = max(1, min(len(_trains),
@@ -2813,8 +2904,17 @@ class DeviceStateStore:
                         # Using _is_faulted here (which counts "stopped" as a fault)
                         # marked every standby train bad, so no idle train could ever be
                         # promoted and the lead never rotated.
+                        # A silent stop is a failure too. Without the proof timer the
+                        # only way to lose a machine was for it to complain: an ALARMED
+                        # chiller was replaced within a tick and cost nothing, while the
+                        # same machine merely STOPPED stayed lead and took the plant
+                        # down — because the cooling-loss model counts a stopped unit as
+                        # gone while this ranking judged it healthy. Two predicates, two
+                        # different answers, and the run-status bit fell between them.
                         bad = any(m not in self._plant_unpowered_names
-                                  and (self._is_alarmed(m) or m in self._chiller_hp_lockout)
+                                  and (self._is_alarmed(m)
+                                       or m in self._chiller_hp_lockout
+                                       or self._run_proof_failed(m))
                                   for m in tr["members"])
                         _ch = tr.get("chiller")
                         # LEAST-SWITCHING: a train already running outranks an equal idle
@@ -2989,6 +3089,7 @@ class DeviceStateStore:
             self._plant_cop_by_name = plant_cop
             self._plant_loadfrac_by_name = plant_loadfrac
             self._cool_model_w = _cool_model_w
+            self._cool_model_w_by_dc = _cool_model_by_dc
         except Exception:
             log.exception("[StateStore] power flow error")
         self._through_live = through
@@ -3057,6 +3158,69 @@ class DeviceStateStore:
         return False
 
     @staticmethod
+    def _run_status_off(name: str) -> bool:
+        """True if this unit publishes a running-status point and it reads 0.
+
+        Absence is NOT a stop. A device whose BACnet points have not been seen yet
+        — or a class that publishes no running binary at all — must read as
+        'no evidence', or every such unit would fail its start proof on the first
+        tick and the plant would stage itself to nothing on boot.
+        """
+        pv = _plant_state_cache.get(name)
+        if not pv:
+            return False
+        return any(k in _RUNNING_POINTS and float(v) < 0.5 for k, v in pv.items())
+
+    def _accrue_run_proof(self, commanded) -> None:
+        """Advance the failure-to-start timer for units commanded ON this tick.
+
+        Counts only silent stops: a unit that is also ALARMED is already handled by
+        the fitness ranking, and an UNPOWERED one by the dead check, so neither
+        needs a dwell. Anything running, or not commanded, resets to zero — the
+        timer measures a continuous failure to prove run status, not a tally.
+        """
+        seen = set()
+        for name in commanded:
+            seen.add(name)
+            if (self._run_status_off(name)
+                    and name not in self._plant_unpowered_names
+                    and not self._is_alarmed(name)):
+                self._run_proof_s[name] = self._run_proof_s.get(name, 0.0) + self._dt
+            else:
+                self._run_proof_s.pop(name, None)
+        # A unit that has left the commanded set (staged off, or its train dropped)
+        # is no longer failing to start; drop its timer so a later promotion starts
+        # from zero rather than inheriting a stale dwell.
+        for name in [n for n in self._run_proof_s if n not in seen]:
+            self._run_proof_s.pop(name, None)
+
+    def _run_proof_failed(self, name: str) -> bool:
+        """True once a commanded-on unit has failed to prove run status for the
+        full dwell — a failure-to-start, and grounds to promote the standby.
+
+        Use this for FAILOVER decisions only. The dwell exists so a slow start is
+        not mistaken for a dead machine; it is not a statement about how much
+        cooling the plant is making right now. For that, see _run_unproven.
+        """
+        return self._run_proof_s.get(name, 0.0) >= self._RUN_PROOF_S
+
+    def _run_unproven(self, name: str) -> bool:
+        """True if this commanded unit is silent RIGHT NOW — no run status for at
+        least one full tick.
+
+        The difference from _run_proof_failed matters. When every train is dead the
+        proof timer promotes a standby, that one goes silent too, and its timer
+        restarts from zero — so 'has failed the dwell' is true for one tick in
+        ninety while the plant is short continuously. A health readout sampling in
+        between saw a healthy plant through a total loss of chilled water. Capacity
+        is lost the moment a commanded machine stops; only the FAILOVER waits.
+
+        One tick of grace, not zero, so a standby promoted this tick — which reads
+        running=0 until it starts — is not called short for existing.
+        """
+        return self._run_proof_s.get(name, 0.0) >= self._dt
+
+    @staticmethod
     def _is_alarmed(name: str) -> bool:
         """True if this plant device is genuinely UNHEALTHY — an Alarm_* point is set.
 
@@ -3078,9 +3242,23 @@ class DeviceStateStore:
                    and float(v) >= 0.5 for k, v in pv.items())
 
     # Cooling penalty model constants.
+    #
+    # RATES ARE PER SECOND, and both branches of the penalty scale by the measured
+    # tick length — the same contract the condenser loop already states. This is
+    # not a style point: the two loops sit in the same tick, and while this one
+    # integrated per TICK the room heated at a rate set by how often the simulator
+    # happened to run. Measured before the fix: the identical total chilled-water
+    # loss reached 7.9 K in 60 s at a 1 s tick and 4.0 K at a 2 s tick. A hall does
+    # not cool more slowly because the host is busy, and two sites on one host must
+    # not heat at different rates.
     _COOL_TOL = 0.34     # cooling-loss fraction the plant rides out (N+1 + thermal mass)
-    _COOL_RUN = 0.20     # runaway integration gain (°C/tick per unit deficit)
+    _COOL_RUN = 0.20     # runaway integration gain (°C/s per unit deficit)
     _COOL_MAX = 28.0     # ceiling — equipment thermal-limit territory (inlet → ~50 °C)
+    # Time constant of the bounded branch, chosen so that a 1 s tick reproduces the
+    # 0.06 per-tick EMA this model was calibrated with: 1 − exp(−1/16.16) = 0.06.
+    # Every number the existing suite encodes therefore survives the change, and
+    # only the tick-rate DEPENDENCE goes away.
+    _COOL_TAU_S = 16.16
     # Seconds of chilled-water + room-air thermal mass. This is the whole reason
     # bulk mechanical load is allowed to sit on an MCC instead of a UPS: the loop
     # keeps rejecting heat for about a minute after the pumps stop, which comfortably
@@ -3089,6 +3267,31 @@ class DeviceStateStore:
     # rather than landing at full weight on the first dead tick. A FAULTED unit gets
     # no such grace — the rest of the plant has already been compensating for it.
     _CHW_RIDE_S = 60.0
+
+    # Failure-to-start dwell. Commanded on with run status still off for this long
+    # marks the train unfit and promotes a standby. Real sequences use 30–120 s;
+    # 90 s sits in the middle and comfortably clears a staged restart (~25 s) and a
+    # generator transfer (~12 s), so a legitimately slow start is not mistaken for
+    # a dead machine.
+    _RUN_PROOF_S = 90.0
+
+    # ── Evaporator flow switch ──────────────────────────────────────────────
+    # Every chiller is safety-interlocked to a flow switch on its evaporator: no
+    # water through the barrel and the machine must stop, because running on would
+    # freeze and split the tubes. Modelled on the fraction of required chilled-water
+    # pumping that survives, which is what actually determines whether water moves.
+    #
+    # Before this existed the interlock was unreachable: loop flow was computed from
+    # IT heat and merely divided across the pumps still running, so faulting every
+    # pump RAISED the published flow. CHWFlowLoss fired once in 38 campaign
+    # scenarios — only when the meter was pinned by hand — and no chiller stopped.
+    # An interlock that cannot trip is not an interlock.
+    _FLOW_TRIP_FRAC = 0.25   # below a quarter of required pumping, flow is "lost"
+    _FLOW_PROOF_S   = 10.0   # dwell, so a stage change or valve step cannot trip it
+    # Auto-resetting, unlike the high head-pressure lockout. A flow-loss interlock
+    # is a protective cutout that permits a restart once flow proves — it is the
+    # repeated-trip counter, not the first trip, that demands a manual reset on a
+    # real machine.
 
     # ── Chiller head-pressure protection ────────────────────────────────────
     # Design condenser water is 29.4/35 °C (85/95 °F). Thresholds are expressed
@@ -3227,6 +3430,23 @@ class DeviceStateStore:
                             if not self._is_faulted(p)
                             and p not in self._plant_unpowered_names)
                 reject = min(reject, cw_ok / len(cwps))
+
+            # The CONDENSER-WATER header valve sits in this same rejection path, so a
+            # stuck or shut VCW throttles heat on its way to the tower exactly as a
+            # dead condenser pump does. It used to be pooled with the chilled-water
+            # valve into one evaporator-side multiplier, which put its effect on the
+            # wrong loop: faulting VCW moved chilled water and left the condenser
+            # untouched. Role comes from the leading name segment, as it does for the
+            # header probes. Halved, matching the evaporator-side weighting — a
+            # throttled header is a partial restriction, not a closed one.
+            _vcw = [v for v in (kinds.get("valve") or [])
+                    if v.upper().startswith("VCW")
+                    and v not in self._plant_standby_names]
+            if _vcw:
+                _vcw_lost = sum(1.0 for v in _vcw
+                                if self._is_faulted(v)
+                                or v in self._plant_unpowered_names) / len(_vcw)
+                reject = min(reject, 1.0 - 0.5 * _vcw_lost)
 
             # BASE loop temperature — what the healthy bank can actually hold right
             # now: site wet bulb + the approach the running cells achieve. This is the
@@ -3409,16 +3629,130 @@ class DeviceStateStore:
         """Names of chillers latched out on high head pressure."""
         return sorted(self._chiller_hp_lockout)
 
+    # ── IT thermal protection ────────────────────────────────────────────────
+    # Silicon does not sit at its limit and keep working. It throttles well before
+    # it, and the platform shuts down at it — PROCHOT then THERMTRIP on Intel,
+    # equivalently on AMD, surfaced by every BMC as a thermal-shutdown event.
+    #
+    # Without this the die simply clamped at 95 °C: a runaway had no end state, no
+    # trap and no protective response, so a cooling failure that should cost
+    # capacity cost nothing at all. Throttling is also what makes the failure
+    # self-limiting, which is the behaviour an operator is trying to rehearse.
+    _CPU_THROTTLE_C = 90.0     # shed load above this
+    _CPU_SHUTDOWN_C = 95.0     # platform thermal trip
+    _THROTTLE_FLOOR = 0.35     # deepest load reduction before shutdown takes over
+
+    def _apply_thermal_protection(self, device: "Device") -> None:
+        """Throttle a hot server, and shut it down at the thermal limit.
+
+        Called after cpu_temp settles for the tick. Load is reduced in proportion
+        to how far past the throttle point the die has gone, which feeds straight
+        back into _server_live_watts and the heat the room model sees — so a
+        throttling fleet genuinely draws less and heats less, exactly as a real one
+        does under a cooling failure.
+        """
+        if getattr(device, "power_state", "On") == "Off":
+            return
+        temp = float(getattr(device, "cpu_temp", 0.0) or 0.0)
+        if temp >= self._CPU_SHUTDOWN_C:
+            device.power_state = "Off"
+            if device.name not in self._thermal_shutdown:
+                self._thermal_shutdown.add(device.name)
+                log.warning("[Thermal] %s THERMAL SHUTDOWN at %.1f C — platform "
+                            "tripped, needs a manual power-on once cool",
+                            device.name, temp)
+            return
+        if temp <= self._CPU_THROTTLE_C:
+            self._throttled.pop(device.name, None)
+            return
+        # Linear ramp from full speed at the throttle point down to the floor at the
+        # shutdown point. Deliberately not a cliff: real throttling is progressive.
+        span = max(1e-6, self._CPU_SHUTDOWN_C - self._CPU_THROTTLE_C)
+        depth = min(1.0, (temp - self._CPU_THROTTLE_C) / span)
+        factor = 1.0 - depth * (1.0 - self._THROTTLE_FLOOR)
+        self._throttled[device.name] = round(factor, 3)
+        device.cpu_usage = round(max(0.0, float(device.cpu_usage or 0.0) * factor), 1)
+
+    # Cooling-plant health → one status string per machine, worst condition first.
+    # Ordered, because a machine can hold several binaries at once and a trap needs
+    # a single answer: a chiller that has latched out on head pressure is reported
+    # as tripped even if it is also annunciating high leaving water.
+    _PLANT_STATUS_ORDER = (
+        ("Alarm_HighPressure",   "hp_trip"),
+        ("Alarm_FlowLoss",       "flow_loss"),
+        ("Alarm_ActuatorFault",  "actuator_fault"),
+        ("Alarm_AirflowLoss",    "airflow_loss"),
+        ("Alarm_Fault",          "unit_fault"),
+        ("Alarm_HighVibration",  "vibration"),
+        ("Alarm_LowBasin",       "low_basin"),
+        ("Alarm_LowFlow",        "low_flow"),
+        ("Alarm_HighTemp",       "high_temp"),
+        ("Alarm_LowEvapTemp",    "low_evap_temp"),
+        ("Filter_Dirty",         "filter_dirty"),
+    )
+    _PLANT_FACT_TYPES = {"chiller", "cooling_tower", "pump", "valve", "crah", "cdu"}
+
+    def _plant_status(self, device: "Device") -> str:
+        """Worst active condition on a cooling-plant machine, for the trap rules.
+
+        "stopped" outranks everything below a latched trip: a machine that is not
+        running is not doing its job whatever else it is annunciating. Capacity
+        alarms are excluded for the same reason they are excluded from the cooling
+        loss — they announce a shortfall the thermal model has already booked.
+        """
+        if device.device_type.value not in self._PLANT_FACT_TYPES:
+            return ""
+        if device.name in self._chiller_hp_lockout:
+            return "hp_trip"
+        if device.name in self._chw_flow_interlock:
+            return "flow_loss"
+        pv = _plant_state_cache.get(device.name)
+        if not pv:
+            return "ok"
+        for point, status in self._PLANT_STATUS_ORDER:
+            if point in _CAPACITY_ALARMS:
+                continue
+            if float(pv.get(point, 0.0)) >= 0.5:
+                return status
+        if any(k in _RUNNING_POINTS and float(v) < 0.5 for k, v in pv.items()):
+            return "stopped"
+        return "ok"
+
+    def cooling_model_kw(self) -> float:
+        """Staged-model cooling electrical, scaled by DELIVERED capacity (kW).
+
+        The raw model answers "what would a healthy plant draw for this load" — a
+        DEMAND figure. On its own it cannot see a plant that has stopped running,
+        which is why PUE held flat through a total loss of chilled water while the
+        branch meters showed the mechanical panel fall by a third. Scaling by the
+        surviving fraction, per DC, makes it a statement about the plant.
+
+        Deliberately still a model and not the meters: metered plant draw is capped
+        by the small curated device nameplates and collapses PUE toward 1.0 as the
+        fleet outgrows the plant. get_power_summary takes max(metered, this), which
+        keeps a healthy plant on today's behaviour and lets the meters win once the
+        plant is genuinely short.
+        """
+        if not self._cool_model_w_by_dc:
+            return max(0.0, self._cool_model_w) / 1000.0
+        return sum(
+            max(0.0, w) * (1.0 - min(1.0, max(0.0, self._cool_loss_frac.get(dc, 0.0))))
+            for dc, w in self._cool_model_w_by_dc.items()) / 1000.0
+
     def cooling_degraded(self, dc: str) -> bool:
         """True if this DC's cooling is genuinely SHORT right now — the plant could not
         fill its required run set with a HEALTHY train, so a running lead train still
         carries an unpowered / latched-out / actively-alarmed member. False when a
         standby covered a trip (N+1 held): only redundancy is lost, not cooling.
 
-        Checks real faults only — NOT a unit's running-status bit — so a healthy
+        Checks real faults only — NOT a unit's raw running-status bit — so a healthy
         standby that was just promoted (running=0 for one tick) never reads as short,
         and a fully-staged plant at high load is not flagged unless a member truly
-        faults.
+        faults. A member that is commanded on and SILENT does count, after one tick
+        of grace — capacity is lost the moment a running machine stops, even though
+        the failover deliberately waits out a proof dwell before promoting a
+        standby. Without that this predicate answered "healthy" through a total loss
+        of chilled water whose only symptom was silence.
 
         Tower cells are not train members (the bank is unstaged), so the condenser
         side is checked once: short only when fewer cells are turning than the load
@@ -3427,7 +3761,9 @@ class DeviceStateStore:
             return True
         for tr in self._plant_trains_run.get(dc, []):
             for m in tr["members"]:
-                if m in self._plant_unpowered_names or m in self._chiller_hp_lockout:
+                if (m in self._plant_unpowered_names
+                        or m in self._chiller_hp_lockout
+                        or self._run_unproven(m)):
                     return True
                 pv = _plant_state_cache.get(m)
                 if pv and any(k.startswith("Alarm_") and float(pv.get(k, 0.0)) >= 0.5
@@ -3482,7 +3818,7 @@ class DeviceStateStore:
                 """
                 if name in self._plant_unpowered_names:
                     return ride
-                if self._is_faulted(name):
+                if self._is_faulted(name) or name in self._chw_flow_interlock:
                     return 1.0
                 # A chiller riding its head-pressure limit is still running but
                 # has shed capacity — a PARTIAL loss, not a binary one.
@@ -3499,6 +3835,41 @@ class DeviceStateStore:
             # electrical split (half of every type on each side) read as ~87 % loss
             # when one side dropped, instead of the one train it truly cost.
             trains_on = self._plant_trains_run.get(dc, [])
+
+            # ── Evaporator pumping, and the flow switch behind it ────────────
+            # How much of the chilled-water pumping the running trains REQUIRE is
+            # actually available: one pump per running train, with the header
+            # standby able to cover one that has failed. This is what decides
+            # whether water moves through the barrels, and _compute_chw_loop scales
+            # the published loop flow by it — so the header flow meter, the
+            # CHWFlowLoss rule reading that meter, and this interlock all agree.
+            _req = max(1, len(trains_on))
+            _lead_p = [tr.get("chwp") for tr in trains_on if tr.get("chwp")]
+            _ok = sum(1 for n in _lead_p
+                      if not self._is_faulted(n)
+                      and n not in self._plant_unpowered_names)
+            _ok += sum(1 for n in (ctx.get("spare_chwp", {}).get(dc) or [])
+                       if not self._is_faulted(n)
+                       and n not in self._plant_unpowered_names)
+            _pump_frac = max(0.0, min(1.0, _ok / _req))
+            self._chw_pump_frac[dc] = round(_pump_frac, 4)
+
+            _lost = self._chw_flow_lost_s.get(dc, 0.0)
+            _lost = (_lost + self._dt) if _pump_frac < self._FLOW_TRIP_FRAC else 0.0
+            self._chw_flow_lost_s[dc] = _lost
+            _running = {tr.get("chiller") for tr in trains_on if tr.get("chiller")}
+            if _lost >= self._FLOW_PROOF_S:
+                _new = _running - self._chw_flow_interlock
+                self._chw_flow_interlock |= _running
+                for _c in sorted(_new):
+                    log.warning("[Plant] %s shed on LOSS OF EVAPORATOR FLOW "
+                                "(%.0f%% of required pumping) — flow-switch interlock",
+                                _c, _pump_frac * 100.0)
+            elif _lost == 0.0:
+                # Flow proved again: the interlock permits a restart (see
+                # _FLOW_PROOF_S). Only release this DC's machines.
+                self._chw_flow_interlock -= _running
+
             if trains_on:
                 deficit = 0.0
                 for tr in trains_on:
@@ -3514,9 +3885,10 @@ class DeviceStateStore:
             # lose the chilled-water or condenser-water isolation valve and every
             # train downstream of it is throttled. Applied as a multiplier on the
             # surviving capacity, as before.
-            def frac(kind: str) -> float:
+            def frac(kind: str, prefix: str = "") -> float:
                 names = [n for n in (kinds.get(kind) or [])
-                         if n not in self._plant_standby_names]
+                         if n not in self._plant_standby_names
+                         and (not prefix or n.upper().startswith(prefix))]
                 if not names:
                     return 0.0
                 return sum(lost_weight(n) for n in names) / len(names)
@@ -3526,7 +3898,15 @@ class DeviceStateStore:
             # cells the load needs, from _compute_cond_loop) applied to every train at
             # once. Counting a cell inside its train would both understate a bank-wide
             # loss and overstate the loss of one surplus cell.
-            avail = ((1.0 - loss) * (1.0 - 0.5 * frac("valve"))
+            # A header valve throttles the loop it SITS IN, and the two sit in
+            # different ones. Pooling both into a single evaporator-side multiplier
+            # meant faulting the condenser-water valve warmed the chilled water and
+            # left the condenser loop untouched — the wrong loop entirely. The role
+            # is read off the leading name segment (VCHW / VCW), the same idiom the
+            # header probes use. VCW's effect is applied in _compute_cond_loop, with
+            # the tower cells and condenser pumps it shares the rejection path with;
+            # only VCHW belongs here.
+            avail = ((1.0 - loss) * (1.0 - 0.5 * frac("valve", "VCHW"))
                      * max(0.0, min(1.0, self._tower_reject.get(dc, 1.0))))
             loss = max(0.0, 1.0 - avail)                  # 0 = full cooling, 1 = none
             # PLANT OVERLOAD: live IT beyond the FULL installed plant is heat nothing
@@ -3540,13 +3920,21 @@ class DeviceStateStore:
             # Kept for the evaporator-side model: how short the plant is decides
             # whether it can still hold its chilled-water setpoint.
             self._cool_loss_frac[dc] = round(loss, 4)
+            # Both branches integrate against MEASURED ELAPSED TIME, exactly as the
+            # condenser loop does. See _COOL_RUN / _COOL_TAU_S for why.
+            dt = self._dt
             cur = self._chw_pen.get(dc, 0.0)
             deficit = loss - self._COOL_TOL
             if deficit <= 0.0:
                 target = loss * 18.0                       # bounded: redundancy absorbs it (≤ ~6 °C)
-                new = cur + (target - cur) * 0.06          # EMA ease in/out
+                # Exponential ease toward the bounded target. Expressed as a time
+                # constant rather than a per-tick fraction so a long tick eases
+                # further in one step instead of taking the same small bite.
+                new = cur + (target - cur) * (1.0 - math.exp(-dt / self._COOL_TAU_S))
             else:
-                new = cur + self._COOL_RUN * deficit       # runaway: integrate heat upward
+                # Runaway: the IT heat the plant can no longer take is accumulating,
+                # so integrate it upward per second of real time.
+                new = cur + self._COOL_RUN * deficit * dt
             self._chw_pen[dc] = round(min(new, self._COOL_MAX), 3)
 
     # ── Chilled-water loop thresholds ─────────────────────────────────────────
@@ -3562,6 +3950,22 @@ class DeviceStateStore:
     # Return-air limit for a CRAH. ASHRAE A1 allowable tops out at 32 °C INLET; a
     # return sensor sits in the hot aisle, so the alarm point is well above that.
     _CRAH_RETURN_ALARM_C = 42.0
+    # CHW valve authority: percent of travel per K of chilled-water shortfall. At 20
+    # a coil starved by ~1.5 K is already wide open, which is the behaviour a real
+    # discharge-temperature loop shows — it does not modulate gently through a
+    # failure, it saturates.
+    _CRAH_VALVE_GAIN = 20.0
+    # CDU: how much of the facility loop's drift reaches the technology-cooling
+    # supply. A liquid-cooling CDU is a heat exchanger between the two loops, so
+    # warmer facility water means warmer coolant, attenuated by the approach the
+    # exchanger holds. Not 1.0 — the secondary loop has its own pump work and
+    # thermal mass, and a CDU with any control authority left will spend it here.
+    _CDU_FOLLOW_FRAC = 0.8
+    # Warm-water cooling: the whole point of a cold-plate loop is that it rejects at
+    # ~32 °C, well above the CRAH coils, which is what lets the chillers run at a
+    # higher COP. Matches the generator's design values for the CDU class.
+    _CDU_TCS_SETPOINT_C = 32.0
+    _CDU_TCS_RANGE_C = 13.0
     # Pump design points, matching the PLANT_SPEC bases in bacnet_plant_generator.
     _PUMP_SUCTION_KPA   = 130.0
     _PUMP_DIFF_KPA      = 300.0
@@ -3617,7 +4021,13 @@ class DeviceStateStore:
             pen = self._chw_pen.get(dc, 0.0)
             supply = chw_supply_c(pen, CHW_SETPOINT_C)
             d_t = chw_delta_t_c(duty)
-            flow = water_flow_lps(itl_kw, d_t)
+            # Flow is what the PUMPS deliver, not what the load would like. The
+            # demand figure Q/(cp·ΔT) is the requirement; capping it by surviving
+            # pumping is what makes it a measurement. Without the cap, faulting
+            # every pump merely shrank the divisor the flow was split across and
+            # the published header flow went UP — 7.8 → 14.9 l/s in the campaign,
+            # with every chilled-water pump in alarm.
+            flow = water_flow_lps(itl_kw, d_t) * self._chw_pump_frac.get(dc, 1.0)
             ret = supply + d_t
             self._chw_supply_c[dc] = round(supply, 2)
             self._chw_return_c[dc] = round(ret, 2)
@@ -3630,6 +4040,22 @@ class DeviceStateStore:
             chillers_all = list(kinds.get("chiller") or [])
             comp_kw = sum(self._plant_power_by_name.get(c, 0.0) for c in chillers_all)
             reject_kw = itl_kw + comp_kw
+            # Heat only reaches the condenser loop through a chiller that is actually
+            # transferring it. Kept SEPARATE from reject_kw, which still sizes the
+            # condenser flow: the condenser pumps keep turning when the chillers
+            # stop, so the loop still moves water — what collapses is the heat in
+            # it, and therefore the evaporation. Without this the tower went on
+            # consuming makeup for heat that never arrived: 5.28 → 5.24 l/min
+            # through a cascade with every chiller stopped. Evaporation is the
+            # plant's only consumable, so a figure that ignores whether the plant is
+            # running is not modelling it at all.
+            _run_ch = [c for c in chillers_all if c not in self._plant_standby_names]
+            _moving = [c for c in _run_ch
+                       if not self._is_faulted(c)
+                       and c not in self._chiller_hp_lockout
+                       and c not in self._chw_flow_interlock
+                       and c not in self._plant_unpowered_names]
+            transferred_kw = reject_kw * ((len(_moving) / len(_run_ch)) if _run_ch else 1.0)
             # The condenser range narrows at part load for the same reason the
             # chilled-water ΔT does: its pumps are VFD too and ride their own
             # minimum-flow floor, so below that point the loop recirculates and the
@@ -3736,27 +4162,43 @@ class DeviceStateStore:
             cells = [t for t in (kinds.get("cooling_tower") or [])
                      if t in (self._tower_running_now.get(dc) or set())]
             if cells:
-                per_cell = makeup_flow_lpm(reject_kw / len(cells))
+                per_cell = makeup_flow_lpm(transferred_kw / len(cells))
                 for name in cells:
                     ip = self._plant_ip_by_name.get(name)
                     if ip:
                         auto.setdefault(ip, {})["Makeup_Flow"] = round(per_cell, 2)
 
-        # ── CRAH return air: the hall's own hot aisle ─────────────────────────
-        # Supply air is deliberately NOT touched here: _room_supply_temp reads the
-        # CRAH's Supply_Air_Temp back and adds the CHW penalty on top, so raising it
-        # here would double-count the very shortfall it already models.
+        # ── CRAH discharge and return air ─────────────────────────────────────
+        # DISCHARGE AIR is published here, as setpoint plus the chilled-water
+        # shortfall, and _room_supply_temp READS IT BACK instead of adding the
+        # penalty again on the way out. One source of truth.
+        #
+        # It used to be the other way round: the penalty lived only inside the room
+        # model, so the discharge point never moved and the plant plane reported a
+        # healthy hall through a total failure — 22.0 °C discharge against a 43.3 °C
+        # return and 44.3 °C inlets, a 21 K air-side rise across a coil fed 19 °C
+        # water. Discharge air is the unit's controlled variable and the first point
+        # a DCIM trends; losing the coil's water is exactly what should raise it.
+        #
+        # The publish and the deletion downstream are ONE change. Doing either alone
+        # is a bug: publish without deleting and the room is charged twice.
         for (dc, room), crahs in ctx["crah_by_room"].items():
             rk = (dc, room)
             inlet = self._room_inlet_c.get(rk)
             outlet = self._room_outlet_c.get(rk)
             # No measured exhaust warmer than the intake means the room's servers
             # have not reported one yet (cold start, or a hall with no live load).
-            # There is no return-air temperature to publish, and inventing one from
-            # the intake alone would just restate the cold aisle.
-            if inlet is None or outlet is None or outlet <= inlet:
-                continue
-            ret_air = inlet + self._RETURN_MIX_FRAC * (outlet - inlet)
+            # There is no RETURN-AIR temperature to publish, and inventing one from
+            # the intake alone would just restate the cold aisle. The valve below is
+            # not gated on it: a coil's control loop runs on the water it is being
+            # fed, whether or not the room has reported an exhaust yet.
+            ret_air = (inlet + self._RETURN_MIX_FRAC * (outlet - inlet)
+                       if inlet is not None and outlet is not None and outlet > inlet
+                       else None)
+            # Discharge = setpoint + the shortfall the plant is carrying. A healthy
+            # plant holds setpoint, which is what makes any drift off it diagnostic.
+            _sa = _SUPPLY_SETPOINT_C + self._chw_pen.get(dc, 0.0)
+            self._supply_air_c[dc] = round(_sa, 2)
             for name in crahs:
                 if (name in self._plant_standby_names
                         or name in self._plant_unpowered_names):
@@ -3765,12 +4207,59 @@ class DeviceStateStore:
                 if not ip:
                     continue
                 pts = auto.setdefault(ip, {})
-                pts["Return_Air_Temp"] = round(ret_air, 1)
+                pts["Supply_Air_Temp"] = round(_sa, 1)
+                if ret_air is not None:
+                    pts["Return_Air_Temp"] = round(ret_air, 1)
+                # CHILLED-WATER VALVE. A CRAH holds discharge setpoint by modulating
+                # this valve, so its position is the output of a temperature control
+                # loop — not, as it used to be, a restatement of the plant's demand
+                # fraction. That version had the valve drifting 40 → 46 % while its
+                # coil was fed 19 °C water and the hall ran to 42.7 °C; a real unit
+                # drives to 100 % and stays there, and a valve pinned open with the
+                # room still hot is the diagnostic that says the fault is upstream.
+                #
+                # Proportional on the shortfall the plant is carrying: on setpoint it
+                # trims for load, and it saturates once the water is a couple of
+                # degrees off. _chw_pen IS that shortfall, already integrated.
+                _load_pos = 30.0 + 50.0 * max(0.0, min(1.0, self._plant_duty.get(dc, 0.0)))
+                _starve = self._chw_pen.get(dc, 0.0) * self._CRAH_VALVE_GAIN
+                pts["CHW_Valve"] = round(min(100.0, _load_pos + _starve), 1)
                 # Return-air high, NOT discharge high: the unit is holding its
                 # setpoint on the CHW valve, the hot aisle feeding it is too hot.
                 # Raised only (never zeroed) so an operator-forced alarm survives.
-                if ret_air >= self._CRAH_RETURN_ALARM_C:
+                if ret_air is not None and ret_air >= self._CRAH_RETURN_ALARM_C:
                     pts["Alarm_HighReturnAir"] = 1.0
+
+        # ── CDU: the technology-cooling loop follows the facility loop ────────
+        # A CDU is a heat exchanger, not an independent chiller: it rejects cold-plate
+        # heat into the SAME chilled water the CRAHs use. So when that water goes warm
+        # the coolant must follow it. Left on its own random walk the point held
+        # 32.0 °C through every cascade — including one with all three chillers latched
+        # out and chilled water at 15–19 °C — while the die temperature on the servers
+        # of that very loop DID take the penalty. The CDU and the servers it feeds were
+        # telling different stories on the same wire.
+        for dc, _all_cdus in (ctx.get("cdu_by_dc") or {}).items():
+            _cdus = [c for c in _all_cdus if c not in self._plant_unpowered_names]
+            if not _cdus:
+                continue
+            # Drift of the facility loop above its design temperature, attenuated by
+            # the exchanger's approach (see _CDU_FOLLOW_FRAC).
+            _drift = max(0.0, self._chw_supply_c.get(dc, CHW_SETPOINT_C) - CHW_SETPOINT_C)
+            _tcs = self._CDU_TCS_SETPOINT_C + _drift * self._CDU_FOLLOW_FRAC
+            for name in _cdus:
+                ip = self._plant_ip_by_name.get(name)
+                if not ip:
+                    continue
+                pts = auto.setdefault(ip, {})
+                pts["TCS_Supply_Temp"] = round(_tcs, 1)
+                # Return sits a design range above supply; the secondary pumps are
+                # VFD and track loop heat, so the range holds near design.
+                pts["TCS_Return_Temp"] = round(_tcs + self._CDU_TCS_RANGE_C, 1)
+                pts["TCS_Setpoint"] = round(self._CDU_TCS_SETPOINT_C, 1)
+                # Facility-side valve opens as the CDU loses approach, same control
+                # story as the CRAH coil valve above.
+                pts["Facility_CHW_Valve"] = round(
+                    min(100.0, 40.0 + _drift * self._CRAH_VALVE_GAIN), 1)
 
         # ── Plant header instruments ─────────────────────────────────────────
         # Every one of these points is already computed above or by the condenser
@@ -3806,8 +4295,11 @@ class DeviceStateStore:
         HighTemp fault, which warms that air, propagates to inlets). A CRAH that
         is OFF (Unit_Running=0) or has lost airflow delivers no cold air, so it is
         dropped from the average AND counts as lost cooling capacity — the room
-        warms in proportion to the fraction of CRAHs down. The datacenter CHW
-        penalty (upstream chiller/pump/tower/valve faults) is added on top.
+        warms in proportion to the fraction of CRAHs down.
+
+        The upstream CHW penalty arrives THROUGH that discharge reading, which
+        _compute_chw_loop publishes as setpoint + penalty. It is deliberately not
+        added again here.
 
         Capacity loss is a FRACTION per unit, not a headcount, because a fault
         can be partial: a clogged filter still blows cold air, just ~20% less of
@@ -3837,9 +4329,21 @@ class DeviceStateStore:
             sa = pv.get("Supply_Air_Temp")
             if sa is not None:
                 supplies.append(float(sa))
-        base = sum(supplies) / len(supplies) if supplies else self._rack_supply_temp(device)
+        if supplies:
+            base = sum(supplies) / len(supplies)
+        else:
+            # No live telemetry (BACnet stopped, or a unit that has not published
+            # yet). Fall back to the same figure _compute_chw_loop publishes, so the
+            # room reads identically with the telemetry plane up or down.
+            base = self._supply_air_c.get(
+                device.datacenter,
+                _SUPPLY_SETPOINT_C + self._chw_pen.get(device.datacenter, 0.0))
         base += (deficit / len(crahs)) * 12.0    # lost capacity → room heats (all down → +12)
-        return base + self._chw_pen.get(device.datacenter, 0.0)
+        # The CHW penalty is NOT added here. It is already inside the discharge air
+        # above — published by _compute_chw_loop and read back — and adding it again
+        # would charge the room twice for one shortfall. See the discharge-air block
+        # in _compute_chw_loop; these two are one change.
+        return base
 
     def _compute_leak_heat(self) -> None:
         """Refresh server→intensity heat map from leaking CDUs. Intensity scales
@@ -4327,6 +4831,10 @@ class DeviceStateStore:
             # to cool the hot die — the realistic response to a thermal fault.
             if _cputemp_pin is not None:
                 device.cpu_temp = round(max(20.0, min(95.0, _cputemp_pin)), 1)
+            # Protective response, once the die has settled for this tick. Without
+            # it the temperature simply pinned at the ceiling and the runaway had no
+            # end state.
+            self._apply_thermal_protection(device)
 
         # Chassis fan speed — servers only. Single source of truth: Redfish _fans()
         # and the BMC SNMP dataset both read this, so the two agents agree.
@@ -4457,14 +4965,23 @@ class DeviceStateStore:
             device.outlet_temp = 0.0
 
         elif device.device_type == DeviceType.SENSOR:
-            # Ambient temperature: a rack environmental probe reads the cold-aisle
-            # air, so it mean-reverts to the CRAC supply setpoint (~22 °C) instead
-            # of drifting freely — otherwise the random walk wanders up to 35 °C
-            # and shows up as a phantom hot rack via the inlet max().
+            # Ambient temperature: a rack environmental probe reads the SAME
+            # cold-aisle air as the servers beside it, so it is driven from the room
+            # supply plus its own rack-height gradient — the identical formula the
+            # server inlet model uses a few lines down.
+            #
+            # It used to mean-revert to the supply SETPOINT and clamp at 30 °C, which
+            # meant it could not observe a cooling failure at all: through every
+            # cascade in the campaign the probes read 21.7–22.2 °C while co-located
+            # servers read 36–44 °C, and the rack-probe average moved −0.03 °C during
+            # a total loss of chilled water. On a real floor these are the FIRST
+            # alarm on a CRAH failure, and SensorAmbientTempHigh (>32 °C) and
+            # Critical (>38 °C) were unreachable by physics.
             if mf["sensor_ambient_temp"]:
-                device.inlet_temp = round(max(15.0, min(30.0,
-                    device.inlet_temp + (_SUPPLY_SETPOINT_C - device.inlet_temp) * 0.06
-                    + random.uniform(-0.3, 0.3))), 1)
+                _base = self._room_supply_temp(device)
+                _grad = min(max(device.rack_unit, 0), 42) / 42.0 * 3.0
+                device.inlet_temp = round(max(15.0, min(45.0,
+                    _base + _grad + random.uniform(-0.3, 0.3))), 1)
                 device.inlet_temp = self._num_limit("sensor_ambient_temp", device.inlet_temp)
 
             # Relative humidity is actively controlled by the CRAC humidifier/
@@ -5455,6 +5972,7 @@ class DeviceStateStore:
                     water_flow_lps=float(ext.get("water_flow_lps", 0.0)),
                     elec_load_pct=_elec_load,
                     elec_status=_elec_state,
+                    plant_status=self._plant_status(device),
                     bgp_sessions=[
                         BGPSessionFact(peer_addr=s["peer"], state=s["state"])
                         for s in ext.get("bgp_sessions", [])

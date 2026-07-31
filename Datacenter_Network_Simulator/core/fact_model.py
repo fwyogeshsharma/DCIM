@@ -107,6 +107,14 @@ class DeviceFact:
     elec_load_pct: float = 0.0     # % of the board's / set's rating
     elec_status: str = ""          # energized | dead | fault | running | standby …
 
+    # Cooling-plant machines (chiller / tower / pump / valve / CRAH / CDU). These
+    # carry their health on BACnet binaries, which the SNMP plane could not see —
+    # the trap rule set had 35 rules for sensors and ZERO for any plant device, so
+    # a cascade that latched three chillers out produced no chiller trap. One
+    # priority-ordered status string per machine (its WORST active condition, the
+    # way a real plant MIB reports one), so a dozen rules cover the whole plant.
+    plant_status: str = ""         # ok | hp_trip | flow_loss | vibration | …
+
     # Routing protocol sessions
     bgp_sessions: List[BGPSessionFact] = field(default_factory=list)
 

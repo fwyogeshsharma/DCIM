@@ -569,13 +569,30 @@ def get_chiller_trips():
     ids = {}
     if dm:
         ids = {d.name: d.id for d in dm.get_all_devices() if d.name in set(names)}
+    _degraded = getattr(st, "cooling_degraded", None)
     out = []
     for n in names:
         dc = st._dc_of_chiller(n) if st and hasattr(st, "_dc_of_chiller") else None
-        degraded = bool(dc and hasattr(st, "cooling_degraded") and st.cooling_degraded(dc))
+        degraded = bool(dc and _degraded and _degraded(dc))
         out.append({"name": n, "device": ids.get(n), "dc": dc, "degraded": degraded})
-    # A trip is a real cooling loss only where no standby could cover it.
-    return {"tripped": out, "degraded": any(t["degraded"] for t in out)}
+
+    # Site-wide cooling health is asked SEPARATELY from the trip list, not folded
+    # over it. Folding meant an empty list answered "healthy" by construction — so
+    # a total loss of chilled water with no high-pressure trip behind it (every
+    # chiller alarmed on flow loss, or every chilled-water pump down) reported the
+    # plant as fine. A trip is one way to lose cooling, not the only one.
+    dcs = set()
+    if st:
+        for _dc, kinds in (st._cooling_context().get("plant_by_dc", {})).items():
+            if kinds.get("chiller"):
+                dcs.add(_dc)
+    return {
+        "tripped": out,
+        "degraded": any(_degraded(d) for d in dcs) if _degraded else False,
+        # Which sites are short, so a caller does not have to infer it from a
+        # trip list that may be empty.
+        "degraded_dcs": sorted(d for d in dcs if _degraded and _degraded(d)),
+    }
 
 
 @router.get("/plant/standby")

@@ -37,6 +37,7 @@ CHILLER_W = 120_000      # nameplate electrical, per unit
 PUMP_W = 15_000
 TOWER_W = 45_000
 CRAH_W = 11_000
+CDU_W = 8_000
 SERVER_W = 700
 
 
@@ -96,7 +97,8 @@ class PlantFixture:
 
 
 def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
-                probes=False):
+                probes=False, valves=False, cdus=0, rack_probes=0,
+                tick_interval=1.0):
     """Assemble a one-DC plant and return a PlantFixture.
 
     `installed_modules` is forced rather than derived, so a test can put the plant
@@ -106,6 +108,14 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
     it, and adding CRAHs changes the plant's nameplate sum (and therefore its duty
     fraction), which the staging/rotation tests are calibrated against. `probes`
     likewise adds the plant's header instruments only where they are under test.
+
+    `valves` adds the two header control valves. Off by default for the same
+    reason as the others: they are header equipment common to every train, so
+    they change the cooling-loss arithmetic for every test that does not need
+    them.
+
+    `tick_interval` seeds the store's dt. Only the time-base tests vary it —
+    everything else wants the 1 s tick the rest of the suite is calibrated on.
     """
     from core.device_manager import DeviceManager
     from core.device_state_store import DeviceStateStore
@@ -142,9 +152,30 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
             made[code] = _device(dm, f"{code}-{DC}-CP", "sensor", f"10.0.6.{j}", 0,
                                  model=model, room="Central Plant")
 
+    if valves:
+        # Header control valves. The leading name segment carries the loop the
+        # valve sits in — VCHW on the evaporator side, VCW on the condenser side —
+        # which is the same role-in-the-prefix idiom the header probes use, and
+        # which the store reads to decide which loop an actuator fault throttles.
+        for j, code in enumerate(("VCHW", "VCW"), start=1):
+            made[code] = _device(dm, f"{code}-{DC}-CP", "valve", f"10.0.7.{j}", 0,
+                                 room="Central Plant")
+
     for i in range(1, crahs + 1):
         made[f"CRAH{i}"] = _device(dm, f"CRAH{i}-{DC}-HA-R1-01", "crah",
                                    f"10.0.5.{i}", CRAH_W)
+
+    for i in range(1, cdus + 1):
+        made[f"CDU{i}"] = _device(dm, f"CDU{i}-{DC}-HA-R1-01", "cdu",
+                                  f"10.0.8.{i}", CDU_W)
+
+    # RACK environmental probes — the DPX2-style cold-aisle sensors, distinct from
+    # the plant header instruments `probes=` adds. No "Plant …" model name, so the
+    # store leaves them on the ambient path rather than publishing a header reading
+    # into them.
+    for i in range(1, rack_probes + 1):
+        made[f"SNS{i}"] = _device(dm, f"SNS{i}-{DC}-HA-R1-01", "sensor",
+                                  f"10.0.9.{i}", 0, model="DPX2-T2H1")
 
     for i in range(1, servers + 1):
         made[f"SRV{i}"] = _device(dm, f"SRV{i:02d}-{DC}-HA-R1-01", "server",
@@ -161,7 +192,14 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
             topo.add_link(c, made[peer].id, layer="cooling")
     topo.add_link(made["CHL1"].id, made[f"CHWP{spare}"].id, layer="cooling")
 
-    store = DeviceStateStore(dm, topo, str(tmp_path), tick_interval=1.0)
+    # Cold-plate loops: each CDU takes a slice of the servers. The store discovers
+    # cdu_by_server by walking these cooling-layer links, so wiring them is what
+    # makes a CDU a real loop rather than an unattached box.
+    for i in range(1, cdus + 1):
+        for j in range(i, servers + 1, max(1, cdus)):
+            topo.add_link(made[f"CDU{i}"].id, made[f"SRV{j}"].id, layer="cooling")
+
+    store = DeviceStateStore(dm, topo, str(tmp_path), tick_interval=tick_interval)
     store._plant_installed_mods[DC] = installed_modules
     return PlantFixture(store, dm, topo, trains)
 

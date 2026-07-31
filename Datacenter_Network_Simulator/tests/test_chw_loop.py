@@ -75,8 +75,12 @@ def test_delta_t_narrows_at_low_load(tmp_path, plant_cache):
     comes back to design."""
     from core.cooling_model import CHW_DESIGN_DT_C
 
+    # 600, not 400: at 400 the plant sits 0.014 of duty BELOW the minimum-flow
+    # knee this test is about, so any change that moves live IT load by a couple of
+    # percent flips the answer. A test balanced on a discontinuity measures the
+    # discontinuity, not the behaviour.
     idle = build_plant(tmp_path / "i", servers=6, installed_modules=12)
-    busy = build_plant(tmp_path / "b", servers=400, installed_modules=6)
+    busy = build_plant(tmp_path / "b", servers=600, installed_modules=6)
     _settle(idle, 6)
     _settle(busy, 6)
     assert idle.store._chw_dt_c[DC] < busy.store._chw_dt_c[DC]
@@ -125,7 +129,7 @@ def test_pump_head_follows_the_affinity_law(tmp_path, plant_cache):
     """Head ∝ speed², so a pump throttled back develops far less differential
     pressure. A pump reporting design head at 40 % speed is physically impossible."""
     idle = build_plant(tmp_path / "i", servers=6, installed_modules=12)
-    busy = build_plant(tmp_path / "b", servers=400, installed_modules=6)
+    busy = build_plant(tmp_path / "b", servers=600, installed_modules=6)
     _settle(idle, 6)
     _settle(busy, 6)
 
