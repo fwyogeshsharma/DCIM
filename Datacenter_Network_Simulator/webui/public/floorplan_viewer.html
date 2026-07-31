@@ -5,8 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DCIM Floor-Plan Viewer</title>
 <style>
-  :root{ --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a3340;
-         --fg:#e6edf3; --muted:#8b97a7; --accent:#4f9dff; }
+  /* Mirrors the app's theme tokens (webui/src/index.css :root). This viewer is
+     a standalone document loaded in an iframe, so it cannot share that
+     stylesheet — the values have to be copied. If you retune the app's
+     neutrals or the device-type palette, retune the copies here and in the
+     TYPE map below, or the floor plan drifts away from the rest of the UI. */
+  :root{ --bg:#0c1215; --panel:#121c20; --panel2:#19252a; --line:#263840;
+         --fg:#d8e0e4; --muted:#83969f; --dim:#4b5a61; --accent:#2563eb;
+         --ok:#3fb950; --warn:#d29922; --crit:#f85149;
+         /* label painted ON a device-type tile — the tile palette is solved to
+            one luminance, so a single dark ink works on every one of them
+            (8.49:1 worst case) instead of a different hand-picked dark each. */
+         --ink:#0b1015;
+         --vignette:#11181c; --heat:#fb923c;
+         /* tinted status surfaces, same recipe as the app's chips */
+         --ok-bg:#12301c; --ok-line:#1d6b3d;
+         --warn-bg:#33280c; --warn-line:#6b5418; --warn-fg:#ffd98a; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
     font:13px/1.45 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
@@ -22,8 +36,8 @@
   .seg-wrap{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
   .seg-wrap button{border:0;border-right:1px solid var(--line)}
   .seg-wrap button:last-child{border-right:0}
-  button.on{background:var(--accent);color:#08121f;font-weight:600}
-  button#heat.on{background:#e0683c;color:#1a0a04}
+  button.on{background:var(--accent);color:#fff;font-weight:600}
+  button#heat.on{background:var(--heat);color:var(--ink)}
   main{display:grid;grid-template-columns:230px 1fr 0;min-height:0;transition:grid-template-columns .15s}
   main.detail{grid-template-columns:230px 1fr 300px}
   aside{background:var(--panel);border-right:1px solid var(--line);overflow:auto;padding:10px 12px}
@@ -34,18 +48,18 @@
   .sw{width:11px;height:11px;border-radius:2px;flex:0 0 auto}
   .legrow .ct{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
   #stage{position:relative;min-width:0;overflow:hidden;background:
-    radial-gradient(circle at 50% 30%,#11161d,#0a0d12)}
+    radial-gradient(circle at 50% 30%,var(--vignette,#11181c),var(--bg))}
   #c2d{position:absolute;inset:0}
   #c3d{position:absolute;inset:0;display:none}
-  #tip{position:absolute;pointer-events:none;background:#000c;border:1px solid var(--line);
+  #tip{position:absolute;pointer-events:none;background:#0c1215ee;border:1px solid var(--line);
     border-radius:6px;padding:6px 8px;font-size:11px;display:none;z-index:5;max-width:240px}
-  #hlegend{position:absolute;left:12px;bottom:12px;background:#0b0e13f2;border:1px solid var(--line);
+  #hlegend{position:absolute;left:12px;bottom:12px;background:#0c1215f2;border:1px solid var(--line);
     border-radius:10px;padding:9px 12px 7px;font-size:11px;display:none;z-index:4;
     box-shadow:0 6px 20px #0007;backdrop-filter:blur(3px)}
   #hlegend .ttl{font-weight:600;letter-spacing:.02em;margin-bottom:6px}
   #hlegend .ttl .tag{font-weight:500;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px}
-  #hlegend .ttl .tag.live{background:#10351f;color:#56d98a;border:1px solid #1d6b3d}
-  #hlegend .ttl .tag.est{background:#3a2a0b;color:#ffd98a;border:1px solid #6b5418}
+  #hlegend .ttl .tag.live{background:var(--ok-bg);color:var(--ok);border:1px solid var(--ok-line)}
+  #hlegend .ttl .tag.est{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--warn-line)}
   #hlegend .barwrap{position:relative;width:200px;height:26px}
   #hlegend .bar{height:11px;width:200px;border-radius:3px;
     box-shadow:inset 0 0 0 1px #ffffff14}
@@ -55,36 +69,36 @@
     background:#ffffff55}
   #hlegend .rng{color:var(--muted);font-size:10px;margin-top:3px}
   #hlegend .rng b{color:var(--fg);font-variant-numeric:tabular-nums}
-  #note{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#3a2a0bdd;
-    border:1px solid #6b5418;color:#ffd98a;padding:5px 12px;border-radius:20px;font-size:11px;
+  #note{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#33280cdd;
+    border:1px solid var(--warn-line);color:var(--warn-fg);padding:5px 12px;border-radius:20px;font-size:11px;
     display:none;z-index:6}
   #nav3d{position:absolute;right:14px;bottom:14px;z-index:7;display:none;flex-direction:column;gap:5px;
-    align-items:center;background:#0b0e13e6;border:1px solid var(--line);border-radius:10px;padding:8px;
+    align-items:center;background:#0c1215e6;border:1px solid var(--line);border-radius:10px;padding:8px;
     box-shadow:0 6px 20px #0008}
   #nav3d .nrow{display:flex;gap:4px}
   #nav3d button{min-width:30px;height:26px;padding:0 6px;font-size:12px;line-height:1;
     display:flex;align-items:center;justify-content:center}
-  #nav3d button:hover{background:var(--accent);color:#08121f}
+  #nav3d button:hover{background:var(--accent);color:#fff}
   #nav3d .dpad{display:grid;grid-template-columns:repeat(3,30px);grid-template-rows:repeat(3,26px);gap:4px}
   #nav3d .dpad button{width:30px}
   #nav3d .dpad .up{grid-column:2;grid-row:1} #nav3d .dpad .left{grid-column:1;grid-row:2}
   #nav3d .dpad .ctr{grid-column:2;grid-row:2} #nav3d .dpad .right{grid-column:3;grid-row:2}
   #nav3d .dpad .down{grid-column:2;grid-row:3}
   #nav3dhint{position:absolute;top:12px;left:14px;z-index:7;display:none;max-width:46%;
-    background:#0b0e13d9;border:1px solid var(--line);border-radius:8px;padding:5px 9px;
+    background:#0c1215d9;border:1px solid var(--line);border-radius:8px;padding:5px 9px;
     font-size:10px;color:var(--muted)}
   #detail{background:var(--panel);border-left:1px solid var(--line);overflow:auto;padding:0}
   #detail header{position:sticky;top:0;background:var(--panel2);border-bottom:1px solid var(--line)}
   #detail h3{margin:0;font-size:13px}
   #detail .close{margin-left:auto}
-  .ru{display:flex;gap:8px;align-items:center;padding:3px 12px;border-bottom:1px solid #1d2531;font-size:12px}
+  .ru{display:flex;gap:8px;align-items:center;padding:3px 12px;border-bottom:1px solid var(--line);font-size:12px}
   .ru .u{width:34px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;flex:0 0 auto}
   .ru .nm{font-weight:600}
   .ru .mt{color:var(--muted);font-size:11px}
   .ru .pw{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}
   .meta{padding:10px 12px;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line)}
   .meta b{color:var(--fg)}
-  code{background:#0b0e13;padding:1px 5px;border-radius:4px}
+  code{background:var(--bg);padding:1px 5px;border-radius:4px}
 </style>
 </head>
 <body>
@@ -146,21 +160,55 @@ const FLOORPLAN_EMBEDDED = {"floorplan":{"units":"meters","origin":"per-room loc
 /* ===================== data indexing (rebuilt on live refresh) ===================== */
 let FLOORPLAN = FLOORPLAN_EMBEDDED;
 let FP, ROOMS, RACKS, DEVS, FOOT, devByRack = {}, rackById = {}, racksByRoom = {}, DCs = [];
+// Device-type palette. Same plane grouping as the app's --node-* tokens, so a
+// chiller is the same family of colour on the topology canvas, in the device
+// list and here:
+//
+//   blue → network data   violet → OOB mgmt   brass → electrical
+//   cyan → cooling        slate  → passive sensing
+//
+// Lighter than the app's values on purpose. These are FILLS with a dark label
+// painted on top (a floor plan is a grid of small tiles, read at a glance),
+// where the canvas paints white labels on dark node bodies. Same hue, different
+// rung — both solved so no device type carries more visual weight than another.
+// Previously these were unrelated to the rest of the UI and unrelated to each
+// other: a hot-pink router next to a pastel-cyan mech panel.
+// Chrome colours pulled from the stylesheet above — canvas 2D takes real colour
+// strings, not var(), so they are resolved once here rather than duplicated.
+const _cv = getComputedStyle(document.documentElement);
+const _c  = n => _cv.getPropertyValue(n).trim();
+const CH = {
+  line:_c('--line'), muted:_c('--muted'), dim:_c('--dim'), fg:_c('--fg'),
+  ink:_c('--ink'), accent:_c('--accent'), ok:_c('--ok'), warn:_c('--warn'),
+  // Hot/cold aisle. Hot was pure red, which in this UI means "fault" — an
+  // aisle being hot is its job, not an alarm. Now it borrows the cooling
+  // loop's warm-return orange, matching the topology canvas.
+  cold:'#22d3ee', hot:'#fb923c',
+  underfloor:'#38e0c8',   // plenum probe ring, deliberately off the type palette
+};
+
 const TYPE = {
-  router:['router','#ff66b3'], firewall:['firewall','#ef4444'], load_balancer:['LB','#fb923c'],
-  switch:['switch','#3b82f6'], server:['server','#4f9dff'], oob_switch:['OOB','#7aa2ff'],
-  sensor:['sensor','#34d399'], generator:['gen','#fbbf24'], ups:['UPS','#fcd34d'],
-  rpp:['RPP','#fb923c'], pdu:['PDU','#f59e0b'], energy_monitor:['energy','#a3c644'],
-  utility_feed:['utility','#94a3b8'], switchgear:['switchgear','#cbd5e1'],
-  ats:['ATS','#f0abfc'], mcc:['MCC','#67e8f9'], mpp:['mech panel','#a5f3fc'],
-  crah:['CRAH','#38bdf8'], chiller:['chiller','#22d3d3'], pump:['pump','#2dd4bf'],
-  cooling_tower:['cool twr','#2aa198'], valve:['valve','#7dd3c8'], cdu:['CDU','#5ead9e']
+  // network — data plane
+  switch:['switch','#8ab1da'], router:['router','#79b6cf'], server:['server','#9dadd7'],
+  firewall:['firewall','#b0a6dc'], load_balancer:['LB','#baa4d8'],
+  // management — out-of-band
+  oob_switch:['OOB','#c3a1d4'],
+  // electrical
+  utility_feed:['utility','#c7a79a'], switchgear:['switchgear','#c5a88f'],
+  mcc:['MCC','#c1aa8c'], ats:['ATS','#c4aa7a'], generator:['gen','#cfa589'],
+  ups:['UPS','#c4ac5b'], rpp:['RPP','#baae68'], pdu:['PDU','#c9ab55'],
+  mpp:['mech panel','#cca498'],
+  // cooling
+  crah:['CRAH','#64bac8'], chiller:['chiller','#59beb8'], pump:['pump','#7eb5ca'],
+  cooling_tower:['cool twr','#6cbcaa'], valve:['valve','#92b2c7'], cdu:['CDU','#69babc'],
+  // passive sensing
+  sensor:['sensor','#a0b0b8'], energy_monitor:['energy','#8fb0c6']
 };
 const EMO = {router:'R',firewall:'FW',load_balancer:'LB',switch:'SW',server:'SRV',oob_switch:'OOB',
   sensor:'SEN',generator:'GEN',ups:'UPS',rpp:'RPP',pdu:'PDU',energy_monitor:'EM',crah:'CRAH',
   utility_feed:'UTIL',switchgear:'SWGR',ats:'ATS',mcc:'MCC',mpp:'MPP',
   chiller:'CHL',pump:'PMP',cooling_tower:'CT',valve:'VLV',cdu:'CDU'};
-function tcolor(t){ return (TYPE[t]||['?','#888'])[1]; }
+function tcolor(t){ return (TYPE[t]||['?','#a0b0b7'])[1]; }
 
 function roomKey(r){ return r.datacenter + ' / ' + r.room; }
 function roomGeom(dc, room){ return ROOMS[dc + '/' + room] || {width_m:6,depth_m:6,aisles:[]}; }
@@ -231,9 +279,9 @@ async function pollLive(){
     const j=await res.json(); const list=j.devices||j; LIVE.byId={}; LIVE.byName={};
     for(const d of list){ LIVE.byId[d.id]=d; if(d.name) LIVE.byName[d.name]=d; }
     LIVE.ok=true; LIVE.count=list.length;
-    setLstat('connected - '+list.length+' devices', '#34d399');
+    setLstat('connected - '+list.length+' devices', CH.ok);
   }catch(e){ LIVE.ok=false;
-    setLstat('offline ('+e.message+') - start the simulator API', '#f59e0b'); }
+    setLstat('offline ('+e.message+') - start the simulator API', CH.warn); }
   render();
 }
 function setLstat(t,c){ const el=$('#lstat'); el.textContent='● '+t; el.style.color=c; }
@@ -349,12 +397,12 @@ function draw2D(){
     } }
 
   // room outline
-  ctx.strokeStyle='#3a4658'; ctx.lineWidth=1.5; ctx.strokeRect(ox,oy,g.width_m*sc,g.depth_m*sc);
-  ctx.fillStyle='#6b7686'; ctx.font='11px sans-serif';
+  ctx.strokeStyle=CH.line; ctx.lineWidth=1.5; ctx.strokeRect(ox,oy,g.width_m*sc,g.depth_m*sc);
+  ctx.fillStyle=CH.muted; ctx.font='11px sans-serif';
   ctx.fillText(`${S.room}  ${g.width_m}m x ${g.depth_m}m`, ox, oy-10);
 
   // aisles
-  for(const a of (g.aisles||[])){ const col=a.type==='cold'?'#3b82f6':'#ef4444';
+  for(const a of (g.aisles||[])){ const col=a.type==='cold'?CH.cold:CH.hot;
     ctx.fillStyle=col+'22'; ctx.fillRect(ox, Y(a.y-a.width/2), g.width_m*sc, a.width*sc);
     ctx.fillStyle=col+'cc'; ctx.font='10px sans-serif'; ctx.fillText(a.id, ox+3, Y(a.y)+3); }
 
@@ -369,14 +417,14 @@ function draw2D(){
       const vlv=ds.filter(d=>d.device_type==='valve');
       chl.forEach((d,i)=>{ const cw=1.0*sc, ch=2.0*sc;
         const cpx=X(r.floor_x+0.7+i*1.5)-cw/2, cpy=Y(r.floor_y+0.9)-ch/2;
-        ctx.fillStyle=heatOn?'#555':tcolor('chiller'); ctx.fillRect(cpx,cpy,cw,ch);
-        ctx.strokeStyle='#0b0e13'; ctx.lineWidth=1; ctx.strokeRect(cpx,cpy,cw,ch);
-        if(cw>16){ ctx.fillStyle='#052b2b'; ctx.font='bold 9px sans-serif'; ctx.fillText('CH'+(i+1),cpx+3,cpy+12); }
+        ctx.fillStyle=heatOn?CH.dim:tcolor('chiller'); ctx.fillRect(cpx,cpy,cw,ch);
+        ctx.strokeStyle=CH.ink; ctx.lineWidth=1; ctx.strokeRect(cpx,cpy,cw,ch);
+        if(cw>16){ ctx.fillStyle=CH.ink; ctx.font='bold 9px sans-serif'; ctx.fillText('CH'+(i+1),cpx+3,cpy+12); }
         hit2d.push({x:cpx,y:cpy,w:cw,h:ch,r}); });
       const pr=Math.max(3.5,0.17*sc);
       pmp.forEach((d,i)=>{ const mx=X(r.floor_x+0.55+i*0.55), my=Y(r.floor_y+2.6);
         ctx.fillStyle=tcolor('pump'); ctx.beginPath(); ctx.arc(mx,my,pr,0,7); ctx.fill();
-        ctx.strokeStyle='#06231f'; ctx.lineWidth=1; ctx.stroke(); });
+        ctx.strokeStyle=CH.ink; ctx.lineWidth=1; ctx.stroke(); });
       const vs=Math.max(4,0.13*sc);
       vlv.forEach((d,i)=>{ const mx=X(r.floor_x+0.6+i*0.6), my=Y(r.floor_y+3.15);
         ctx.fillStyle=tcolor('valve'); ctx.fillRect(mx-vs/2,my-vs/2,vs,vs); });
@@ -391,36 +439,36 @@ function draw2D(){
     let fill;
     if(heatOn){ const v=m.val(r); const c= v>0? bandColor(v,m.bands):[60,60,60];
       fill=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; }
-    else { const main=ds[0]; fill = main? tcolor(main.device_type):'#444';
+    else { const main=ds[0]; fill = main? tcolor(main.device_type):CH.dim;
       if(ct) fill=tcolor('cooling_tower'); else if(rpp) fill=tcolor('rpp'); }
     ctx.fillStyle=fill; ctx.fillRect(px,py,fw,fd);
-    ctx.strokeStyle = (S.sel===r.rack_id)?'#fff':'#0b0e13'; ctx.lineWidth=(S.sel===r.rack_id)?2:1;
+    ctx.strokeStyle = (S.sel===r.rack_id)?CH.accent:CH.ink; ctx.lineWidth=(S.sel===r.rack_id)?2:1;
     ctx.strokeRect(px,py,fw,fd);
     if(ct){ const n=ds.filter(d=>d.device_type==='cooling_tower').length;     // fan symbol per tower
-      ctx.strokeStyle='#06231f'; ctx.lineWidth=1.5;
+      ctx.strokeStyle=CH.ink; ctx.lineWidth=1.5;
       for(let i=0;i<n;i++){ const fx=px+fw/2, fy=py+fd*(i+1)/(n+1), rr=Math.min(fw,fd/n)*0.28;
         ctx.beginPath(); ctx.arc(fx,fy,rr,0,7); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(fx-rr,fy); ctx.lineTo(fx+rr,fy); ctx.moveTo(fx,fy-rr); ctx.lineTo(fx,fy+rr); ctx.stroke(); }
-      if(fw>16){ ctx.fillStyle='#06231f'; ctx.font='bold 9px sans-serif'; ctx.fillText('CT', px+3, py+11); }
+      if(fw>16){ ctx.fillStyle=CH.ink; ctx.font='bold 9px sans-serif'; ctx.fillText('CT', px+3, py+11); }
     } else if(rpp){
-      if(fw>16){ ctx.fillStyle='#1a1205'; ctx.font='bold 9px sans-serif'; ctx.fillText('RPP', px+3, py+12); }
+      if(fw>16){ ctx.fillStyle=CH.ink; ctx.font='bold 9px sans-serif'; ctx.fillText('RPP', px+3, py+12); }
     } else if(gen){ const gb=Math.min(11,fd*0.18);                       // radiator grille band at the front (bottom) end
-      ctx.fillStyle='#0b0e13aa'; ctx.fillRect(px,py+fd-gb,fw,gb);
-      ctx.strokeStyle='#0b0e1366'; ctx.lineWidth=1;
+      ctx.fillStyle=CH.ink+'aa'; ctx.fillRect(px,py+fd-gb,fw,gb);
+      ctx.strokeStyle=CH.ink+'66'; ctx.lineWidth=1;
       for(let gx=px+3; gx<px+fw-2; gx+=3){ ctx.beginPath(); ctx.moveTo(gx,py+fd-gb); ctx.lineTo(gx,py+fd); ctx.stroke(); }
-      if(fw>16){ ctx.fillStyle='#1a1205'; ctx.font='bold 9px sans-serif'; ctx.fillText('GEN', px+3, py+12); }
+      if(fw>16){ ctx.fillStyle=CH.ink; ctx.font='bold 9px sans-serif'; ctx.fillText('GEN', px+3, py+12); }
     } else if(ups){                                               // power cabinet + battery cabinet split
-      const bx=px+fw*0.66; ctx.strokeStyle='#0b0e1399'; ctx.lineWidth=1;
+      const bx=px+fw*0.66; ctx.strokeStyle=CH.ink+'99'; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(bx,py); ctx.lineTo(bx,py+fd); ctx.stroke();         // UPS | battery divider
-      ctx.fillStyle='#06212b'; ctx.fillRect(px+4,py+4,fw*0.5,Math.min(7,fd*0.2));     // HMI/LCD
-      if(fw>22){ ctx.fillStyle='#1a1205'; ctx.font='bold 9px sans-serif'; ctx.fillText('UPS', px+3, py+fd-4);
-        ctx.fillStyle='#0b0e13cc'; ctx.font='7px sans-serif'; ctx.fillText('BAT', bx+2, py+fd-4); }
+      ctx.fillStyle=CH.ink; ctx.fillRect(px+4,py+4,fw*0.5,Math.min(7,fd*0.2));     // HMI/LCD
+      if(fw>22){ ctx.fillStyle=CH.ink; ctx.font='bold 9px sans-serif'; ctx.fillText('UPS', px+3, py+fd-4);
+        ctx.fillStyle=CH.ink+'cc'; ctx.font='7px sans-serif'; ctx.fillText('BAT', bx+2, py+fd-4); }
     } else {
       // facing marker: thin bright edge on the front (cold-aisle) side
-      if(r.rack_facing){ ctx.strokeStyle='#cfe3ff'; ctx.lineWidth=2; ctx.beginPath();
+      if(r.rack_facing){ ctx.strokeStyle=CH.fg; ctx.lineWidth=2; ctx.beginPath();
         const yEdge = r.rack_facing==='S'? py+fd : py;
         ctx.moveTo(px,yEdge); ctx.lineTo(px+fw,yEdge); ctx.stroke(); }
-      if(fw>22){ ctx.fillStyle='#0b0e13cc'; ctx.font='9px sans-serif';
+      if(fw>22){ ctx.fillStyle=CH.ink+'cc'; ctx.font='9px sans-serif';
         ctx.fillText('R'+r.rack_num, px+2, py+fd-3); }
     }
     hit2d.push({x:px,y:py,w:fw,h:fd,r});
@@ -440,9 +488,9 @@ function draw2D(){
       else { const ang=i*2.39, rad=(sens.length>1? 7:0);
         mx=cx+Math.cos(ang)*rad; my=cy+Math.sin(ang)*rad; }
       ctx.beginPath(); ctx.arc(mx,my,4.5,0,7);
-      ctx.fillStyle= uf? '#38e0c8' : tcolor('sensor');
-      ctx.fill(); ctx.lineWidth= uf?2:1; ctx.strokeStyle= uf? '#063a33':'#06301f'; ctx.stroke();
-      if(uf){ ctx.fillStyle='#cffff6'; ctx.font='bold 7px sans-serif'; ctx.fillText('UF', mx-6, my-7); }
+      ctx.fillStyle= uf? CH.underfloor : tcolor('sensor');
+      ctx.fill(); ctx.lineWidth= uf?2:1; ctx.strokeStyle= CH.ink; ctx.stroke();
+      if(uf){ ctx.fillStyle=CH.ink; ctx.font='bold 7px sans-serif'; ctx.fillText('UF', mx-6, my-7); }
       hitDev.push({x:mx-6,y:my-6,w:12,h:12,d,r}); });
   }
   drawHLegend(m, racks);
