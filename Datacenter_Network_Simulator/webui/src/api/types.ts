@@ -297,6 +297,10 @@ export interface JobStatus {
   message: string
   error: string
   result?: unknown
+  // queued_at: accepted. started_at: a worker picked it up — empty while still
+  // waiting on the 4-worker pool. started_at - queued_at is queue wait; work
+  // time is finished_at - started_at.
+  queued_at: string
   started_at: string
   finished_at: string
 }

@@ -131,7 +131,7 @@ def generate_datasets():
             s.notify_ui("status", "Error")
             s.update_job(job_id, status="failed", error=str(e), finished_at=datetime.utcnow().isoformat())
 
-    s.executor.submit(_run)
+    s.submit_job(job_id, _run)
     return JobResponse(job_id=job_id, operation="generate_snmp_datasets", status="running")
 
 
@@ -240,7 +240,7 @@ def start_snmp_simulator(req: SnmpStartRequest = None):
             s.notify_ui("sync_snmp")
             s.update_job(job_id, status="failed", error=str(e), finished_at=datetime.utcnow().isoformat())
 
-    s.executor.submit(_run)
+    s.submit_job(job_id, _run)
     return JobResponse(job_id=job_id, operation="start_snmp_simulator", status="running")
 
 
@@ -278,7 +278,7 @@ def reload_snmp_simulator():
             s.update_job(job_id, status="failed", error=str(e),
                          finished_at=datetime.utcnow().isoformat())
 
-    s.executor.submit(_run)
+    s.submit_job(job_id, _run)
     return JobResponse(job_id=job_id, operation="reload_snmp_simulator", status="running")
 
 
@@ -346,7 +346,7 @@ def clear_snmp_simulation():
         except Exception as e:
             s.update_job(job_id, status="failed", error=str(e), finished_at=datetime.utcnow().isoformat())
 
-    s.executor.submit(_run)
+    s.submit_job(job_id, _run)
     return JobResponse(job_id=job_id, operation="clear_snmp_datasets", status="running")
 
 
@@ -407,6 +407,7 @@ def get_job_status(job_id: str):
         message=job.message,
         error=job.error,
         result=job.result,
+        queued_at=job.queued_at,
         started_at=job.started_at,
         finished_at=job.finished_at,
     )

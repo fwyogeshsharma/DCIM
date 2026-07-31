@@ -24,6 +24,7 @@ async def get_job(job_id: str):
         message=job.message,
         error=job.error,
         result=job.result,
+        queued_at=job.queued_at,
         started_at=job.started_at,
         finished_at=job.finished_at,
     )

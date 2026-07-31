@@ -122,7 +122,7 @@ def bind_ips():
         except Exception as e:
             s.update_job(job_id, status="failed", error=str(e), finished_at=datetime.utcnow().isoformat())
 
-    s.executor.submit(_run)
+    s.submit_job(job_id, _run)
     return JobResponse(job_id=job_id, operation="bind_ips", status="running")
 
 
@@ -177,7 +177,7 @@ def unbind_ips():
         except Exception as e:
             s.update_job(job_id, status="failed", error=str(e), finished_at=datetime.utcnow().isoformat())
 
-    s.executor.submit(_run)
+    s.submit_job(job_id, _run)
     return JobResponse(job_id=job_id, operation="unbind_ips", status="running")
 
 
@@ -224,6 +224,7 @@ def get_job_status(job_id: str):
         message=job.message,
         error=job.error,
         result=job.result,
+        queued_at=job.queued_at,
         started_at=job.started_at,
         finished_at=job.finished_at,
     )

@@ -34,6 +34,13 @@ class JobStatus:
     message: str = ""
     error: str = ""
     result: Any = None
+    # queued_at → the POST was accepted and the work enqueued.
+    # started_at → a worker actually picked it up. Empty until then.
+    # Keeping these separate is the whole point: they used to be one field
+    # stamped at enqueue, so every duration silently included time spent waiting
+    # behind other jobs on the 4-worker pool. A 0.6s gNMI start read as 14.7s
+    # and sent us hunting a performance bug that did not exist.
+    queued_at: str = ""
     started_at: str = ""
     finished_at: str = ""
 
@@ -151,16 +158,37 @@ class AppState:
         self.gnmi_datasets_dir = gnmi_datasets_dir
 
     def create_job(self, operation: str) -> str:
+        """Register a job as ENQUEUED. started_at is stamped later, by submit_job,
+        when a worker actually picks the job up.
+
+        status stays "running" rather than gaining a "queued" value on purpose:
+        every poller in the web UI loops while status === 'running', so a new
+        status would read as "finished" and cut the poll short.
+        """
         job_id = str(uuid.uuid4())
         job = JobStatus(
             job_id=job_id,
             operation=operation,
             status="running",
-            started_at=datetime.utcnow().isoformat(),
+            queued_at=datetime.utcnow().isoformat(),
         )
         with self._state_lock:
             self.jobs[job_id] = job
         return job_id
+
+    def submit_job(self, job_id: str, fn) -> None:
+        """Run *fn* on the shared worker pool, stamping started_at when it begins.
+
+        Always submit through here rather than executor.submit(fn) directly, or
+        the job reports a start time it never had. The pool is small
+        (max_workers=4) and shared by every background operation — dataset
+        generation, simulator starts, binding — so queue wait is real and worth
+        being able to see: started_at - queued_at IS the wait.
+        """
+        def _wrapped():
+            self.update_job(job_id, started_at=datetime.utcnow().isoformat())
+            return fn()
+        self.executor.submit(_wrapped)
 
     def update_job(self, job_id: str, **kwargs):
         with self._state_lock:

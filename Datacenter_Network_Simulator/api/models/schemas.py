@@ -27,7 +27,12 @@ class JobStatusResponse(BaseModel):
     message: str
     error: str
     result: Optional[Any] = None
-    started_at: str
+    # queued_at: request accepted. started_at: a worker picked it up — empty
+    # while the job is still waiting on the 4-worker pool. The gap between them
+    # is queue wait, and reading it as work time is how a 0.6s start looked
+    # like 14.7s. Duration of actual work is finished_at - started_at.
+    queued_at: str = ""
+    started_at: str = ""
     finished_at: str
 
 
