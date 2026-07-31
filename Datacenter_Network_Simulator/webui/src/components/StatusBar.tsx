@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { api } from '../api/client'
+import { nodeColor } from '../theme'
 
 // source: which measurement plane the backend used, best first.
 //   native   — the gear's own meters (switchgear / UPS output / MCC)
@@ -20,9 +21,9 @@ function fmtKW(w: number): string {
 // PUE colour band: efficient (<1.4) green, typical (1.4–2.0) amber, poor (>2.0) red
 function pueColor(pue: number): string {
   if (pue <= 0) return 'var(--text-dim)'
-  if (pue < 1.4) return '#3fb950'
-  if (pue < 2.0) return '#d29922'
-  return '#f85149'
+  if (pue < 1.4) return 'var(--ok)'
+  if (pue < 2.0) return 'var(--warn)'
+  return 'var(--crit)'
 }
 
 function PowerReadout() {
@@ -64,28 +65,6 @@ function PowerReadout() {
   )
 }
 
-const DEVICE_TYPE_COLOR: Record<string, string> = {
-  router:        'var(--node-router)',
-  switch:        'var(--node-switch)',
-  server:        'var(--node-server)',
-  firewall:      'var(--node-firewall)',
-  load_balancer: 'var(--node-lb)',
-  oob_switch:    'var(--node-oob)',
-  pdu:           'var(--node-pdu)',
-  floor_pdu:     'var(--node-pdu)',
-  rpp:           '#7c2d6e',
-  generator:     '#713f12',
-  ups:           'var(--node-ups)',
-  sensor:        'var(--node-sensor)',
-  energy_monitor:'#0e7490',
-  crah:          '#0891b2',
-  chiller:       '#155e75',
-  pump:          '#1e6ec8',
-  cooling_tower: '#164e63',
-  valve:         '#4a044e',
-  cdu:           '#2563eb',
-}
-
 const DEVICE_TYPE_SHORT: Record<string, string> = {
   router:        'RTR',
   switch:        'SW',
@@ -117,7 +96,7 @@ export default function StatusBar() {
   return (
     <div style={{
       height: 26,
-      background: 'linear-gradient(180deg, #08101a 0%, #060b13 100%)',
+      background: 'linear-gradient(180deg, var(--chrome-a) 0%, var(--chrome-b) 100%)',
       borderTop: '1px solid var(--border)',
       display: 'flex',
       alignItems: 'center',
@@ -136,7 +115,7 @@ export default function StatusBar() {
         }} title={t}>
           <span style={{
             width: 7, height: 7, borderRadius: 2,
-            background: DEVICE_TYPE_COLOR[t] || '#555',
+            background: nodeColor(t),
           }} />
           <span style={{ color: 'var(--text-muted)' }}>{DEVICE_TYPE_SHORT[t] || t}</span>
           <span style={{

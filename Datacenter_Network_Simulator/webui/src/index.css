@@ -1,37 +1,225 @@
-/* ─── CSS variables ─── */
+/* ═══════════════════════════════════════════════════════════════════════
+   THEME TOKENS — single source of colour for the whole web UI.
+
+   Every colour the UI paints comes from here. Components reference these
+   with var(--x); nothing outside this block should carry a raw hex. That
+   holds for TS too — src/theme.ts is only a set of var() references so a
+   device-type or severity colour is still defined once, in this file.
+
+   Anything painted through React Flow works the same way: edge strokes and
+   node fills go through inline `style`, and <Background color> is forwarded
+   into a custom property, so nested var() resolves normally.
+
+   To retheme (or add a light mode), override this block — not the call
+   sites.
+   ══════════════════════════════════════════════════════════════════════ */
 :root {
-  --bg-base:      #090e18;
-  --bg-panel:     #0d1525;
-  --bg-card:      #131f30;
+  /* ── Surfaces ──────────────────────────────────────────────────────── */
+  --bg-base:      #090e18;   /* app canvas behind everything */
+  --bg-panel:     #0d1525;   /* panel / sticky table head */
+  --bg-card:      #131f30;   /* raised control: button, input, card */
   --bg-hover:     #182438;
   --bg-selected:  #163354;
+  --bg-menu:      #111827;   /* floating dropdown menu */
+  --bg-inset:     #0d1117;   /* recessed sub-surface inside a panel */
+  --bg-inset-alt: #161b22;   /* banded row within --bg-inset */
+  --bg-viewport:  #0e1116;   /* full-page / iframe viewport (floor plan) */
+  --bg-well:      rgba(0, 0, 0, 0.25);   /* sunken counter cell / progress track */
+
+  /* Backdrops — fixed overlays and the chrome-bar gradient. All three bars
+     (menu bar, status bar, right-panel rail) share one gradient so the
+     window frame reads as a single surface. */
+  --backdrop:      #060b16;
+  --backdrop-glow: #0d1b30;  /* radial centre on the login screen */
+  --chrome-a:      #0b1628;  /* chrome-bar gradient, top */
+  --chrome-b:      #080f1e;  /* chrome-bar gradient, bottom */
+  --vignette:      #0e151f;  /* topology canvas radial centre */
+
+  /* ── Lines ─────────────────────────────────────────────────────────── */
   --border:       #1e3048;
   --border-light: #2e4a6a;
-  --accent:       #2563eb;
-  --accent-hover: #3b82f6;
+  --border-dim:   #21262d;   /* hairline inside a recessed surface */
+  --line-dim:     #2d3f55;   /* logo strokes, decorative rules */
+  --canvas-dot:   rgba(45, 63, 85, 0.25);   /* topology dot grid */
+
+  /* ── Text ──────────────────────────────────────────────────────────── */
   --text:         #d4dce8;
   --text-muted:   #7a8fa8;
   --text-dim:     #445568;
-  --green:        #22c55e;
-  --red:          #f87171;
-  --yellow:       #f59e0b;
+  --on-solid:     #fff;      /* label on a saturated fill */
+  --on-accent:    #061018;   /* label on an --accent fill */
+
+  /* ── Brand / accents ───────────────────────────────────────────────── */
+  --accent:       #2563eb;
+  --accent-hover: #3b82f6;
+  --accent-soft:  #93c5fd;   /* accent text on a tinted accent fill */
+  --brand:        #1e6ec8;   /* logo blue, "all layers" chip */
+  --brand-alt:    #db6d28;   /* logo orange */
+  --cyan:         #06b6d4;   /* protocol-panel accent (SNMP/gNMI/BACnet/sFlow) */
+  --purple:       #a371f7;   /* Redfish accent */
+  --cyan-bg:      rgba(8, 145, 178, 0.13);
+  --cyan-border:  rgba(8, 145, 178, 0.33);
+
+  /* ── Status, canonical ─────────────────────────────────────────────────
+     ONE severity vocabulary for the UI. Before this existed the app carried
+     three near-identical green/amber/red sets (tailwind, GitHub-dark, and
+     flat-UI), so the same "degraded" state rendered in a different amber
+     depending on which panel you were looking at. Use these, not a hex.
+
+     Distinct from --sev-* below: these are UI states (a threshold crossed,
+     a link down). --sev-* is the trap-severity ramp the backend defines. */
+  --ok:           #3fb950;
+  --warn:         #d29922;
+  --crit:         #f85149;
+  --info:         #58a6ff;
+
+  /* Tinted fill + hairline for chips and badges built on the above. */
+  --ok-bg:        rgba(63, 185, 80, 0.13);
+  --ok-border:    rgba(63, 185, 80, 0.27);
+  --ok-glow:      rgba(63, 185, 80, 0.25);
+  --warn-bg:      rgba(210, 153, 34, 0.13);
+  --warn-border:  rgba(210, 153, 34, 0.27);
+  --crit-bg:      rgba(248, 81, 73, 0.13);
+  --crit-border:  rgba(248, 81, 73, 0.27);
+  --crit-glow:    rgba(248, 81, 73, 0.2);
+  --info-bg:      rgba(88, 166, 255, 0.13);
+  --info-border:  rgba(88, 166, 255, 0.27);
+  --accent-bg:      rgba(37, 99, 235, 0.12);
+  --accent-bg-faint:rgba(37, 99, 235, 0.06);
+  --accent-border:  rgba(37, 99, 235, 0.5);
+  --accent-glow:    rgba(37, 99, 235, 0.4);
+  --accent-ring:    rgba(37, 99, 235, 0.18);   /* input focus ring */
+
+  /* Solid severity surfaces — banners and trip callouts, where the state has
+     to win over everything else on screen rather than sit in a chip. */
+  --crit-solid-bg: #7a1d1d;
+  --crit-solid-fg: #ffdede;
+  --warn-solid-bg: #7a5a12;
+  --warn-solid-fg: #ffeec2;
+  --warn-strong:   #e3b341;   /* brighter than --warn: alert border / button */
+  --on-warn-strong:#3a2a00;   /* label on a --warn-strong fill */
+
+  /* Alarm blink (faulted node) — deliberately hotter and lighter than --crit
+     so the luminance swing reads at thumbnail zoom. */
+  --alarm:         #ef4444;
+  --alarm-peak:    #fff1f2;
+  --alarm-edge:    #fecaca;
+  --alarm-text:    #7f1d1d;
+
+  /* Legacy aliases. Kept so older rules keep resolving; prefer the semantic
+     names above in new code. --orange has no status meaning and stays raw. */
+  --green:        var(--ok);
+  --red:          var(--crit);
+  --yellow:       var(--warn);
   --orange:       #f97316;
 
-  /* node colors */
-  --node-router:   #c0621a;
-  --node-switch:   #1a7a3c;
-  --node-server:   #1a5faa;
-  --node-firewall: #9b1c1c;
-  --node-lb:       #6b21a8;
-  --node-oob:      #0e7490;
-  --node-pdu:      #b45309;
-  --node-ups:      #a16207;
-  --node-sensor:   #374151;
+  /* ── Trap / rule severity ramp ─────────────────────────────────────────
+     MIRRORS core/trap_definitions.py SEVERITY_COLOR. This is a backend
+     contract, not a styling choice — retuning these desyncs the web UI from
+     the traps the simulator actually emits. Change the Python first. */
+  --sev-informational: #2ecc71;
+  --sev-minor:         #f39c12;
+  --sev-major:         #e67e22;
+  --sev-critical:      #e74c3c;
 
-  /* layer colors */
-  --layer-prod: #2563eb;
-  --layer-mgmt: #16a34a;
-  --layer-power:#d97706;
+  /* ── Device-type colours ───────────────────────────────────────────────
+     One palette for every place a device type gets a colour: topology node
+     body, device-list dot, status-bar count chip. These used to be four
+     separate maps that had drifted apart (floor PDUs were one colour on the
+     canvas and another in the list), which made the legend lie. */
+  --node-router:         #c0621a;
+  --node-switch:         #1a7a3c;
+  --node-server:         #1a5faa;
+  --node-firewall:       #9b1c1c;
+  --node-lb:             #6b21a8;
+  --node-oob:            #0e7490;
+  --node-pdu:            #b45309;
+  --node-floor-pdu:      #b03060;
+  --node-rpp:            #7c2d6e;
+  --node-generator:      #713f12;
+  --node-ups:            #c9a227;
+  --node-sensor:         #374151;
+  --node-utility-feed:   #3f3f46;
+  --node-switchgear:     #57534e;
+  --node-ats:            #92400e;
+  --node-mcc:            #155e75;
+  --node-mpp:            #0e7490;
+  --node-energy-monitor: #0e7490;
+  --node-crah:           #0891b2;
+  --node-chiller:        #155e75;
+  --node-pump:           #1e6ec8;
+  --node-cooling-tower:  #164e63;
+  --node-valve:          #4a044e;
+  --node-cdu:            #2563eb;
+  --node-default:        #555;   /* unknown device_type */
+
+  /* Device-type BADGE palette (Live Metrics chips). Deliberately brighter
+     and more saturated than --node-*: these are small text chips on a dark
+     table row, not large node bodies. Still a duplicate concept — worth
+     collapsing into --node-* once someone can eyeball both pages together. */
+  --badge-switch:        #1e6ec8;
+  --badge-router:        #8b5cf6;
+  --badge-server:        #059669;
+  --badge-firewall:      #dc2626;
+  --badge-lb:            #d97706;
+  --badge-ups:           #0891b2;
+  --badge-pdu:           #065f46;
+  --badge-floor-pdu:     #064e3b;
+  --badge-rpp:           #4a044e;
+  --badge-generator:     #713f12;
+  --badge-oob:           #4b5563;
+  --badge-sensor:        #92400e;
+  --badge-utility-feed:  #3f3f46;
+  --badge-switchgear:    #57534e;
+  --badge-ats:           #92400e;
+  --badge-mcc:           #155e75;
+  --badge-mpp:           #0e7490;
+  --badge-default:       #4b5563;
+
+  /* ── Topology layers ───────────────────────────────────────────────────
+     These are what LinkEdge actually strokes with, so the layer buttons that
+     use them as swatches now match the lines on the canvas. (--layer-prod
+     and --layer-mgmt previously held different values here than the edge
+     renderer used, so the legend disagreed with the drawing.) */
+  --layer-prod:    #4a9eff;
+  --layer-mgmt:    var(--ok);
+  --layer-power:   #f59e0b;
+  --layer-cooling: #22d3ee;
+
+  /* Cooling-loop flow direction. */
+  --flow-cold: #22d3ee;   /* chilled supply / cooled condenser return */
+  --flow-hot:  #fb923c;   /* warm return / hot condenser water */
+
+  /* ── Tinted action buttons ─────────────────────────────────────────────
+     Filled status variants for start/stop/clear-style controls. Much darker
+     than --ok/--crit/--warn themselves: a toolbar full of saturated buttons
+     drowns out the one alarm that actually matters. */
+  --ok-fill:        #052e16;
+  --ok-fill-hover:  #14532d;
+  --ok-fill-line:   #166534;
+  --ok-fill-fg:     #86efac;
+  --crit-fill:      #4c1010;
+  --crit-fill-hover:#7f1d1d;
+  --crit-fill-line: #991b1b;
+  --crit-fill-fg:   #fca5a5;
+  --crit-muted-fg:  #a07070;   /* clear/destructive at rest */
+  --warn-fill:      rgba(154, 103, 0, 0.3);
+  --warn-fill-hover:#92400e;
+  --warn-fill-line: #b88500;
+  --warn-fill-fg:   #fcd34d;
+
+  /* ── Misc surfaces & lines ─────────────────────────────────────────── */
+  --bg-faint:        rgba(255, 255, 255, 0.04);   /* barely-there fill */
+  --bg-float:        rgba(13, 21, 37, 0.92);      /* floating canvas toolbar */
+  --border-soft:     rgba(30, 48, 72, 0.5);       /* table row rule */
+  --panel-head-a:    #101a2d;                     /* panel header gradient */
+  --panel-head-b:    var(--bg-panel);
+  --toggle-track:    #1a2840;
+  --scroll-thumb:      var(--border-light);
+  --scroll-thumb-hover:#3a5a80;
+  --accent-deep:     #1d4ed8;   /* dark stop of an accent gradient */
+  --alarm-glow:      rgba(239, 68, 68, 0.9);
+  --alarm-glow-soft: rgba(239, 68, 68, 0.55);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,10 +239,10 @@ html, body, #root {
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-light);
+  background: var(--scroll-thumb);
   border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover { background: #3a5a80; }
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
 
 /* ─── Generic buttons ─── */
 button {
@@ -83,33 +271,33 @@ button:disabled {
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-solid);
   font-weight: 600;
 }
 button.primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 button.danger {
-  background: #4c1010;
-  border-color: #7f1d1d;
-  color: #fca5a5;
+  background: var(--crit-fill);
+  border-color: var(--crit-fill-hover);
+  color: var(--crit-fill-fg);
 }
 button.danger:hover:not(:disabled) {
-  background: #7f1d1d;
-  box-shadow: 0 0 10px rgba(248, 113, 113, 0.2);
+  background: var(--crit-fill-hover);
+  box-shadow: 0 0 10px var(--crit-glow);
 }
 
 button.success {
-  background: #052e16;
-  border-color: #166534;
-  color: #86efac;
+  background: var(--ok-fill);
+  border-color: var(--ok-fill-line);
+  color: var(--ok-fill-fg);
 }
 button.success:hover:not(:disabled) {
-  background: #14532d;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+  background: var(--ok-fill-hover);
+  box-shadow: 0 0 10px var(--ok-glow);
 }
 
 /* ─── Inputs & selects ─── */
@@ -126,10 +314,10 @@ input, select {
 }
 input:focus, select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 0 2px var(--accent-ring);
 }
 input::placeholder { color: var(--text-dim); }
-select option { background: #131f30; color: var(--text); }
+select option { background: var(--bg-card); color: var(--text); }
 
 /* ─── Badge ─── */
 .badge {
@@ -143,19 +331,19 @@ select option { background: #131f30; color: var(--text); }
   letter-spacing: 0.2px;
 }
 .badge.running {
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #4ade80;
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-border);
+  color: var(--ok);
 }
 .badge.stopped {
-  background: rgba(255,255,255,0.04);
+  background: var(--bg-faint);
   border: 1px solid var(--border);
   color: var(--text-muted);
 }
 .badge.ready {
-  background: rgba(37, 99, 235, 0.12);
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  color: #93c5fd;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-soft);
 }
 
 /* ─── Status dots ─── */
@@ -177,7 +365,7 @@ select option { background: #131f30; color: var(--text); }
 
 @keyframes pulse-green {
   0%, 100% { box-shadow: 0 0 4px var(--green); }
-  50%       { box-shadow: 0 0 9px var(--green), 0 0 2px #a7f3d0; }
+  50%       { box-shadow: 0 0 9px var(--green), 0 0 2px var(--ok-fill-fg); }
 }
 
 /* Injected-CONDITION node: hard alarm blink while the fault is active, ending
@@ -202,19 +390,19 @@ select option { background: #131f30; color: var(--text); }
 
 @keyframes fault-blink {
   0%, 44% {
-    background: #ef4444;
-    border-color: #fecaca;
-    box-shadow: 0 0 0 3px #ef4444, 0 0 16px 4px rgba(239, 68, 68, 0.9);
+    background: var(--alarm);
+    border-color: var(--alarm-edge);
+    box-shadow: 0 0 0 3px var(--alarm), 0 0 16px 4px var(--alarm-glow);
   }
   50%, 94% {
-    background: #fff1f2;
-    border-color: #ef4444;
-    box-shadow: 0 0 0 4px #fff1f2, 0 0 26px 10px rgba(239, 68, 68, 0.55);
+    background: var(--alarm-peak);
+    border-color: var(--alarm);
+    box-shadow: 0 0 0 4px var(--alarm-peak), 0 0 26px 10px var(--alarm-glow-soft);
   }
   95%, 100% {
-    background: #ef4444;
-    border-color: #fecaca;
-    box-shadow: 0 0 0 3px #ef4444, 0 0 16px 4px rgba(239, 68, 68, 0.9);
+    background: var(--alarm);
+    border-color: var(--alarm-edge);
+    box-shadow: 0 0 0 3px var(--alarm), 0 0 16px 4px var(--alarm-glow);
   }
 }
 
@@ -223,9 +411,9 @@ select option { background: #131f30; color: var(--text); }
 .node-faulted > div:not(.react-flow__handle) { animation: fault-blink-text 1s linear infinite; }
 
 @keyframes fault-blink-text {
-  0%, 44%   { color: #fff; }
-  50%, 94%  { color: #7f1d1d; }
-  95%, 100% { color: #fff; }
+  0%, 44%   { color: var(--on-solid); }
+  50%, 94%  { color: var(--alarm-text); }
+  95%, 100% { color: var(--on-solid); }
 }
 
 /* Respect a reduced-motion preference: no flashing, but keep a strong static
@@ -234,9 +422,9 @@ select option { background: #131f30; color: var(--text); }
   .node-faulted,
   .node-faulted > div:not(.react-flow__handle) { animation: none !important; }
   .node-faulted {
-    background: #ef4444 !important;
-    border-color: #fff1f2 !important;
-    box-shadow: 0 0 0 4px #ef4444, 0 0 20px 6px rgba(239, 68, 68, 0.85) !important;
+    background: var(--alarm) !important;
+    border-color: var(--alarm-peak) !important;
+    box-shadow: 0 0 0 4px var(--alarm), 0 0 20px 6px var(--alarm-glow) !important;
   }
 }
 
@@ -270,7 +458,7 @@ select option { background: #131f30; color: var(--text); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(180deg, #101a2d 0%, #0d1525 100%);
+  background: linear-gradient(180deg, var(--panel-head-a) 0%, var(--panel-head-b) 100%);
   flex-shrink: 0;
 }
 .panel-header .title {
@@ -295,7 +483,7 @@ select option { background: #131f30; color: var(--text); }
   gap: 4px; margin: 8px 0;
 }
 .counter-cell {
-  background: rgba(0,0,0,0.25);
+  background: var(--bg-well);
   border: 1px solid var(--border);
   border-radius: 5px;
   padding: 5px 8px;
@@ -307,7 +495,7 @@ select option { background: #131f30; color: var(--text); }
 /* ─── Progress bar ─── */
 .progress-bar {
   height: 4px;
-  background: rgba(0,0,0,0.3);
+  background: var(--bg-well);
   border-radius: 2px;
   overflow: hidden;
   margin: 4px 0;
@@ -317,7 +505,7 @@ select option { background: #131f30; color: var(--text); }
   background: linear-gradient(90deg, var(--accent), var(--accent-hover));
   transition: width 0.25s ease;
   border-radius: 2px;
-  box-shadow: 0 0 6px rgba(37,99,235,0.5);
+  box-shadow: 0 0 6px var(--accent-glow);
 }
 
 /* ─── Generic table ─── */
@@ -331,7 +519,7 @@ select option { background: #131f30; color: var(--text); }
 }
 .table td {
   padding: 4px 8px;
-  border-bottom: 1px solid rgba(30, 48, 72, 0.5);
+  border-bottom: 1px solid var(--border-soft);
 }
 .table tr:hover td { background: var(--bg-hover); }
 
@@ -343,7 +531,7 @@ select option { background: #131f30; color: var(--text); }
   cursor: pointer;
   font-size: 9px;
   font-weight: 700;
-  color: #fff;
+  color: var(--on-solid);
   display: flex; align-items: center; justify-content: center;
   transition: filter 0.15s, transform 0.1s;
 }
@@ -357,7 +545,7 @@ select option { background: #131f30; color: var(--text); }
 .toggle input { opacity: 0; width: 0; height: 0; }
 .toggle-slider {
   position: absolute; inset: 0;
-  background: #1a2840;
+  background: var(--toggle-track);
   border: 1px solid var(--border);
   border-radius: 18px;
   cursor: pointer;
@@ -372,9 +560,9 @@ select option { background: #131f30; color: var(--text); }
   transition: transform 0.2s, background 0.2s;
 }
 .toggle input:checked + .toggle-slider {
-  background: #052e16;
-  border-color: #166534;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.25);
+  background: var(--ok-fill);
+  border-color: var(--ok-fill-line);
+  box-shadow: 0 0 8px var(--ok-glow);
 }
 .toggle input:checked + .toggle-slider::before {
   transform: translateX(16px);
@@ -437,66 +625,66 @@ select option { background: #131f30; color: var(--text); }
 .btn-action svg { flex-shrink: 0; }
 
 .btn-generate {
-  background: rgba(37, 99, 235, 0.15);
-  border-color: rgba(37, 99, 235, 0.5);
-  color: #93c5fd;
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent-soft);
 }
 .btn-generate:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 14px rgba(37, 99, 235, 0.35);
+  color: var(--on-solid);
+  box-shadow: 0 0 14px var(--accent-glow);
 }
 
 .btn-start {
-  background: rgba(5, 46, 22, 0.6);
-  border-color: #166534;
-  color: #86efac;
+  background: var(--ok-fill);
+  border-color: var(--ok-fill-line);
+  color: var(--ok-fill-fg);
 }
 .btn-start:hover:not(:disabled) {
-  background: #14532d;
-  border-color: #22c55e;
-  color: #bbf7d0;
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+  background: var(--ok-fill-hover);
+  border-color: var(--ok);
+  color: var(--ok-fill-fg);
+  box-shadow: 0 0 12px var(--ok-glow);
 }
 
 .btn-stop {
-  background: rgba(76, 16, 16, 0.6);
-  border-color: #991b1b;
-  color: #fca5a5;
+  background: var(--crit-fill);
+  border-color: var(--crit-fill-line);
+  color: var(--crit-fill-fg);
 }
 .btn-stop:hover:not(:disabled) {
-  background: #7f1d1d;
-  border-color: #f87171;
-  color: #fecaca;
-  box-shadow: 0 0 12px rgba(248, 113, 113, 0.2);
+  background: var(--crit-fill-hover);
+  border-color: var(--crit);
+  color: var(--alarm-edge);
+  box-shadow: 0 0 12px var(--crit-glow);
 }
 
 .btn-clear {
-  background: rgba(90, 20, 20, 0.15);
-  color: #a07070;
-  border-color: rgba(160, 50, 50, 0.4);
+  background: var(--crit-bg);
+  color: var(--crit-muted-fg);
+  border-color: var(--crit-border);
 }
 .btn-clear:hover:not(:disabled) {
-  background: rgba(76, 16, 16, 0.35);
-  border-color: #c0392b;
-  color: #fca5a5;
+  background: var(--crit-fill);
+  border-color: var(--crit-fill-line);
+  color: var(--crit-fill-fg);
 }
 .btn-action.btn-clear:disabled {
   background: transparent;
-  border: 1px dashed #4a3a3a;
+  border: 1px dashed var(--crit-border);
   color: var(--text-muted);
 }
 
 .btn-warn {
-  background: rgba(154, 103, 0, 0.3);
-  border-color: #b88500;
-  color: #fcd34d;
+  background: var(--warn-fill);
+  border-color: var(--warn-fill-line);
+  color: var(--warn-fill-fg);
 }
 .btn-warn:hover:not(:disabled) {
-  background: #92400e;
-  border-color: #d97706;
-  color: #fde68a;
+  background: var(--warn-fill-hover);
+  border-color: var(--warn-fill-line);
+  color: var(--warn-fill-fg);
 }
 
 /* ─── Topology canvas toolbar ─── */
@@ -508,11 +696,11 @@ select option { background: #131f30; color: var(--text); }
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: rgba(13, 21, 37, 0.92);
+  background: var(--bg-float);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--bg-faint);
   backdrop-filter: blur(4px);
 }
 .canvas-tool {
@@ -535,9 +723,9 @@ select option { background: #131f30; color: var(--text); }
   border-color: var(--border);
 }
 .canvas-tool.active {
-  background: rgba(37, 99, 235, 0.2);
-  color: #93c5fd;
-  border-color: rgba(37, 99, 235, 0.5);
+  background: var(--accent-bg);
+  color: var(--accent-soft);
+  border-color: var(--accent-border);
 }
 .canvas-tool:disabled {
   cursor: not-allowed;
@@ -587,7 +775,7 @@ select option { background: #131f30; color: var(--text); }
 .device-table thead th:hover { color: var(--text); cursor: pointer; }
 .device-table tbody td {
   padding: 5px 6px;
-  border-bottom: 1px solid rgba(30, 48, 72, 0.5);
+  border-bottom: 1px solid var(--border-soft);
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -603,7 +791,7 @@ select option { background: #131f30; color: var(--text); }
   background: var(--bg-selected);
   color: var(--text);
 }
-.device-table tbody tr.selected td.muted { color: #c9d1d9; }
+.device-table tbody tr.selected td.muted { color: var(--text); }
 .device-table tbody tr:last-child td { border-bottom: none; }
 
 /* ─── Trap clear-all button ─── */
@@ -622,9 +810,9 @@ select option { background: #131f30; color: var(--text); }
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .btn-clear-traps:hover:not(:disabled) {
-  background: rgba(76, 16, 16, 0.25);
-  border-color: #7f1d1d;
-  color: #fca5a5;
+  background: var(--crit-bg);
+  border-color: var(--crit-fill-hover);
+  color: var(--crit-fill-fg);
 }
 .btn-clear-traps:disabled {
   cursor: not-allowed;
@@ -646,18 +834,18 @@ select option { background: #131f30; color: var(--text); }
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.2px;
-  border: 1px solid rgba(37, 99, 235, 0.5);
+  border: 1px solid var(--accent-border);
   border-radius: 5px;
-  background: rgba(37, 99, 235, 0.12);
-  color: #93c5fd;
+  background: var(--accent-bg);
+  color: var(--accent-soft);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.08s, box-shadow 0.15s;
 }
 .btn-apply-receiver:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent-hover);
-  color: #fff;
-  box-shadow: 0 0 14px rgba(37, 99, 235, 0.4);
+  color: var(--on-solid);
+  box-shadow: 0 0 14px var(--accent-glow);
 }
 .btn-apply-receiver:active:not(:disabled) { transform: translateY(1px); }
 .btn-apply-receiver:disabled {
@@ -699,7 +887,7 @@ select option { background: #131f30; color: var(--text); }
 .trap-table thead th:nth-child(5) { width: 220px; }
 .trap-table tbody td {
   padding: 5px 6px;
-  border-bottom: 1px solid rgba(30, 48, 72, 0.5);
+  border-bottom: 1px solid var(--border-soft);
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -741,7 +929,7 @@ select option { background: #131f30; color: var(--text); }
 }
 .rules-table tbody td {
   padding: 4px 6px;
-  border-bottom: 1px solid rgba(30, 48, 72, 0.5);
+  border-bottom: 1px solid var(--border-soft);
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -755,8 +943,8 @@ select option { background: #131f30; color: var(--text); }
 .rules-table tbody tr:hover td  { background: var(--bg-hover); }
 .rules-table tbody tr:last-child td { border-bottom: none; }
 .rules-table .rules-category-header td {
-  background: rgba(37, 99, 235, 0.06);
-  color: #60a5fa;
+  background: var(--accent-bg-faint);
+  color: var(--info);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.4px;
@@ -765,11 +953,11 @@ select option { background: #131f30; color: var(--text); }
   cursor: pointer;
   user-select: none;
   border-bottom: 1px solid var(--border);
-  border-top: 1px solid rgba(37, 99, 235, 0.12);
+  border-top: 1px solid var(--accent-bg);
 }
 .rules-table .rules-category-header:hover td {
-  background: rgba(37, 99, 235, 0.12);
-  color: #93c5fd;
+  background: var(--accent-bg);
+  color: var(--accent-soft);
 }
 
 /* ─── Client table (gNMI subscribers) ─── */
@@ -795,7 +983,7 @@ select option { background: #131f30; color: var(--text); }
 }
 .client-table tbody td {
   padding: 3px 6px;
-  border-bottom: 1px solid rgba(30, 48, 72, 0.5);
+  border-bottom: 1px solid var(--border-soft);
   color: var(--text);
   max-width: 120px;
   overflow: hidden;
@@ -820,7 +1008,7 @@ select option { background: #131f30; color: var(--text); }
   font-size: 10px;
   font-family: Consolas, 'SF Mono', monospace;
   padding: 4px 6px;
-  border-bottom: 1px solid rgba(30, 48, 72, 0.4);
+  border-bottom: 1px solid var(--border-soft);
   color: var(--text);
 }
 .mono-list .row:last-child { border-bottom: none; }
@@ -868,7 +1056,7 @@ select option { background: #131f30; color: var(--text); }
   border-radius: 6px;
   padding: 14px 10px 10px;
   min-width: 0;
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--bg-well);
 }
 .group-box > .group-box-label {
   position: absolute;
@@ -896,7 +1084,7 @@ select option { background: #131f30; color: var(--text); }
 .snmp-progress {
   position: relative;
   height: 22px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-well);
   border: 1px solid var(--border);
   border-radius: 5px;
   overflow: hidden;
@@ -906,9 +1094,9 @@ select option { background: #131f30; color: var(--text); }
   left: 0;
   top: 0;
   bottom: 0;
-  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent-hover));
   transition: width 0.3s ease;
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.5);
+  box-shadow: 0 0 12px var(--accent-border);
 }
 .snmp-progress-label {
   position: absolute;
@@ -918,7 +1106,7 @@ select option { background: #131f30; color: var(--text); }
   justify-content: center;
   font-size: 10px;
   font-weight: 600;
-  color: #fff;
+  color: var(--on-solid);
   letter-spacing: 0.3px;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import type { DeviceInfo, IfaceStats, EV2DeviceSnapshot, EV2CircuitMetrics, PlantDeviceSnapshot, ElectricalDeviceSnapshot } from '../api/types'
+import { badgeColor } from '../theme'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -44,16 +45,9 @@ function pct(used: number, total: number): number {
 }
 
 function metricColor(v: number, warn: number, crit: number): string {
-  if (v >= crit) return '#f85149'
-  if (v >= warn) return '#d29922'
-  return '#3fb950'
-}
-
-const TYPE_BADGE: Record<string, string> = {
-  switch: '#1e6ec8', router: '#8b5cf6', server: '#059669',
-  firewall: '#dc2626', load_balancer: '#d97706', ups: '#0891b2',
-  pdu: '#065f46', floor_pdu: '#064e3b', rpp: '#4a044e', generator: '#713f12', oob_switch: '#4b5563', sensor: '#92400e',
-  utility_feed: '#3f3f46', switchgear: '#57534e', ats: '#92400e', mcc: '#155e75', mpp: '#0e7490',
+  if (v >= crit) return 'var(--crit)'
+  if (v >= warn) return 'var(--warn)'
+  return 'var(--ok)'
 }
 
 const ROW_STYLE = (i: number): React.CSSProperties => ({
@@ -78,9 +72,9 @@ function StatePill({ val, okStates }: { val?: string; okStates: string[] }) {
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
       fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-      background: ok ? '#3fb95022' : '#f8514922',
-      border: `1px solid ${ok ? '#3fb95044' : '#f8514944'}`,
-      color: ok ? '#3fb950' : '#f85149',
+      background: ok ? 'var(--ok-bg)' : 'var(--crit-bg)',
+      border: `1px solid ${ok ? 'var(--ok-border)' : 'var(--crit-border)'}`,
+      color: ok ? 'var(--ok)' : 'var(--crit)',
     }}>{val}</span>
   )
 }
@@ -129,11 +123,14 @@ function NameCell({ d }: { d: DeviceInfo }) {
 }
 
 function TypeBadge({ dt }: { dt: string }) {
-  const c = TYPE_BADGE[dt] ?? '#4b5563'
+  // color-mix rather than the old `c + '33'` hex-alpha concat: the badge colour
+  // is now a var() reference, so there is no literal to append two digits to.
+  const c = badgeColor(dt)
   return (
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3,
-      background: c + '33', border: `1px solid ${c}55`,
+      background: `color-mix(in srgb, ${c} 20%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${c} 33%, transparent)`,
       color: c, fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px',
     }}>{dt.replace(/_/g, ' ')}</span>
   )
@@ -184,7 +181,7 @@ function SortTH({ label, id, sort, align = 'left', minW, title }: {
     }}>
       {title
         ? <span title={title} style={{ cursor: 'help' }}>
-            {label}<span style={{ marginLeft: 3, fontSize: 8, color: '#58a6ff', fontStyle: 'normal', textTransform: 'none', letterSpacing: 0 }}>ⓘ</span>
+            {label}<span style={{ marginLeft: 3, fontSize: 8, color: 'var(--info)', fontStyle: 'normal', textTransform: 'none', letterSpacing: 0 }}>ⓘ</span>
           </span>
         : label}
       <span style={{ marginLeft: 3, opacity: active ? 1 : 0.3, fontSize: 8 }}>
@@ -199,14 +196,14 @@ function SortTH({ label, id, sort, align = 'left', minW, title }: {
 function IfaceSubTable({ ifaces, colSpan }: { ifaces: IfaceStats[]; colSpan: number }) {
   return (
     <tr>
-      <td colSpan={colSpan} style={{ padding: 0, background: '#0d1117' }}>
+      <td colSpan={colSpan} style={{ padding: 0, background: 'var(--bg-inset)' }}>
         <div style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
           {/* sub-header */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: '28px 120px 60px 80px 100px 100px 90px 90px 70px 70px 70px 70px',
             padding: '4px 0',
-            background: '#161b22',
+            background: 'var(--bg-inset-alt)',
             borderBottom: '1px solid var(--border)',
           }}>
             {['', 'Interface', 'Status', 'Speed', 'In Octets', 'Out Octets', 'In Pkts', 'Out Pkts', 'In Err', 'Out Err', 'In Disc', 'Out Disc']
@@ -237,9 +234,9 @@ function IfaceSubTable({ ifaces, colSpan }: { ifaces: IfaceStats[]; colSpan: num
                 <div style={{ padding: '0 8px' }}>
                   <span style={{
                     fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 3,
-                    background: up ? '#3fb95022' : '#f8514922',
-                    border: `1px solid ${up ? '#3fb95044' : '#f8514944'}`,
-                    color: up ? '#3fb950' : '#f85149',
+                    background: up ? 'var(--ok-bg)' : 'var(--crit-bg)',
+                    border: `1px solid ${up ? 'var(--ok-border)' : 'var(--crit-border)'}`,
+                    color: up ? 'var(--ok)' : 'var(--crit)',
                   }}>{up ? 'UP' : 'DOWN'}</span>
                 </div>
                 <div style={{ padding: '0 8px', fontSize: 9, color: 'var(--text-muted)' }}>{fmtSpeed(iface.speed)}</div>
@@ -247,10 +244,10 @@ function IfaceSubTable({ ifaces, colSpan }: { ifaces: IfaceStats[]; colSpan: num
                 <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(iface.out_octets)}</div>
                 <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtNum(iface.in_unicast_pkts)}</div>
                 <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtNum(iface.out_unicast_pkts)}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_errors > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_errors > 0 ? fmtNum(iface.in_errors) : '—'}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_errors > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_errors > 0 ? fmtNum(iface.out_errors) : '—'}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_discards > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_discards > 0 ? fmtNum(iface.in_discards) : '—'}</div>
-                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_discards > 0 ? '#d29922' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_discards > 0 ? fmtNum(iface.out_discards) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_errors > 0 ? 'var(--warn)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_errors > 0 ? fmtNum(iface.in_errors) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_errors > 0 ? 'var(--warn)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_errors > 0 ? fmtNum(iface.out_errors) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.in_discards > 0 ? 'var(--warn)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.in_discards > 0 ? fmtNum(iface.in_discards) : '—'}</div>
+                <div style={{ padding: '0 8px', textAlign: 'right', fontSize: 10, color: iface.out_discards > 0 ? 'var(--warn)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>{iface.out_discards > 0 ? fmtNum(iface.out_discards) : '—'}</div>
               </div>
             )
           })}
@@ -404,8 +401,8 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
           const discards = d.total_discards ?? 0
           const ifUp     = d.interfaces_up ?? 0
           const ifTot    = d.interfaces_total ?? 0
-          const bgpColor = bgpTot === 0 ? 'var(--text-muted)' : bgpUp === bgpTot ? '#3fb950' : bgpUp === 0 ? '#f85149' : '#d29922'
-          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? '#3fb950' : ifUp === 0 ? '#f85149' : '#d29922'
+          const bgpColor = bgpTot === 0 ? 'var(--text-muted)' : bgpUp === bgpTot ? 'var(--ok)' : bgpUp === 0 ? 'var(--crit)' : 'var(--warn)'
+          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? 'var(--ok)' : ifUp === 0 ? 'var(--crit)' : 'var(--warn)'
           const hasIfaces = (d.iface_stats?.length ?? 0) > 0
           const isExpanded = expanded.has(d.id)
 
@@ -436,10 +433,10 @@ function NetworkTable({ rows }: { rows: DeviceInfo[] }) {
               <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(d.total_rx_bytes)}</td>
               <td style={{ padding: '6px 8px', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{fmtBytes(d.total_tx_bytes)}</td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                <span style={{ color: errors > 0 ? '#d29922' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{errors > 0 ? fmtNum(errors) : '—'}</span>
+                <span style={{ color: errors > 0 ? 'var(--warn)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{errors > 0 ? fmtNum(errors) : '—'}</span>
               </td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
-                <span style={{ color: discards > 0 ? '#d29922' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{discards > 0 ? fmtNum(discards) : '—'}</span>
+                <span style={{ color: discards > 0 ? 'var(--warn)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{discards > 0 ? fmtNum(discards) : '—'}</span>
               </td>
               <td style={{ padding: '6px 8px', textAlign: 'right' }}>
                 {bgpTot === 0
@@ -528,7 +525,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
           const cpuPct   = Math.round(d.cpu_usage)
           const ifUp     = d.interfaces_up ?? 0
           const ifTot    = d.interfaces_total ?? 0
-          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? '#3fb950' : ifUp === 0 ? '#f85149' : '#d29922'
+          const ifColor  = ifTot === 0 ? 'var(--text-muted)' : ifUp === ifTot ? 'var(--ok)' : ifUp === 0 ? 'var(--crit)' : 'var(--warn)'
           const hasIfaces = (d.iface_stats?.length ?? 0) > 0
           const isExpanded = expanded.has(d.id)
 
@@ -548,7 +545,7 @@ function ServerTable({ rows }: { rows: DeviceInfo[] }) {
                   ? <span style={{
                       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
                       fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-                      background: '#0891b222', border: '1px solid #0891b255', color: '#22d3ee',
+                      background: 'var(--cyan-bg)', border: '1px solid var(--cyan-border)', color: 'var(--flow-cold)',
                     }}>Liquid</span>
                   : <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>Air</span>}
               </td>
@@ -903,9 +900,9 @@ function AlarmPill({ label, active }: { label: string; active: boolean }) {
     <span style={{
       display: 'inline-block', padding: '2px 7px', borderRadius: 10, fontSize: 9,
       fontWeight: 600, marginRight: 4,
-      background: active ? '#c0392b22' : 'var(--bg-card)',
-      color: active ? '#e74c3c' : 'var(--text-muted)',
-      border: `1px solid ${active ? '#e74c3c' : 'var(--border)'}`,
+      background: active ? 'var(--crit-bg)' : 'var(--bg-card)',
+      color: active ? 'var(--crit)' : 'var(--text-muted)',
+      border: `1px solid ${active ? 'var(--crit)' : 'var(--border)'}`,
     }}>{label}</span>
   )
 }
@@ -914,8 +911,8 @@ function StatCell({ label, value, unit, warn, crit, loWarn, loCrit }: { label: s
   // Two-sided: red/orange when the value runs ABOVE warn/crit OR (for voltage &
   // frequency) BELOW loWarn/loCrit — real power quality flags sag/under-freq too.
   const color = value == null ? 'var(--text-muted)'
-    : (crit != null && value >= crit) || (loCrit != null && value <= loCrit) ? '#e74c3c'
-    : (warn != null && value >= warn) || (loWarn != null && value <= loWarn) ? '#f39c12'
+    : (crit != null && value >= crit) || (loCrit != null && value <= loCrit) ? 'var(--crit)'
+    : (warn != null && value >= warn) || (loWarn != null && value <= loWarn) ? 'var(--warn)'
     : 'var(--text)'
   return (
     <div style={{ minWidth: 80, padding: '6px 10px', borderRight: '1px solid var(--border)' }}>
@@ -1035,7 +1032,7 @@ function EV2MetricsTab({ snapshots }: { snapshots: EV2DeviceSnapshot[] }) {
               )}
               <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>{snap.circuits} circuits</span>
               <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>inst {snap.instance}</span>
-              {anyAlarm && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: '#c0392b22', border: '1px solid #e74c3c', color: '#e74c3c', fontWeight: 700 }}>ALARM</span>}
+              {anyAlarm && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 8, background: 'var(--crit-bg)', border: '1px solid var(--crit)', color: 'var(--crit)', fontWeight: 700 }}>ALARM</span>}
             </div>
 
             {/* Panel summary */}
@@ -1214,9 +1211,9 @@ function PlantBinCell({ val, mode }: { val?: number; mode: 'run' | 'alarm' }) {
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,
       fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-      background: good ? '#3fb95022' : '#f8514922',
-      border: `1px solid ${good ? '#3fb95044' : '#f8514944'}`,
-      color: good ? '#3fb950' : '#f85149',
+      background: good ? 'var(--ok-bg)' : 'var(--crit-bg)',
+      border: `1px solid ${good ? 'var(--ok-border)' : 'var(--crit-border)'}`,
+      color: good ? 'var(--ok)' : 'var(--crit)',
     }}>{text}</span>
   )
 }
@@ -1394,9 +1391,9 @@ const ELEC_COLUMNS: Record<string, ElecCol[]> = {
 function ElecStatusCell({ raw, col }: { raw: unknown; col: ElecCol }) {
   const s = col.states?.[String(raw)]
   if (!s) return <span style={{ color: 'var(--text-dim)' }}>—</span>
-  const color = s.good === true ? '#3fb950' : s.good === false ? '#f85149' : 'var(--text-muted)'
-  const bg    = s.good === true ? '#3fb95022' : s.good === false ? '#f8514922' : 'var(--bg-card)'
-  const bd    = s.good === true ? '#3fb95044' : s.good === false ? '#f8514944' : 'var(--border)'
+  const color = s.good === true ? 'var(--ok)' : s.good === false ? 'var(--crit)' : 'var(--text-muted)'
+  const bg    = s.good === true ? 'var(--ok-bg)' : s.good === false ? 'var(--crit-bg)' : 'var(--bg-card)'
+  const bd    = s.good === true ? 'var(--ok-border)' : s.good === false ? 'var(--crit-border)' : 'var(--border)'
   return (
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9,

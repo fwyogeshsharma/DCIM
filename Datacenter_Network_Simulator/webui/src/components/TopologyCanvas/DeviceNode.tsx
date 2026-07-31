@@ -2,26 +2,7 @@ import { memo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Handle, Position, NodeToolbar, type NodeProps } from '@xyflow/react'
 import { useStore } from '../../store/useStore'
-
-const TYPE_COLOR: Record<string, string> = {
-  router:        '#c0621a',
-  switch:        '#1a7a3c',
-  server:        '#1a5faa',
-  firewall:      '#9b1c1c',
-  load_balancer: '#6b21a8',
-  oob_switch:    '#0e7490',
-  pdu:           '#b45309',
-  floor_pdu:     '#b45309',
-  rpp:           '#7c2d6e',
-  generator:     '#713f12',
-  ups:           '#a16207',
-  utility_feed:  '#3f3f46',
-  switchgear:    '#57534e',
-  ats:           '#92400e',
-  mcc:           '#155e75',
-  mpp:           '#0e7490',
-  sensor:        '#374151',
-}
+import { nodeColor } from '../../theme'
 
 const TYPE_ICON: Record<string, string> = {
   router:        '⬡',
@@ -76,7 +57,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   const tripped     = useStore(s => s.chillerTrips.some(c => c.device === id))
   const tripDegraded = useStore(s => !!s.chillerTrips.find(c => c.device === id)?.degraded)
   const resetTrip   = useStore(s => s.resetChillerTrip)
-  const col  = TYPE_COLOR[d.device_type] || '#555'
+  const col  = nodeColor(d.device_type)
   const icon = TYPE_ICON[d.device_type]  || '□'
   const poweredOff = d.power_state === 'Off'
   // Staged-OFF cooling unit (N+1 spare) — healthy but idle, so fade it. Live per-node
@@ -113,10 +94,10 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
         <div style={{
           position: 'relative',
           width: 172,
-          background: tripDegraded ? '#7a1d1d' : '#7a5a12',
-          border: `1px solid ${tripDegraded ? '#f85149' : '#e3b341'}`,
+          background: tripDegraded ? 'var(--crit-solid-bg)' : 'var(--warn-solid-bg)',
+          border: `1px solid ${tripDegraded ? 'var(--crit)' : 'var(--warn-strong)'}`,
           borderRadius: 6, padding: '8px 10px',
-          color: tripDegraded ? '#ffdede' : '#ffeec2', fontSize: 11, lineHeight: 1.35,
+          color: tripDegraded ? 'var(--crit-solid-fg)' : 'var(--warn-solid-fg)', fontSize: 11, lineHeight: 1.35,
           boxShadow: '0 4px 14px rgba(0,0,0,0.55)',
           display: 'flex', flexDirection: 'column', gap: 7,
         }}>
@@ -126,8 +107,8 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
           </div>
           <button onClick={() => resetTrip(id)} style={{
             alignSelf: 'flex-start',
-            background: tripDegraded ? '#f85149' : '#e3b341', border: 'none',
-            borderRadius: 4, color: tripDegraded ? '#fff' : '#3a2a00',
+            background: tripDegraded ? 'var(--crit)' : 'var(--warn-strong)', border: 'none',
+            borderRadius: 4, color: tripDegraded ? 'var(--on-solid)' : 'var(--on-warn-strong)',
             padding: '3px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>Reset</button>
           {/* caret pointing down at the node */}
@@ -135,7 +116,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
             position: 'absolute', bottom: -6, left: '50%', marginLeft: -6,
             width: 0, height: 0, borderLeft: '6px solid transparent',
             borderRight: '6px solid transparent',
-            borderTop: `6px solid ${tripDegraded ? '#f85149' : '#e3b341'}`,
+            borderTop: `6px solid ${tripDegraded ? 'var(--crit)' : 'var(--warn-strong)'}`,
           }} />
         </div>
       </NodeToolbar>
@@ -143,13 +124,13 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
     <div
       style={{
         background: col,
-        border: `2px solid ${selected ? '#fff' : col}`,
+        border: `2px solid ${selected ? 'var(--on-solid)' : col}`,
         borderRadius: 5,
         padding: '4px 8px',
         minWidth: 68,
         textAlign: 'center',
         cursor: 'pointer',
-        boxShadow: selected ? `0 0 0 2px #fff4` : `0 2px 6px rgba(0,0,0,0.5)`,
+        boxShadow: selected ? `0 0 0 2px var(--on-solid)4` : `0 2px 6px rgba(0,0,0,0.5)`,
         transition: 'box-shadow 0.15s, opacity 0.3s, filter 0.3s',
         position: 'relative',
         opacity: poweredOff ? 0.35 : (standby ? 0.5 : 1),
@@ -173,7 +154,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
       <div style={{
         fontSize: 9,
         fontWeight: 700,
-        color: '#fff',
+        color: 'var(--on-solid)',
         marginTop: 2,
         maxWidth: 72,
         overflow: 'hidden',
@@ -211,7 +192,7 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
           <div style={{
             height: '100%',
             width: `${Math.min(100, d.cpu_usage)}%`,
-            background: d.cpu_usage > 80 ? '#f85149' : '#3fb950',
+            background: d.cpu_usage > 80 ? 'var(--crit)' : 'var(--ok)',
             borderRadius: 1,
           }} />
         </div>
@@ -223,8 +204,8 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
           left: tipPos.x,
           top: tipPos.y,
           zIndex: 9999,
-          background: '#0d1525',
-          border: '1px solid #1e3048',
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border)',
           borderRadius: 6,
           padding: '8px 10px',
           boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
@@ -233,9 +214,9 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}>
           <div style={{
-            fontWeight: 700, color: '#e6edf3', fontSize: 12,
+            fontWeight: 700, color: 'var(--text)', fontSize: 12,
             marginBottom: 6, paddingBottom: 4,
-            borderBottom: '1px solid #1e3048',
+            borderBottom: '1px solid var(--border)',
           }}>
             {d.name}
           </div>
@@ -244,9 +225,9 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
               display: 'flex', justifyContent: 'space-between',
               gap: 16, lineHeight: 1.85, fontSize: 10.5,
             }}>
-              <span style={{ color: '#8b949e' }}>{k}:</span>
+              <span style={{ color: 'var(--text-muted)' }}>{k}:</span>
               <span style={{
-                color: '#e6edf3',
+                color: 'var(--text)',
                 fontFamily: (k.includes('IP') || k.includes('Port'))
                   ? 'Consolas, monospace' : undefined,
               }}>

@@ -7,16 +7,12 @@ import {
   getBezierPath,
   type EdgeProps,
 } from '@xyflow/react'
+import { LAYER_COLOR, LAYER_DEFAULT, FLOW_COLD, FLOW_HOT } from '../../theme'
 
-const LAYER_COLOR: Record<string, string> = {
-  production: '#4a9eff',
-  management: '#3fb950',
-  power:      '#f59e0b',
-  cooling:    '#22d3ee',   // chilled-/condenser-water flow
-}
-
-export const COOL_COLD = '#22d3ee'   // chilled-water supply / cooled condenser return
-export const COOL_HOT  = '#fb923c'   // warm return / hot condenser water
+// Re-exported under their historical names for existing importers. The values
+// live in index.css :root; see src/theme.ts.
+export const COOL_COLD = FLOW_COLD   // chilled-water supply / cooled condenser return
+export const COOL_HOT  = FLOW_HOT    // warm return / hot condenser water
 
 // Classify a cooling edge as hot (warm return / condenser-hot) vs cold
 // (chilled supply / cooled return) from the device names at its endpoints.
@@ -68,9 +64,9 @@ function LinkEdge(props: EdgeProps) {
   // never on the per-tick metrics churn.
   const standby = useStore(s => isCool && (s.plantStandby.includes(source) || s.plantStandby.includes(target)))
   const hot    = isCool && d.flow === 'hot'
-  const color  = broken ? '#f85149'
+  const color  = broken ? 'var(--crit)'
                : isCool  ? (hot ? COOL_HOT : COOL_COLD)
-               : (LAYER_COLOR[layer] || '#4a9eff')
+               : (LAYER_COLOR[layer] || LAYER_DEFAULT)
 
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null)
   const onEnter = useCallback((e: React.MouseEvent<SVGPathElement>) =>
@@ -95,7 +91,7 @@ function LinkEdge(props: EdgeProps) {
     targetX: tx, targetY: ty, targetPosition,
   })
 
-  const statusColor = broken ? '#f85149' : '#3fb950'
+  const statusColor = broken ? 'var(--crit)' : 'var(--ok)'
   const statusText  = broken ? 'Broken'  : 'Active'
 
   return (
@@ -132,8 +128,8 @@ function LinkEdge(props: EdgeProps) {
             style={{
               position: 'absolute',
               transform: `translate(-50%,-50%) translate(${(sourceX + targetX) / 2}px,${(sourceY + targetY) / 2}px)`,
-              background: '#7f1d1d',
-              color: '#fca5a5',
+              background: 'var(--crit-solid-bg)',
+              color: 'var(--crit-fill-fg)',
               fontSize: 8,
               padding: '1px 4px',
               borderRadius: 3,
@@ -152,8 +148,8 @@ function LinkEdge(props: EdgeProps) {
           left: tipPos.x,
           top: tipPos.y,
           zIndex: 9999,
-          background: '#0d1525',
-          border: '1px solid #1e3048',
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border)',
           borderRadius: 6,
           padding: '8px 10px',
           boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
@@ -162,25 +158,25 @@ function LinkEdge(props: EdgeProps) {
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}>
           <div style={{
-            fontWeight: 700, color: '#e6edf3', fontSize: 12,
+            fontWeight: 700, color: 'var(--text)', fontSize: 12,
             marginBottom: 6, paddingBottom: 4,
-            borderBottom: '1px solid #1e3048',
+            borderBottom: '1px solid var(--border)',
           }}>
             {srcName} ↔ {dstName}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10.5, lineHeight: 1.85 }}>
             <span style={{ color: statusColor, fontSize: 14, lineHeight: 1 }}>●</span>
-            <span style={{ color: '#8b949e' }}>Status:</span>
+            <span style={{ color: 'var(--text-muted)' }}>Status:</span>
             <span style={{ color: statusColor }}>{statusText}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 10.5, lineHeight: 1.85 }}>
-            <span style={{ color: '#8b949e' }}>Layer:</span>
-            <span style={{ color: '#e6edf3', textTransform: 'capitalize' }}>{layer}</span>
+            <span style={{ color: 'var(--text-muted)' }}>Layer:</span>
+            <span style={{ color: 'var(--text)', textTransform: 'capitalize' }}>{layer}</span>
           </div>
           {(d.src_iface != null || d.dst_iface != null) && (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 10.5, lineHeight: 1.85 }}>
-              <span style={{ color: '#8b949e' }}>Interfaces:</span>
-              <span style={{ color: '#e6edf3', fontFamily: 'Consolas, monospace' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Interfaces:</span>
+              <span style={{ color: 'var(--text)', fontFamily: 'Consolas, monospace' }}>
                 {d.src_iface ?? '?'} ↔ {d.dst_iface ?? '?'}
               </span>
             </div>
@@ -189,8 +185,8 @@ function LinkEdge(props: EdgeProps) {
               which is why it uses the arrow the interfaces row does not. */}
           {d.outlet != null && (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 10.5, lineHeight: 1.85 }}>
-              <span style={{ color: '#8b949e' }}>Cord:</span>
-              <span style={{ color: '#e6edf3', fontFamily: 'Consolas, monospace' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Cord:</span>
+              <span style={{ color: 'var(--text)', fontFamily: 'Consolas, monospace' }}>
                 outlet {d.outlet} → PSU{d.psu ?? '?'}
               </span>
             </div>

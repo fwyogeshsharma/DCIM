@@ -2,13 +2,9 @@ import { useState, useMemo } from 'react'
 import { api } from '../../api/client'
 import { useStore } from '../../store/useStore'
 
-// Mirrors core/trap_definitions.py SEVERITY_COLOR
-const SEVERITY_COLOR: Record<string, string> = {
-  informational: '#2ecc71',
-  minor:         '#f39c12',
-  major:         '#e67e22',
-  critical:      '#e74c3c',
-}
+// Mirrors core/trap_definitions.py SEVERITY_COLOR — see src/theme.ts
+import { SEVERITY_COLOR } from '../../theme'
+
 const SEVERITY_ORDER = ['informational', 'minor', 'major', 'critical'] as const
 
 const IconApply = () => (
@@ -29,11 +25,10 @@ const IconEngine = () => (
   </svg>
 )
 
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+// Severity colours are var() references now, so they can no longer be picked
+// apart into RGB channels — color-mix does the fade in CSS instead.
+function fade(color: string, alpha: number): string {
+  return `color-mix(in srgb, ${color} ${Math.round(alpha * 100)}%, transparent)`
 }
 
 export default function TrapsPanel() {
@@ -167,9 +162,9 @@ export default function TrapsPanel() {
                 title={`${sev.charAt(0).toUpperCase() + sev.slice(1)} — click to filter`}
                 style={{
                   flex: 1, padding: '4px 6px',
-                  background: active ? SEVERITY_COLOR[sev] : hexToRgba(SEVERITY_COLOR[sev], 0.25),
+                  background: active ? SEVERITY_COLOR[sev] : fade(SEVERITY_COLOR[sev], 0.25),
                   border: `1px solid ${active ? SEVERITY_COLOR[sev] : 'transparent'}`,
-                  borderRadius: 3, color: '#fff',
+                  borderRadius: 3, color: 'var(--on-solid)',
                   fontSize: 10, fontWeight: 700, lineHeight: 1.2,
                   fontVariantNumeric: 'tabular-nums', cursor: 'pointer',
                   textTransform: 'uppercase', letterSpacing: '0.3px',
@@ -239,8 +234,8 @@ export default function TrapsPanel() {
             <tbody>
               {visible.map((t, i) => {
                 const sev = t.severity || 'informational'
-                const sevColor = SEVERITY_COLOR[sev] || '#888'
-                const bg = hexToRgba(sevColor, 0.12)
+                const sevColor = SEVERITY_COLOR[sev] || 'var(--text-muted)'
+                const bg = fade(sevColor, 0.12)
                 return (
                   <tr key={`${t.timestamp}-${i}`} style={{ background: bg }}>
                     <td className="mono dim">{t.timestamp.slice(11, 19)}</td>
@@ -249,7 +244,7 @@ export default function TrapsPanel() {
                     <td>
                       <span style={{
                         display: 'inline-block',
-                        background: sevColor, color: '#fff',
+                        background: sevColor, color: 'var(--on-solid)',
                         padding: '1px 6px', borderRadius: 3,
                         fontSize: 9, fontWeight: 700,
                         whiteSpace: 'nowrap',

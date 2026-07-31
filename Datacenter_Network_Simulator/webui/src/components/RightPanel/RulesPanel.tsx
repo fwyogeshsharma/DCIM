@@ -3,12 +3,7 @@ import { useStore } from '../../store/useStore'
 import { api } from '../../api/client'
 import type { Rule } from '../../api/types'
 
-const SEVERITY_COLOR: Record<string, string> = {
-  informational: '#2ecc71',
-  minor:         '#f39c12',
-  major:         '#e67e22',
-  critical:      '#e74c3c',
-}
+import { SEVERITY_COLOR } from '../../theme'
 
 const METRIC_LABEL: Record<string, [string, string]> = {
   cpu_usage:           ['cpu',         '%'],
@@ -114,7 +109,7 @@ function groupRules(rules: Rule[]): [string, Rule[]][] {
 
 function RuleRow({ r, onToggle }: { r: Rule; onToggle: () => void }) {
   const sev = r.severity
-  const sevColor = sev ? (SEVERITY_COLOR[sev] || '#888') : undefined
+  const sevColor = sev ? (SEVERITY_COLOR[sev] || 'var(--text-muted)') : undefined
   const oid = extractOid(r.actions)
   const threshold = formatThreshold(r.conditions)
 
@@ -134,7 +129,7 @@ function RuleRow({ r, onToggle }: { r: Rule; onToggle: () => void }) {
         {sev && sevColor && (
           <span style={{
             display: 'inline-block',
-            background: sevColor, color: '#fff',
+            background: sevColor, color: 'var(--on-solid)',
             padding: '1px 4px', borderRadius: 3,
             fontSize: 9, fontWeight: 700,
             textTransform: 'uppercase',

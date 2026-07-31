@@ -24,27 +24,12 @@ const nodeTypes = { device: DeviceNode }
 const edgeTypes = { link: LinkEdge }
 
 const LAYER_BTN: { id: string; label: string; color: string }[] = [
-  { id: 'all',        label: 'All',   color: '#1e6ec8' },
+  { id: 'all',        label: 'All',   color: 'var(--brand)' },
   { id: 'production', label: 'Prod',  color: 'var(--layer-prod)' },
   { id: 'management', label: 'Mgmt',  color: 'var(--layer-mgmt)' },
   { id: 'power',      label: 'Power', color: 'var(--layer-power)' },
-  { id: 'cooling',    label: 'Cool',  color: '#22d3ee' },
+  { id: 'cooling',    label: 'Cool',  color: 'var(--layer-cooling)' },
 ]
-
-const NODE_TYPE_COLOR: Record<string, string> = {
-  router:        '#c0621a',
-  switch:        '#1a7a3c',
-  server:        '#1a5faa',
-  firewall:      '#9b1c1c',
-  load_balancer: '#6b21a8',
-  oob_switch:    '#0e7490',
-  pdu:           '#b45309',
-  floor_pdu:     '#b03060',
-  rpp:           '#7c2d6e',
-  generator:     '#713f12',
-  ups:           '#c9a227',
-  sensor:        '#374151',
-}
 
 // ── Icons ──────────────────────────────────────────────────
 const I = {
@@ -428,7 +413,7 @@ function Canvas() {
               padding: '3px 10px', fontSize: 10,
               background: isActive ? b.color : 'transparent',
               border: `1px solid ${isActive ? b.color : 'var(--border)'}`,
-              color: isActive ? '#fff' : 'var(--text-muted)',
+              color: isActive ? 'var(--on-solid)' : 'var(--text-muted)',
               borderRadius: 4, cursor: 'pointer',
               transition: 'background 0.15s, color 0.15s',
             }}>
@@ -497,7 +482,7 @@ function Canvas() {
         onMoveEnd={onMoveEnd}
         defaultEdgeOptions={{ type: 'link' }}
         style={{
-          background: 'radial-gradient(ellipse at center, #0e151f 0%, var(--bg-base) 70%)',
+          background: 'radial-gradient(ellipse at center, var(--vignette) 0%, var(--bg-base) 70%)',
         }}
         proOptions={{ hideAttribution: true }}
         // Shift+click adds a node to the selection (React Flow defaults this to
@@ -508,7 +493,7 @@ function Canvas() {
         multiSelectionKeyCode="Shift"
         selectionKeyCode="Shift"
       >
-        <Background variant={BackgroundVariant.Dots} color="#2d3f5540" gap={20} size={1} />
+        <Background variant={BackgroundVariant.Dots} color="var(--canvas-dot)" gap={20} size={1} />
       </ReactFlow>
 
       {ctxMenu && (

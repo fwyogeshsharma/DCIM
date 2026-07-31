@@ -14,7 +14,7 @@ interface MenuItem {
 }
 
 const MENU_STYLE: React.CSSProperties = {
-  background: '#111827',
+  background: 'var(--bg-menu)',
   border: '1px solid var(--border)',
   borderRadius: 4,
   minWidth: 210,
@@ -26,12 +26,14 @@ const MENU_STYLE: React.CSSProperties = {
 // Small network-logo (three connected nodes)
 const Logo = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-    <circle cx="5"  cy="6"  r="2.2" fill="#3fb950" />
-    <circle cx="19" cy="6"  r="2.2" fill="#1e6ec8" />
-    <circle cx="12" cy="18" r="2.2" fill="#db6d28" />
-    <line x1="5"  y1="6"  x2="12" y2="18" stroke="#2d3f55" strokeWidth="1.4" />
-    <line x1="19" y1="6"  x2="12" y2="18" stroke="#2d3f55" strokeWidth="1.4" />
-    <line x1="5"  y1="6"  x2="19" y2="6"  stroke="#2d3f55" strokeWidth="1.4" />
+    {/* fill/stroke go through `style`, not the presentation attribute — SVG
+        attributes are not parsed as CSS values, so var() never resolves there. */}
+    <circle cx="5"  cy="6"  r="2.2" style={{ fill: 'var(--ok)' }} />
+    <circle cx="19" cy="6"  r="2.2" style={{ fill: 'var(--brand)' }} />
+    <circle cx="12" cy="18" r="2.2" style={{ fill: 'var(--brand-alt)' }} />
+    <line x1="5"  y1="6"  x2="12" y2="18" strokeWidth="1.4" style={{ stroke: 'var(--line-dim)' }} />
+    <line x1="19" y1="6"  x2="12" y2="18" strokeWidth="1.4" style={{ stroke: 'var(--line-dim)' }} />
+    <line x1="5"  y1="6"  x2="19" y2="6"  strokeWidth="1.4" style={{ stroke: 'var(--line-dim)' }} />
   </svg>
 )
 
@@ -133,7 +135,7 @@ function MenuButton({
         <span>{label}</span>
         {badge && (
           <span style={{
-            background: badge.color, color: '#fff',
+            background: badge.color, color: 'var(--on-solid)',
             padding: '1px 5px', borderRadius: 3,
             fontSize: 8, fontWeight: 700, letterSpacing: '0.4px',
           }}>{badge.text}</span>
@@ -369,7 +371,7 @@ export default function MenuBar() {
   return (
     <div ref={menuBarRef} style={{
       height: 36,
-      background: 'linear-gradient(180deg, #0b1628 0%, #080f1e 100%)',
+      background: 'linear-gradient(180deg, var(--chrome-a) 0%, var(--chrome-b) 100%)',
       borderBottom: '1px solid var(--border)',
       boxShadow: '0 1px 0 rgba(255,255,255,0.03)',
       display: 'flex',
@@ -394,7 +396,7 @@ export default function MenuBar() {
           padding: '2px 7px', borderRadius: 4,
           background: 'rgba(37,99,235,0.15)',
           border: '1px solid rgba(37,99,235,0.35)',
-          color: '#93c5fd',
+          color: 'var(--accent-soft)',
           fontSize: 9, fontWeight: 700,
           fontFamily: 'Consolas, monospace',
           letterSpacing: '0.4px',
@@ -510,7 +512,7 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
               padding: '1px 6px', borderRadius: 3,
               background: 'rgba(30,110,200,0.18)',
               border: '1px solid rgba(30,110,200,0.4)',
-              color: '#93c5fd', fontSize: 9, fontWeight: 700,
+              color: 'var(--accent-soft)', fontSize: 9, fontWeight: 700,
               fontFamily: 'Consolas, monospace',
             }}>v5.0</span>
           </div>

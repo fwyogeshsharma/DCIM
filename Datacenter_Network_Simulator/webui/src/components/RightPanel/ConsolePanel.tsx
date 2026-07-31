@@ -3,10 +3,10 @@ import { useStore } from '../../store/useStore'
 import type { LogEntry } from '../../api/types'
 
 const LEVEL_COLOR: Record<string, string> = {
-  info:    '#c9d1d9',
-  success: '#3fb950',
-  warning: '#d29922',
-  error:   '#f85149',
+  info:    'var(--text)',
+  success: 'var(--ok)',
+  warning: 'var(--warn)',
+  error:   'var(--crit)',
 }
 
 const TABS: { id: LogEntry['tab']; label: string }[] = [
@@ -18,7 +18,7 @@ const TABS: { id: LogEntry['tab']; label: string }[] = [
 ]
 
 function LogLine({ entry }: { entry: LogEntry }) {
-  const col = LEVEL_COLOR[entry.level] || '#c9d1d9'
+  const col = LEVEL_COLOR[entry.level] || 'var(--text)'
   const ts  = new Date(entry.ts).toLocaleTimeString()
   return (
     <div style={{

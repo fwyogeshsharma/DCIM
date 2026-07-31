@@ -197,8 +197,8 @@ export default function SFlowPanel() {
             <StatRow
               label="Total Exporters:"
               value={status?.active_devices ?? total}
-              labelColor="#06b6d4"
-              valueColor="#06b6d4"
+              labelColor="var(--cyan)"
+              valueColor="var(--cyan)"
             />
           </div>
         )}

@@ -257,7 +257,7 @@ export default function SNMPPanel() {
             {SNMP_TARGET_ORDER
               .filter(([k]) => (tc[k] ?? 0) > 0)
               .map(([k, label]) => <StatRow key={k} label={label} value={tc[k]} />)}
-            <StatRow label="Total:" value={total} labelColor="#06b6d4" valueColor="#06b6d4" />
+            <StatRow label="Total:" value={total} labelColor="var(--cyan)" valueColor="var(--cyan)" />
           </div>
         )}
 
@@ -286,7 +286,7 @@ export default function SNMPPanel() {
               disabled={busy || running}
               style={{
                 width: 72,
-                background: '#0d1117',
+                background: 'var(--bg-inset)',
                 border: '1px solid var(--border)',
                 borderRadius: 4,
                 color: 'var(--text)',
@@ -301,11 +301,11 @@ export default function SNMPPanel() {
               title="UDP port snmpsim will listen on. Use 1611+ if Windows SNMP service occupies 161."
             />
           </div>
-          <div style={{ fontSize: 9, color: '#484f58', marginBottom: 6, paddingLeft: 1 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 6, paddingLeft: 1 }}>
             Read · GET / WALK · NMS &amp; monitoring tools
           </div>
 
-          <div style={{ borderTop: '1px solid #21262d', margin: '4px 0' }} />
+          <div style={{ borderTop: '1px solid var(--border-dim)', margin: '4px 0' }} />
 
           {/* Mgmt Port row */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
@@ -319,7 +319,7 @@ export default function SNMPPanel() {
               disabled={busy || running}
               style={{
                 width: 72,
-                background: '#0d1117',
+                background: 'var(--bg-inset)',
                 border: '1px solid var(--border)',
                 borderRadius: 4,
                 color: 'var(--text)',
@@ -334,7 +334,7 @@ export default function SNMPPanel() {
               title="UDP port for SNMP SET requests. DCIM systems update sysName, sysLocation, rack fields here. Community = device IP."
             />
           </div>
-          <div style={{ fontSize: 9, color: '#484f58', paddingLeft: 1 }}>
+          <div style={{ fontSize: 9, color: 'var(--text-dim)', paddingLeft: 1 }}>
             Write · SET
           </div>
         </div>

@@ -2,26 +2,12 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useStore } from '../store/useStore'
 import type { DeviceInfo } from '../api/types'
 import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './TopologyCanvas/NodeContextMenu'
+import { nodeColor } from '../theme'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 900
 const DEFAULT_WIDTH = 260
 const STORAGE_KEY = 'dcim:device-list-width'
-
-const TYPE_COLOR: Record<string, string> = {
-  router:        '#c0621a',
-  switch:        '#1a7a3c',
-  server:        '#1a5faa',
-  firewall:      '#9b1c1c',
-  load_balancer: '#6b21a8',
-  oob_switch:    '#0e7490',
-  pdu:           '#b45309',
-  floor_pdu:     '#b03060',
-  rpp:           '#7c2d6e',
-  generator:     '#713f12',
-  ups:           '#c9a227',
-  sensor:        '#374151',
-}
 
 const TYPE_LABEL: Record<string, string> = {
   router:        'Router',
@@ -253,7 +239,7 @@ export default function DeviceList() {
           </thead>
           <tbody>
             {filtered.map(d => {
-              const col = TYPE_COLOR[d.device_type] || '#555'
+              const col = nodeColor(d.device_type)
               const selected = selectedDeviceId === d.id
               return (
                 <tr
@@ -280,7 +266,10 @@ export default function DeviceList() {
                     <span style={{
                       display: 'inline-block', padding: '1px 6px',
                       borderRadius: 3, fontSize: 9, fontWeight: 600,
-                      background: `${col}33`, color: col,
+                      // color-mix, not a `${col}33` hex-alpha concat: col is a
+                      // var() reference now, with no literal to append to.
+                      background: `color-mix(in srgb, ${col} 20%, transparent)`,
+                      color: col,
                       textTransform: 'uppercase', letterSpacing: '0.3px',
                     }}>
                       {TYPE_LABEL[d.device_type] || d.device_type}

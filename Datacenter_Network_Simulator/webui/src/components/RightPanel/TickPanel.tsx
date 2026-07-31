@@ -507,10 +507,10 @@ export default function TickPanel() {
                   onBlur={() => setIvFocused(false)}
                   style={{
                     width: 70,
-                    background: '#0d1117',
-                    border: `1px solid ${ivFocused ? '#58a6ff' : 'var(--border)'}`,
+                    background: 'var(--bg-inset)',
+                    border: `1px solid ${ivFocused ? 'var(--info)' : 'var(--border)'}`,
                     borderRadius: 4,
-                    color: ivFocused ? '#58a6ff' : 'var(--text)',
+                    color: ivFocused ? 'var(--info)' : 'var(--text)',
                     fontSize: 13,
                     fontFamily: 'monospace',
                     fontWeight: 700,
@@ -537,7 +537,7 @@ export default function TickPanel() {
                   <input type="checkbox" checked={flags[row.key] ?? true} onChange={() => setFlag(row.key)} style={{ cursor: 'pointer' }} />
                   <span style={{ fontSize: 10, color: (flags[row.key] ?? true) ? 'var(--text)' : 'var(--text-muted)' }}>
                     {row.label}
-                    {row.derived && <span style={{ marginLeft: 3, fontSize: 8, color: '#58a6ff', fontStyle: 'normal' }}>ⓘ</span>}
+                    {row.derived && <span style={{ marginLeft: 3, fontSize: 8, color: 'var(--info)', fontStyle: 'normal' }}>ⓘ</span>}
                   </span>
                 </label>
               ))}

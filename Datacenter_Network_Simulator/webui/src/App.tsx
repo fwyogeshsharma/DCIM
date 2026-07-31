@@ -43,7 +43,7 @@ export default function App() {
       <div style={{
         position: 'fixed', inset: 0, display: 'flex',
         alignItems: 'center', justifyContent: 'center',
-        background: '#060b16', color: 'var(--text-muted, #8aa0bd)', fontSize: 12,
+        background: 'var(--backdrop)', color: 'var(--text-muted)', fontSize: 12,
       }}>
         Loading…
       </div>
@@ -78,9 +78,9 @@ function ChillerTripBanner() {
       position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
       zIndex: 10000, marginTop: 8, maxWidth: '92vw',
       display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-      background: degraded ? '#7a1d1d' : '#7a5a12',
-      border: `1px solid ${degraded ? '#f85149' : '#e3b341'}`, borderRadius: 6,
-      padding: '8px 14px', color: degraded ? '#ffdede' : '#ffeec2', fontSize: 12,
+      background: degraded ? 'var(--crit-solid-bg)' : 'var(--warn-solid-bg)',
+      border: `1px solid ${degraded ? 'var(--crit)' : 'var(--warn-strong)'}`, borderRadius: 6,
+      padding: '8px 14px', color: degraded ? 'var(--crit-solid-fg)' : 'var(--warn-solid-fg)', fontSize: 12,
       boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
     }}>
       <span style={{ fontSize: 15 }}>⚠</span>
@@ -91,7 +91,7 @@ function ChillerTripBanner() {
       {chillerTrips.map(c => (
         <button key={c.device} onClick={() => resetChillerTrip(c.device)}
           style={{
-            background: '#f85149', border: 'none', borderRadius: 4, color: '#fff',
+            background: 'var(--crit)', border: 'none', borderRadius: 4, color: 'var(--on-solid)',
             padding: '3px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>
           Reset {c.name}

@@ -164,7 +164,7 @@ type OpTone = 'ok' | 'danger' | 'warn' | 'neutral'
 const OP_TONE: Record<OpTone, { fg: string; bg: string; border: string }> = {
   ok:      { fg: 'var(--green)', bg: 'rgba(63,185,80,0.10)',  border: 'rgba(63,185,80,0.45)' },
   danger:  { fg: 'var(--red)',   bg: 'rgba(248,81,73,0.10)',  border: 'rgba(248,81,73,0.45)' },
-  warn:    { fg: '#d29922',      bg: 'rgba(210,153,34,0.10)', border: 'rgba(210,153,34,0.45)' },
+  warn:    { fg: 'var(--warn)',      bg: 'rgba(210,153,34,0.10)', border: 'rgba(210,153,34,0.45)' },
   neutral: { fg: 'var(--text)',  bg: 'rgba(255,255,255,0.05)', border: 'var(--text-muted)' },
 }
 
@@ -392,7 +392,7 @@ function ServerOps({ d, onChanged }: { d: RedfishDevice; onChanged: () => void |
               <div key={e.Id} style={{ fontSize: 9, fontFamily: 'Consolas, monospace',
                 color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 <span style={{ color: e.Severity === 'Critical' ? 'var(--red)'
-                  : e.Severity === 'Warning' ? '#f0c000' : 'var(--green)' }}>{e.Severity}</span>{' '}
+                  : e.Severity === 'Warning' ? 'var(--warn)' : 'var(--green)' }}>{e.Severity}</span>{' '}
                 <span style={{ color: 'var(--text)' }}>{e.Message}</span>
               </div>
             ))}
@@ -577,7 +577,7 @@ export default function RedfishPanel() {
         {running && (
           <div className="group-box" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <span className="group-box-label">Active BMCs</span>
-            <StatRow label="Endpoints:" value={status?.active_devices ?? 0} labelColor="#a371f7" valueColor="#a371f7" />
+            <StatRow label="Endpoints:" value={status?.active_devices ?? 0} labelColor="var(--purple)" valueColor="var(--purple)" />
             <StatRow label="Sessions:"  value={status?.sessions ?? 0} />
             {/* Search — scopes the list; "showing X of Y" so the scale is clear */}
             <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>

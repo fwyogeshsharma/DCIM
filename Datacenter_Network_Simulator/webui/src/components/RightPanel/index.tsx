@@ -40,7 +40,7 @@ const TABS: Tab[] = [
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
   { id: 'fleet',   icon: '📈',  label: 'Fleet Lifecycle', component: <FleetPanel /> },
-  { id: 'console', icon: '>_',  iconColor: '#c9d1d9', label: 'Console', component: <ConsolePanel /> },
+  { id: 'console', icon: '>_',  iconColor: 'var(--text)', label: 'Console', component: <ConsolePanel /> },
 ]
 
 function TabButton({
@@ -78,7 +78,7 @@ function TabButton({
           ? <div style={{
               width: tab.iconSize ?? 30, height: tab.iconSize ?? 30,
               borderRadius: 5, overflow: 'hidden',
-              background: '#fff', padding: 2,
+              background: 'var(--on-solid)', padding: 2,
               opacity: active ? 1 : 0.82,
               boxShadow: active ? '0 0 0 1.5px var(--accent)' : '0 0 0 1px rgba(255,255,255,0.18)',
               flexShrink: 0,
@@ -219,7 +219,7 @@ export default function RightPanel() {
       {/* Icon tab strip */}
       <div style={{
         width: 54,
-        background: 'linear-gradient(180deg, #0c1220 0%, #0a0f1a 100%)',
+        background: 'linear-gradient(180deg, var(--chrome-a) 0%, var(--chrome-b) 100%)',
         borderLeft: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',

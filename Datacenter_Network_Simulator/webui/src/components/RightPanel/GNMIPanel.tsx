@@ -245,8 +245,8 @@ export default function GNMIPanel() {
             <StatRow
               label="Total:"
               value={gnmiCapable}
-              labelColor="#06b6d4"
-              valueColor="#06b6d4"
+              labelColor="var(--cyan)"
+              valueColor="var(--cyan)"
             />
           </div>
         )}
@@ -285,7 +285,7 @@ export default function GNMIPanel() {
             disabled={busy || running}
             style={{
               width: 90,
-              background: '#0d1117',
+              background: 'var(--bg-inset)',
               border: '1px solid var(--border)',
               borderRadius: 4,
               color: 'var(--text)',
@@ -390,7 +390,7 @@ export default function GNMIPanel() {
                 disabled={busy || !running}
                 style={{
                   width: 90,
-                  background: '#0d1117',
+                  background: 'var(--bg-inset)',
                   border: '1px solid var(--border)',
                   borderRadius: 4,
                   color: 'var(--text)',

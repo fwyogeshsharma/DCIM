@@ -5,6 +5,7 @@ import { useStore } from '../../store/useStore'
 import type { DeviceInfo } from '../../api/types'
 import { VENDORS, MODELS, deviceTypeLabel } from '../../data/deviceConstants'
 import NumberInput from '../NumberInput'
+import { LAYER_COLOR, LAYER_DEFAULT } from '../../theme'
 
 // ── Applicable traps per device_type (mirrors Python APPLICABLE_TRAPS, LINK_DOWN/LINK_UP excluded) ──
 
@@ -153,7 +154,7 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
 // ── Shared menu styles ────────────────────────────────────────────────────────
 
 const MENU_S: React.CSSProperties = {
-  background: '#111827',
+  background: 'var(--bg-menu)',
   border: '1px solid var(--border)',
   borderRadius: 4,
   boxShadow: '0 10px 28px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.4)',
@@ -182,7 +183,7 @@ function MenuItem({
       style={{
         padding: '6px 14px',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        color: disabled ? 'var(--text-dim)' : danger ? '#f87171' : 'var(--text)',
+        color: disabled ? 'var(--text-dim)' : danger ? 'var(--crit)' : 'var(--text)',
         background: hov && !disabled ? 'rgba(255,255,255,0.06)' : 'transparent',
       }}
     >
@@ -475,10 +476,6 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
     if (!isPassive && info.memory_used > 0) rows.push(['Memory', `${info.memory_used.toFixed(0)} MB`])
   }
 
-  const LAYER_COLOR: Record<string, string> = {
-    production: '#4a9eff', management: '#3fb950', power: '#f59e0b',
-  }
-
   return createPortal(
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(2px)' }}
@@ -517,7 +514,7 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
                     Neighbors · {neighbors.length}
                   </div>
                   {neighbors.map((n, i) => {
-                    const col = LAYER_COLOR[n.layer] || '#4a9eff'
+                    const col = LAYER_COLOR[n.layer] || LAYER_DEFAULT
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, padding: '3px 0' }}>
                         <span style={{ color: 'var(--text)', fontWeight: 600, flex: 1 }}>{n.name}</span>
@@ -526,8 +523,11 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
                         </span>
                         <span style={{
                           fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                          background: `${col}22`, color: col,
-                          border: `1px solid ${col}55`,
+                          // color-mix rather than hex-alpha concat — col is a
+                          // var() reference now (see src/theme.ts).
+                          background: `color-mix(in srgb, ${col} 13%, transparent)`,
+                          color: col,
+                          border: `1px solid color-mix(in srgb, ${col} 33%, transparent)`,
                         }}>{n.layer}</span>
                       </div>
                     )
@@ -879,7 +879,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                   <div
                     style={{
                       padding: '5px 14px', cursor: hpBusy ? 'wait' : 'pointer',
-                      color: '#fbbf24', whiteSpace: 'nowrap',
+                      color: 'var(--warn)', whiteSpace: 'nowrap',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
@@ -887,7 +887,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     onMouseDown={e => { e.preventDefault(); if (!hpBusy) resetHpTrip() }}
                   >
                     <span>Reset High Head Pressure</span>
-                    <span style={{ fontSize: 9, color: '#fbbf24' }}>{hpBusy ? '…' : 'LOCKED OUT'}</span>
+                    <span style={{ fontSize: 9, color: 'var(--warn)' }}>{hpBusy ? '…' : 'LOCKED OUT'}</span>
                   </div>
                 )}
 
@@ -897,7 +897,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     key={c.key}
                     style={{
                       padding: '5px 14px', cursor: busyAny ? 'wait' : 'pointer',
-                      color: c.on ? '#f87171' : 'var(--text)', whiteSpace: 'nowrap',
+                      color: c.on ? 'var(--crit)' : 'var(--text)', whiteSpace: 'nowrap',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
@@ -905,7 +905,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     onMouseDown={e => { e.preventDefault(); if (!c.on) c.toggle() }}
                   >
                     <span>{c.label}</span>
-                    <span style={{ fontSize: 9, color: c.on ? '#f87171' : 'var(--text-dim)' }}>
+                    <span style={{ fontSize: 9, color: c.on ? 'var(--crit)' : 'var(--text-dim)' }}>
                       {c.busy ? '…' : c.on ? 'ACTIVE' : ''}
                     </span>
                   </div>
@@ -917,7 +917,7 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     key={`normal-${c.key}`}
                     style={{
                       padding: '5px 14px', cursor: busyAny ? 'wait' : 'pointer',
-                      color: '#4ade80', whiteSpace: 'nowrap',
+                      color: 'var(--ok)', whiteSpace: 'nowrap',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
