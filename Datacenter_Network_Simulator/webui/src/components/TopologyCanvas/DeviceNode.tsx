@@ -123,23 +123,26 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
     )}
     <div
       style={{
+        // The body is filled with the device-type colour. Every type is solved
+        // to the same relative luminance, so a canvas of healthy devices has no
+        // hot spots — which is what lets a faulted node (red + blink) win.
         background: col,
-        border: `2px solid ${selected ? 'var(--on-solid)' : col}`,
-        borderRadius: 5,
-        padding: '4px 8px',
-        minWidth: 68,
-        textAlign: 'center',
-        cursor: 'pointer',
-        boxShadow: selected ? `0 0 0 2px var(--on-solid)4` : `0 2px 6px rgba(0,0,0,0.5)`,
-        transition: 'box-shadow 0.15s, opacity 0.3s, filter 0.3s',
-        position: 'relative',
-        opacity: poweredOff ? 0.35 : (standby ? 0.5 : 1),
-        filter: poweredOff ? 'grayscale(0.7)' : (standby ? 'grayscale(0.55)' : undefined),
-        // An injected CONDITION — or a latched chiller trip — outranks the normal type
-        // colour: the node turns red and blinks until it's cleared / reset.
-        ...(faulted || tripped ? { background: 'var(--red)', borderColor: 'var(--red)' } : null),
+        // A dashed border in the fill colour would be invisible, so the
+        // powered-off variant borrows the label colour instead.
+        borderColor: poweredOff ? 'var(--node-label)' : col,
+        boxShadow: selected
+          ? '0 0 0 2px var(--node-ring)'
+          : '0 1px 3px rgba(0,0,0,0.45)',
+        opacity: poweredOff ? 0.4 : (standby ? 0.55 : 1),
+        filter: poweredOff ? 'grayscale(0.8)' : (standby ? 'grayscale(0.6)' : undefined),
       }}
-      className={faulted || tripped ? 'node-faulted' : undefined}
+      className={
+        'device-node'
+        // An injected CONDITION — or a latched chiller trip — outranks the type
+        // colour: the node fills red and blinks until it's cleared / reset.
+        + (faulted || tripped ? ' node-faulted' : '')
+        + (poweredOff ? ' node-off' : '')
+      }
       onMouseEnter={onEnter}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
@@ -167,27 +170,28 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
         const layer = d.activeLayer || 'all'
         const prod  = d.ip_address
         const mgmt  = d.mgmt_ip || ''
+        const ipStyle: React.CSSProperties = { fontSize: 8, color: 'var(--node-label)' }
         if (layer === 'production') {
-          return <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{prod}</div>
+          return <div style={ipStyle}>{prod}</div>
         }
         if (layer === 'management' || layer === 'power') {
-          return <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{mgmt || prod}</div>
+          return <div style={ipStyle}>{mgmt || prod}</div>
         }
         if (prod && mgmt) {
           return (
             <>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{prod}</div>
-              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)' }}>{mgmt}</div>
+              <div style={ipStyle}>{prod}</div>
+              <div style={{ fontSize: 7, color: 'var(--node-label-dim)' }}>{mgmt}</div>
             </>
           )
         }
-        return <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.7)' }}>{prod || mgmt}</div>
+        return <div style={ipStyle}>{prod || mgmt}</div>
       })()}
 
       {typeof d.cpu_usage === 'number' && d.cpu_usage > 0 && (
         <div style={{
           position: 'absolute', bottom: -3, left: 2, right: 2,
-          height: 3, background: 'rgba(0,0,0,0.4)', borderRadius: 1,
+          height: 3, background: 'var(--node-meter)', borderRadius: 1,
         }}>
           <div style={{
             height: '100%',

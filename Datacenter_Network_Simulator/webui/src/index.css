@@ -94,7 +94,6 @@
   --warn-border:  rgba(210, 153, 34, 0.27);
   --crit-bg:      rgba(248, 81, 73, 0.13);
   --crit-border:  rgba(248, 81, 73, 0.27);
-  --crit-glow:    rgba(248, 81, 73, 0.2);
   --info-bg:      rgba(88, 166, 255, 0.13);
   --info-border:  rgba(88, 166, 255, 0.27);
   --accent-bg:      rgba(37, 99, 235, 0.12);
@@ -136,68 +135,85 @@
   --sev-critical:      #e74c3c;
 
   /* ── Device-type colours ───────────────────────────────────────────────
-     One palette for every place a device type gets a colour: topology node
-     body, device-list dot, status-bar count chip. These used to be four
-     separate maps that had drifted apart (floor PDUs were one colour on the
-     canvas and another in the list), which made the legend lie. */
-  --node-router:         #c0621a;
-  --node-switch:         #1a7a3c;
-  --node-server:         #1a5faa;
-  --node-firewall:       #9b1c1c;
-  --node-lb:             #6b21a8;
-  --node-oob:            #0e7490;
-  --node-pdu:            #b45309;
-  --node-floor-pdu:      #b03060;
-  --node-rpp:            #7c2d6e;
-  --node-generator:      #713f12;
-  --node-ups:            #c9a227;
-  --node-sensor:         #374151;
-  --node-utility-feed:   #3f3f46;
-  --node-switchgear:     #57534e;
-  --node-ats:            #92400e;
-  --node-mcc:            #155e75;
-  --node-mpp:            #0e7490;
-  --node-energy-monitor: #0e7490;
-  --node-crah:           #0891b2;
-  --node-chiller:        #155e75;
-  --node-pump:           #1e6ec8;
-  --node-cooling-tower:  #164e63;
-  --node-valve:          #4a044e;
-  --node-cdu:            #2563eb;
-  --node-default:        #555;   /* unknown device_type */
+     HUE ENCODES THE PLANE, not the individual type:
 
-  /* Device-type BADGE palette (Live Metrics chips). Deliberately brighter
-     and more saturated than --node-*: these are small text chips on a dark
-     table row, not large node bodies. Still a duplicate concept — worth
-     collapsing into --node-* once someone can eyeball both pages together. */
-  --badge-switch:        #1e6ec8;
-  --badge-router:        #8b5cf6;
-  --badge-server:        #059669;
-  --badge-firewall:      #dc2626;
-  --badge-lb:            #d97706;
-  --badge-ups:           #0891b2;
-  --badge-pdu:           #065f46;
-  --badge-floor-pdu:     #064e3b;
-  --badge-rpp:           #4a044e;
-  --badge-generator:     #713f12;
-  --badge-oob:           #4b5563;
-  --badge-sensor:        #92400e;
-  --badge-utility-feed:  #3f3f46;
-  --badge-switchgear:    #57534e;
-  --badge-ats:           #92400e;
-  --badge-mcc:           #155e75;
-  --badge-mpp:           #0e7490;
-  --badge-default:       #4b5563;
+       blue    → network data plane      violet → out-of-band management
+       brass   → electrical              cyan   → cooling
+       neutral → passive sensing (no plane of its own)
+
+     Colour cannot carry 24 categories — past roughly eight, hues stop being
+     tellable apart and the "palette" is just noise. So colour answers the
+     question you ask from across the room ("which plane is in trouble?") and
+     the icon plus the label answer the one you ask up close ("which box?").
+
+     Every value here is solved to the SAME relative luminance (0.118), not
+     the same HSL lightness — those are not the same thing, and picking by
+     HSL is why the old palette had a UPS blazing next to a barely-visible
+     RPP. The result is a tight band: white label contrast lands between
+     6.17:1 and 6.32:1 on every single type, and every fill clears 2.99:1
+     against the canvas. No healthy device type reads louder than another,
+     which is what leaves room for a faulted one to shout.
+
+     These are FILLS — the node body is painted with them and carries a white
+     label. Anywhere the type colour is used as TEXT instead (Live Metrics
+     chips, the device-list type chip) the call site lightens it with
+     color-mix; a fill dark enough for white text is far too dark to be text
+     itself. That mismatch is exactly what made ten of the old Live Metrics
+     chips unreadable. */
+
+  /* network — data plane */
+  --node-switch:         #1060b1;
+  --node-router:         #13688c;
+  --node-server:         #2957d1;
+  --node-firewall:       #5e44df;
+  --node-lb:             #7b38d4;
+  /* management — out-of-band */
+  --node-oob:            #9030bf;
+  /* electrical */
+  --node-utility-feed:   #8e5035;
+  --node-switchgear:     #85552b;
+  --node-mcc:            #7c5a2b;
+  --node-ats:            #7b5b1d;
+  --node-generator:      #964d1d;
+  --node-ups:            #755e10;
+  --node-rpp:            #6c611b;
+  --node-pdu:            #795c0b;
+  --node-floor-pdu:      #865712;
+  --node-mpp:            #9a482e;
+  /* cooling */
+  --node-crah:           #106b79;
+  --node-chiller:        #136b66;
+  --node-pump:           #1a6884;
+  --node-cooling-tower:  #1b6d5b;
+  --node-valve:          #2d658b;
+  --node-cdu:            #1a6b6c;
+  /* passive sensing */
+  --node-sensor:         #4d646e;
+  --node-energy-monitor: #486471;
+  --node-default:        #50646c;   /* unknown device_type */
+
+  /* Node chrome. The body is filled with the device-type colour above; these
+     cover the parts that are not the fill. */
+  --node-ring:      var(--accent-hover);   /* selection ring */
+  --node-label:     rgba(255, 255, 255, 0.72);   /* IP line under the name */
+  --node-label-dim: rgba(255, 255, 255, 0.52);   /* second IP line */
+  --node-meter:     rgba(0, 0, 0, 0.4);          /* CPU bar groove */
+
 
   /* ── Topology layers ───────────────────────────────────────────────────
      These are what LinkEdge actually strokes with, so the layer buttons that
      use them as swatches now match the lines on the canvas. (--layer-prod
      and --layer-mgmt previously held different values here than the edge
-     renderer used, so the legend disagreed with the drawing.) */
-  --layer-prod:    #4a9eff;
-  --layer-mgmt:    var(--ok);
-  --layer-power:   #f59e0b;
-  --layer-cooling: #22d3ee;
+     renderer used, so the legend disagreed with the drawing.)
+
+     Management was green — the same green as --ok — so a healthy device and a
+     management link spoke with one voice. Green now means only "healthy", and
+     the OOB plane took violet, which also matches the OOB node colour above.
+     Each plane's edges and its devices now agree. */
+  --layer-prod:    #4a9eff;   /* blue    — matches --node-switch/router/server */
+  --layer-mgmt:    #a78bfa;   /* violet  — matches --node-oob */
+  --layer-power:   #f59e0b;   /* amber   — matches the brass node arc */
+  --layer-cooling: #22d3ee;   /* cyan    — matches the cooling node arc */
 
   /* Cooling-loop flow direction. */
   --flow-cold: #22d3ee;   /* chilled supply / cooled condenser return */
@@ -211,18 +227,14 @@
   --ok-fill-hover:  #14532d;
   --ok-fill-line:   #166534;
   --ok-fill-fg:     #86efac;
-  --crit-fill:      #4c1010;
   --crit-fill-hover:#7f1d1d;
-  --crit-fill-line: #991b1b;
   --crit-fill-fg:   #fca5a5;
   --crit-muted-fg:  #a07070;   /* clear/destructive at rest */
-  --warn-fill:      rgba(154, 103, 0, 0.3);
   --warn-fill-hover:#92400e;
-  --warn-fill-line: #b88500;
-  --warn-fill-fg:   #fcd34d;
 
   /* ── Misc surfaces & lines ─────────────────────────────────────────── */
   --bg-faint:        rgba(255, 255, 255, 0.04);   /* barely-there fill */
+  --bg-stripe:       rgba(255, 255, 255, 0.02);   /* zebra row */
   --bg-float:        rgba(18, 28, 32, 0.92);      /* floating canvas toolbar */
   --border-soft:     rgba(38, 56, 64, 0.5);       /* table row rule */
   --panel-head-a:    #162227;                     /* panel header gradient */
@@ -257,7 +269,22 @@ html, body, #root {
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
 
-/* ─── Generic buttons ─── */
+/* ─── Buttons ──────────────────────────────────────────────────────────────
+   One system, three weights:
+
+     quiet   (default)   surface + hairline, muted label — most controls
+     accent  (.primary)  solid --accent — ONE per panel: the thing the panel
+                         exists to do
+     state   (.success / .danger / .warn, and the .btn-* variants below)
+                         tint + coloured hairline + coloured label AT REST;
+                         it fills only on hover
+
+   The "fills only on hover" rule is the point. Every state button used to be
+   a solid dark-red or dark-green block, so a panel toolbar read as a row of
+   alarms and the one genuinely primary action had nothing left to win with.
+   Colour here marks what a control DOES, not that something is wrong — the
+   status vocabulary needs to stay legible against the chrome, not compete
+   with it. */
 button {
   cursor: pointer;
   border: 1px solid var(--border);
@@ -267,17 +294,22 @@ button {
   padding: 4px 10px;
   font-size: 11px;
   font-family: inherit;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 button:hover:not(:disabled) {
   background: var(--bg-hover);
   border-color: var(--border-light);
 }
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+  border-color: var(--accent);
+}
 button:disabled {
   cursor: not-allowed;
-  background: var(--bg-card);
-  border-color: var(--border-light);
-  color: var(--text-muted);
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
   box-shadow: none;
 }
 
@@ -290,27 +322,39 @@ button.primary {
 button.primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 button.danger {
-  background: var(--crit-fill);
-  border-color: var(--crit-fill-hover);
-  color: var(--crit-fill-fg);
+  background: var(--crit-bg);
+  border-color: var(--crit-border);
+  color: var(--crit);
 }
 button.danger:hover:not(:disabled) {
   background: var(--crit-fill-hover);
-  box-shadow: 0 0 10px var(--crit-glow);
+  border-color: var(--crit);
+  color: var(--crit-solid-fg);
 }
 
 button.success {
-  background: var(--ok-fill);
-  border-color: var(--ok-fill-line);
-  color: var(--ok-fill-fg);
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok);
 }
 button.success:hover:not(:disabled) {
   background: var(--ok-fill-hover);
-  box-shadow: 0 0 10px var(--ok-glow);
+  border-color: var(--ok);
+  color: var(--ok-fill-fg);
+}
+
+button.warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
+button.warn:hover:not(:disabled) {
+  background: var(--warn-fill-hover);
+  border-color: var(--warn-strong);
+  color: var(--warn-solid-fg);
 }
 
 /* ─── Inputs & selects ─── */
@@ -332,16 +376,21 @@ input:focus, select:focus {
 input::placeholder { color: var(--text-dim); }
 select option { background: var(--bg-card); color: var(--text); }
 
-/* ─── Badge ─── */
+/* ─── Badge ────────────────────────────────────────────────────────────────
+   Shape carries the category: a full pill is a live STATE (running, ready,
+   stopped), a 3px rect is a static LABEL (device type, layer). Same tint +
+   hairline + coloured-text recipe as the state buttons, so a badge and the
+   button that changes it read as the same object. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: 999px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 .badge.running {
   background: var(--ok-bg);
@@ -380,6 +429,30 @@ select option { background: var(--bg-card); color: var(--text); }
   0%, 100% { box-shadow: 0 0 4px var(--green); }
   50%       { box-shadow: 0 0 9px var(--green), 0 0 2px var(--ok-fill-fg); }
 }
+
+/* ─── Topology node ───────────────────────────────────────────────────────
+   Filled with the device-type colour (set inline; see --node-* in :root).
+   Structure lives here so hover and state variants can win without fighting
+   inline specificity. */
+.device-node {
+  border: 2px solid transparent;   /* colour set inline, matches the fill */
+  border-radius: 5px;
+  padding: 4px 8px;
+  min-width: 68px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: filter 0.15s, opacity 0.3s, box-shadow 0.15s;
+}
+/* Brightening beats a background swap here: the fill is a different colour on
+   every node, so one hover colour cannot work for all of them. */
+.device-node:hover { filter: brightness(1.18); }
+
+/* Powered off (Redfish reports Off) — a dashed edge says "not a fault, just
+   not running", which the dimming alone could not distinguish from a
+   staged-off standby unit. Border colour comes from the component, which
+   swaps it off the fill colour so the dashes are actually visible. */
+.device-node.node-off { border-style: dashed; }
 
 /* Injected-CONDITION node: hard alarm blink while the fault is active, ending
    the moment it returns to normal.
@@ -439,6 +512,10 @@ select option { background: var(--bg-card); color: var(--text); }
     border-color: var(--alarm-peak) !important;
     box-shadow: 0 0 0 4px var(--alarm), 0 0 20px 6px var(--alarm-glow) !important;
   }
+  /* Without the blink there is no keyframe left to drive the label colour, so
+     the node's normal --text/type-colour inline styles would sit on a red
+     fill at about 2.9:1. Force the on-fill colour instead. */
+  .node-faulted > div:not(.react-flow__handle) { color: var(--on-solid) !important; }
 }
 
 /* Pause blinking while panning/zooming, same as the flow dashes below — the
@@ -646,42 +723,44 @@ select option { background: var(--bg-card); color: var(--text); }
   background: var(--accent);
   border-color: var(--accent);
   color: var(--on-solid);
-  box-shadow: 0 0 14px var(--accent-glow);
 }
 
+/* Start/stop sit side by side and are pressed constantly. Tinted at rest so
+   neither reads as an alarm; each fills on hover, which is also the only
+   moment the operator needs to be sure which one is under the cursor. */
 .btn-start {
-  background: var(--ok-fill);
-  border-color: var(--ok-fill-line);
-  color: var(--ok-fill-fg);
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok);
 }
 .btn-start:hover:not(:disabled) {
   background: var(--ok-fill-hover);
   border-color: var(--ok);
   color: var(--ok-fill-fg);
-  box-shadow: 0 0 12px var(--ok-glow);
 }
 
 .btn-stop {
-  background: var(--crit-fill);
-  border-color: var(--crit-fill-line);
-  color: var(--crit-fill-fg);
+  background: var(--crit-bg);
+  border-color: var(--crit-border);
+  color: var(--crit);
 }
 .btn-stop:hover:not(:disabled) {
   background: var(--crit-fill-hover);
   border-color: var(--crit);
   color: var(--alarm-edge);
-  box-shadow: 0 0 12px var(--crit-glow);
 }
 
+/* Clear is destructive but routine, so it stays quieter than Stop: no tint at
+   rest, only a muted red label. It earns its colour when you reach for it. */
 .btn-clear {
-  background: var(--crit-bg);
+  background: transparent;
   color: var(--crit-muted-fg);
-  border-color: var(--crit-border);
+  border-color: var(--border);
 }
 .btn-clear:hover:not(:disabled) {
-  background: var(--crit-fill);
-  border-color: var(--crit-fill-line);
-  color: var(--crit-fill-fg);
+  background: var(--crit-bg);
+  border-color: var(--crit-border);
+  color: var(--crit);
 }
 .btn-action.btn-clear:disabled {
   background: transparent;
@@ -690,14 +769,14 @@ select option { background: var(--bg-card); color: var(--text); }
 }
 
 .btn-warn {
-  background: var(--warn-fill);
-  border-color: var(--warn-fill-line);
-  color: var(--warn-fill-fg);
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn);
 }
 .btn-warn:hover:not(:disabled) {
   background: var(--warn-fill-hover);
-  border-color: var(--warn-fill-line);
-  color: var(--warn-fill-fg);
+  border-color: var(--warn-strong);
+  color: var(--warn-solid-fg);
 }
 
 /* ─── Topology canvas toolbar ─── */
@@ -858,7 +937,6 @@ select option { background: var(--bg-card); color: var(--text); }
   background: var(--accent);
   border-color: var(--accent-hover);
   color: var(--on-solid);
-  box-shadow: 0 0 14px var(--accent-glow);
 }
 .btn-apply-receiver:active:not(:disabled) { transform: translateY(1px); }
 .btn-apply-receiver:disabled {

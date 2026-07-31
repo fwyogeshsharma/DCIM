@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useStore } from '../store/useStore'
 import type { DeviceInfo } from '../api/types'
 import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './TopologyCanvas/NodeContextMenu'
-import { nodeColor } from '../theme'
+import { nodeColor, nodeInk } from '../theme'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 900
@@ -266,10 +266,11 @@ export default function DeviceList() {
                     <span style={{
                       display: 'inline-block', padding: '1px 6px',
                       borderRadius: 3, fontSize: 9, fontWeight: 600,
-                      // color-mix, not a `${col}33` hex-alpha concat: col is a
-                      // var() reference now, with no literal to append to.
-                      background: `color-mix(in srgb, ${col} 20%, transparent)`,
-                      color: col,
+                      // The fill tints the chip; only the lightened variant is
+                      // legible as the label sitting on it. color-mix, not a
+                      // `${col}33` concat — col is a var() reference now.
+                      background: `color-mix(in srgb, ${col} 22%, transparent)`,
+                      color: nodeInk(d.device_type),
                       textTransform: 'uppercase', letterSpacing: '0.3px',
                     }}>
                       {TYPE_LABEL[d.device_type] || d.device_type}

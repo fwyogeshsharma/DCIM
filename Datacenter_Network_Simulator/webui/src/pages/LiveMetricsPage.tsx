@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import type { DeviceInfo, IfaceStats, EV2DeviceSnapshot, EV2CircuitMetrics, PlantDeviceSnapshot, ElectricalDeviceSnapshot } from '../api/types'
-import { badgeColor } from '../theme'
+import { nodeColor, nodeInk } from '../theme'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -123,15 +123,17 @@ function NameCell({ d }: { d: DeviceInfo }) {
 }
 
 function TypeBadge({ dt }: { dt: string }) {
-  // color-mix rather than the old `c + '33'` hex-alpha concat: the badge colour
-  // is now a var() reference, so there is no literal to append two digits to.
-  const c = badgeColor(dt)
+  // Fill colour tints the chip; the lightened variant is the only one legible
+  // as the label on top of it. color-mix throughout, because these are var()
+  // references with no literal to append hex-alpha digits to.
+  const c = nodeColor(dt)
   return (
     <span style={{
       display: 'inline-block', padding: '1px 6px', borderRadius: 3,
-      background: `color-mix(in srgb, ${c} 20%, transparent)`,
-      border: `1px solid color-mix(in srgb, ${c} 33%, transparent)`,
-      color: c, fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px',
+      background: `color-mix(in srgb, ${c} 22%, transparent)`,
+      border: `1px solid color-mix(in srgb, ${c} 40%, transparent)`,
+      color: nodeInk(dt), fontSize: 9, fontWeight: 600,
+      textTransform: 'uppercase', letterSpacing: '0.4px',
     }}>{dt.replace(/_/g, ' ')}</span>
   )
 }

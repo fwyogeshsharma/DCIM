@@ -50,35 +50,20 @@ export function nodeColor(deviceType: string): string {
 }
 
 /**
- * Device-type chips on the Live Metrics table. Brighter and more saturated
- * than NODE_COLOR because these are small text chips on a dark row rather
- * than large node bodies. Still a second palette for the same concept — a
- * candidate to fold into NODE_COLOR once both pages can be compared live.
+ * The same device-type colour, lightened enough to be legible AS TEXT.
+ *
+ * NODE_COLOR values are fills: dark enough to carry a white label, which makes
+ * them far too dark to be a label themselves. Live Metrics used to keep a
+ * separate, equally dark palette for its type chips and paint it as text —
+ * PDU landed at 2.3:1 against the row, floor PDU 1.8, RPP 1.2. Ten of the
+ * seventeen were effectively invisible.
+ *
+ * Deriving the text colour from the fill instead of maintaining a second
+ * palette keeps one device-type identity across the canvas, the device list
+ * and the metrics table, and keeps it correct in both roles.
  */
-export const BADGE_COLOR: Record<string, string> = {
-  switch:        'var(--badge-switch)',
-  router:        'var(--badge-router)',
-  server:        'var(--badge-server)',
-  firewall:      'var(--badge-firewall)',
-  load_balancer: 'var(--badge-lb)',
-  ups:           'var(--badge-ups)',
-  pdu:           'var(--badge-pdu)',
-  floor_pdu:     'var(--badge-floor-pdu)',
-  rpp:           'var(--badge-rpp)',
-  generator:     'var(--badge-generator)',
-  oob_switch:    'var(--badge-oob)',
-  sensor:        'var(--badge-sensor)',
-  utility_feed:  'var(--badge-utility-feed)',
-  switchgear:    'var(--badge-switchgear)',
-  ats:           'var(--badge-ats)',
-  mcc:           'var(--badge-mcc)',
-  mpp:           'var(--badge-mpp)',
-}
-
-export const BADGE_DEFAULT = 'var(--badge-default)'
-
-export function badgeColor(deviceType: string): string {
-  return BADGE_COLOR[deviceType] || BADGE_DEFAULT
+export function nodeInk(deviceType: string): string {
+  return `color-mix(in srgb, ${nodeColor(deviceType)} 50%, white)`
 }
 
 /** Topology layer colour — what LinkEdge strokes with, and what the layer
