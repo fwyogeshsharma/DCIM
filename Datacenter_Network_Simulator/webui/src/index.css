@@ -14,40 +14,53 @@
    sites.
    ══════════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Surfaces ──────────────────────────────────────────────────────── */
-  --bg-base:      #090e18;   /* app canvas behind everything */
-  --bg-panel:     #0d1525;   /* panel / sticky table head */
-  --bg-card:      #131f30;   /* raised control: button, input, card */
-  --bg-hover:     #182438;
-  --bg-selected:  #163354;
-  --bg-menu:      #111827;   /* floating dropdown menu */
-  --bg-inset:     #0d1117;   /* recessed sub-surface inside a panel */
-  --bg-inset-alt: #161b22;   /* banded row within --bg-inset */
-  --bg-viewport:  #0e1116;   /* full-page / iframe viewport (floor plan) */
+  /* ── Neutrals ──────────────────────────────────────────────────────────
+     Surfaces, lines and text sit on ONE cool near-teal hue (~199°) at low
+     saturation. Everything below was derived from the previous blue-navy
+     ramp by rotating hue and cutting saturation to ~60% — lightness was left
+     untouched, so every contrast ratio in the UI is exactly what it was.
+     Saturated colour is reserved for meaning: status, device type, layer.
+     A neutral field that is itself a strong blue competes with the blue
+     accent and with the production-layer edges drawn on top of it.
+
+     Rotating this hue is the whole retheme. Semantic and accent colours
+     below are deliberately NOT part of the rotation — they carry meaning,
+     not mood. */
+
+  /* Surfaces */
+  --bg-base:      #0c1215;   /* app canvas behind everything */
+  --bg-panel:     #121c20;   /* panel / sticky table head */
+  --bg-card:      #19252a;   /* raised control: button, input, card */
+  --bg-hover:     #1e2c32;
+  --bg-selected:  #163354;   /* accent-tinted: selection reads as accent, not surface */
+  --bg-menu:      #151e23;   /* floating dropdown menu */
+  --bg-inset:     #0f1315;   /* recessed sub-surface inside a panel */
+  --bg-inset-alt: #181d20;   /* banded row within --bg-inset */
+  --bg-viewport:  #101314;   /* full-page / iframe viewport (floor plan) */
   --bg-well:      rgba(0, 0, 0, 0.25);   /* sunken counter cell / progress track */
 
   /* Backdrops — fixed overlays and the chrome-bar gradient. All three bars
      (menu bar, status bar, right-panel rail) share one gradient so the
      window frame reads as a single surface. */
-  --backdrop:      #060b16;
-  --backdrop-glow: #0d1b30;  /* radial centre on the login screen */
-  --chrome-a:      #0b1628;  /* chrome-bar gradient, top */
-  --chrome-b:      #080f1e;  /* chrome-bar gradient, bottom */
-  --vignette:      #0e151f;  /* topology canvas radial centre */
+  --backdrop:      #091013;
+  --backdrop-glow: #142229;  /* radial centre on the login screen */
+  --chrome-a:      #111d22;  /* chrome-bar gradient, top */
+  --chrome-b:      #0c151a;  /* chrome-bar gradient, bottom */
+  --vignette:      #11181c;  /* topology canvas radial centre */
 
-  /* ── Lines ─────────────────────────────────────────────────────────── */
-  --border:       #1e3048;
-  --border-light: #2e4a6a;
-  --border-dim:   #21262d;   /* hairline inside a recessed surface */
-  --line-dim:     #2d3f55;   /* logo strokes, decorative rules */
-  --canvas-dot:   rgba(45, 63, 85, 0.25);   /* topology dot grid */
+  /* Lines */
+  --border:       #263840;
+  --border-light: #3a535e;
+  --border-dim:   #23282b;   /* hairline inside a recessed surface */
+  --line-dim:     #35454d;   /* logo strokes, decorative rules */
+  --canvas-dot:   rgba(53, 69, 77, 0.25);   /* topology dot grid */
 
-  /* ── Text ──────────────────────────────────────────────────────────── */
-  --text:         #d4dce8;
-  --text-muted:   #7a8fa8;
-  --text-dim:     #445568;
+  /* Text */
+  --text:         #d8e0e4;
+  --text-muted:   #83969f;
+  --text-dim:     #4b5a61;
   --on-solid:     #fff;      /* label on a saturated fill */
-  --on-accent:    #061018;   /* label on an --accent fill */
+  --on-accent:    #0a1114;   /* label on an --accent fill */
 
   /* ── Brand / accents ───────────────────────────────────────────────── */
   --accent:       #2563eb;
@@ -210,13 +223,13 @@
 
   /* ── Misc surfaces & lines ─────────────────────────────────────────── */
   --bg-faint:        rgba(255, 255, 255, 0.04);   /* barely-there fill */
-  --bg-float:        rgba(13, 21, 37, 0.92);      /* floating canvas toolbar */
-  --border-soft:     rgba(30, 48, 72, 0.5);       /* table row rule */
-  --panel-head-a:    #101a2d;                     /* panel header gradient */
+  --bg-float:        rgba(18, 28, 32, 0.92);      /* floating canvas toolbar */
+  --border-soft:     rgba(38, 56, 64, 0.5);       /* table row rule */
+  --panel-head-a:    #162227;                     /* panel header gradient */
   --panel-head-b:    var(--bg-panel);
-  --toggle-track:    #1a2840;
+  --toggle-track:    #223138;
   --scroll-thumb:      var(--border-light);
-  --scroll-thumb-hover:#3a5a80;
+  --scroll-thumb-hover:#486572;
   --accent-deep:     #1d4ed8;   /* dark stop of an accent gradient */
   --alarm-glow:      rgba(239, 68, 68, 0.9);
   --alarm-glow-soft: rgba(239, 68, 68, 0.55);
