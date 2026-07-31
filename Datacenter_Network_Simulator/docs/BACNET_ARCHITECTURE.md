@@ -668,7 +668,9 @@ All BACnet controls are available over HTTP. This is the primary interface in he
 
 Start logic:
 1. Validates EV2 `energy_monitor` devices exist in topology
-2. Filters to IPs that are bound (`AppState.bound_ips | gnmi_bound_ips`)
+2. Requires every EV2 IP to be bound (`AppState.bound_ips`, via
+   `_bind_guard.require_bound()`) — refuses the start and names the gap otherwise.
+   Chiller-plant devices stay a soft filter: unbound ones are skipped with a warning
 3. Walks power graph to determine `(total, active)` circuit counts per device
 4. Calls `BACnetController.start()` then `state_store.enable_bacnet()`
 

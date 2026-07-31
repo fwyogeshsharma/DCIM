@@ -65,8 +65,6 @@ class BindingStatusResponse(BaseModel):
     subnet_mask: str
     bound_count: int
     bound_ips: List[str]
-    gnmi_bound_count: int
-    gnmi_bound_ips: List[str]
     active_job_id: Optional[str] = None
 
 

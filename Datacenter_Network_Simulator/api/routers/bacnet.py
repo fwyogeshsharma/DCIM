@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from api.state import AppState
+from api.routers._bind_guard import bound_set, require_bound
 from api.models.schemas import OkResponse, EV2DeviceSnapshot, EV2PanelMetrics, EV2CircuitMetrics
 
 router = APIRouter(prefix="/bacnet", tags=["BACnet"])
@@ -131,21 +132,15 @@ def bacnet_start(cfg: BACnetConfig):
                    "Add Verdigris EV2 devices (device_type=energy_monitor) and bind IPs first."
         )
 
-    # EV2 devices are mgmt_only: ip_address is "" and real IP is mgmt_ip.
-    # Only start on IPs that are actually bound — unbound IPs have no OS route.
-    bound_set = set(s.bound_ips) | set(s.gnmi_bound_ips)
-    bound_devices = [
-        d for d in ev2_devices
-        if (d.ip_address and d.ip_address in bound_set)
-        or (getattr(d, "mgmt_ip", None) and d.mgmt_ip in bound_set)
-    ]
-
-    if not bound_devices:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Found {len(ev2_devices)} EV2 device(s) but none of their IPs are bound. "
-                   "Bind IPs first (Binding panel → Bind IPs), then start BACnet."
-        )
+    # EV2 devices are mgmt_only: ip_address is "" and the real IP is mgmt_ip.
+    # Unbound IPs have no OS route, so require the whole set rather than starting
+    # a partial plant — the guard names which addresses are short.
+    require_bound(
+        s,
+        [(d.ip_address or getattr(d, "mgmt_ip", "")) for d in ev2_devices],
+        "EV2 device IP(s)",
+    )
+    bound_devices = ev2_devices
 
     # Build per-device circuit count.
     # Walk the power graph: EV2 → panel → count panel's other power connections.
@@ -258,10 +253,12 @@ def bacnet_start(cfg: BACnetConfig):
             cap = _clamp_circuit_count(int(m.group(1))) if m else 42
             circuits_map[ip] = (cap, cap)
 
-    unbound = len(ev2_devices) - len(bound_devices)
-
     # Chiller-plant BACnet devices (chiller/pump/cooling_tower/valve) on bound
     # mgmt IPs. rated_kw = nameplate electrical draw, used to size the kW points.
+    # Unlike the EV2 set this stays a soft filter with a warning: plant field
+    # controllers are legitimately absent from a lab bind, and refusing to start
+    # the whole BACnet stack over a missing pump would be a worse trade.
+    _host_ips = bound_set(s)
     _PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
                     DeviceType.COOLING_TOWER, DeviceType.VALVE, DeviceType.CRAH,
                     DeviceType.CDU}
@@ -271,8 +268,8 @@ def bacnet_start(cfg: BACnetConfig):
         if d.device_type not in _PLANT_TYPES:
             continue
         _plant_total += 1
-        ip = (d.ip_address if d.ip_address in bound_set else None) \
-            or (d.mgmt_ip if getattr(d, "mgmt_ip", None) in bound_set else None)
+        ip = (d.ip_address if d.ip_address in _host_ips else None) \
+            or (d.mgmt_ip if getattr(d, "mgmt_ip", None) in _host_ips else None)
         if ip:
             plant_devices.append({
                 "ip": ip,
@@ -317,10 +314,8 @@ def bacnet_start(cfg: BACnetConfig):
     if s.state_store and hasattr(s.state_store, "enable_bacnet"):
         s.state_store.enable_bacnet(s.bacnet)
 
-    if unbound:
-        s.notify_ui("log_bacnet",
-                    f"[BACnet] Warning: {unbound} EV2 device(s) skipped — IPs not bound.",
-                    "warning")
+    # No "EV2 skipped" warning any more — require_bound() refuses the start
+    # outright, so reaching here means every EV2 IP is on the host.
     s.notify_ui("console_log",
                 f"[BACnet] Started — {len(device_ips)} EV2 device(s), "
                 f"{len(plant_devices)} chiller-plant device(s).", "success")

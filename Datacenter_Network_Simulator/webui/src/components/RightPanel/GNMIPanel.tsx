@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { api } from '../../api/client'
+import { api, errorMessage } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import TargetsBox from './TargetsBox'
 import NumberInput from '../NumberInput'
@@ -82,6 +82,9 @@ export default function GNMIPanel() {
   const [busy,      setBusy]      = useState(false)
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | 'proxy' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
+  // Why the last start was refused. The API names the unbound IPs; swallowing
+  // that left Start looking like a no-op with the status stuck on "Idle".
+  const [err,       setErr]       = useState<string | null>(null)
   const resumedJob = useRef<string | null>(null)
 
   const running       = gnmi?.running            ?? false
@@ -139,12 +142,12 @@ export default function GNMIPanel() {
   }
 
   async function start() {
-    setBusy(true); setOperation('start')
+    setBusy(true); setOperation('start'); setErr(null)
     try {
       const j = await api.startGnmi(gnmiPort) as { job_id: string }
       await pollJob(j.job_id, () => {}, (d, t) => setProg([d, t]))
       fetchGnmi()
-    } catch { /* ignore */ }
+    } catch (e: unknown) { setErr(errorMessage(e)) }
     finally { setBusy(false); setOperation(null); setProg(null) }
   }
 
@@ -300,6 +303,21 @@ export default function GNMIPanel() {
             1–65535
           </span>
         </div>
+
+        {/* ── Why the last start was refused ─────────────────────
+            Sits directly above the button that produced it. The API's refusals
+            are actionable (which IPs are unbound, which port is taken), and the
+            operator cannot act on what they never see. */}
+        {err && (
+          <div style={{
+            fontSize: 10, color: 'var(--red)', padding: '6px 8px',
+            background: 'color-mix(in srgb, var(--red) 10%, var(--bg-base))',
+            border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)',
+            borderRadius: 4, lineHeight: 1.5,
+          }}>
+            {err}
+          </div>
+        )}
 
         {/* ── Simulator actions ──────────────────────────────── */}
         <div className="snmp-actions">

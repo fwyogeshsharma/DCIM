@@ -10,6 +10,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from api.state import AppState
+from api.routers._bind_guard import require_bound
 from api.models.schemas import (
     TrapReceiverRequest,
     SnmpStartRequest,
@@ -137,8 +138,9 @@ def generate_datasets():
 @router.post("/start", response_model=JobResponse)
 def start_snmp_simulator(req: SnmpStartRequest = None):
     """
-    Start the SNMP simulator.
-    If IPs are not yet bound, binds them first using the selected adapter.
+    Start the SNMP simulator on already-bound agent IPs.
+
+    Does NOT bind addresses — that is the Binding panel's job (see _bind_guard).
     Returns job_id for progress tracking.
     """
     global _active_start_job
@@ -146,47 +148,45 @@ def start_snmp_simulator(req: SnmpStartRequest = None):
 
     if s.snmpsim and s.snmpsim.is_running():
         raise HTTPException(status_code=409, detail="SNMP simulator already running")
+    if s.topology is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
     if not s.generated_snmp_files:
         raise HTTPException(status_code=400, detail="No datasets generated — call POST /snmp/datasets/generate first")
-    if not s.selected_adapter:
-        raise HTTPException(status_code=400, detail="No adapter selected — call POST /binding/adapter first")
 
-    from core.ip_binder import is_admin
-    if not is_admin():
-        raise HTTPException(status_code=403, detail="Administrator/root privileges required")
+    # One endpoint per agent: NOS/OS agent IP plus, for servers, the BMC SNMP
+    # agent on the mgmt IP (same address Redfish binds). snmp_bind_ips() is the
+    # authority — it returns [] for types that have no SNMP agent at all.
+    from core.snmprec_generator import SNMPRecGenerator as _Gen
+    seen: set = set()
+    device_ips = []
+    for d in s.topology.get_all_devices():
+        for ip in _Gen.snmp_bind_ips(d):
+            if ip not in seen:
+                seen.add(ip)
+                device_ips.append(ip)
+    if not device_ips:
+        raise HTTPException(status_code=400, detail="No SNMP-capable devices in topology")
+
+    require_bound(s, device_ips, "SNMP agent IP(s)")
+
+    snmp_port = (req.port if req else None) or 161
+    # Unlike the other three, SNMP's default port IS privileged — snmpsim cannot
+    # open 161 without root. Gate on the port actually requested, not on the fact
+    # that this is SNMP: 1611 is a normal choice here and needs no elevation.
+    if snmp_port < 1024:
+        from core.ip_binder import is_admin
+        if not is_admin():
+            raise HTTPException(
+                status_code=403,
+                detail=f"Port {snmp_port} is privileged — Administrator/root required "
+                       f"to bind it, or choose a port above 1023 (e.g. 1611).")
 
     job_id = s.create_job("start_snmp_simulator")
     _active_start_job = job_id
 
     def _run():
         try:
-            # Bind IPs if not already bound
-            if not s.bound_ips:
-                from core.ip_binder import add_ips_fast
-                ips = s.get_all_bind_ips()
-                s.update_job(job_id, message=f"Binding {len(ips)} IPs...")
-                bound, contexts = add_ips_fast(
-                    s.selected_adapter, ips, s.subnet_mask,
-                    log_cb=lambda msg, lvl: s.update_job(job_id, message=msg),
-                    progress_cb=lambda c, t: s.update_job(
-                        job_id, progress_done=c, progress_total=t),
-                )
-                s.bound_ips = bound
-                s.nte_contexts = contexts
-
-            # One endpoint per agent: NOS/OS agent IP plus, for servers, the
-            # BMC SNMP agent on the mgmt IP (same address Redfish binds).
-            from core.snmprec_generator import SNMPRecGenerator as _Gen
-            seen: set = set()
-            device_ips = []
-            for d in s.topology.get_all_devices():
-                for ip in _Gen.snmp_bind_ips(d):
-                    if ip not in seen:
-                        seen.add(ip)
-                        device_ips.append(ip)
-
             s.update_job(job_id, message="Starting SNMP simulator...")
-            snmp_port = (req.port if req else None) or 161
             ok = s.snmpsim.start(device_ips, port=snmp_port)
             if not ok:
                 s.update_job(job_id, status="failed", error="snmpsim.start() returned False",

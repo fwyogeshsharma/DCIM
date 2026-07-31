@@ -142,7 +142,6 @@ async def health():
         "gnmi_running": s.gnmi.is_running() if s.gnmi else False,
         "rule_engine_enabled": s.rule_engine_enabled,
         "bound_ips": len(s.bound_ips),
-        "gnmi_bound_ips": len(s.gnmi_bound_ips),
     }
 
 

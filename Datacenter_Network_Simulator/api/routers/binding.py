@@ -104,6 +104,7 @@ def bind_ips():
                 s.selected_adapter, ips, s.subnet_mask,
                 log_cb=_log,
                 progress_cb=_progress,
+                workers=8,
             )
             s.notify_ui("log", f"Bound {len(bound)}/{total_ips} IPs", "success")
             s.bound_ips = bound
@@ -133,15 +134,15 @@ def unbind_ips():
 
     if not s.selected_adapter:
         raise HTTPException(status_code=400, detail="No adapter selected")
-    if not s.bound_ips and not s.gnmi_bound_ips:
+    if not s.bound_ips:
         return JobResponse(job_id="none", operation="unbind_ips", status="completed")
 
     job_id = s.create_job("unbind_ips")
     _active_unbind_job = job_id
     s.notify_ui("binding_started")
 
-    all_ips = list(set(s.bound_ips + s.gnmi_bound_ips))
-    all_contexts = {**s.nte_contexts, **s.gnmi_nte_contexts}
+    all_ips = list(s.bound_ips)
+    all_contexts = dict(s.nte_contexts)
 
     def _run():
         try:
@@ -165,8 +166,6 @@ def unbind_ips():
             s.notify_ui("log", f"Removed {total_ips} bindings", "info")
             s.bound_ips = []
             s.nte_contexts = {}
-            s.gnmi_bound_ips = []
-            s.gnmi_nte_contexts = {}
             s.notify_ui("sync_binding")
             s.update_job(
                 job_id,
@@ -186,11 +185,7 @@ def unbind_ips():
 async def get_bound_count():
     """Get total number of currently bound IPs."""
     s = _state()
-    return {
-        "snmp_bound": len(s.bound_ips),
-        "gnmi_bound": len(s.gnmi_bound_ips),
-        "total": len(set(s.bound_ips + s.gnmi_bound_ips)),
-    }
+    return {"total": len(set(s.bound_ips))}
 
 
 @router.get("/status", response_model=BindingStatusResponse)
@@ -209,8 +204,6 @@ async def get_binding_status():
         subnet_mask=s.subnet_mask,
         bound_count=len(s.bound_ips),
         bound_ips=s.bound_ips,
-        gnmi_bound_count=len(s.gnmi_bound_ips),
-        gnmi_bound_ips=s.gnmi_bound_ips,
         active_job_id=active,
     )
 

@@ -44,10 +44,11 @@ async function request<T>(
   if (!res.ok) {
     // Keep the technical detail in the console for developers; never surface
     // the raw backend body (paths, status codes, stack/validation internals)
-    // to end users. Components display only the friendly message below.
+    // to end users. Components display only the friendly message below, or an
+    // operator message the endpoint explicitly opted in.
     const text = await res.text().catch(() => '')
     console.error(`[api] ${method} ${path} → ${res.status}: ${text}`)
-    throw apiError(res.status)
+    throw apiError(res.status, userMessageFrom(text))
   }
   return res.json() as Promise<T>
 }
@@ -56,10 +57,28 @@ async function request<T>(
 // network) without string-parsing. `.message` is always user-safe.
 export interface ApiError extends Error { status: number }
 
-function apiError(status: number): ApiError {
-  const e = new Error(friendlyError(status)) as ApiError
+function apiError(status: number, userMessage?: string): ApiError {
+  const e = new Error(userMessage || friendlyError(status)) as ApiError
   e.status = status
   return e
+}
+
+// An endpoint opts a message IN to the UI by shaping its detail as
+// {"user_message": "..."} — see api/routers/_bind_guard.py. Everything else
+// (bare detail strings, FastAPI's validation arrays, proxy HTML error pages)
+// stays in the console: only text an endpoint deliberately wrote for an
+// operator is ever rendered. Refusals like "12 of 46 gNMI device IPs are not
+// bound: … Bind them from the Binding panel" are useless as a generic
+// "information provided is invalid", and useless is how they used to arrive.
+function userMessageFrom(body: string): string | undefined {
+  try {
+    const detail = (JSON.parse(body) as { detail?: unknown }).detail
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      const msg = (detail as { user_message?: unknown }).user_message
+      if (typeof msg === 'string' && msg) return msg
+    }
+  } catch { /* not JSON, or no body — nothing safe to surface */ }
+  return undefined
 }
 
 // Safe extractor for catch blocks — always returns a user-presentable string,

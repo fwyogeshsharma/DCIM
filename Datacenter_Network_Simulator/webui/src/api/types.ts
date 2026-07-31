@@ -246,10 +246,10 @@ export interface RedfishStatus {
 export interface BindingStatus {
   selected_adapter: string
   subnet_mask: string
+  // One list: bound_ips is every address the host carries. There is no
+  // per-simulator split — an IP alias records no owner.
   bound_count: number
   bound_ips: string[]
-  gnmi_bound_count: number
-  gnmi_bound_ips: string[]
   active_job_id?: string
 }
 
@@ -309,7 +309,6 @@ export interface HealthStatus {
   gnmi_running: boolean
   rule_engine_enabled: boolean
   bound_ips: number
-  gnmi_bound_ips: number
 }
 
 // ── Verdigris EV2 BACnet metrics ─────────────────────────────────────────────

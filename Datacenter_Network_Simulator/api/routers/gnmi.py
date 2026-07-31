@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from api.state import AppState
+from api.routers._bind_guard import require_bound
 from api.models.schemas import (
     GnmiStartRequest,
     GnmiStatusResponse,
@@ -25,6 +26,15 @@ _active_start_job: Optional[str] = None
 
 def _state() -> AppState:
     return AppState.get()
+
+
+def _listen_ip(device) -> str:
+    """Address a per-device gNMI server binds — also its .gnmi.json dataset key.
+
+    gNMI is a management protocol, so it lives on the OOB mgmt IP when the device
+    has one and falls back to the production IP otherwise.
+    """
+    return getattr(device, "mgmt_ip", "") or device.ip_address or ""
 
 
 @router.post("/datasets/generate", response_model=JobResponse)
@@ -98,7 +108,9 @@ def generate_gnmi_datasets():
 @router.post("/start", response_model=JobResponse)
 def start_gnmi_simulator(req: GnmiStartRequest = None):
     """
-    Bind gNMI device IPs and start the gNMI gRPC server.
+    Start a gNMI gRPC server on each switch/router's already-bound mgmt IP.
+
+    Does NOT bind addresses — that is the Binding panel's job (see _bind_guard).
     Returns job_id for progress tracking.
     """
     global _active_start_job
@@ -106,50 +118,42 @@ def start_gnmi_simulator(req: GnmiStartRequest = None):
 
     if s.gnmi and s.gnmi.is_running():
         raise HTTPException(status_code=409, detail="gNMI simulator already running")
+    if s.topology is None or s.device_manager is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
     if not s.generated_gnmi_files:
         raise HTTPException(status_code=400, detail="No gNMI datasets — call POST /gnmi/datasets/generate first")
-    if not s.selected_adapter:
-        raise HTTPException(status_code=400, detail="No adapter selected — call POST /binding/adapter first")
 
-    from core.ip_binder import is_admin
-    if not is_admin():
-        raise HTTPException(status_code=403, detail="Administrator/root privileges required")
+    from core.device_manager import DeviceType
+    devices = [
+        d for d in s.topology.get_all_devices()
+        if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
+    ]
+    if not devices:
+        raise HTTPException(status_code=400, detail="No switch/router devices in topology")
+
+    # Only the 46-ish addresses gNMI itself listens on, not the whole topology.
+    require_bound(s, [_listen_ip(d) for d in devices], "gNMI device IP(s)")
+    # No is_admin() gate: gNMI's ports are unprivileged and binding — the one
+    # privileged step — no longer happens here. No adapter check either; an
+    # adapter is a binding-time input, and after a restart reconcile_bound_ips()
+    # adopts live aliases while selected_adapter is still empty.
 
     job_id = s.create_job("start_gnmi_simulator")
     _active_start_job = job_id
 
     def _run():
         try:
-            # Bind gNMI IPs (same set as SNMP if not already bound separately)
-            if not s.gnmi_bound_ips:
-                from core.ip_binder import add_ips_fast
-                ips = s.get_all_bind_ips()
-                s.update_job(job_id, message=f"Binding {len(ips)} gNMI IPs...")
-                bound, contexts = add_ips_fast(
-                    s.selected_adapter, ips, s.subnet_mask,
-                    log_cb=lambda msg, lvl: s.update_job(job_id, message=msg),
-                    progress_cb=lambda c, t: s.update_job(
-                        job_id, progress_done=c, progress_total=t),
-                )
-                s.gnmi_bound_ips = bound
-                s.gnmi_nte_contexts = contexts
-
-            from core.device_manager import DeviceType
-            devices = [
-                d for d in s.topology.get_all_devices()
-                if d.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
-            ]
             device_ips = [d.ip_address for d in devices]
-            # Dataset files keyed by mgmt_ip (or ip_address when no mgmt_ip);
-            # build bound_ip_ports with the same key so load_device() finds them.
+            # Dataset files are keyed by the same mgmt IP the server binds, so
+            # bound_ip_ports uses _listen_ip for both and load_device() finds them.
             # Use the requested port for all per-device servers so the API port
             # parameter is the single source of truth (same as the desktop UI).
             gnmi_port = (req.port if req else None) or 50051
-            bound_ip_ports = {
-                (d.mgmt_ip or d.ip_address): gnmi_port
-                for d in devices
-                if (d.mgmt_ip or d.ip_address) in s.gnmi_bound_ips
-            }
+            bound_ip_ports = {}
+            for d in devices:
+                ip = _listen_ip(d)
+                if ip:
+                    bound_ip_ports[ip] = gnmi_port
 
             s.update_job(job_id, message="Starting gNMI server...")
             ok = s.gnmi.start(device_ips, port=gnmi_port,

@@ -63,10 +63,14 @@ class AppState:
         # /23 covers the OOB mgmt range 192.168.0.0/23 (PDUs span .0.x and .1.x);
         # a single mask is applied to every bound alias (see binding.bind_ips).
         self.subnet_mask: str = "255.255.254.0"
+        # THE binding state. There is one list because there is one thing being
+        # described: which addresses the host currently carries. The old split
+        # into bound_ips + gnmi_bound_ips modelled "who bound it", which an IP
+        # alias does not record — so every consumer had to union the two lists
+        # back together, and forgetting to union was a live bug class (gNMI
+        # starting zero servers against IPs SNMP had bound).
         self.bound_ips: List[str] = []
         self.nte_contexts: Dict[str, Any] = {}
-        self.gnmi_bound_ips: List[str] = []
-        self.gnmi_nte_contexts: Dict[str, Any] = {}
 
         # Dataset generation state
         self.generated_snmp_files: List[str] = []
@@ -272,6 +276,41 @@ class AppState:
             return ok
         finally:
             self._snmp_reloading = False
+
+    # ------------------------------------------------------------------ #
+    #  Deprecated aliases — desktop path only                             #
+    # ------------------------------------------------------------------ #
+    # ui/main_window.py reads and clears AppState.gnmi_bound_ips /
+    # gnmi_nte_contexts directly, and that file is off-limits to this codebase's
+    # web-only workflow. These properties keep it running against the single
+    # bound_ips list. Nothing under api/ or webui/ may use them — new code reads
+    # bound_ips. Delete them the day the PyQt path goes.
+
+    @property
+    def gnmi_bound_ips(self) -> List[str]:
+        return self.bound_ips
+
+    @gnmi_bound_ips.setter
+    def gnmi_bound_ips(self, ips: List[str]) -> None:
+        # Assigning [] means "unbind happened" and clears the one list. A
+        # non-empty assignment merges instead of replacing: the caller only ever
+        # knows about its own subset, and clobbering bound_ips with it would
+        # silently forget every address bound by anything else.
+        if not ips:
+            self.bound_ips = []
+        else:
+            self.bound_ips = list(dict.fromkeys(list(self.bound_ips) + list(ips)))
+
+    @property
+    def gnmi_nte_contexts(self) -> Dict[str, Any]:
+        return self.nte_contexts
+
+    @gnmi_nte_contexts.setter
+    def gnmi_nte_contexts(self, ctx: Dict[str, Any]) -> None:
+        if not ctx:
+            self.nte_contexts = {}
+        else:
+            self.nte_contexts = {**self.nte_contexts, **ctx}
 
     def get_all_bind_ips(self) -> List[str]:
         """Return all IPs that should be bound (production + mgmt, deduplicated)."""

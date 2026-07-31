@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { api } from '../../api/client'
+import { api, errorMessage } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import TargetsBox from './TargetsBox'
 import NumberInput from '../NumberInput'
@@ -79,6 +79,9 @@ export default function SNMPPanel() {
   const [operation, setOperation] = useState<'generate' | 'start' | 'stop' | 'clear' | null>(null)
   const [prog,      setProg]      = useState<[number, number] | null>(null)
   const [linkCounts, setLinkCounts] = useState({ production: 0, management: 0, power: 0 })
+  // Why the last start was refused. The API names the unbound IPs (and whether
+  // the port needs root); swallowing that left Start looking like a no-op.
+  const [err,       setErr]       = useState<string | null>(null)
   const resumedJob = useRef<string | null>(null)
 
   const running = snmp?.running ?? false
@@ -148,12 +151,12 @@ export default function SNMPPanel() {
   }
 
   async function start() {
-    setBusy(true); setOperation('start')
+    setBusy(true); setOperation('start'); setErr(null)
     try {
       const j = await api.startSnmp(snmpPort, mgmtPort) as { job_id: string }
       await pollJob(j.job_id, () => {})
       fetchSnmp()
-    } catch { /* ignore */ }
+    } catch (e: unknown) { setErr(errorMessage(e)) }
     finally { setBusy(false); setOperation(null) }
   }
 
@@ -335,6 +338,21 @@ export default function SNMPPanel() {
             Write · SET
           </div>
         </div>
+
+        {/* ── Why the last start was refused ─────────────────────
+            Sits directly above the button that produced it. The API's refusals
+            are actionable (which IPs are unbound, whether port 161 needs root),
+            and the operator cannot act on what they never see. */}
+        {err && (
+          <div style={{
+            fontSize: 10, color: 'var(--red)', padding: '6px 8px',
+            background: 'color-mix(in srgb, var(--red) 10%, var(--bg-base))',
+            border: '1px solid color-mix(in srgb, var(--red) 30%, transparent)',
+            borderRadius: 4, lineHeight: 1.5,
+          }}>
+            {err}
+          </div>
+        )}
 
         {/* Action buttons — primary flow: Generate → Start/Stop → Clear */}
         <div className="snmp-actions">

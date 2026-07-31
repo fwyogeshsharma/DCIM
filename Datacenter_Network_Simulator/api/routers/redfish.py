@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from api.state import AppState
+from api.routers._bind_guard import require_bound
 from api.models.schemas import OkResponse
 
 router = APIRouter(prefix="/redfish", tags=["Redfish"])
@@ -63,14 +64,11 @@ def redfish_start(cfg: RedfishConfig):
     if not servers:
         raise HTTPException(status_code=400, detail="No servers in topology")
 
-    # Only start BMCs whose IP is actually bound to a network interface.
-    bound_set = set(s.bound_ips) | set(s.gnmi_bound_ips)
-    bound_servers = [d for d in servers if _bmc_ip(d) in bound_set]
-    if not bound_servers:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Found {len(servers)} server(s) but none have a bound IP. "
-                   f"Bind server IPs first, then start Redfish.")
+    # Every BMC IP must be bound — a partially-started fleet is worse than a
+    # refusal, because the missing servers look decommissioned rather than
+    # unprovisioned. The guard names which addresses are short.
+    require_bound(s, [_bmc_ip(d) for d in servers], "server BMC IP(s)")
+    bound_servers = servers
 
     # Start the metrics ticker so Device fields (cpu/mem/disk/temps/octets)
     # advance every tick — Redfish reads them live each request.
