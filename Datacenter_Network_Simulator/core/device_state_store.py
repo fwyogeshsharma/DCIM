@@ -223,6 +223,9 @@ class DeviceStateStore:
         # _cool_ctx caches the cooling-topology maps; _chw_pen is the per-DC CHW
         # temperature penalty (°C), ramped each tick toward the fault target.
         self._cool_ctx: Optional[dict] = None
+        # Device count the cached context was built from; a change means the
+        # topology moved under us and the maps must be rebuilt.
+        self._cool_ctx_sig: int = -1
         self._chw_pen: Dict[str, float] = {}
 
         # ── Condenser-water loop + chiller head-pressure protection ──────────
@@ -428,6 +431,10 @@ class DeviceStateStore:
         # and those the platform has tripped off. See _apply_thermal_protection.
         self._throttled: Dict[str, float] = {}
         self._thermal_shutdown: set = set()
+        # Wall-clock instant each plant unit first read stopped while commanded
+        # on. Debounces the PlantUnitStopped trap across staging transitions —
+        # see _plant_status / _RUN_ALARM_S.
+        self._stopped_since: Dict[str, float] = {}
         # Tower bank (NOT staged with the trains — every healthy cell runs slow):
         # DC → (cells the load needs, cells actually turning).
         self._tower_cells: Dict[str, tuple] = {}
@@ -1019,7 +1026,19 @@ class DeviceStateStore:
           probes_by_dc  {dc: [(name, role)]}          — plant header instruments
         Built once from the device inventory; used to propagate upstream faults.
         """
-        if self._cool_ctx is not None:
+        # Cache keyed on the device inventory, NOT cached unconditionally. The
+        # maps below are derived from the topology, so they are only valid for the
+        # inventory that produced them.
+        #
+        # Unconditional caching meant anything that touched this before a topology
+        # was loaded — a poll of /plant/chiller-trips on a freshly started headless
+        # server, say — froze it at {} for the life of the process. Every later
+        # upload was ignored, _compute_chw_penalty iterated an empty plant_by_dc,
+        # and the entire cooling model went silently inert while the BACnet engine
+        # kept publishing plausible per-device values on top of it. That is the
+        # worst failure mode available here: it looks like a working plant.
+        _sig = len(self._dm.get_all_devices()) if self._dm else 0
+        if self._cool_ctx is not None and self._cool_ctx_sig == _sig:
             return self._cool_ctx
         crah_by_room: Dict[tuple, list] = {}
         cdu_by_dc: Dict[str, list] = {}
@@ -1067,6 +1086,7 @@ class DeviceStateStore:
         for cdu_name, servers in self._cdu_loop_servers().items():
             for s in servers:
                 cdu_by_server[s] = cdu_name
+        self._cool_ctx_sig = _sig
         self._cool_ctx = {"crah_by_room": crah_by_room,
                           "cdu_by_server": cdu_by_server,
                           "cdu_by_dc": cdu_by_dc,
@@ -3274,6 +3294,11 @@ class DeviceStateStore:
     # generator transfer (~12 s), so a legitimately slow start is not mistaken for
     # a dead machine.
     _RUN_PROOF_S = 90.0
+    # Debounce before a commanded-on unit reading stopped is ANNUNCIATED. Only
+    # has to outlast a staging transition (one or two ticks), so it is far
+    # shorter than the failover proof above: an operator should hear about a
+    # genuinely dead machine promptly, just not about a lead/lag handover.
+    _RUN_ALARM_S = 10.0
 
     # ── Evaporator flow switch ──────────────────────────────────────────────
     # Every chiller is safety-interlocked to a flow switch on its evaporator: no
@@ -3699,6 +3724,19 @@ class DeviceStateStore:
         running is not doing its job whatever else it is annunciating. Capacity
         alarms are excluded for the same reason they are excluded from the cooling
         loss — they announce a shortfall the thermal model has already booked.
+
+        A STAGED-OFF unit reads "ok", not "stopped". It is idle on purpose — that
+        is the entire point of N+1 — and treating idle as stopped raised a
+        PlantUnitStopped trap on every cycled-off tower cell of a perfectly healthy
+        plant, four of them at baseline. Same distinction the store already draws
+        between _is_faulted and _is_alarmed, for the same reason.
+
+        ORDER MATTERS. Alarms are checked BEFORE the standby test, because a unit
+        that alarms gets ranked unfit and staged off — so a standby-first check
+        would swallow the very alarm that put it there, and the recovery trap could
+        never fire when the operator cleared it. And a clean standby reads "ok"
+        rather than a status of its own, so alarm → cleared always lands on "ok"
+        whether or not the unit was promoted back.
         """
         if device.device_type.value not in self._PLANT_FACT_TYPES:
             return ""
@@ -3714,8 +3752,25 @@ class DeviceStateStore:
                 continue
             if float(pv.get(point, 0.0)) >= 0.5:
                 return status
+        if device.name in self._plant_standby_names:
+            self._stopped_since.pop(device.name, None)
+            return "ok"           # idle N+1 spare, not a fault
         if any(k in _RUNNING_POINTS and float(v) < 0.5 for k, v in pv.items()):
+            # DEBOUNCED. A staging change moves units in and out of the standby set
+            # a tick or two before the BACnet plane catches up, so a unit being
+            # promoted is briefly "commanded on but reading stopped" through no
+            # fault of its own. Annunciating that raised a PlantUnitStopped and a
+            # matching Cleared for every member on every staging change — four
+            # pairs of pure noise on a single chiller failover, which is exactly
+            # how an operator learns to ignore an alarm.
+            #
+            # Wall-clock rather than tick-counted because _publish_facts does not
+            # run on the same cadence as the physics tick.
+            t0 = self._stopped_since.setdefault(device.name, time.monotonic())
+            if time.monotonic() - t0 < self._RUN_ALARM_S:
+                return "ok"
             return "stopped"
+        self._stopped_since.pop(device.name, None)
         return "ok"
 
     def cooling_model_kw(self) -> float:
@@ -3766,7 +3821,21 @@ class DeviceStateStore:
                         or self._run_unproven(m)):
                     return True
                 pv = _plant_state_cache.get(m)
-                if pv and any(k.startswith("Alarm_") and float(pv.get(k, 0.0)) >= 0.5
+                # CAPACITY alarms are excluded here for the same reason they are
+                # excluded from _is_faulted and _is_alarmed: they announce a
+                # shortfall the thermal model has ALREADY booked, so counting one
+                # as a fault reports a healthy plant as short purely because it
+                # said so. A chiller at full compressor with its leaving water off
+                # setpoint is outmatched by the load, not broken — and the load is
+                # already driving the penalty.
+                #
+                # This predicate was the last one still missing the guard. It went
+                # unnoticed while the trips endpoint only consulted it when a
+                # chiller had already latched out; fixing that (F14) is what
+                # exposed it.
+                if pv and any(k.startswith("Alarm_")
+                              and k not in _CAPACITY_ALARMS
+                              and float(pv.get(k, 0.0)) >= 0.5
                               for k in pv):
                     return True
         return False
