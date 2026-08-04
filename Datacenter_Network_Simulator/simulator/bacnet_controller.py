@@ -691,28 +691,46 @@ class BACnetController:
                 #
                 # Logged on CHANGE only, so a standing fault costs one line rather
                 # than one per tick.
+                dev.update_present_values(values)
                 if ovr:
-                    _missed = {p for p in ovr if p not in values}
+                    # Read back through get_snapshot() — the exact path the store
+                    # consumes via _sync_plant_cache — and say WHERE each forced
+                    # point was lost. There are three silent skips between the
+                    # override map and the wire, and none of them reports anything:
+                    #   1. the `if _p in values` guard above (filtered out by
+                    #      metric_flags, or never emitted by the engine this tick)
+                    #   2. update_present_values: `_name_to_key` has no entry, i.e.
+                    #      this device was never built with that BACnet object
+                    #   3. update_present_values: the object itself is missing
+                    # Anything still wrong after that is the snapshot or a writer
+                    # racing us, which is what "value differs" means below.
+                    _snap = dev.get_snapshot() or {}
+                    _why = {}
+                    for _p, _v in ovr.items():
+                        if _p not in values:
+                            _why[_p] = ("metric_flag off"
+                                        if metric_flags is not None
+                                        and not metric_flags.get(
+                                            self._flag_key(kind, _p), True)
+                                        else "dropped before write (not emitted)")
+                        elif _p not in _snap:
+                            _why[_p] = "no BACnet object on this device"
+                        elif float(_snap[_p]) != float(_v):
+                            _why[_p] = f"value differs (wire={_snap[_p]}, forced={_v})"
                     _seen = getattr(self, "_ovr_missed", None)
                     if _seen is None:
                         _seen = self._ovr_missed = {}
                     _nm = getattr(dev, "device_name", "") or str(instance)
-                    if _seen.get(_nm) != _missed:
-                        _seen[_nm] = set(_missed)
-                        if _missed:
-                            _why = {
-                                p: ("metric_flag off" if metric_flags is not None
-                                    and not metric_flags.get(self._flag_key(kind, p), True)
-                                    else "not published by this device")
-                                for p in sorted(_missed)}
+                    if _seen.get(_nm) != _why:
+                        _seen[_nm] = dict(_why)
+                        if _why:
                             log.warning(
-                                "[BACnet] %s: forced point(s) DISCARDED — %s. The "
-                                "override is stored but never reaches the wire.",
+                                "[BACnet] %s: forced point(s) NOT ON THE WIRE — %s. "
+                                "The override is stored and the API reported success.",
                                 _nm, _why)
                         else:
-                            log.info("[BACnet] %s: all forced points applied (%s)",
-                                     _nm, sorted(ovr))
-                dev.update_present_values(values)
+                            log.warning("[BACnet] %s: forced points applied OK (%s)",
+                                        _nm, sorted(ovr))
                 dev.dispatch_cov_notifications(
                     send_sock_fallback=self._recv_sock
                 )
