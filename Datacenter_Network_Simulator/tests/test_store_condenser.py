@@ -106,12 +106,53 @@ class TestPublishedPoints:
             auto(plant, "CHL1-DC1-CP")["Cond_Supply_Temp"], abs=0.1)
 
     def test_running_cell_shows_the_range_across_it(self, plant):
+        """The range published on a cell is the LIVE one the loop is carrying.
+
+        It used to be pinned at the design constant here and at every other
+        publication site, which made this assertion compare the constant with
+        itself and hid the case that matters: a condenser loop whose pumps have
+        stopped still advertised a healthy 5 K range while the chillers behind it
+        latched out on head pressure. The default fixture is lightly loaded, where
+        the VFD pumps are already on their turndown floor and the range narrows —
+        so the live figure is the only thing worth asserting against."""
         plant.tick()
         plant.tick()
         lead_cell = next(iter(plant.store._tower_running_now[DC]))
         pts = auto(plant, lead_cell)
+        live = plant.store._cond_range_c[DC]
+        assert 0.0 < live <= plant.store._COND_RANGE_C + 0.2, (
+            f"a healthy loop should not exceed design range, got {live}")
         assert pts["Cond_Water_In"] - pts["Cond_Water_Out"] == pytest.approx(
-            plant.store._COND_RANGE_C, abs=0.2)
+            live, abs=0.2)
+
+    def test_a_loaded_plant_holds_the_design_range(self, tmp_path, plant_cache):
+        """With the pumps off their turndown floor the ΔT control loop has
+        authority and holds the condenser range at design."""
+        from conftest import build_plant
+
+        p = build_plant(tmp_path, servers=600, installed_modules=6)
+        for _ in range(6):
+            p.tick()
+        assert p.store._cond_range_c[DC] == pytest.approx(
+            p.store._COND_RANGE_C, abs=0.3)
+
+    def test_a_stalled_condenser_loop_widens_its_range(self, tmp_path, plant_cache):
+        """Lose the condenser pumps and the ΔT control loop is out of authority, so
+        the range widens to the saturated reading a stagnant header shows. Pinned at
+        design it claimed the loop was carrying its heat away normally."""
+        from core.cooling_model import COND_MAX_RANGE_C
+        from conftest import build_plant
+
+        p = build_plant(tmp_path, servers=600, installed_modules=6)
+        for _ in range(6):
+            p.tick()
+        for i in range(1, 4):
+            plant_cache[f"CWP{i}-{DC}-CP"] = {"Run_Status": 1.0, "Alarm_Fault": 1.0}
+        for _ in range(30):
+            p.tick()
+
+        assert p.store._cw_pump_frac[DC] == 0.0
+        assert p.store._cond_range_c[DC] == pytest.approx(COND_MAX_RANGE_C, abs=0.1)
 
     def test_cycled_off_cell_shows_no_range(self, plant):
         """A valved-out cell with a stopped fan rejects nothing."""

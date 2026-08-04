@@ -56,8 +56,12 @@ def test_temperature_probes_report_their_loop(probed):
         s._chw_return_c[DC], abs=0.2)
     assert _probe(probed, "CWS").inlet_temp == pytest.approx(
         s._cond_water_c[DC], abs=0.2)
+    # LIVE range, not the design constant. The condenser range is derived from the
+    # flow the CW pumps actually deliver, so it sits at design only while they can
+    # hold the ΔT setpoint — this fixture is loaded enough that it does, which is
+    # exactly why pinning the constant here would pass without proving anything.
     assert _probe(probed, "CWR").inlet_temp == pytest.approx(
-        s._cond_water_c[DC] + s._COND_RANGE_C, abs=0.2)
+        s._cond_water_c[DC] + s._cond_range_c[DC], abs=0.2)
     # The basin IS the cold well the condenser supply header draws from, which is
     # why the tower cells publish Basin_Temp and Cond_Water_Out as one value.
     assert _probe(probed, "CTB").inlet_temp == pytest.approx(

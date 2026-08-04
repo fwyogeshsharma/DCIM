@@ -423,6 +423,10 @@ class DeviceStateStore:
         # the chillers it has shed. See _FLOW_TRIP_FRAC.
         self._chw_pump_frac: Dict[str, float] = {}
         self._cw_pump_frac: Dict[str, float] = {}   # same, condenser side
+        # DC → MEASURED condenser range (return − supply, K). Derived from the flow
+        # the CW pumps actually deliver, not pinned at design, so a stalled
+        # condenser loop stops advertising a design range it cannot carry.
+        self._cond_range_c: Dict[str, float] = {}
         self._chw_flow_lost_s: Dict[str, float] = {}
         self._chw_flow_interlock: set = set()
         # DC → CRAH discharge air (setpoint + CHW penalty). Published on the units
@@ -3626,7 +3630,10 @@ class DeviceStateStore:
                     # claim heat rejection from a stopped cell — and the BACnet off-unit
                     # handling would then average the pair into a temperature that
                     # matches neither the loop nor the running cells.
-                    _rng = self._COND_RANGE_C if _tn in _cells_on else 0.0
+                    # Live range, one tick behind: _compute_chw_loop derives it from
+                    # the flow the CW pumps delivered, and runs after this pass.
+                    _rng = (self._cond_range_c.get(dc, self._COND_RANGE_C)
+                            if _tn in _cells_on else 0.0)
                     auto.setdefault(_tip, {}).update({
                         "Cond_Water_Out": round(cur, 1),
                         "Cond_Water_In": round(cur + _rng, 1),
@@ -3713,18 +3720,25 @@ class DeviceStateStore:
                         auto[ip] = {"Alarm_HighPressure": 1.0,
                                     "Cond_Pressure": round(cond_kpa_run, 1),
                                     "Cond_Supply_Temp": round(cur, 1),
-                                    "Cond_Return_Temp": round(cur + self._COND_RANGE_C, 1),
+                                    "Cond_Return_Temp": round(
+                                        cur + self._cond_range_c.get(
+                                            dc, self._COND_RANGE_C), 1),
                                     "Compressor_Load": round(avail * 100.0, 1)}
                 elif ip:
                     # Supply and return move TOGETHER. Publishing only the supply left
                     # the return on its own 35.5 °C curve, so once the live loop dropped
                     # off the old fixed base the machine reported an ~11 °C condenser
                     # range against a 5 °C design — the running chiller contradicting
-                    # its own tower. The CW pumps are VFD and track load, so the range
-                    # holds near design.
+                    # its own tower. The CW pumps are VFD on a condenser-ΔT setpoint,
+                    # so the range holds near design WHILE THEY CAN DELIVER; once
+                    # they cannot the control loop is out of authority and the
+                    # derived range widens, which is the whole point of publishing
+                    # the live figure rather than the design constant.
                     auto[ip] = {"Cond_Pressure": round(cond_kpa_run, 1),
                                 "Cond_Supply_Temp": round(cur, 1),
-                                "Cond_Return_Temp": round(cur + self._COND_RANGE_C, 1)}
+                                "Cond_Return_Temp": round(
+                                    cur + self._cond_range_c.get(
+                                        dc, self._COND_RANGE_C), 1)}
 
         self._plant_auto_points = auto
 
@@ -4224,7 +4238,8 @@ class DeviceStateStore:
         """
         from core.cooling_model import (
             CHW_SETPOINT_C, CHW_DESIGN_DT_C, CHW_MAX_DT_C, COND_DESIGN_RANGE_C,
-            CP_WATER_KJ_KGK, PLANT_MODULE_KW, chw_supply_c, chw_delta_t_c,
+            COND_MAX_RANGE_C, CP_WATER_KJ_KGK, PLANT_MODULE_KW,
+            chw_supply_c, chw_delta_t_c,
             chw_flow_frac, water_flow_lps, makeup_flow_lpm, pump_head_frac,
             affinity_speed_frac, vfd_speed_frac, PUMP_MIN_SPEED)
         ctx = self._cooling_context()
@@ -4317,15 +4332,30 @@ class DeviceStateStore:
             # and a lightly loaded plant reports LESS condenser flow than evaporator
             # flow, which is thermodynamically impossible (the condenser carries the
             # IT heat plus the compressor work that moved it).
-            # Capped by surviving condenser pumping, for the same reason the
-            # evaporator side is: a flow meter has to lose flow when the pumps that
-            # make it stop. The condenser side keeps its DEMAND shape, unlike the
-            # evaporator — the range here is set by the tower approach rather than
-            # by a ΔP loop. Worth revisiting: many plants run CONSTANT-SPEED
-            # condenser pumps, for which flow is flat with load and only the range
-            # moves, which is a different curve again.
+            # The two loops run DIFFERENT control strategies, and the difference is
+            # real rather than an inconsistency. The evaporator pumps ride a
+            # DIFFERENTIAL-PRESSURE setpoint, so their flow floors at the bypass and
+            # the measured ΔT collapses at light load. The condenser pumps ride a
+            # condenser-ΔT setpoint — the BMS trims flow to hold the range while
+            # optimising it against tower-fan energy — so here flow tracks the heat
+            # being rejected and the RANGE is what holds near design.
+            #
+            # Which is why flow keeps its demand shape and is merely capped by
+            # surviving pumping: with the pumps healthy the control loop genuinely
+            # does deliver whatever the reject needs.
             cw_flow = water_flow_lps(reject_kw, chw_delta_t_c(
                 duty, COND_DESIGN_RANGE_C)) * self._cw_pump_frac.get(dc, 1.0)
+            # RANGE IS DERIVED FROM THE FLOW ACTUALLY MOVING. A ΔT-controlled loop
+            # holds its setpoint only while the pumps can still deliver; once they
+            # cannot, the control loop is out of authority and the range widens —
+            # that widening IS the diagnostic. It used to be pinned at design
+            # everywhere it was published (tower cell Cond_Water_In, both chiller
+            # Cond_Return_Temp branches, the CWR header probe), so a condenser loop
+            # with zero flow still advertised a healthy 5 K range on the wire while
+            # the chillers behind it were latching out on head pressure.
+            self._cond_range_c[dc] = round(
+                min(reject_kw / (CP_WATER_KJ_KGK * cw_flow), COND_MAX_RANGE_C)
+                if cw_flow > 1e-6 else COND_MAX_RANGE_C, 2)
 
             # ── Chillers: supply/return/setpoint/flow on the RUNNING machines ──
             # A staged-off machine's evaporator is isolated by its own stopped pump
@@ -4559,7 +4589,7 @@ class DeviceStateStore:
                 "chw_supply": self._chw_supply_c.get(dc),
                 "chw_return": self._chw_return_c.get(dc),
                 "cw_supply":  cond,
-                "cw_return":  cond + self._COND_RANGE_C,
+                "cw_return":  cond + self._cond_range_c.get(dc, self._COND_RANGE_C),
                 # The basin IS the tower's cold well — the same water the condenser
                 # supply header carries, which is why _compute_cond_loop publishes
                 # Basin_Temp and Cond_Water_Out as one value on the cells.

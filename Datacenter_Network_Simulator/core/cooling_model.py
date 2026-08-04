@@ -520,6 +520,12 @@ CHW_SUPPLY_RISE_MAX_C = 12.0  # cap on how far off setpoint a starved plant drif
 CHW_MAX_DT_C     = 20.0
 CP_WATER_KJ_KGK  = 4.186   # specific heat of water — 1 l ≈ 1 kg at loop temperature
 COND_DESIGN_RANGE_C = 5.0  # condenser-water range (return − supply) at design flow
+# Ceiling on the MEASURED condenser range, for the same reason as CHW_MAX_DT_C: a
+# loop whose pumps have stopped divides by a vanishing flow, but the return
+# thermowell saturates rather than running away. Wider than the evaporator ceiling
+# because the condenser header genuinely sits hotter — 20 K over a mid-30s supply
+# is already tower-basin-to-condenser-outlet territory.
+COND_MAX_RANGE_C = 20.0
 
 # Cooling-tower makeup. Evaporation carries the rejected heat away as latent heat
 # (~2.4 MJ/kg at loop temperature), and blowdown at ~4 cycles of concentration adds
