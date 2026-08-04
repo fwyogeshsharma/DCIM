@@ -26,6 +26,12 @@ def get_all_rules():
     if s.rule_engine is None:
         raise HTTPException(status_code=503, detail="Rule engine not initialized")
 
+    # ONE state snapshot for the whole table. Asking per rule took (2 x rules + 1)
+    # full copies of every device's rule state under the lock the ticker needs on
+    # every tick — polling this endpoint stalled the ticker outright. See
+    # RuleEngine.get_rules_table_stats.
+    _fired, _last, _grand = s.rule_engine.get_rules_table_stats()
+
     rules_out = []
     for rule in s.rule_engine.get_rules():
         try:
@@ -37,8 +43,8 @@ def get_all_rules():
             name=rule.rule_name,
             enabled=getattr(rule, "enabled", True),
             description=getattr(rule, "description", ""),
-            total_fired=s.rule_engine.get_total_fired_count(rule.rule_name),
-            last_fired=s.rule_engine.get_last_fire_ts(rule.rule_name) or "",
+            total_fired=_fired.get(rule.rule_name, 0),
+            last_fired=_last.get(rule.rule_name, "") or "",
             conditions=[condition_dict] if condition_dict else [],
             actions=[rule.trap_oid] if getattr(rule, "trap_oid", None) else [],
             severity=getattr(rule, "severity", None),
@@ -46,7 +52,7 @@ def get_all_rules():
 
     return RulesTableResponse(
         rule_engine_enabled=s.rule_engine_enabled,
-        total_fired_grand=s.rule_engine.get_grand_total_fired(),
+        total_fired_grand=_grand,
         rules=rules_out,
     )
 

@@ -403,6 +403,51 @@ class RuleEngine:
                     total += state.fired_count
         return total
 
+    def get_rules_table_stats(self):
+        """Everything the rules table needs — (fired_by_rule, last_ts_by_rule,
+        grand_total) — from ONE state snapshot.
+
+        The table used to call get_total_fired_count() AND get_last_fire_ts() once
+        per rule, plus get_grand_total_fired(), and every one of those takes its own
+        _states_snapshot(): a full copy of every device's rule-state dict, under
+        _states_lock. A single GET /rules therefore took (2 x rules + 1) copies of
+        the whole fleet's rule state, serialised on the exact lock the ticker needs
+        in evaluate_fact for EVERY device on EVERY tick.
+
+        The symptom was not slowness, it was a STALL. With the Rules panel polling,
+        the ticker stopped advancing — Run_Hours frozen, published telemetry frozen —
+        and any fault injected during the stall silently did nothing: the override
+        was stored, the API reported success, and nothing ever read it. That is the
+        mechanism behind plant fault injections that "randomly" have no effect, and
+        behind fault-campaign rows that came back with pre and during identical on
+        every field.
+        """
+        per_key_fired: Dict[str, int] = {}
+        per_key_ts: Dict[str, str] = {}
+        grand = sum(self._manual_fire_counts.values())
+        for items in self._states_snapshot():          # ONE copy, one lock acquire
+            for key, state in items:
+                per_key_fired[key] = per_key_fired.get(key, 0) + state.fired_count
+                grand += state.fired_count
+                ts = getattr(state, "last_fire_ts", "") or ""
+                if ts > per_key_ts.get(key, ""):
+                    per_key_ts[key] = ts
+        fired: Dict[str, int] = {}
+        last: Dict[str, str] = {}
+        for rule in self.get_rules():
+            name = rule.rule_name
+            prefix = f"{name}:"
+            total = self._manual_fire_counts.get(name, 0)
+            latest = ""
+            for key, count in per_key_fired.items():
+                if key == name or key.startswith(prefix):
+                    total += count
+                    if per_key_ts.get(key, "") > latest:
+                        latest = per_key_ts[key]
+            fired[name] = total
+            last[name] = latest
+        return fired, last, grand
+
     def get_grand_total_fired(self) -> int:
         """Total fires across all rules and all devices, including manual fires."""
         total = sum(self._manual_fire_counts.values())
