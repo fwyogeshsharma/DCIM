@@ -3920,6 +3920,25 @@ class DeviceStateStore:
         needs — losing a surplus cell costs efficiency, not cooling."""
         if self._tower_reject.get(dc, 1.0) < 1.0:
             return True
+        # THE THERMAL MODEL IS THE SOURCE OF TRUTH for whether a site is short, and
+        # this predicate has to agree with it. _cool_loss_frac is the delivered-
+        # capacity deficit _compute_chw_penalty just booked: 0 means full cooling,
+        # anything above it means the plant is not covering its load — and it is
+        # already computed from lost_weight, which carries the same _CAPACITY_ALARMS
+        # exemption as the member checks below, so a healthy-but-outmatched machine
+        # still does not count.
+        #
+        # Without this the answer depended on TIMER PHASE. The member scan below
+        # reads _run_unproven, but the proof timers are accrued against the
+        # PREVIOUS commanded set and the run set is recomputed after — so on the
+        # tick a silent lead is demoted and a standby promoted, the newly commanded
+        # chiller has no timer at all and the scan finds nothing. With every chiller
+        # in a site silently stopped the lead rotates on the dwell, so the predicate
+        # answered "healthy" on every changeover tick while the loss fraction sat at
+        # 1.0 and the room ran away. The single-DC gate passed only because its hold
+        # length happened to miss the flip.
+        if self._cool_loss_frac.get(dc, 0.0) > 0.0:
+            return True
         for tr in self._plant_trains_run.get(dc, []):
             for m in tr["members"]:
                 if (m in self._plant_unpowered_names

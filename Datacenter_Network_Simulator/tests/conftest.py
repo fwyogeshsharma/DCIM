@@ -41,7 +41,7 @@ CDU_W = 8_000
 SERVER_W = 700
 
 
-def _device(dm, name, dtype, ip, watts, model="", room=ROOM):
+def _device(dm, name, dtype, ip, watts, model="", room=ROOM, dc=DC):
     from core.device_manager import Device, DeviceType, Vendor
 
     d = Device(
@@ -52,7 +52,7 @@ def _device(dm, name, dtype, ip, watts, model="", room=ROOM):
         model_name=model,
         power_draw_w=watts,
     )
-    d.datacenter = DC
+    d.datacenter = dc
     d.datacenter_city = CITY
     d.room = room
     dm.add_device(d)
@@ -62,11 +62,13 @@ def _device(dm, name, dtype, ip, watts, model="", room=ROOM):
 class PlantFixture:
     """Handle on the built plant: the store plus name→device lookup."""
 
-    def __init__(self, store, dm, topo, trains):
+    def __init__(self, store, dm, topo, trains, made=None):
         self.store = store
         self.dm = dm
         self.topo = topo
         self.trains = trains
+        self.made = made or {}
+        self.dcs = [DC]
 
     def name(self, n):
         return next(d for d in self.dm.get_all_devices() if d.name == n)
@@ -90,8 +92,8 @@ class PlantFixture:
     def standby(self):
         return set(self.store._plant_standby_names)
 
-    def running_chillers(self):
-        return {t["chiller"] for t in self.store._plant_trains_run.get(DC, [])}
+    def running_chillers(self, dc=DC):
+        return {t["chiller"] for t in self.store._plant_trains_run.get(dc, [])}
 
     def power(self, n):
         return self.store._plant_power_by_name.get(n, 0.0)
@@ -123,20 +125,41 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
     from core.topology_engine import TopologyEngine
 
     dm, topo = DeviceManager(), TopologyEngine()
+    made = _build_dc(dm, topo, DC, 0, trains, servers, crahs, probes, valves,
+                     cdus, rack_probes)
+
+    store = DeviceStateStore(dm, topo, str(tmp_path), tick_interval=tick_interval)
+    store._plant_installed_mods[DC] = installed_modules
+    return PlantFixture(store, dm, topo, trains, made)
+
+
+def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
+              valves=False, cdus=0, rack_probes=0):
+    """Devices + cooling-layer wiring for ONE datacenter, into a SHARED dm/topo.
+
+    *net* is the second IP octet, so two sites in one store never collide — the
+    store keys published plant points by IP (_plant_ip_by_name → _plant_auto_points)
+    and duplicate addresses would silently merge one site's telemetry into the
+    other's, which is precisely the kind of cross-DC bleed these fixtures exist to
+    catch. Device NAMES already carry the site segment, so they are unique anyway.
+    """
     made = {}
 
     for i in range(1, trains + 1):
-        made[f"CHL{i}"] = _device(dm, f"CHL{i}-{DC}-CP", "chiller",
-                                  f"10.0.1.{i}", CHILLER_W, model="chiller-1000t")
-        made[f"CHWP{i}"] = _device(dm, f"CHWP{i}-{DC}-CP", "pump", f"10.0.2.{i}", PUMP_W)
-        made[f"CWP{i}"] = _device(dm, f"CWP{i}-{DC}-CP", "pump", f"10.0.3.{i}", PUMP_W)
-        made[f"CT{i}"] = _device(dm, f"CT{i}-{DC}-RF", "cooling_tower",
-                                 f"10.0.4.{i}", TOWER_W, room="Roof")
+        made[f"CHL{i}"] = _device(dm, f"CHL{i}-{dc}-CP", "chiller",
+                                  f"10.{net}.1.{i}", CHILLER_W,
+                                  model="chiller-1000t", dc=dc)
+        made[f"CHWP{i}"] = _device(dm, f"CHWP{i}-{dc}-CP", "pump",
+                                   f"10.{net}.2.{i}", PUMP_W, dc=dc)
+        made[f"CWP{i}"] = _device(dm, f"CWP{i}-{dc}-CP", "pump",
+                                  f"10.{net}.3.{i}", PUMP_W, dc=dc)
+        made[f"CT{i}"] = _device(dm, f"CT{i}-{dc}-RF", "cooling_tower",
+                                 f"10.{net}.4.{i}", TOWER_W, room="Roof", dc=dc)
     # Header standby CHW pump — index beyond the trains, so _build_trains leaves it
     # unclaimed and reports it as the N+1 spare.
     spare = trains + 1
-    made[f"CHWP{spare}"] = _device(dm, f"CHWP{spare}-{DC}-CP", "pump",
-                                   f"10.0.2.{spare}", PUMP_W)
+    made[f"CHWP{spare}"] = _device(dm, f"CHWP{spare}-{dc}-CP", "pump",
+                                   f"10.{net}.2.{spare}", PUMP_W, dc=dc)
 
     if probes:
         # Plant header instruments. Named with the role code leading, and carrying
@@ -150,8 +173,9 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
                 ("CWS", "Plant CW Supply Temp"),
                 ("CWR", "Plant CW Return Temp"),
                 ("CTB", "Plant CT Basin Temp")), start=1):
-            made[code] = _device(dm, f"{code}-{DC}-CP", "sensor", f"10.0.6.{j}", 0,
-                                 model=model, room="Central Plant")
+            made[code] = _device(dm, f"{code}-{dc}-CP", "sensor",
+                                 f"10.{net}.6.{j}", 0, model=model,
+                                 room="Central Plant", dc=dc)
 
     if valves:
         # Header control valves. The leading name segment carries the loop the
@@ -159,30 +183,30 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
         # which is the same role-in-the-prefix idiom the header probes use, and
         # which the store reads to decide which loop an actuator fault throttles.
         for j, code in enumerate(("VCHW", "VCW"), start=1):
-            made[code] = _device(dm, f"{code}-{DC}-CP", "valve", f"10.0.7.{j}", 0,
-                                 room="Central Plant")
+            made[code] = _device(dm, f"{code}-{dc}-CP", "valve",
+                                 f"10.{net}.7.{j}", 0, room="Central Plant", dc=dc)
 
     for i in range(1, crahs + 1):
-        made[f"CRAH{i}"] = _device(dm, f"CRAH{i}-{DC}-HA-R1-01", "crah",
-                                   f"10.0.5.{i}", CRAH_W)
+        made[f"CRAH{i}"] = _device(dm, f"CRAH{i}-{dc}-HA-R1-01", "crah",
+                                   f"10.{net}.5.{i}", CRAH_W, dc=dc)
 
     for i in range(1, cdus + 1):
-        made[f"CDU{i}"] = _device(dm, f"CDU{i}-{DC}-HA-R1-01", "cdu",
-                                  f"10.0.8.{i}", CDU_W)
+        made[f"CDU{i}"] = _device(dm, f"CDU{i}-{dc}-HA-R1-01", "cdu",
+                                  f"10.{net}.8.{i}", CDU_W, dc=dc)
 
     # RACK environmental probes — the DPX2-style cold-aisle sensors, distinct from
     # the plant header instruments `probes=` adds. No "Plant …" model name, so the
     # store leaves them on the ambient path rather than publishing a header reading
     # into them.
     for i in range(1, rack_probes + 1):
-        made[f"SNS{i}"] = _device(dm, f"SNS{i}-{DC}-HA-R1-01", "sensor",
-                                  f"10.0.9.{i}", 0, model="DPX2-T2H1")
+        made[f"SNS{i}"] = _device(dm, f"SNS{i}-{dc}-HA-R1-01", "sensor",
+                                  f"10.{net}.9.{i}", 0, model="DPX2-T2H1", dc=dc)
 
     for i in range(1, servers + 1):
-        made[f"SRV{i}"] = _device(dm, f"SRV{i:02d}-{DC}-HA-R1-01", "server",
-                                  f"10.1.0.{i}", SERVER_W)
+        made[f"SRV{i}"] = _device(dm, f"SRV{i:02d}-{dc}-HA-R1-01", "server",
+                                  f"10.{net + 1}.0.{i}", SERVER_W, dc=dc)
 
-    for d in dm.get_all_devices():
+    for d in made.values():
         topo.add_device(d)
 
     # Cooling-layer wiring: each chiller to its own pumps and cell, plus the spare
@@ -199,10 +223,42 @@ def build_plant(tmp_path, trains=3, servers=40, installed_modules=6, crahs=0,
     for i in range(1, cdus + 1):
         for j in range(i, servers + 1, max(1, cdus)):
             topo.add_link(made[f"CDU{i}"].id, made[f"SRV{j}"].id, layer="cooling")
+    return made
+
+
+def build_two_dc_plant(tmp_path, dcs=(DC, "DC2"), trains=3, servers=40,
+                       installed_modules=6, crahs=0, tick_interval=1.0):
+    """Two complete, independent sites sharing ONE store — the shape production
+    actually runs, and the one the rest of this suite cannot see.
+
+    Almost every cooling field on the store is keyed per DC (`_chw_pen`,
+    `_cool_loss_frac`, `_plant_trains_run`, `_run_proof_s`, `_chw_pump_frac`, …),
+    so a pass that walks one of those maps globally while running once PER SITE
+    will corrupt whichever site it does not belong to. That is not hypothetical:
+    `_accrue_run_proof` expired every other DC's run-proof timers on each tick, so
+    `cooling_degraded` answered "healthy" through a total silent loss of chilled
+    water on the live two-site topology while the single-DC gate stayed green.
+
+    Sites are identical by construction, so any asymmetry a test finds is the
+    store leaking state between them rather than the fixture favouring one.
+    """
+    from core.device_manager import DeviceManager
+    from core.device_state_store import DeviceStateStore
+    from core.topology_engine import TopologyEngine
+
+    dm, topo = DeviceManager(), TopologyEngine()
+    made = {}
+    for k, dc in enumerate(dcs):
+        # Ten apart, so a site's server block (net + 1) never lands on the next
+        # site's plant block.
+        made[dc] = _build_dc(dm, topo, dc, k * 10, trains, servers, crahs)
 
     store = DeviceStateStore(dm, topo, str(tmp_path), tick_interval=tick_interval)
-    store._plant_installed_mods[DC] = installed_modules
-    return PlantFixture(store, dm, topo, trains)
+    for dc in dcs:
+        store._plant_installed_mods[dc] = installed_modules
+    fx = PlantFixture(store, dm, topo, trains, made)
+    fx.dcs = list(dcs)
+    return fx
 
 
 @pytest.fixture
