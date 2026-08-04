@@ -2913,8 +2913,9 @@ class DeviceStateStore:
                 # is driven from the previous run set rather than from every unit in
                 # the plant — a standby is stopped on purpose and must never time out.
                 self._accrue_run_proof(
-                    m for tr in self._plant_trains_run.get(_dc, [])
-                    for m in tr["members"])
+                    (m for tr in self._plant_trains_run.get(_dc, [])
+                     for m in tr["members"]),
+                    scope={_n for _n, _w, _t in units})
                 self._plant_trains_run[_dc] = []
                 if _trains:
                     _n_run = max(1, min(len(_trains),
@@ -3231,13 +3232,22 @@ class DeviceStateStore:
             return False
         return any(k in _RUNNING_POINTS and float(v) < 0.5 for k, v in pv.items())
 
-    def _accrue_run_proof(self, commanded) -> None:
+    def _accrue_run_proof(self, commanded, scope=None) -> None:
         """Advance the failure-to-start timer for units commanded ON this tick.
 
         Counts only silent stops: a unit that is also ALARMED is already handled by
         the fitness ranking, and an UNPOWERED one by the dead check, so neither
         needs a dwell. Anything running, or not commanded, resets to zero — the
         timer measures a continuous failure to prove run status, not a tally.
+
+        *scope* is the set of unit names this pass is allowed to expire — the
+        plant of ONE datacenter. This runs once per DC, and the drop-stale sweep
+        below used to walk the whole timer map, so the second site's pass deleted
+        the first site's timers every tick and only the last DC processed kept any.
+        `_run_unproven` therefore answered False forever on every other site, and
+        `cooling_degraded` reported a healthy plant through a total silent loss of
+        chilled water. Invisible to a single-DC fixture, which is why the unit test
+        passed while the live two-site topology was broken.
         """
         seen = set()
         for name in commanded:
@@ -3250,8 +3260,11 @@ class DeviceStateStore:
                 self._run_proof_s.pop(name, None)
         # A unit that has left the commanded set (staged off, or its train dropped)
         # is no longer failing to start; drop its timer so a later promotion starts
-        # from zero rather than inheriting a stale dwell.
-        for name in [n for n in self._run_proof_s if n not in seen]:
+        # from zero rather than inheriting a stale dwell. Bounded by *scope* — a
+        # machine at another site has not left anything, and expiring it here is
+        # how one DC's tick silently disarmed every other DC's proof timer.
+        for name in [n for n in self._run_proof_s
+                     if n not in seen and (scope is None or n in scope)]:
             self._run_proof_s.pop(name, None)
 
     def _run_proof_failed(self, name: str) -> bool:

@@ -1121,6 +1121,33 @@ def test_condenser_valve_acts_on_the_condenser_loop(tmp_path, plant_cache):
         f"{cond_before} → {_cond(p)}")
 
 
+def test_one_dc_tick_does_not_disarm_another_dcs_proof_timers(tmp_path, plant_cache):
+    """The run-status proof timer is per-DC state, and one site's tick must not
+    touch another's.
+
+    _accrue_run_proof runs once per datacenter, and its drop-stale sweep walked the
+    WHOLE timer map — so the second site's pass deleted the first site's timers
+    every tick, and only the last DC processed kept any. `_run_unproven` answered
+    False forever on every other site and `cooling_degraded` reported a healthy
+    plant through a total silent loss of chilled water.
+
+    The whole existing gate missed this because the fixture is single-DC. It was
+    found by probing the live two-site topology after a restart: three chillers
+    silently stopped, no chilled water at all, and the API still said degraded=False
+    while `test_degraded_reads_true_during_a_silent_total_loss` passed here."""
+    p = _plant(tmp_path, plant_cache)
+    mine, theirs = f"CHL1-{DC}-CP", "CHL1-DC2-CP"
+    _stop(plant_cache, mine, "Chiller_Running")
+    _stop(plant_cache, theirs, "Chiller_Running")
+
+    p.store._accrue_run_proof([mine], scope={mine})
+    assert p.store._run_unproven(mine), "a silent commanded unit should be unproven"
+    p.store._accrue_run_proof([theirs], scope={theirs})
+    assert p.store._run_unproven(mine), (
+        "another DC's pass must not clear this one's proof timer")
+    assert p.store._run_unproven(theirs)
+
+
 def test_degraded_reads_true_during_a_silent_total_loss(tmp_path, plant_cache):
     """The health predicate has to answer for the failure mode that has no alarm
     behind it. With every chiller stopped and no alarm raised, the plant is not
