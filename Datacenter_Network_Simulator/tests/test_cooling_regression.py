@@ -34,7 +34,7 @@ import random
 
 import pytest
 
-from conftest import DC, build_plant
+from conftest import DC, build_plant  # noqa: F401  (build_plant used by the knee tests)
 
 SEED = 20260731
 
@@ -210,6 +210,136 @@ def test_tower_bank_loss_latches_high_pressure_trips(tmp_path, plant_cache):
     assert p.store._chiller_hp_lockout, "HP lockout must not self-clear"
 
 
+def test_severity_is_monotonic_across_the_tolerance_knee(tmp_path, plant_cache):
+    """A worse failure must never read milder than a smaller one.
+
+    The penalty switches branches at _COOL_TOL: below it a shortfall eases to a
+    standing offset, above it the excess heat integrates. The two used to be
+    discontinuous — the bounded side arrived at its offset within a time constant
+    while the runaway side started from zero and needed tens of seconds to climb
+    to the value the MILDER fault was already sitting at. On three staged trains,
+    one chiller lost (L 0.340) read 6.089 K at 90 s and two lost (L 0.673) read
+    6.055 K. An operator triaging by inlet temperature works the bigger outage
+    second.
+
+    Sized at 1200 servers deliberately: the default fixture stages ONE train, so
+    the first two faults are covered by promotion and the loss never lands near
+    the knee at all. The inversion only exists where the shortfall can straddle
+    it, which is why no earlier test saw it."""
+    seen = []
+    for n in range(0, TRAINS + 1):
+        random.seed(SEED)
+        plant_cache.clear()
+        p = build_plant(tmp_path / f"knee{n}", trains=TRAINS, servers=1200,
+                        installed_modules=MODULES, crahs=CRAHS)
+        for _ in range(SETTLE_TICKS):
+            p.tick()
+        assert len(p.store._plant_trains_run[DC]) == TRAINS, (
+            "this test needs every train staged on, or the knee is never crossed")
+        for i in range(1, n + 1):
+            _alarm(plant_cache, f"CHL{i}-{DC}-CP", "Chiller_Running", "Alarm_FlowLoss")
+        _hold(p)
+        seen.append((p.store._cool_loss_frac[DC], _pen(p)))
+
+    assert [l for l, _ in seen] == sorted(l for l, _ in seen), (
+        f"cooling loss should grow with the number of faults: {seen}")
+    for (l0, p0), (l1, p1) in zip(seen, seen[1:]):
+        assert p1 > p0, (
+            f"loss {l1} read milder than loss {l0}: {p1} K vs {p0} K")
+
+
+def test_the_two_penalty_branches_meet_at_the_knee(tmp_path, plant_cache):
+    """The floor the runaway branch is held to is the offset the plant carries AT
+    the knee — not this shortfall's own bounded value.
+
+    Flooring at loss × 18 also removes the inversion, but it extrapolates a
+    bounded-regime expression to a total loss, floors the penalty at 18 K and
+    roughly doubles the measured runaway (11.9 → 23.2 K at 90 s). That is a
+    recalibration of the thermal model wearing a monotonicity fix as a disguise,
+    so the rate is pinned here as well as the ordering."""
+    p = _plant(tmp_path, plant_cache)
+    for i in range(1, TRAINS + 1):
+        _alarm(plant_cache, f"CHL{i}-{DC}-CP", "Chiller_Running", "Alarm_FlowLoss")
+    _hold(p)
+
+    assert p.store._cool_loss_frac[DC] == pytest.approx(1.0, abs=0.01)
+    assert 10.0 < _pen(p) < 17.0, (
+        f"total loss should integrate at the calibrated rate, got {_pen(p)}")
+
+
+def _valve_pen(tmp_path, plant_cache, tag, points):
+    """Penalty after holding a VCHW fault described by *points*."""
+    random.seed(SEED)
+    plant_cache.clear()
+    p = build_plant(tmp_path / tag, trains=TRAINS, servers=SERVERS,
+                    installed_modules=MODULES, crahs=CRAHS, valves=True)
+    for _ in range(SETTLE_TICKS):
+        p.tick()
+    plant_cache[f"VCHW-{DC}-CP"] = points
+    _hold(p)
+    return _pen(p)
+
+
+def test_two_ways_of_losing_the_same_valve_cost_the_same(tmp_path, plant_cache):
+    """A stuck actuator and one that has stopped modulating are the same physical
+    state — the disc is no longer tracking command — so at the same travel they
+    must cost the same.
+
+    The campaign measured 0.3 K against 2.3 K for exactly this pair. Both reach
+    the penalty through _is_faulted and both are now scored on travel, so the
+    fault LABEL cannot change the answer; only the position can.
+
+    Both injections carry position feedback, because a real actuator that has
+    stopped modulating still reports where it is. Pinning this pair against a
+    feedback-less injection would compare a known valve with an unknown one and
+    call the difference an inversion."""
+    at = {"Position": 45.0, "Commanded_Position": 65.0}
+    stuck = _valve_pen(tmp_path, plant_cache, "stuck",
+                       {**at, "Status_Modulating": 1.0, "Alarm_ActuatorFault": 1.0})
+    frozen = _valve_pen(tmp_path, plant_cache, "frozen",
+                        {**at, "Status_Modulating": 0.0})
+
+    assert stuck > 0.1, f"a valve stuck below its command must cost cooling, got {stuck}"
+    assert stuck == pytest.approx(frozen, abs=0.5), (
+        f"stuck actuator {stuck} K vs stopped modulating {frozen} K")
+
+
+def test_a_valve_stuck_open_is_not_a_cooling_loss(tmp_path, plant_cache):
+    """Severity is WHERE the disc froze. A header valve is fail-in-place — the
+    actuators used at that torque have no spring return — so a dead actuator that
+    happens to be wide open still passes design flow. Scoring it the same as one
+    stuck shut, which a bare fault bit does, makes a non-event and a catastrophe
+    read alike and is what put the whole severity ranking in question.
+
+    A valve stuck FURTHER OPEN than commanded is a pumping-energy penalty, not a
+    cooling loss, and this model does not charge for it."""
+    fault = {"Status_Modulating": 1.0, "Alarm_ActuatorFault": 1.0}
+    wide = _valve_pen(tmp_path, plant_cache, "open",
+                      {**fault, "Position": 95.0, "Commanded_Position": 65.0})
+    part = _valve_pen(tmp_path, plant_cache, "part",
+                      {**fault, "Position": 45.0, "Commanded_Position": 65.0})
+    shut = _valve_pen(tmp_path, plant_cache, "shut",
+                      {**fault, "Position": 0.0, "Commanded_Position": 65.0})
+
+    assert wide < 0.1, f"a valve stuck open costs no cooling, got {wide}"
+    assert part > wide, f"partly shut must beat wide open: {part} vs {wide}"
+    assert shut > part, f"fully shut must beat partly shut: {shut} vs {part}"
+
+
+def test_a_valve_with_no_position_feedback_reads_shut(tmp_path, plant_cache):
+    """No feedback is not no loss. A modulating valve that has stopped reporting
+    travel is unknown, and the conservative reading — the one a real BMS takes
+    when the 4–20 mA feedback drops — is that it is shut. Anything else lets a
+    valve disappear from the loss arithmetic by failing harder."""
+    blind = _valve_pen(tmp_path, plant_cache, "blind", {"Status_Modulating": 0.0})
+    shut = _valve_pen(tmp_path, plant_cache, "shut2",
+                      {"Status_Modulating": 0.0, "Position": 0.0,
+                       "Commanded_Position": 65.0})
+
+    assert blind == pytest.approx(shut, abs=0.5), (
+        f"lost feedback must read as shut: {blind} vs {shut}")
+
+
 # ── 5. Ceiling ───────────────────────────────────────────────────────────────
 
 def test_runaway_is_bounded_by_the_thermal_ceiling(tmp_path, plant_cache):
@@ -290,6 +420,69 @@ def test_reported_cooling_follows_the_surviving_plant(tmp_path, plant_cache):
     after = p.store.cooling_model_kw()
     assert after < before * 0.2, (
         f"cooling kW must track the surviving plant: {before} → {after}")
+
+
+def test_metered_plant_draw_collapses_with_the_plant(tmp_path, plant_cache):
+    """The METERED cooling branch has to fall with the plant, not just the model.
+
+    get_power_summary takes max(metered, model), so scaling only the model left
+    the meters winning every time: plant_power was normalised so the per-unit sum
+    equalled the UNSCALED demand each tick, which put a dead chiller back at full
+    draw. A total loss of chilled water read 132.9 → 140.3 kW with PUE falling
+    1.672 → 1.651 — cooling rising while the plant was off, because the chassis-fan
+    term was driving IT up underneath a mechanical figure that could not move.
+
+    Asserted on the per-unit draws rather than get_power_summary() because that is
+    what the meters integrate (_plant_watts → the power graph → the mech panel),
+    and it holds whether or not a topology carries EV2 metering."""
+    p = _plant(tmp_path, plant_cache)
+    before = sum(p.store._plant_power_by_name.values())
+    assert before > 0.0, "fixture should draw some plant power"
+    for i in range(1, TRAINS + 1):
+        _alarm(plant_cache, f"CHL{i}-{DC}-CP", "Chiller_Running", "Alarm_FlowLoss")
+    _hold(p)
+
+    after = sum(p.store._plant_power_by_name.values())
+    assert after < before * 0.75, (
+        f"metered plant draw must follow the surviving plant: {before} → {after}")
+
+
+def test_a_covered_fault_costs_the_panel_almost_nothing(tmp_path, plant_cache):
+    """Staging and total failure must not read the same on the panel.
+
+    One chiller down is covered: the BMS demotes it and promotes a standby, so the
+    load moves to a machine that is still running and the mechanical panel barely
+    notices. That redistribution is the reason the normalisation runs BEFORE the
+    delivered-capacity collapse — it is correct here and only wrong when there is
+    nothing left to carry the load."""
+    p = _plant(tmp_path, plant_cache)
+    before = sum(p.store._plant_power_by_name.values())
+    _alarm(plant_cache, _lead_chillers(p)[0], "Chiller_Running", "Alarm_FlowLoss")
+    _hold(p)
+
+    after = sum(p.store._plant_power_by_name.values())
+    assert after > before * 0.75, (
+        f"N+1 absorbed the fault; the panel should hold: {before} → {after}")
+
+
+def test_a_tripped_chiller_is_not_disconnected(tmp_path, plant_cache):
+    """A machine that has shut down still has a closed MCC bucket — controls, oil
+    pump and crankcase heater stay energized — so its branch meter reads small,
+    not zero. Only a unit whose MCC is genuinely dead reads nothing.
+
+    Measured on a TOTAL loss, because a single fault is covered: the BMS demotes
+    the alarmed unit and promotes a standby, and a staged-off machine really is at
+    ~0. With every train faulted there is no standby left to promote, so the units
+    stay commanded on and carry their auxiliaries."""
+    p = _plant(tmp_path, plant_cache)
+    for i in range(1, TRAINS + 1):
+        _alarm(plant_cache, f"CHL{i}-{DC}-CP", "Chiller_Running", "Alarm_FlowLoss")
+    _hold(p)
+
+    lead = _lead_chillers(p)[0]
+    drawn = p.store._plant_power_by_name[lead]
+    assert drawn > 0.0, "a tripped chiller is not disconnected"
+    assert drawn < 20.0, f"a tripped chiller must fall to its auxiliaries, got {drawn}"
 
 
 def test_cdu_coolant_follows_the_facility_loop(tmp_path, plant_cache):

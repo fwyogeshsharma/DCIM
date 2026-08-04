@@ -1146,6 +1146,12 @@ class DeviceStateStore:
                          DeviceType.OOB_SWITCH)
     # Per-plant-type BACnet point that reports its live electrical draw (kW).
     _PLANT_POWER_POINTS = ("Active_Power", "Motor_Power", "Pump_Power", "Fan_Power")
+    # Auxiliary electrical load a TRIPPED plant unit still carries, as a fraction
+    # of the draw it would have had running: controls, oil pump, crankcase heater,
+    # VFD standby. A machine that has shut down is not disconnected — its MCC
+    # bucket is still closed — so its branch meter reads small, not zero. Only a
+    # unit whose MCC is genuinely dead reads nothing.
+    _PLANT_AUX_FRAC = 0.05
     # CPU die thermal time constant (s). The heatsink + chassis thermal mass mean
     # the die does not track its instantaneous target immediately: cpu_temp relaxes
     # toward the target with this first-order lag. Sized so a brief cooling gap (a
@@ -3105,6 +3111,39 @@ class DeviceStateStore:
                     for _x in _dc_names:
                         if _x in plant_power:
                             plant_power[_x] *= _scale
+                # DELIVERED-CAPACITY COLLAPSE. Runs AFTER the normalisation above,
+                # deliberately. A STAGED-OFF unit's load transfers to the units
+                # still running — that is what sequencing means, and its zero is
+                # already inside the sum, so the survivors absorb its share. A
+                # FAILED unit's load transfers to NOBODY: the capacity is gone.
+                # Normalising first and collapsing second is the whole distinction;
+                # collapsing first would let the scale factor hand a dead machine's
+                # share straight to its neighbours and hold the panel flat.
+                #
+                # Without this the metered branch never saw a plant failure at all.
+                # plant_power was normalised to the UNSCALED demand every tick, so a
+                # total loss of chilled water left the mechanical meters at full draw
+                # while cooling_model_kw() correctly collapsed — and get_power_summary
+                # takes max(metered, model), so the meters won and cooling moved the
+                # WRONG WAY: 132.9 → 140.3 kW with PUE falling 1.672 → 1.651, because
+                # the chassis-fan term was driving IT up underneath it. Fixing the
+                # model term alone was never enough; the meters it is maxed against
+                # had to follow the plant too.
+                #
+                # A tripped machine is not electrically dead, so the draw collapses to
+                # an auxiliary floor rather than to zero. An UNPOWERED unit is the one
+                # exception — its MCC really is dead. The surviving plant is untouched,
+                # which is what makes the result a shape and not a scale: the CRAH fans
+                # ramp UP into the hot hall on the same tick the compressors drop out,
+                # exactly as a real mechanical panel reads it.
+                for _x in _dc_names:
+                    if _x not in plant_power or _x in self._plant_standby_names:
+                        continue
+                    if _x in self._plant_unpowered_names:
+                        plant_power[_x] = 0.0
+                    elif (self._is_faulted(_x) or self._run_unproven(_x)
+                            or _x in self._chiller_hp_lockout):
+                        plant_power[_x] *= self._PLANT_AUX_FRAC
             self._plant_power_by_name = plant_power
             self._plant_cop_by_name = plant_cop
             self._plant_loadfrac_by_name = plant_loadfrac
@@ -3260,6 +3299,52 @@ class DeviceStateStore:
             return False
         return any(k.startswith("Alarm_") and k not in _CAPACITY_ALARMS
                    and float(v) >= 0.5 for k, v in pv.items())
+
+    # Command-to-feedback deviation a modulating valve shows in NORMAL service.
+    # Commanded leads and the disc follows it across the actuator's stroke time,
+    # so a valve tracking a moving load is always a little behind its command.
+    # Below this it is trimming, not failing.
+    _VALVE_DEV_DEADBAND = 0.10
+
+    def _valve_lost_weight(self, name: str) -> float:
+        """How much of a header valve's duty is lost, 0..1.
+
+        Severity is WHERE the disc froze, not that it froze. A plant-header valve
+        is FAIL-IN-PLACE: the electric actuators used at that torque (Rotork,
+        Bettis, Belimo PR) have no spring return, so losing control leaves the disc
+        standing where it was rather than driving it to a safe end. One stuck wide
+        open still passes design flow and costs nothing; one stuck shut takes the
+        loop out. Scoring both as a flat total loss — which is what a bare
+        `_is_faulted` does — makes a non-event and a catastrophe read alike.
+
+        Measured as the command-to-feedback deviation the BMS itself alarms on:
+        Position against Commanded_Position, both already on the wire. Only the
+        SHORTFALL counts — a valve stuck further OPEN than asked is not a cooling
+        loss, it is a pumping-energy penalty this model does not charge for.
+
+        Applied only to a valve that is genuinely out of control. A healthy valve
+        scores zero from its fault state, never from its travel, so ordinary
+        modulation can never be mistaken for a loss no matter how far it strokes.
+
+        No position feedback is NOT no loss. A modulating valve that has stopped
+        reporting travel is unknown, and the conservative reading — the one a real
+        BMS takes when the feedback signal drops — is that it is shut.
+        """
+        if not self._is_faulted(name):
+            return 0.0
+        pv = _plant_state_cache.get(name) or {}
+        pos, cmd = pv.get("Position"), pv.get("Commanded_Position")
+        if pos is None or cmd is None:
+            return 1.0
+        try:
+            pos, cmd = float(pos), float(cmd)
+        except (TypeError, ValueError):
+            return 1.0
+        if cmd <= 0.0:
+            return 0.0            # nothing is being asked of it
+        dev = (cmd - pos) / cmd
+        db = self._VALVE_DEV_DEADBAND
+        return max(0.0, min(1.0, (dev - db) / (1.0 - db)))
 
     # Cooling penalty model constants.
     #
@@ -3468,9 +3553,12 @@ class DeviceStateStore:
                     if v.upper().startswith("VCW")
                     and v not in self._plant_standby_names]
             if _vcw:
-                _vcw_lost = sum(1.0 for v in _vcw
-                                if self._is_faulted(v)
-                                or v in self._plant_unpowered_names) / len(_vcw)
+                # Weighted by how far the disc actually is from its command, not by
+                # the bare fault bit — see _valve_lost_weight. An unpowered actuator
+                # keeps the binary reading: its feedback died with its supply.
+                _vcw_lost = sum(1.0 if v in self._plant_unpowered_names
+                                else self._valve_lost_weight(v)
+                                for v in _vcw) / len(_vcw)
                 reject = min(reject, 1.0 - 0.5 * _vcw_lost)
 
             # BASE loop temperature — what the healthy bank can actually hold right
@@ -3960,7 +4048,13 @@ class DeviceStateStore:
                          and (not prefix or n.upper().startswith(prefix))]
                 if not names:
                     return 0.0
-                return sum(lost_weight(n) for n in names) / len(names)
+                # A control valve is scored on WHERE its disc froze rather than on
+                # the bare fault bit (see _valve_lost_weight); everything else is
+                # binary. The unpowered ride-through still applies to both — that is
+                # a property of the loop's thermal mass, not of the machine.
+                _w = self._valve_lost_weight if kind == "valve" else lost_weight
+                return sum(ride if n in self._plant_unpowered_names else _w(n)
+                           for n in names) / len(names)
 
             # The TOWER BANK is header equipment too, now that cells no longer stage
             # with their train: rejection is one per-DC capability (cells turning ÷
@@ -3994,16 +4088,43 @@ class DeviceStateStore:
             dt = self._dt
             cur = self._chw_pen.get(dc, 0.0)
             deficit = loss - self._COOL_TOL
+            # Exponential ease toward a target, with the loop's thermal lag. A time
+            # constant rather than a per-tick fraction, so a long tick eases further
+            # in one step instead of taking the same small bite.
+            def _ease(to: float) -> float:
+                return cur + (to - cur) * (1.0 - math.exp(-dt / self._COOL_TAU_S))
+
             if deficit <= 0.0:
-                target = loss * 18.0                       # bounded: redundancy absorbs it (≤ ~6 °C)
-                # Exponential ease toward the bounded target. Expressed as a time
-                # constant rather than a per-tick fraction so a long tick eases
-                # further in one step instead of taking the same small bite.
-                new = cur + (target - cur) * (1.0 - math.exp(-dt / self._COOL_TAU_S))
+                # Bounded: redundancy absorbs it and the plant settles at a standing
+                # offset proportional to the shortfall (≤ ~6 °C at the knee).
+                new = _ease(loss * 18.0)
             else:
-                # Runaway: the IT heat the plant can no longer take is accumulating,
-                # so integrate it upward per second of real time.
-                new = cur + self._COOL_RUN * deficit * dt
+                # Runaway: the IT heat the plant can no longer take accumulates, so
+                # integrate it upward per second of real time — but never BELOW the
+                # offset the plant already carries AT the knee.
+                #
+                # That floor is what makes severity monotonic, and its absence made
+                # the knee a cliff in the wrong direction. Just under _COOL_TOL a
+                # fault eased straight to its standing offset and settled there;
+                # just over it the integration started from wherever the penalty
+                # happened to be — normally zero — and needed tens of seconds to
+                # climb back to the value the MILDER fault was already sitting at.
+                # Measured on three staged trains: one chiller lost (L 0.340) read
+                # 6.089 K at 90 s, two lost (L 0.673) read 6.055 K. A worse failure
+                # must never read milder, or an operator triaging by inlet
+                # temperature works the bigger outage second.
+                #
+                # The floor is the KNEE offset, not this shortfall's own loss × 18.
+                # That expression is calibrated for the bounded regime and only
+                # meets the runaway branch at the knee; extrapolating it to a total
+                # loss floors the penalty at 18 K and roughly doubles the measured
+                # runaway rate (11.9 → 23.2 K at 90 s), which is a recalibration of
+                # the thermal model wearing a monotonicity fix as a disguise. Past
+                # the knee the plant has no steady state at all — that is what
+                # runaway means — so the standing part stops growing and the
+                # integral carries the severity from there.
+                new = max(_ease(self._COOL_TOL * 18.0),
+                          cur + self._COOL_RUN * deficit * dt)
             self._chw_pen[dc] = round(min(new, self._COOL_MAX), 3)
 
     # ── Chilled-water loop thresholds ─────────────────────────────────────────
