@@ -524,13 +524,8 @@ def get_plant_overrides(device: str | None = None):
     ov = getattr(st, "plant_alarm_overrides", {}) if st else {}
     if device is not None:
         ip = _device_ip(device)
-        return {"device": device, "overrides": ov.get(ip, {}) if ip else {},
-                "store_id": id(st), "map_id": id(ov)}
-    # store_id/map_id are DIAGNOSTIC: the ticker logs the same two ids for the map
-    # it actually reads. A force that the API accepts and reads back here, while the
-    # ticker keeps reporting an empty map, means these are different objects and the
-    # override never reaches the BACnet controller at all.
-    return {"overrides": ov, "store_id": id(st), "map_id": id(ov)}
+        return {"device": device, "overrides": ov.get(ip, {}) if ip else {}}
+    return {"overrides": ov}
 
 
 @router.post("/plant/overrides", response_model=OkResponse)
