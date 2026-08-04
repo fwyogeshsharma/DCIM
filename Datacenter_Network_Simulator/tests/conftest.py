@@ -73,6 +73,7 @@ class PlantFixture:
 
     def tick(self):
         """Run the per-tick cooling chain in the order the real ticker does."""
+        self.store._compute_leak_heat()
         self.store._compute_cond_loop()
         self.store._compute_chw_penalty()
         self.store._compute_power_flow()

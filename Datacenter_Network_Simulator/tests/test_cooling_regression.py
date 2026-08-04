@@ -380,6 +380,127 @@ def test_loop_flow_falls_when_the_pumps_are_gone(tmp_path, plant_cache):
         f"flow must fall with the pumps: {before} → {p.store._chw_flow_lps[DC]}")
 
 
+def test_a_stalled_loop_widens_delta_t(tmp_path, plant_cache):
+    """ΔT is a RESULT of flow, not an input to it, and losing the pumps has to show
+    up as a widening range.
+
+    Flow used to be the demand figure Q/(cp·ΔT) with ΔT read off a duty curve. A
+    demand figure cannot lose flow, so with every chilled-water pump in alarm the
+    range still read ~4.6 K — a perfectly healthy-looking loop with nothing moving
+    through it. Now the pumps set flow and the load sets ΔT, so a stalled header
+    reads the saturated range a stagnant thermowell actually shows."""
+    from core.cooling_model import CHW_DESIGN_DT_C, CHW_MAX_DT_C
+
+    p = _plant(tmp_path, plant_cache)
+    assert p.store._chw_dt_c[DC] == pytest.approx(CHW_DESIGN_DT_C, abs=0.2), (
+        "a healthy loaded plant holds design range")
+    for i in range(1, TRAINS + 2):          # trains + the header standby
+        _alarm(plant_cache, f"CHWP{i}-{DC}-CP", "Run_Status", "Alarm_Fault")
+    _hold(p)
+
+    assert p.store._chw_flow_lps[DC] == 0.0, "no pumps, no flow"
+    assert p.store._chw_dt_c[DC] == pytest.approx(CHW_MAX_DT_C, abs=0.1), (
+        f"a stalled loop must read a saturated range, got {p.store._chw_dt_c[DC]}")
+    assert p.store._chw_return_c[DC] > p.store._chw_supply_c[DC] + 10.0
+
+
+def test_a_covered_pump_loss_does_not_move_the_loop(tmp_path, plant_cache):
+    """Pump-derived flow must still respect N+1. The header spare covers one failed
+    chilled-water pump, so the loop keeps its flow AND its design range — the
+    failure costs redundancy, not cooling. Without this the inversion would read
+    every single pump fault as a loop event."""
+    from core.cooling_model import CHW_DESIGN_DT_C
+
+    p = _plant(tmp_path, plant_cache)
+    before = p.store._chw_flow_lps[DC]
+    _alarm(plant_cache, f"CHWP1-{DC}-CP", "Run_Status", "Alarm_Fault")
+    _hold(p)
+
+    assert p.store._chw_pump_frac[DC] == 1.0, "the spare should cover one loss"
+    assert p.store._chw_flow_lps[DC] == pytest.approx(before, abs=0.2)
+    assert p.store._chw_dt_c[DC] == pytest.approx(CHW_DESIGN_DT_C, abs=0.2)
+
+
+def test_condenser_flow_falls_with_its_own_pumps(tmp_path, plant_cache):
+    """The condenser flow meter has to lose flow when the pumps that make it stop.
+
+    Its shape is still demand-led — the range there is set by the tower approach,
+    not by a ΔP loop — but it is now capped by surviving condenser pumping, so
+    rejection capability and the flow meter that ought to show the same loss are
+    no longer derived independently."""
+    p = _plant(tmp_path, plant_cache)
+    for i in range(1, TRAINS + 1):
+        _alarm(plant_cache, f"CWP{i}-{DC}-CP", "Run_Status", "Alarm_Fault")
+    _hold(p)
+
+    assert p.store._cw_pump_frac[DC] == 0.0
+    for name, pts in _pump_points(p, "CWP").items():
+        assert pts.get("Flow") == 0.0, f"{name} reports flow with every CW pump dead"
+
+
+def _pump_points(p, prefix):
+    return {d.name: p.auto_points(d.name) for d in p.dm.get_all_devices()
+            if d.name.startswith(prefix)}
+
+
+def test_a_stopped_pump_publishes_no_flow(tmp_path, plant_cache):
+    """An impeller that is not turning moves no water, and its gauge set has to say
+    so as one story.
+
+    A faulted pump kept its share of the header flow because the split only
+    excluded standby and unpowered units — so it advertised 5.5 l/s while its own
+    Speed point, back-derived from a draw that had collapsed to the auxiliary
+    floor, read 0 %. Flow, speed and differential all come off the same decision
+    now, so they cannot disagree."""
+    p = _plant(tmp_path, plant_cache)
+    for i in range(1, TRAINS + 1):
+        _alarm(plant_cache, f"CWP{i}-{DC}-CP", "Run_Status", "Alarm_Fault")
+    _hold(p)
+
+    pumps = _pump_points(p, "CWP")
+    assert pumps, "fixture should carry condenser pumps"
+    for name, pts in pumps.items():
+        assert pts.get("Flow") == 0.0, f"{name} is faulted but reports flow {pts.get('Flow')}"
+        assert pts.get("Speed") == 0.0, f"{name} reports speed {pts.get('Speed')}"
+        assert pts.get("Diff_Pressure") == 0.0, (
+            f"{name} holds {pts.get('Diff_Pressure')} kPa across a still impeller")
+
+
+def test_a_header_spare_pump_is_never_left_walking(tmp_path, plant_cache):
+    """The spare is a member of nobody's train, so publishing per-train left it
+    with no override at all and the BACnet engine's own base curve went out on the
+    wire — a faulted spare advertising 1.62 l/s while the header it feeds read 0.
+
+    It only shows up once the spare has been pulled OUT of standby, which is
+    exactly when every lead pump has failed and nothing is left to promote."""
+    p = _plant(tmp_path, plant_cache)
+    spare = f"CHWP{TRAINS + 1}-{DC}-CP"
+    assert spare in _pump_points(p, "CHWP"), "fixture should carry a header spare"
+    for i in range(1, TRAINS + 2):
+        _alarm(plant_cache, f"CHWP{i}-{DC}-CP", "Run_Status", "Alarm_Fault")
+    _hold(p)
+
+    assert p.store._chw_pump_frac[DC] == 0.0, "no chilled-water pumping should survive"
+    for name, pts in _pump_points(p, "CHWP").items():
+        assert pts.get("Flow") == 0.0, (
+            f"{name} reports {pts.get('Flow')} l/s with every pump faulted")
+
+
+def test_surviving_pumps_carry_the_whole_header_flow(tmp_path, plant_cache):
+    """A dead pump's share is not its own — it belongs to whatever is still
+    turning. Splitting the header across every pump PRESENT rather than every pump
+    RUNNING understates each survivor and hides the duty a failure transfers."""
+    p = _plant(tmp_path, plant_cache)
+    _hold(p, 10)
+
+    flowing = {n: pts["Flow"] for n, pts in _pump_points(p, "CHWP").items()
+               if pts.get("Flow")}
+    assert flowing, "some chilled-water pump should be turning"
+    assert sum(flowing.values()) == pytest.approx(
+        p.store._chw_flow_lps[DC], abs=0.6), (
+        f"pump flows {flowing} should add up to the header {p.store._chw_flow_lps[DC]}")
+
+
 def test_loss_of_evaporator_flow_sheds_the_chillers(tmp_path, plant_cache):
     """The flow switch every chiller is safety-interlocked to must be reachable
     from the model, and tripping it must actually stop the machine.
@@ -831,6 +952,103 @@ def test_server_throttles_instead_of_clamping(tmp_path, plant_cache):
     srv.cpu_temp = 96.0
     p.store._apply_thermal_protection(srv)
     assert srv.power_state == "Off", "at the critical limit the platform must shut down"
+
+
+def _leaking_loop(tmp_path, plant_cache, tag, ticks=500, load=65.0):
+    """A busy direct-to-chip loop with a fully-open leak on CDU1.
+
+    Two CDUs, so the servers on the healthy one are the control: a leak that
+    warmed the whole hall would be indistinguishable from the room-air path these
+    tests exist to bypass.
+
+    Load is PINNED on the leaking loop through the same device-override channel
+    the live campaign drives, because the scenario only means anything on a busy
+    loop. Direct-to-chip exists for dense, high-utilisation nodes; a leak on an
+    idle loop legitimately should not trip anything, and the die model says so —
+    a liquid die is 35 + 0.30 × cpu_usage, so the leak's +38 K only clears 90 °C
+    once the node is actually working.
+
+    65 % rather than something heroic: it lands the equilibrium near 92 °C, inside
+    the throttle band and clear of the 95 °C shutdown, so the ramp is what gets
+    exercised. Pinning higher parks the die against the shutdown boundary and the
+    test turns on which side of a rounding step it lands.
+    """
+    random.seed(SEED)
+    plant_cache.clear()
+    p = build_plant(tmp_path / tag, trains=TRAINS, servers=40,
+                    installed_modules=MODULES, crahs=CRAHS, cdus=2)
+    for _ in range(SETTLE_TICKS):
+        p.tick()
+        _step_all(p)
+
+    leaking = f"CDU1-{DC}-HA-R1-01"
+    on_loop = p.store._cdu_loop_servers()[leaking]
+    assert on_loop, "fixture should wire servers onto the CDU cold-plate loop"
+    for d in p.dm.get_all_devices():
+        if d.name in on_loop:
+            # Both: the override suppresses the random walk (see _pin_value), the
+            # field is what the die model actually reads. Setting only the override
+            # leaves cpu_usage on its start value and the loop never gets busy.
+            p.store.device_overrides.setdefault(d.id, {})["cpu_usage"] = load
+            d.cpu_usage = load
+    # Loop pressure below the intact 250 kPa sets leak intensity; 140 kPa is a
+    # fully-open leak. The alarm on its own would only apply the 0.5 floor.
+    plant_cache[leaking] = {"Alarm_Leak": 1.0, "TCS_Loop_Pressure": 140.0}
+    # The die relaxes toward its target with _CPU_THERMAL_TAU_S = 150 s, so this
+    # needs MINUTES of simulated time, not the 90 s the plant cases hold for. It
+    # still runs in a fraction of a second — the live campaign needed a wall-clock
+    # day for the same question only because the model integrates against real
+    # elapsed time and has no acceleration knob.
+    for _ in range(ticks):
+        p.tick()
+        _step_all(p)
+    return p, on_loop
+
+
+def test_a_cdu_leak_drives_the_die_into_thermal_protection(tmp_path, plant_cache):
+    """The one mechanism in this model that can actually reach the throttle point.
+
+    Two fault campaigns never exercised _apply_thermal_protection, and growing the
+    fleet did not help: server inlet is hard-clamped at 45 °C and an air-cooled die
+    is base + 0.9 × (inlet − 22), so the intake term saturates around +20.7 K
+    however much IT load is added. The high-load run peaked at 76.7 °C — LOWER than
+    the low-load run's 79.9 °C — because more servers is more heat, not a hotter
+    inlet, once the clamp binds. The 90 °C path is unreachable by load alone.
+
+    A direct-to-chip leak is the way in, and it is the honest one: the cold plate
+    stops pulling heat out of the package, so the die climbs regardless of room
+    air. That is how liquid-cooled servers actually cook."""
+    p, on_loop = _leaking_loop(tmp_path, plant_cache, "leak")
+
+    hot = [d for d in p.dm.get_all_devices() if d.name in on_loop]
+    cool = [d for d in p.dm.get_all_devices()
+            if d.device_type.value == "server" and d.name not in on_loop]
+    peak = max(d.cpu_temp for d in hot)
+
+    assert peak > p.store._CPU_THROTTLE_C, (
+        f"a full leak must carry the die past {p.store._CPU_THROTTLE_C} °C, got {peak}")
+    assert max(d.cpu_temp for d in cool) < p.store._CPU_THROTTLE_C, (
+        "the leak must stay on its own loop — the healthy CDU's servers stay cool")
+
+
+def test_a_hot_die_gets_a_protective_response(tmp_path, plant_cache):
+    """Crossing the throttle point has to DO something.
+
+    The die used to pin at the 95 °C clamp with no response at all, so a runaway
+    had no end state: no capacity lost, no trap, nothing for an operator to
+    rehearse. Throttling is progressive rather than a cliff, so the factor lands
+    inside the ramp between the floor and full speed."""
+    p, on_loop = _leaking_loop(tmp_path, plant_cache, "shed")
+
+    throttled = {n: f for n, f in p.store._throttled.items() if n in on_loop}
+    shutdown = {n for n in p.store._thermal_shutdown if n in on_loop}
+    assert throttled or shutdown, "the leaking loop must show a protective response"
+    for _n, factor in throttled.items():
+        assert p.store._THROTTLE_FLOOR <= factor < 1.0, (
+            f"{_n} throttle factor {factor} outside the ramp")
+    for d in p.dm.get_all_devices():
+        if d.name in shutdown:
+            assert d.power_state == "Off", f"{d.name} tripped but still reads on"
 
 
 def test_heating_rate_is_wall_clock_not_tick_count(tmp_path, plant_cache):

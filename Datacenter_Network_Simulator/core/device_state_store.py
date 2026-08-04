@@ -422,6 +422,7 @@ class DeviceStateStore:
         # running trains require (0..1), the dwell timer behind the flow switch, and
         # the chillers it has shed. See _FLOW_TRIP_FRAC.
         self._chw_pump_frac: Dict[str, float] = {}
+        self._cw_pump_frac: Dict[str, float] = {}   # same, condenser side
         self._chw_flow_lost_s: Dict[str, float] = {}
         self._chw_flow_interlock: set = set()
         # DC → CRAH discharge air (setpoint + CHW penalty). Published on the units
@@ -3539,6 +3540,10 @@ class DeviceStateStore:
                 cw_ok = sum(1 for p in cwps
                             if not self._is_faulted(p)
                             and p not in self._plant_unpowered_names)
+                # Kept for _compute_chw_loop, which caps the published condenser
+                # flow by it: rejection capability and the flow meter that ought to
+                # show the same loss must not be derived independently.
+                self._cw_pump_frac[dc] = round(cw_ok / len(cwps), 4)
                 reject = min(reject, cw_ok / len(cwps))
 
             # The CONDENSER-WATER header valve sits in this same rejection path, so a
@@ -4186,9 +4191,10 @@ class DeviceStateStore:
         per-unit draws, and MERGES into _plant_auto_points rather than replacing it.
         """
         from core.cooling_model import (
-            CHW_SETPOINT_C, COND_DESIGN_RANGE_C, chw_supply_c, chw_delta_t_c,
-            water_flow_lps, makeup_flow_lpm, pump_head_frac, affinity_speed_frac,
-            vfd_speed_frac, PUMP_MIN_SPEED)
+            CHW_SETPOINT_C, CHW_DESIGN_DT_C, CHW_MAX_DT_C, COND_DESIGN_RANGE_C,
+            CP_WATER_KJ_KGK, PLANT_MODULE_KW, chw_supply_c, chw_delta_t_c,
+            chw_flow_frac, water_flow_lps, makeup_flow_lpm, pump_head_frac,
+            affinity_speed_frac, vfd_speed_frac, PUMP_MIN_SPEED)
         ctx = self._cooling_context()
         auto = self._plant_auto_points
         dt = self._dt
@@ -4210,14 +4216,39 @@ class DeviceStateStore:
             # telling one story instead of two.
             pen = self._chw_pen.get(dc, 0.0)
             supply = chw_supply_c(pen, CHW_SETPOINT_C)
-            d_t = chw_delta_t_c(duty)
-            # Flow is what the PUMPS deliver, not what the load would like. The
-            # demand figure Q/(cp·ΔT) is the requirement; capping it by surviving
-            # pumping is what makes it a measurement. Without the cap, faulting
-            # every pump merely shrank the divisor the flow was split across and
-            # the published header flow went UP — 7.8 → 14.9 l/s in the campaign,
-            # with every chilled-water pump in alarm.
-            flow = water_flow_lps(itl_kw, d_t) * self._chw_pump_frac.get(dc, 1.0)
+            # ── PUMPS SET FLOW; LOAD SETS ΔT ─────────────────────────────────
+            # The causal order, and it was backwards. Flow used to be the DEMAND
+            # figure Q/(cp·ΔT) with ΔT read off a curve, then capped by surviving
+            # pumping — so the loop answered "how much water would carry this heat"
+            # rather than "how much water is moving". A demand figure cannot lose
+            # flow, which is why faulting every pump once made the published header
+            # go UP (7.8 → 14.9 l/s in the campaign): it only shrank the divisor the
+            # flow was split across.
+            #
+            # This is a variable-primary plant — VFD pumps on a differential-
+            # pressure setpoint, two-way coil valves, and an evaporator low-flow
+            # interlock behind them. The pumps ride the ΔP loop down as the valves
+            # close, floored at the minimum-flow bypass (CHW_MIN_FLOW_FRAC), and
+            # whatever they deliver is the flow. ΔT is then a RESULT: Q = ṁ·cp·ΔT.
+            #
+            # Deliberately arithmetically identical to the old curve while the plant
+            # is healthy — at duty d ≥ the bypass floor, flow = design × d cancels to
+            # exactly CHW_DESIGN_DT_C, and below it to design × d/floor, which is
+            # what chw_delta_t_c returned. Nothing is recalibrated; only the FAILURE
+            # behaviour changes, because now a loop with no pumps has no flow and
+            # therefore a collapsing, not an inflating, story.
+            #
+            # THERMAL duty here, not _plant_duty — that one is cooling-electrical
+            # over running nameplate, and it is the heat in the water that strokes
+            # the coil valves. Using the electrical figure breaks the cancellation
+            # above and quietly moves every ΔT in the model.
+            _enabled_kw = max(1e-6, self._plant_stage_on.get(dc, 1) * PLANT_MODULE_KW)
+            _duty_th = itl_kw / _enabled_kw
+            flow = (water_flow_lps(_enabled_kw, CHW_DESIGN_DT_C)
+                    * chw_flow_frac(_duty_th)
+                    * self._chw_pump_frac.get(dc, 1.0))
+            d_t = (min(itl_kw / (CP_WATER_KJ_KGK * flow), CHW_MAX_DT_C)
+                   if flow > 1e-6 else CHW_MAX_DT_C)
             ret = supply + d_t
             self._chw_supply_c[dc] = round(supply, 2)
             self._chw_return_c[dc] = round(ret, 2)
@@ -4254,8 +4285,15 @@ class DeviceStateStore:
             # and a lightly loaded plant reports LESS condenser flow than evaporator
             # flow, which is thermodynamically impossible (the condenser carries the
             # IT heat plus the compressor work that moved it).
+            # Capped by surviving condenser pumping, for the same reason the
+            # evaporator side is: a flow meter has to lose flow when the pumps that
+            # make it stop. The condenser side keeps its DEMAND shape, unlike the
+            # evaporator — the range here is set by the tower approach rather than
+            # by a ΔP loop. Worth revisiting: many plants run CONSTANT-SPEED
+            # condenser pumps, for which flow is flat with load and only the range
+            # moves, which is a different curve again.
             cw_flow = water_flow_lps(reject_kw, chw_delta_t_c(
-                duty, COND_DESIGN_RANGE_C))
+                duty, COND_DESIGN_RANGE_C)) * self._cw_pump_frac.get(dc, 1.0)
 
             # ── Chillers: supply/return/setpoint/flow on the RUNNING machines ──
             # A staged-off machine's evaporator is isolated by its own stopped pump
@@ -4303,16 +4341,40 @@ class DeviceStateStore:
             trains = self._plant_trains_run.get(dc, [])
             chwps = [tr["chwp"] for tr in trains if tr.get("chwp")]
             cwps  = [tr["cwp"] for tr in trains if tr.get("cwp")]
-            for group, total, label in ((chwps, flow, "chw"), (cwps, cw_flow, "cw")):
-                live = [p for p in group
-                        if p not in self._plant_standby_names
-                        and p not in self._plant_unpowered_names]
-                if not live:
-                    continue
-                per_pump = total / len(live)
-                for name in live:
+            # EVERY pump in the DC, addressed by the loop its name leads with — not
+            # just the ones sitting in a running train. A header spare is a train
+            # member in nobody's train, so iterating the trains left it with no
+            # published Flow at all and the BACnet engine's own base curve (22 l/s,
+            # decayed by whatever alarm coupling applied) went out on the wire. A
+            # faulted spare advertised 1.62 l/s while the header it feeds read 0.
+            _pumps_all = [n for n in (kinds.get("pump") or [])]
+            for group, total, _label, _pref in ((chwps, flow, "chw", "CHWP"),
+                                                (cwps, cw_flow, "cw", "CWP")):
+                _members = [n for n in _pumps_all if n.upper().startswith(_pref)]
+                # TURNING, not merely present. A faulted or silent pump is not
+                # moving water, so it must not take a share of the header flow —
+                # and the survivors genuinely carry the whole of it. Leaving the
+                # faulted ones in the split published an impeller at 0 % speed
+                # passing 5.5 l/s, which is the gauge set contradicting itself.
+                turning = [p for p in group
+                           if p not in self._plant_standby_names
+                           and p not in self._plant_unpowered_names
+                           and not self._is_faulted(p)
+                           and not self._run_unproven(p)]
+                per_pump = (total / len(turning)) if turning else 0.0
+                for name in _members:
                     ip = self._plant_ip_by_name.get(name)
                     if not ip:
+                        continue
+                    if name not in turning:
+                        # Stopped: no flow, no speed, and no differential across a
+                        # still impeller. Suction is static head and survives.
+                        auto.setdefault(ip, {}).update({
+                            "Flow": 0.0, "Speed": 0.0, "VFD_Frequency": 0.0,
+                            "Diff_Pressure": 0.0,
+                            "Suction_Pressure": round(self._PUMP_SUCTION_KPA, 1),
+                            "Discharge_Pressure": round(self._PUMP_SUCTION_KPA, 1),
+                        })
                         continue
                     # Speed back-derived from the draw this tick's power flow gave
                     # the pump, so flow, head and kW cannot disagree.
@@ -5015,7 +5077,17 @@ class DeviceStateStore:
             if _prev is None:
                 _prev = _target
             _alpha = min(1.0, self._dt / self._CPU_THERMAL_TAU_S)
-            device.cpu_temp = round(_prev + (_target - _prev) * _alpha, 1)
+            # Kept to 3 dp, NOT 1. At a 1 s tick _alpha is 1/150, so the step is
+            # gap × 0.0067 — under 0.05 once the gap is below 7.5 K, and rounding
+            # that to one decimal quantised it to ZERO. The die then stalled
+            # permanently 7.5 K short of its target: a full cold-plate leak drove a
+            # 100 °C target and cpu_temp parked at 87.5 forever, so the 90 °C
+            # throttle point was unreachable by any fault and _apply_thermal_
+            # protection could not fire outside a unit test that set cpu_temp by
+            # hand. Two fault campaigns never reached it and blamed the inlet clamp.
+            # The stall width also scales with the tick — halving dt doubles it —
+            # which is the same tick-rate dependence _COOL_TAU_S exists to avoid.
+            device.cpu_temp = round(_prev + (_target - _prev) * _alpha, 3)
             device.cpu_temp = self._num_limit("cpu_temp", device.cpu_temp)
             # A pinned (injected/overridden) cpu_temp wins, so the fan below ramps
             # to cool the hot die — the realistic response to a thermal fault.

@@ -511,6 +511,13 @@ CHW_SETPOINT_C   = 7.0     # design chilled-water supply setpoint
 CHW_DESIGN_DT_C  = 5.0     # design loop ΔT (return − supply) at design flow
 CHW_MIN_FLOW_FRAC = 0.35   # primary-variable minimum-flow bypass (= PUMP_MIN_SPEED)
 CHW_SUPPLY_RISE_MAX_C = 12.0  # cap on how far off setpoint a starved plant drifts
+# Ceiling on the MEASURED loop range. With the pumps gone, Q = ṁ·cp·ΔT divides by a
+# flow approaching zero and the arithmetic runs away — but a real return thermowell
+# does not. Water stops moving, the sensor stops seeing loop water at all and walks
+# toward the plant-room air around the pipe, so the reading saturates. 20 K over a
+# 7 °C supply puts the return at ~27 °C, which is where a stagnant header actually
+# ends up.
+CHW_MAX_DT_C     = 20.0
 CP_WATER_KJ_KGK  = 4.186   # specific heat of water — 1 l ≈ 1 kg at loop temperature
 COND_DESIGN_RANGE_C = 5.0  # condenser-water range (return − supply) at design flow
 
