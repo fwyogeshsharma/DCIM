@@ -677,6 +677,41 @@ class BACnetController:
                 for _p, _v in ovr.items():
                     if _p in values:
                         values[_p] = float(_v)
+                # INSTRUMENTATION: a forced point that is not in `values` is SILENTLY
+                # DISCARDED by the guard above, and the published point then stays
+                # frozen at whatever it last read. The API has already answered
+                # ok:true and the override sits in the map looking active, so the
+                # operator (and any probe) sees a fault that was never applied — which
+                # is the signature of the campaign rows that came back with pre and
+                # during identical on every field.
+                #
+                # `values` is filtered twice before this point: metric_flags drops
+                # whole points, and _apply_limits can rewrite them. Either can remove
+                # the very point being forced.
+                #
+                # Logged on CHANGE only, so a standing fault costs one line rather
+                # than one per tick.
+                if ovr:
+                    _missed = {p for p in ovr if p not in values}
+                    _seen = getattr(self, "_ovr_missed", None)
+                    if _seen is None:
+                        _seen = self._ovr_missed = {}
+                    _nm = getattr(dev, "device_name", "") or str(instance)
+                    if _seen.get(_nm) != _missed:
+                        _seen[_nm] = set(_missed)
+                        if _missed:
+                            _why = {
+                                p: ("metric_flag off" if metric_flags is not None
+                                    and not metric_flags.get(self._flag_key(kind, p), True)
+                                    else "not published by this device")
+                                for p in sorted(_missed)}
+                            log.warning(
+                                "[BACnet] %s: forced point(s) DISCARDED — %s. The "
+                                "override is stored but never reaches the wire.",
+                                _nm, _why)
+                        else:
+                            log.info("[BACnet] %s: all forced points applied (%s)",
+                                     _nm, sorted(ovr))
                 dev.update_present_values(values)
                 dev.dispatch_cov_notifications(
                     send_sock_fallback=self._recv_sock
