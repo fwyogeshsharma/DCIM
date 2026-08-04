@@ -4726,7 +4726,8 @@ class DeviceStateStore:
                 if _ovr_now != getattr(self, "_ovr_seen_by_tick", None):
                     self._ovr_seen_by_tick = _ovr_now
                     log.warning("[StateStore] ticker sees operator overrides: %s "
-                                "(map id=%s)", _ovr_now or "{}", id(_plant_ovr))
+                                "(store id=%s map id=%s)", _ovr_now or "{}",
+                                id(self), id(_plant_ovr))
                 if self._plant_auto_points:
                     _plant_ovr = {ip: dict(pts) for ip, pts in _plant_ovr.items()}
                     for _ip, _pts in self._plant_auto_points.items():

@@ -692,7 +692,18 @@ class BACnetController:
                 # Logged on CHANGE only, so a standing fault costs one line rather
                 # than one per tick.
                 dev.update_present_values(values)
-                if ovr:
+                # Only when an OPERATOR point is present. `ovr` is the merged map —
+                # the store's own auto-published points land in it too, so it is
+                # non-empty for nearly every plant device on every tick, and reading
+                # a full snapshot back that often is real work for nothing. Operator
+                # forces are binaries (Alarm_*, or a running-status point), which the
+                # store never auto-publishes.
+                _op_forced = [p for p in ovr
+                              if p.startswith("Alarm_")
+                              or p in ("Chiller_Running", "Run_Status", "Fan_Status",
+                                       "Unit_Running", "Status_Modulating",
+                                       "Filter_Dirty")]
+                if _op_forced:
                     # Read back through get_snapshot() — the exact path the store
                     # consumes via _sync_plant_cache — and say WHERE each forced
                     # point was lost. There are three silent skips between the
@@ -706,7 +717,8 @@ class BACnetController:
                     # racing us, which is what "value differs" means below.
                     _snap = dev.get_snapshot() or {}
                     _why = {}
-                    for _p, _v in ovr.items():
+                    for _p in _op_forced:
+                        _v = ovr[_p]
                         if _p not in values:
                             _why[_p] = ("metric_flag off"
                                         if metric_flags is not None
@@ -726,7 +738,8 @@ class BACnetController:
                     # applied — which is indistinguishable from the controller never
                     # having been handed the new points at all, and that ambiguity
                     # cost a probe run.
-                    _state_key = (tuple(sorted(ovr)), tuple(sorted(_why.items())))
+                    _state_key = (tuple(sorted(_op_forced)),
+                                  tuple(sorted(_why.items())))
                     if _seen.get(_nm) != _state_key:
                         _seen[_nm] = _state_key
                         if _why:
@@ -736,7 +749,7 @@ class BACnetController:
                                 _nm, _why)
                         else:
                             log.warning("[BACnet] %s: forced points applied OK (%s)",
-                                        _nm, sorted(ovr))
+                                        _nm, sorted(_op_forced))
                 dev.dispatch_cov_notifications(
                     send_sock_fallback=self._recv_sock
                 )
