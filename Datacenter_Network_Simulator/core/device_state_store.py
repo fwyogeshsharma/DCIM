@@ -4715,6 +4715,18 @@ class DeviceStateStore:
                 # operator's own forced-point map behind the Simulate Fault
                 # menu's ACTIVE markers and the faulted-node canvas styling.
                 _plant_ovr = self.plant_alarm_overrides
+                # INSTRUMENTATION: what the TICKER sees in the operator's forced-point
+                # map, logged on change. The API writes this map through
+                # _state().state_store; if that is a different object from the store
+                # running this tick — or the map is rebound anywhere — the write is
+                # accepted, reads back through GET /bacnet/plant/overrides, and is
+                # simply never handed to the BACnet controller. A probe then shows a
+                # fault that silently did nothing.
+                _ovr_now = {ip: sorted(pts) for ip, pts in _plant_ovr.items() if pts}
+                if _ovr_now != getattr(self, "_ovr_seen_by_tick", None):
+                    self._ovr_seen_by_tick = _ovr_now
+                    log.warning("[StateStore] ticker sees operator overrides: %s "
+                                "(map id=%s)", _ovr_now or "{}", id(_plant_ovr))
                 if self._plant_auto_points:
                     _plant_ovr = {ip: dict(pts) for ip, pts in _plant_ovr.items()}
                     for _ip, _pts in self._plant_auto_points.items():

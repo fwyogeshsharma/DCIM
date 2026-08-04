@@ -721,8 +721,14 @@ class BACnetController:
                     if _seen is None:
                         _seen = self._ovr_missed = {}
                     _nm = getattr(dev, "device_name", "") or str(instance)
-                    if _seen.get(_nm) != _why:
-                        _seen[_nm] = dict(_why)
+                    # Key on the FORCED SET as well as the verdict. Keying on the
+                    # verdict alone was silent when `ovr` grew but everything still
+                    # applied — which is indistinguishable from the controller never
+                    # having been handed the new points at all, and that ambiguity
+                    # cost a probe run.
+                    _state_key = (tuple(sorted(ovr)), tuple(sorted(_why.items())))
+                    if _seen.get(_nm) != _state_key:
+                        _seen[_nm] = _state_key
                         if _why:
                             log.warning(
                                 "[BACnet] %s: forced point(s) NOT ON THE WIRE — %s. "
