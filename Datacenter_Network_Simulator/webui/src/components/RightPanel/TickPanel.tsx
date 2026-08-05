@@ -366,13 +366,30 @@ const INPUT_BASE: React.CSSProperties = {
   fontFamily: 'Consolas, monospace', padding: '2px 5px', outline: 'none', textAlign: 'right',
 }
 
+// Shared by the live interval box and its pre-load placeholder so the row does
+// not resize when the fetched value arrives.
+const IV_BOX: React.CSSProperties = {
+  width: 70,
+  background: 'var(--bg-inset)',
+  border: '1px solid var(--border)',
+  borderRadius: 4,
+  color: 'var(--text)',
+  fontSize: 13,
+  fontFamily: 'monospace',
+  fontWeight: 700,
+  padding: '4px 8px',
+  outline: 'none',
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function TickPanel() {
   const [running,   setRunning]  = useState(false)
   const [paused,    setPaused]   = useState(false)
   const [enabled,   setEnabled]  = useState(false)
-  const [interval,  setIv]       = useState(30)
+  // null until GET /tick/settings lands — seeding a guess makes the box flash a
+  // fake interval before the real one arrives.
+  const [interval,  setIv]       = useState<number | null>(null)
   const [flags,     setFlags]    = useState<Record<string, boolean>>({})
   const [limits,    setLimits]   = useState<Record<string, LimitState>>({})
   const [tab,       setTab]      = useState<'metrics' | 'limits'>('metrics')
@@ -408,7 +425,7 @@ export default function TickPanel() {
     try {
       await api.applyTickSettings({
         paused:        !enabled,
-        interval,
+        interval:      interval ?? 1,
         metric_flags:  flags,
         metric_limits: Object.fromEntries(
           Object.entries(limits).map(([k, v]) => [k, { enabled: v.enabled, min: v.min, max: v.max, lock: v.lock }])
@@ -499,26 +516,23 @@ export default function TickPanel() {
             <div className="field-row-split">
               <span className="label">Interval</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <NumberInput
-                  int min={1} max={3600} value={interval}
-                  onChange={n => setIv(Math.max(1, n))}
-                  fallback={1}
-                  onFocus={() => setIvFocused(true)}
-                  onBlur={() => setIvFocused(false)}
-                  style={{
-                    width: 70,
-                    background: 'var(--bg-inset)',
-                    border: `1px solid ${ivFocused ? 'var(--info)' : 'var(--border)'}`,
-                    borderRadius: 4,
-                    color: ivFocused ? 'var(--info)' : 'var(--text)',
-                    fontSize: 13,
-                    fontFamily: 'monospace',
-                    fontWeight: 700,
-                    padding: '4px 8px',
-                    outline: 'none',
-                    transition: 'border-color 0.15s, color 0.15s',
-                  }}
-                />
+                {interval === null ? (
+                  <div style={{ ...IV_BOX, color: 'var(--text-muted)', opacity: 0.5, textAlign: 'right' }}>—</div>
+                ) : (
+                  <NumberInput
+                    int min={1} max={3600} value={interval}
+                    onChange={n => setIv(Math.max(1, n))}
+                    fallback={1}
+                    onFocus={() => setIvFocused(true)}
+                    onBlur={() => setIvFocused(false)}
+                    style={{
+                      ...IV_BOX,
+                      border: `1px solid ${ivFocused ? 'var(--info)' : 'var(--border)'}`,
+                      color: ivFocused ? 'var(--info)' : 'var(--text)',
+                      transition: 'border-color 0.15s, color 0.15s',
+                    }}
+                  />
+                )}
                 <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text-muted)', opacity: 0.5 }}>s · 1–3600</span>
               </div>
             </div>

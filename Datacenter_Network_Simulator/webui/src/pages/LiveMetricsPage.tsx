@@ -79,15 +79,29 @@ function StatePill({ val, okStates }: { val?: string; okStates: string[] }) {
   )
 }
 
-function NumCell({ val, unit, warn, crit, decimals = 1, invert = false }: {
-  val?: number; unit?: string; warn?: number; crit?: number; decimals?: number; invert?: boolean
+const SEVERITY = ['var(--ok)', 'var(--warn)', 'var(--crit)']
+const worse = (a: string, b: string) =>
+  SEVERITY.indexOf(b) > SEVERITY.indexOf(a) ? b : a
+
+// `warn`/`crit` colour the HIGH side, `warnLow`/`critLow` the LOW side, and a
+// metric may carry both — the worse verdict wins. Voltage is the reason: it is
+// alarming in either direction, and with only a high side an undervoltage rendered
+// in plain text while a perfectly healthy 235 V showed as warn. `invert` stays for
+// metrics that are ONLY bad when low (power factor), where a high side is meaningless.
+function NumCell({ val, unit, warn, crit, warnLow, critLow, decimals = 1, invert = false }: {
+  val?: number; unit?: string; warn?: number; crit?: number
+  warnLow?: number; critLow?: number; decimals?: number; invert?: boolean
 }) {
   if (val == null) return <span style={{ color: 'var(--text-dim)' }}>—</span>
-  const color = warn == null || crit == null
+  let color = warn == null || crit == null
     ? 'var(--text)'
     : invert
       ? metricColor(-val, -warn, -crit)   // lower value is worse
       : metricColor(val, warn, crit)
+  if (warnLow != null && critLow != null) {
+    color = worse(color === 'var(--text)' ? 'var(--ok)' : color,
+                  metricColor(-val, -warnLow, -critLow))
+  }
   return (
     <span style={{ color, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
       {val.toFixed(decimals)}{unit && <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{unit}</span>}
@@ -653,10 +667,18 @@ function UpsTable({ rows }: { rows: DeviceInfo[] }) {
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_voltage}   unit="V" /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_current}   unit="A" decimals={2} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_output_power}     unit="W" decimals={0} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_voltage}    unit="V" warn={415} crit={430} /></td>
+            {/* Both ways, and aligned to the rules that actually alarm: raise >440 V
+                or <360 V (clear at 430 / 370). The old high-only 415/430 painted a
+                healthy 420 V as warn while a 350 V undervoltage — an injectable
+                condition — rendered as plain text. */}
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_voltage}    unit="V" warn={430} crit={440} warnLow={370} critLow={360} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_current}    unit="A" decimals={2} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_power}      unit="W" decimals={0} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_frequency}  unit="Hz" warn={50.3} crit={50.5} decimals={2} /></td>
+            {/* Mains frequency is a two-sided alarm: out-of-range below 49.0 or above
+                51.0 Hz, clearing inside 49.2-50.8. The old 50.3/50.5 went crit while
+                the plant was still perfectly in range, and left the LOW excursion —
+                which is the injectable one (48.5 Hz) — uncoloured entirely. */}
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.ups_input_frequency}  unit="Hz" warn={50.8} crit={51.0} warnLow={49.2} critLow={49.0} decimals={2} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_fan_status}       okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_charger_status}   okStates={['ok']} /></td>
             <td style={{ padding: '6px 10px' }}><StatePill val={d.ups_rectifier_status} okStates={['ok']} /></td>
@@ -730,14 +752,21 @@ function PduTable({ rows }: { rows: DeviceInfo[] }) {
             <td style={{ padding: '6px 10px' }}><TypeBadge dt={d.device_type} /></td>
             <IpCell d={d} />
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_load}            unit="%" warn={70} crit={85} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_voltage}         unit="V" warn={230} crit={240} /></td>
+            {/* Voltage alarms BOTH ways — the trap rules raise at >240 V and <200 V,
+                so the colouring has to match or an undervoltage reads as normal. */}
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_voltage}         unit="V" warn={238} crit={244} warnLow={205} critLow={200} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_outlet_current}  unit="A" warn={15} crit={20} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_power_factor}    unit="" warn={0} crit={0} decimals={2} /></td>
+            {/* Power factor is only ever bad LOW (rule raises below 0.70), hence invert. */}
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_power_factor}    unit="" warn={0.80} crit={0.70} invert decimals={2} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_phase_imbalance} unit="%" warn={10} crit={15} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_real_power}      unit=" W"   warn={4000} crit={5000} decimals={0} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_apparent_power}  unit=" VA"  decimals={0} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_outlet_power}    unit=" W"   warn={3500} crit={4500} decimals={0} /></td>
-            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_frequency}       unit=" Hz"  warn={50.3} crit={50.5} decimals={2} /></td>
+            {/* PDUFrequencyFault raises BELOW 49.5 Hz — low only, unlike the UPS
+                which is two-sided. The old 50.3/50.5 coloured the wrong direction
+                outright: a genuine 49.0 Hz fault rendered plain while a harmless
+                50.4 Hz showed warn. */}
+            <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_frequency}       unit=" Hz"  warn={49.8} crit={49.5} invert decimals={2} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_temperature}     unit="°C"   warn={35} crit={40} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_humidity}        unit="%"    warn={70} crit={85} /></td>
             <td style={{ padding: '6px 10px', textAlign: 'right' }}><NumCell val={d.pdu_energy_kwh}      unit=" kWh" decimals={1} /></td>
@@ -1491,6 +1520,21 @@ export default function LiveMetricsPage() {
 
   const isPlantTab = PLANT_TABS.includes(tab)
   const isElecTab  = ELEC_TABS.includes(tab)
+
+  // Prime every metric source ONCE on mount, so the tab counts are right before any
+  // tab has been opened. The counts for energy / chiller-plant / electrical come from
+  // their metric arrays, and those were only fetched once their own tab was active —
+  // but the page opens on 'all', so on first load all thirteen of them read 0. The
+  // number that tells you a tab has anything in it only appeared after you had
+  // already clicked in and found out.
+  //
+  // The per-tick refreshes below stay gated to the active tab: this is one call each
+  // at mount, not three extra polls every tick.
+  useEffect(() => {
+    fetchEV2Metrics()
+    fetchPlantMetrics()
+    fetchElectricalMetrics()
+  }, [fetchEV2Metrics, fetchPlantMetrics, fetchElectricalMetrics])
 
   // Refresh EV2 metrics on tab open + every simulator tick (matches tick interval)
   useEffect(() => {
