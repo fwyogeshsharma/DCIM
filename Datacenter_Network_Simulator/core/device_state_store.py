@@ -865,8 +865,28 @@ class DeviceStateStore:
 
     def _cdu_loop_servers(self) -> Dict[str, set]:
         """Map each CDU name → set of server names on its TCS cold-plate loop,
-        built once from the cooling-layer edges. Cached for the run."""
-        if self._cdu_loop_servers_cache is not None:
+        built from the cooling-layer edges.
+
+        Keyed on the device inventory, exactly like _cooling_context and for the
+        same reason. This used to cache UNCONDITIONALLY, and the ticker calls it
+        every tick through _compute_leak_heat — including on a freshly started
+        server, before any topology exists. So it froze at {} and `/topology/upload`
+        never rebuilt it (nothing there invalidates the store; the only caller of
+        invalidate_cooling_context is a device edit).
+
+        Two consequences, both silent for the life of the process:
+          * _leak_heat stays empty, so a CDU coolant leak cannot warm ANY die —
+            the one mechanism in the model that can reach the 90 °C throttle.
+          * _liquid_cooled_servers() is built from this map, so every DLC server
+            reads as AIR-cooled: die = 38 + 0.45·usage instead of 35 + 0.30·usage,
+            and the cold plate's decoupling from room air disappears.
+        Measured live before the fix: a full leak forced on all six DC1 CDUs moved
+        the hottest die 66.7 → 67.5 °C over ten minutes, and the fleet die mean sat
+        on the air-cooled curve.
+        """
+        _sig = len(self._dm.get_all_devices()) if self._dm else 0
+        if (self._cdu_loop_servers_cache is not None
+                and getattr(self, "_cdu_loop_sig", None) == _sig):
             return self._cdu_loop_servers_cache
         from core.device_manager import DeviceType
         out: Dict[str, set] = {}
@@ -885,6 +905,10 @@ class DeviceStateStore:
         except Exception:
             log.exception("[StateStore] CDU loop map build error")
         self._cdu_loop_servers_cache = out
+        self._cdu_loop_sig = _sig
+        # Derived from this map, so it has to be rebuilt on the same signature or
+        # it keeps answering from the inventory that produced the previous one.
+        self._liquid_servers_cache = None
         return out
 
     def fan_floor_rpm(self, device) -> float:
@@ -924,9 +948,14 @@ class DeviceStateStore:
     def _liquid_cooled_servers(self) -> set:
         """Set of all server names sitting on a CDU cold-plate loop (direct-to-
         chip liquid cooling). Cached via the underlying CDU-loop map."""
+        # Resolve the loop map FIRST — it drops this cache when the inventory
+        # signature moves. Checking our own cache before asking would return the
+        # stale set forever, since nothing else clears it, and every DLC server
+        # would keep reading as air-cooled after the topology arrived.
+        loops = self._cdu_loop_servers()
         if self._liquid_servers_cache is None:
-            self._liquid_servers_cache = set().union(*self._cdu_loop_servers().values()) \
-                if self._cdu_loop_servers() else set()
+            self._liquid_servers_cache = (set().union(*loops.values())
+                                          if loops else set())
             # Publish for the dataset generators, which have no store reference but
             # must agree with it on where a server's fan floor sits.
             global _liquid_server_cache
