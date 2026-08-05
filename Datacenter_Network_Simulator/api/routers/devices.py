@@ -1253,7 +1253,11 @@ FAULT_MAP = {
                          "label": "Phase Imbalance",     "types": ["pdu", "floor_pdu"]},
     "pdu_pf_low":       {"override": "pdu_power_factor",   "value": 0.65,
                          "label": "Power Factor Low",    "types": ["pdu", "floor_pdu"]},
-    "pdu_current_high": {"override": "pdu_outlet_current", "value": 34.0,
+    # 38 A on a 32 A rack breaker (~119 %) — decisively an overcurrent. 34 A cleared
+    # the >32 A rule but sat only ~2 A above a metric that drifts ~1.8 A on its own,
+    # so the injected fault was barely separable from the walk. A fault you cannot
+    # tell apart from noise is a poor fault, whatever the rule says.
+    "pdu_current_high": {"override": "pdu_outlet_current", "value": 38.0,
                          "label": "Outlet Current High", "types": ["pdu", "floor_pdu"]},
     "pdu_temp_high":    {"override": "pdu_temperature",    "value": 37.0,
                          "label": "Intake Temp High",    "types": ["pdu", "floor_pdu"]},
