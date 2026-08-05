@@ -499,6 +499,12 @@ class DeviceStateStore:
         self._gen_failed: Set[str] = set()             # generator ids that will NOT start (injected)
         self._gen_conditions: Dict[str, set] = {}      # generator id → active alarm conditions
         self._swgr_conditions: Dict[str, set] = {}     # switchgear id → breaker-trip / bus-fault
+        # PDU id → latching conditions. Only breaker_trip is here: it is the one PDU
+        # fault with a POWER consequence rather than an annunciation, so it has to be
+        # state the energization walk can read. Everything else a PDU raises (outlet
+        # failure, ground fault, smoke, threshold alarms) is a pinned metric handled
+        # through the ordinary override path.
+        self._pdu_conditions: Dict[str, set] = {}
         self._ups_input_live: Dict[str, bool] = {}     # UPS id → rectifier input path live (graph)
         self._broken_power: Set[frozenset] = set()     # power feeders currently open (this tick)
         # Plant units whose MCC is currently de-energized. Distinct from
@@ -1862,6 +1868,43 @@ class DeviceStateStore:
     def get_swgr_conditions(self, swgr_id: str) -> list:
         return sorted(self._swgr_conditions.get(swgr_id, set()))
 
+    def set_pdu_condition(self, pdu_id: str, kind: str, on: bool) -> None:
+        """Raise or clear a latching PDU fault. kind ∈ {breaker_trip}.
+
+        A tripped PDU breaker is not an annunciation, it is a POWER EVENT: the
+        outlets go dead and everything corded to them loses that feed. A dual-corded
+        load rides it on its other PSU; a single-corded one goes down. That is the
+        whole reason to rehearse it, and it is why this is store state the
+        energization walk reads rather than another pinned status metric.
+
+        It LATCHES, like the switchgear main it mirrors — a real branch breaker
+        stays open until somebody physically resets it, so clearing is an explicit
+        operator action and nothing self-heals.
+
+        Modelled at the whole-PDU level, i.e. the input breaker rather than one
+        branch pole. A real rack PDU trips a branch feeding a SUBSET of outlets;
+        representing that faithfully needs per-outlet energization, which the power
+        graph does not carry — cords attach to the PDU. Killing the whole strip is
+        the honest simplification: it overstates the blast radius of a branch trip
+        and exactly matches an input-breaker or feed loss.
+        """
+        conds = self._pdu_conditions.setdefault(pdu_id, set())
+        if on:
+            conds.add(kind)
+        else:
+            conds.discard(kind)
+            if not conds:
+                self._pdu_conditions.pop(pdu_id, None)
+        self.invalidate_power_context()
+        # No trap fired from here, deliberately. trap_rules already carries the
+        # raise/clear pair on pdu_breaker_status (ok <-> tripped) and the pin below
+        # flips that point, so the rule engine annunciates it. Firing one here too
+        # would double-annunciate — and the transfer-trap callback is keyed by an
+        # ATS/switchgear map that has no PDU entry, so it would raise KeyError.
+
+    def get_pdu_conditions(self, pdu_id: str) -> list:
+        return sorted(self._pdu_conditions.get(pdu_id, set()))
+
     def break_power_feed(self, device_id: str, which: str, on: bool) -> None:
         """Open (on) or restore a power feeder into a device. `which`:
           "input"     — every upstream power feeder (a single-source load's only cord,
@@ -2623,6 +2666,17 @@ class DeviceStateStore:
                 _src_live = (any(en.get(p, False) for p in _intact(nid))
                              if full else True)
                 en[nid] = _src_live and not self._swgr_conditions.get(nid)
+            elif dtv in ("pdu", "floor_pdu"):
+                # A tripped PDU breaker takes the strip dead: live only if a feed
+                # above it is live AND its own breaker is closed. Without this the
+                # trip was pure annunciation — status point flips, trap fires, and
+                # every server corded to it carries on drawing from a dead strip.
+                # Dual-corded loads still ride it on their other PSU, which is the
+                # behaviour worth rehearsing; single-corded ones drop.
+                full = parents.get(nid, [])
+                _src_live = (any(en.get(p, False) for p in _intact(nid))
+                             if full else True)
+                en[nid] = _src_live and not self._pdu_conditions.get(nid)
             elif dtv == "ats":
                 # Live only if it is not failed, the transfer sequence has it closed
                 # onto a source, AND that source's switchgear is reachable through an
@@ -6167,6 +6221,13 @@ class DeviceStateStore:
                 elif random.random() < 0.25:
                     st["pdu_breaker_status"] = "ok"
                 st["pdu_breaker_status"] = self._state_lock("pdu_breaker_status", st["pdu_breaker_status"])
+            # An OPERATOR-tripped breaker wins over both the spontaneous walk above
+            # and the type-wide lock, and it does not clear itself — the strip is
+            # de-energized in _compute_energized off this same state, so the point
+            # and the power have to agree. A real branch breaker stays open until
+            # somebody resets it.
+            if "breaker_trip" in self._pdu_conditions.get(device.id, ()):
+                st["pdu_breaker_status"] = "tripped"
 
             if mf["pdu_outlet_failure"]:
                 if st.get("pdu_outlet_failure", "ok") == "ok":

@@ -1217,6 +1217,48 @@ FAULT_MAP = {
                          "types": ["generator"]},
     "gen_over_temp":    {"gencond": "over_temp",      "label": "Temperature Alert",
                          "types": ["generator"]},
+    # PDU conditions. Every PDU trap rule in trap_rules.py is a raise/clear PAIR —
+    # state changes on the status points, thresholds with hysteresis on the numeric
+    # ones — which is the signature of a CONDITION, not a one-shot. Only Load High
+    # was ever wired in, so the Simulate-Fault menu offered one Condition and pushed
+    # the rest into Events, where a breaker trip could not stay tripped.
+    #
+    # Real intelligent PDUs (Raritan PX3, APC AP89xx, Vertiv Geist, ServerTech) hold
+    # these as standing states over SNMP: rising/falling threshold alarms with a
+    # deadband, and latching status points. The genuine one-shots on that gear are
+    # energy-counter resets, config changes and logins — none of which are modelled.
+    #
+    # Breaker trip is the only one with a POWER consequence, so it carries a
+    # "pducond" and is handled through the store's set_pdu_condition path (dead
+    # outlets, downstream de-energized). The rest pin their backing metric exactly
+    # as the UPS conditions do, so the existing raise/clear rules fire.
+    "pdu_breaker_trip": {"pducond": "breaker_trip", "label": "Breaker Trip",
+                         "types": ["pdu", "floor_pdu"]},
+    "pdu_outlet_fail":  {"override": "pdu_outlet_failure", "value": "failed",
+                         "label": "Outlet Failure",     "types": ["pdu", "floor_pdu"]},
+    "pdu_outlet_off":   {"override": "pdu_outlet_status",  "value": "off",
+                         "label": "Outlet Off",         "types": ["pdu", "floor_pdu"]},
+    "pdu_ground_fault": {"override": "pdu_ground_fault",   "value": "yes",
+                         "label": "Ground Fault",       "types": ["pdu", "floor_pdu"]},
+    "pdu_smoke":        {"override": "pdu_smoke",          "value": "yes",
+                         "label": "Smoke Detected",     "types": ["pdu", "floor_pdu"]},
+    # Numeric pins, set clear of the rule thresholds so the alarm latches rather
+    # than chattering on the deadband (rules: >240 / <200 V, >20 % imbalance,
+    # <0.70 PF, >32 A, >35 C, >70 %RH).
+    "pdu_volt_high":    {"override": "pdu_voltage",        "value": 245.0,
+                         "label": "Input Voltage High",  "types": ["pdu", "floor_pdu"]},
+    "pdu_volt_low":     {"override": "pdu_voltage",        "value": 195.0,
+                         "label": "Input Voltage Low",   "types": ["pdu", "floor_pdu"]},
+    "pdu_imbalance":    {"override": "pdu_phase_imbalance","value": 25.0,
+                         "label": "Phase Imbalance",     "types": ["pdu", "floor_pdu"]},
+    "pdu_pf_low":       {"override": "pdu_power_factor",   "value": 0.65,
+                         "label": "Power Factor Low",    "types": ["pdu", "floor_pdu"]},
+    "pdu_current_high": {"override": "pdu_outlet_current", "value": 34.0,
+                         "label": "Outlet Current High", "types": ["pdu", "floor_pdu"]},
+    "pdu_temp_high":    {"override": "pdu_temperature",    "value": 37.0,
+                         "label": "Intake Temp High",    "types": ["pdu", "floor_pdu"]},
+    "pdu_humid_high":   {"override": "pdu_humidity",       "value": 75.0,
+                         "label": "Intake Humidity High", "types": ["pdu", "floor_pdu"]},
     # Switchgear main-breaker trip / bus fault — takes the board dead (ATS loses that
     # source, UPS drops to battery) + fires a protective-relay raise/clear trap.
     "swgr_breaker_trip": {"swgrcond": "breaker_trip", "label": "Main Breaker Trip",
@@ -1286,6 +1328,11 @@ def get_device_faults(device_id: str):
         _sc = set(st.get_swgr_conditions(device_id))
         active += [k for k, v in FAULT_MAP.items()
                    if v.get("swgrcond") in _sc and dtype in v["types"]]
+    # PDU breaker trip — latching, so it has to report as ACTIVE until cleared.
+    if st and dtype in ("pdu", "floor_pdu") and hasattr(st, "get_pdu_conditions"):
+        _pc = set(st.get_pdu_conditions(device_id))
+        active += [k for k, v in FAULT_MAP.items()
+                   if v.get("pducond") in _pc and dtype in v["types"]]
     return {"device": device_id, "available": available, "active": active}
 
 
@@ -1333,8 +1380,15 @@ def set_device_fault(device_id: str, body: FaultRequest):
         st.set_swgr_condition(device_id, spec["swgrcond"], on)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
-    # Override conditions (UPS state alarms) pin the backing ext-state metric via the
-    # same device_overrides path the Metric-Tick panel uses; the rule engine then
+    # PDU breaker trip — latching, and a POWER event rather than an annunciation:
+    # the store de-energizes the strip off this same state, so every load corded to
+    # it loses that feed (a dual-corded server rides it on its other PSU).
+    if "pducond" in spec:
+        st.set_pdu_condition(device_id, spec["pducond"], on)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # Override conditions (UPS/PDU state alarms) pin the backing ext-state metric via
+    # the same device_overrides path the Metric-Tick panel uses; the rule engine then
     # fires the alarm's own raise trap on set and its recovery trap on clear.
     if "override" in spec:
         ov = st.device_overrides
