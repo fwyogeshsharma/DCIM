@@ -342,6 +342,50 @@ def test_a_valve_with_no_position_feedback_reads_shut(tmp_path, plant_cache):
 
 # ── 5. Ceiling ───────────────────────────────────────────────────────────────
 
+def test_a_silently_stopped_tower_bank_costs_rejection(tmp_path, plant_cache):
+    """A cell that simply STOPS must cost the same rejection as one that alarms.
+
+    Tower availability was judged by alarms alone, in TWO independent places —
+    _compute_cond_loop sizing _tower_reject, and _compute_power_flow sizing the
+    running set — and neither knew about a silent stop. So stopping every fan in
+    the bank changed nothing at all: rejection stayed 1.00, the condenser never
+    moved off 26 °C, no high-pressure trip.
+
+    The existing bank test missed it for the same reason the F6 chiller case was
+    missed: it ALARMS the cells. The live campaign stops them silently, which is
+    the failure a BMS has to infer rather than be told about.
+
+    The timer behind this clears only when a cell reports it is TURNING, never when
+    the bank demotes it — clearing on demotion made the condition unreachable, with
+    the bank rotating through the dead cells one tick each forever. Same shape as
+    the run-proof timers that answered "healthy" through a total loss of chilled
+    water."""
+    p = _plant(tmp_path, plant_cache)
+    cond_before = _cond(p)
+    for i in range(1, TRAINS + 1):
+        _stop(plant_cache, f"CT{i}-{DC}-RF", "Fan_Status")
+    _hold(p, 120)
+
+    assert p.store._tower_reject[DC] == 0.0, (
+        f"a stopped bank rejects nothing, got {p.store._tower_reject[DC]}")
+    assert _cond(p) > cond_before + 15.0, (
+        f"the condenser must run away: {cond_before} → {_cond(p)}")
+    assert p.store._chiller_hp_lockout, "lost rejection must latch the HP cutout"
+
+
+def test_a_cycled_off_tower_cell_is_still_available(tmp_path, plant_cache):
+    """The reason availability was judged by alarms in the first place. The bank
+    cycles surplus cells off at low duty and they start on demand, so a healthy
+    plant must not read as short just because cells are idle."""
+    p = _plant(tmp_path, plant_cache)
+    _hold(p, 200)
+
+    assert p.store._tower_reject[DC] == 1.0, "a healthy bank rejects fully"
+    assert p.store._cool_loss_frac.get(DC, 0.0) == 0.0
+    assert not p.store._tower_silent_s, (
+        f"no healthy cell should carry a silent-stop timer: {p.store._tower_silent_s}")
+
+
 def test_runaway_is_bounded_by_the_thermal_ceiling(tmp_path, plant_cache):
     """A runaway integrates upward but stops at equipment-limit territory rather
     than growing without bound, and the chilled-water supply stays capped below
@@ -566,6 +610,33 @@ def test_metered_plant_draw_collapses_with_the_plant(tmp_path, plant_cache):
     after = sum(p.store._plant_power_by_name.values())
     assert after < before * 0.75, (
         f"metered plant draw must follow the surviving plant: {before} → {after}")
+
+
+def test_a_flow_shed_chiller_stops_drawing(tmp_path, plant_cache):
+    """A chiller the evaporator flow switch has shed is not making chilled water,
+    so it must not keep drawing compressor power either.
+
+    `lost_weight` already scores an interlocked chiller as delivering NOTHING, and
+    shedding it is what the flow switch DOES — it stops the compressor. The
+    delivered-capacity collapse originally listed faulted, silent, HP-locked and
+    unpowered units but not this one, so losing every chilled-water pump left the
+    chillers at full draw with zero output. Measured live: cooling ROSE
+    130.2 -> 133.6 kW with all four CHW pumps faulted, which is the F9 defect
+    surviving in the one path its fix did not cover."""
+    p = _plant(tmp_path, plant_cache)
+    before = sum(p.store._plant_power_by_name.values())
+    for i in range(1, TRAINS + 2):          # trains + the header standby
+        _alarm(plant_cache, f"CHWP{i}-{DC}-CP", "Run_Status", "Alarm_Fault")
+    _hold(p)
+
+    assert p.store._chw_flow_interlock, "loss of evaporator flow must shed the chillers"
+    shed = sorted(p.store._chw_flow_interlock)
+    for name in shed:
+        assert p.store._plant_power_by_name.get(name, 0.0) < 20.0, (
+            f"{name} was shed by the flow switch but still draws "
+            f"{p.store._plant_power_by_name.get(name)} kW")
+    assert sum(p.store._plant_power_by_name.values()) < before, (
+        "plant draw must fall when the chillers are shed, not rise")
 
 
 def test_a_covered_fault_costs_the_panel_almost_nothing(tmp_path, plant_cache):
@@ -986,9 +1057,10 @@ def _leaking_loop(tmp_path, plant_cache, tag, ticks=500, load=65.0):
     assert on_loop, "fixture should wire servers onto the CDU cold-plate loop"
     for d in p.dm.get_all_devices():
         if d.name in on_loop:
-            # Both: the override suppresses the random walk (see _pin_value), the
-            # field is what the die model actually reads. Setting only the override
-            # leaves cpu_usage on its start value and the loop never gets busy.
+            # The override alone is sufficient in the real path — _step_device
+            # resolves the pin and writes device.cpu_usage BEFORE the die model
+            # reads it. The field is set here only because these tests drive the
+            # store directly and may assert on load without a step in between.
             p.store.device_overrides.setdefault(d.id, {})["cpu_usage"] = load
             d.cpu_usage = load
     # Loop pressure below the intact 250 kPa sets leak intensity; 140 kPa is a

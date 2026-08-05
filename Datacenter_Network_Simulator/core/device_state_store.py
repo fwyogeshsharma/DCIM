@@ -445,6 +445,11 @@ class DeviceStateStore:
         self._tower_cells: Dict[str, tuple] = {}
         self._tower_reject: Dict[str, float] = {}        # DC → tower rejection capability 0..1
         self._tower_run_hours: Dict[str, float] = {}     # cell name → accrued run hours (rotation)
+        # Cell name → seconds it has been COMMANDED to run while reporting its fan
+        # stopped. The bank is unstaged, so a cycled-off cell is stopped on purpose
+        # and stays available; this separates that from a cell that has genuinely
+        # failed silently, which alarms alone cannot see.
+        self._tower_silent_s: Dict[str, float] = {}
         self._tower_running_now: Dict[str, set] = {}     # DC → cells turning last tick (least-switching)
         # Per-DC installed module count is sized to the fleet server cap so the plant
         # never truly runs out until the cap; recomputed lazily from the live cap.
@@ -2873,9 +2878,36 @@ class DeviceStateStore:
                 # last tick is stopped but perfectly available, so health is judged by
                 # alarms only; _is_faulted would drop it for being off, shrinking the
                 # bank to whatever is currently spinning and oscillating every tick.
-                _towers_ok = [_n for _n in _towers_all
-                              if _n not in self._plant_unpowered_names
-                              and not self._is_alarmed(_n)]
+                # SILENT STOP. Judging availability by alarms alone made a cell that
+                # simply stopped INVISIBLE: stopping every fan in the bank changed
+                # nothing at all — rejection stayed 1.00, the condenser never moved,
+                # no high-pressure trip. That is F6's defect (a stop costs capacity
+                # but announces nothing) surviving in the one place F6's fix
+                # deliberately did not reach, because the bank is unstaged and
+                # _is_faulted would drop every cycled-off cell.
+                #
+                # The discrimination the bank needs is not health, it is INTENT: a
+                # cell the bank cycled off is in _plant_standby_names and is
+                # perfectly available, while a cell the bank COMMANDED to run last
+                # tick and which now reports its fan stopped has failed. One tick of
+                # grace, so a cell promoted this tick — status 0 until it spins up —
+                # is not dropped for existing.
+                # The timer is cleared ONLY by the cell reporting that it is turning —
+                # never by it leaving the commanded set. Clearing on demotion makes
+                # the condition unreachable: with every fan stopped the bank promotes
+                # the next cell, the previous one's timer resets, and it rotates
+                # through the dead cells one tick each, forever. Measured exactly
+                # that: CT1 → CT2 → CT1 …, each flagged for a single tick, rejection
+                # never moving off 1.00. Same shape as the run-proof timers that
+                # answered "healthy" through a total loss of chilled water.
+                _prev_run = self._tower_running_now.get(_dc, set())
+                for _tn in _towers_all:
+                    if not self._run_status_off(_tn):
+                        self._tower_silent_s.pop(_tn, None)     # it is turning
+                    elif _tn in _prev_run or _tn in self._tower_silent_s:
+                        self._tower_silent_s[_tn] = (
+                            self._tower_silent_s.get(_tn, 0.0) + self._dt)
+                _towers_ok = [_n for _n in _towers_all if self._tower_available(_n)]
                 _duty_inst = (itl / 1000.0) / max(1e-6, installed_kw)
                 _demand = tower_cell_demand(_duty_inst, len(_towers_all))
                 _cells_need = tower_cells_needed(_duty_inst, len(_towers_all))
@@ -2893,7 +2925,7 @@ class DeviceStateStore:
                 # are ranked by whole rotation periods of accrued runtime and, within
                 # a period, an already-running cell outranks an idle one. The set then
                 # holds still until a cell has genuinely run a period longer.
-                _prev_run = self._tower_running_now.get(_dc, set())
+                # _prev_run is captured above, before the availability filter needs it.
                 _towers_ok.sort(key=lambda n: (
                     *rotation_rank(self._tower_run_hours.get(n, 0.0),
                                    n in _prev_run, self._TOWER_ROTATE_H), n))
@@ -3165,6 +3197,14 @@ class DeviceStateStore:
                 # model term alone was never enough; the meters it is maxed against
                 # had to follow the plant too.
                 #
+                # The evaporator flow interlock counts here too. lost_weight already
+                # scores a shed chiller as delivering NOTHING, and shedding it is
+                # exactly what the flow switch does — it stops the compressor. Left
+                # out, a chiller shed on loss of evaporator flow kept full draw while
+                # contributing no cooling, which is the F9 defect surviving in a path
+                # the first fix missed. Found by re-running the live campaign: with
+                # every CHW pump faulted, cooling ROSE 130.2 -> 133.6 kW.
+                #
                 # A tripped machine is not electrically dead, so the draw collapses to
                 # an auxiliary floor rather than to zero. An UNPOWERED unit is the one
                 # exception — its MCC really is dead. The surviving plant is untouched,
@@ -3177,7 +3217,8 @@ class DeviceStateStore:
                     if _x in self._plant_unpowered_names:
                         plant_power[_x] = 0.0
                     elif (self._is_faulted(_x) or self._run_unproven(_x)
-                            or _x in self._chiller_hp_lockout):
+                            or _x in self._chiller_hp_lockout
+                            or _x in self._chw_flow_interlock):
                         plant_power[_x] *= self._PLANT_AUX_FRAC
             self._plant_power_by_name = plant_power
             self._plant_cop_by_name = plant_cop
@@ -3561,9 +3602,7 @@ class DeviceStateStore:
                 # spinning: a cell the bank cycled off is idle capacity that can start
                 # on demand. _is_faulted would read every cycled-off cell as lost
                 # rejection and drive a false cooling-degraded state.
-                ok = sum(1 for t in towers
-                         if not self._is_alarmed(t)
-                         and t not in self._plant_unpowered_names)
+                ok = sum(1 for t in towers if self._tower_available(t))
                 _on = self._plant_stage_on.get(dc, 0)
                 _inst = self._plant_installed_mods.get(dc, 0)
                 _duty = (_on / _inst) if _inst else 1.0
@@ -3846,6 +3885,25 @@ class DeviceStateStore:
         factor = 1.0 - depth * (1.0 - self._THROTTLE_FLOOR)
         self._throttled[device.name] = round(factor, 3)
         device.cpu_usage = round(max(0.0, float(device.cpu_usage or 0.0) * factor), 1)
+
+    def _tower_available(self, name: str) -> bool:
+        """Can this cooling-tower cell reject heat if the bank asks it to?
+
+        AVAILABILITY, not whether it happens to be spinning — the bank cycles
+        surplus cells off and they start on demand, so `_is_faulted` would read
+        every cycled-off cell as lost rejection.
+
+        One predicate because this was judged in TWO places — `_compute_cond_loop`
+        sizing `_tower_reject`, and `_compute_power_flow` sizing the running set —
+        and only one of them was ever taught about a silent stop. Stopping every fan
+        in the bank therefore changed nothing at all: rejection stayed 1.00, the
+        condenser never moved, no high-pressure trip. The fixture test missed it
+        because it ALARMS the cells; the live campaign stops them silently, which is
+        the failure a real BMS has to catch on its own.
+        """
+        return (name not in self._plant_unpowered_names
+                and not self._is_alarmed(name)
+                and self._tower_silent_s.get(name, 0.0) < self._dt)
 
     # Cooling-plant health → one status string per machine, worst condition first.
     # Ordered, because a machine can hold several binaries at once and a trap needs
