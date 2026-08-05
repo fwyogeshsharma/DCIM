@@ -5767,7 +5767,16 @@ class DeviceStateStore:
             setv("ups_bypass_status", "off")
         if dt in (DeviceType.PDU, DeviceType.FLOOR_PDU):
             setv("pdu_outlet_status", "on")
-            setv("pdu_breaker_status", "ok")
+            # An OPERATOR-tripped breaker is a MODELLED condition, not a random-walk
+            # artefact, so it survives the scrub — the same exemption ups_status gets
+            # above, and for the same reason. Without it the strip went dead in
+            # _compute_energized while this reset the point to "ok" every tick: a
+            # DCIM saw an unpowered PDU reporting a healthy breaker, and the
+            # ok->tripped rule never fired because the state never changed. The
+            # override-backed PDU conditions do not need this — _apply_ext_overrides
+            # re-pins them after the scrub — but a pducond has no such re-application.
+            if "breaker_trip" not in self._pdu_conditions.get(device.id, ()):
+                setv("pdu_breaker_status", "ok")
             setv("pdu_outlet_failure", "ok")
             setv("pdu_smoke", "no")
             setv("pdu_ground_fault", "no")
