@@ -18,7 +18,7 @@ from api.routers import graph as graph_router
 app = FastAPI(
     title="Datacenter Network Simulator API",
     description="REST API for all simulator actions — SNMP, gNMI, topology, IP binding, rules, traps.",
-    version="5.0.0",
+    version="6.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -83,7 +83,7 @@ if _os.path.isdir(_webui_dist):
 async def root():
     return {
         "name": "Datacenter Network Simulator API",
-        "version": "5.0.0",
+        "version": "6.0.0",
         "docs": "/docs",
         "endpoints": [
             "GET  /api/topology",
