@@ -20,6 +20,13 @@ export const DEVICE_TYPES = [
   { value: 'sensor',        label: 'Sensor' },
 ]
 
+// Passive electrical gear: no monitoring card, so no network port, no IP, no SNMP.
+// A bare RPP is a breaker panel — the only view of its load is the EV2 sub-meter
+// clamped to its output conductors, which is a device of its own. Panels that ship
+// branch-circuit monitoring are modelled as 'mpp' and keep their metering NIC.
+// Mirrors FACILITY_PASSIVE_TYPES in core/device_manager.py.
+export const PASSIVE_DEVICE_TYPES = new Set(['rpp'])
+
 export const VENDORS = [
   'Cisco Systems',
   'Juniper Networks',

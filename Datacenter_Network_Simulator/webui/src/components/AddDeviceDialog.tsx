@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useStore } from '../store/useStore'
-import { DEVICE_TYPES, VENDORS, MODELS } from '../data/deviceConstants'
+import { DEVICE_TYPES, VENDORS, MODELS, PASSIVE_DEVICE_TYPES } from '../data/deviceConstants'
 import NumberInput from './NumberInput'
 
 // port config lines per model name
@@ -147,9 +147,11 @@ const BMC_PORT: Record<string, string> = {
 // Facility / electrical / mechanical gear: no data plane at all, so every port is a
 // monitoring NIC (SNMP/Modbus/BACnet) and the TYPE decides how many — 2 where a
 // redundant/cascade NMC ships (managed PDU, dual-NMC UPS, ATS, switchgear), else 1.
+// Deliberately NOT rpp: that panel is passive and has no card at all (see
+// PASSIVE_DEVICE_TYPES).
 // Mirrors FACILITY_MGMT_TYPES / FACILITY_REDUNDANT_MGMT_TYPES in core/device_manager.py.
 const FACILITY_MGMT_TYPES = new Set([
-  'pdu', 'floor_pdu', 'ups', 'rpp', 'ats', 'mcc', 'mpp', 'switchgear',
+  'pdu', 'floor_pdu', 'ups', 'ats', 'mcc', 'mpp', 'switchgear',
   'utility_feed', 'generator', 'energy_monitor', 'sensor', 'crah', 'chiller',
   'cooling_tower', 'pump', 'valve', 'cdu',
 ])
@@ -216,6 +218,12 @@ function modelsFor(type: string, vendor: string): string[] {
 // with 49.
 function portConfigLines(f: Form): string[] {
   const lines = MODEL_PORTS[f.model_name] || []
+  // A passive panel has no card to network — say so rather than showing "Total: 0",
+  // which reads as a SKU whose ports the dialog failed to look up.
+  if (PASSIVE_DEVICE_TYPES.has(f.device_type)) {
+    return ['Passive panel — no monitoring card',
+            'Total: no network ports (load is metered by its EV2)']
+  }
   // Facility gear ignores the SKU's port line entirely — it has no data plane, and
   // MODEL_PORTS under-counts the redundant-NMC units at 1 port when they ship 2.
   if (FACILITY_MGMT_TYPES.has(f.device_type)) {

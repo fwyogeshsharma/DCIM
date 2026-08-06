@@ -442,13 +442,16 @@ class TopologyBuilder:
 
             # Class prefix (IT vs MECH) distinguishes critical-power panels
             # feeding IT racks from mechanical-power panels feeding plant.
+            # ZERO ports: a bare RPP is breakers on a busbar with no monitoring card,
+            # so it has no Ethernet to give. Device.__post_init__ enforces this too
+            # (FACILITY_PASSIVE_TYPES) — asking for 1 here just got overridden.
             rpp_a = self.add(
                 f"RPP-IT-DC{dc_id}-A{row+1}", DeviceType.RPP, rpp_vendor,
-                1, row_cx - 80, rpp_y, mgmt_only=True,
+                0, row_cx - 80, rpp_y, mgmt_only=True,
             )
             rpp_b = self.add(
                 f"RPP-IT-DC{dc_id}-B{row+1}", DeviceType.RPP, rpp_vendor,
-                1, row_cx + 80, rpp_y, mgmt_only=True,
+                0, row_cx + 80, rpp_y, mgmt_only=True,
             )
             for node in self.nodes:
                 if node["id"] in (rpp_a.id, rpp_b.id):

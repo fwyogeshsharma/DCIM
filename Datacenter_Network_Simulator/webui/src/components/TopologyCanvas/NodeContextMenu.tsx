@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { api, errorMessage } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { DeviceInfo } from '../../api/types'
-import { VENDORS, MODELS, deviceTypeLabel } from '../../data/deviceConstants'
+import { VENDORS, MODELS, deviceTypeLabel, PASSIVE_DEVICE_TYPES } from '../../data/deviceConstants'
 import NumberInput from '../NumberInput'
 import { LAYER_COLOR, LAYER_DEFAULT } from '../../theme'
 
@@ -461,7 +461,7 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
     if (info.os_version && info.os_version !== 'Unknown') rows.push(['Version', info.os_version])
     if (info.ip_address)   rows.push(['Prod IP', info.ip_address])
     if (info.mgmt_ip)      rows.push(['Mgmt IP', info.mgmt_ip])
-    const isPassive = info.device_type === 'rpp'
+    const isPassive = PASSIVE_DEVICE_TYPES.has(info.device_type)
     if (!isPassive) rows.push(['SNMP Port', String(info.snmp_port)])
     if (['router', 'switch'].includes(info.device_type))
       rows.push(['gNMI Port', String(info.gnmi_port)])

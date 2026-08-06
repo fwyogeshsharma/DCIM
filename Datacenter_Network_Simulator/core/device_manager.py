@@ -199,18 +199,36 @@ MGMT_PORT_SPEED = 1_000_000_000   # BMC and switch/router mgmt NICs are 1G throu
 # Mirrors FACILITY_TYPES in tools/set_iface_roles.py, the one-shot that stamped the
 # curated topology, PLUS floor_pdu — that tool's set omits it only because the curated
 # topology contains no floor_pdu to stamp, and a floor PDU is RPP-class distribution
-# gear with a monitoring card exactly like the rpp beside it in this set.
+# gear with a monitoring card. Deliberately NOT rpp, which is passive — see
+# FACILITY_PASSIVE_TYPES below.
 #
 # Type-driven, never name-driven: set_iface_roles.py matched names because a one-shot
 # migration over a fixed, inspected set of files can. At runtime that would drift —
 # vendor conventions differ and a renamed port would silently change role.
 FACILITY_MGMT_TYPES = frozenset({
-    DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.UPS, DeviceType.RPP,
+    DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.UPS,
     DeviceType.ATS, DeviceType.MCC, DeviceType.MPP, DeviceType.SWITCHGEAR,
     DeviceType.UTILITY_FEED, DeviceType.GENERATOR, DeviceType.ENERGY_MONITOR,
     DeviceType.SENSOR, DeviceType.CRAH, DeviceType.CHILLER,
     DeviceType.COOLING_TOWER, DeviceType.PUMP, DeviceType.VALVE, DeviceType.CDU,
 })
+
+
+# Passive electrical gear: NO monitoring card, therefore no Ethernet port at all.
+# A bare RPP (remote power panel / branch panelboard) is breakers on a busbar — a main
+# breaker and 12-42 branch breakers feeding rack PDUs, with no electronics to network.
+# It has no IP, no SNMP agent (see _NO_SNMP_TYPES in core/snmprec_generator.py), and no
+# BACnet/Modbus points; the only way to see its load is the EV2 sub-meter clamped to its
+# output conductors, which is its own device.
+#
+# Panels that DO ship branch-circuit monitoring (Schneider PowerLogic BCPM, Vertiv
+# PowerIT, Packet Power, Starline) are modelled as MPP — that type stays in
+# FACILITY_MGMT_TYPES and keeps its metering NIC on the OOBM plane.
+#
+# This wins over every other port rule: a passive panel gets zero interfaces whatever a
+# saved topology, the model registry, or a caller-supplied interface_count claims.
+# Topologies written before this carry a phantom, uncabled, IP-less eth0 here.
+FACILITY_PASSIVE_TYPES = frozenset({DeviceType.RPP})
 
 
 # Facility gear that ships TWO network management interfaces, for a redundant network
@@ -226,13 +244,15 @@ FACILITY_REDUNDANT_MGMT_TYPES = frozenset({
 
 
 def facility_mgmt_nic_count(device_type: "DeviceType") -> int:
-    """How many monitoring NICs this facility device physically has: 2 for gear with a
-    redundant/cascade NMC, else 1.
+    """How many monitoring NICs this facility device physically has: 0 for passive gear
+    with no card at all, 2 for gear with a redundant/cascade NMC, else 1.
 
     The TYPE decides this, not the model registry — a registry entry describes a data
     fit-out, and this gear has no data plane to describe. It is also why the
     interface_count fallback must not apply here: a caller-supplied 4 would give a CRAH
     four Ethernet ports when it has one BACnet/Modbus card."""
+    if device_type in FACILITY_PASSIVE_TYPES:
+        return 0
     return 2 if device_type in FACILITY_REDUNDANT_MGMT_TYPES else 1
 
 
@@ -1136,7 +1156,18 @@ class Device:
         if (not self.rated_power_w or self.rated_power_w <= 0):
             self.rated_power_w = rated_capacity_w(self.device_type, self.model_name)
         # Normalize interface_groups (str → InterfaceType)
-        if self.interface_groups:
+        if self.device_type in FACILITY_PASSIVE_TYPES:
+            # Passive panel — no monitoring card, so no port. Checked FIRST and it
+            # discards whatever came in: topologies written before this carry a phantom
+            # eth0 (no IP, cabled to nothing, no SNMP dataset generated) that made a
+            # breaker panel look like a pollable network node. mgmt_vlan goes with it —
+            # there is no port to tag.
+            self.interface_groups = []
+            self.interface_count = 0
+            self.interfaces = []
+            self.mgmt_vlan = 0
+            self.metrics_enabled = False
+        elif self.interface_groups:
             normalized = []
             for g in self.interface_groups:
                 itype = g["iface_type"]
