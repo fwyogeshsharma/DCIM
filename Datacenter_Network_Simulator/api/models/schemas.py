@@ -202,11 +202,11 @@ class DeviceInfo(BaseModel):
     # (chiller/pump/cooling tower/valve) and passive panels (RPP) report False
     # instead of advertising a port nothing answers on.
     snmp_agent: bool = True
-    # The port this device's agent is ACTUALLY served on right now, or None when
-    # nothing is listening for it (sim stopped, or no agent at all). snmp_port is
-    # only the configured intent — the sim runs on whatever port was chosen at
-    # start (1611 is normal; 161 needs root), and the two diverge routinely.
-    snmp_effective_port: Optional[int] = None
+    # The addresses that agent answers on (NOS/OS agent + BMC). Static — the UI
+    # intersects it with the live endpoint list from /snmp/status to get the port
+    # actually being served. No live port here on purpose: this payload refreshes
+    # on topology change, so an embedded port would freeze at page-load time.
+    snmp_ips: List[str] = []
     gnmi_port: int
     interface_count: int
     cpu_usage: float

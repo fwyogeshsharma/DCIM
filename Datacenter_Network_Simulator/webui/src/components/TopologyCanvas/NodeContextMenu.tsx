@@ -435,6 +435,7 @@ function ERow({ label, children }: { label: string; children: React.ReactNode })
 
 export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClose: () => void }) {
   const { graphDevices, graphLinks, bacnet } = useStore()
+  const snmpServing = useStore(s => s.snmpServing)
   const [info, setInfo] = useState<DeviceInfo | null>(null)
 
   useEffect(() => {
@@ -467,7 +468,7 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
     // still has no agent, and a served device answers on the sim's port, not its
     // configured one.
     const isPassive = PASSIVE_DEVICE_TYPES.has(info.device_type)
-    const snmp = snmpCell(info)
+    const snmp = snmpCell(info, snmpServing)
     rows.push([snmp.label, snmp.value])
     if (['router', 'switch'].includes(info.device_type))
       rows.push(['gNMI Port', String(info.gnmi_port)])

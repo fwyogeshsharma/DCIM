@@ -8,6 +8,10 @@ import type {
   PlantDeviceSnapshot,
   ElectricalDeviceSnapshot,
 } from '../api/types'
+import { buildSnmpServing, SNMP_NOT_SERVING, type SnmpServing } from '../data/snmpView'
+
+// Last endpoint list seen, joined — see fetchSnmp.
+let _snmpEndpointKey = ''
 
 let _logSeq = 0
 const MAX_LOGS = 2000
@@ -50,6 +54,11 @@ interface Store {
 
   // simulator status
   snmp:    SnmpStatus | null
+  /** Which IPs the SNMP sim is serving, and on what port — derived from
+   *  snmp.active_endpoints on each poll. Identity is kept STABLE while the
+   *  endpoint list is unchanged, so subscribing to it does not re-render the
+   *  device table (or 659 canvas nodes) every 4 s. */
+  snmpServing: SnmpServing
   gnmi:    GnmiStatus | null
   sflow:   SFlowStatus | null
   bacnet:  BacnetStatus | null
@@ -200,6 +209,7 @@ export const useStore = create<Store>((set, get) => ({
   plantMetrics: [],
   electricalMetrics: [],
   snmp:         null,
+  snmpServing:  SNMP_NOT_SERVING,
   gnmi:         null,
   sflow:        null,
   bacnet:       null,
@@ -400,7 +410,19 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   fetchSnmp: async () => {
-    try { set({ snmp: await fetchWithAbort<SnmpStatus>('/snmp/status') }) } catch { /* ignore */ }
+    try {
+      const status = await fetchWithAbort<SnmpStatus>('/snmp/status')
+      // Rebuild the served-IP set only when the endpoint list actually changed.
+      // A fresh Set every 4 s would break reference equality for every consumer
+      // and re-render the whole device table on each poll.
+      const key = (status?.active_endpoints ?? []).join('|')
+      if (key !== _snmpEndpointKey) {
+        _snmpEndpointKey = key
+        set({ snmp: status, snmpServing: buildSnmpServing(status?.active_endpoints) })
+      } else {
+        set({ snmp: status })
+      }
+    } catch { /* ignore */ }
   },
 
   fetchGnmi: async () => {

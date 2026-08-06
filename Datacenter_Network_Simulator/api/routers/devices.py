@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from api.state import AppState
 from core.device_state_store import _get_ext_state
 from core.redfish_data_generator import _live_watts
-from api.routers._snmp_view import snmp_facts
+from api.routers._snmp_view import snmp_agent_ips
 from api.models.schemas import (
     DeviceInfo,
     IfaceStats,
@@ -128,7 +128,7 @@ def _device_to_info(device) -> DeviceInfo:
     ext = _get_ext_state(device.name)
     dt  = device.device_type.value
     sessions = ext.get("bgp_sessions", [])
-    has_snmp, snmp_live_port = snmp_facts(device)
+    snmp_ips = snmp_agent_ips(device)
     return DeviceInfo(
         id=device.id,
         name=device.name,
@@ -137,8 +137,8 @@ def _device_to_info(device) -> DeviceInfo:
         ip_address=device.ip_address,
         mgmt_ip=getattr(device, "mgmt_ip", None),
         snmp_port=device.snmp_port,
-        snmp_agent=has_snmp,
-        snmp_effective_port=snmp_live_port,
+        snmp_agent=bool(snmp_ips),
+        snmp_ips=snmp_ips,
         gnmi_port=device.gnmi_port,
         interface_count=device.interface_count,
         cpu_usage=getattr(device, "cpu_usage", 0.0),

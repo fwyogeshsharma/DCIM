@@ -35,7 +35,7 @@ export interface DeviceNodeData {
   os_version?: string
   snmp_port?: number
   snmp_agent?: boolean
-  snmp_effective_port?: number | null
+  snmp_ips?: string[]
   gnmi_port?: number
   bacnet_instance?: number
   activeLayer?: string
@@ -86,7 +86,10 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   if (d.mgmt_ip)    rows.push(['Mgmt IP', d.mgmt_ip])
   // Not the configured field: a chiller has no agent at all, and a served device
   // answers on the port the sim was started on (1611), not on its stored 161.
-  const snmp = snmpCell(d)
+  // Read at render time via getState() rather than subscribing — a subscription
+  // here would re-render every node on the canvas whenever the sim is started or
+  // stopped, and the tooltip is rebuilt on hover anyway.
+  const snmp = snmpCell(d, useStore.getState().snmpServing)
   rows.push([snmp.label, snmp.value])
   if (['router', 'switch'].includes(d.device_type))
     rows.push(['gNMI Port', String(d.gnmi_port ?? 57400)])

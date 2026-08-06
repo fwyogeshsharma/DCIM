@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore'
 import type { DeviceInfo } from '../api/types'
 import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './TopologyCanvas/NodeContextMenu'
 import { nodeColor, nodeInk } from '../theme'
-import { snmpCell, snmpSortValue } from '../data/snmpView'
+import { snmpCell, snmpSortValue, SNMP_NOT_SERVING, type SnmpServing } from '../data/snmpView'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 900
@@ -39,9 +39,10 @@ const COLUMNS: { key: SortKey; label: string; width?: number; align?: 'right' }[
   { key: 'sys_location',    label: 'Location',   width: 180 },
 ]
 
-function compareDevices(a: DeviceInfo, b: DeviceInfo, key: SortKey, dir: SortDir): number {
+function compareDevices(a: DeviceInfo, b: DeviceInfo, key: SortKey, dir: SortDir,
+                        serving: SnmpServing = SNMP_NOT_SERVING): number {
   if (key === 'snmp_port') {
-    const cmp = snmpSortValue(a) - snmpSortValue(b)
+    const cmp = snmpSortValue(a, serving) - snmpSortValue(b, serving)
     return dir === 'asc' ? cmp : -cmp
   }
   const av = a[key], bv = b[key]
@@ -69,6 +70,9 @@ const IconSearch = () => (
 
 export default function DeviceList() {
   const { devices, selectedDeviceId, setSelectedDevice, focusNode } = useStore()
+  // Live SNMP serving state. Its identity only changes when the endpoint list
+  // does (see fetchSnmp), so this does not re-render the table on every poll.
+  const snmpServing = useStore(s => s.snmpServing)
   // Right-click context menu — reuses the topology-canvas NodeContextMenu so the
   // device list offers the same actions (Edit / Remove / Show Info / Simulate Fault)
   // as the graph, instead of falling through to the native browser menu.
@@ -138,11 +142,11 @@ export default function DeviceList() {
         // Match the port the cell actually shows. Searching "161" against a device
         // whose cell reads '—' (no agent) or '1611' returns a row with no visible
         // match, which reads as a broken filter.
-        snmpCell(d).text.includes(query)
+        snmpCell(d, snmpServing).text.includes(query)
       )
     }
-    return [...list].sort((a, b) => compareDevices(a, b, sortKey, sortDir))
-  }, [devices, q, typeFilt, sortKey, sortDir])
+    return [...list].sort((a, b) => compareDevices(a, b, sortKey, sortDir, snmpServing))
+  }, [devices, q, typeFilt, sortKey, sortDir, snmpServing])
 
   function clickHeader(k: SortKey) {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -292,7 +296,7 @@ export default function DeviceList() {
                       absent mgmt IP; agent but nothing bound → the configured port,
                       dimmed, so it never reads as pollable. */}
                   {(() => {
-                    const snmp = snmpCell(d)
+                    const snmp = snmpCell(d, snmpServing)
                     return (
                       <td className={snmp.live ? 'mono right' : 'mono right muted'} title={snmp.title}>
                         {snmp.text}
