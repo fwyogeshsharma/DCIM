@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore'
 import type { DeviceInfo } from '../api/types'
 import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './TopologyCanvas/NodeContextMenu'
 import { nodeColor, nodeInk } from '../theme'
+import { PASSIVE_DEVICE_TYPES } from '../data/deviceConstants'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 900
@@ -130,7 +131,9 @@ export default function DeviceList() {
         d.device_type.includes(query) ||
         (d.vendor || '').toLowerCase().includes(query) ||
         (d.sys_location || '').toLowerCase().includes(query) ||
-        String(d.snmp_port).includes(query)
+        // Not on a passive panel: its SNMP cell renders '—', so matching "161"
+        // against a port nothing listens on would return a row that shows no match.
+        (!PASSIVE_DEVICE_TYPES.has(d.device_type) && String(d.snmp_port).includes(query))
       )
     }
     return [...list].sort((a, b) => compareDevices(a, b, sortKey, sortDir))
@@ -280,7 +283,11 @@ export default function DeviceList() {
                   <td className="mono" title={d.mgmt_ip || ''}>{d.mgmt_ip || '—'}</td>
                   <td className="mono" title={d.ip_address}>{d.ip_address}</td>
                   <td className="mono right">{d.interface_count}</td>
-                  <td className="mono right">{d.snmp_port}</td>
+                  {/* A passive panel has no agent listening anywhere, so printing 161
+                      here reads as pollable. Dash it, the same as an absent mgmt IP. */}
+                  <td className="mono right">
+                    {PASSIVE_DEVICE_TYPES.has(d.device_type) ? '—' : d.snmp_port}
+                  </td>
                   <td className="muted" title={d.sys_location || ''}>{d.sys_location || '—'}</td>
                 </tr>
               )

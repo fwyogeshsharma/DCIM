@@ -1167,6 +1167,14 @@ class Device:
             self.interfaces = []
             self.mgmt_vlan = 0
             self.metrics_enabled = False
+            # Addresses go too. Without this a caller could hand a breaker panel an IP
+            # and an SNMP port it has no card to answer on — the device would then read
+            # as pollable in every list and inspector while no agent exists at that
+            # address (RPP is in _NO_SNMP_TYPES, so no dataset is ever written for it).
+            # snmp_port 0 is the honest value: not "the default port", but no port.
+            self.ip_address = ""
+            self.mgmt_ip = ""
+            self.snmp_port = 0
         elif self.interface_groups:
             normalized = []
             for g in self.interface_groups:

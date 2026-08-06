@@ -450,6 +450,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
   const availableModels  = useMemo(() => modelsFor(form.device_type, form.vendor), [form.device_type, form.vendor])
   const sysLocation      = useMemo(() => buildSysLocation(form), [form])
   const showProdIp       = PROD_IP_TYPES.has(form.device_type)
+  const isPassive        = PASSIVE_DEVICE_TYPES.has(form.device_type)
 
   // ── Cascading, capacity-aware location picker ───────────────────────────────
   // Country → City → Datacenter come from the inventory (distinct, cascading).
@@ -775,6 +776,12 @@ export default function AddDeviceDialog({ onClose }: Props) {
           </FormRow>
 
           {/* ── Network Settings ── */}
+          {/* A passive panel has no card to address, so the whole section is a dead
+              control: the server clears mgmt_ip/snmp_port on create (see
+              FACILITY_PASSIVE_TYPES in core/device_manager.py). Offering the inputs
+              invited an operator to assign an address to gear that can never answer
+              it, and then silently discarded what they typed. */}
+          {!isPassive && (<>
           <div style={sectionHeader}>Network Settings</div>
           {showProdIp && (
             <FormRow label="Production IP *">
@@ -801,6 +808,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
             <input style={{ flex: 1, color: 'var(--text-muted)', fontStyle: 'italic' }}
               value="" readOnly placeholder="auto (mirrors IP address)" />
           </FormRow>
+          </>)}
 
           {/* ── Physical Location (cascading, capacity-aware) ── */}
           <div style={sectionHeader}>Physical Location</div>
@@ -1122,6 +1130,10 @@ export default function AddDeviceDialog({ onClose }: Props) {
               }
             </div>
           </FormRow>
+          {/* Nothing polls a passive panel, so there are no metrics to simulate — the
+              server forces metrics_enabled false on create. The checkbox rendered
+              ticked and did nothing. */}
+          {!isPassive && (
           <FormRow label="">
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: 'var(--text-muted)' }}>
               <input
@@ -1133,6 +1145,7 @@ export default function AddDeviceDialog({ onClose }: Props) {
               Enable metric simulation
             </label>
           </FormRow>
+          )}
 
           {err && <div style={{ color: 'var(--red)', fontSize: 10, marginTop: 6 }}>{err}</div>}
         </div>
