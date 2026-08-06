@@ -126,6 +126,7 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
     raise write_exc or last_rename_exc
 
 from core import dataset_fingerprint as _fingerprint
+from core import vendor_oids as _vendor_oids
 from core.device_manager import Device, DeviceType, Vendor, SERVER_OS_INFO
 from core.lldp_generator import (generate_lldp_entries, generate_cdp_entries,
                                   LLDP_BASE, CDP_BASE)
@@ -899,6 +900,7 @@ class SNMPRecGenerator:
                 except Exception:
                     pass
                 _PDU_ENT = "1.3.6.1.4.1.99999.5"
+                _pdu_vendor = _vendor_oids.vendor_key(device.vendor)
                 pdu_load = int(ext.get("pdu_load", 45.0))
                 pdu_volt = int(ext.get("pdu_voltage", 220.0))
                 pdu_pf   = int(round(ext.get("pdu_power_factor", 0.95) * 100))
@@ -909,16 +911,21 @@ class SNMPRecGenerator:
                 pdu_smk  = 1 if ext.get("pdu_smoke", "no") == "no" else 2
                 pdu_cur  = int(round(ext.get("pdu_outlet_current", 10.0) * 10))
                 pdu_gf   = 1 if ext.get("pdu_ground_fault", "no") == "no" else 2
-                updates[f"{_PDU_ENT}.1.0"]  = ("2", str(pdu_load))
-                updates[f"{_PDU_ENT}.2.0"]  = ("2", str(pdu_volt))
-                updates[f"{_PDU_ENT}.3.0"]  = ("2", str(pdu_pf))
-                updates[f"{_PDU_ENT}.4.0"]  = ("2", str(pdu_pi))
-                updates[f"{_PDU_ENT}.5.0"]  = ("2", str(pdu_out))
-                updates[f"{_PDU_ENT}.6.0"]  = ("2", str(pdu_brk))
-                updates[f"{_PDU_ENT}.7.0"]  = ("2", str(pdu_of))
-                updates[f"{_PDU_ENT}.8.0"]  = ("2", str(pdu_smk))
-                updates[f"{_PDU_ENT}.9.0"]  = ("2", str(pdu_cur))
-                updates[f"{_PDU_ENT}.10.0"] = ("2", str(pdu_gf))
+                # Vendors with a verified MIB publish on their own tree instead
+                # (below); a device that says "APC Rack PDU 2G" in sysDescr must
+                # not also answer on a placeholder enterprise tree.
+                _pdu_native = _pdu_vendor in ("apc", "raritan")
+                if not _pdu_native:
+                    updates[f"{_PDU_ENT}.1.0"]  = ("2", str(pdu_load))
+                    updates[f"{_PDU_ENT}.2.0"]  = ("2", str(pdu_volt))
+                    updates[f"{_PDU_ENT}.3.0"]  = ("2", str(pdu_pf))
+                    updates[f"{_PDU_ENT}.4.0"]  = ("2", str(pdu_pi))
+                    updates[f"{_PDU_ENT}.5.0"]  = ("2", str(pdu_out))
+                    updates[f"{_PDU_ENT}.6.0"]  = ("2", str(pdu_brk))
+                    updates[f"{_PDU_ENT}.7.0"]  = ("2", str(pdu_of))
+                    updates[f"{_PDU_ENT}.8.0"]  = ("2", str(pdu_smk))
+                    updates[f"{_PDU_ENT}.9.0"]  = ("2", str(pdu_cur))
+                    updates[f"{_PDU_ENT}.10.0"] = ("2", str(pdu_gf))
                 # Derived power metrics
                 pdu_real_w    = int(round(pdu_volt * ext.get("pdu_outlet_current", 10.0) * ext.get("pdu_power_factor", 0.95)))
                 pdu_appar_va  = int(round(pdu_volt * ext.get("pdu_outlet_current", 10.0)))
@@ -927,13 +934,77 @@ class SNMPRecGenerator:
                 pdu_freq_x10  = int(round(ext.get("pdu_frequency", 50.0) * 10))
                 pdu_temp_x10  = int(round(ext.get("pdu_temperature", 23.0) * 10))
                 pdu_hum_x10   = int(round(ext.get("pdu_humidity", 45.0) * 10))
-                updates[f"{_PDU_ENT}.11.0"] = ("2", str(pdu_real_w))
-                updates[f"{_PDU_ENT}.12.0"] = ("2", str(pdu_appar_va))
-                updates[f"{_PDU_ENT}.13.0"] = ("2", str(pdu_energy_x10))
-                updates[f"{_PDU_ENT}.14.0"] = ("2", str(pdu_freq_x10))
-                updates[f"{_PDU_ENT}.15.0"] = ("2", str(pdu_temp_x10))
-                updates[f"{_PDU_ENT}.16.0"] = ("2", str(pdu_hum_x10))
-                updates[f"{_PDU_ENT}.17.0"] = ("2", str(pdu_outlet_w))
+                if not _pdu_native:
+                    updates[f"{_PDU_ENT}.11.0"] = ("2", str(pdu_real_w))
+                    updates[f"{_PDU_ENT}.12.0"] = ("2", str(pdu_appar_va))
+                    updates[f"{_PDU_ENT}.13.0"] = ("2", str(pdu_energy_x10))
+                    updates[f"{_PDU_ENT}.14.0"] = ("2", str(pdu_freq_x10))
+                    updates[f"{_PDU_ENT}.15.0"] = ("2", str(pdu_temp_x10))
+                    updates[f"{_PDU_ENT}.16.0"] = ("2", str(pdu_hum_x10))
+                    updates[f"{_PDU_ENT}.17.0"] = ("2", str(pdu_outlet_w))
+
+                # The same live numbers, published where the vendor's own MIB
+                # says they live: PowerNet-MIB rPDU2 tables for APC, PDU2-MIB
+                # measurement tables for Raritan.
+                _pdu_amps = float(ext.get("pdu_outlet_current", 10.0))
+                if _pdu_vendor == "apc":
+                    A = _vendor_oids.APC
+                    # rPDU2 units: power/apparent power in hundredths of kW/kVA,
+                    # current in tenths of an amp, energy in tenths of a kWh,
+                    # power factor in hundredths. Load state is
+                    # lowLoad(1)/normal(2)/nearOverload(3)/overload(4).
+                    _load_state = (4 if pdu_load >= 90 else
+                                   3 if pdu_load >= 80 else
+                                   1 if pdu_load < 10 else 2)
+                    updates[f"{A['rpdu2Power']}.1"]        = ("2", str(int(round(pdu_real_w / 10.0))))
+                    updates[f"{A['rpdu2ApparentPwr']}.1"]  = ("2", str(int(round(pdu_appar_va / 10.0))))
+                    updates[f"{A['rpdu2PowerFactor']}.1"]  = ("2", str(pdu_pf))
+                    updates[f"{A['rpdu2Energy']}.1"]       = ("2", str(pdu_energy_x10))
+                    updates[f"{A['rpdu2LoadState']}.1"]    = ("2", str(_load_state))
+                    updates[f"{A['rpdu2PhaseCurrent']}.1"] = ("2", str(int(round(_pdu_amps * 10))))
+                    updates[f"{A['rpdu2PhaseVoltage']}.1"] = ("2", str(pdu_volt))
+                    updates[f"{A['rpdu2PhaseState']}.1"]   = ("2", str(_load_state))
+                    # A tripped bank breaker reads as an overload bank state —
+                    # PowerNet has no separate "breaker open" object.
+                    updates[f"{A['rpdu2BankState']}.1"]    = ("2", "4" if pdu_brk != 1 else str(_load_state))
+                    updates[f"{A['rpdu2BankCurrent']}.1"]  = ("2", str(int(round(_pdu_amps * 10))))
+                    updates[f"{A['rpdu2OutletState']}.1"]  = ("2", "1" if pdu_out == 1 else "2")
+                    updates[f"{A['rpdu2SensorTempC']}.1"]  = ("2", str(pdu_temp_x10))
+                    updates[f"{A['rpdu2SensorHumid']}.1"]  = ("2", str(int(round(pdu_hum_x10 / 10))))
+                elif _pdu_vendor == "raritan":
+                    R  = _vendor_oids.RARITAN
+                    ST = _vendor_oids.RARITAN_SENSOR_TYPE
+                    SS = _vendor_oids.RARITAN_SENSOR_STATE
+                    # PDU2-MIB indexes measurements as [pduId][inletId][sensorType]
+                    # and scales every reading by that sensor's decimalDigits, so
+                    # both are published together.
+                    _state = (SS["aboveUpperCritical"] if pdu_load >= 90 else
+                              SS["aboveUpperWarning"] if pdu_load >= 80 else SS["normal"])
+                    _inlet = {
+                        ST["current"]:       (int(round(_pdu_amps * 1000)), 3),   # mA
+                        ST["voltage"]:       (int(round(pdu_volt * 1000)), 3),    # mV
+                        ST["activePower"]:   (pdu_real_w, 0),                     # W
+                        ST["apparentPower"]: (pdu_appar_va, 0),                   # VA
+                        ST["powerFactor"]:   (pdu_pf, 2),                         # 0.00–1.00
+                        ST["activeEnergy"]:  (int(round(pdu_energy_x10 * 100)), 0),# Wh
+                        ST["frequency"]:     (pdu_freq_x10, 1),                   # Hz
+                    }
+                    for _stype, (_val, _dec) in _inlet.items():
+                        updates[f"{R['inletValue']}.1.1.{_stype}"]    = ("66", str(max(0, _val)))
+                        updates[f"{R['inletState']}.1.1.{_stype}"]    = ("2",  str(_state))
+                        updates[f"{R['inletDecimals']}.1.1.{_stype}"] = ("66", str(_dec))
+                    updates[f"{R['outletValue']}.1.1.{ST['current']}"] = ("66", str(int(round(_pdu_amps * 1000))))
+                    updates[f"{R['outletState']}.1.1.{ST['onOff']}"]   = ("2", str(SS["on"] if pdu_out == 1 else SS["off"]))
+                    updates[f"{R['ocpState']}.1.1.{ST['trip']}"]       = ("2", str(SS["open"] if pdu_brk != 1 else SS["closed"]))
+                    # DPX2 temperature/humidity probes on the PDU's sensor port
+                    updates[f"{R['externalValue']}.1.1"]    = ("66", str(pdu_temp_x10))
+                    updates[f"{R['externalState']}.1.1"]    = ("2",  str(SS["normal"]))
+                    updates[f"{R['externalDecimals']}.1.1"] = ("66", "1")
+                    updates[f"{R['externalType']}.1.1"]     = ("2",  str(ST["temperature"]))
+                    updates[f"{R['externalValue']}.1.2"]    = ("66", str(pdu_hum_x10))
+                    updates[f"{R['externalState']}.1.2"]    = ("2",  str(SS["normal"]))
+                    updates[f"{R['externalDecimals']}.1.2"] = ("66", "1")
+                    updates[f"{R['externalType']}.1.2"]     = ("2",  str(ST["humidity"]))
                 # Store outlet status for per-outlet table update below
                 _pdu_ol_out = pdu_out
 
@@ -1509,9 +1580,70 @@ class SNMPRecGenerator:
     # ------------------------------------------------------------------ #
 
     def _pdu_entries(self, device: Device) -> List[OidEntry]:
-        """Enterprise PDU status OIDs for PDU/floor_pdu devices."""
+        """PDU status OIDs for PDU/floor_pdu devices.
+
+        APC and Raritan units seed their own MIB's tables (PowerNet rPDU2 /
+        PDU2-MIB measurements) — those are the OIDs a real NMS walks, and the
+        live patch path in _apply_live_state writes the same rows. Only PDU
+        vendors with no verified MIB fall back to the simulator's placeholder
+        enterprise tree.
+        """
         entries: List[OidEntry] = []
         _PDU_ENT = "1.3.6.1.4.1.99999.5"
+        vkey = _vendor_oids.vendor_key(device.vendor)
+        if vkey == "apc":
+            A = _vendor_oids.APC
+            return [
+                _oid_entry(f"{A['rpdu2Power']}.1",        "2", "209"),  # 2.09 kW ×100
+                _oid_entry(f"{A['rpdu2ApparentPwr']}.1",  "2", "220"),  # 2.20 kVA ×100
+                _oid_entry(f"{A['rpdu2PowerFactor']}.1",  "2", "95"),   # 0.95 ×100
+                _oid_entry(f"{A['rpdu2Energy']}.1",       "2", "0"),    # kWh ×10
+                _oid_entry(f"{A['rpdu2LoadState']}.1",    "2", "2"),    # normal
+                _oid_entry(f"{A['rpdu2PhaseCurrent']}.1", "2", "100"),  # 10.0 A ×10
+                _oid_entry(f"{A['rpdu2PhaseVoltage']}.1", "2", "220"),
+                _oid_entry(f"{A['rpdu2PhaseState']}.1",   "2", "2"),
+                _oid_entry(f"{A['rpdu2BankState']}.1",    "2", "2"),
+                _oid_entry(f"{A['rpdu2BankCurrent']}.1",  "2", "100"),
+                _oid_entry(f"{A['rpdu2OutletState']}.1",  "2", "1"),    # on
+                _oid_entry(f"{A['rpdu2SensorTempC']}.1",  "2", "230"),  # 23.0 °C ×10
+                _oid_entry(f"{A['rpdu2SensorHumid']}.1",  "2", "45"),   # %
+                _oid_entry(f"{A['identName']}.0",         "4", device.name),
+                _oid_entry(f"{A['identSerial']}.0",       "4", f"SN-{device.name}"),
+            ]
+        if vkey == "raritan":
+            R  = _vendor_oids.RARITAN
+            ST = _vendor_oids.RARITAN_SENSOR_TYPE
+            SS = _vendor_oids.RARITAN_SENSOR_STATE
+            seed = {
+                ST["current"]:       ("10000", 3), ST["voltage"]:      ("220000", 3),
+                ST["activePower"]:   ("2090", 0),  ST["apparentPower"]: ("2200", 0),
+                ST["powerFactor"]:   ("95", 2),    ST["activeEnergy"]:  ("0", 0),
+                ST["frequency"]:     ("500", 1),
+            }
+            rows: List[OidEntry] = []
+            for stype, (val, dec) in seed.items():
+                rows += [
+                    _oid_entry(f"{R['inletValue']}.1.1.{stype}",    "66", val),
+                    _oid_entry(f"{R['inletState']}.1.1.{stype}",    "2",  str(SS["normal"])),
+                    _oid_entry(f"{R['inletDecimals']}.1.1.{stype}", "66", str(dec)),
+                ]
+            rows += [
+                _oid_entry(f"{R['outletValue']}.1.1.{ST['current']}", "66", "10000"),
+                _oid_entry(f"{R['outletState']}.1.1.{ST['onOff']}",   "2",  str(SS["on"])),
+                _oid_entry(f"{R['ocpState']}.1.1.{ST['trip']}",       "2",  str(SS["closed"])),
+                _oid_entry(f"{R['externalValue']}.1.1",    "66", "230"),
+                _oid_entry(f"{R['externalState']}.1.1",    "2",  str(SS["normal"])),
+                _oid_entry(f"{R['externalDecimals']}.1.1", "66", "1"),
+                _oid_entry(f"{R['externalType']}.1.1",     "2",  str(ST["temperature"])),
+                _oid_entry(f"{R['externalValue']}.1.2",    "66", "450"),
+                _oid_entry(f"{R['externalState']}.1.2",    "2",  str(SS["normal"])),
+                _oid_entry(f"{R['externalDecimals']}.1.2", "66", "1"),
+                _oid_entry(f"{R['externalType']}.1.2",     "2",  str(ST["humidity"])),
+                _oid_entry(f"{R['pduName']}.1",   "4", device.name),
+                _oid_entry(f"{R['pduModel']}.1",  "4", getattr(device, "model_name", "") or "PX3"),
+                _oid_entry(f"{R['pduSerial']}.1", "4", f"SN-{device.name}"),
+            ]
+            return rows
         entries += [
             _oid_entry(f"{_PDU_ENT}.1.0",  "2",  "45"),   # pduLoadPercent %
             _oid_entry(f"{_PDU_ENT}.2.0",  "2",  "220"),  # pduVoltage V

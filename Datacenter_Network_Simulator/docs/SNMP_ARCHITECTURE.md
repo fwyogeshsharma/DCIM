@@ -263,9 +263,45 @@ independent of host uptime.
 
 ---
 
-## 6. Power & cooling enterprise MIBs (base `1.3.6.1.4.1.99999`)
+## 6. Power & cooling enterprise MIBs
 
-The project enterprise subtree is **`1.3.6.1.4.1.99999`**. Status branches:
+### 6.0 Vendor PENs vs. the placeholder tree
+
+`1.3.6.1.4.1.99999` is **not** a registered PEN. Where a vendor's MIB has been
+verified, devices now publish and trap on that vendor's real IANA PEN instead —
+see `core/vendor_oids.py`, which is the single registry for both:
+
+| Vendor | PEN | Used for |
+|---|---|---|
+| APC by Schneider Electric | 318 | rack/floor PDU + RPP: `rPDU2` tables, `rPDU*` traps |
+| Raritan (and Server Technology) | 13742 | rack PDU: `pdu2` measurement tables, `*SensorStateChange` traps |
+| Vertiv (Liebert) | 476 | UPS, CRAH, Liebert probes: `lgpEvent*` notifications |
+| Cisco Systems | 9 | CPU (`cpmCPU*`), environment (`ciscoEnvMon*`) |
+| Dell Technologies | 674 | iDRAC alerts `674.10892.5.3.2.x` |
+| HPE | 232 | Insight `cpqHeThermal*` traps |
+| Lenovo | 19046 | XCC `lenovoSpTrap*` |
+| Supermicro / IBM | 3183 | IPMI Platform Event Traps (PET) |
+| Eaton | 534 | ePDU notifications |
+| F5 Networks | 3375 | BIG-IP chassis/CPU temperature traps |
+
+A trap's OID therefore depends on the **sending device's vendor**: the same
+over-current is `rPDUOverload` (318.0.276) from an APC unit and
+`overCurrentProtectorSensorStateChange` (13742.6.0.65) from a Raritan one.
+Varbinds follow the vendor's MIB too, since a vendor OID carrying simulator
+varbinds is still undecodable.
+
+**What deliberately stays on `99999`** — chillers, cooling towers, pumps,
+valves, gensets, ATS/switchgear/MCC/MPP (BACnet or Modbus in production, no SNMP
+agent at all), Palo Alto and Dell-switch notifications (PEN known, leaves not
+verified), and the simulator's own SET/asset control tree at `99999.3/.4`.
+Inventing a leaf under a real PEN would be worse than an obviously synthetic
+one: an NMS with the genuine MIB loaded would mis-resolve it rather than simply
+not knowing it.
+
+### 6.0.1 Project placeholder subtree
+
+The remaining project enterprise subtree is **`1.3.6.1.4.1.99999`**. Status
+branches:
 
 | Branch | Owner |
 |---|---|
@@ -295,7 +331,37 @@ The project enterprise subtree is **`1.3.6.1.4.1.99999`**. Status branches:
 | `99999.4.9.0` | apparent power VA | ✔ |
 | `99999.4.10.0` | energy out kWh ×10 | ✔ |
 
-### 6.2 PDU / Floor PDU — enterprise `1.3.6.1.4.1.99999.5`
+### 6.2 PDU / Floor PDU
+
+**APC units (PEN 318)** publish PowerNet `rPDU2` objects, indexed `.1`:
+
+| OID | Metric |
+|---|---|
+| `318.1.1.26.4.3.1.5.1` | `rPDU2DeviceStatusPower` — kW ×100 |
+| `318.1.1.26.4.3.1.4.1` | `rPDU2DeviceStatusLoadState` — lowLoad(1)/normal(2)/nearOverload(3)/overload(4) |
+| `318.1.1.26.4.3.1.17.1` | `rPDU2DeviceStatusPowerFactor` ×100 |
+| `318.1.1.26.4.3.1.9.1` | `rPDU2DeviceStatusEnergy` — kWh ×10 |
+| `318.1.1.26.6.3.1.5/.6.1` | phase current ×10 A / voltage V |
+| `318.1.1.26.8.3.1.4/.5.1` | bank load state (a trip reads as `overload`) / bank current ×10 A |
+| `318.1.1.26.9.2.3.1.5.1` | outlet switched state — on(1)/off(2) |
+| `318.1.1.26.10.2.2.1.8/.10.1` | probe temp °C ×10 / relative humidity % |
+
+**Raritan units (PEN 13742)** publish PDU2-MIB measurements, indexed
+`[pduId][inletId][sensorType]`, each with its `…DecimalDigits` scaling row:
+
+| OID | Metric |
+|---|---|
+| `13742.6.5.2.3.1.4.1.1.{1,4,5,6,7,8,23}` | inlet current mA / voltage mV / W / VA / PF ×100 / Wh / Hz ×10 |
+| `13742.6.5.2.3.1.3.1.1.{type}` | inlet sensor state (`normal(4)`, `aboveUpperWarning(5)`, `aboveUpperCritical(6)`) |
+| `13742.6.3.3.4.1.7.1.1.{type}` | `inletSensorDecimalDigits` — required to scale the reading |
+| `13742.6.5.4.3.1.{3,4}.1.1.{type}` | outlet state / value |
+| `13742.6.5.3.3.1.3.1.1.15` | over-current protector state — `open(0)` when tripped |
+| `13742.6.5.5.3.1.4.1.{1,2}` | DPX2 probe temp ×10 / humidity ×10 |
+
+Only PDU vendors with **no** verified MIB fall back to the placeholder tree
+below — with the current fleet (APC + Raritan) nothing does.
+
+#### 6.2.1 Placeholder PDU tree — enterprise `1.3.6.1.4.1.99999.5`
 
 | OID | Metric | OID | Metric |
 |---|---|---|---|
@@ -371,7 +437,18 @@ exhaust temp, water detection — per model.
 
 Traps are SNMPv2c notifications sent by `core/trap_engine.py`, driven by the
 rule engine (`core/trap_rules.py`) plus direct BMC platform events. Standard
-trap OIDs use `1.3.6.1.6.3.1.1.5.x`; enterprise traps use `1.3.6.1.4.1.99999`.
+trap OIDs use `1.3.6.1.6.3.1.1.5.x`.
+
+Enterprise traps are **vendor-resolved at send time** by
+`core.vendor_oids.trap_oid()` (§6.0): the OIDs listed below are the simulator's
+internal identity for each trap, and a device whose vendor has a verified MIB
+sends that vendor's OID and varbinds instead. Rule-driven traps go through the
+same resolver — `core/trap_rules.py` still names the internal OID, and the
+engine rewrites it per device.
+
+Every trap also carries a real `sysUpTime.0` (varbind 1) taken from the
+device's agent uptime; it used to be a constant 0, which reads to a receiver as
+"the agent just restarted" on every event.
 
 ### 9.1 Standard / protocol traps
 

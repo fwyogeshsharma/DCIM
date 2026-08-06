@@ -151,7 +151,37 @@ UPS_ENT_OIDS: List[Tuple[str, str]] = [
     (f"{_UPS_ENT}.10.0",  "energyKWhx10"),
 ]
 
-# PDU OIDs
+# PDU OIDs.
+#
+# APC and Raritan rack PDUs publish on their own MIBs (PowerNet rPDU2 /
+# PDU2-MIB) — see core/vendor_oids.py — so the probe asks for the vendor OIDs
+# as well as the placeholder tree and keeps whichever the agent answers. The
+# vendor readings carry the vendor's own scaling, hence the distinct names.
+_APC_RPDU2  = "1.3.6.1.4.1.318.1.1.26"
+_RARITAN_M  = "1.3.6.1.4.1.13742.6.5"
+
+PDU_VENDOR_OIDS: List[Tuple[str, str]] = [
+    # APC PowerNet rPDU2
+    (f"{_APC_RPDU2}.4.3.1.5.1",  "apcPowerHundredthsKW"),
+    (f"{_APC_RPDU2}.4.3.1.4.1",  "apcLoadState"),
+    (f"{_APC_RPDU2}.4.3.1.17.1", "apcPowerFactorx100"),
+    (f"{_APC_RPDU2}.6.3.1.5.1",  "apcPhaseCurrentx10"),
+    (f"{_APC_RPDU2}.6.3.1.6.1",  "apcPhaseVoltageV"),
+    (f"{_APC_RPDU2}.8.3.1.4.1",  "apcBankState"),
+    (f"{_APC_RPDU2}.9.2.3.1.5.1","apcOutletState"),
+    (f"{_APC_RPDU2}.10.2.2.1.8.1",  "apcSensorTempx10C"),
+    (f"{_APC_RPDU2}.10.2.2.1.10.1", "apcSensorHumidityPct"),
+    # Raritan PDU2-MIB inlet measurements: [pdu][inlet][sensorType]
+    (f"{_RARITAN_M}.2.3.1.4.1.1.1",  "raritanInletCurrentmA"),
+    (f"{_RARITAN_M}.2.3.1.4.1.1.4",  "raritanInletVoltagemV"),
+    (f"{_RARITAN_M}.2.3.1.4.1.1.5",  "raritanInletActivePowerW"),
+    (f"{_RARITAN_M}.2.3.1.4.1.1.23", "raritanInletFrequencyx10"),
+    (f"{_RARITAN_M}.2.3.1.3.1.1.1",  "raritanInletCurrentState"),
+    (f"{_RARITAN_M}.3.3.1.3.1.1.15", "raritanBreakerState"),
+    (f"{_RARITAN_M}.5.3.1.4.1.1",    "raritanProbeTempx10"),
+    (f"{_RARITAN_M}.5.3.1.4.1.2",    "raritanProbeHumidityx10"),
+]
+
 _PDU_ENT = "1.3.6.1.4.1.99999.5"
 
 PDU_OIDS: List[Tuple[str, str]] = [
@@ -530,12 +560,13 @@ async def _query_ups_data(agent_ip: str, community: str, port: int,
 
 async def _query_pdu_data(agent_ip: str, community: str, port: int,
                            timeout: int) -> Dict[str, str]:
-    oid_list = [oid for oid, _ in PDU_OIDS]
+    all_pdu = PDU_OIDS + PDU_VENDOR_OIDS
+    oid_list = [oid for oid, _ in all_pdu]
     try:
         raw = await _snmp_get(agent_ip, community, port, oid_list, timeout)
     except Exception:
         return {}
-    return {name: raw[oid] for oid, name in PDU_OIDS if _is_valid(raw.get(oid, ""))}
+    return {name: raw[oid] for oid, name in all_pdu if _is_valid(raw.get(oid, ""))}
 
 
 async def _query_pdu_outlets(agent_ip: str, community: str, port: int,

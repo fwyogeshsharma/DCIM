@@ -23,6 +23,8 @@ from core.trap_definitions import (
     TrapType, TrapDefinition, TRAP_DEFINITIONS, OID_TO_TRAP_TYPE,
     # sensor trap types imported explicitly for varbind dispatch
 )
+from core import vendor_oids
+from core.vendor_oids import APC, CISCO, DELL, HPE, LENOVO, LIEBERT, RARITAN, PET
 # Convenience aliases used in _build_extra_varbinds / _format_details
 _HUMIDITY_ALERT = TrapType.HUMIDITY_ALERT
 _DEWPOINT_ALERT = TrapType.DEWPOINT_ALERT
@@ -43,6 +45,21 @@ def _num(value, scale: int = 1) -> int:
     """
     try:
         return int(round(float(value) * scale))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _uptime_ticks(device) -> int:
+    """sysUpTime.0 for the trap's first varbind, in TimeTicks (1/100 s).
+
+    RFC 3416 makes sysUpTime.0 mandatory as varbind 1, and receivers use it to
+    spot agent restarts and to order events that share a wall-clock second.
+    Sending a constant 0 — as this did — reads as "the agent just rebooted" on
+    every single trap. The agent's poll side already serves a real sys_uptime,
+    so the trap must agree with it.
+    """
+    try:
+        return max(0, int(getattr(device, "sys_uptime", 0) or 0))
     except (TypeError, ValueError):
         return 0
 
@@ -397,11 +414,19 @@ class TrapEngine(QObject):
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
 
+            # A trap's OID depends on WHO is sending it: the same over-current is
+            # rPDUOverload (318.0.276) from an APC rPDU and
+            # overCurrentProtectorSensorStateChange (13742.6.0.65) from a Raritan
+            # PX. Resolve against the device's vendor, falling back to the
+            # simulator's own tree when no vendor MIB was verified for it.
+            send_oid = vendor_oids.trap_oid(
+                trap_type, device.vendor, device.device_type, defn.oid)
+
             pdu = proto_v2c.SNMPv2TrapPDU()
             proto_v2c.apiPDU.set_defaults(pdu)
             all_varbinds = (
-                [(_oid('1.3.6.1.2.1.1.3.0'), rfc1902.TimeTicks(0)),
-                 (_oid('1.3.6.1.6.3.1.1.4.1.0'), _oid(defn.oid))]
+                [(_oid('1.3.6.1.2.1.1.3.0'), rfc1902.TimeTicks(_uptime_ticks(device))),
+                 (_oid('1.3.6.1.6.3.1.1.4.1.0'), _oid(send_oid))]
                 + self._build_extra_varbinds(device, trap_type, **kwargs)
             )
             proto_v2c.apiPDU.set_varbinds(pdu, all_varbinds)
@@ -447,11 +472,20 @@ class TrapEngine(QObject):
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
 
+            # Rule-driven traps arrive here as a bare OID. Map it back to its
+            # TrapType so the vendor registry can rewrite it the same way the
+            # typed path does — otherwise every rule would still emit 99999.
+            mapped = OID_TO_TRAP_TYPE.get(oid)
+            send_oid = oid
+            if mapped is not None:
+                send_oid = vendor_oids.trap_oid(
+                    mapped, device.vendor, device.device_type, oid)
+
             pdu = proto_v2c.SNMPv2TrapPDU()
             proto_v2c.apiPDU.set_defaults(pdu)
             varbinds = [
-                (_oid('1.3.6.1.2.1.1.3.0'), rfc1902.TimeTicks(0)),
-                (_oid('1.3.6.1.6.3.1.1.4.1.0'), _oid(oid)),
+                (_oid('1.3.6.1.2.1.1.3.0'), rfc1902.TimeTicks(_uptime_ticks(device))),
+                (_oid('1.3.6.1.6.3.1.1.4.1.0'), _oid(send_oid)),
                 (_oid('1.3.6.1.2.1.1.5.0'), rfc1902.OctetString(device.name)),
             ]
             proto_v2c.apiPDU.set_varbinds(pdu, varbinds)
@@ -471,6 +505,291 @@ class TrapEngine(QObject):
 
     # ── Varbind builders ──────────────────────────────────────────────────────
 
+    # ── Vendor varbind sets ───────────────────────────────────────────────────
+
+    @staticmethod
+    def _pet_record(sensor_type: int, event_type: int, offset: int,
+                    severity: int, sensor_number: int = 1) -> bytes:
+        """Minimal IPMI Platform Event Trap event record (PET spec v1.0 §2).
+
+        Field offsets follow the spec so a PET decoder (ipmi-pet, most NMS BMC
+        integrations) parses the fields the simulator actually models; the rest
+        — GUID, manufacturer/system ID, OEM block — are zero-filled rather than
+        invented, which decodes as "not supplied" instead of as wrong data.
+        """
+        rec = bytearray(47)
+        rec[0:16] = b"\x00" * 16          # GUID (not modelled)
+        rec[16:18] = b"\x00\x00"          # sequence number / cookie
+        rec[18:22] = b"\x00" * 4          # local timestamp
+        rec[22:24] = b"\x00\x00"          # UTC offset
+        rec[24] = 0x00                    # trap source type: platform firmware
+        rec[25] = 0x00                    # event source type
+        rec[26] = severity & 0xFF
+        rec[27] = 0x20                    # sensor device (BMC)
+        rec[28] = sensor_number & 0xFF
+        rec[29] = 0x00                    # entity
+        rec[30] = 0x00                    # entity instance
+        rec[31] = ((event_type & 0x7F))   # event dir | type
+        rec[32] = offset & 0xFF
+        rec[33] = sensor_type & 0xFF
+        return bytes(rec)
+
+    @staticmethod
+    def _vendor_varbinds(device: Device, trap_type: TrapType, **kwargs):
+        """Varbinds the real vendor MIB defines for this notification.
+
+        Returns None when the device's vendor has no verified mapping, which
+        leaves the synthetic varbind set in place (see core/vendor_oids.py for
+        why unmapped gear is deliberately left alone).
+        """
+        from pyasn1.type import univ
+        from pysnmp.proto import rfc1902
+
+        dt = getattr(device.device_type, "value", device.device_type)
+        if dt in vendor_oids.NON_SNMP_DEVICE_TYPES:
+            return None
+        key = vendor_oids.vendor_key(device.vendor)
+        if not key:
+            return None
+
+        def _oid(s: str):
+            return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
+
+        def _s(oid, val):
+            return (_oid(oid), rfc1902.OctetString(str(val)))
+
+        def _i(oid, val):
+            return (_oid(oid), rfc1902.Integer32(int(val)))
+
+        def _g(oid, val):
+            return (_oid(oid), rfc1902.Gauge32(max(0, int(val))))
+
+        mv = kwargs.get("metric_value", None)
+        _PDU_LOAD = (TrapType.PDU_LOAD_HIGH, TrapType.PDU_LOAD_CRITICAL,
+                     TrapType.PDU_LOAD_NORMAL, TrapType.PDU_OUTLET_CURRENT_HIGH,
+                     TrapType.PDU_BREAKER_TRIPPED)
+        _PDU_ENV = (TrapType.PDU_TEMP_HIGH, TrapType.PDU_TEMP_NORMAL,
+                    TrapType.PDU_HUMIDITY_HIGH, TrapType.PDU_HUMIDITY_NORMAL)
+        _AMBIENT = (TrapType.SENSOR_AMBIENT_TEMP_HIGH,
+                    TrapType.SENSOR_AMBIENT_TEMP_CRITICAL,
+                    TrapType.SENSOR_AMBIENT_TEMP_NORMAL,
+                    TrapType.SENSOR_MID_TEMP_HIGH, TrapType.SENSOR_MID_TEMP_NORMAL,
+                    TrapType.SENSOR_OUTLET_TEMP_HIGH, TrapType.SENSOR_OUTLET_TEMP_NORMAL,
+                    TrapType.TEMPERATURE_ALERT, TrapType.TEMPERATURE_NORMAL,
+                    TrapType.CPU_TEMP_CRITICAL)
+        _HUMID = (TrapType.SENSOR_HIGH_HUMIDITY, TrapType.SENSOR_CRITICAL_HUMIDITY,
+                  TrapType.SENSOR_LOW_HUMIDITY, TrapType.SENSOR_HUMIDITY_NORMAL,
+                  _HUMIDITY_ALERT)
+
+        # ── APC / PowerNet-MIB ───────────────────────────────────────────────
+        if key == "apc":
+            if trap_type in _PDU_LOAD:
+                # rPDULoadStatusLoad is tenths of an amp; rPDULoadStatusLoadState
+                # is lowLoad(1)/normal(2)/nearOverload(3)/overload(4).
+                amps10 = _num(kwargs.get("outlet_current",
+                                         getattr(device, "pdu_outlet_current", 0)), scale=10)
+                state = {TrapType.PDU_LOAD_HIGH: 3, TrapType.PDU_LOAD_CRITICAL: 4,
+                         TrapType.PDU_OUTLET_CURRENT_HIGH: 4,
+                         TrapType.PDU_BREAKER_TRIPPED: 4}.get(trap_type, 2)
+                return [
+                    _s(APC["identName"], device.name),
+                    _s(APC["identSerial"], f"SN-{device.name}"),
+                    _g(APC["loadStatusLoad"], amps10),
+                    _i(APC["loadStatusState"], state),
+                    _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
+                ]
+            if trap_type in _PDU_ENV or trap_type in _AMBIENT or trap_type in _HUMID:
+                temp = _num(mv if trap_type in (_PDU_ENV[:2] + _AMBIENT) else
+                            getattr(device, "pdu_temperature", 0))
+                humid = _num(mv if trap_type in _HUMID else
+                             getattr(device, "pdu_humidity", 0))
+                return [
+                    _s(APC["identName"], device.name),
+                    _g(APC["probeTemp"], temp),
+                    _g(APC["probeHumidity"], humid),
+                    _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
+                ]
+            if trap_type in (TrapType.PDU_OUTLET_ON, TrapType.PDU_OUTLET_OFF):
+                return [
+                    _s(APC["identName"], device.name),
+                    _i(APC["rpdu2OutletState"],
+                       1 if trap_type == TrapType.PDU_OUTLET_ON else 2),
+                    _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
+                ]
+            return None
+
+        # ── Raritan / PDU2-MIB ───────────────────────────────────────────────
+        if key == "raritan":
+            st = vendor_oids.RARITAN_SENSOR_TYPE
+            ss = vendor_oids.RARITAN_SENSOR_STATE
+            table = "external"
+            sensor, state, value = st["temperature"], ss["normal"], 0
+            if trap_type in _PDU_LOAD:
+                table = "inlet" if trap_type != TrapType.PDU_OUTLET_CURRENT_HIGH else "outlet"
+                sensor = st["current"]
+                value = _num(kwargs.get("outlet_current",
+                                        getattr(device, "pdu_outlet_current", 0)), scale=10)
+                state = {TrapType.PDU_LOAD_HIGH: ss["aboveUpperWarning"],
+                         TrapType.PDU_LOAD_CRITICAL: ss["aboveUpperCritical"],
+                         TrapType.PDU_OUTLET_CURRENT_HIGH: ss["aboveUpperCritical"],
+                         TrapType.PDU_BREAKER_TRIPPED: ss["open"],
+                         TrapType.PDU_LOAD_NORMAL: ss["normal"]}.get(trap_type, ss["normal"])
+                if trap_type == TrapType.PDU_BREAKER_TRIPPED:
+                    table, sensor = "unit", st["trip"]
+            elif trap_type in (TrapType.PDU_VOLTAGE_HIGH, TrapType.PDU_VOLTAGE_LOW):
+                table, sensor = "inlet", st["voltage"]
+                value = _num(mv if mv is not None else getattr(device, "pdu_voltage", 0), scale=10)
+                state = (ss["aboveUpperCritical"] if trap_type == TrapType.PDU_VOLTAGE_HIGH
+                         else ss["belowLowerCritical"])
+            elif trap_type in (TrapType.PDU_FREQUENCY_FAULT, TrapType.PDU_FREQUENCY_NORMAL):
+                table, sensor = "inlet", st["frequency"]
+                value = _num(mv if mv is not None else getattr(device, "pdu_frequency", 0), scale=10)
+                state = (ss["normal"] if trap_type == TrapType.PDU_FREQUENCY_NORMAL
+                         else ss["aboveUpperWarning"])
+            elif trap_type in (TrapType.PDU_OUTLET_ON, TrapType.PDU_OUTLET_OFF):
+                table, sensor = "outlet", st["onOff"]
+                state = ss["on"] if trap_type == TrapType.PDU_OUTLET_ON else ss["off"]
+            elif trap_type == TrapType.PDU_SMOKE_DETECTED:
+                sensor, state = st["smokeDetection"], ss["alarmed"]
+            elif trap_type == TrapType.PDU_GROUND_FAULT:
+                table, sensor, state = "unit", st["residualCurrent"], ss["alarmed"]
+            elif trap_type in _HUMID or trap_type in (TrapType.PDU_HUMIDITY_HIGH,
+                                                      TrapType.PDU_HUMIDITY_NORMAL):
+                sensor = st["humidity"]
+                value = _num(mv if mv is not None else getattr(device, "humidity", 0), scale=10)
+                state = (ss["normal"] if trap_type in (TrapType.SENSOR_HUMIDITY_NORMAL,
+                                                       TrapType.PDU_HUMIDITY_NORMAL)
+                         else ss["aboveUpperWarning"])
+            elif trap_type in (TrapType.SENSOR_HIGH_AIRFLOW, TrapType.SENSOR_LOW_AIRFLOW,
+                               TrapType.SENSOR_AIRFLOW_NORMAL, _AIRFLOW_ALERT):
+                sensor = st["airFlow"]
+                value = _num(mv if mv is not None else getattr(device, "airflow", 0), scale=10)
+                state = (ss["belowLowerWarning"] if trap_type == TrapType.SENSOR_LOW_AIRFLOW
+                         else ss["normal"] if trap_type == TrapType.SENSOR_AIRFLOW_NORMAL
+                         else ss["aboveUpperWarning"])
+            else:
+                value = _num(mv if mv is not None else getattr(device, "inlet_temp", 0), scale=10)
+                state = (ss["normal"] if trap_type in (TrapType.SENSOR_AMBIENT_TEMP_NORMAL,
+                                                       TrapType.PDU_TEMP_NORMAL,
+                                                       TrapType.SENSOR_MID_TEMP_NORMAL,
+                                                       TrapType.SENSOR_OUTLET_TEMP_NORMAL)
+                         else ss["aboveUpperCritical"]
+                         if trap_type == TrapType.SENSOR_AMBIENT_TEMP_CRITICAL
+                         else ss["aboveUpperWarning"])
+            # State sensors (trip, on/off, smoke) have no numeric reading —
+            # PDU2-MIB says the value field does not apply to them.
+            if sensor in (st["trip"], st["onOff"], st["smokeDetection"]):
+                value = 0
+            return [
+                _s(RARITAN["pduName"], device.name),
+                _s(RARITAN["pduSerial"], f"SN-{device.name}"),
+                _i(RARITAN["typeOfSensor"], sensor),
+                _g(RARITAN[f"{table}Value"], value),
+                _i(RARITAN[f"{table}State"], state),
+                _i(RARITAN["oldSensorState"], ss["normal"]),
+            ]
+
+        # ── Liebert / Vertiv ─────────────────────────────────────────────────
+        if key == "liebert":
+            defn = TRAP_DEFINITIONS.get(trap_type)
+            descr = defn.display_name if defn else trap_type.value
+            if mv is not None:
+                descr = f"{descr} ({_fmt(mv)})"
+            return [
+                _s(LIEBERT["conditionDescr"], f"{device.name}: {descr}"),
+                _s(LIEBERT["conditionTime"], ""),
+            ]
+
+        # ── Cisco ────────────────────────────────────────────────────────────
+        if key == "cisco":
+            if trap_type in (TrapType.CPU_HIGH, TrapType.CPU_SUSTAINED, TrapType.CPU_NORMAL):
+                return [
+                    _g(CISCO["cpu5min"], _num(mv if mv is not None
+                                              else getattr(device, "cpu_usage", 0))),
+                    _g(CISCO["cpuRisingThresh"], 90),
+                ]
+            if trap_type in _AMBIENT:
+                state = vendor_oids.CISCO_ENV_STATE[
+                    "normal" if trap_type == TrapType.TEMPERATURE_NORMAL
+                    else "critical" if trap_type == TrapType.CPU_TEMP_CRITICAL
+                    else "warning"]
+                return [
+                    _s(CISCO["envTempDescr"], f"{device.name} inlet"),
+                    _g(CISCO["envTempValue"], _num(mv if mv is not None
+                                                   else getattr(device, "cpu_temp", 0))),
+                    _i(CISCO["envTempState"], state),
+                ]
+            return None
+
+        # ── Dell iDRAC ───────────────────────────────────────────────────────
+        if key == "dell":
+            if trap_type in _AMBIENT or trap_type in (TrapType.SERVER_POWER_OFF,
+                                                      TrapType.SERVER_POWER_ON):
+                if trap_type in (TrapType.SERVER_POWER_OFF, TrapType.SERVER_POWER_ON):
+                    msg_id = "SYS1003" if trap_type == TrapType.SERVER_POWER_ON else "SYS1000"
+                    msg = ("The system has been powered on."
+                           if trap_type == TrapType.SERVER_POWER_ON
+                           else "The system has been powered off.")
+                    status = vendor_oids.DELL_STATUS["ok"]
+                else:
+                    msg_id = "TMP0118"
+                    msg = f"Temperature sensor reading {_fmt(mv)} C"
+                    status = vendor_oids.DELL_STATUS[
+                        "ok" if trap_type == TrapType.TEMPERATURE_NORMAL
+                        else "critical" if trap_type == TrapType.CPU_TEMP_CRITICAL
+                        else "warning"]
+                return [
+                    _s(DELL["alertMessageID"], msg_id),
+                    _s(DELL["alertMessage"], msg),
+                    _i(DELL["alertCurrentStatus"], status),
+                    _s(DELL["alertServiceTag"], f"SVC{abs(hash(device.name)) % 10**7:07d}"),
+                ]
+            return None
+
+        # ── HPE iLO / Insight ────────────────────────────────────────────────
+        if key == "hpe":
+            if trap_type in _AMBIENT:
+                # cpqHeThermalTempStatus: other(1) ok(2) degraded(3) failed(4)
+                status = (2 if trap_type == TrapType.TEMPERATURE_NORMAL
+                          else 4 if trap_type == TrapType.CPU_TEMP_CRITICAL else 3)
+                return [
+                    _i(HPE["thermalTempStatus"], status),
+                    _i(HPE["thermalDegradedAct"], 2),   # continue(2)
+                ]
+            return None
+
+        # ── Lenovo XCC ───────────────────────────────────────────────────────
+        if key == "lenovo":
+            if trap_type in _AMBIENT or trap_type in (TrapType.SERVER_POWER_OFF,
+                                                      TrapType.SERVER_POWER_ON):
+                defn = TRAP_DEFINITIONS.get(trap_type)
+                text = defn.display_name if defn else trap_type.value
+                if mv is not None:
+                    text = f"{text} ({_fmt(mv)})"
+                return [
+                    _s(LENOVO["spTxtId"], f"{device.name}: {text}"),
+                    _s(LENOVO["sysSern"], f"SN-{device.name}"),
+                ]
+            return None
+
+        # ── Supermicro / IBM BMCs → IPMI PET ─────────────────────────────────
+        if key in ("supermicro", "ibm"):
+            if trap_type in (TrapType.SERVER_POWER_OFF, TrapType.SERVER_POWER_ON):
+                rec = TrapEngine._pet_record(
+                    sensor_type=0x09, event_type=0x6F,
+                    offset=0 if trap_type == TrapType.SERVER_POWER_OFF else 1,
+                    severity=0x02)          # information
+            elif trap_type in _AMBIENT:
+                rec = TrapEngine._pet_record(
+                    sensor_type=0x01, event_type=0x01, offset=0x01,
+                    severity=0x10 if trap_type == TrapType.CPU_TEMP_CRITICAL
+                    else 0x04 if trap_type == TrapType.TEMPERATURE_NORMAL else 0x08)
+            else:
+                return None
+            return [(_oid(PET["eventData"]), rfc1902.OctetString(rec))]
+
+        return None
+
     @staticmethod
     def _build_extra_varbinds(device: Device, trap_type: TrapType, **kwargs):
         from pyasn1.type import univ
@@ -478,6 +797,15 @@ class TrapEngine(QObject):
 
         def _oid(s: str):
             return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
+
+        # A vendor trap OID with simulator-private varbinds hanging off it is
+        # still undecodable: PowerNet's rPDUOverload is defined to carry
+        # rPDUIdentName/rPDULoadStatusLoad, so those are what an APC-aware NMS
+        # reads. When the registry has a varbind set for this vendor+trap, it
+        # replaces the synthetic one below wholesale.
+        vendor_vbs = TrapEngine._vendor_varbinds(device, trap_type, **kwargs)
+        if vendor_vbs is not None:
+            return vendor_vbs
 
         if trap_type in (TrapType.LINK_DOWN, TrapType.LINK_UP):
             idx   = kwargs.get("iface_index", 1)

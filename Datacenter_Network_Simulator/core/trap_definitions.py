@@ -1,6 +1,14 @@
 """
 SNMP Trap Definitions — OIDs, severity levels, and applicable device types.
 
+The OIDs here are the SIMULATOR-INTERNAL identity of each trap, not necessarily
+what goes on the wire. Real gear keys its notifications off the vendor, so
+``core.vendor_oids.trap_oid()`` rewrites this OID to the vendor's own MIB OID at
+send time (an over-current leaves an APC rPDU as rPDUOverload 318.0.276 and a
+Raritan PX as overCurrentProtectorSensorStateChange 13742.6.0.65). A TrapType
+with no verified vendor counterpart keeps the OID below — see vendor_oids for
+why unmapped traps deliberately stay on the placeholder tree.
+
 Enterprise OID tree: 1.3.6.1.4.1.99999
   .1.1-.1.8   general device traps (CPU, memory, temperature, ...)
   .2.1-.2.13  UPS enterprise traps
