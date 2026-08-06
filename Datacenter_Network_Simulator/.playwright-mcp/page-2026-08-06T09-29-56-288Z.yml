@@ -1,0 +1,7 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e12]: Datacenter Network Simulator
+    - generic [ref=e13]: Sign in to continue
+  - textbox "Username" [active] [ref=e14]
+  - textbox "Password" [ref=e15]
+  - button "Sign In" [disabled] [ref=e16]
