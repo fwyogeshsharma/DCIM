@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore'
 import type { DeviceInfo } from '../api/types'
 import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './TopologyCanvas/NodeContextMenu'
 import { nodeColor, nodeInk } from '../theme'
-import { PASSIVE_DEVICE_TYPES } from '../data/deviceConstants'
+import { snmpCell, snmpSortValue } from '../data/snmpView'
 
 const MIN_WIDTH = 200
 const MAX_WIDTH = 900
@@ -40,6 +40,10 @@ const COLUMNS: { key: SortKey; label: string; width?: number; align?: 'right' }[
 ]
 
 function compareDevices(a: DeviceInfo, b: DeviceInfo, key: SortKey, dir: SortDir): number {
+  if (key === 'snmp_port') {
+    const cmp = snmpSortValue(a) - snmpSortValue(b)
+    return dir === 'asc' ? cmp : -cmp
+  }
   const av = a[key], bv = b[key]
   let cmp: number
   if (typeof av === 'number' && typeof bv === 'number') {
@@ -131,9 +135,10 @@ export default function DeviceList() {
         d.device_type.includes(query) ||
         (d.vendor || '').toLowerCase().includes(query) ||
         (d.sys_location || '').toLowerCase().includes(query) ||
-        // Not on a passive panel: its SNMP cell renders '—', so matching "161"
-        // against a port nothing listens on would return a row that shows no match.
-        (!PASSIVE_DEVICE_TYPES.has(d.device_type) && String(d.snmp_port).includes(query))
+        // Match the port the cell actually shows. Searching "161" against a device
+        // whose cell reads '—' (no agent) or '1611' returns a row with no visible
+        // match, which reads as a broken filter.
+        snmpCell(d).text.includes(query)
       )
     }
     return [...list].sort((a, b) => compareDevices(a, b, sortKey, sortDir))
@@ -283,11 +288,17 @@ export default function DeviceList() {
                   <td className="mono" title={d.mgmt_ip || ''}>{d.mgmt_ip || '—'}</td>
                   <td className="mono" title={d.ip_address}>{d.ip_address}</td>
                   <td className="mono right">{d.interface_count}</td>
-                  {/* A passive panel has no agent listening anywhere, so printing 161
-                      here reads as pollable. Dash it, the same as an absent mgmt IP. */}
-                  <td className="mono right">
-                    {PASSIVE_DEVICE_TYPES.has(d.device_type) ? '—' : d.snmp_port}
-                  </td>
+                  {/* The port an agent is really served on. No agent → '—', same as an
+                      absent mgmt IP; agent but nothing bound → the configured port,
+                      dimmed, so it never reads as pollable. */}
+                  {(() => {
+                    const snmp = snmpCell(d)
+                    return (
+                      <td className={snmp.live ? 'mono right' : 'mono right muted'} title={snmp.title}>
+                        {snmp.text}
+                      </td>
+                    )
+                  })()}
                   <td className="muted" title={d.sys_location || ''}>{d.sys_location || '—'}</td>
                 </tr>
               )

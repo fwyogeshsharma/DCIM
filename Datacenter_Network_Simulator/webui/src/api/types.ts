@@ -21,6 +21,10 @@ export interface DeviceInfo {
   ip_address: string
   mgmt_ip?: string
   snmp_port: number
+  // snmp_port is the configured intent; these two are the live truth — whether the
+  // device has an SNMP agent at all, and the port it is being served on right now.
+  snmp_agent?: boolean
+  snmp_effective_port?: number | null
   gnmi_port: number
   interface_count: number
   cpu_usage: number
@@ -116,6 +120,8 @@ export interface GraphDevice {
   os_name?: string
   os_version?: string
   snmp_port?: number
+  snmp_agent?: boolean
+  snmp_effective_port?: number | null
   gnmi_port?: number
   model_name?: string
   power_state?: string

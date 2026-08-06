@@ -197,6 +197,16 @@ class DeviceInfo(BaseModel):
     ip_address: str
     mgmt_ip: Optional[str] = None
     snmp_port: int
+    # Does this device have an SNMP agent AT ALL? snmp_bind_ips() is the authority
+    # (same one the binder and the dataset reaper use), so BACnet/Modbus plant gear
+    # (chiller/pump/cooling tower/valve) and passive panels (RPP) report False
+    # instead of advertising a port nothing answers on.
+    snmp_agent: bool = True
+    # The port this device's agent is ACTUALLY served on right now, or None when
+    # nothing is listening for it (sim stopped, or no agent at all). snmp_port is
+    # only the configured intent — the sim runs on whatever port was chosen at
+    # start (1611 is normal; 161 needs root), and the two diverge routinely.
+    snmp_effective_port: Optional[int] = None
     gnmi_port: int
     interface_count: int
     cpu_usage: float

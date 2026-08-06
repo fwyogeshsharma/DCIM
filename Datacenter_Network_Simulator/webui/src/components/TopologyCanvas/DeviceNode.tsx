@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Handle, Position, NodeToolbar, type NodeProps } from '@xyflow/react'
 import { useStore } from '../../store/useStore'
 import { nodeColor } from '../../theme'
+import { snmpCell } from '../../data/snmpView'
 
 const TYPE_ICON: Record<string, string> = {
   router:        '⬡',
@@ -33,6 +34,8 @@ export interface DeviceNodeData {
   os_name?: string
   os_version?: string
   snmp_port?: number
+  snmp_agent?: boolean
+  snmp_effective_port?: number | null
   gnmi_port?: number
   bacnet_instance?: number
   activeLayer?: string
@@ -81,7 +84,10 @@ function DeviceNode({ id, data, selected, dragging }: NodeProps) {
   if (d.os_version) rows.push(['Version', d.os_version])
   if (d.ip_address) rows.push(['Prod IP', d.ip_address])
   if (d.mgmt_ip)    rows.push(['Mgmt IP', d.mgmt_ip])
-  rows.push(['SNMP Port', String(d.snmp_port ?? 161)])
+  // Not the configured field: a chiller has no agent at all, and a served device
+  // answers on the port the sim was started on (1611), not on its stored 161.
+  const snmp = snmpCell(d)
+  rows.push([snmp.label, snmp.value])
   if (['router', 'switch'].includes(d.device_type))
     rows.push(['gNMI Port', String(d.gnmi_port ?? 57400)])
   if (typeof d.bacnet_instance === 'number')

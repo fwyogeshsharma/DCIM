@@ -35,11 +35,14 @@ def get_graph(layer: str = None):
     else:
         linked_ids = None
 
+    from api.routers._snmp_view import snmp_facts
+
     devices_out = []
     for device in s.topology.get_all_devices():
         if linked_ids is not None and device.id not in linked_ids:
             continue
         x, y = s.topology.get_position(device.id)
+        has_snmp, snmp_live_port = snmp_facts(device)
         devices_out.append({
             "id": device.id,
             "name": device.name,
@@ -55,6 +58,9 @@ def get_graph(layer: str = None):
             "os_name": getattr(device, "os_name", ""),
             "os_version": getattr(device, "os_version", ""),
             "snmp_port": getattr(device, "snmp_port", 161),
+            # Configured intent vs live truth — see api/routers/_snmp_view.py.
+            "snmp_agent": has_snmp,
+            "snmp_effective_port": snmp_live_port,
             "gnmi_port": getattr(device, "gnmi_port", 57400),
             "model_name": getattr(device, "model_name", ""),
             "power_state": getattr(device, "power_state", "On"),

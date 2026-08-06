@@ -90,6 +90,11 @@ function devicesToNodes(
         os_name: d.os_name || '',
         os_version: d.os_version || '',
         snmp_port: d.snmp_port ?? 161,
+        // Live SNMP truth from /topology/graph — the tooltip must not fall back to
+        // the configured port when nothing is bound there. undefined (old payload)
+        // is meaningful: snmpView then falls back to PASSIVE_DEVICE_TYPES.
+        snmp_agent: d.snmp_agent,
+        snmp_effective_port: d.snmp_effective_port,
         gnmi_port: d.gnmi_port ?? 57400,
         bacnet_instance: bacnetInstance,
         activeLayer,

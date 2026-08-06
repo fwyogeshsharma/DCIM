@@ -4,6 +4,7 @@ import { api, errorMessage } from '../../api/client'
 import { useStore } from '../../store/useStore'
 import type { DeviceInfo } from '../../api/types'
 import { VENDORS, MODELS, deviceTypeLabel, PASSIVE_DEVICE_TYPES } from '../../data/deviceConstants'
+import { snmpCell } from '../../data/snmpView'
 import NumberInput from '../NumberInput'
 import { LAYER_COLOR, LAYER_DEFAULT } from '../../theme'
 
@@ -461,8 +462,13 @@ export function DeviceInfoModal({ deviceId, onClose }: { deviceId: string; onClo
     if (info.os_version && info.os_version !== 'Unknown') rows.push(['Version', info.os_version])
     if (info.ip_address)   rows.push(['Prod IP', info.ip_address])
     if (info.mgmt_ip)      rows.push(['Mgmt IP', info.mgmt_ip])
+    // isPassive still gates the metric rows (a breaker panel reports no CPU), but
+    // the SNMP row is decided by snmpView: BACnet plant gear is not "passive" and
+    // still has no agent, and a served device answers on the sim's port, not its
+    // configured one.
     const isPassive = PASSIVE_DEVICE_TYPES.has(info.device_type)
-    if (!isPassive) rows.push(['SNMP Port', String(info.snmp_port)])
+    const snmp = snmpCell(info)
+    rows.push([snmp.label, snmp.value])
     if (['router', 'switch'].includes(info.device_type))
       rows.push(['gNMI Port', String(info.gnmi_port)])
     const bacnetDev = (bacnet?.devices ?? []).find(
