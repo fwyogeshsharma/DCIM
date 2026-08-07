@@ -1746,7 +1746,19 @@ class SNMPRecGenerator:
             cur_x10 = int(round(pwr_w / _pdu_volt * 10)) if _pdu_volt > 0 else 0
             entries += [
                 _oid_entry(f"{_PDU_OUTLET_ENT}.1.{n}", "2", str(n)),
-                _oid_entry(f"{_PDU_OUTLET_ENT}.2.{n}", "4", load.name),
+                # The outlet's NAME is the receptacle, not its load — for both an
+                # occupied and an empty outlet.
+                #
+                # On real gear this field is operator-configured and ships as
+                # "Outlet <n>". Publishing the connected device's name here asserts
+                # that somebody has labelled all 2712 receptacles by hand, and it
+                # makes any consumer that adopts these names disagree with its own
+                # cabling record: openDCIM's "Refresh Port Names" writes this string
+                # into the outlet Label, so its Device Port column rendered the load
+                # name and duplicated the Device column beside it. What is plugged in
+                # belongs in the DCIM's connection, which already holds it; what
+                # belongs here is the number printed on the strip.
+                _oid_entry(f"{_PDU_OUTLET_ENT}.2.{n}", "4", f"Outlet {n}"),
                 _oid_entry(f"{_PDU_OUTLET_ENT}.3.{n}", "2", "1"),           # status=on
                 _oid_entry(f"{_PDU_OUTLET_ENT}.4.{n}", "2", str(cur_x10)),  # current ×10 A
                 _oid_entry(f"{_PDU_OUTLET_ENT}.5.{n}", "2", str(pwr_w)),    # power W

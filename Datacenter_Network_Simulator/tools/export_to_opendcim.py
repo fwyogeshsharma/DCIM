@@ -414,6 +414,7 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
         "cords": [],
         "panel_feeds": {},
         "breakers": [],
+        "port_links": [],
         "cdu_templates": plan_cdu_templates(devices, only_dc),
     }
 
@@ -670,16 +671,60 @@ def cdu_template_sql(rows: dict) -> str:
         "-- Enroll the rack PDUs in status polling.",
         "-- NetworkCapacityReportOptIn='OptIn' makes devices.php return an empty",
         "-- status array for anything without this tag, before any SNMP happens.",
-        "-- Switches have a Status column too; add DeviceType='Switch' below to",
-        "-- enroll those as well.",
+        "-- Both device types that HAVE a Status column are enrolled: CDU (outlet",
+        "-- state, CDUInfo::getPortStatus) and Switch (port link state,",
+        "-- SwitchInfo::getPortStatus). No other type renders one, so tagging",
+        "-- anything else would buy polling load and no display.",
         "INSERT IGNORE INTO fac_Tags (Name) VALUES ('Poll');",
         "INSERT IGNORE INTO fac_DeviceTags (DeviceID, TagID)",
         "  SELECT d.DeviceID, t.TagID FROM fac_Device d, fac_Tags t",
-        "  WHERE d.DeviceType='CDU' AND t.Name='Poll';",
+        "  WHERE d.DeviceType IN ('CDU','Switch') AND t.Name='Poll';",
         "",
     ]
     out += outlet_count_sql(rows)
+    out += outlet_label_sql()
     return "\n".join(out) + "\n"
+
+
+def outlet_label_sql() -> list[str]:
+    """Name every rack-PDU outlet after the receptacle, on every PDU.
+
+    The estate had three schemes at once: openDCIM's generated 'Power Connection N'
+    on most PDUs, and on a handful the SNMP outlet-name table read back through
+    devices.php's "refresh names" action — which writes the CONNECTED DEVICE'S NAME
+    onto the outlet, and 'Outlet N' where nothing is plugged in. The Device Port
+    column on every load's Power Connections panel shows this label, so the same
+    question got three different-looking answers depending on which PDU fed it.
+
+    Standardise on the receptacle number. An outlet's identity is the number printed
+    on the strip: that is what an engineer reads when tracing a cord, it is what the
+    vendor MIB indexes, and it does not change. Naming the outlet after its load
+    duplicates the Device column, which already says what is plugged in, and goes
+    stale the moment that load is decommissioned — leaving an outlet still claiming
+    to be SRV18 long after SRV18 has gone.
+
+    Label only. Notes are left alone: the same refresh wrote device names there too,
+    but Notes is where a human records "do not unplug — feeds the OOB switch", and
+    blanket-clearing it would delete real operator knowledge to fix a cosmetic
+    inconsistency. There is no way to tell the two apart from here.
+
+    No API route can do this. POST /api/v1/powerport/{deviceid} populates a FRESH
+    PowerPorts object from the posted fields only — no getPort() first — so a
+    label-only POST leaves ConnectedDeviceID empty and updatePort() reads that as
+    "clear the connection", taking the cord with it. PowerPorts::updateLabel() is a
+    pure label write, but nothing exposes it.
+    """
+    return [
+        "-- Rack PDU outlet labels: name every receptacle after its number.",
+        "-- Label ONLY — never touches ConnectedDeviceID, so no cord can be lost.",
+        "-- Do NOT do this through POST /api/v1/powerport/{id}: that route builds a",
+        "-- fresh PowerPorts object from the posted fields, so omitting the",
+        "-- connection clears it. See outlet_label_sql() in this file.",
+        "UPDATE fac_PowerPorts pp JOIN fac_Device d ON d.DeviceID=pp.DeviceID",
+        "  SET pp.Label = CONCAT('Outlet ', pp.PortNumber)",
+        "  WHERE d.DeviceType='CDU';",
+        "",
+    ]
 
 
 def outlet_count_sql(rows: dict) -> list[str]:
@@ -809,6 +854,66 @@ def plan_cords(graph: dict, importable: set) -> list[dict]:
             cords.append({"pdu": supply, "device": load,
                           "outlet": int(outlet), "psu": int(psu)})
     return cords
+
+
+def iface_label_map(topology_path: str) -> dict:
+    """device name -> {port position (0-based) -> interface name}.
+
+    Read from the topology FILE, not /api/devices: the live payload carries
+    interface_count but not the interfaces themselves, the same gap that made the
+    exporter invent a flat 24 outlets for every PDU. Positions are 0-based because
+    that is what the graph's src_iface/dst_iface are — TopologyEngine._next_free_iface
+    returns an index into device.interfaces, NOT the 1-based Interface.index. The two
+    differ by one, and openDCIM's PortNumber is 1-based like the latter.
+    """
+    try:
+        with open(topology_path, encoding="utf-8") as fh:
+            topo = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out = {}
+    for node in topo.get("nodes", []):
+        d = node.get("device") or {}
+        ifaces = d.get("interfaces") or []
+        if d.get("name") and ifaces:
+            out[d["name"]] = {i: (x.get("name") or "") for i, x in enumerate(ifaces)}
+    return out
+
+
+def plan_port_links(graph: dict, importable: set, labels: dict) -> list[dict]:
+    """Ethernet links as openDCIM port connections, one row per cable.
+
+    BOTH planes. A server's BMC drop to an OOB switch is a real cable in a real
+    tray and belongs in the record; leaving it out is how a DCIM ends up disagreeing
+    with the rack. They are distinguishable after import by the port that carries
+    them (a mgmt0/iDRAC/iLO port is the management plane by definition), so nothing
+    is lost by importing both into one table.
+
+    ONE row per link, not two. DevicePorts::updatePort() writes the far end itself —
+    it clears both old connections and calls updatePort(fasttrack=true) on the peer —
+    so posting each cable twice would just clear and re-make the same connection.
+    """
+    name = {d["id"]: d["name"] for d in graph.get("devices", [])}
+    rows = []
+    for link in graph.get("links", []):
+        if link.get("layer") not in ("production", "management"):
+            continue
+        # The two sources spell the endpoints differently: /api/topology/graph emits
+        # src_id/dst_id, a saved topology file emits src/dst. Reading only the former
+        # made --from-file import zero cables without saying so.
+        a = name.get(link.get("src_id") or link.get("src"), "")
+        b = name.get(link.get("dst_id") or link.get("dst"), "")
+        if a not in importable or b not in importable:
+            continue
+        ai, bi = link.get("src_iface"), link.get("dst_iface")
+        if ai is None or bi is None:
+            continue
+        rows.append({
+            "a": a, "a_port": int(ai) + 1, "a_label": labels.get(a, {}).get(int(ai), ""),
+            "b": b, "b_port": int(bi) + 1, "b_label": labels.get(b, {}).get(int(bi), ""),
+            "layer": link.get("layer"),
+        })
+    return rows
 
 
 # ── apply ─────────────────────────────────────────────────────────────────────
@@ -1005,6 +1110,64 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
                     say(f"  ! cord {c['device']} PSU{c['psu']} <- {c['pdu']} "
                         f"outlet {c['outlet']}: {e}")
 
+    # 4c. Network cabling: production and management, into fac_Ports.
+    #
+    # PUT /api/v1/deviceport is a genuine PUT — DevicePorts::updatePort() OVERWRITES
+    # the row, and its "sanity check" replaces an empty Label with the port NUMBER.
+    # Omitting Label would therefore rename GigabitEthernet0/0 to "1" on every port
+    # this touches.
+    #
+    # WRITTEN FROM BOTH ENDS, and that is not redundant. updatePort() makes the far
+    # end's CONNECTION but never its NAME — it pushes only ConnectedDeviceID/Port/
+    # Notes/Media/Color to the peer. Writing each cable once therefore named one end
+    # and left the other showing openDCIM's generated placeholder: a server NIC that
+    # is really eth1/1 rendered as "Port1", on 991 of 2026 cable ends. The second
+    # write is safe to repeat because the peer's row is loaded before it is rewritten
+    # (updatePort(fasttrack=true) re-UPDATEs the Label it already had), so neither
+    # pass clobbers the other's name and the connection lands in the same state.
+    if p.get("port_links"):
+        dev_id = _index(dcim.request("GET", "/api/v1/device").get("device", []), "Label")
+        dev_id = {k: v["DeviceID"] for k, v in dev_id.items()}
+        wired = 0
+        for lk in p["port_links"]:
+            a, b = dev_id.get(lk["a"]), dev_id.get(lk["b"])
+            if not a or not b:
+                counts["links_skipped"] += 1
+                continue
+            ends = [(a, lk["a_port"], lk["a_label"], b, lk["b_port"])]
+            # Only write the far end when we actually know its name; without one the
+            # PUT would rename that port to its number, which is the very damage this
+            # pass exists to undo.
+            if lk["b_label"]:
+                ends.append((b, lk["b_port"], lk["b_label"], a, lk["a_port"]))
+            else:
+                counts["links_farend_unnamed"] += 1
+            ok = True
+            for dev, port, label, peer, peer_port in ends:
+                try:
+                    dcim.request("PUT", "/api/v1/deviceport", {
+                        "DeviceID": dev,
+                        "PortNumber": port,
+                        "Label": label,
+                        "ConnectedDeviceID": peer,
+                        "ConnectedPort": peer_port,
+                        "MediaID": 0,
+                        "ColorID": 0,
+                        "Notes": "",
+                    })
+                    counts["port_writes"] += 1
+                except RuntimeError as e:
+                    ok = False
+                    counts["links_failed"] += 1
+                    if counts["links_failed"] <= 5:
+                        say(f"  ! link {lk['a']}:{lk['a_port']} <-> "
+                            f"{lk['b']}:{lk['b_port']} ({lk['layer']}): {e}")
+            if ok:
+                counts["links"] += 1
+            wired += 1
+            if wired % 200 == 0:
+                say(f"  ... {wired} links")
+
     # 5. Power panels, upstream first so a parent exists before a child names it.
     have = _index(dcim.request("GET", "/api/v1/powerpanel").get("powerpanel", []), "PanelLabel")
     for pan in p["panels"]:
@@ -1076,6 +1239,11 @@ def main() -> int:
                          "(openDCIM has no API route for fac_CDUTemplate). Without "
                          "running it, a CDU's Power Connections Status stays 'err'. "
                          "Pass an empty string to skip.")
+    ap.add_argument("--topology-file", default="topologies/dual_dc_enterprise.json",
+                    help="where to read interface NAMES from when running against the "
+                         "live simulator (/api/devices does not serialise interfaces[])")
+    ap.add_argument("--no-network", action="store_true",
+                    help="skip the network-cabling phase (production + management links)")
     ap.add_argument("--no-power", action="store_true",
                     help="skip the power-cord phase (objects only)")
     ap.add_argument("--dry-run", action="store_true",
@@ -1101,9 +1269,10 @@ def main() -> int:
     if args.limit:
         p["devices"] = p["devices"][:args.limit]
 
-    # Cords need the power layer, which only the graph endpoint carries. A topology
-    # file has the same edges, so both sources work.
-    if not args.no_power:
+    # Both the power and network phases read the same graph, so it is fetched once
+    # and each phase is gated on its OWN flag. They were nested — --no-power also
+    # silently disabled the network import, which is not what the flag says.
+    if not (args.no_power and args.no_network):
         importable = {d["Label"] for d in p["devices"]}
         try:
             if args.from_file:
@@ -1120,13 +1289,35 @@ def main() -> int:
                 }
             else:
                 graph = sim.request("GET", "/api/topology/graph")
-            p["cords"] = plan_cords(graph, importable)
-            p["panel_feeds"] = plan_panel_feeds(
-                graph, {x["PanelLabel"] for x in p["panels"]})
-            p["breakers"] = plan_breakers(
-                graph, pdu_phase_map(devices), {x["PanelLabel"] for x in p["panels"]})
+            if not args.no_power:
+                p["cords"] = plan_cords(graph, importable)
+                p["panel_feeds"] = plan_panel_feeds(
+                    graph, {x["PanelLabel"] for x in p["panels"]})
+                p["breakers"] = plan_breakers(
+                    graph, pdu_phase_map(devices), {x["PanelLabel"] for x in p["panels"]})
+
+            # Network cabling needs interface NAMES, and only the topology file has
+            # them — /api/devices serialises interface_count but not interfaces[].
+            # Without them every port this touches would be renamed to its port
+            # number by updatePort's empty-Label fallback, so refuse the phase
+            # rather than trade 1125 cables for 1125 destroyed port names.
+            if not args.no_network:
+                labels = iface_label_map(args.from_file or args.topology_file)
+                if not labels:
+                    print(f"  ! no interface names in "
+                          f"{args.from_file or args.topology_file} — skipping the "
+                          f"network layer. Pass --topology-file, or --no-network to "
+                          f"silence this.", file=sys.stderr)
+                else:
+                    p["port_links"] = plan_port_links(graph, importable, labels)
+                    missing = [l for l in p["port_links"] if not l["a_label"]]
+                    if missing:
+                        print(f"  ! {len(missing)} link(s) have no interface name for "
+                              f"their A-side port and would be renamed — dropped.",
+                              file=sys.stderr)
+                        p["port_links"] = [l for l in p["port_links"] if l["a_label"]]
         except Exception as e:
-            print(f"  ! could not read the power layer: {e}", file=sys.stderr)
+            print(f"  ! could not read the topology graph: {e}", file=sys.stderr)
 
     print(f"\nplan{' for ' + args.only_dc if args.only_dc else ''}:")
     print(f"  manufacturers : {len(p['manufacturers'])}")
@@ -1135,6 +1326,12 @@ def main() -> int:
     print(f"  devices       : {len(p['devices'])}")
     print(f"  power panels  : {len(p['panels'])}")
     print(f"  power cords   : {len(p['cords'])}")
+    if p.get("port_links"):
+        by_layer = defaultdict(int)
+        for lk in p["port_links"]:
+            by_layer[lk["layer"]] += 1
+        print(f"  network links : {len(p['port_links'])} ("
+              + ", ".join(f"{k}={v}" for k, v in sorted(by_layer.items())) + ")")
     print(f"  panel feeds   : {len(p['panel_feeds'])}"
           + (f" ({sum(1 for f in p['panel_feeds'].values() if f['alternates'])}"
              f" with a second source openDCIM cannot hold)"

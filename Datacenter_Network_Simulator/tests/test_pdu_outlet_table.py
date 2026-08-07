@@ -71,9 +71,13 @@ def test_row_index_is_the_outlet_the_cord_lands_on(rack):
     c19_outlet = topo.outlet_loads(pdu.id)
     landed = next(n for n, ref in c19_outlet.items() if ref["load_name"] == big.name)
     assert landed > 21, "a C19 load belongs on one of the three C19s, not a C13"
-    assert rows[landed]["2"] == big.name
-    # The name-ranked bug put it here.
-    assert rows[1]["2"] != big.name
+    # The outlet's NAME is its receptacle number, not its load — a real rPDU ships
+    # "Outlet <n>" and only an operator changes it. What is plugged in is the
+    # CONNECTION, which outlet_loads() holds, not the name.
+    assert rows[landed]["2"] == f"Outlet {landed}"
+    # The name-ranked bug landed this C19 device on outlet 1, a C13 it cannot use.
+    assert c19_outlet[landed]["load_name"] == big.name
+    assert 1 not in {n for n, r in c19_outlet.items() if r["load_name"] == big.name}
 
 
 def test_unplugged_outlet_is_energised_and_reads_zero(rack):

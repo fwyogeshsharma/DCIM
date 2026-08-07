@@ -75,12 +75,14 @@ UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.Templat
 -- Enroll the rack PDUs in status polling.
 -- NetworkCapacityReportOptIn='OptIn' makes devices.php return an empty
 -- status array for anything without this tag, before any SNMP happens.
--- Switches have a Status column too; add DeviceType='Switch' below to
--- enroll those as well.
+-- Both device types that HAVE a Status column are enrolled: CDU (outlet
+-- state, CDUInfo::getPortStatus) and Switch (port link state,
+-- SwitchInfo::getPortStatus). No other type renders one, so tagging
+-- anything else would buy polling load and no display.
 INSERT IGNORE INTO fac_Tags (Name) VALUES ('Poll');
 INSERT IGNORE INTO fac_DeviceTags (DeviceID, TagID)
   SELECT d.DeviceID, t.TagID FROM fac_Device d, fac_Tags t
-  WHERE d.DeviceType='CDU' AND t.Name='Poll';
+  WHERE d.DeviceType IN ('CDU','Switch') AND t.Name='Poll';
 
 -- Rack PDU outlet counts, from the SKU catalog.
 -- openDCIM materialises one power port per PowerSupplyCount and a cord is
@@ -111,5 +113,14 @@ INSERT IGNORE INTO fac_PowerPorts (DeviceID, PortNumber, Label,
             SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL
             SELECT 9) b
        ) n ON n.n <= d.PowerSupplyCount
+  WHERE d.DeviceType='CDU';
+
+-- Rack PDU outlet labels: name every receptacle after its number.
+-- Label ONLY — never touches ConnectedDeviceID, so no cord can be lost.
+-- Do NOT do this through POST /api/v1/powerport/{id}: that route builds a
+-- fresh PowerPorts object from the posted fields, so omitting the
+-- connection clears it. See outlet_label_sql() in this file.
+UPDATE fac_PowerPorts pp JOIN fac_Device d ON d.DeviceID=pp.DeviceID
+  SET pp.Label = CONCAT('Outlet ', pp.PortNumber)
   WHERE d.DeviceType='CDU';
 
