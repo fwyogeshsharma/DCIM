@@ -69,6 +69,44 @@ class GNMIDataGenerator:
     def read_fingerprint(self) -> Optional[str]:
         return _fingerprint.read(self.output_dir)
 
+    def reap_orphans(self, topology: "TopologyEngine") -> list:
+        """Delete .gnmi.json files no device in THIS topology should serve.
+
+        The gNMI server builds its target list by globbing this directory
+        (simulator/gnmi_server.py, _load_datasets), so a leftover file is a LIVE
+        TARGET, exactly as a leftover .snmprec is a live SNMP agent. Nothing ever
+        removed them: datasets were only written. Two ways that bites —
+        a device that is renumbered leaves its old address behind still answering,
+        and narrowing which device types get a dataset (this generator serves only
+        ROUTER and SWITCH) strands every file written under the wider rule.
+
+        Both had happened here: after the 192.168 -> 10.5x renumber the directory
+        held 118 files for 46 devices, and the server advertised all 118 as targets,
+        72 of them on addresses that no longer exist anywhere.
+
+        Mirrors SNMPRecGenerator.reap_orphans, including its refusal to run on an
+        empty expectation rather than emptying the directory.
+        """
+        expected = set()
+        for d in topology.get_all_devices():
+            if d.device_type not in (DeviceType.ROUTER, DeviceType.SWITCH):
+                continue
+            key = d.mgmt_ip if d.mgmt_ip else d.ip_address
+            if key:
+                expected.add(f"{key}.gnmi.json")
+        if not expected:
+            return []
+        removed = []
+        for p in Path(self.output_dir).glob("*.gnmi.json"):
+            if p.name in expected:
+                continue
+            try:
+                p.unlink()
+                removed.append(p.name)
+            except OSError:
+                pass          # busy/permission — leave it; next run retries
+        return removed
+
     def generate_device(self, device: "Device", topology: "TopologyEngine") -> Optional[str]:
         """
         Generate a .gnmi.json file for *device* and return the file path.

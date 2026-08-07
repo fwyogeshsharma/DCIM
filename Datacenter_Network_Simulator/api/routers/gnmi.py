@@ -80,6 +80,16 @@ def generate_gnmi_datasets():
                     s.notify_ui("gnmi_gen_progress", i + 1, total)
 
             s.generated_gnmi_files = files
+            # Drop datasets for devices this topology no longer has at these
+            # addresses. The gNMI server globs this directory for its target list,
+            # so an unreaped file keeps advertising a target that does not exist —
+            # the SNMP path has always done this (SNMPRecGenerator.reap_orphans)
+            # and the gNMI path never did.
+            reaped = gen.reap_orphans(s.topology)
+            if reaped:
+                s.notify_ui("console_log",
+                            f"[gNMI] Removed {len(reaped)} orphaned dataset(s) from "
+                            f"{s.gnmi_datasets_dir}", "info")
             # Stamp WHICH topology these came from, so a restart can adopt them
             # instead of rebuilding — and can tell "complete" from "current".
             gfp = gen.write_fingerprint(s.topology)

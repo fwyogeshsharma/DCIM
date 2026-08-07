@@ -926,6 +926,13 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
                 delta["FirstPortNum"] = d["FirstPortNum"]
             if d["SNMPCommunity"] and row.get("SNMPCommunity") != d["SNMPCommunity"]:
                 delta["SNMPCommunity"] = d["SNMPCommunity"]
+            # PrimaryIP drifts whenever the estate is renumbered (see
+            # tools/renumber_mgmt_plane.py). It has to move IN THE SAME PASS as
+            # SNMPCommunity: the two are the same address, and repairing one alone
+            # leaves openDCIM polling the OLD address with the NEW community —
+            # which fails as a timeout, indistinguishable from a dead device.
+            if d["PrimaryIP"] and row.get("PrimaryIP") != d["PrimaryIP"]:
+                delta["PrimaryIP"] = d["PrimaryIP"]
             # PowerSupplyCount is NOT repaired here — see outlet_count_sql(). Raising
             # it through the API half-applies: UpdateDevice writes the new count, then
             # its reconciler calls PowerPorts::createPorts($id, true), which re-INSERTs
