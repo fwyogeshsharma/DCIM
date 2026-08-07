@@ -94,6 +94,57 @@ _TYPE_U_HEIGHT = {
 }
 
 
+# Shipping weight in KILOGRAMS. Everything here is a CLASS ESTIMATE, not a datasheet
+# figure — read the warning before using it for anything structural.
+#
+# Weight is the one property in this catalog with a consequence outside the model: a
+# raised floor has a real load limit, and so does the slab under it. A wrong weight
+# does not produce a visibly wrong simulation, it produces a capacity report that says
+# a rack is fine when it is over the floor's rating. So these are deliberately banded
+# by chassis class rather than dressed up as per-SKU precision the way the outlet
+# catalog is — there, every entry is checked against a vendor page and marked VERIFIED.
+# Nothing here has been. Replace them with real datasheet weights before letting this
+# inform a floor-loading decision.
+#
+# The bands are the honest part: a 1U pizza-box lands near 18 kg, a 2U dual-socket near
+# 30, an 8-GPU box is a two-person lift at 100+, and a 0U rack PDU is a few kg of strip.
+# Those hold across vendors even where the exact SKU does not.
+_WEIGHT_KG_BY_U = {1: 18.0, 2: 30.0, 3: 45.0, 4: 60.0}
+
+_TYPE_WEIGHT_KG = {
+    "switch":      10.0,   # 1RU ToR, ~24 lb class
+    "oob_switch":   7.0,   # 1RU 48-port copper management switch
+    "router":      12.0,
+    "firewall":    18.0,   # 2U NGFW appliance
+    "load_balancer": 14.0,
+    "pdu":          6.0,   # 0U vertical strip — hangs on the rails, not the rails' load
+    "sensor":       0.5,   # probe on a bracket
+    "cdu":         80.0,   # 4U in-rack coolant distribution, heavy when charged
+}
+
+# SKUs whose weight is far enough from their class band that the band would mislead.
+_MODEL_WEIGHT_KG = {
+    # 6U 8-GPU chassis — a four-person lift, not a 60 kg 4U.
+    "Dell PowerEdge XE9680": 105.0,
+}
+
+
+def device_weight_kg(device_type, model_name: str = "") -> float:
+    """Approximate shipping weight in kg. SKU first, then type, then U-height band.
+
+    See _WEIGHT_KG_BY_U: these are class estimates, NOT vendor figures. The fallback
+    chain mirrors device_u_height so the two stay legible together, and a server with
+    no SKU entry is weighed by the U it occupies, which is the best proxy available.
+    """
+    if model_name and model_name in _MODEL_WEIGHT_KG:
+        return _MODEL_WEIGHT_KG[model_name]
+    dt = getattr(device_type, "value", device_type)
+    if dt in _TYPE_WEIGHT_KG:
+        return _TYPE_WEIGHT_KG[dt]
+    u = device_u_height(device_type, model_name)
+    return _WEIGHT_KG_BY_U.get(u, 15.0 * max(1, u))
+
+
 def device_u_height(device_type, model_name: str = "") -> int:
     """Rack units a device's body occupies — from its SKU when we know it.
 

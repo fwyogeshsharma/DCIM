@@ -1089,6 +1089,64 @@ class DeviceOverride(BaseModel):
     value:  float | str | None = None   # None = clear; number or state string
 
 
+class OutletSwitch(BaseModel):
+    outlet: int
+    state:  str = "off"          # "on" | "off"
+
+
+@router.get("/{device_id}/outlets")
+def get_outlets(device_id: str):
+    """Per-outlet relay state and what each receptacle feeds."""
+    s = _state()
+    dev = s.device_manager.get_device(device_id) if s.device_manager else None
+    if dev is None or dev.device_type.value not in ("pdu", "floor_pdu"):
+        raise HTTPException(status_code=404, detail=f"No rack PDU '{device_id}'")
+    st = getattr(s, "state_store", None)
+    ext = st.ext_state_for(dev) if st else {}
+    off = {int(o) for o in (ext.get("pdu_outlets_off") or [])}
+    loads = s.topology.outlet_loads(dev.id) if s.topology else {}
+    strip_off = ext.get("pdu_outlet_status", "on") == "off"
+    return {"device": dev.name, "strip_off": strip_off, "outlets": [
+        {"index": o.index, "type": o.type, "bank": o.bank, "phase": o.phase,
+         "state": "off" if (strip_off or o.index in off) else "on",
+         "feeds": (loads.get(o.index) or {}).get("load_name")}
+        for o in (dev.outlets or [])
+    ]}
+
+
+@router.post("/{device_id}/outlet", response_model=OkResponse)
+def switch_outlet(device_id: str, body: OutletSwitch):
+    """Switch ONE outlet on a rack PDU, the way a switched SKU's relay does.
+
+    Distinct from the strip-level "Outlet Off" fault, which models the whole PDU
+    losing its feed. Opening one receptacle drops only the load on it — and a
+    dual-corded server keeps running on its other cord, which is the behaviour that
+    makes an A/B test meaningful rather than an outage.
+    """
+    s = _state()
+    dev = s.device_manager.get_device(device_id) if s.device_manager else None
+    if dev is None or dev.device_type.value not in ("pdu", "floor_pdu"):
+        raise HTTPException(status_code=404, detail=f"No rack PDU '{device_id}'")
+    if body.state not in ("on", "off"):
+        raise HTTPException(status_code=400, detail="state must be 'on' or 'off'")
+    valid = {o.index for o in (dev.outlets or [])}
+    if valid and body.outlet not in valid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{dev.name} has no outlet {body.outlet} "
+                   f"(1-{max(valid)}) — outlet numbers are 1-based, as silk-screened")
+    st = getattr(s, "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    ext = st.ext_state_for(dev)
+    off = {int(o) for o in (ext.get("pdu_outlets_off") or [])}
+    off.discard(body.outlet) if body.state == "on" else off.add(body.outlet)
+    ext["pdu_outlets_off"] = sorted(off)
+    s.notify_ui("console_log",
+                f"[PDU] {dev.name} outlet {body.outlet} -> {body.state}", "info")
+    return OkResponse(message=f"{dev.name} outlet {body.outlet} {body.state}")
+
+
 @router.get("/{device_id}/overridable")
 def get_overridable(device_id: str):
     """Metrics that can be forced on this device (for the Metric Tick window)."""

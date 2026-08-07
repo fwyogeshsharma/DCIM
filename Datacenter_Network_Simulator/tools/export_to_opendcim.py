@@ -47,7 +47,8 @@ NEITHER CAN IT WRITE A RACK PDU'S SNMP TEMPLATE. A CDU's outlet OIDs live in
 fac_CDUTemplate, a shadow row openDCIM auto-creates alongside the device template but
 leaves empty, and no REST route touches that table. Until it is filled, the Status
 column on a CDU's Power Connections panel can never leave 'err' and the PDU is never
-polled for wattage. This tool emits that as SQL (--cdu-sql, on by default) next to the
+polled for wattage. That, and everything else the API cannot reach, is emitted as SQL
+(--post-import-sql, on by default) next to the
 breaker SQL; run both against the openDCIM database.
 
 IDEMPOTENT. Every phase reads what exists first and creates only what is missing,
@@ -70,7 +71,9 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
+import math
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -80,7 +83,7 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.rack_capacity import device_u_height  # noqa: E402
+from core.rack_capacity import device_u_height, device_weight_kg  # noqa: E402
 from core.device_manager import PDU_OUTLET_CATALOG, outlet_voltage  # noqa: E402
 
 
@@ -114,6 +117,59 @@ SKIP_TYPES = {
 
 # Devices that hang on the rack rails or the side channel rather than occupying a U.
 ZERO_U_TYPES = {"pdu", "sensor"}
+
+# Per-cabinet design power allowance, kW. THIS IS A SITE DESIGN INPUT, NOT A
+# MEASUREMENT — the simulator models rack U-space and per-SKU wattage but has no
+# rack-level budget to export, so this comes from the datacenter's design, the same
+# way it would be handed to you by whoever sized the hall.
+#
+# It is what the room was built to deliver per rack, and it is the number every
+# capacity meter in openDCIM divides by: cabnavigator guards Space, Weight, Computed
+# Watts and Measured Watts on MaxKW > 0, so leaving it at 0 renders every meter dead
+# and every percentage as zero. It is NOT the strip's ceiling — cabinet 29's A and B
+# feeds can each deliver 18.4 kW, but a 2N pair is sized so EITHER side carries the
+# whole rack alone, so the design allowance is well under one feed's rating.
+CABINET_DESIGN_KW = {
+    # A rack's allowance is a property of the ROOM it stands in, because it is the
+    # room's distribution that was sized, not the rack. One estate-wide number gave a
+    # cabinet of six temperature probes the same 15 kW as a rack of eighteen servers,
+    # which reads as 1% forever and quietly asserts that heavy power was run to the
+    # plant room. It was not.
+    #
+    # Measured peak per room at the time of writing, for calibration:
+    #   Server Hall A 11.28 kW   Server Hall B 11.47 kW   Network Room 0.37 kW
+    # The halls are set just above their real peak: enough headroom to add a machine,
+    # tight enough that filling a rack shows up. The others are DESIGN values, not
+    # measurements — see the Network Room note below.
+    "Server Hall A": 15,
+    "Server Hall B": 15,
+    # A network rack is lighter than a compute rack but far from trivial: chassis
+    # switches, optics and dual supplies. NOT set from the measured 0.37 kW — that
+    # figure is an artifact of the simulator barely modelling power draw on network
+    # gear (NominalWatts comes from the live power_watts, which stays near zero for
+    # switches). Sizing a room's distribution from a known-low measurement would bake
+    # the modelling gap into the capacity plan.
+    "Network Room": 8,
+    # Instruments, control panels and facility gear. These are not IT racks and no one
+    # runs a compute rack's feed to them.
+    "Central Plant": 3,
+    "Mechanical Room": 3,
+    "UPS Room": 3,
+    "Generator Room": 3,
+    "Roof": 3,
+}
+
+# Rooms the map does not name. Deliberately the plant figure, not the hall figure:
+# an unrecognised room is more likely to be facility space than a new compute hall,
+# and under-stating an allowance shows up as a rack over 100% — which someone
+# investigates — where over-stating hides a full rack behind a comfortable number.
+CABINET_DESIGN_KW_DEFAULT = 3
+
+# Per-cabinet weight limit, KILOGRAMS. Also a site design input: it is the raised
+# floor's rating, not anything the simulator knows. openDCIM's Weight field carries no
+# unit of its own — the schema and the UI are both unitless — so the only requirement
+# is that this and the template weights use the SAME unit. Both are kg here.
+CABINET_MAX_WEIGHT = 1200
 
 # Feed order, upstream first — a panel's ParentPanelID must exist before it is set.
 PANEL_ORDER = ["utility_feed", "generator", "switchgear", "ats", "mcc", "ups",
@@ -276,7 +332,9 @@ def cabinet_location(dev: dict) -> str:
             f"-{int(dev.get('rack_num') or 0):02d}")
 
 
-def plan(devices: list[dict], only_dc: str = "") -> dict:
+def plan(devices: list[dict], only_dc: str = "",
+         max_kw: float | None = None,
+         max_weight: float = CABINET_MAX_WEIGHT) -> dict:
     """Group the estate into the objects openDCIM needs, in dependency order."""
     manufacturers: set[str] = set()
     templates: dict[str, dict] = {}
@@ -322,6 +380,13 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
             templates[model] = {
                 "Model": model, "Manufacturer": vendor, "DeviceType": odt,
                 "Height": height,
+                # Rounded to whole kg: fac_DeviceTemplate.Weight is an int column, and
+                # a cabinet total is the sum of ~20 of these, so sub-kg precision on a
+                # class estimate would be false accuracy.
+                # Floored at 1: fac_DeviceTemplate.Weight is an int, and openDCIM
+                # cannot tell "0 = weighs nothing" from "0 = nobody filled this in".
+                # A 0.5 kg probe rounds to 0 and would read as the latter.
+                "Weight": max(1, int(round(device_weight_kg(dt, model)))),
                 "NumPorts": int(d.get("interface_count") or 0),
                 "PSCount": len(d.get("psus") or []) or (0 if dt in ZERO_U_TYPES else 2),
                 "Wattage": watts,
@@ -332,6 +397,10 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
         loc = cabinet_location(d)
         cabinets.setdefault((dc, loc), {
             "DataCenter": dc, "Location": loc, "CabinetHeight": 42,
+            "MaxKW": (max_kw if max_kw is not None
+                      else CABINET_DESIGN_KW.get(d.get("room") or "",
+                                                 CABINET_DESIGN_KW_DEFAULT)),
+            "MaxWeight": max_weight,
             "Model": "", "Notes": f"{d.get('room', '')} row {d.get('rack_row')} rack {d.get('rack_num')}",
         })
 
@@ -364,6 +433,10 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
             # side-rail PDU and a rail-clipped probe.
             "Position": 0 if dt in ZERO_U_TYPES else int(d.get("rack_unit") or 0),
             "Height": height,
+            # openDCIM totals a cabinet's load with SUM(Weight) FROM fac_Device — the
+            # DEVICE's own column, not its template's. Setting the template alone
+            # leaves every already-imported device at 0 and the cabinet reading 0%.
+            "Weight": max(1, int(round(device_weight_kg(dt, model)))),
             # The SNMP index the first outlet / first switch port answers on.
             # fac_Device.FirstPortNum has NO column default, so a device created
             # through the API lands on 0 — and getPortStatus() only starts recording
@@ -390,7 +463,14 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
             "SNMPCommunity": ((d.get("mgmt_ip") or d.get("ip_address") or "")
                               if d.get("snmp_agent", True) else ""),
             "Ports": int(d.get("interface_count") or 0),
-            "NominalWatts": int(d.get("power_watts") or 0),
+            # NAMEPLATE, not a live sample — the same precedence the template above
+            # uses, and for the same reason. openDCIM shows two power figures per
+            # cabinet: Computed Watts sums this column, Measured Watts sums what the
+            # PDUs actually report over SNMP. Filling this from power_watts made both
+            # of them the same measurement and threw away the comparison. It also
+            # under-read every rack: a switch idling at 46 W was costed at 46 W
+            # against a 250 W SKU, so the Network Room's racks totalled 0.37 kW.
+            "NominalWatts": int(d.get("power_draw_w") or d.get("power_watts") or 0),
         })
 
     panel_rows = []
@@ -399,9 +479,21 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
         panel_rows.append({
             "PanelLabel": d["name"], "DataCenter": d.get("datacenter", ""),
             "DeviceType": d["device_type"],
+            # A 42-pole branch panelboard is physically two columns — odds down the
+            # left, evens down the right — and openDCIM only spans a multi-pole
+            # breaker across same-parity positions when it is told so. Left at the
+            # schema default ("Sequential") a 3-pole breaker is drawn across three
+            # CONSECUTIVE poles, which is not how one is installed. Switchgear, ATS
+            # and UPS entries have no poles to schedule and stay Sequential.
+            "NumberScheme": ("Odd/Even"
+                             if PANEL_POLES.get(d["device_type"], 3) > 3
+                             else "Sequential"),
             "PanelVoltage": PANEL_VOLTAGE.get(d["device_type"], 480),
             "NumberOfPoles": PANEL_POLES.get(d["device_type"], 3),
             "PanelIPAddress": d.get("mgmt_ip") or d.get("ip_address") or "",
+            "MainBreakerSize": panel_main_breaker_a(
+                d.get("model_name") or "",
+                PANEL_VOLTAGE.get(d["device_type"], 480)),
         })
 
     return {
@@ -423,6 +515,32 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
 # "poles" here are just the three phases of its main. Getting this wrong makes
 # openDCIM's panel schedule offer 3 breaker positions on a 42-pole RPP.
 PANEL_POLES = {"rpp": 42, "mpp": 42}
+
+
+def panel_main_breaker_a(model_name: str, voltage: int) -> int:
+    """The board's main breaker rating, in amps, read off the SKU name.
+
+    Every piece of distribution gear in this estate names its rating: "APC Galaxy RPP
+    125A", "Eaton Magnum DS 4000A", "Eaton Freedom 2100 MCC 1600A". A UPS names kVA
+    instead ("Vertiv Liebert EXL S1 1200kVA"), which converts at the panel's own
+    voltage — three-phase, so I = VA / (V * sqrt(3)).
+
+    Parsed rather than invented, and 0 when the name says nothing: openDCIM treats 0
+    as "not set" and simply omits the check, which is the honest outcome for a
+    Caterpillar 3516B or an ION9000 meter that carries no breaker rating in its name.
+
+    NOTE the sum of a panel's BRANCH breakers legitimately exceeds its main — that is
+    diversity, not an error. On RPPA-DC1-HA-R1-04 the branch ratings total ~190 A per
+    phase against a 125 A main, while the measured draw is nearer 62 A. Sizing the
+    main to the sum of branches would oversize every board in the estate.
+    """
+    if not model_name:
+        return 0
+    m = re.search(r"(\d+)\s*kVA(?![A-Za-z])", model_name, re.I)
+    if m and voltage > 0:
+        return int(round(int(m.group(1)) * 1000 / (voltage * math.sqrt(3))))
+    m = re.search(r"(\d+)\s*A(?![A-Za-z])", model_name)
+    return int(m.group(1)) if m else 0
 
 
 def plan_panel_feeds(graph: dict, panel_names: set) -> dict:
@@ -464,7 +582,26 @@ def plan_panel_feeds(graph: dict, panel_names: set) -> dict:
 RACK_BREAKER_A = 32
 
 
-def plan_breakers(graph: dict, pdu_phases: dict, panel_names: set) -> list[dict]:
+def pdu_breaker_amps(devices: list[dict]) -> dict:
+    """PDU name -> the trip rating of its feed breaker, from the SKU.
+
+    A rack PDU's breaker is sized to the strip, not to a house standard: a 30 A
+    unit is fed by a 30 A breaker. RACK_BREAKER_A stays as the fallback for a SKU
+    the catalog does not know, because inventing a rating is worse than inheriting
+    the estate's common one — but a 30 A strip declared at 32 A overstates its
+    ceiling by 7% on every capacity report that reads InputAmperage.
+    """
+    out = {}
+    for d in devices:
+        if d.get("device_type") != "pdu":
+            continue
+        spec = PDU_OUTLET_CATALOG.get(d.get("model_name") or "")
+        out[d["name"]] = spec[3] if spec else RACK_BREAKER_A
+    return out
+
+
+def plan_breakers(graph: dict, pdu_phases: dict, panel_names: set,
+                  pdu_amps: dict | None = None) -> list[dict]:
     """Assign each rack PDU a breaker position on its RPP: A feeds odd, B feeds even.
 
     Panelboard poles run 1,3,5... down the left column and 2,4,6... down the right, so
@@ -492,22 +629,43 @@ def plan_breakers(graph: dict, pdu_phases: dict, panel_names: set) -> list[dict]
             fed[name[s]].append(name[d])
 
     rows = []
-    cursor: dict = {}          # (panel, parity) -> next free pole on that side
     for panel in sorted(fed):
-        pdus = sorted(set(fed[panel]))
-        # Side comes from the PDU's own name (PDUA/PDUB); the panel's letter is the
-        # fallback. No panel in this estate mixes sides, but do not assume it.
-        for pdu in pdus:
-            side = pdu[3:4].upper() if pdu[:3].upper() == "PDU" else panel[3:4].upper()
-            start_parity = 1 if side == "A" else 2
-            nxt = cursor.setdefault((panel, start_parity), start_parity)
+        taken: set = set()
+        for pdu in sorted(set(fed[panel])):
             poles_needed = 3 if pdu_phases.get(pdu, 1) == 3 else 1
-            poles = [nxt + 2 * i for i in range(poles_needed)]
-            cursor[(panel, start_parity)] = poles[-1] + 2
+            # A 3-pole breaker straddles the phase rotation, so on an Odd/Even
+            # panelboard it occupies three SAME-PARITY positions (7,9,11) — not three
+            # consecutive ones. A 1-pole takes the next free position in either
+            # column. Both columns get filled: a panelboard's two columns are
+            # phase-ordered positions, NOT the A and B feeds. Every RPP in this
+            # estate carries one side only (RPPA feeds eight PDUAs and no PDUBs), so
+            # the old "A odd, B even" rule left the entire even column of every panel
+            # empty and could not have been read off a real schedule.
+            start = None
+            for cand in range(1, PANEL_POLES.get("rpp", 42) + 1):
+                span = [cand + 2 * i for i in range(poles_needed)]
+                if span[-1] <= PANEL_POLES.get("rpp", 42) and not (set(span) & taken):
+                    start = cand
+                    break
+            if start is None:               # panel full — report, do not wrap around
+                rows.append({"pdu": pdu, "panel": panel, "poles": [],
+                             "phases": poles_needed,
+                             "breaker_a": (pdu_amps or {}).get(pdu, RACK_BREAKER_A),
+                             "overflow": True})
+                continue
+            poles = [start + 2 * i for i in range(poles_needed)]
+            taken.update(poles)
             rows.append({
                 "pdu": pdu, "panel": panel, "poles": poles,
-                "phases": poles_needed, "breaker_a": RACK_BREAKER_A,
-                "overflow": poles[-1] > 42,
+                # openDCIM stores only the FIRST pole and derives the rest itself:
+                # getPanelSchedule() walks Pole, Pole+adder, ... BreakerSize times,
+                # with adder 2 on an Odd/Even panel. Writing the whole list into
+                # PanelPole made it a STRING key ("7,9,11"), so the integer lookup
+                # for pole 7 missed and every 3-pole PDU rendered as a blank row.
+                "first_pole": poles[0],
+                "phases": poles_needed,
+                "breaker_a": (pdu_amps or {}).get(pdu, RACK_BREAKER_A),
+                "overflow": False,
             })
     return rows
 
@@ -548,17 +706,46 @@ CDU_SIM_PROFILE = {
     # falls back to the device's PowerSupplyCount, which this exporter already sets
     # to the SKU's real outlet count.
     "OutletCountOID":  "",
-    "VersionOID":      "",
-    #  ...5.11.0  pduRealPower, in WATTS, published for every PDU whatever the
-    # vendor — the vendor-specific power tables are not. SingleOIDWatts with a
-    # multiplier of 1 is therefore an exact read, no unit conversion.
-    "OID1":            "1.3.6.1.4.1.99999.5.11.0",
+    # sysDescr. openDCIM calls GetSmartCDUVersion() on EVERY poll cycle, and an
+    # empty VersionOID makes it log "Could not perform walk for OID " once per PDU —
+    # 80 lines every five minutes, ~1.7 MB of noise a day, in which a real failure
+    # would be invisible. No PDU here serves a dedicated firmware object (APC's
+    # rPDU2IdentFirmwareRev is absent), but sysDescr carries the revision in its
+    # text: "APC Rack PDU 2G ... NMC3 fw v1.4.2". Pointing at the object that
+    # actually exists beats polling one that does not.
+    "VersionOID":      "1.3.6.1.2.1.1.1.0",
+    # OID1 (the wattage read) is set PER VENDOR by CDU_POWER_OID below, not here.
+    # It used to point at the private scalar 1.3.6.1.4.1.99999.5.11.0 on the claim
+    # that it was published for every PDU whatever the vendor. It is not: that
+    # fallback block is only reached for a vendor the generator has no mapping for,
+    # and an APC or Raritan PDU serves ONLY its own MIB plus the private per-outlet
+    # table. openDCIM's poller therefore logged "Could not perform walk" for all 80
+    # PDUs and wrote 0 W to every one of them — a silent zeroing, because a failed
+    # poll is stored as a reading rather than skipped.
+    "OID1":            "",
     "OID2":            "",
     "OID3":            "",
     "ProcessingProfile": "SingleOIDWatts",
-    "Multiplier":      "1",
+    "Multiplier":      "1",          # overridden per vendor, see CDU_POWER_OID
+
     "ATSStatusOID":    "",
     "ATSDesiredResult": "",
+}
+
+
+# Where each PDU vendor publishes its total real power, and the divisor that turns
+# that reading into WATTS for openDCIM's SingleOIDWatts profile (watts = value /
+# Multiplier). Verified by walking a live agent of each type rather than read off a
+# MIB: APC answers 613 on a 6130 W strip (rPDU2DeviceStatusPower is hundredths of a
+# kW, so 10 W per count), Raritan answers 180 on a 180 W strip (PDU2-MIB inlet
+# activePower is already watts).
+#
+# A vendor absent from this map gets an EMPTY OID1, which makes openDCIM skip the
+# wattage poll entirely. That is deliberate: a missing reading leaves the previous
+# value alone, while a failing one is written as 0 and looks like an idle rack.
+CDU_POWER_OID = {
+    "apc":     ("1.3.6.1.4.1.318.1.1.26.4.3.1.5.1", "0.1"),
+    "raritan": ("1.3.6.1.4.1.13742.6.5.2.3.1.4.1.1.5", "1"),
 }
 
 
@@ -581,6 +768,8 @@ def plan_cdu_templates(devices: list[dict], only_dc: str = "") -> dict:
         if not model or model in rows:
             continue
         spec = PDU_OUTLET_CATALOG.get(model)
+        _vkey = str(d.get("vendor") or model).split()[0].lower()
+        _cdu_power = CDU_POWER_OID.get(_vkey, ("", "1"))
         n_outlets = len(d.get("outlets") or []) or (spec[0] + spec[1] if spec else 0)
         rows[model] = {
             **CDU_SIM_PROFILE,
@@ -590,6 +779,7 @@ def plan_cdu_templates(devices: list[dict], only_dc: str = "") -> dict:
             "Managed": 1,
             "ATS": 0,
             "SNMPVersion": "2c",
+            "OID1": _cdu_power[0], "Multiplier": _cdu_power[1],
             "Voltage": spec[4] if spec else 230,
             "Amperage": spec[3] if spec else 0,
             "NumOutlets": n_outlets,
@@ -605,8 +795,24 @@ def _sq(value) -> str:
     return str(value).replace("\\", "\\\\").replace("'", "\\'")
 
 
-def cdu_template_sql(rows: dict) -> str:
-    """SQL for the rack-PDU SNMP templates.
+def post_import_sql(rows: dict) -> str:
+    """Everything the openDCIM REST API cannot write, in one runnable file.
+
+    This began as the rack-PDU SNMP templates and grew, because the same wall keeps
+    appearing: get/put/postRoutes cover device, cabinet, devicetemplate, manufacturer,
+    powerpanel, powerport, deviceport and pdustats — nothing else. Anything outside
+    that set is SQL or it does not happen. Currently:
+
+        fac_CDUTemplate   outlet OIDs; without them a CDU's Status stays 'err'
+        fac_Tags          the Poll opt-in, or devices.php never calls the poller
+        fac_Device        rack-PDU outlet COUNTS, with the ports to match
+        fac_PowerPorts    outlet LABELS, receptacle-numbered
+        fac_Config        the cabinet power meter thresholds
+
+    Every statement is re-runnable: INSERT IGNORE where a row may already exist,
+    UPDATE keyed on a natural name, and nothing that touches a connection.
+
+    On the CDU templates specifically:
 
     Two statements per SKU. The INSERT IGNORE is a repair for an estate imported
     before this existed (or by any path that did not go through
@@ -683,7 +889,47 @@ def cdu_template_sql(rows: dict) -> str:
     ]
     out += outlet_count_sql(rows)
     out += outlet_label_sql()
+    out += meter_threshold_sql()
     return "\n".join(out) + "\n"
+
+
+# Where the cabinet power meters turn yellow and red, as a PERCENTAGE of MaxKW. One
+# pair drives three meters: Computed Watts, Measured Watts and the per-PDU bars.
+#
+# 85/100 is not a taste call, it is what cabnavigator's arithmetic allows.
+#
+#   * The two CABINET percentages are clamped to 100 BEFORE the colour test
+#     (cabnavigator.php: "if($PowerPercent>100){$PowerPercent=100;}"). A threshold at
+#     or above 100 can therefore never be exceeded — setting PowerRed=120 to quiet a
+#     noisy meter does not calibrate it, it switches the warning off and every rack
+#     reads green however overloaded. That mistake was made here and caught.
+#   * Computed Watts sums NAMEPLATE, Measured sums live SNMP, so Computed sits
+#     structurally higher — about 1.4x on this estate. Sharing one threshold pair
+#     means both cannot be tuned: pick a red Computed can clear and Measured never
+#     alarms; pick one Measured can reach and every compute rack is permanently red.
+#     Yellow at 85 lets a genuinely loaded rack signal, while a nameplate total over
+#     the allowance reads as attention rather than fault.
+#   * Red at 100 is unreachable for the cabinet meters by that clamp. It stays live
+#     for the PER-PDU bars, which are NOT clamped ($PDUPercent) — a feed over 100% of
+#     its derated breaker is the alarm that actually matters, and it survives.
+CABINET_POWER_YELLOW_PCT = 85
+CABINET_POWER_RED_PCT = 100
+
+
+def meter_threshold_sql() -> list[str]:
+    """openDCIM's power meter thresholds. Site config; no API route exists for it."""
+    return [
+        "-- Cabinet power meter thresholds (percent of the cabinet's MaxKW).",
+        "-- Both cabinet percentages are CLAMPED to 100 before the colour test, so a",
+        "-- threshold >= 100 can never fire. Raising PowerRed above 100 does not make",
+        "-- the meter quieter, it makes every rack green. Read the comment on",
+        "-- CABINET_POWER_YELLOW_PCT in tools/export_to_opendcim.py before changing.",
+        f"UPDATE fac_Config SET Value={CABINET_POWER_YELLOW_PCT} "
+        f"WHERE Parameter='PowerYellow';",
+        f"UPDATE fac_Config SET Value={CABINET_POWER_RED_PCT} "
+        f"WHERE Parameter='PowerRed';",
+        "",
+    ]
 
 
 def outlet_label_sql() -> list[str]:
@@ -818,17 +1064,32 @@ def breaker_sql(rows: list[dict]) -> str:
         "-- Rack PDU -> RPP breaker assignments.",
         "-- Generated by tools/export_to_opendcim.py. A feeds odd poles, B feeds even.",
         "-- Positions are an assigned scheme: the simulator models no breaker numbers.",
+        "--",
+        "-- BreakerSize is the POLE COUNT (1/2/3), NOT the trip rating. Three places",
+        "-- read it that way: cabnavigator derives the strip's ceiling from it",
+        "-- (1 -> V/sqrt(3) single-phase, 2 -> V, 3 -> V*sqrt(3) three-phase),",
+        "-- GetAllBreakerPoles() walks 1..BreakerSize to span the schedule, and",
+        "-- UpdateStats() tests == 3. Writing the AMPERAGE here (this tool used to",
+        "-- write 32) claims a 32-pole breaker, and every single-phase strip then",
+        "-- gets costed as three-phase -- 18.4 kW of headroom on a 6.2 kW unit.",
+        "-- The trip rating belongs in InputAmperage, which is where cabnavigator",
+        "-- reads it from.",
         "",
     ]
     for r in rows:
-        poles = ",".join(str(x) for x in r["poles"])
+        if r["overflow"]:
+            out.append(f"-- SKIPPED {r['pdu']}: {r['panel']} has no free "
+                       f"{r['phases']}-pole position left.")
+            continue
+        poles = str(r["first_pole"])
         out.append(
             "UPDATE fac_PowerDistribution pd "
             "JOIN fac_PowerPanel pp ON pp.PanelLabel = '{panel}' "
             "SET pd.PanelID = pp.PanelID, pd.PanelPole = '{poles}', "
-            "pd.BreakerSize = {amps}, pd.InputAmperage = {amps} "
+            "pd.BreakerSize = {poles_n}, pd.InputAmperage = {amps} "
             "WHERE pd.Label = '{pdu}';".format(
-                panel=r["panel"], poles=poles, amps=r["breaker_a"], pdu=r["pdu"])
+                panel=r["panel"], poles=poles, poles_n=r["phases"],
+                amps=r["breaker_a"], pdu=r["pdu"])
         )
     return "\n".join(out) + "\n"
 
@@ -854,6 +1115,48 @@ def plan_cords(graph: dict, importable: set) -> list[dict]:
             cords.append({"pdu": supply, "device": load,
                           "outlet": int(outlet), "psu": int(psu)})
     return cords
+
+
+# What /api/devices does NOT serialise. Every one of these is a STATIC property of the
+# SKU that the saved topology holds and the live payload drops, and each has already
+# cost a wrong import: no outlets[] gave every PDU a flat 24-outlet strip and read
+# every 3-phase unit as single-phase, no interfaces[] would have renamed 2026 ports to
+# their port number, and no power_draw_w costed a 250 W switch at its 46 W idle.
+#
+# They are filled from the topology file rather than fixed one at a time, because the
+# next field to go missing should not need a fourth workaround.
+_TOPOLOGY_ONLY_FIELDS = ("power_draw_w", "outlets", "interfaces", "psus")
+
+
+def enrich_from_topology(devices: list[dict], topology_path: str) -> int:
+    """Fill the SKU facts the live API omits, matched by device name.
+
+    Only fills what is ABSENT or empty — anything the API did send wins, so this can
+    never overwrite live state with a stale file. Returns how many devices gained a
+    field, so a caller can say when the file did not match the running estate.
+    """
+    try:
+        with open(topology_path, encoding="utf-8") as fh:
+            topo = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return 0
+    by_name = {}
+    for node in topo.get("nodes", []):
+        d = node.get("device") or {}
+        if d.get("name"):
+            by_name[d["name"]] = d
+    filled = 0
+    for dev in devices:
+        src = by_name.get(dev.get("name"))
+        if not src:
+            continue
+        touched = False
+        for key in _TOPOLOGY_ONLY_FIELDS:
+            if not dev.get(key) and src.get(key):
+                dev[key] = src[key]
+                touched = True
+        filled += 1 if touched else 0
+    return filled
 
 
 def iface_label_map(topology_path: str) -> dict:
@@ -974,6 +1277,7 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
         dcim.request("PUT", f"/api/v1/devicetemplate/{urllib.parse.quote(model)}", {
             "Model": model, "ManufacturerID": mfg_id.get(t["Manufacturer"], 0),
             "DeviceType": t["DeviceType"], "Height": t["Height"],
+            "Weight": t["Weight"],
             "NumPorts": t["NumPorts"], "PSCount": t["PSCount"], "Wattage": t["Wattage"],
         })
         counts["templates"] += 1
@@ -981,6 +1285,24 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
         say(f"  + template {model} ({t['DeviceType']}, {t['Height']}U, {t['Wattage']} W)")
     if created:
         tmpl_id = reload_ids("/api/v1/devicetemplate", "devicetemplate", "Model", "TemplateID")
+
+    # Templates imported before weights existed carry Weight 0, and a cabinet's total
+    # is the sum of its devices' template weights — so one stale template silently
+    # under-reports every rack it appears in. POST /devicetemplate/{id} loads the row
+    # first, so Weight is the only field changed.
+    have_tmpl = {str(r.get("Model", "")).strip(): r
+                 for r in dcim.request("GET", "/api/v1/devicetemplate").get("devicetemplate", [])}
+    for model, t in p["templates"].items():
+        row = have_tmpl.get(model)
+        if row and t["Weight"] and int(row.get("Weight") or 0) != int(t["Weight"]):
+            try:
+                dcim.request("POST", f"/api/v1/devicetemplate/{row['TemplateID']}",
+                             {"Weight": t["Weight"]})
+                counts["template_weight_set"] += 1
+            except RuntimeError as e:
+                counts["template_weight_failed"] += 1
+                if counts["template_weight_failed"] <= 5:
+                    say(f"  ! weight {model}: {e}")
 
     missing_tmpl = [m for m in p["templates"] if not tmpl_id.get(m)]
     if missing_tmpl:
@@ -993,13 +1315,36 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
                 for r in rows}
 
     cab_id = reload_cabinets()
+    have_cab = {(str(r.get("DataCenterID")), str(r.get("Location", "")).strip()): r
+                for r in dcim.request("GET", "/api/v1/cabinet").get("cabinet", [])}
     created = False
     for (dc, loc), c in sorted(p["cabinets"].items()):
         if (str(dc_id[dc]), loc) in cab_id:
+            # Already there — but a cabinet imported before MaxKW was carried has 0,
+            # and cabnavigator guards EVERY meter on MaxKW > 0. A zero there is not a
+            # cosmetic gap: Space, Weight, Computed Watts and Measured Watts all
+            # render as dead bars reading 0%, so the page looks broken rather than
+            # empty. Repair in place; MaxKW is the only field touched.
+            row = have_cab.get((str(dc_id[dc]), loc))
+            delta = {}
+            if row and float(row.get("MaxKW") or 0) != float(c["MaxKW"]):
+                delta["MaxKW"] = c["MaxKW"]
+            if row and float(row.get("MaxWeight") or 0) != float(c["MaxWeight"]):
+                delta["MaxWeight"] = c["MaxWeight"]
+            if delta:
+                try:
+                    dcim.request("POST", f"/api/v1/cabinet/{row['CabinetID']}", delta)
+                    for f in delta:
+                        counts[f"cabinet_{f}_set"] += 1
+                except RuntimeError as e:
+                    counts["cabinet_limits_failed"] += 1
+                    if counts["cabinet_limits_failed"] <= 5:
+                        say(f"  ! cabinet limits {dc}/{loc}: {e}")
             continue
         dcim.request("PUT", "/api/v1/cabinet", {
             "DataCenterID": dc_id[dc], "Location": loc,
             "CabinetHeight": c["CabinetHeight"], "Notes": c["Notes"],
+            "MaxKW": c["MaxKW"],
         })
         counts["cabinets"] += 1
         created = True
@@ -1046,6 +1391,10 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
             # raises a PDOException under ERRMODE_EXCEPTION, so the request 500s with
             # "Duplicate entry '<id>-1' for key 'PRIMARY'" after the count is committed
             # and before a single new port exists.
+            if d["Weight"] and int(row.get("Weight") or 0) != d["Weight"]:
+                delta["Weight"] = d["Weight"]
+            if d["NominalWatts"] and int(row.get("NominalWatts") or 0) != d["NominalWatts"]:
+                delta["NominalWatts"] = d["NominalWatts"]
             have_ports = int(row.get("PowerSupplyCount") or 0)
             if d["PowerSupplyCount"] != have_ports:
                 counts["outlet_count_needs_sql"] += 1
@@ -1071,7 +1420,7 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
             "PrimaryIP": d["PrimaryIP"], "SNMPCommunity": d["SNMPCommunity"],
             "Ports": d["Ports"], "NominalWatts": d["NominalWatts"],
             "PowerSupplyCount": d["PowerSupplyCount"],
-            "FirstPortNum": d["FirstPortNum"],
+            "FirstPortNum": d["FirstPortNum"], "Weight": d["Weight"],
         })
         counts["devices"] += 1
         say(f"  + device {d['Label']} -> {d['Cabinet']} U{d['Position']}")
@@ -1176,6 +1525,8 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
         dcim.request("PUT", f"/api/v1/powerpanel/{urllib.parse.quote(pan['PanelLabel'])}", {
             "PanelLabel": pan["PanelLabel"], "PanelVoltage": pan["PanelVoltage"],
             "NumberOfPoles": pan["NumberOfPoles"], "PanelIPAddress": pan["PanelIPAddress"],
+            "NumberScheme": pan["NumberScheme"],
+            "MainBreakerSize": pan["MainBreakerSize"],
             "MapDataCenterID": dc_id[pan["DataCenter"]],
         })
         counts["panels"] += 1
@@ -1191,24 +1542,49 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
                           "PanelLabel")
         panel_id = {k: v["PanelID"] for k, v in panel_id.items()}
         poles = {x["PanelLabel"]: x["NumberOfPoles"] for x in p["panels"]}
-        for child, feed in sorted(feeds.items()):
-            cid, pid = panel_id.get(child), panel_id.get(feed["parent"])
-            if not cid or not pid:
+        schemes = {x["PanelLabel"]: x["NumberScheme"] for x in p["panels"]}
+        mains = {x["PanelLabel"]: x["MainBreakerSize"] for x in p["panels"]}
+        panel_ips = {x["PanelLabel"]: x["PanelIPAddress"] for x in p["panels"]}
+        # Every planned panel, not just the ones with a parent. The ROOTS — the two
+        # utility feeds and the four gensets — have nothing upstream, so a loop over
+        # feeds.items() never reaches them, and they kept a stale meter IP through
+        # the estate renumber while their children were repaired around them.
+        for child in sorted({x["PanelLabel"] for x in p["panels"]} | set(feeds)):
+            feed = feeds.get(child)
+            cid = panel_id.get(child)
+            pid = panel_id.get(feed["parent"]) if feed else None
+            if not cid:
                 counts["parentage_skipped"] += 1
                 continue
-            alt = feed["alternates"]
+            alt = feed["alternates"] if feed else []
             # ParentBreakerName is free text in openDCIM ("for switchgear, this
             # usually won't be numbered"), so it is the honest place to record the
             # source openDCIM's single-parent model cannot hold.
-            label = feed["parent"] if not alt else f"{feed['parent']} (alt: {', '.join(alt)})"
+            label = "" if not feed else (
+                feed["parent"] if not alt
+                else f"{feed['parent']} (alt: {', '.join(alt)})")
             try:
-                dcim.request("POST", f"/api/v1/powerpanel/{cid}", {
-                    "ParentPanelID": pid,
+                payload = {
                     "ParentBreakerName": label[:60],
                     "NumberOfPoles": poles.get(child, 3),
-                })
-                counts["parentage"] += 1
-                say(f"  ~ {child} fed from {label}")
+                    "NumberScheme": schemes.get(child, "Sequential"),
+                    "MainBreakerSize": mains.get(child, 0),
+                    # Panels are created once and then only ever revisited here, so
+                    # this pass is the ONLY thing that can repair them. The estate
+                    # renumber fixed fac_Device.PrimaryIP on all 531 devices and left
+                    # every panel pointing at its old address — 30 of 46 still held a
+                    # 192.168 meter IP that no longer exists anywhere, which reads on
+                    # the panel page as a meter load of zero rather than as an error.
+                    "PanelIPAddress": panel_ips.get(child, ""),
+                }
+                # A root panel has no parent to point at; sending ParentPanelID 0
+                # would be asserting one.
+                if pid:
+                    payload["ParentPanelID"] = pid
+                dcim.request("POST", f"/api/v1/powerpanel/{cid}", payload)
+                counts["parentage" if pid else "panel_fields_only"] += 1
+                if pid:
+                    say(f"  ~ {child} fed from {label}")
             except RuntimeError as e:
                 counts["parentage_failed"] += 1
                 say(f"  ! parentage {child} <- {feed['parent']}: {e}")
@@ -1234,7 +1610,8 @@ def main() -> int:
     ap.add_argument("--breaker-sql", default="",
                     help="write rack-PDU breaker assignments to this .sql file "
                          "(openDCIM has no API route for fac_PowerDistribution)")
-    ap.add_argument("--cdu-sql", default="opendcim_cdu_templates.sql",
+    ap.add_argument("--post-import-sql", "--cdu-sql", dest="post_import_sql",
+                    default="opendcim_post_import.sql",
                     help="write the rack-PDU SNMP templates to this .sql file "
                          "(openDCIM has no API route for fac_CDUTemplate). Without "
                          "running it, a CDU's Power Connections Status stays 'err'. "
@@ -1242,6 +1619,15 @@ def main() -> int:
     ap.add_argument("--topology-file", default="topologies/dual_dc_enterprise.json",
                     help="where to read interface NAMES from when running against the "
                          "live simulator (/api/devices does not serialise interfaces[])")
+    ap.add_argument("--cabinet-max-kw", type=float, default=None,
+                    help="override the per-cabinet design allowance (kW) for EVERY "
+                         "room. Omit to use the per-room map in CABINET_DESIGN_KW: "
+                         + ", ".join(f"{k}={v}" for k, v in CABINET_DESIGN_KW.items())
+                         + f", other={CABINET_DESIGN_KW_DEFAULT}. A SITE DESIGN "
+                           "INPUT — the simulator has no rack budget to export.")
+    ap.add_argument("--cabinet-max-weight", type=float, default=CABINET_MAX_WEIGHT,
+                    help=f"per-cabinet weight limit, kg (default {CABINET_MAX_WEIGHT}) "
+                         f"— the raised floor's rating, a site design input")
     ap.add_argument("--no-network", action="store_true",
                     help="skip the network-cabling phase (production + management links)")
     ap.add_argument("--no-power", action="store_true",
@@ -1264,8 +1650,16 @@ def main() -> int:
                   file=sys.stderr)
             return 2
         print(f"simulator: {len(devices)} devices")
+        enriched = enrich_from_topology(devices, args.topology_file)
+        if enriched:
+            print(f"  enriched {enriched} from {args.topology_file} "
+                  f"({', '.join(_TOPOLOGY_ONLY_FIELDS)} are not in /api/devices)")
+        else:
+            print(f"  ! {args.topology_file} matched no device — nameplate power, "
+                  f"outlet counts and PSU counts will fall back to defaults",
+                  file=sys.stderr)
 
-    p = plan(devices, args.only_dc)
+    p = plan(devices, args.only_dc, args.cabinet_max_kw, args.cabinet_max_weight)
     if args.limit:
         p["devices"] = p["devices"][:args.limit]
 
@@ -1294,7 +1688,8 @@ def main() -> int:
                 p["panel_feeds"] = plan_panel_feeds(
                     graph, {x["PanelLabel"] for x in p["panels"]})
                 p["breakers"] = plan_breakers(
-                    graph, pdu_phase_map(devices), {x["PanelLabel"] for x in p["panels"]})
+                    graph, pdu_phase_map(devices), {x["PanelLabel"] for x in p["panels"]},
+                    pdu_breaker_amps(devices))
 
             # Network cabling needs interface NAMES, and only the topology file has
             # them — /api/devices serialises interface_count but not interfaces[].
@@ -1350,12 +1745,12 @@ def main() -> int:
         unknown = [m for m, r in p["cdu_templates"].items() if not r["_known_sku"]]
         print(f"  cdu templates : {len(p['cdu_templates'])} rack-PDU SKUs"
               + (f" — {len(unknown)} not in the outlet catalog" if unknown else ""))
-        if args.cdu_sql:
-            with open(args.cdu_sql, "w", encoding="utf-8") as fh:
-                fh.write(cdu_template_sql(p["cdu_templates"]))
-            print(f"                  wrote {args.cdu_sql} — RUN IT against the openDCIM\n"
-                  f"                  database; the API cannot write fac_CDUTemplate, and\n"
-                  f"                  until it runs every CDU Status light stays 'err'.")
+        if args.post_import_sql:
+            with open(args.post_import_sql, "w", encoding="utf-8") as fh:
+                fh.write(post_import_sql(p["cdu_templates"]))
+            print(f"                  wrote {args.post_import_sql} — RUN IT against the openDCIM\n"
+                  f"                  database; it carries everything the REST API\n"
+                  f"                  cannot write; until it runs a CDU Status stays 'err'.")
 
     if p.get("breakers"):
         over = [b for b in p["breakers"] if b["overflow"]]

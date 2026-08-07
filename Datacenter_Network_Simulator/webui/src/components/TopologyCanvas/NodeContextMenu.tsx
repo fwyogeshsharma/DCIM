@@ -645,6 +645,12 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const [evBusy, setEvBusy] = useState<string | null>(null)
   const [faultsAvail, setFaultsAvail] = useState<{ fault: string; label: string }[]>([])
   const [faultsActive, setFaultsActive] = useState<string[]>([])
+  // Per-outlet relays on a rack PDU: one switched receptacle, not the whole strip.
+  type Outlet = { index: number; type: string; bank: number; phase: string;
+                  state: 'on' | 'off'; feeds: string | null }
+  const [outlets, setOutlets] = useState<Outlet[]>([])
+  const [outletBusy, setOutletBusy] = useState<number | null>(null)
+  const [outletSub, setOutletSub] = useState(false)
   const [fltBusy, setFltBusy] = useState<string | null>(null)
   const snmpRunning = snmp?.running ?? false
   const plantEvents = PLANT_EVENTS[deviceType] ?? []
@@ -696,6 +702,28 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
     } catch { /* ignore */ }
   }
   useEffect(() => { loadFaults() }, [nodeId])
+
+  // Outlet relays. Only rack PDUs have them, so this stays quiet for every other
+  // device type rather than 404-ing on each menu open.
+  const IS_PDU = deviceType === 'pdu' || deviceType === 'floor_pdu'
+  async function loadOutlets() {
+    if (!IS_PDU) { setOutlets([]); return }
+    try {
+      const r = await api.deviceOutlets(nodeId) as { outlets: Outlet[] }
+      setOutlets(r.outlets ?? [])
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { loadOutlets() }, [nodeId, deviceType])
+
+  async function toggleOutlet(o: Outlet) {
+    setOutletBusy(o.index)
+    try {
+      await api.setDeviceOutlet(nodeId, o.index, o.state === 'off' ? 'on' : 'off')
+      await loadOutlets()
+      fetchFaulted()
+    } catch (e) { alert(errorMessage(e)) }
+    finally { setOutletBusy(null) }
+  }
 
   // Adjust to keep on-screen after first render
   useEffect(() => {
@@ -835,8 +863,9 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const covered = new Set(faultsAvail.map(f => FAULT_TRAP[f.fault]).filter(Boolean))
   const events = (!isPlant && snmpRunning) ? traps.filter(t => !covered.has(t.type)) : []
 
-  const hasSim = conditions.length > 0 || events.length > 0
+  const hasSim = conditions.length > 0 || events.length > 0 || outlets.length > 0
   const busyAny = evBusy !== null || fltBusy !== null
+  const outletsOff = outlets.filter(o => o.state === 'off').length
 
   const GROUP_HDR: React.CSSProperties = {
     fontSize: 9, fontWeight: 600, color: 'var(--text-muted)',
@@ -895,6 +924,63 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                   >
                     <span>Reset High Head Pressure</span>
                     <span style={{ fontSize: 9, color: 'var(--warn)' }}>{hpBusy ? '…' : 'LOCKED OUT'}</span>
+                  </div>
+                )}
+
+                {/* Per-outlet relays. Kept in its own nested submenu because a
+                    42-outlet strip would otherwise bury the handful of strip-level
+                    faults under a wall of receptacles. */}
+                {outlets.length > 0 && <div style={GROUP_HDR}>Outlets</div>}
+                {outlets.length > 0 && (
+                  <div
+                    style={{ position: 'relative' }}
+                    onMouseEnter={() => setOutletSub(true)}
+                    onMouseLeave={() => setOutletSub(false)}
+                  >
+                    <div style={{
+                      padding: '5px 14px', cursor: 'pointer', whiteSpace: 'nowrap',
+                      color: outletsOff > 0 ? 'var(--crit)' : 'var(--text)',
+                      background: outletSub ? 'rgba(255,255,255,0.06)' : 'transparent',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18,
+                    }}>
+                      <span>Switch Outlet Off</span>
+                      <span style={{ fontSize: 9, color: outletsOff > 0 ? 'var(--crit)' : 'var(--text-dim)' }}>
+                        {outletsOff > 0 ? `${outletsOff} OFF` : ''} ▶
+                      </span>
+                    </div>
+                    {outletSub && (
+                      <div
+                        style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9002, maxHeight: 380, overflowY: 'auto' }}
+                        onMouseEnter={() => setOutletSub(true)}
+                        onMouseLeave={() => setOutletSub(false)}
+                      >
+                        {outlets.map(o => (
+                          <div
+                            key={o.index}
+                            style={{
+                              padding: '4px 14px',
+                              cursor: outletBusy !== null ? 'wait' : 'pointer',
+                              color: o.state === 'off' ? 'var(--crit)' : 'var(--text)',
+                              whiteSpace: 'nowrap', display: 'flex',
+                              justifyContent: 'space-between', alignItems: 'center', gap: 18,
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            onMouseDown={e => { e.preventDefault(); if (outletBusy === null) toggleOutlet(o) }}
+                          >
+                            {/* What the receptacle FEEDS is the useful label — an
+                                operator picks the outlet by its load, not its number. */}
+                            <span>
+                              {o.index}. {o.feeds ?? <span style={{ color: 'var(--text-dim)' }}>(empty)</span>}
+                              <span style={{ fontSize: 9, color: 'var(--text-dim)' }}> {o.type}</span>
+                            </span>
+                            <span style={{ fontSize: 9, color: o.state === 'off' ? 'var(--crit)' : 'var(--text-dim)' }}>
+                              {outletBusy === o.index ? '…' : o.state === 'off' ? 'OFF' : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

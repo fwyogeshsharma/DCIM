@@ -15,14 +15,14 @@ INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
   WHERE dt.Model='APC AP8886' AND dt.DeviceType='CDU';
 UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
   SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
-      ct.VersionOID='',
+      ct.VersionOID='1.3.6.1.2.1.1.1.0',
       ct.OutletNameOID='1.3.6.1.4.1.99999.5.20.1.2',
       ct.OutletDescOID='1.3.6.1.4.1.99999.5.20.1.2',
       ct.OutletCountOID='',
       ct.OutletStatusOID='1.3.6.1.4.1.99999.5.20.1.3',
       ct.OutletStatusOn='1',
-      ct.Multiplier='1',
-      ct.OID1='1.3.6.1.4.1.99999.5.11.0', ct.OID2='', ct.OID3='',
+      ct.Multiplier='0.1',
+      ct.OID1='1.3.6.1.4.1.318.1.1.26.4.3.1.5.1', ct.OID2='', ct.OID3='',
       ct.ATSStatusOID='',
       ct.ATSDesiredResult='',
       ct.ProcessingProfile='SingleOIDWatts',
@@ -36,14 +36,14 @@ INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
   WHERE dt.Model='APC AP8941' AND dt.DeviceType='CDU';
 UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
   SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
-      ct.VersionOID='',
+      ct.VersionOID='1.3.6.1.2.1.1.1.0',
       ct.OutletNameOID='1.3.6.1.4.1.99999.5.20.1.2',
       ct.OutletDescOID='1.3.6.1.4.1.99999.5.20.1.2',
       ct.OutletCountOID='',
       ct.OutletStatusOID='1.3.6.1.4.1.99999.5.20.1.3',
       ct.OutletStatusOn='1',
-      ct.Multiplier='1',
-      ct.OID1='1.3.6.1.4.1.99999.5.11.0', ct.OID2='', ct.OID3='',
+      ct.Multiplier='0.1',
+      ct.OID1='1.3.6.1.4.1.318.1.1.26.4.3.1.5.1', ct.OID2='', ct.OID3='',
       ct.ATSStatusOID='',
       ct.ATSDesiredResult='',
       ct.ProcessingProfile='SingleOIDWatts',
@@ -57,14 +57,14 @@ INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
   WHERE dt.Model='Raritan PX2-5170CR' AND dt.DeviceType='CDU';
 UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
   SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
-      ct.VersionOID='',
+      ct.VersionOID='1.3.6.1.2.1.1.1.0',
       ct.OutletNameOID='1.3.6.1.4.1.99999.5.20.1.2',
       ct.OutletDescOID='1.3.6.1.4.1.99999.5.20.1.2',
       ct.OutletCountOID='',
       ct.OutletStatusOID='1.3.6.1.4.1.99999.5.20.1.3',
       ct.OutletStatusOn='1',
       ct.Multiplier='1',
-      ct.OID1='1.3.6.1.4.1.99999.5.11.0', ct.OID2='', ct.OID3='',
+      ct.OID1='1.3.6.1.4.1.13742.6.5.2.3.1.4.1.1.5', ct.OID2='', ct.OID3='',
       ct.ATSStatusOID='',
       ct.ATSDesiredResult='',
       ct.ProcessingProfile='SingleOIDWatts',
@@ -123,4 +123,12 @@ INSERT IGNORE INTO fac_PowerPorts (DeviceID, PortNumber, Label,
 UPDATE fac_PowerPorts pp JOIN fac_Device d ON d.DeviceID=pp.DeviceID
   SET pp.Label = CONCAT('Outlet ', pp.PortNumber)
   WHERE d.DeviceType='CDU';
+
+-- Cabinet power meter thresholds (percent of the cabinet's MaxKW).
+-- Both cabinet percentages are CLAMPED to 100 before the colour test, so a
+-- threshold >= 100 can never fire. Raising PowerRed above 100 does not make
+-- the meter quieter, it makes every rack green. Read the comment on
+-- CABINET_POWER_YELLOW_PCT in tools/export_to_opendcim.py before changing.
+UPDATE fac_Config SET Value=85 WHERE Parameter='PowerYellow';
+UPDATE fac_Config SET Value=100 WHERE Parameter='PowerRed';
 

@@ -210,6 +210,11 @@ export const api = {
   faultedDevices:    ()               => get('/devices/faulted'),
   setDeviceFault:    (id: string, fault: string, action: 'start' | 'clear') =>
     post(`/devices/${id}/fault`, { fault, action }),
+  // Per-outlet relay on a rack PDU. Distinct from the strip-level "Outlet Off"
+  // fault, which models the whole PDU losing its feed.
+  deviceOutlets:     (id: string)     => get(`/devices/${id}/outlets`),
+  setDeviceOutlet:   (id: string, outlet: number, state: 'on' | 'off') =>
+    post(`/devices/${id}/outlet`, { outlet, state }),
 
   // binding
   adapters:    ()                     => get('/binding/adapters'),

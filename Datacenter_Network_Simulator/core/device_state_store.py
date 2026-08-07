@@ -512,6 +512,14 @@ class DeviceStateStore:
         # NOT count as lost cooling, whereas an unpowered unit genuinely is not
         # rejecting heat, so it must show up in the cooling-loss penalty.
         self._plant_unpowered_names: set = set()
+        # IT loads whose every feed sits on a switched-off outlet — see
+        # _compute_unpowered_loads(). Same shape and purpose as the plant set above.
+        self._load_unpowered_names: set = set()
+        # {frozenset((load_id, pdu_id))} for cords whose outlet relay is open. Same
+        # shape as _broken_power because it has the same consequence: the cord
+        # carries nothing, so the parent must drop out of the load's active set and
+        # the SURVIVING side inherits the whole draw.
+        self._dead_cord_pairs: set = set()
         # Seconds each DC's mechanical plant has been (even partly) de-energized.
         # Drives the chilled-water ride-through — see _CHW_RIDE_S.
         self._mech_dead_s: Dict[str, float] = {}
@@ -2046,6 +2054,62 @@ class DeviceStateStore:
                                      else self._mech_dead_s.get(dc, 0.0) + self._dt)
         self._plant_unpowered_names = unpowered
 
+    def _compute_unpowered_loads(self) -> None:
+        """Names of IT loads left with no live cord, from the per-outlet relay state.
+
+        A load dies only when EVERY feed it has is switched off. That is the whole
+        point of dual-cording: kill the A outlet on a 1+1 server and it keeps running
+        on B, drawing the same total through the surviving strip. Treating one dead
+        outlet as a dead server would erase the redundancy the estate is built on and
+        make an A/B test look like an outage.
+
+        A load with no recorded cord at all is left alone rather than assumed dead —
+        absence of cabling data is not evidence of a missing feed.
+        """
+        off_by_pdu: Dict[str, set] = {}
+        for dev in self._device_manager.get_all_devices():
+            if dev.device_type.value not in ("pdu", "floor_pdu"):
+                continue
+            st = self._ext_states.get(dev.name) or {}
+            offs = st.get("pdu_outlets_off") or []
+            # The strip-level fault stays meaningful: "everything off" is a PDU that
+            # has lost its own feed, not 42 relays opened one at a time.
+            if st.get("pdu_outlet_status", "on") == "off":
+                off_by_pdu[dev.id] = None          # sentinel: the whole strip is dead
+            elif offs:
+                off_by_pdu[dev.id] = {int(o) for o in offs}
+
+        dead: set = set()
+        dead_cords: set = set()
+        if not off_by_pdu:
+            self._load_unpowered_names = dead
+            self._dead_cord_pairs = dead_cords
+            return
+        for dev in self._device_manager.get_all_devices():
+            if dev.device_type.value not in self._IT_LEAF_TYPES:
+                continue
+            try:
+                feeds = self._topology.power_feeds(dev.id)
+            except Exception:
+                continue
+            if not feeds:
+                continue
+            live = 0
+            for f in feeds.values():
+                sup, outlet = f.get("supply_id"), f.get("outlet")
+                if sup not in off_by_pdu:
+                    live += 1
+                    continue
+                offs = off_by_pdu[sup]
+                if offs is not None and outlet not in offs:
+                    live += 1
+                else:
+                    dead_cords.add(frozenset((dev.id, sup)))
+            if live == 0:
+                dead.add(dev.name)
+        self._load_unpowered_names = dead
+        self._dead_cord_pairs = dead_cords
+
     def _mcc_tie_state(self, dc: str, ctx: dict) -> tuple:
         """Which MCCs have a source, and whether the bus tie is closed.
 
@@ -2069,6 +2133,20 @@ class DeviceStateStore:
         any_ok = any(own.values())
         tie_closed = any_ok and not all(own.values())
         return {m: (own[m] or tie_closed) for m in mccs}, tie_closed
+
+    def ext_state_for(self, device: "Device") -> dict:
+        """The LIVE ext-state dict for a device, created if the tick has not yet.
+
+        Returns the real dict, not a copy: callers that switch an outlet relay need
+        their write to be the value the next tick reads. The read-only helpers
+        elsewhere fall back to the module cache and may hand back a snapshot, which
+        is fine for display and wrong for control.
+        """
+        st = self._ext_states.get(device.name)
+        if st is None:
+            st = dict(_ext_state_cache.get(device.name) or {})
+            self._ext_states[device.name] = st
+        return st
 
     def _gen_state(self, gen_id: str) -> dict:
         """Ext-state dict for a generator device id (empty if unknown)."""
@@ -2771,7 +2849,8 @@ class DeviceStateStore:
                     if a and a not in self._ats_failed and self._energized.get(a, False)]
             return live[:1]
         return [p for p in ps if self._energized.get(p, True)
-                and frozenset((nid, p)) not in _bp]
+                and frozenset((nid, p)) not in _bp
+                and frozenset((nid, p)) not in self._dead_cord_pairs]
 
     def _compute_power_flow(self) -> None:
         """Per tick: sum live IT load bottom-up through the power graph so each
@@ -2817,7 +2896,10 @@ class DeviceStateStore:
                 if _dc not in dc_city:
                     dc_city[_dc] = getattr(d, "datacenter_city", None)
                 if dtv in self._IT_LEAF_TYPES:
-                    w = self._server_live_watts(d)
+                    # An outlet switched off kills its load exactly as a Redfish
+                    # power-off does; both end at 0 W through the cord.
+                    w = (0.0 if d.name in self._load_unpowered_names
+                         else self._server_live_watts(d))
                     own[d.id] = w
                     it_w += w
                     it_live_dc[_dc] += w
@@ -4825,6 +4907,9 @@ class DeviceStateStore:
         self._compute_cond_loop()
         self._compute_chw_penalty()       # roll per-DC CHW penalty from upstream faults
         self._step_transfer()             # utility/genset transfer → who is energized
+        # Which loads have lost every cord, BEFORE the flow sums them: a load whose
+        # outlets are all open contributes 0 W to its PDU this tick, not next one.
+        self._compute_unpowered_loads()
         self._compute_power_flow()        # live watts up the power graph (server→PDU→UPS→EV2)
         # Evaporator side LAST: it reads this tick's staging, duty and per-unit
         # draws, and merges its points into the same auto-point map the condenser
@@ -5053,6 +5138,11 @@ class DeviceStateStore:
             "pdu_power_factor": random.uniform(0.92, 0.98),
             "pdu_phase_imbalance": random.uniform(0.0, 5.0),
             "pdu_outlet_status": "on",
+            # Outlet indices switched OFF individually, 1-based to match the number
+            # silk-screened on the strip. The strip-level pdu_outlet_status above
+            # stays as the "whole PDU dead" case; this is the per-receptacle relay a
+            # switched SKU actually gives you.
+            "pdu_outlets_off": [],
             "pdu_breaker_status": "ok",
             "pdu_outlet_failure": "ok",
             "pdu_smoke": "no",
@@ -5977,6 +6067,11 @@ class DeviceStateStore:
             "pdu_power_factor": random.uniform(0.92, 0.98),
             "pdu_phase_imbalance": random.uniform(0.0, 5.0),
             "pdu_outlet_status": "on",
+            # Outlet indices switched OFF individually, 1-based to match the number
+            # silk-screened on the strip. The strip-level pdu_outlet_status above
+            # stays as the "whole PDU dead" case; this is the per-receptacle relay a
+            # switched SKU actually gives you.
+            "pdu_outlets_off": [],
             "pdu_breaker_status": "ok",
             "pdu_outlet_failure": "ok",
             "pdu_smoke": "no",

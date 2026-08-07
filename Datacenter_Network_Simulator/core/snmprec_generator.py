@@ -1007,6 +1007,10 @@ class SNMPRecGenerator:
                     updates[f"{R['externalType']}.1.2"]     = ("2",  str(ST["humidity"]))
                 # Store outlet status for per-outlet table update below
                 _pdu_ol_out = pdu_out
+                # Individually switched outlets. The strip flag above is still the
+                # "whole PDU dead" case; this is the per-receptacle relay, so a
+                # single opened outlet no longer reads as all 42 going dark.
+                _pdu_ol_off = {int(o) for o in (ext.get("pdu_outlets_off") or [])}
 
             # Generator pollable status OIDs — live load/fuel/runtime/status
             if device.device_type == DeviceType.GENERATOR:
@@ -1076,6 +1080,13 @@ class SNMPRecGenerator:
                 # Per-outlet table prefixes.  Status follows the PDU outlet
                 # state; current/power are zeroed when the outlet is off,
                 # otherwise left at their per-device generated values.
+                def _ol_idx(oid: str, pfx: str):
+                    """Trailing outlet number of a per-outlet row, or None."""
+                    try:
+                        return int(oid[len(pfx):])
+                    except ValueError:
+                        return None
+
                 _ol_stat_pfx = _PDU_OUTLET_ENT + ".3."
                 _ol_cur_pfx  = _PDU_OUTLET_ENT + ".4."
                 _ol_pwr_pfx  = _PDU_OUTLET_ENT + ".5."
@@ -1092,12 +1103,22 @@ class SNMPRecGenerator:
                             continue
                         if _is_pdu:
                             if oid.startswith(_ol_stat_pfx):
-                                patched.append(f"{oid}|2|{_pdu_ol_out}")
+                                _n = _ol_idx(oid, _ol_stat_pfx)
+                                _st = (2 if (_pdu_ol_out == 2 or _n in _pdu_ol_off)
+                                       else 1)
+                                patched.append(f"{oid}|2|{_st}")
                                 continue
-                            if _ol_off and (oid.startswith(_ol_cur_pfx)
-                                            or oid.startswith(_ol_pwr_pfx)):
-                                patched.append(f"{oid}|2|0")
-                                continue
+                            # Current and power follow the SAME outlet's relay: an
+                            # open receptacle reads zero amps, a live one keeps its
+                            # generated value. Zeroing the whole strip whenever any
+                            # outlet was off would hide the load still on the others.
+                            if oid.startswith(_ol_cur_pfx) or oid.startswith(_ol_pwr_pfx):
+                                _pfx = (_ol_cur_pfx if oid.startswith(_ol_cur_pfx)
+                                        else _ol_pwr_pfx)
+                                _n = _ol_idx(oid, _pfx)
+                                if _ol_off or _n in _pdu_ol_off:
+                                    patched.append(f"{oid}|2|0")
+                                    continue
                     patched.append(line)
 
                 # Router/Firewall: strip stale BGP peer entries, inject current sessions
