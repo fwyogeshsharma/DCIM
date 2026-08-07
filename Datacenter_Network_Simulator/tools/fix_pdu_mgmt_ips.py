@@ -27,6 +27,16 @@ def main():
             if v.startswith("192.168."):
                 used.add(v)
 
+    # HISTORICAL — same reason as tools/relocate_pdus_inrack.py. The 192.168
+    # management plane was retired by tools/renumber_mgmt_plane.py because it
+    # overlapped the host's own LAN. These pools are hard-coded, so re-running this
+    # against a renumbered topology would put PDUs back on colliding addresses.
+    if not used:
+        raise SystemExit(
+            "No 192.168 addresses in this topology — it has been renumbered (see\n"
+            "tools/renumber_mgmt_plane.py). This one-shot migration hard-codes\n"
+            "192.168 pools and would reintroduce the host-LAN collision."
+        )
     pools = {dc: iter([f"192.168.{b}.{h}" for b in bases for h in range(2, 255)
                        if f"192.168.{b}.{h}" not in used])
              for dc, bases in DC_BASE.items()}

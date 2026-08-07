@@ -68,6 +68,20 @@ def main():
     oob_port = defaultdict(lambda: 20)   # next free mgmt port per OOB id
 
     # mgmt IP pool: free hosts in 192.168.0.0/23 (skip everything already used)
+    #
+    # HISTORICAL. This migration ran once, against an estate numbered out of
+    # 192.168/16. That plane is gone — see tools/renumber_mgmt_plane.py — because
+    # 192.168.1.0/24 collided with the host's own LAN and one device claimed the
+    # default gateway. This pool is hard-coded rather than derived, so re-running
+    # this script against a renumbered topology would quietly inject 192.168
+    # addresses back into it and recreate the collision. Refuse instead.
+    if not any((d.get("mgmt_ip") or "").startswith("192.168.") for d in dev.values()):
+        raise SystemExit(
+            "This topology is not on the 192.168 management plane — it has been\n"
+            "renumbered (see tools/renumber_mgmt_plane.py). This one-shot migration\n"
+            "hard-codes a 192.168.0.0/23 pool and would reintroduce the host-LAN\n"
+            "collision it predates. Port it to the current plane before re-running."
+        )
     used_ip = set()
     for d in dev.values():
         for k in ("mgmt_ip", "snmp_community", "ip_address"):

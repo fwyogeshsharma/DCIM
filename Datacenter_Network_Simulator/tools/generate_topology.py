@@ -129,7 +129,10 @@ class TopologyBuilder:
     # ---------------------------------------------------------------- #
 
     def add_mgmt_network(self, devices: list, dc_id: int = 1,
-                         mgmt_subnet_base: str = "192.168",
+                         # NOT "192.168": that block is what the machine running this
+                         # simulator uses for its own LAN, so devices generated into it
+                         # collide with real hosts once the addresses are bound.
+                         mgmt_subnet_base: str = "10.51",
                          mgmt_subnet_override: str = None,
                          oob_vendor: Vendor = Vendor.CISCO_SYSTEMS,
                          ports_per_oob: int = 46,
@@ -1432,13 +1435,21 @@ def build_dual_dc_enterprise():
         spine_racks = 1 if n_spine <= 3 else (n_spine + 1) // 2
         return 5 + spine_racks
 
+    # 192.168.0.0/16 is RFC1918's SMALL-network block — it is what home and
+    # office LANs use, including the LAN of any workstation this simulator runs
+    # on. DC1's old 192.168.0.0/22 spanned 192.168.0.0-192.168.3.255 and so
+    # CONTAINED 192.168.1.0/24, putting 47 simulated devices on real addresses
+    # and one of them on 192.168.1.1, a very common default gateway. Those
+    # addresses get BOUND on the adapter, so the host starts answering for the
+    # gateway. 10.0.0.0/8 is the block with room to stay unambiguous.
+    # See tools/renumber_mgmt_plane.py for the full plan; keep the two in step.
     mgmt1 = t.add_mgmt_network(dc1_devices, dc_id=1,
-                                mgmt_subnet_override="192.168.0.0/22",
+                                mgmt_subnet_override="10.51.10.0/22",
                                 oob_vendor=Vendor.CISCO_SYSTEMS, n_sensors=20,
                                 oob_rack_num=_oob_rack(4),
                                 base_loc=_dc1_loc)
     mgmt2 = t.add_mgmt_network(dc2_devices, dc_id=2,
-                                mgmt_subnet_override="192.168.4.0/22",
+                                mgmt_subnet_override="10.51.20.0/22",
                                 oob_vendor=Vendor.DELL, n_sensors=18,
                                 oob_rack_num=_oob_rack(3),
                                 base_loc=_dc2_loc)

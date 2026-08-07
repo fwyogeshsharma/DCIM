@@ -340,7 +340,17 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
         # it a device has nowhere to land a cord. For a rack PDU the "ports" are its
         # OUTLETS, because a cord is stored as load-device-port -> CDU-device-port.
         if dt == "pdu":
-            psu_count = len(d.get("outlets") or []) or 24
+            # The live /api/devices payload does not serialise outlets[], only the
+            # saved topology does. Falling back to a flat 24 gave every rack PDU a
+            # 24-outlet strip whatever it really is — an AP8886 is 42, so a third of
+            # it vanished, and getNumPorts() (which reads PowerSupplyCount when there
+            # is no outlet-count OID) stopped the status walk at 24. Ask the SKU
+            # catalog before inventing a number; 24 only survives as the last resort
+            # for a PDU that is in neither.
+            spec = PDU_OUTLET_CATALOG.get(d.get("model_name") or "")
+            psu_count = (len(d.get("outlets") or [])
+                         or (spec[0] + spec[1] if spec else 0)
+                         or 24)
         elif dt in ZERO_U_TYPES:
             psu_count = 1
         else:
@@ -362,7 +372,23 @@ def plan(devices: list[dict], only_dc: str = "") -> dict:
             # numbers outlets and ifIndexes from 1.
             "FirstPortNum": 1 if odt in ("CDU", "Switch") else 0,
             "PrimaryIP": d.get("mgmt_ip") or d.get("ip_address") or "",
-            "SNMPCommunity": "public" if d.get("snmp_agent", True) else "",
+            # THE COMMUNITY IS THE DEVICE'S IP, not "public". This estate is served
+            # by one snmpsim process on a single wildcard endpoint (0.0.0.0:161) —
+            # hundreds of --agent-udpv4-endpoint flags would blow the Windows 32 KB
+            # command line — so the listener cannot tell devices apart by destination
+            # address. It resolves the .snmprec by COMMUNITY STRING instead, and every
+            # generated dataset is keyed to the device IP: community "10.50.0.24" ->
+            # datasets/snmp/10.50.0.24.snmprec (simulator/snmpsim_controller.py,
+            # _build_command). A community of "public" matches no dataset and the
+            # request is dropped with no response at all, which reads as an
+            # unreachable device rather than an auth failure.
+            #
+            # This is a SIMULATOR artifact, not how a real estate is credentialled —
+            # on real gear the community is a shared secret and using the management
+            # address as one would be a finding in any audit. It is what this
+            # transport requires, so it is what the exporter writes.
+            "SNMPCommunity": ((d.get("mgmt_ip") or d.get("ip_address") or "")
+                              if d.get("snmp_agent", True) else ""),
             "Ports": int(d.get("interface_count") or 0),
             "NominalWatts": int(d.get("power_watts") or 0),
         })
@@ -627,7 +653,91 @@ def cdu_template_sql(rows: dict) -> str:
             f"  WHERE dt.Model='{m}' AND dt.DeviceType='CDU';",
             "",
         ]
+
+    # The poll opt-in. With NetworkCapacityReportOptIn='OptIn' — openDCIM's default,
+    # and the safe one for a real estate, because it means you poll only what you
+    # have deliberately enrolled — devices.php answers the status refresh with an
+    # empty array unless the device carries the 'Poll' tag. It never reaches the
+    # SNMP code, so a fully configured CDU template still shows nothing.
+    #
+    # Tagging the devices is the honest way to satisfy that. Flipping the global to
+    # 'OptOut' would also work and is one row instead of eighty, but it silently
+    # enrolls every future device in polling, which is exactly the behaviour the
+    # OptIn setting exists to prevent.
+    #
+    # fac_Tags has no API route either, and neither does fac_DeviceTags.
+    out += [
+        "-- Enroll the rack PDUs in status polling.",
+        "-- NetworkCapacityReportOptIn='OptIn' makes devices.php return an empty",
+        "-- status array for anything without this tag, before any SNMP happens.",
+        "-- Switches have a Status column too; add DeviceType='Switch' below to",
+        "-- enroll those as well.",
+        "INSERT IGNORE INTO fac_Tags (Name) VALUES ('Poll');",
+        "INSERT IGNORE INTO fac_DeviceTags (DeviceID, TagID)",
+        "  SELECT d.DeviceID, t.TagID FROM fac_Device d, fac_Tags t",
+        "  WHERE d.DeviceType='CDU' AND t.Name='Poll';",
+        "",
+    ]
+    out += outlet_count_sql(rows)
     return "\n".join(out) + "\n"
+
+
+def outlet_count_sql(rows: dict) -> list[str]:
+    """Set each rack PDU's outlet count from its SKU, and materialise the ports.
+
+    Two statements because openDCIM's own reconciler cannot be used. Raising
+    PowerSupplyCount through the API writes the count and then throws on a duplicate
+    key before creating anything (PowerPorts::createPorts re-INSERTs ports 1..N and
+    its $update_existing flag only silences the log, not the PDO exception), leaving
+    the device declaring more outlets than it has ports. So the count and the ports
+    are written together here, and the INSERT IGNORE makes the port fill re-runnable
+    and safe against whatever already exists.
+
+    GROW ONLY, by the `n.n <= d.PowerSupplyCount` join and a GREATEST() on the count.
+    Shrinking a strip means deleting the ports above the new count, and every cord
+    recorded on one goes with it. A PDU that needs to shrink has been re-SKU'd, which
+    is a decision for a human, not for a repair pass that would silently unplug racks.
+    """
+    if not rows:
+        return []
+    # model -> outlet count, applied by joining through the device's template.
+    cases = "\n".join(
+        f"      WHEN dt.Model='{_sq(m)}' THEN {int(r['NumOutlets'])}"
+        for m, r in sorted(rows.items()) if int(r["NumOutlets"]) > 0
+    )
+    if not cases:
+        return []
+    return [
+        "-- Rack PDU outlet counts, from the SKU catalog.",
+        "-- openDCIM materialises one power port per PowerSupplyCount and a cord is",
+        "-- stored as load-port -> (CDU, outlet), so a strip short of ports simply has",
+        "-- nowhere to land the cords above the count, and its panel renders short.",
+        "-- GROW ONLY — see outlet_count_sql() in tools/export_to_opendcim.py.",
+        "UPDATE fac_Device d JOIN fac_DeviceTemplate dt ON dt.TemplateID=d.TemplateID",
+        "  SET d.PowerSupplyCount = GREATEST(d.PowerSupplyCount, CASE",
+        cases,
+        "      ELSE d.PowerSupplyCount END)",
+        "  WHERE d.DeviceType='CDU';",
+        "",
+        "-- Materialise the ports the count now promises. openDCIM's own createPorts()",
+        "-- cannot be used: it re-INSERTs from port 1 and dies on the duplicate.",
+        "INSERT IGNORE INTO fac_PowerPorts (DeviceID, PortNumber, Label,",
+        "                                   ConnectedDeviceID, ConnectedPort, Notes)",
+        "  SELECT d.DeviceID, n.n, CONCAT('Power Connection ', n.n), NULL, NULL, ''",
+        "  FROM fac_Device d JOIN (",
+        "         SELECT a.N + b.N * 10 + 1 AS n FROM",
+        "           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL",
+        "            SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL",
+        "            SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL",
+        "            SELECT 9) a,",
+        "           (SELECT 0 AS N UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL",
+        "            SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL",
+        "            SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL",
+        "            SELECT 9) b",
+        "       ) n ON n.n <= d.PowerSupplyCount",
+        "  WHERE d.DeviceType='CDU';",
+        "",
+    ]
 
 
 def pdu_phase_map(devices: list[dict]) -> dict:
@@ -637,7 +747,16 @@ def pdu_phase_map(devices: list[dict]) -> dict:
         if d.get("device_type") != "pdu":
             continue
         phases = {o.get("phase") for o in (d.get("outlets") or []) if o.get("phase")}
-        out[d["name"]] = 3 if len(phases) >= 3 else 1
+        if phases:
+            out[d["name"]] = 3 if len(phases) >= 3 else 1
+            continue
+        # No outlets in the payload — the live /api/devices response omits them, and
+        # reading "no phases" as single-phase put every 3-phase strip on one pole.
+        # A 3-pole breaker read as 1-pole is not a cosmetic error on a panel
+        # schedule: it frees two poles that are physically occupied, so the next
+        # PDU gets assigned a position already taken by this one's B and C phases.
+        spec = PDU_OUTLET_CATALOG.get(d.get("model_name") or "")
+        out[d["name"]] = spec[2] if spec else 1
     return out
 
 
@@ -787,19 +906,46 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
     have = _index(dcim.request("GET", "/api/v1/device").get("device", []), "Label")
     for d in p["devices"]:
         if d["Label"] in have:
-            # Already imported — but an earlier run created it with FirstPortNum 0,
-            # which is what stops the Status column ever going green. Repair in
-            # place; this is the only field touched.
+            # Already imported — repair the two fields an earlier run got wrong, and
+            # ONLY those. Both are silent killers of SNMP polling:
+            #
+            #   FirstPortNum 0 — no column default on fac_Device, so an API-created
+            #     device lands on 0, and getPortStatus() only starts recording when
+            #     the walk index EQUALS it. Every Status light stays 'err'.
+            #   SNMPCommunity holding the IP address — a community of "192.168.1.2"
+            #     authenticates against nothing. openDCIM never copies PrimaryIP
+            #     here; it came in from the importer, so the importer repairs it.
+            #
+            # Deliberately a field-by-field delta, not a re-PUT: POST /device/{id}
+            # loads the row first, so leaving Ports/PowerSupplyCount untouched keeps
+            # UpdateDevice's port reconciler asleep. It would otherwise drop and
+            # recreate power ports, taking every cord recorded on them with it.
             row = have[d["Label"]]
+            delta = {}
             if d["FirstPortNum"] and int(row.get("FirstPortNum") or 0) != d["FirstPortNum"]:
+                delta["FirstPortNum"] = d["FirstPortNum"]
+            if d["SNMPCommunity"] and row.get("SNMPCommunity") != d["SNMPCommunity"]:
+                delta["SNMPCommunity"] = d["SNMPCommunity"]
+            # PowerSupplyCount is NOT repaired here — see outlet_count_sql(). Raising
+            # it through the API half-applies: UpdateDevice writes the new count, then
+            # its reconciler calls PowerPorts::createPorts($id, true), which re-INSERTs
+            # ports 1..N including the ones already there. The $update_existing flag
+            # only suppresses openDCIM's own error LOGGING; the duplicate INSERT still
+            # raises a PDOException under ERRMODE_EXCEPTION, so the request 500s with
+            # "Duplicate entry '<id>-1' for key 'PRIMARY'" after the count is committed
+            # and before a single new port exists.
+            have_ports = int(row.get("PowerSupplyCount") or 0)
+            if d["PowerSupplyCount"] != have_ports:
+                counts["outlet_count_needs_sql"] += 1
+            if delta:
                 try:
-                    dcim.request("POST", f"/api/v1/device/{row['DeviceID']}",
-                                 {"FirstPortNum": d["FirstPortNum"]})
-                    counts["firstport_fixed"] += 1
+                    dcim.request("POST", f"/api/v1/device/{row['DeviceID']}", delta)
+                    for field in delta:
+                        counts[f"repaired_{field}"] += 1
                 except RuntimeError as e:
-                    counts["firstport_failed"] += 1
-                    if counts["firstport_failed"] <= 5:
-                        say(f"  ! FirstPortNum {d['Label']}: {e}")
+                    counts["repair_failed"] += 1
+                    if counts["repair_failed"] <= 5:
+                        say(f"  ! repair {d['Label']} {sorted(delta)}: {e}")
             continue
         cid = cab_id.get((str(dc_id[d["DataCenter"]]), d["Cabinet"]))
         if not cid:
