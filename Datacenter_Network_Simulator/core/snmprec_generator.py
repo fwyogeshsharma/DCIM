@@ -1672,44 +1672,84 @@ class SNMPRecGenerator:
     def _pdu_outlet_entries(self, device: Device, topology: TopologyEngine) -> List[OidEntry]:
         """Per-outlet SNMP table for PDU/floor_pdu devices.
 
-        Walks power edges to find downstream devices (servers, switches, etc.)
-        and generates one row per outlet:
+        One row per RECEPTACLE ON THE STRIP, indexed by the outlet number the cord
+        actually terminates on:
           .20.1.1.{N}  pduOutletIndex   — INTEGER
-          .20.1.2.{N}  pduOutletName    — DisplayString (connected device name)
+          .20.1.2.{N}  pduOutletName    — DisplayString (load name, or "Outlet N")
           .20.1.3.{N}  pduOutletStatus  — INTEGER 1=on 2=off
           .20.1.4.{N}  pduOutletCurrentX10 — INTEGER (A × 10)
-          .20.1.5.{N}  pduOutletPowerW  — INTEGER (W from device.power_draw_w)
+          .20.1.5.{N}  pduOutletPowerW  — INTEGER (W)
+
+        This table used to rank the connected devices by name and number them 1..M,
+        which meant outlet 3 in the table was whatever sorted third, not the outlet
+        silk-screened 3 on the unit — and every empty receptacle vanished, so the
+        walk ended at the last USED outlet. Both are wrong against real gear and
+        against anything consuming the table: an NMS that walks outlets 1..N (openDCIM
+        does exactly this, and stops at the first gap) reads a truncated strip whose
+        rows point at the wrong receptacles.
+
+        An unplugged outlet is still a row and still ENERGISED — a rack PDU does not
+        de-power a receptacle because nothing is in it, and only a switched SKU can
+        turn one off at all. It reads zero current, which is how a metered PDU reports
+        an idle outlet.
         """
         entries: List[OidEntry] = []
-        _UPSTREAM = {DeviceType.UPS, DeviceType.GENERATOR,
-                     DeviceType.FLOOR_PDU, DeviceType.RPP}
         # Typical power draw (W) by device type — fallback when power_draw_w unset
         _DEFAULT_W = {
             DeviceType.SERVER: 450, DeviceType.SWITCH: 150, DeviceType.ROUTER: 300,
             DeviceType.FIREWALL: 400, DeviceType.LOAD_BALANCER: 350,
             DeviceType.OOB_SWITCH: 80, DeviceType.SENSOR: 10,
         }
-        outlets: list = []
         try:
-            for neighbor in topology.get_neighbors(device.id):
-                for _key, edge in topology.graph[device.id][neighbor.id].items():
-                    if edge.get("layer") == "power" and neighbor.device_type not in _UPSTREAM:
-                        outlets.append(neighbor)
+            loads = topology.outlet_loads(device.id)
         except Exception:
-            pass
-        outlets.sort(key=lambda d: d.name)
+            loads = {}
+
+        # The receptacles that physically exist. A SKU missing from the outlet
+        # catalog models none (device_manager._generate_outlets refuses to invent
+        # them), and a floor PDU has none at all — its loads land on breakers, not
+        # receptacles. In both cases fall back to just the terminated outlets rather
+        # than publishing an empty table.
+        if device.outlets:
+            indices = [o.index for o in device.outlets]
+        else:
+            indices = sorted(loads)
+
         _pdu_volt = 220.0
-        for i, outlet_dev in enumerate(outlets, start=1):
-            pwr_w = int(getattr(outlet_dev, "power_draw_w", 0) or 0)
+        for n in indices:
+            load_ref = loads.get(n)
+            load = topology.get_device(load_ref["load_id"]) if load_ref else None
+            if load is None:
+                # Energised, nothing drawing on it.
+                entries += [
+                    _oid_entry(f"{_PDU_OUTLET_ENT}.1.{n}", "2", str(n)),
+                    _oid_entry(f"{_PDU_OUTLET_ENT}.2.{n}", "4", f"Outlet {n}"),
+                    _oid_entry(f"{_PDU_OUTLET_ENT}.3.{n}", "2", "1"),
+                    _oid_entry(f"{_PDU_OUTLET_ENT}.4.{n}", "2", "0"),
+                    _oid_entry(f"{_PDU_OUTLET_ENT}.5.{n}", "2", "0"),
+                ]
+                continue
+
+            pwr_w = int(getattr(load, "power_draw_w", 0) or 0)
             if pwr_w <= 0:
-                pwr_w = _DEFAULT_W.get(outlet_dev.device_type, 200)
+                pwr_w = _DEFAULT_W.get(load.device_type, 200)
+            # A dual-corded load is fed from TWO strips and splits its draw across
+            # them; charging the full chassis draw to the outlet on each one double-
+            # counts the rack. Real 1+1 supplies do not share exactly 50/50, but an
+            # even split is far closer than 100/100 — and the failure case (survivor
+            # carries everything) is a fault to model, not the steady state.
+            try:
+                cords = max(1, len(topology.power_feeds(load.id)))
+            except Exception:
+                cords = 1
+            pwr_w = int(round(pwr_w / cords))
             cur_x10 = int(round(pwr_w / _pdu_volt * 10)) if _pdu_volt > 0 else 0
             entries += [
-                _oid_entry(f"{_PDU_OUTLET_ENT}.1.{i}", "2", str(i)),
-                _oid_entry(f"{_PDU_OUTLET_ENT}.2.{i}", "4", outlet_dev.name),
-                _oid_entry(f"{_PDU_OUTLET_ENT}.3.{i}", "2", "1"),           # status=on
-                _oid_entry(f"{_PDU_OUTLET_ENT}.4.{i}", "2", str(cur_x10)),  # current ×10 A
-                _oid_entry(f"{_PDU_OUTLET_ENT}.5.{i}", "2", str(pwr_w)),    # power W
+                _oid_entry(f"{_PDU_OUTLET_ENT}.1.{n}", "2", str(n)),
+                _oid_entry(f"{_PDU_OUTLET_ENT}.2.{n}", "4", load.name),
+                _oid_entry(f"{_PDU_OUTLET_ENT}.3.{n}", "2", "1"),           # status=on
+                _oid_entry(f"{_PDU_OUTLET_ENT}.4.{n}", "2", str(cur_x10)),  # current ×10 A
+                _oid_entry(f"{_PDU_OUTLET_ENT}.5.{n}", "2", str(pwr_w)),    # power W
             ]
         return entries
 

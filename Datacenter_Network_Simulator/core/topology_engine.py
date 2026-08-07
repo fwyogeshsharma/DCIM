@@ -194,6 +194,36 @@ class TopologyEngine:
                     }
         return feeds
 
+    def outlet_loads(self, pdu_id: str) -> dict:
+        """outlet index -> the load plugged into it: {load_id, load_name, psu}.
+
+        The mirror of power_feeds, read from the same edges and under the same lock.
+        Anything publishing a per-outlet view — an rPDU's outlet table over SNMP, an
+        outlet-level report — must key by the outlet number the cord actually
+        terminates on, which is the receptacle silk-screened on the strip. Ranking
+        the connected devices and numbering them 1..N instead produces a table that
+        is internally consistent and points at the wrong receptacle the moment the
+        PDU has a gap or a C19 out of sequence, which every real one does.
+        """
+        loads: dict = {}
+        with self._lock:
+            if not self.graph.has_node(pdu_id):
+                return loads
+            for peer in self.graph[pdu_id]:
+                for _key, d in self.graph[pdu_id][peer].items():
+                    if d.get("layer") != "power" or d.get("supply_node") != pdu_id:
+                        continue
+                    outlet = d.get("outlet")
+                    if outlet is None:
+                        continue
+                    load = self.get_device(d.get("load_node"))
+                    loads[outlet] = {
+                        "load_id": d.get("load_node"),
+                        "load_name": load.name if load else d.get("load_node"),
+                        "psu": d.get("psu"),
+                    }
+        return loads
+
     @staticmethod
     def _edge_key(src_id: str, dst_id: str, layer: str) -> str:
         """MultiGraph edge key. One edge per (pair, layer) for most layers, but
