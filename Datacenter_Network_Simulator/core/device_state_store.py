@@ -2067,7 +2067,7 @@ class DeviceStateStore:
         absence of cabling data is not evidence of a missing feed.
         """
         off_by_pdu: Dict[str, set] = {}
-        for dev in self._device_manager.get_all_devices():
+        for dev in self._dm.get_all_devices():
             if dev.device_type.value not in ("pdu", "floor_pdu"):
                 continue
             st = self._ext_states.get(dev.name) or {}
@@ -2085,7 +2085,7 @@ class DeviceStateStore:
             self._load_unpowered_names = dead
             self._dead_cord_pairs = dead_cords
             return
-        for dev in self._device_manager.get_all_devices():
+        for dev in self._dm.get_all_devices():
             if dev.device_type.value not in self._IT_LEAF_TYPES:
                 continue
             try:

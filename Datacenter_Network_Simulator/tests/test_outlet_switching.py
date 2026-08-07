@@ -99,3 +99,26 @@ def test_surviving_strip_inherits_the_whole_load(rack):
     assert still_active == [pdu_b.id]
     assert 1.0 / len(still_active) == 1.0, "survivor must inherit the full load"
 
+
+
+def test_store_computes_unpowered_loads_without_erroring(tmp_path):
+    """Drive the REAL store, not the topology in isolation.
+
+    The first cut of this feature called self._device_manager, which does not exist
+    on DeviceStateStore (it is self._dm). Every tick raised AttributeError and the
+    whole simulation stopped — invisible to the other tests here, because they
+    exercise TopologyEngine directly and never enter the tick. Any test that calls
+    the store's own method would have caught it on the first run.
+    """
+    from conftest import build_plant
+
+    fx = build_plant(tmp_path, servers=4)
+    store = fx.store
+
+    store._compute_unpowered_loads()          # must not raise
+    assert store._load_unpowered_names == set()
+    assert store._dead_cord_pairs == set()
+
+    # And it must survive a full tick, which is where it is actually called from.
+    store._tick()
+    assert isinstance(store._load_unpowered_names, set)
