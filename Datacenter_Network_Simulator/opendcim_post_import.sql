@@ -132,6 +132,23 @@ UPDATE fac_PowerPorts pp JOIN fac_Device d ON d.DeviceID=pp.DeviceID
 -- 0.00 reading in the UI. See SENSOR_SIM_TEMPLATE in
 -- tools/export_to_opendcim.py for why each OID is the one it is.
 
+-- Display units. The estate is Celsius end to end -- the agents serve
+-- tenths of a degree C and the templates above declare mUnits='metric' --
+-- so openDCIM has to agree or it converts on every read.
+--
+-- This is NOT cosmetic. TemperatureRed/TemperatureYellow are compared
+-- against the value AFTER conversion (Device.class.php,
+-- UpdateSensorsFilter), and they are shipped as 30/25, which are Celsius
+-- numbers. Left on 'english' a healthy 22 C rack reads 71.8 F, clears a
+-- 'red' of 30, and EVERY sensor in the estate is permanently critical --
+-- silently, because it only surfaces once SensorAlertsEmail is enabled.
+--
+-- Changing this does NOT fix rows already stored: conversion happens at
+-- POLL time, so existing readings keep the old unit until the next poll
+-- overwrites them. Re-run poll_temperature_sensors.php after this, or the
+-- panel labels Fahrenheit numbers as Celsius.
+UPDATE fac_Config SET Value='metric' WHERE Parameter='mUnits';
+
 -- Raritan DPX2-CC2 x15: inlet temperature only (no hygrometer on this head)
 INSERT IGNORE INTO fac_SensorTemplate (TemplateID, ManufacturerID, Model)
   SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
@@ -191,6 +208,16 @@ DELETE st FROM fac_SensorTemplate st
   JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
   WHERE dt.Model='Plant CW Supply Temp' AND dt.DeviceType='Sensor'
     AND st.TemperatureOID='' AND st.HumidityOID='';
+
+-- Drop readings that nothing can ever refresh.
+-- A sensor with no fac_SensorTemplate row is skipped by the poller
+-- (GetTemplate() returns false), so a row left behind by an earlier run
+-- freezes at whatever it last held -- and openDCIM displays no reading age
+-- anywhere, so a stale 0.00 is indistinguishable from a live one.
+DELETE r FROM fac_SensorReadings r
+  JOIN fac_Device d ON d.DeviceID=r.DeviceID
+  LEFT JOIN fac_SensorTemplate st ON st.TemplateID=d.TemplateID
+  WHERE st.TemplateID IS NULL;
 
 -- Cabinet power meter thresholds (percent of the cabinet's MaxKW).
 -- Both cabinet percentages are CLAMPED to 100 before the colour test, so a
