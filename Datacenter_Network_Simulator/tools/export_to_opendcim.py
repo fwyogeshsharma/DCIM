@@ -43,13 +43,20 @@ but the matching openDCIM People record needs **Site Administrator**: cabinet an
 powerpanel creation check `$person->SiteAdmin`, and device creation checks that the
 target cabinet's rights are "Write".
 
-NEITHER CAN IT WRITE A RACK PDU'S SNMP TEMPLATE. A CDU's outlet OIDs live in
-fac_CDUTemplate, a shadow row openDCIM auto-creates alongside the device template but
-leaves empty, and no REST route touches that table. Until it is filled, the Status
-column on a CDU's Power Connections panel can never leave 'err' and the PDU is never
-polled for wattage. That, and everything else the API cannot reach, is emitted as SQL
-(--post-import-sql, on by default) next to the
-breaker SQL; run both against the openDCIM database.
+NEITHER CAN IT WRITE A DEVICE'S SNMP TEMPLATE. A CDU's outlet OIDs live in
+fac_CDUTemplate and a sensor's temperature/humidity OIDs in fac_SensorTemplate — both
+shadow rows openDCIM auto-creates alongside the device template but leaves empty, and
+no REST route touches either table. Until they are filled, the Status column on a
+CDU's Power Connections panel can never leave 'err', the PDU is never polled for
+wattage, and a cabinet's Environmental Sensors panel has nothing to show. That, and
+everything else the API cannot reach, is emitted as SQL (--post-import-sql, on by
+default) next to the breaker SQL; run both against the openDCIM database.
+
+POLLING IS SCHEDULED BY YOU, NOT BY openDCIM. Upstream ships poll_pdu_stats.php and
+poll_temperature_sensors.php as CLI scripts and schedules neither, leaving the
+interval to the site. Without cron entries fac_PDUStats and fac_SensorReadings are
+never refreshed and the UI renders whatever is in them as though it were current —
+there is no last-polled indicator anywhere. See deploy/opendcim.cron.
 
 IDEMPOTENT. Every phase reads what exists first and creates only what is missing,
 keyed by natural name (manufacturer name, template model, cabinet location, device
@@ -508,6 +515,7 @@ def plan(devices: list[dict], only_dc: str = "",
         "breakers": [],
         "port_links": [],
         "cdu_templates": plan_cdu_templates(devices, only_dc),
+        "sensor_templates": plan_sensor_templates(devices, only_dc),
     }
 
 
@@ -790,12 +798,200 @@ def plan_cdu_templates(devices: list[dict], only_dc: str = "") -> dict:
     return rows
 
 
+# ── environmental sensors ─────────────────────────────────────────────────────
+
+# openDCIM's sensor model is ONE air temperature and ONE relative humidity per
+# device (fac_SensorTemplate has exactly two OID columns). A probe head that carries
+# more than that has to be reduced to those two, and WHICH point is picked is the
+# whole decision — so it is made explicitly here, per SKU, rather than by taking
+# whatever answers first.
+#
+# INLET, always, for the temperature. ASHRAE TC9.9 defines the thermal envelope at
+# the EQUIPMENT INLET, openDCIM alerts on TemperatureRed/TemperatureYellow against
+# this one value, and its DataCenter average temperature (DataCenter.class.php,
+# AvgTemp) filters on BackSide=0 — i.e. it already assumes the number it is given is
+# a front-of-rack reading. Handing it an exhaust temperature would put a healthy rack
+# permanently in alarm.
+#
+# The OIDs are the SIMULATOR's agents, verified by GET against a live device rather
+# than read off a MIB (10.52.11.43 answered 219/272/335/511 on slots 1-4 = inlet
+# 21.9 C, mid 27.2 C, exhaust 33.5 C, RH 51.1%). Replace them per SKU before pointing
+# openDCIM at real gear.
+#
+# A model that is NOT in this map deliberately gets no fac_SensorTemplate row at all,
+# which makes Device::UpdateSensorsFilter() call GetTemplate(), get false and
+# `continue`. That is the quiet outcome: no reading is recorded. The alternative — a
+# row with blank OIDs, which is what openDCIM auto-creates — is worse, because the
+# poller then skips the SNMP but still writes Temperature=0, and a fabricated 0.00 C
+# is indistinguishable in the UI from a real one.
+_RARITAN_EXT_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1.4.1"   # externalSensorValue.<slot>
+
+SENSOR_SIM_TEMPLATE = {
+    # T3H1: slot 1 inlet, slot 2 mid-rack, slot 3 exhaust, slot 4 humidity.
+    "Raritan DPX2-T3H1": {
+        "TemperatureOID": f"{_RARITAN_EXT_SENSOR}.1",
+        "HumidityOID":    f"{_RARITAN_EXT_SENSOR}.4",
+        "TempMultiplier":     0.1,     # served as tenths of a degree
+        "HumidityMultiplier": 0.1,     # served as tenths of a percent
+    },
+    # CC2: slot 1 is a WATER-DETECTION rope (sensorType 28, value 0=dry / 1=wet) and
+    # slot 2 is the temperature probe. There is no hygrometer on this head.
+    #
+    # Pointing TemperatureOID at slot 1 is the trap here — it is the first slot, it
+    # answers, and it answers 0. That would publish a steady 0.0 C on fifteen racks:
+    # a plausible-looking cold reading that is really a "no leak" flag, and one that
+    # AVG(NULLIF(Temperature,0)) would silently drop from the datacenter average
+    # rather than flag. Slot 2 is the only real temperature on this SKU.
+    "Raritan DPX2-CC2": {
+        "TemperatureOID": f"{_RARITAN_EXT_SENSOR}.2",
+        "HumidityOID":    "",          # none on this head — leave it unpolled
+        "TempMultiplier":     0.1,
+        "HumidityMultiplier": 1,
+    },
+}
+
+# Celsius. openDCIM converts on read if the install's global mUnits disagrees
+# (Device.class.php), so the honest thing is to declare what the agent actually
+# serves and let it convert, not to pre-convert here.
+SENSOR_UNITS = "metric"
+
+# Chiller-plant header instruments — a thermowell in a water header, or a magnetic
+# flow meter on the main. They are modelled as SENSOR devices because that is what
+# they are on the wire, but they are NOT openDCIM environmental sensors and are
+# deliberately left unwired:
+#
+#   * openDCIM has two fields, air temperature and relative humidity. A flow meter
+#     in litres/second maps to neither; forcing it into TemperatureOID would publish
+#     l/s as degrees.
+#   * Even the genuine water temperatures do not belong in this table. 7 C chilled
+#     water supply and 35 C condenser return are healthy plant readings, and
+#     DataCenter::AvgTemp averages every non-backside sensor in the datacenter with
+#     no room or type filter — mixing them with rack inlets makes that number mean
+#     nothing, and TemperatureRed would alarm on the condenser loop forever.
+#
+# In a real estate these points come off the BMS over BACnet/Modbus and live in the
+# BMS historian, which is the same reason this exporter already skips chillers,
+# towers and pumps entirely. The SQL below removes the blank shadow row openDCIM
+# auto-creates for them so the poller skips them outright.
+SENSOR_PLANT_PREFIX = "Plant "
+
+
+def plan_sensor_templates(devices: list[dict], only_dc: str = "") -> dict:
+    """model -> the fac_SensorTemplate row for that environmental-sensor SKU.
+
+    Plant header instruments and unmapped SKUs are returned too, flagged, because the
+    SQL has to act on them (delete the shadow row / report them) rather than ignore
+    them.
+    """
+    rows: dict[str, dict] = {}
+    for d in devices:
+        if d.get("device_type") != "sensor":
+            continue
+        if only_dc and d.get("datacenter", "") != only_dc:
+            continue
+        model = d.get("model_name") or ""
+        if not model:
+            continue
+        if model not in rows:
+            spec = SENSOR_SIM_TEMPLATE.get(model)
+            rows[model] = {
+                **(spec or {"TemperatureOID": "", "HumidityOID": "",
+                            "TempMultiplier": 1, "HumidityMultiplier": 1}),
+                "Model": model,
+                "mUnits": SENSOR_UNITS,
+                "_plant": model.startswith(SENSOR_PLANT_PREFIX),
+                "_known_sku": bool(spec),
+                "_count": 0,
+            }
+        rows[model]["_count"] += 1
+    return rows
+
+
+def sensor_template_sql(rows: dict) -> list[str]:
+    """fac_SensorTemplate. No API route reaches it, same wall as fac_CDUTemplate.
+
+    Two statements per wired SKU, mirroring the CDU block: the INSERT IGNORE repairs
+    an estate whose templates predate this (normally openDCIM has already made the
+    blank shadow row and it is a no-op), and the UPDATE is what fills the OIDs.
+    """
+    out = [
+        "-- Environmental sensor SNMP templates -> fac_SensorTemplate.",
+        "-- openDCIM auto-creates a BLANK shadow row beside every Sensor device",
+        "-- template (DeviceTemplate.class.php) and no REST route can fill it, so",
+        "-- until this runs poll_temperature_sensors.php reads a template with empty",
+        "-- OIDs, skips the SNMP and writes Temperature=0 -- which renders as a real",
+        "-- 0.00 reading in the UI. See SENSOR_SIM_TEMPLATE in",
+        "-- tools/export_to_opendcim.py for why each OID is the one it is.",
+        "",
+    ]
+    wired = {m: r for m, r in rows.items() if r["_known_sku"]}
+    plant = {m: r for m, r in rows.items() if r["_plant"]}
+    other = {m: r for m, r in rows.items()
+             if not r["_known_sku"] and not r["_plant"]}
+
+    for model in sorted(wired):
+        r = wired[model]
+        m = _sq(model)
+        out += [
+            f"-- {model} x{r['_count']}: inlet temperature"
+            + (", relative humidity" if r["HumidityOID"] else
+               " only (no hygrometer on this head)"),
+            "INSERT IGNORE INTO fac_SensorTemplate (TemplateID, ManufacturerID, Model)",
+            "  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt",
+            f"  WHERE dt.Model='{m}' AND dt.DeviceType='Sensor';",
+            "UPDATE fac_SensorTemplate st JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID",
+            f"  SET st.TemperatureOID='{_sq(r['TemperatureOID'])}',",
+            f"      st.HumidityOID='{_sq(r['HumidityOID'])}',",
+            f"      st.TempMultiplier={float(r['TempMultiplier'])},",
+            f"      st.HumidityMultiplier={float(r['HumidityMultiplier'])},",
+            f"      st.mUnits='{_sq(r['mUnits'])}'",
+            f"  WHERE dt.Model='{m}' AND dt.DeviceType='Sensor';",
+            "",
+        ]
+
+    if plant:
+        out += [
+            "-- Chiller-plant header instruments: REMOVE the auto-created shadow row.",
+            "-- These are BMS points, not room environmentals -- a thermowell in a",
+            "-- water header and a magnetic flow meter on the main. openDCIM stores",
+            "-- only air temperature and RH, and DataCenter::AvgTemp averages every",
+            "-- non-backside sensor in the datacenter with no room filter, so a 7 C",
+            "-- chilled-water supply and a 35 C condenser return would both land in",
+            "-- the hall's average and in TemperatureRed. With no template row",
+            "-- UpdateSensorsFilter's GetTemplate() returns false and skips them, so",
+            "-- they stay inventoried assets and record no reading at all.",
+            "-- Guarded on both OIDs being empty: this never removes a row that",
+            "-- someone has deliberately filled in.",
+        ]
+        for model in sorted(plant):
+            m = _sq(model)
+            out += [
+                "DELETE st FROM fac_SensorTemplate st",
+                "  JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID",
+                f"  WHERE dt.Model='{m}' AND dt.DeviceType='Sensor'",
+                "    AND st.TemperatureOID='' AND st.HumidityOID='';",
+            ]
+        out += [""]
+
+    if other:
+        out += [
+            "-- Sensor SKUs with no entry in SENSOR_SIM_TEMPLATE -- left unwired ON",
+            "-- PURPOSE. A missing reading leaves the previous value alone; a guessed",
+            "-- OID that misses is written as 0 and looks like a real measurement.",
+            "-- Add them to SENSOR_SIM_TEMPLATE in tools/export_to_opendcim.py.",
+        ]
+        out += [f"--   {m}  x{other[m]['_count']}" for m in sorted(other)]
+        out += [""]
+
+    return out
+
+
 def _sq(value) -> str:
     """Single-quote a value for MySQL. These strings are OIDs and model names."""
     return str(value).replace("\\", "\\\\").replace("'", "\\'")
 
 
-def post_import_sql(rows: dict) -> str:
+def post_import_sql(rows: dict, sensor_rows: dict | None = None) -> str:
     """Everything the openDCIM REST API cannot write, in one runnable file.
 
     This began as the rack-PDU SNMP templates and grew, because the same wall keeps
@@ -807,6 +1003,8 @@ def post_import_sql(rows: dict) -> str:
         fac_Tags          the Poll opt-in, or devices.php never calls the poller
         fac_Device        rack-PDU outlet COUNTS, with the ports to match
         fac_PowerPorts    outlet LABELS, receptacle-numbered
+        fac_SensorTemplate  temperature/humidity OIDs; without them the cabinet's
+                          Environmental Sensors panel has nothing to show
         fac_Config        the cabinet power meter thresholds
 
     Every statement is re-runnable: INSERT IGNORE where a row may already exist,
@@ -889,6 +1087,7 @@ def post_import_sql(rows: dict) -> str:
     ]
     out += outlet_count_sql(rows)
     out += outlet_label_sql()
+    out += sensor_template_sql(sensor_rows or {})
     out += meter_threshold_sql()
     return "\n".join(out) + "\n"
 
@@ -1745,12 +1944,26 @@ def main() -> int:
         unknown = [m for m, r in p["cdu_templates"].items() if not r["_known_sku"]]
         print(f"  cdu templates : {len(p['cdu_templates'])} rack-PDU SKUs"
               + (f" — {len(unknown)} not in the outlet catalog" if unknown else ""))
-        if args.post_import_sql:
-            with open(args.post_import_sql, "w", encoding="utf-8") as fh:
-                fh.write(post_import_sql(p["cdu_templates"]))
-            print(f"                  wrote {args.post_import_sql} — RUN IT against the openDCIM\n"
-                  f"                  database; it carries everything the REST API\n"
-                  f"                  cannot write; until it runs a CDU Status stays 'err'.")
+
+    sensors = p.get("sensor_templates") or {}
+    if sensors:
+        wired = sum(1 for r in sensors.values() if r["_known_sku"])
+        plant = sum(1 for r in sensors.values() if r["_plant"])
+        other = len(sensors) - wired - plant
+        print(f"  sensor tmpls  : {len(sensors)} SKUs — {wired} wired"
+              + (f", {plant} plant instruments left unwired (BMS points)" if plant else "")
+              + (f", {other} UNMAPPED — no OIDs, no readings" if other else ""))
+
+    # Gated on either, not on the CDUs alone: the same file now carries the sensor
+    # templates, and an estate with no rack PDUs would otherwise write nothing and
+    # say nothing about it.
+    if (p.get("cdu_templates") or sensors) and args.post_import_sql:
+        with open(args.post_import_sql, "w", encoding="utf-8") as fh:
+            fh.write(post_import_sql(p["cdu_templates"], sensors))
+        print(f"                  wrote {args.post_import_sql} — RUN IT against the openDCIM\n"
+              f"                  database; it carries everything the REST API\n"
+              f"                  cannot write; until it runs a CDU Status stays 'err'\n"
+              f"                  and the cabinet Environmental Sensors panel is empty.")
 
     if p.get("breakers"):
         over = [b for b in p["breakers"] if b["overflow"]]

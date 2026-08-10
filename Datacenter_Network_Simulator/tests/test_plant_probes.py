@@ -156,6 +156,44 @@ def _rack_probe_device():
                   model_name="Vertiv Geist GTHD")
 
 
+def test_probe_serves_entity_sensor_before_any_tick(plant_cache):
+    """The OID family a plant probe serves must come from its IDENTITY, not from
+    published state.
+
+    This is the case every other test here misses, because they all tick the store
+    first. The .snmprec is WRITTEN before any tick has run. When the role was read
+    out of ext_state, that build saw no role, fell through to the vendor air tables,
+    and put a temperature/humidity/dew-point head on disk for a thermowell. The live
+    patcher then asked to update ENTITY-SENSOR OIDs — but it only rewrites lines that
+    already exist in the file, so every one of those writes was dropped and the
+    fabricated air values were frozen there permanently. On the live estate a
+    chilled-water supply probe answered 36.4 C / 38.8 % RH and the flow meter
+    answered the same temperature.
+
+    A device with nothing published yet must still be recognised as the instrument it
+    is, and must report unavailable rather than a plausible number.
+    """
+    from core.device_manager import Device, DeviceType, Vendor
+    from core.snmprec_generator import SNMPRecGenerator, _ENTITY_SENSOR, _GEIST_SENSOR
+
+    # A name no fixture estate uses: _ext_state_cache is module-level and survives
+    # between tests, so reusing CHWS-DC1-CP would hand this probe another test's
+    # published reading and hide exactly the state the test is here to check.
+    fresh = Device(name="CHWS-DC9-CP", device_type=DeviceType.SENSOR,
+                   vendor=Vendor.VERTIV, ip_address="10.9.9.9",
+                   model_name="Plant CHW Supply Temp")
+
+    entries = SNMPRecGenerator._plant_probe_entries(fresh)
+    assert entries is not None, "identity alone must be enough to classify the probe"
+
+    by_oid = {o: v for o, _t, v in entries}
+    assert by_oid[f"{_ENTITY_SENSOR}.1.1"] == "8"      # celsius, not an air table
+    assert by_oid[f"{_ENTITY_SENSOR}.4.1"] == "0"      # no reading yet
+    assert by_oid[f"{_ENTITY_SENSOR}.5.1"] == "2"      # operStatus = unavailable
+    assert not any(o.startswith(_GEIST_SENSOR) for o in by_oid), \
+        "a thermowell must never be written as a humidity/dew-point head"
+
+
 def test_probe_readings_reach_ext_state(probed):
     """The DCIM/rule side reads water temperature as WATER, not as room ambient."""
     assert probed.store._ext_states["CHWS-DC1-CP"]["water_temp"] > 0

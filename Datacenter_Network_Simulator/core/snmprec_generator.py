@@ -2235,29 +2235,54 @@ class SNMPRecGenerator:
         skipped and the single real reading is served on ENTITY-SENSOR-MIB, which is
         the vendor-neutral place for one instrument with one value — and the right
         model for a BMS-gatewayed point in any case.
-        """
-        from core.device_state_store import _get_ext_state   # circular at import time
 
-        st = _get_ext_state(device.name)
-        role = st.get("probe_role")
+        WHAT this device is comes from its IDENTITY (_probe_role: the "Plant " model
+        prefix plus the role code leading its name), never from published state.
+        That distinction is the whole bug this used to have. The role was read out of
+        ext_state, which the store only writes DURING a tick — so at dataset-build
+        time, before any tick has run, every plant probe returned None here, fell
+        through to the generic Vertiv Geist air tables, and was written to disk as a
+        temperature/humidity/dew-point head. The live patcher then correctly asked to
+        update ENTITY-SENSOR OIDs, but the patcher only rewrites lines that already
+        exist in the .snmprec — so those writes were silently dropped and the Geist
+        values were frozen at whatever the build wrote.
+
+        The result was a thermowell in a chilled-water header answering 36.4 C with
+        38.8 % RH and a dew point, and a magnetic flow meter answering the SAME
+        temperature — fabricated air readings on instruments that measure water, the
+        exact failure the rest of this function exists to prevent, and stable enough
+        to look real.
+
+        A reading the store has not published yet is served as entPhySensorOperStatus
+        2 (unavailable) with value 0, not as a plausible number. That is what a BMS
+        gateway reports before its first successful poll, and the first tick replaces
+        it with the real one.
+        """
+        # Circular at import time — device_state_store imports this module's siblings.
+        from core.device_state_store import _get_ext_state, _probe_role
+
+        role = _probe_role(device)
         if not role:
             return None
+        st = _get_ext_state(device.name)
         b = _ENTITY_SENSOR
         if role == "chw_flow":
             # entPhySensorType 12 = "other" (litres/second has no ENTITY enum),
             # scale 9 = units, precision 2.
-            value = int(round(float(st.get("water_flow_lps", 0.0)) * 100))
-            stype, precision = "12", "2"
+            raw, stype, precision, scale = st.get("water_flow_lps"), "12", "2", 100
         else:
             # entPhySensorType 8 = celsius; ×10, so precision 1.
-            value = int(round(float(st.get("water_temp", 0.0)) * 10))
-            stype, precision = "8", "1"
+            raw, stype, precision, scale = st.get("water_temp"), "8", "1", 10
+        if raw is None:
+            value, oper = 0, "2"          # nothing published yet — unavailable
+        else:
+            value, oper = int(round(float(raw) * scale)), "1"
         return [
             _oid_entry(f"{b}.1.1", "2", stype),        # entPhySensorType
             _oid_entry(f"{b}.2.1", "2", "9"),          # entPhySensorScale = units
             _oid_entry(f"{b}.3.1", "2", precision),    # entPhySensorPrecision
             _oid_entry(f"{b}.4.1", "2", str(value)),   # entPhySensorValue
-            _oid_entry(f"{b}.5.1", "2", "1"),          # entPhySensorOperStatus = ok
+            _oid_entry(f"{b}.5.1", "2", oper),         # entPhySensorOperStatus
         ]
 
     def _sensor_entries(self, device: Device) -> List[OidEntry]:

@@ -1,0 +1,38 @@
+# openDCIM pollers.  Install to /etc/cron.d/opendcim (root:root, mode 0644).
+#
+# openDCIM ships poll_pdu_stats.php and poll_temperature_sensors.php but schedules
+# NEITHER: both are CLI-only and parameterised by filter (DataCenter/Zone/Row),
+# because upstream leaves the interval to the site. Without entries like these,
+# fac_PDUStats and fac_SensorReadings are never refreshed and the UI renders a stale
+# row as though it were current -- there is no last-polled indicator anywhere in it.
+# This estate sat on a day-old wattage reading before that was noticed.
+#
+# Both run as www-data: db.inc.php is 0640 www-data:www-data, so no other
+# unprivileged user can read the database credential.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# Rack PDU wattage -> fac_PDUStats -> the cabinet "Measured Watts" meter and the
+# per-PDU bars.  Five minutes: 80 PDUs, one SNMP GET each, ~40 s wall clock.
+# openDCIM backs off a device on its own via fac_Device.SNMPFailureCount, so an
+# unreachable PDU does not make the run grow without bound.
+*/5 * * * * www-data cd /var/www/opendcim && /usr/bin/php poll_pdu_stats.php >> /var/log/opendcim/poll.log 2>&1
+
+# Rack environmental probes -> fac_SensorReadings -> the cabinet "Environmental
+# Sensors" panel and the datacenter average temperature/humidity.
+#
+# Needs fac_SensorTemplate filled first (opendcim_post_import.sql). With the blank
+# shadow row openDCIM auto-creates, this poller skips the SNMP and writes
+# Temperature=0 on every sensor -- a fabricated reading, not an empty one.
+#
+# Offset to :02 rather than sharing the PDU poll's minute. Both runs are serial SNMP
+# against the same simulator, and openDCIM counts a timeout as a device FAILURE
+# (SNMPFailureCount); three of those and the device drops out of the query
+# altogether, so contention here does not just slow a run, it silently unenrolls
+# devices.
+#
+# Five minutes matches the PDU cadence and is the usual DCIM environmental trending
+# interval. 19 rack probes, 1-2 GETs each -- a few seconds. The plant header
+# instruments are NOT polled: they have no fac_SensorTemplate row on purpose (see
+# SENSOR_PLANT_PREFIX in tools/export_to_opendcim.py).
+2-57/5 * * * * www-data cd /var/www/opendcim && /usr/bin/php poll_temperature_sensors.php >> /var/log/opendcim/poll.log 2>&1

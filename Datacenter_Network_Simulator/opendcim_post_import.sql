@@ -124,6 +124,74 @@ UPDATE fac_PowerPorts pp JOIN fac_Device d ON d.DeviceID=pp.DeviceID
   SET pp.Label = CONCAT('Outlet ', pp.PortNumber)
   WHERE d.DeviceType='CDU';
 
+-- Environmental sensor SNMP templates -> fac_SensorTemplate.
+-- openDCIM auto-creates a BLANK shadow row beside every Sensor device
+-- template (DeviceTemplate.class.php) and no REST route can fill it, so
+-- until this runs poll_temperature_sensors.php reads a template with empty
+-- OIDs, skips the SNMP and writes Temperature=0 -- which renders as a real
+-- 0.00 reading in the UI. See SENSOR_SIM_TEMPLATE in
+-- tools/export_to_opendcim.py for why each OID is the one it is.
+
+-- Raritan DPX2-CC2 x15: inlet temperature only (no hygrometer on this head)
+INSERT IGNORE INTO fac_SensorTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Raritan DPX2-CC2' AND dt.DeviceType='Sensor';
+UPDATE fac_SensorTemplate st JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  SET st.TemperatureOID='1.3.6.1.4.1.13742.6.5.5.3.1.4.1.2',
+      st.HumidityOID='',
+      st.TempMultiplier=0.1,
+      st.HumidityMultiplier=1.0,
+      st.mUnits='metric'
+  WHERE dt.Model='Raritan DPX2-CC2' AND dt.DeviceType='Sensor';
+
+-- Raritan DPX2-T3H1 x4: inlet temperature, relative humidity
+INSERT IGNORE INTO fac_SensorTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Raritan DPX2-T3H1' AND dt.DeviceType='Sensor';
+UPDATE fac_SensorTemplate st JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  SET st.TemperatureOID='1.3.6.1.4.1.13742.6.5.5.3.1.4.1.1',
+      st.HumidityOID='1.3.6.1.4.1.13742.6.5.5.3.1.4.1.4',
+      st.TempMultiplier=0.1,
+      st.HumidityMultiplier=0.1,
+      st.mUnits='metric'
+  WHERE dt.Model='Raritan DPX2-T3H1' AND dt.DeviceType='Sensor';
+
+-- Chiller-plant header instruments: REMOVE the auto-created shadow row.
+-- These are BMS points, not room environmentals -- a thermowell in a
+-- water header and a magnetic flow meter on the main. openDCIM stores
+-- only air temperature and RH, and DataCenter::AvgTemp averages every
+-- non-backside sensor in the datacenter with no room filter, so a 7 C
+-- chilled-water supply and a 35 C condenser return would both land in
+-- the hall's average and in TemperatureRed. With no template row
+-- UpdateSensorsFilter's GetTemplate() returns false and skips them, so
+-- they stay inventoried assets and record no reading at all.
+-- Guarded on both OIDs being empty: this never removes a row that
+-- someone has deliberately filled in.
+DELETE st FROM fac_SensorTemplate st
+  JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  WHERE dt.Model='Plant CHW Flow Meter' AND dt.DeviceType='Sensor'
+    AND st.TemperatureOID='' AND st.HumidityOID='';
+DELETE st FROM fac_SensorTemplate st
+  JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  WHERE dt.Model='Plant CHW Return Temp' AND dt.DeviceType='Sensor'
+    AND st.TemperatureOID='' AND st.HumidityOID='';
+DELETE st FROM fac_SensorTemplate st
+  JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  WHERE dt.Model='Plant CHW Supply Temp' AND dt.DeviceType='Sensor'
+    AND st.TemperatureOID='' AND st.HumidityOID='';
+DELETE st FROM fac_SensorTemplate st
+  JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  WHERE dt.Model='Plant CT Basin Temp' AND dt.DeviceType='Sensor'
+    AND st.TemperatureOID='' AND st.HumidityOID='';
+DELETE st FROM fac_SensorTemplate st
+  JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  WHERE dt.Model='Plant CW Return Temp' AND dt.DeviceType='Sensor'
+    AND st.TemperatureOID='' AND st.HumidityOID='';
+DELETE st FROM fac_SensorTemplate st
+  JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.TemplateID
+  WHERE dt.Model='Plant CW Supply Temp' AND dt.DeviceType='Sensor'
+    AND st.TemperatureOID='' AND st.HumidityOID='';
+
 -- Cabinet power meter thresholds (percent of the cabinet's MaxKW).
 -- Both cabinet percentages are CLAMPED to 100 before the colour test, so a
 -- threshold >= 100 can never fire. Raising PowerRed above 100 does not make
