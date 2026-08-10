@@ -80643,7 +80643,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "1629fda9",
         "interfaces": [
@@ -80666,7 +80666,7 @@
         ],
         "mgmt_ip": "10.52.11.46",
         "mgmt_vlan": 10,
-        "power_draw_w": 9,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -80684,8 +80684,8 @@
         "sys_uptime": 5399812,
         "cpu_temp": 52.8,
         "inlet_temp": 25.2,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 30.8,
+        "outlet_temp": 33.4,
         "humidity": 35.7,
         "dewpoint": 12.3,
         "airflow": 1.97,
@@ -80722,7 +80722,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "fe9a82a9",
         "interfaces": [
@@ -80745,7 +80745,7 @@
         ],
         "mgmt_ip": "10.52.11.44",
         "mgmt_vlan": 10,
-        "power_draw_w": 9,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -80763,8 +80763,8 @@
         "sys_uptime": 8603405,
         "cpu_temp": 48.3,
         "inlet_temp": 36.8,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 40.9,
+        "outlet_temp": 46.1,
         "humidity": 63.1,
         "dewpoint": 29.4,
         "airflow": 0.83,
@@ -80801,7 +80801,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "6c4f7c37",
         "interfaces": [
@@ -80824,7 +80824,7 @@
         ],
         "mgmt_ip": "10.52.11.45",
         "mgmt_vlan": 10,
-        "power_draw_w": 7,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -80842,8 +80842,8 @@
         "sys_uptime": 8796425,
         "cpu_temp": 44.4,
         "inlet_temp": 30.1,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 36.0,
+        "outlet_temp": 42.2,
         "humidity": 49.1,
         "dewpoint": 19.9,
         "airflow": 1.19,
@@ -80880,7 +80880,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "b4556fbc",
         "interfaces": [
@@ -80903,7 +80903,7 @@
         ],
         "mgmt_ip": "10.52.12.40",
         "mgmt_vlan": 10,
-        "power_draw_w": 4,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -80921,8 +80921,8 @@
         "sys_uptime": 8907570,
         "cpu_temp": 60.0,
         "inlet_temp": 35.8,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 42.4,
+        "outlet_temp": 44.3,
         "humidity": 43.3,
         "dewpoint": 24.5,
         "airflow": 1.74,
@@ -85376,7 +85376,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "e26a32c8",
         "interfaces": [
@@ -85399,7 +85399,7 @@
         ],
         "mgmt_ip": "10.52.21.43",
         "mgmt_vlan": 10,
-        "power_draw_w": 4,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -85417,8 +85417,8 @@
         "sys_uptime": 1037961,
         "cpu_temp": 39.9,
         "inlet_temp": 28.0,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 32.7,
+        "outlet_temp": 36.2,
         "humidity": 33.5,
         "dewpoint": 14.7,
         "airflow": 1.33,
@@ -85455,7 +85455,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "075de7ee",
         "interfaces": [
@@ -85478,7 +85478,7 @@
         ],
         "mgmt_ip": "10.52.21.42",
         "mgmt_vlan": 10,
-        "power_draw_w": 6,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -85496,8 +85496,8 @@
         "sys_uptime": 5659242,
         "cpu_temp": 49.6,
         "inlet_temp": 31.1,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 35.0,
+        "outlet_temp": 42.1,
         "humidity": 39.2,
         "dewpoint": 18.9,
         "airflow": 1.34,
@@ -85534,7 +85534,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "cd67c3be",
         "interfaces": [
@@ -85557,7 +85557,7 @@
         ],
         "mgmt_ip": "10.52.22.38",
         "mgmt_vlan": 10,
-        "power_draw_w": 4,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -85575,8 +85575,8 @@
         "sys_uptime": 4533694,
         "cpu_temp": 59.6,
         "inlet_temp": 35.4,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 38.5,
+        "outlet_temp": 44.6,
         "humidity": 65.7,
         "dewpoint": 28.5,
         "airflow": 0.63,
@@ -93104,7 +93104,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "a9a85a82",
         "interfaces": [
@@ -93127,7 +93127,7 @@
         ],
         "mgmt_ip": "10.52.12.41",
         "mgmt_vlan": 10,
-        "power_draw_w": 9,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -93145,8 +93145,8 @@
         "sys_uptime": 5399812,
         "cpu_temp": 52.8,
         "inlet_temp": 25.2,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 30.8,
+        "outlet_temp": 36.5,
         "humidity": 35.7,
         "dewpoint": 12.3,
         "airflow": 1.97,
@@ -93262,7 +93262,7 @@
             "count": 1
           }
         ],
-        "model_name": "Raritan DPX2-CC2",
+        "model_name": "Raritan DPX2-T3H1",
         "metrics_enabled": true,
         "id": "07356413",
         "interfaces": [
@@ -93285,7 +93285,7 @@
         ],
         "mgmt_ip": "10.52.22.39",
         "mgmt_vlan": 10,
-        "power_draw_w": 9,
+        "power_draw_w": 5,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -93303,8 +93303,8 @@
         "sys_uptime": 5399812,
         "cpu_temp": 52.8,
         "inlet_temp": 25.2,
-        "mid_temp": 0.0,
-        "outlet_temp": 0.0,
+        "mid_temp": 29.1,
+        "outlet_temp": 36.7,
         "humidity": 35.7,
         "dewpoint": 12.3,
         "airflow": 1.97,

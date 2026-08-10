@@ -144,6 +144,8 @@ Instance numbers are **deterministic and stable** across simulator restarts.
 | 1022 | Binary Input | Alarm_HighTHD |
 | 1023 | Binary Input | Alarm_PhaseLoss |
 | 1024 | Binary Input | Alarm_SensorFault |
+| 1025 | Binary Input | Alarm_Undervoltage |
+| 1026 | Binary Input | Alarm_UnderFrequency |
 
 ### Per-Circuit Objects
 
@@ -202,14 +204,51 @@ Circuit N (1-based) uses base instance `(N + 1) × 1000`:
 
 | Instance | Name | Description | Active Condition |
 |----------|------|-------------|-----------------|
-| 1020 | Alarm_Overcurrent | Overcurrent on any phase | Any phase current exceeds threshold |
-| 1021 | Alarm_VoltageImbalance | Phase voltage imbalance | Phase deviation > 5 V |
-| 1022 | Alarm_HighTHD | Current THD exceeds limit | Current THD > 7% |
+| 1020 | Alarm_Overcurrent | Overcurrent on any phase | Any phase current exceeds the panel's overcurrent threshold |
+| 1021 | Alarm_VoltageImbalance | Phase voltage imbalance | `max(V) - min(V)` across the three phases > 5 V |
+| 1022 | Alarm_HighTHD | Voltage THD exceeds limit | **Voltage** THD > 7% (IEEE-519) |
 | 1023 | Alarm_PhaseLoss | Phase loss on any phase | Any phase voltage < 10 V |
 | 1024 | Alarm_SensorFault | Internal measurement error | Internal fault condition |
+| 1025 | Alarm_Undervoltage | Undervoltage / voltage sag | Any phase < 90% of nominal **and** ≥ 10 V |
+| 1026 | Alarm_UnderFrequency | Under-frequency | Line frequency < 98% of nominal |
 
 Binary Input present-value: `inactive` (0) = normal, `active` (1) = alarm.  
 COV notifications for Binary Inputs fire **immediately** (no minimum interval) on state change.
+
+### Alarm Semantics
+
+**Thresholds scale with the panel.** Fractional limits are taken against the panel's own
+nominal voltage and frequency, so a 208 V / 60 Hz panel scales correctly:
+
+| Alarm | Limit @ 230 V / 50 Hz | Basis |
+|-------|----------------------|-------|
+| Alarm_VoltageImbalance | 5 V spread | Absolute |
+| Alarm_HighTHD | 7% V-THD | Absolute |
+| Alarm_PhaseLoss | 10 V | Absolute |
+| Alarm_Undervoltage | 207 V | 0.90 × nominal voltage |
+| Alarm_UnderFrequency | 49.0 Hz | 0.98 × nominal frequency |
+| Alarm_Overcurrent | Derived per panel | Scales with pole count × branch breaker rating — **not** a fixed amp figure |
+
+**Alarm_HighTHD is on VOLTAGE THD, not current THD.** `%THD-i` is naturally high at
+light load, because distortion is measured against a shrinking fundamental — a lightly
+loaded panel of healthy active-PFC server supplies reads high current distortion and is
+not faulted. Alarming on `Current_THD` (AI:1012) would fire on every partly built panel.
+IEEE-519 puts the utility-side limit on voltage distortion, and so does this alarm.
+
+**Undervoltage and phase loss are mutually exclusive.** A phase near 0 V raises
+Alarm_PhaseLoss (1023) only; Alarm_Undervoltage (1025) requires the phase to be above the
+10 V phase-loss floor. A lost phase is never double-reported as a sag.
+
+**All alarms are debounced — 2 consecutive ticks above threshold are required to latch.**
+De-assertion is immediate on the first tick the condition clears. A client polling faster
+than the tick interval will see the alarm rise up to 2 ticks after the underlying analog
+crosses its limit.
+
+**Alarm_SensorFault does not follow from any published reading.** It represents a failed
+CT or input channel: nothing changes electrically, the *measurement* fails. It occurs
+spontaneously (≈0.05% chance per tick) and self-clears after 3–8 ticks. While active, the
+panel under-reports slightly and the harmonic/THD points read 0 — expect the
+Σ-branches-vs-mains reconciliation to break by ~3% rather than the panel to look faulted.
 
 ---
 
@@ -307,7 +346,7 @@ Using `propertyIdentifier: ALL (512)` returns all properties of each object.
 |-------|---------|---------|
 | Panel power | AI:1001–1010 | Power, voltage, current, frequency, PF |
 | Power quality | AI:1011–1016 | THD and harmonics |
-| Alarms | BI:1020–1024 | All 5 alarm states |
+| Alarms | BI:1020–1026 | All 7 alarm states |
 | Circuit N | AI:(N+1)×1000+1 to +5 | All 5 metrics for one circuit |
 
 ---
@@ -379,7 +418,7 @@ Minimum COV intervals are enforced per object — rapid value changes will not p
 1. Every N seconds, send ReadPropertyMultiple to device_ip:47808
 2. Request Present_Value for:
    - AI:1001–1016 (all panel metrics)
-   - BI:1020–1024 (all alarms)
+   - BI:1020–1026 (all alarms)
 3. Update DCIM database with new values
 ```
 
@@ -388,7 +427,7 @@ Recommended poll interval: 30–60 seconds (matches simulator tick interval).
 ### Workflow 3 — Event-Driven via COV
 
 ```
-1. Subscribe to alarm objects BI:1020–1024 with lifetime=0 (indefinite)
+1. Subscribe to alarm objects BI:1020–1026 with lifetime=0 (indefinite)
 2. Subscribe to high-priority metrics (AI:1001, AI:1006–1008) with appropriate increments
 3. On receiving UnconfirmedCOVNotification:
    a. Parse monitoredObjectIdentifier and new Present_Value
@@ -491,7 +530,9 @@ POST /api/bacnet/start
       "alarm_voltage_imbalance": false,
       "alarm_high_thd": false,
       "alarm_phase_loss": false,
-      "alarm_sensor_fault": false
+      "alarm_sensor_fault": false,
+      "alarm_undervoltage": false,
+      "alarm_underfrequency": false
     },
     "circuit_list": [
       {

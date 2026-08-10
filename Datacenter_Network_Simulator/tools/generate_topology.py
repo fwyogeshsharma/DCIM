@@ -22,16 +22,28 @@ from core.ip_manager import IPManager
 from core.rack_capacity import leaf_interface_groups, TOR_A_UNIT, TOR_B_UNIT
 
 _SERVER_VENDORS = [Vendor.DELL, Vendor.HPE, Vendor.LENOVO, Vendor.SUPERMICRO]
-# (vendor, model) pairs cycled when placing sensors.
-# T3H1: hub with 3 external temp probe cables — inlet/mid-rack/exhaust per rack.
-# CC2:  contact closure hub wired to a water rope sensor — under-floor flood detection.
+# (vendor, model) pairs cycled when placing ENVIRONMENTAL sensors. Every SKU in
+# this rotation must be a temperature + relative-humidity head, because that is
+# what an environmental probe is for and what every consumer downstream expects:
+# openDCIM's fac_SensorTemplate carries exactly one TemperatureOID and one
+# HumidityOID, and the cabinet panel prints a blank humidity as 0.00 rather than
+# as "not fitted". A head with no hygrometer in this list therefore publishes a
+# fabricated 0 %RH on whatever rack the rotation happens to land it on.
+#
+# T3H1: hub with 3 external temp probe cables — inlet/mid-rack/exhaust + humidity.
 _SENSOR_SPECS = [
     (Vendor.RARITAN, "Raritan DPX2-T3H1"),   # rack — inlet/mid-rack/exhaust + humidity
     (Vendor.VERTIV,  "Vertiv Geist GTHD"),    # aisle — temp + humidity + dewpoint
     (Vendor.APC,     "APC NetBotz 355"),      # rack-mount — temp/humidity/camera
     (Vendor.APC,     "APC NetBotz 250"),      # room wall-mount — ambient
-    (Vendor.RARITAN, "Raritan DPX2-CC2"),     # under-floor — water leak + temperature
 ]
+# Leak detection is a SEPARATE instrument class, not another entry in the rotation
+# above. A CC2 is a contact-closure hub: slot 1 is a water rope (dry/wet), slot 2 a
+# temperature probe, and there is no hygrometer on the head at all. It is placed
+# under the raised floor to catch a CHW/CDU spill, never as a rack's environmental
+# probe. Naming it LEAK-* keeps that role legible through rename_devices.py, which
+# derives the LEAK code from the name.
+_LEAK_SPEC = (Vendor.RARITAN, "Raritan DPX2-CC2")   # under-floor — water rope + temp
 _OOB_MODELS = {
     Vendor.CISCO_SYSTEMS: "Cisco Catalyst 1000-48T",
     Vendor.HPE:           "HPE Aruba 2530-48G",
@@ -265,7 +277,8 @@ class TopologyBuilder:
         #   Geist GTHD → hot-aisle (no rack unit, row-level placement)
         #   NetBotz 355 → rack-mount (U1)
         #   NetBotz 250 → room wall-mount (no rack, Room label only)
-        #   DPX2-CC2   → under raised floor (rack_unit=0, floor label "UF")
+        # and then, as a separate class outside the rotation:
+        #   DPX2-CC2   → under raised floor (rack_unit=0, floor label "UF"), LEAK-*
         #
         _RACK_UNIT_BY_SPEC = {
             "Raritan DPX2-T3H1":  1,    # in-rack, probes extend to U1/mid/top
@@ -284,14 +297,23 @@ class TopologyBuilder:
         # Sensors per row — distribute evenly across ~3 rows
         sensors_per_row = max(1, n_sensors // 3)
 
+        # n_sensors is the instrument budget for the hall, split between the two
+        # classes rather than grown: one under-floor leak head per five instruments
+        # keeps the old CC2 density (it was every 5th slot of the rotation) without
+        # changing device counts, mgmt-IP consumption, or x positions.
+        n_leak = n_sensors // 5
+        n_env  = n_sensors - n_leak
+        plan = [(*_SENSOR_SPECS[i % len(_SENSOR_SPECS)], f"SENSOR-DC{dc_id}-{i+1:02d}")
+                for i in range(n_env)]
+        plan += [(*_LEAK_SPEC, f"LEAK-DC{dc_id}-{i+1:02d}") for i in range(n_leak)]
+
         sensors = []
         sensor_y = oob_y + 160
-        for s in range(n_sensors):
-            sv, sensor_model = _SENSOR_SPECS[s % len(_SENSOR_SPECS)]
+        for s, (sv, sensor_model, sensor_name) in enumerate(plan):
             sx = x_min + (s + 0.5) * (x_max - x_min + 100) / max(n_sensors, 1) - 50
             sensor_mgmt_ip = mgmt_ip_pool.next_ip()
             sensor = self.add(
-                f"SENSOR-DC{dc_id}-{s+1:02d}",
+                sensor_name,
                 DeviceType.SENSOR,
                 sv,
                 1,

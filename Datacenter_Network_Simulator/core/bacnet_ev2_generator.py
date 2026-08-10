@@ -98,8 +98,13 @@ _PANEL_AI = [
 _PANEL_BI = [
     # (instance, name, description)
     (1020, "Alarm_Overcurrent",       "Overcurrent Alarm — any phase exceeds threshold"),
-    (1021, "Alarm_VoltageImbalance",  "Voltage Imbalance Alarm — phase deviation > 5 V"),
-    (1022, "Alarm_HighTHD",           "High THD Alarm — current THD exceeds 7%"),
+    (1021, "Alarm_VoltageImbalance",  "Voltage Imbalance Alarm — phase spread (max-min) > 5 V"),
+    # VOLTAGE THD, per IEEE-519 — NOT current THD. %THD-i is naturally high at light
+    # load (distortion measured against a shrinking fundamental), so it is not itself
+    # a fault; alarming on it would fire on every partly built panel. _update_alarms()
+    # tests self._v_thd, and this description has to say the same thing — a client
+    # reading the Description property gets this string as the alarm's definition.
+    (1022, "Alarm_HighTHD",           "High THD Alarm — voltage THD exceeds 7%"),
     (1023, "Alarm_PhaseLoss",         "Phase Loss Alarm — any phase voltage < 10 V"),
     (1024, "Alarm_SensorFault",       "Sensor Fault — internal measurement error"),
     (1025, "Alarm_Undervoltage",      "Undervoltage / Sag Alarm — any phase < 90% of nominal"),
