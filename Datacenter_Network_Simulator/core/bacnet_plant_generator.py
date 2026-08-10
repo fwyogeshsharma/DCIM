@@ -213,6 +213,8 @@ class PlantTelemetryEngine:
         self._power_point = next(
             (n for (n, *_r) in self._points if n in _PWR), None)
         self._nameplate_kw = float(rated_kw)
+        # Which points this device HAS, independent of whether a given tick wrote one.
+        self._point_names = {n for (n, *_r) in self._points}
         # VFD speed point coupled to the affinity power (P ∝ speed³) for centrifugal
         # pumps/fans, so the published Speed tracks the metered draw. Chillers have no
         # such point (compressor unloads instead) → None, speed left on its walk.
@@ -297,6 +299,23 @@ class PlantTelemetryEngine:
                 # (base × diurnal) dominates and the published Speed stops tracking
                 # the actual draw (a 16 kW and a 6 kW fan both reading ~82 %).
                 continue
+            # Compressor load and COP are driven below from the live power model, and
+            # they need the SAME exemption for the same reason — they did not have it,
+            # and the walk won.
+            #
+            # The two stages fight each tick: the walk pulls the stored value back to
+            # base (and CLAMPS it into [base-amp, base+amp]), then the live blocks EMA
+            # only 30 % of the way toward the truth. That has a fixed point well away
+            # from the real figure, and the clamp floor decides where. A machine at
+            # 34.5 % FLA published 46.1 %, because Compressor_Load's walk floor is
+            # 70-18 = 52 %; a true COP of 2.3 published 4.8 against a floor of 5.1.
+            # Both are stable, plausible and wrong, and they contradict the loop:
+            # 4.8 x 50 kW claims 240 kW of cooling on a header carrying 113 kW.
+            if (live_power is not None and self._type == "chiller"
+                    and name == "Compressor_Load"):
+                continue
+            if live_cop is not None and live_cop > 0.0 and name == "COP":
+                continue
             if amp == 0.0:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
                 continue
@@ -322,8 +341,11 @@ class PlantTelemetryEngine:
         # Chiller compressor load ≈ % full-load amps, which tracks the metered
         # electrical draw (rises with both cooling load and condenser lift), so
         # report it from the part-load power instead of a free walk.
+        # Guarded on the point EXISTING, not on it already being in `out` — the walk
+        # above now skips it, so an `in out` test would be false exactly when this
+        # block is supposed to run.
         if (_pwr_out is not None and self._type == "chiller"
-                and self._nameplate_kw > 0 and "Compressor_Load" in out):
+                and self._nameplate_kw > 0 and "Compressor_Load" in self._point_names):
             fla = 100.0 * _pwr_out / self._nameplate_kw
             self._values["Compressor_Load"] = self._ema(
                 fla, self._values["Compressor_Load"], 0.3)
@@ -331,7 +353,7 @@ class PlantTelemetryEngine:
                 max(0.0, min(100.0, self._values["Compressor_Load"])), 2)
         # COP tracks the part-load / condenser efficiency (peaks mid-load, droops
         # when hot) — driven by the model instead of a free walk.
-        if live_cop is not None and live_cop > 0.0 and "COP" in out:
+        if live_cop is not None and live_cop > 0.0 and "COP" in self._point_names:
             self._values["COP"] = self._ema(live_cop, self._values["COP"], 0.3)
             out["COP"] = round(self._values["COP"], 2)
 
