@@ -2949,7 +2949,7 @@ class DeviceStateStore:
             cool_ctx = self._cooling_context()
             from core.cooling_model import (
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
-                affinity_power_kw, chiller_electrical_w, chiller_cop,
+                affinity_power_kw, chiller_electrical_w,
                 stage_modules, installed_modules_for, PLANT_MODULE_KW,
                 PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR,
                 tower_cell_demand, tower_cells_needed, tower_cells_running,
@@ -3294,7 +3294,11 @@ class DeviceStateStore:
                         # very low PLR (fixed losses dominate). COP is the inverse —
                         # peaks mid-load, droops with a hot condenser.
                         tgt_w = chiller_electrical_w(w, plr, _city, cond_factor=_cond_f)
-                        plant_cop[_n] = chiller_cop(plr, _city, cond_factor=_cond_f)
+                        # COP is NOT set here — see the derivation after the
+                        # normalisation below. The raw curve value is computed
+                        # against an un-normalised draw, and publishing it beside a
+                        # normalised Active_Power made the pair describe a machine
+                        # that does not exist.
                     else:
                         # Valve / other: negligible actuator draw — nameplate share.
                         base = total_w * (w / np_sum)
@@ -3356,6 +3360,66 @@ class DeviceStateStore:
                             or _x in self._chiller_hp_lockout
                             or _x in self._chw_flow_interlock):
                         plant_power[_x] *= self._PLANT_AUX_FRAC
+
+                # ── Chiller COP ──────────────────────────────────────────────
+                # DERIVED, and derived LAST: COP = the cooling this machine is
+                # actually delivering ÷ the draw actually published for it.
+                #
+                # It used to be chiller_cop(plr) taken straight off the part-load
+                # curve inside the loop above. That number is only true against the
+                # curve's OWN draw — and the normalisation a few lines up rescales
+                # every running unit's kW so the plant sum matches the staged demand
+                # ("a chiller reads its real ~100 kW, not the tiny curated
+                # nameplate"), while the collapse below it drops a shed machine to an
+                # auxiliary floor. Neither touched the COP. The published pair was
+                # therefore one normalised number beside one un-normalised one, and
+                # their product was not a quantity of heat: a header carrying 113 kW
+                # was reported by a chiller claiming COP 4.08 on a 50.27 kW draw —
+                # 205 kW of cooling, 1.8x the load on the loop it serves.
+                #
+                # Both inputs here are post-normalisation and post-collapse, so the
+                # identity holds by construction however the draw was scaled.
+                #
+                # SHARE, not total: chillers on a common header are sequenced to
+                # equal part-load, so each carries the evaporator load in proportion
+                # to its RATED capacity. Equal shares would be wrong the moment a
+                # plant mixes machine sizes.
+                #
+                # A machine that is delivering nothing gets COP 0, not a curve value:
+                # standby (sequenced off), unpowered, faulted, unproven after a
+                # start, high-head locked out, or shed by the evaporator flow
+                # interlock. The flow-interlock case is the one that bit before —
+                # a shed chiller kept its draw AND a healthy-looking COP, which is
+                # precisely the reading that hides a plant failure.
+                _cop_cap: Dict[str, float] = {}
+                for _n2, _w2, _t2 in units:
+                    if _t2 != "chiller":
+                        continue
+                    if (_n2 in self._plant_standby_names
+                            or _n2 in self._plant_unpowered_names
+                            or self._is_faulted(_n2) or self._run_unproven(_n2)
+                            or _n2 in self._chiller_hp_lockout
+                            or _n2 in self._chw_flow_interlock):
+                        plant_cop[_n2] = 0.0
+                        continue
+                    _cop_cap[_n2] = float(
+                        cooling_capacity_w(plant_model.get(_n2, "")) or 0.0)
+                _cap_sum = sum(_cop_cap.values())
+                # Capped at what the surviving machines can actually produce. The
+                # evaporator load is a DEMAND figure and does not shrink when a
+                # chiller drops out — so without this cap, shedding half the plant
+                # would hand the survivor the whole load and RAISE its COP, turning
+                # a failure into a machine that reads more efficient than before.
+                # Above the cap the loop is simply in deficit; the hall temperatures
+                # are where that shows, not here.
+                _deliver_kw = min(itl / 1000.0, _cap_sum / 1000.0) if _cap_sum > 0 \
+                    else itl / 1000.0
+                for _n2, _cap in _cop_cap.items():
+                    _frac = ((_cap / _cap_sum) if _cap_sum > 0
+                             else 1.0 / max(1, len(_cop_cap)))
+                    _p_kw = plant_power.get(_n2, 0.0)
+                    plant_cop[_n2] = (round(_deliver_kw * _frac / _p_kw, 2)
+                                      if _p_kw > 1e-6 else 0.0)
             self._plant_power_by_name = plant_power
             self._plant_cop_by_name = plant_cop
             self._plant_loadfrac_by_name = plant_loadfrac

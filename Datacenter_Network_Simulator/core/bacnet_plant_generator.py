@@ -314,7 +314,10 @@ class PlantTelemetryEngine:
             if (live_power is not None and self._type == "chiller"
                     and name == "Compressor_Load"):
                 continue
-            if live_cop is not None and live_cop > 0.0 and name == "COP":
+            # `> 0` would be wrong here: a derived COP of 0 is the REAL reading for a
+            # machine delivering nothing (shed, locked out, staged off), and falling
+            # back to the walk would put a healthy 5.5 on a dead chiller.
+            if live_cop is not None and name == "COP":
                 continue
             if amp == 0.0:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
@@ -353,9 +356,9 @@ class PlantTelemetryEngine:
                 max(0.0, min(100.0, self._values["Compressor_Load"])), 2)
         # COP tracks the part-load / condenser efficiency (peaks mid-load, droops
         # when hot) — driven by the model instead of a free walk.
-        if live_cop is not None and live_cop > 0.0 and "COP" in self._point_names:
+        if live_cop is not None and "COP" in self._point_names:
             self._values["COP"] = self._ema(live_cop, self._values["COP"], 0.3)
-            out["COP"] = round(self._values["COP"], 2)
+            out["COP"] = round(max(0.0, self._values["COP"]), 2)
 
         # CDU heat rejection — Heat_Load is the LIVE heat of the cold-plate servers on
         # this CDU's loop (Σ their live watts), not a diurnal walk. TCS_Flow tracks it
