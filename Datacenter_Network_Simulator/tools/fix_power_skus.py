@@ -15,6 +15,7 @@ node's rating as load÷0.8 and froze it — so a node sat at ~80% regardless of 
 fleet reads a real OVERLOAD.
 
 Usage:  python -m tools.fix_power_skus [path/to/topology.json]
+                                      [--types=rpp,ups] [--dry-run]
 """
 from __future__ import annotations
 
@@ -22,24 +23,37 @@ import json
 import sys
 from pathlib import Path
 
-from core.power_sizing import rightsize_nodes
+from core.power_sizing import dangling_power_edges, rightsize_nodes
 
 DEFAULT = Path("topologies/dual_dc_enterprise.json")
 
 
 def main(argv: list[str]) -> int:
-    path = Path(argv[1]) if len(argv) > 1 else DEFAULT
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    flags = [a for a in argv[1:] if a.startswith("--")]
+    only = None
+    for f in flags:
+        if f.startswith("--types="):
+            only = {t.strip() for t in f.split("=", 1)[1].split(",") if t.strip()}
+    dry = "--dry-run" in flags
+    path = Path(args[0]) if args else DEFAULT
     if not path.exists():
         print(f"topology not found: {path}", file=sys.stderr)
         return 2
     data = json.loads(path.read_text(encoding="utf-8"))
-    changes = rightsize_nodes(data.get("nodes", []), data.get("edges", []))
+    orphans = dangling_power_edges(data.get("nodes", []), data.get("edges", []))
+    for o in orphans:
+        print(f"  ! power edge {o['src']} -> {o['dst']} names a node that does not "
+              f"exist ({', '.join(o['missing'])}); it carries no load here",
+              file=sys.stderr)
+    changes = rightsize_nodes(data.get("nodes", []), data.get("edges", []), only)
     for c in changes:
         print(f"  {c['name']:20} {str(c['from'])!r:32} -> {c['to']!r} "
               f"(load {c['load_kw']}kW / rated {c['rated_kw']}kW)")
-    if changes:
+    if changes and not dry:
         path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"\n{len(changes)} power node(s) re-SKU'd in {path}"
+          + ("  [--dry-run: not written]" if dry else "")
           if changes else "(no changes — SKUs already sized to load)")
     return 0
 
