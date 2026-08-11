@@ -184,9 +184,23 @@ PANEL_ORDER = ["utility_feed", "generator", "switchgear", "ats", "mcc", "ups",
 
 # Nominal panel voltages. Wye 400/230 V would be the other common build; this estate
 # is modelled on 480 V distribution with 415/240 V to the racks.
+# 400 V, not 480: this estate is an IEC 400/230 V design and its own meters say so.
+# Every LV board serves 400.0 V line-to-line (core/snmprec_generator.py seeds 4000 =
+# x10 V, and device_state_store computes v_ll_true = 400.0 * (1 - 0.02 * load)), the
+# grid runs at 50 Hz, the RPPs are 415 V boards and the rack outlets deliver 230/240 V
+# — 415/sqrt(3) = 240. A 480 V panel record contradicted all of it.
+#
+# It is not cosmetic. openDCIM derives watts from a meter's AMPS with the panel's
+# voltage (PowerDistribution::UpdateStats), so 480 against a 400 V bus over-read every
+# board by 20%, and panel_main_breaker_a sizes a UPS main by converting its kVA at
+# this voltage — 1200 kVA read as 1443 A instead of the 1732 A a 400 V frame draws.
+#
+# The estate's SITE data still says Chicago, which a US reader would expect to be
+# 480/277 V at 60 Hz. That contradiction is in the topology, not here; this table
+# follows the telemetry, which is what the panel record is supposed to describe.
 PANEL_VOLTAGE = {
-    "utility_feed": 480, "generator": 480, "switchgear": 480, "ats": 480,
-    "mcc": 480, "ups": 480, "rpp": 415, "mpp": 480,
+    "utility_feed": 400, "generator": 400, "switchgear": 400, "ats": 400,
+    "mcc": 400, "ups": 400, "rpp": 415, "mpp": 400,
 }
 
 
@@ -497,10 +511,20 @@ def plan(devices: list[dict], only_dc: str = "",
                              else "Sequential"),
             "PanelVoltage": PANEL_VOLTAGE.get(d["device_type"], 480),
             "NumberOfPoles": PANEL_POLES.get(d["device_type"], 3),
+            # The board's OWN address, which is right only where the meter is
+            # integral to the board (a PM5000 in an MPP door, a Digitrip trip unit).
+            # An RPP's meter is a SEPARATE device and this leaves it blank —
+            # plan_panel_meters() replaces it with the meter's address.
             "PanelIPAddress": d.get("mgmt_ip") or d.get("ip_address") or "",
             "MainBreakerSize": panel_main_breaker_a(
                 d.get("model_name") or "",
                 PANEL_VOLTAGE.get(d["device_type"], 480)),
+            # Report-only, for plan_panel_meters: the board's own make/model, used
+            # where the metering instrument IS the board (the UPS).
+            "_vendor": d.get("vendor") or "",
+            "_model": d.get("model_name") or "",
+            # Filled by plan_panel_meters() — the fac_CDUTemplate the panel points at.
+            "_meter_model": "",
         })
 
     return {
@@ -516,6 +540,7 @@ def plan(devices: list[dict], only_dc: str = "",
         "port_links": [],
         "cdu_templates": plan_cdu_templates(devices, only_dc),
         "sensor_templates": plan_sensor_templates(devices, only_dc),
+        "panel_meters": {},
     }
 
 
@@ -549,6 +574,207 @@ def panel_main_breaker_a(model_name: str, voltage: int) -> int:
         return int(round(int(m.group(1)) * 1000 / (voltage * math.sqrt(3))))
     m = re.search(r"(\d+)\s*A(?![A-Za-z])", model_name)
     return int(m.group(1)) if m else 0
+
+
+# ── panel meters ──────────────────────────────────────────────────────────────
+#
+# A panelboard is not itself an instrument. What reports it is a meter, and WHERE
+# that meter lives differs by board — which is the whole reason this table exists
+# rather than a single "use the device's own IP" rule:
+#
+#   integral to the board   A switchboard, MCC or MPP is ordered WITH its metering:
+#                           an Eaton Magnum's Digitrip trip unit, a Power Xpert on
+#                           the MCC main, a PowerLogic PM5000 in the MPP door. One
+#                           asset, one address — the board's own.
+#   the board IS the meter  A UPS reports its own output over UPS-MIB. Same thing.
+#   a SEPARATE device       An RPP is a passive breaker board. Its branch metering
+#                           is a bolt-on CT strip + controller (Verdigris, Packet
+#                           Power, Veris E30, Server Tech) with its own network
+#                           address, and in this estate it is modelled as exactly
+#                           that: an `energy_monitor` device fed by the RPP. The
+#                           RPP therefore has NO management address of its own, and
+#                           filling PanelIPAddress from the board would leave it
+#                           blank forever — which is what it was doing.
+#   nothing meters it       An ATS is a switch: position, source availability,
+#                           voltages, no kW (the sim's ASCO subtree has no current
+#                           object at all). A genset controller reports kW but no
+#                           per-phase current. Both get NO template, deliberately —
+#                           see the note on absent SKUs in SENSOR_SIM_TEMPLATE for
+#                           why a blank-OID row is worse than no row.
+#
+# READ THIS BEFORE EXPANDING IT: openDCIM 23.04 never polls a panel. PanelIPAddress
+# appears in exactly two places in the tree (PowerPanel.class.php and the
+# power_panel.php form) and fac_PowerPanel is touched by no poller, so neither this
+# address nor the template it points at will ever produce a reading in openDCIM.
+# They are the record of WHICH instrument reports the board and WHERE it answers —
+# which is what an operator needs to go get the number, and what an external poller
+# (deploy/opendcim.cron drives the CDU and sensor ones) would read to fetch it.
+# openDCIM's own field labels say the same: "Panel Meter IP Address", not "panel
+# load".
+#
+# The OIDs are the SIMULATOR's private electrical subtree (99999.8-12), not a real
+# meter's MIB. Replace them per SKU before pointing openDCIM at real gear.
+_UTIL_ENT, _SWGR_ENT = "1.3.6.1.4.1.99999.8", "1.3.6.1.4.1.99999.9"
+_MCC_ENT, _MPP_ENT = "1.3.6.1.4.1.99999.11", "1.3.6.1.4.1.99999.12"
+
+# Convert3PhAmperes is the profile for every one of these boards, and it is the only
+# correct one: openDCIM computes avg(I1,I2,I3)/Multiplier * sqrt(3) * Voltage
+# (PowerDistribution::UpdateStats), which is the three-phase power formula against a
+# line-to-line voltage. Combine3OIDAmperes — which SUMS the three and multiplies by
+# V — would over-read a balanced board by sqrt(3), i.e. 73%.
+#
+# WHAT IT PRODUCES IS kVA, NOT kW. That formula has no power-factor term anywhere in
+# it, so the figure is apparent power — on a mechanical board carrying VFD motors at
+# PF 0.78 it reads ~28% above the kW the board's own meter publishes. There is no
+# openDCIM profile that takes a PF, and pre-dividing the Voltage to fake one would
+# corrupt the same field its capacity arithmetic reads. Take the amps as amps; for
+# real power, read the board's own kW object.
+#
+# NOT SingleOIDWatts against the kW object each of these also serves: openDCIM's
+# watts = value / Multiplier and Multiplier is validated against
+# {0.01,0.1,1,10,100}, so kW -> W (x1000) is not expressible. A kW register read as
+# watts under-reports a 400 kW board as 400 W.
+PANEL_METER_SPEC = {
+    "utility_feed": {
+        "vendor": "Schneider Electric", "model": "Schneider PowerLogic ION9000",
+        "profile": "Convert3PhAmperes", "multiplier": "1",
+        "oids": (f"{_UTIL_ENT}.11.0", f"{_UTIL_ENT}.12.0", f"{_UTIL_ENT}.13.0"),
+        "note": "service-entrance revenue meter (per-phase line current, amps)",
+    },
+    "switchgear": {
+        "vendor": "Eaton", "model": "Eaton Digitrip 1150 Trip Unit",
+        "profile": "Convert3PhAmperes", "multiplier": "1",
+        "oids": (f"{_SWGR_ENT}.11.0", f"{_SWGR_ENT}.12.0", f"{_SWGR_ENT}.13.0"),
+        "note": "energy-metering trip unit on the main breaker",
+    },
+    "mcc": {
+        "vendor": "Eaton", "model": "Eaton Power Xpert PXM 2000",
+        "profile": "Convert3PhAmperes", "multiplier": "1",
+        "oids": (f"{_MCC_ENT}.11.0", f"{_MCC_ENT}.12.0", f"{_MCC_ENT}.13.0"),
+        "note": "metered MCC main",
+    },
+    "mpp": {
+        "vendor": "Schneider Electric", "model": "Schneider PowerLogic PM5000",
+        "profile": "Convert3PhAmperes", "multiplier": "1",
+        # NOTE the MPP subtree numbers its per-phase currents .10/.11/.12, not
+        # .11/.12/.13 like the other three — it carries no separate system-current
+        # object, so everything after .6 shifts down one.
+        "oids": (f"{_MPP_ENT}.10.0", f"{_MPP_ENT}.11.0", f"{_MPP_ENT}.12.0"),
+        "note": "panel-main meter in the MPP door",
+    },
+    # The UPS meters itself. upsOutputPower is a live WATTS register in this estate
+    # (the generator patches it from ups_output_kw every tick), so SingleOIDWatts
+    # with no multiplier is exact — no phase arithmetic, no assumed voltage.
+    # vendor/model are left out on purpose: they come from the UPS device itself,
+    # because here the instrument and the asset are the same box.
+    "ups": {
+        "vendor": "", "model": "",
+        "profile": "SingleOIDWatts", "multiplier": "1",
+        "oids": ("1.3.6.1.2.1.33.1.4.4.1.4.1", "", ""),
+        "note": "UPS-MIB upsOutputPower, watts",
+    },
+}
+
+# An RPP's meter is whatever `energy_monitor` the topology hangs off it, so its make
+# and model are read from that device rather than declared here. It speaks BACnet/IP
+# in this estate (core/bacnet_ev2_generator.py), NOT SNMP — so the template carries
+# no OIDs and Managed=0. Writing SNMP objects for it would be inventing a transport
+# the device does not have.
+PANEL_METER_SNMP_TYPES = frozenset(PANEL_METER_SPEC)
+
+
+def plan_panel_meters(graph: dict, devices: list[dict], p: dict) -> dict:
+    """Point every panel at the instrument that actually reports it.
+
+    Sets each panel row's PanelIPAddress and _meter_model, and returns
+    model -> fac_CDUTemplate row for the meters in use. The templates are
+    registered in p["templates"] as DeviceType 'CDU' because that is the table
+    openDCIM's panel record points at ("CDU/Meter Template") — creating one makes
+    DeviceTemplate::CreateTemplate materialise the fac_CDUTemplate shadow row that
+    post_import_sql then fills.
+    """
+    name = {d["id"]: d["name"] for d in graph.get("devices", [])}
+    typ = {d["id"]: d.get("device_type", "") for d in graph.get("devices", [])}
+    # The graph's node payload carries id/name/device_type and nothing else on the
+    # --from-file path, so make/model/address come from the device list.
+    dev = {d["name"]: d for d in devices}
+
+    # RPP -> its branch meter, off the power layer. Direction is not assumed: the
+    # meter is drawn as a load of the board it measures, but a CT strip is not a
+    # load in any electrical sense, so accept the pairing either way round.
+    rpp_meter: dict[str, str] = {}
+    for link in graph.get("links", []):
+        if link.get("layer") != "power":
+            continue
+        a = link.get("supply_node") or link.get("src_id")
+        b = link.get("load_node") or link.get("dst_id")
+        for x, y in ((a, b), (b, a)):
+            if typ.get(x) == "rpp" and typ.get(y) == "energy_monitor":
+                rpp_meter.setdefault(name.get(x, ""), name.get(y, ""))
+
+    meters: dict[str, dict] = {}
+    for row in p["panels"]:
+        dt = row["DeviceType"]
+        if dt == "rpp":
+            meter = dev.get(rpp_meter.get(row["PanelLabel"], ""))
+            if not meter:
+                continue
+            model = meter.get("model_name") or ""
+            vendor = meter.get("vendor") or "Unknown"
+            row["PanelIPAddress"] = (meter.get("mgmt_ip")
+                                     or meter.get("ip_address") or "")
+            spec = {"profile": "SingleOIDWatts", "multiplier": "1",
+                    "oids": ("", "", ""),
+                    "note": "branch-circuit meter, BACnet/IP — no SNMP objects"}
+            managed = 0
+        else:
+            spec = PANEL_METER_SPEC.get(dt)
+            if not spec:
+                continue                      # ATS, genset: no metering point
+            model = spec["model"] or row["_model"]
+            vendor = spec["vendor"] or row["_vendor"] or "Unknown"
+            managed = 1
+        # From the PANEL, never a constant in the spec table: this is the voltage
+        # openDCIM multiplies the meter's amps by, so it has to be the bus the meter
+        # is actually clamped to. A 415 V RPP and a 400 V MCC cannot share one number,
+        # and a template hardcoding 480 silently over-read both.
+        voltage = int(row["PanelVoltage"])
+        if not model:
+            continue
+        row["_meter_model"] = model
+        row_meter = meters.setdefault(model, {
+            "Model": model, "Manufacturer": vendor, "Managed": managed,
+            "ProcessingProfile": spec["profile"], "Multiplier": spec["multiplier"],
+            "Voltage": voltage, "OIDs": spec["oids"],
+            "Note": spec["note"], "Panels": [], "VoltageConflict": set(),
+        })
+        row_meter["Panels"].append(row["PanelLabel"])
+        # openDCIM stores the voltage on the TEMPLATE, not per panel, so one SKU
+        # metering two different buses can only carry one of them. Record the clash
+        # rather than let the first panel seen decide it silently.
+        if voltage != row_meter["Voltage"]:
+            row_meter["VoltageConflict"].add(voltage)
+
+    # Register the templates so apply() creates them (and the manufacturers they
+    # need — a CDUTemplate with no matching fac_Manufacturer row is invisible:
+    # CDUTemplate::GetTemplateList inner-joins it, so the panel's dropdown would
+    # not even offer the meter).
+    mfg = set(p["manufacturers"])
+    for model, m in meters.items():
+        mfg.add(m["Manufacturer"])
+        p["templates"].setdefault(model, {
+            "Model": model, "Manufacturer": m["Manufacturer"], "DeviceType": "CDU",
+            # Zero-U, and never mounted: these templates exist to carry the meter's
+            # OIDs for a panel, not to be racked. Weight is floored at 1 for the
+            # same reason as every other template here (0 reads as "unfilled").
+            "Height": 0, "Weight": 1, "NumPorts": 1, "PSCount": 0,
+            # Wattage is a NAMEPLATE for cabinet capacity sums. No device carries
+            # this template, so any figure here would only ever be wrong; 0 is the
+            # honest "not applicable".
+            "Wattage": 0,
+        })
+    p["manufacturers"] = sorted(mfg)
+    return meters
 
 
 def plan_panel_feeds(graph: dict, panel_names: set) -> dict:
@@ -1031,7 +1257,8 @@ def _sq(value) -> str:
     return str(value).replace("\\", "\\\\").replace("'", "\\'")
 
 
-def post_import_sql(rows: dict, sensor_rows: dict | None = None) -> str:
+def post_import_sql(rows: dict, sensor_rows: dict | None = None,
+                    panel_meters: dict | None = None) -> str:
     """Everything the openDCIM REST API cannot write, in one runnable file.
 
     This began as the rack-PDU SNMP templates and grew, because the same wall keeps
@@ -1045,6 +1272,7 @@ def post_import_sql(rows: dict, sensor_rows: dict | None = None) -> str:
         fac_PowerPorts    outlet LABELS, receptacle-numbered
         fac_SensorTemplate  temperature/humidity OIDs; without them the cabinet's
                           Environmental Sensors panel has nothing to show
+        fac_CDUTemplate   the PANEL meters' OIDs (panel_meter_sql)
         fac_Config        the cabinet power meter thresholds
 
     Every statement is re-runnable: INSERT IGNORE where a row may already exist,
@@ -1128,8 +1356,55 @@ def post_import_sql(rows: dict, sensor_rows: dict | None = None) -> str:
     out += outlet_count_sql(rows)
     out += outlet_label_sql()
     out += sensor_template_sql(sensor_rows or {})
+    out += panel_meter_sql(panel_meters or {})
     out += meter_threshold_sql()
     return "\n".join(out) + "\n"
+
+
+def panel_meter_sql(rows: dict) -> list[str]:
+    """fac_CDUTemplate rows for the PANEL meters (see PANEL_METER_SPEC).
+
+    The panel's own TemplateID is set through the REST API — POST
+    /api/v1/powerpanel/{id} assigns any PowerPanel property — so this file only has
+    to carry what the API cannot reach, which is the OID columns, exactly as for the
+    rack PDUs above.
+
+    NumOutlets stays 0 and the outlet OIDs stay empty: a panel meter has no
+    switched outlets to enumerate, and openDCIM's outlet walk is driven off a CDU
+    DEVICE, which none of these templates is ever attached to.
+    """
+    if not rows:
+        return []
+    out = [
+        "-- Panel meter templates -> fac_CDUTemplate.",
+        "-- openDCIM 23.04 does NOT poll panels: fac_PowerPanel is read by no",
+        "-- poller, and PanelIPAddress/TemplateID exist only on the panel form. These",
+        "-- rows record WHICH instrument reports each board and what it answers, for",
+        "-- an operator and for an external poller. They will not make a number",
+        "-- appear on power_panel.php.",
+        "",
+    ]
+    for model in sorted(rows):
+        r = rows[model]
+        m = _sq(model)
+        o1, o2, o3 = (list(r["OIDs"]) + ["", "", ""])[:3]
+        out += [
+            f"-- {model}: {r['Note']}",
+            f"--   on {len(r['Panels'])} panel(s): {', '.join(sorted(r['Panels'])[:4])}"
+            + (" ..." if len(r["Panels"]) > 4 else ""),
+            "INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)",
+            "  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt",
+            f"  WHERE dt.Model='{m}' AND dt.DeviceType='CDU';",
+            "UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID",
+            f"  SET ct.Managed={int(r['Managed'])}, ct.ATS=0, ct.SNMPVersion='2c',",
+            f"      ct.ProcessingProfile='{_sq(r['ProcessingProfile'])}',",
+            f"      ct.Multiplier='{_sq(r['Multiplier'])}',",
+            f"      ct.OID1='{_sq(o1)}', ct.OID2='{_sq(o2)}', ct.OID3='{_sq(o3)}',",
+            f"      ct.Voltage={int(r['Voltage'])}, ct.Amperage=0, ct.NumOutlets=0",
+            f"  WHERE dt.Model='{m}' AND dt.DeviceType='CDU';",
+            "",
+        ]
+    return out
 
 
 # Where the cabinet power meters turn yellow and red, as a PERCENTAGE of MaxKW. One
@@ -1509,9 +1784,43 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
 
     # 2. Device templates
     tmpl_id = reload_ids("/api/v1/devicetemplate", "devicetemplate", "Model", "TemplateID")
+    # DROP THE EMPTY KEY IMMEDIATELY. A template whose shadow row is gone comes back
+    # from the list with Model="" (see template_id_by_name), so reload_ids indexes it
+    # under "" — and any later tmpl_id.get(<no meter>, "") then resolves to that
+    # unrelated template. It did: the four ATSes and four gensets, which are meant to
+    # carry NO meter template, were all stamped with the blank row's TemplateID.
+    tmpl_id.pop("", None)
+
+    def template_id_by_name(model: str) -> int:
+        """The TemplateID of an existing template the LIST cannot name.
+
+        GET /devicetemplate returns Model="" for a Sensor or CDU template whose
+        shadow row is missing: DeviceTemplate::RowToObject copies the whole
+        SensorTemplate/CDUTemplate over the object, and that object has its own
+        (empty) Model property. The six plant-instrument templates are exactly that
+        case BY DESIGN — sensor_template_sql deletes their shadow rows so the poller
+        skips them (see SENSOR_PLANT_PREFIX) — so a second run could not see them,
+        tried to create them again, and died on the UNIQUE(ManufacturerID, Model)
+        index with an HTTP 500.
+
+        The SEARCH still matches, because it filters on fac_DeviceTemplate.Model in
+        SQL and only blanks the field on the way out. So ask by name and take the ID.
+        """
+        try:
+            rows = dcim.request("GET", "/api/v1/devicetemplate",
+                                {"Model": model}).get("devicetemplate", [])
+        except RuntimeError:
+            return 0
+        return rows[0]["TemplateID"] if len(rows) == 1 else 0
+
     created = False
     for model, t in p["templates"].items():
         if model in tmpl_id:
+            continue
+        found = template_id_by_name(model)
+        if found:
+            tmpl_id[model] = found
+            counts["templates_adopted"] += 1
             continue
         dcim.request("PUT", f"/api/v1/devicetemplate/{urllib.parse.quote(model)}", {
             "Model": model, "ManufacturerID": mfg_id.get(t["Manufacturer"], 0),
@@ -1523,7 +1832,13 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
         created = True
         say(f"  + template {model} ({t['DeviceType']}, {t['Height']}U, {t['Wattage']} W)")
     if created:
-        tmpl_id = reload_ids("/api/v1/devicetemplate", "devicetemplate", "Model", "TemplateID")
+        # MERGED, not replaced: the read-back cannot name a template whose shadow row
+        # is gone, so overwriting the map here would throw away every ID adopted
+        # above and put the run straight back into the missing_tmpl exit below.
+        tmpl_id = {**tmpl_id,
+                   **reload_ids("/api/v1/devicetemplate", "devicetemplate",
+                                "Model", "TemplateID")}
+        tmpl_id.pop("", None)
 
     # Templates imported before weights existed carry Weight 0, and a cabinet's total
     # is the sum of its devices' template weights — so one stale template silently
@@ -1783,7 +2098,9 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
         poles = {x["PanelLabel"]: x["NumberOfPoles"] for x in p["panels"]}
         schemes = {x["PanelLabel"]: x["NumberScheme"] for x in p["panels"]}
         mains = {x["PanelLabel"]: x["MainBreakerSize"] for x in p["panels"]}
+        volts = {x["PanelLabel"]: x["PanelVoltage"] for x in p["panels"]}
         panel_ips = {x["PanelLabel"]: x["PanelIPAddress"] for x in p["panels"]}
+        panel_meter = {x["PanelLabel"]: x.get("_meter_model") or "" for x in p["panels"]}
         # Every planned panel, not just the ones with a parent. The ROOTS — the two
         # utility feeds and the four gensets — have nothing upstream, so a loop over
         # feeds.items() never reaches them, and they kept a stale meter IP through
@@ -1808,6 +2125,12 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
                     "NumberOfPoles": poles.get(child, 3),
                     "NumberScheme": schemes.get(child, "Sequential"),
                     "MainBreakerSize": mains.get(child, 0),
+                    # Repaired here for the same reason as the meter IP below: a panel
+                    # is created once and never revisited except by this pass, so a
+                    # correction to PANEL_VOLTAGE reached only panels that did not
+                    # exist yet. Every board imported at 480 V kept it — while its
+                    # main breaker, which is derived from the same number, moved.
+                    "PanelVoltage": volts.get(child, 480),
                     # Panels are created once and then only ever revisited here, so
                     # this pass is the ONLY thing that can repair them. The estate
                     # renumber fixed fac_Device.PrimaryIP on all 531 devices and left
@@ -1820,6 +2143,13 @@ def apply(dcim: Http, p: dict, verbose: bool = True) -> dict:
                 # would be asserting one.
                 if pid:
                     payload["ParentPanelID"] = pid
+                # The meter template, where the board has a meter. Sent ONLY when
+                # this run knows one: an ATS and a genset have no metering point,
+                # and pushing TemplateID 0 at them would also silently wipe a
+                # template an operator had picked by hand.
+                meter_tid = tmpl_id.get(panel_meter.get(child, ""))
+                if meter_tid:
+                    payload["TemplateID"] = meter_tid
                 dcim.request("POST", f"/api/v1/powerpanel/{cid}", payload)
                 counts["parentage" if pid else "panel_fields_only"] += 1
                 if pid:
@@ -1924,6 +2254,10 @@ def main() -> int:
                 graph = sim.request("GET", "/api/topology/graph")
             if not args.no_power:
                 p["cords"] = plan_cords(graph, importable)
+                # Before the feed map only because it edits the same panel rows —
+                # an RPP's PanelIPAddress comes from its branch meter, which is a
+                # separate device and therefore a graph lookup.
+                p["panel_meters"] = plan_panel_meters(graph, devices, p)
                 p["panel_feeds"] = plan_panel_feeds(
                     graph, {x["PanelLabel"] for x in p["panels"]})
                 p["breakers"] = plan_breakers(
@@ -1997,9 +2331,26 @@ def main() -> int:
     # Gated on either, not on the CDUs alone: the same file now carries the sensor
     # templates, and an estate with no rack PDUs would otherwise write nothing and
     # say nothing about it.
-    if (p.get("cdu_templates") or sensors) and args.post_import_sql:
+    panel_meters = p.get("panel_meters") or {}
+    if panel_meters:
+        metered = sum(1 for m in panel_meters.values() for _ in m["Panels"])
+        unmetered = sorted({x["DeviceType"] for x in p["panels"]
+                            if not x.get("_meter_model")})
+        print(f"  panel meters  : {len(panel_meters)} SKUs on {metered}/"
+              f"{len(p['panels'])} panels"
+              + (f" — no metering point on: {', '.join(unmetered)}"
+                 if unmetered else ""))
+        for _m, _r in sorted(panel_meters.items()):
+            if _r.get("VoltageConflict"):
+                print(f"                  ! {_m} meters buses at "
+                      f"{_r['Voltage']} V and "
+                      f"{', '.join(str(v) for v in sorted(_r['VoltageConflict']))} V"
+                      f" — openDCIM holds ONE voltage per template; "
+                      f"{_r['Voltage']} V was kept", file=sys.stderr)
+
+    if (p.get("cdu_templates") or sensors or panel_meters) and args.post_import_sql:
         with open(args.post_import_sql, "w", encoding="utf-8") as fh:
-            fh.write(post_import_sql(p["cdu_templates"], sensors))
+            fh.write(post_import_sql(p["cdu_templates"], sensors, panel_meters))
         print(f"                  wrote {args.post_import_sql} — RUN IT against the openDCIM\n"
               f"                  database; it carries everything the REST API\n"
               f"                  cannot write; until it runs a CDU Status stays 'err'\n"

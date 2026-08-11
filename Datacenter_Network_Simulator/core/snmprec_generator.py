@@ -1966,6 +1966,20 @@ class SNMPRecGenerator:
             f"{E}.19.0": i("mcc_energy_kwh"),
         }
 
+    # A REGISTER THAT IS NOT SEEDED HERE DOES NOT EXIST ON THE WIRE.
+    #
+    # patch_metrics() walks the generated file line by line and rewrites only the
+    # OIDs it already finds ("if oid in updates"); an update for a row that was
+    # never written is dropped without a word. _electrical_updates() grew to the
+    # full per-phase meter — V/I per phase, imbalance, kVAR/kVA, PF, kWh — while
+    # these builders stayed at the seven scalars they started with, so twelve of
+    # the nineteen points answered No Such Instance on every board in the estate
+    # while the code that computes them ran every tick.
+    #
+    # The seeds are the DE-ENERGISED state of a real meter, not zero everywhere:
+    # a meter reads its nominal 400.0 V (x10) and 50.0 Hz whether or not load is
+    # flowing, and reads 0 A / 0 kW until it is. Keep every index in step with
+    # _electrical_updates() — the live tick addresses these by number.
     def _utility_entries(self, device: Device) -> List[OidEntry]:
         """Utility service entrance — Schneider ION9000 revenue/PQ meter points."""
         E = self._UTIL_ENT
@@ -1977,6 +1991,18 @@ class SNMPRecGenerator:
             _oid_entry(f"{E}.5.0", "2", "0"),     # utilKW (kW)
             _oid_entry(f"{E}.6.0", "2", "97"),    # utilPowerFactor x100
             _oid_entry(f"{E}.7.0", "2", "0"),     # utilEnergyKWh (cumulative)
+            _oid_entry(f"{E}.8.0", "2", "4000"),  # utilVoltageA x10 V
+            _oid_entry(f"{E}.9.0", "2", "4000"),  # utilVoltageB x10 V
+            _oid_entry(f"{E}.10.0", "2", "4000"), # utilVoltageC x10 V
+            _oid_entry(f"{E}.11.0", "2", "0"),    # utilCurrentA A
+            _oid_entry(f"{E}.12.0", "2", "0"),    # utilCurrentB A
+            _oid_entry(f"{E}.13.0", "2", "0"),    # utilCurrentC A
+            _oid_entry(f"{E}.14.0", "2", "0"),    # utilPhaseImbalance x10 %
+            _oid_entry(f"{E}.15.0", "2", "0"),    # utilVoltageTHD x10 %
+            _oid_entry(f"{E}.16.0", "2", "0"),    # utilCurrentTHD x10 %
+            _oid_entry(f"{E}.17.0", "2", "0"),    # utilKVAR
+            _oid_entry(f"{E}.18.0", "2", "0"),    # utilKVA
+            _oid_entry(f"{E}.19.0", "2", "0"),    # utilPeakDemandKW
         ]
 
     def _switchgear_entries(self, device: Device) -> List[OidEntry]:
@@ -1990,6 +2016,18 @@ class SNMPRecGenerator:
             _oid_entry(f"{E}.5.0", "2", "0"),     # swgrLoadPercent % of breaker rating
             _oid_entry(f"{E}.6.0", "2", "1"),     # swgrMainBreaker (1=closed,2=open)
             _oid_entry(f"{E}.7.0", "2", "1"),     # swgrSource (1=utility,2=generator)
+            _oid_entry(f"{E}.8.0", "2", "4000"),  # swgrVoltageA x10 V
+            _oid_entry(f"{E}.9.0", "2", "4000"),  # swgrVoltageB x10 V
+            _oid_entry(f"{E}.10.0", "2", "4000"), # swgrVoltageC x10 V
+            _oid_entry(f"{E}.11.0", "2", "0"),    # swgrCurrentA A
+            _oid_entry(f"{E}.12.0", "2", "0"),    # swgrCurrentB A
+            _oid_entry(f"{E}.13.0", "2", "0"),    # swgrCurrentC A
+            _oid_entry(f"{E}.14.0", "2", "0"),    # swgrPhaseImbalance x10 %
+            _oid_entry(f"{E}.15.0", "2", "500"),  # swgrFrequency x10 Hz
+            _oid_entry(f"{E}.16.0", "2", "0"),    # swgrKVAR
+            _oid_entry(f"{E}.17.0", "2", "0"),    # swgrKVA
+            _oid_entry(f"{E}.18.0", "2", "97"),   # swgrPowerFactor x100
+            _oid_entry(f"{E}.19.0", "2", "0"),    # swgrEnergyKWh (cumulative)
         ]
 
     def _ats_entries(self, device: Device) -> List[OidEntry]:
@@ -2004,6 +2042,11 @@ class SNMPRecGenerator:
             _oid_entry(f"{E}.6.0", "2", "500"),   # atsFrequency x10 Hz
             _oid_entry(f"{E}.7.0", "2", "0"),     # atsTransferCount (counter)
             _oid_entry(f"{E}.8.0", "2", "0"),     # atsTimeOnEmergency (minutes)
+            # Per-SOURCE frequency, which is how an operator tells a live utility
+            # from a genset that has not come up to speed. .6 is the ACTIVE
+            # source's, and 0 on the emergency side means "no source", not 0 Hz.
+            _oid_entry(f"{E}.9.0", "2", "500"),   # atsNormalFrequency x10 Hz
+            _oid_entry(f"{E}.10.0", "2", "0"),    # atsEmergencyFrequency x10 Hz
         ]
 
     def _mcc_entries(self, device: Device) -> List[OidEntry]:
@@ -2017,6 +2060,18 @@ class SNMPRecGenerator:
             _oid_entry(f"{E}.5.0", "2", "0"),     # mccLoadPercent %
             _oid_entry(f"{E}.6.0", "2", "1"),     # mccTieBreaker (1=open,2=closed)
             _oid_entry(f"{E}.7.0", "2", "1"),     # mccSource (1=own ATS,2=tie,3=none)
+            _oid_entry(f"{E}.8.0", "2", "4000"),  # mccVoltageA x10 V
+            _oid_entry(f"{E}.9.0", "2", "4000"),  # mccVoltageB x10 V
+            _oid_entry(f"{E}.10.0", "2", "4000"), # mccVoltageC x10 V
+            _oid_entry(f"{E}.11.0", "2", "0"),    # mccCurrentA A
+            _oid_entry(f"{E}.12.0", "2", "0"),    # mccCurrentB A
+            _oid_entry(f"{E}.13.0", "2", "0"),    # mccCurrentC A
+            _oid_entry(f"{E}.14.0", "2", "0"),    # mccPhaseImbalance x10 %
+            _oid_entry(f"{E}.15.0", "2", "500"),  # mccFrequency x10 Hz
+            _oid_entry(f"{E}.16.0", "2", "0"),    # mccKVAR
+            _oid_entry(f"{E}.17.0", "2", "0"),    # mccKVA
+            _oid_entry(f"{E}.18.0", "2", "87"),   # mccPowerFactor x100 (motor load)
+            _oid_entry(f"{E}.19.0", "2", "0"),    # mccEnergyKWh (cumulative)
         ]
 
     def _mpp_entries(self, device: Device) -> List[OidEntry]:
@@ -2028,6 +2083,21 @@ class SNMPRecGenerator:
             _oid_entry(f"{E}.3.0", "2", "0"),     # mppKW (kW)
             _oid_entry(f"{E}.4.0", "2", "0"),     # mppLoadPercent %
             _oid_entry(f"{E}.5.0", "2", "0"),     # mppEnergyKWh (cumulative)
+            # The MPP subtree carries no system-current object, so its per-phase
+            # block starts one index lower than the other three boards: .6 is the
+            # system current and .10-.12 are the phase currents, NOT .11-.13.
+            _oid_entry(f"{E}.6.0", "2", "0"),     # mppCurrent A
+            _oid_entry(f"{E}.7.0", "2", "4000"),  # mppVoltageA x10 V
+            _oid_entry(f"{E}.8.0", "2", "4000"),  # mppVoltageB x10 V
+            _oid_entry(f"{E}.9.0", "2", "4000"),  # mppVoltageC x10 V
+            _oid_entry(f"{E}.10.0", "2", "0"),    # mppCurrentA A
+            _oid_entry(f"{E}.11.0", "2", "0"),    # mppCurrentB A
+            _oid_entry(f"{E}.12.0", "2", "0"),    # mppCurrentC A
+            _oid_entry(f"{E}.13.0", "2", "0"),    # mppPhaseImbalance x10 %
+            _oid_entry(f"{E}.14.0", "2", "500"),  # mppFrequency x10 Hz
+            _oid_entry(f"{E}.15.0", "2", "0"),    # mppKVAR
+            _oid_entry(f"{E}.16.0", "2", "0"),    # mppKVA
+            _oid_entry(f"{E}.17.0", "2", "87"),   # mppPowerFactor x100 (motor load)
         ]
 
     # ------------------------------------------------------------------ #

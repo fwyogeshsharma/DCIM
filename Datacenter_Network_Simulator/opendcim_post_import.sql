@@ -149,7 +149,7 @@ UPDATE fac_PowerPorts pp JOIN fac_Device d ON d.DeviceID=pp.DeviceID
 -- panel labels Fahrenheit numbers as Celsius.
 UPDATE fac_Config SET Value='metric' WHERE Parameter='mUnits';
 
--- Raritan DPX2-CC2 x15: inlet temperature only (no hygrometer on this head)
+-- Raritan DPX2-CC2 x6: inlet temperature only (no hygrometer on this head)
 INSERT IGNORE INTO fac_SensorTemplate (TemplateID, ManufacturerID, Model)
   SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
   WHERE dt.Model='Raritan DPX2-CC2' AND dt.DeviceType='Sensor';
@@ -161,7 +161,7 @@ UPDATE fac_SensorTemplate st JOIN fac_DeviceTemplate dt ON dt.TemplateID=st.Temp
       st.mUnits='metric'
   WHERE dt.Model='Raritan DPX2-CC2' AND dt.DeviceType='Sensor';
 
--- Raritan DPX2-T3H1 x4: inlet temperature, relative humidity
+-- Raritan DPX2-T3H1 x14: inlet temperature, relative humidity
 INSERT IGNORE INTO fac_SensorTemplate (TemplateID, ManufacturerID, Model)
   SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
   WHERE dt.Model='Raritan DPX2-T3H1' AND dt.DeviceType='Sensor';
@@ -218,6 +218,91 @@ DELETE r FROM fac_SensorReadings r
   JOIN fac_Device d ON d.DeviceID=r.DeviceID
   LEFT JOIN fac_SensorTemplate st ON st.TemplateID=d.TemplateID
   WHERE st.TemplateID IS NULL;
+
+-- Panel meter templates -> fac_CDUTemplate.
+-- openDCIM 23.04 does NOT poll panels: fac_PowerPanel is read by no
+-- poller, and PanelIPAddress/TemplateID exist only on the panel form. These
+-- rows record WHICH instrument reports each board and what it answers, for
+-- an operator and for an external poller. They will not make a number
+-- appear on power_panel.php.
+
+-- Eaton Digitrip 1150 Trip Unit: energy-metering trip unit on the main breaker
+--   on 4 panel(s): SWGR1-DC1-UR, SWGR1-DC2-UR, SWGR2-DC1-GR, SWGR2-DC2-GR
+INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Eaton Digitrip 1150 Trip Unit' AND dt.DeviceType='CDU';
+UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
+  SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
+      ct.ProcessingProfile='Convert3PhAmperes',
+      ct.Multiplier='1',
+      ct.OID1='1.3.6.1.4.1.99999.9.11.0', ct.OID2='1.3.6.1.4.1.99999.9.12.0', ct.OID3='1.3.6.1.4.1.99999.9.13.0',
+      ct.Voltage=400, ct.Amperage=0, ct.NumOutlets=0
+  WHERE dt.Model='Eaton Digitrip 1150 Trip Unit' AND dt.DeviceType='CDU';
+
+-- Eaton Power Xpert PXM 2000: metered MCC main
+--   on 4 panel(s): MCC1-DC1-MR, MCC1-DC2-MR, MCC2-DC1-MR, MCC2-DC2-MR
+INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Eaton Power Xpert PXM 2000' AND dt.DeviceType='CDU';
+UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
+  SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
+      ct.ProcessingProfile='Convert3PhAmperes',
+      ct.Multiplier='1',
+      ct.OID1='1.3.6.1.4.1.99999.11.11.0', ct.OID2='1.3.6.1.4.1.99999.11.12.0', ct.OID3='1.3.6.1.4.1.99999.11.13.0',
+      ct.Voltage=400, ct.Amperage=0, ct.NumOutlets=0
+  WHERE dt.Model='Eaton Power Xpert PXM 2000' AND dt.DeviceType='CDU';
+
+-- Schneider PowerLogic ION9000: service-entrance revenue meter (per-phase line current, amps)
+--   on 2 panel(s): UTIL1-DC1-UR, UTIL1-DC2-UR
+INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Schneider PowerLogic ION9000' AND dt.DeviceType='CDU';
+UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
+  SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
+      ct.ProcessingProfile='Convert3PhAmperes',
+      ct.Multiplier='1',
+      ct.OID1='1.3.6.1.4.1.99999.8.11.0', ct.OID2='1.3.6.1.4.1.99999.8.12.0', ct.OID3='1.3.6.1.4.1.99999.8.13.0',
+      ct.Voltage=400, ct.Amperage=0, ct.NumOutlets=0
+  WHERE dt.Model='Schneider PowerLogic ION9000' AND dt.DeviceType='CDU';
+
+-- Schneider PowerLogic PM5000: panel-main meter in the MPP door
+--   on 8 panel(s): MPPA-DC1-HA, MPPA-DC1-HB, MPPA-DC2-HA, MPPA-DC2-HB ...
+INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Schneider PowerLogic PM5000' AND dt.DeviceType='CDU';
+UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
+  SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
+      ct.ProcessingProfile='Convert3PhAmperes',
+      ct.Multiplier='1',
+      ct.OID1='1.3.6.1.4.1.99999.12.10.0', ct.OID2='1.3.6.1.4.1.99999.12.11.0', ct.OID3='1.3.6.1.4.1.99999.12.12.0',
+      ct.Voltage=400, ct.Amperage=0, ct.NumOutlets=0
+  WHERE dt.Model='Schneider PowerLogic PM5000' AND dt.DeviceType='CDU';
+
+-- Verdigris EV2-42: branch-circuit meter, BACnet/IP — no SNMP objects
+--   on 16 panel(s): RPPA-DC1-CP, RPPA-DC1-HA-R1-04, RPPA-DC1-HB-R1-04, RPPA-DC1-NR-R2-01 ...
+INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Verdigris EV2-42' AND dt.DeviceType='CDU';
+UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
+  SET ct.Managed=0, ct.ATS=0, ct.SNMPVersion='2c',
+      ct.ProcessingProfile='SingleOIDWatts',
+      ct.Multiplier='1',
+      ct.OID1='', ct.OID2='', ct.OID3='',
+      ct.Voltage=415, ct.Amperage=0, ct.NumOutlets=0
+  WHERE dt.Model='Verdigris EV2-42' AND dt.DeviceType='CDU';
+
+-- Vertiv Liebert EXL S1 1200kVA: UPS-MIB upsOutputPower, watts
+--   on 4 panel(s): UPSA-DC1-UR, UPSA-DC2-UR, UPSB-DC1-UR, UPSB-DC2-UR
+INSERT IGNORE INTO fac_CDUTemplate (TemplateID, ManufacturerID, Model)
+  SELECT dt.TemplateID, dt.ManufacturerID, dt.Model FROM fac_DeviceTemplate dt
+  WHERE dt.Model='Vertiv Liebert EXL S1 1200kVA' AND dt.DeviceType='CDU';
+UPDATE fac_CDUTemplate ct JOIN fac_DeviceTemplate dt ON dt.TemplateID=ct.TemplateID
+  SET ct.Managed=1, ct.ATS=0, ct.SNMPVersion='2c',
+      ct.ProcessingProfile='SingleOIDWatts',
+      ct.Multiplier='1',
+      ct.OID1='1.3.6.1.2.1.33.1.4.4.1.4.1', ct.OID2='', ct.OID3='',
+      ct.Voltage=400, ct.Amperage=0, ct.NumOutlets=0
+  WHERE dt.Model='Vertiv Liebert EXL S1 1200kVA' AND dt.DeviceType='CDU';
 
 -- Cabinet power meter thresholds (percent of the cabinet's MaxKW).
 -- Both cabinet percentages are CLAMPED to 100 before the colour test, so a

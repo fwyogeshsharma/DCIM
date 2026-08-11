@@ -2921,7 +2921,29 @@ class DeviceStateStore:
                     # so a facility meter downstream reads IT + cooling → PUE > 1.
                     # A unit whose MCC is de-energized draws nothing, regardless of
                     # what its last BACnet telemetry said.
-                    w = 0.0 if d.name in self._plant_unpowered_names else self._plant_watts(d.name)
+                    #
+                    # TWO SOURCES, AND THE SECOND IS NOT OPTIONAL. _plant_watts reads
+                    # the BACnet present-value cache, which _publish_plant_state fills
+                    # only while a BACnet controller is registered — stop the BACnet
+                    # simulator and it is empty for every unit. With no fallback the
+                    # whole mechanical branch then contributed 0 W: four MCCs and eight
+                    # MPPs published ENERGIZED, nominal voltage, ZERO current over
+                    # SNMP, and PUE lost its numerator. That reading is worse than an
+                    # error because it is a plausible one — a real MCC's trip unit is a
+                    # CT on the bus and reads load whether or not the BMS integration
+                    # is alive, so nothing downstream can tell the difference.
+                    #
+                    # The staged cooling model is the honest stand-in: it is computed
+                    # every tick from live IT heat and weather whatever BACnet is
+                    # doing, and it already carries the same state the meters would
+                    # show — standby 0, unpowered 0, tripped at the auxiliary floor,
+                    # normalised to the plant's staged demand. It lags by one tick
+                    # (this pass publishes it below), which on a 1 s tick is invisible
+                    # against plant time constants.
+                    unpowered = d.name in self._plant_unpowered_names
+                    w = 0.0 if unpowered else self._plant_watts(d.name)
+                    if w <= 0.0 and not unpowered:
+                        w = self._plant_power_by_name.get(d.name, 0.0) * 1000.0
                     if w > 0:
                         own[d.id] = w
                         cool_w += w
