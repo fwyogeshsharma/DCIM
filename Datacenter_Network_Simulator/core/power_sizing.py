@@ -18,16 +18,18 @@ Sizing basis (real datacenter practice):
   • UPS       : ~80% target — modules run hot but within the continuous rating;
                 each 2N bus carries the full DC load on failover.
   • RPP       : ~70% target — panel/branch-breaker headroom.
-  • Rack PDU  : ~60% target, floored at a real 3-phase-class unit so a lightly
-                loaded network/OOB rack still gets a proper rack PDU, while a full
-                compute rack (~11-15 kW) lands on a 22 kW 3-phase strip.
+  • Rack PDU  : ~60% target, and it must have enough OUTLETS for the cords already
+                seated on it — a strip is chosen by receptacle count as much as by
+                amps. A full compute rack (~11-15 kW, ~18 cords) lands on a 22 kW
+                3-phase unit; a 300 W plant rack with four cords stays on a
+                single-phase strip, which is what anyone would actually install.
 """
 from __future__ import annotations
 
 from collections import defaultdict, deque
 from typing import Optional
 
-from core.device_manager import DeviceType, _MODEL_RATED_W
+from core.device_manager import PDU_OUTLET_CATALOG, DeviceType, _MODEL_RATED_W
 from core.device_models import DEVICE_MODELS
 
 # Tier rank along the power chain; loads (servers, switches, cooling, …) = 9.
@@ -41,7 +43,22 @@ _LOAD_TIER = 9
 # MCC), not something you re-derive from today's load. They keep their catalog
 # rating and are only traversed, never re-SKU'd.
 _TARGET = {"generator": 0.50, "ups": 0.80, "rpp": 0.70, "pdu": 0.60, "floor_pdu": 0.70}
-_MIN_RATING = {"pdu": 8600, "floor_pdu": 8600}   # keep rack PDUs a real 3-phase-class unit
+
+# A floor-PDU is a room-scale cabinet feeding many racks; nothing under 8.6 kW is
+# one. Rack PDUs are NOT floored here any more.
+#
+# They used to be, at the same 8600 W, "to keep a lightly loaded network/OOB rack on
+# a proper rack PDU" — but 8600 W is the rating of the smallest THREE-PHASE strip in
+# the catalog, so the floor silently meant "three-phase or bigger". It wanted to move
+# twenty network- and plant-room strips off a single-phase APC AP8941 (4992 VA, 21
+# C13 + 3 C19) onto an AP8865 (8.6 kW, 3-phase) to serve racks drawing 0.3-2.1 kW
+# through three to six cords. Nobody runs a three-phase feed to a 300 W rack: it
+# triples the RPP poles the rack consumes (a 3-pole breaker per side instead of one)
+# for capacity that will never be used.
+#
+# What a strip actually has to satisfy is amps AND RECEPTACLES, so the outlet count
+# is the real constraint on a light-but-dense rack — see _min_outlets/select_sku.
+_MIN_RATING = {"floor_pdu": 8600}
 
 # Types whose SKU is decided ONCE FOR THE DESIGN, not per site's current fill.
 #
@@ -110,11 +127,35 @@ def _candidates(dtype_value: str, vendor_value: str) -> list[tuple[int, str]]:
     return sorted(out)
 
 
-def select_sku(dtype_value: str, vendor_value: str, load_w: float) -> Optional[str]:
+def _outlet_count(model_name: str) -> Optional[int]:
+    """Receptacles (C13 + C19) on a rack-PDU SKU; None when the catalog has no
+    entry, in which case the caller cannot judge it and must not exclude it."""
+    spec = PDU_OUTLET_CATALOG.get(model_name)
+    if not spec:
+        return None
+    c13, c19 = spec[0], spec[1]
+    return int(c13) + int(c19)
+
+
+def select_sku(dtype_value: str, vendor_value: str, load_w: float,
+               min_outlets: int = 0) -> Optional[str]:
     """Smallest SKU of this (type, vendor) whose rating covers *load_w* at the
-    type's target utilisation. Falls back to the largest available if nothing is
-    big enough (it will then legitimately read a high load%). None if the vendor
-    offers no rated model of this type."""
+    type's target utilisation AND offers at least *min_outlets* receptacles.
+    Falls back to the largest available if nothing is big enough (it will then
+    legitimately read a high load%). None if the vendor offers no rated model of
+    this type.
+
+    min_outlets is what stops the watt figure alone deciding a rack PDU. A rack of
+    twenty idle machines draws little and still needs twenty receptacles, and this
+    estate seats every cord on a real outlet — so a strip that covers the amps but
+    not the plugs is not a candidate.
+
+    A SKU whose receptacle count is NOT in the outlet catalog cannot be certified to
+    fit, so once min_outlets is in play it is passed over rather than assumed
+    adequate. Being lenient there defeated the check on the only case that matters:
+    APC AP8681 carries no catalog entry, and a permissive branch handed that 3.7 kW
+    strip to a twenty-cord rack. It stays reachable through the largest-available
+    fallback below, which is the honest place for a SKU nothing is known about."""
     cands = _candidates(dtype_value, vendor_value)
     if not cands:
         return None
@@ -122,8 +163,13 @@ def select_sku(dtype_value: str, vendor_value: str, load_w: float) -> Optional[s
     need = load_w / target if target > 0 else load_w
     need = max(need, _MIN_RATING.get(dtype_value, 0))
     for r, name in cands:
-        if r >= need:
-            return name
+        if r < need:
+            continue
+        if min_outlets:
+            n_out = _outlet_count(name)
+            if n_out is None or n_out < min_outlets:
+                continue
+        return name
     return cands[-1][1]
 
 
@@ -213,6 +259,17 @@ def rightsize_nodes(nodes: list, edges: list,
         if _TIER.get(d.get("device_type"), _LOAD_TIER) == _LOAD_TIER:
             dc_total[d.get("datacenter") or ""] += float(d.get("power_draw_w") or 0)
 
+    # Cords SEATED on each PDU — its downstream power edges only. The upstream feed
+    # from the RPP is an inlet, not an outlet, and counting it would demand one
+    # receptacle too many on every strip in the estate.
+    cords_of: dict[str, int] = defaultdict(int)
+    for e in edges:
+        if e.get("layer") != "power":
+            continue
+        for a, b in ((e.get("src"), e.get("dst")), (e.get("dst"), e.get("src"))):
+            if dtype(a) in ("pdu", "floor_pdu") and tier(b) > tier(a):
+                cords_of[a] += 1
+
     # Pass 1 — each node's own downstream load.
     load_of: dict[str, float] = {}
     for n in nodes:
@@ -245,8 +302,24 @@ def rightsize_nodes(nodes: list, edges: list,
         load = load_of[n["id"]]
         if t in _PEER_EQUALISED:
             load = max(load, peer_max.get(_peer_key(d), 0.0))
-        model = select_sku(t, d.get("vendor") or "", load)
+        model = select_sku(t, d.get("vendor") or "", load,
+                           min_outlets=cords_of.get(n["id"], 0))
         if not model or model == d.get("model_name"):
+            continue
+        # RATCHET: capacity only ever goes UP.
+        #
+        # Installed gear is installed. A rack whose servers were decommissioned last
+        # month still has the 30 A strip that was fitted with it, and nobody swaps a
+        # 22 kW compute strip for a 16 A one because the rack is half empty this
+        # quarter — the same reason an RPP is not re-boarded when two racks are
+        # pulled (see _PEER_EQUALISED). Without this, re-running the sizer against a
+        # partly-filled estate quietly writes DOWN forty-four strips, and the next
+        # run after the racks refill writes them back up: churn that reads as real
+        # capacity change on every report that watches these labels.
+        #
+        # Undersizing is still corrected, which is the case that actually matters —
+        # a node carrying more than its nameplate must show as an overload.
+        if _rating_for(model) < _rating_for(d.get("model_name") or ""):
             continue
         changes.append({
             "name": d.get("name"), "from": d.get("model_name"), "to": model,
