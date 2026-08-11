@@ -1263,6 +1263,7 @@ class DeviceStateStore:
         ev2_circuit_pdus: Dict[str, list] = {}
         dc_gens: Dict[str, list] = {}
         dc_utility: Dict[str, str] = {}
+        dc_util_swgr: Dict[str, str] = {}
         dc_ats: Dict[str, list] = {}
         dc_ups: Dict[str, list] = {}
         dc_mcc: Dict[str, list] = {}
@@ -1484,6 +1485,16 @@ class DeviceStateStore:
                     ats_src_swgr.setdefault(aid, {})[
                         "emergency" if gen_side else "normal"] = p
 
+            # The utility MAIN board per DC — the switchgear fed directly by the
+            # service. This is what the ATS actually senses on its normal terminals:
+            # a dead main board (tripped main, bus fault, open service feeder) is
+            # indistinguishable from a utility outage as far as the transfer switch
+            # is concerned, and must crank the gensets just the same.
+            for sid in (i for i, t in id_type.items() if t == "switchgear"):
+                if any(id_type.get(p) == "utility_feed" for p in parents.get(sid, [])):
+                    d = id_dev.get(sid)
+                    dc_util_swgr[(getattr(d, "datacenter", None) or "?") if d else "?"] = sid
+
             for mid in (i for i, t in id_type.items() if t == "mcc"):
                 mcc_ats[mid] = next((p for p in parents.get(mid, [])
                                      if id_type.get(p) == "ats"), None)
@@ -1501,6 +1512,7 @@ class DeviceStateStore:
                            "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters,
                            "ev2_circuit_pdus": ev2_circuit_pdus,
                            "dc_gens": dc_gens, "dc_utility": dc_utility,
+                           "dc_util_swgr": dc_util_swgr,
                            "dc_ats": dc_ats, "dc_ups": dc_ups, "dc_mcc": dc_mcc,
                            "mcc_plant": mcc_plant, "mcc_ats": mcc_ats,
                            "ats_src_swgr": ats_src_swgr,
@@ -1948,6 +1960,38 @@ class DeviceStateStore:
         return any(frozenset((device_id, p)) in self._broken_power
                    for p in ctx.get("parents", {}).get(device_id, []))
 
+    def normal_source_ok(self, dc: str, ctx: Optional[dict] = None) -> bool:
+        """Is the NORMAL source available at this DC's transfer switches?
+
+        A transfer switch senses voltage on its own normal terminals — it has no
+        idea whether the utility itself is up. Three things put that sensing point
+        dead, and all three start the engines on real gear:
+
+          • the utility service fails (the injected outage),
+          • the utility MAIN switchgear goes dead — main breaker tripped or bus
+            faulted (an ASCO/Eaton ATS reads under-voltage either way),
+          • the service feeder between the meter and that board is open.
+
+        Modelling only the first would let a bus fault on the utility board black
+        the site out with two healthy gensets sitting in standby — which is exactly
+        the failure the emergency system exists to prevent.
+
+        A DC with no modelled utility feed has no normal source to lose, so it
+        reports OK and behaves as it did before this model existed.
+        """
+        ctx = ctx if ctx is not None else (self._power_context() or {})
+        if dc not in ctx.get("dc_utility", {}):
+            return True
+        if self._utility_failed.get(dc, False):
+            return False
+        board = ctx.get("dc_util_swgr", {}).get(dc)
+        if board is None:
+            return True                      # no modelled main board — feed decides
+        if self._swgr_conditions.get(board):
+            return False                     # main tripped / bus faulted
+        feed = ctx["dc_utility"][dc]
+        return frozenset((board, feed)) not in self._broken_power
+
     def get_ats_conditions(self, ats_id: str) -> list:
         """Active stateful ATS conditions on this switch, for the fault UI."""
         out = []
@@ -1957,7 +2001,9 @@ class DeviceStateStore:
             out.append("fail_to_transfer")
         dev = self._dm.get_device(ats_id) if self._dm else None
         dc = getattr(dev, "datacenter", None) if dev is not None else None
-        if dc and self._utility_failed.get(dc, False):
+        # Normal source lost — from the utility OR from a dead main board, since
+        # the switch cannot tell the two apart.
+        if dc and not self.normal_source_ok(dc):
             out.append("source_lost")
         return out
 
@@ -1971,6 +2017,8 @@ class DeviceStateStore:
                 "ats_source":      st.source,
                 "bus_energized":   st.source_live,
                 "utility_ok":      not self._utility_failed.get(dc, False),
+                # What the ATS actually senses: utility OK *and* its main board live.
+                "normal_source_ok": self.normal_source_ok(dc, ctx),
                 "gen_status":      st.gen_status,
                 "gen_at_voltage":  st.gen_at_voltage,
                 "ups_input_ok":    st.ups_input_ok,
@@ -2020,11 +2068,12 @@ class DeviceStateStore:
         dcs = set(dc_gens) | set(dc_utility) | set(dc_mcc)
         unpowered: set = set()
         for dc in dcs:
-            # A topology with no modeled utility feed (an older saved file) has no
-            # source to lose, so it stays on "utility" forever and behaves exactly
-            # as it did before this model existed.
-            has_util = dc in dc_utility
-            utility_ok = (not self._utility_failed.get(dc, False)) if has_util else True
+            # What the transfer switch senses on its NORMAL terminals: the utility
+            # service AND the main board it is fed from. A tripped main or a faulted
+            # bus reads as under-voltage to the ATS and cranks the engines, same as
+            # a grid outage. A topology with no modeled utility feed (an older saved
+            # file) has no source to lose, so it stays on "utility" forever.
+            utility_ok = self.normal_source_ok(dc, ctx)
             # A genset can crank if it has fuel. With both gensets on a common
             # paralleling bus, one is enough to qualify the emergency source. A
             # genset the tick loop has not initialised yet is assumed fuelled, so
@@ -2232,6 +2281,12 @@ class DeviceStateStore:
         thr = self._through_live.get(device.id, 0.0)
         load_pct = round(max(0.0, min(100.0, thr / rated * 100.0)), 1) if rated > 0 else 0.0
         utility_ok = not self._utility_failed.get(dc, False)
+        # utility_ok is the SERVICE (what the revenue meter sees). normal_ok is what
+        # the ATS senses on its normal terminals — the service through a live main
+        # board. They differ when the main board itself is dead, which is precisely
+        # the case the ATS must treat as a source loss.
+        normal_ok = self.normal_source_ok(dc, ctx)
+        util_board = ctx.get("dc_util_swgr", {}).get(dc)
 
         # 3-phase line current from real power: I = P / (sqrt(3) * V_LL * PF).
         def _amps(kw: float, volts: float, pf: float) -> float:
@@ -2326,7 +2381,11 @@ class DeviceStateStore:
             gen_side = any(_is_gen(p) for p in ctx.get("parents", {}).get(device.id, []))
             _swc = self._swgr_conditions.get(device.id, set())
             _tripped, _busfault = "breaker_trip" in _swc, "bus_fault" in _swc
-            live = (ats.gen_at_voltage if gen_side else utility_ok) and not (_tripped or _busfault)
+            # The utility main board is live off the SERVICE through an intact feeder
+            # (normal_ok covers both); the paralleling board comes alive when the
+            # gensets reach voltage. Either way its own main/bus must be healthy.
+            _norm_src = normal_ok if device.id == util_board else utility_ok
+            live = (ats.gen_at_voltage if gen_side else _norm_src) and not (_tripped or _busfault)
             st["swgr_source"] = "generator" if gen_side else "utility"
             st["swgr_bus_status"] = ("fault" if _busfault
                                      else "energized" if live else "dead")
@@ -2399,7 +2458,7 @@ class DeviceStateStore:
             # in a 2N plant reports nothing (its ACC card is dead with its side).
             _cb = self._transfer_trap_cb
             if _cb is not None and not failed:
-                _norm_ok = bool(utility_ok)
+                _norm_ok = bool(normal_ok)
                 if st.get("_ats_norm_ok", True) and not _norm_ok:
                     _cb(device, "source_lost")          # normal (utility) source lost
                 st["_ats_norm_ok"] = _norm_ok
@@ -2422,7 +2481,7 @@ class DeviceStateStore:
             live_ats = ats.source_live and not failed
             st["ats_position"] = pos
             st["ats_state"] = "failed" if failed else ats.state
-            st["ats_normal_available"] = "yes" if (utility_ok and not failed) else "no"
+            st["ats_normal_available"] = "yes" if (normal_ok and not failed) else "no"
             st["ats_emergency_available"] = "yes" if (ats.gen_at_voltage and not failed) else "no"
             # ASCO 7000 (ACC SNMP): source voltages + per-source frequency, position,
             # transfer count and time-on-emergency. It is a SWITCH — it does NOT meter
@@ -2443,11 +2502,11 @@ class DeviceStateStore:
                 else:
                     norm_v = float(_pst.get("swgr_voltage", 0.0) or 0.0)
                     norm_hz = float(_pst.get("swgr_frequency", 0.0) or 0.0)
-            normal_ok = utility_ok and not failed
+            _normal_sensed = normal_ok and not failed
             emerg_ok = ats.gen_at_voltage and not failed
-            st["ats_normal_voltage"]      = round(norm_v if norm_v > 0 else 400.0, 1) if normal_ok else 0.0
+            st["ats_normal_voltage"]      = round(norm_v if norm_v > 0 else 400.0, 1) if _normal_sensed else 0.0
             st["ats_emergency_voltage"]   = round(emer_v if emer_v > 0 else 400.0, 1) if emerg_ok else 0.0
-            st["ats_normal_frequency"]    = round(norm_hz if norm_hz > 0 else 50.0, 2) if normal_ok else 0.0
+            st["ats_normal_frequency"]    = round(norm_hz if norm_hz > 0 else 50.0, 2) if _normal_sensed else 0.0
             st["ats_emergency_frequency"] = round(emer_hz if emer_hz > 0 else 50.0, 2) if emerg_ok else 0.0
             # Frequency of the source currently connected to the load.
             if not live_ats:
