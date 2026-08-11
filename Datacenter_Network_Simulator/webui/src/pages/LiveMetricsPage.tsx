@@ -1174,6 +1174,9 @@ const PLANT_COLUMNS: Record<string, PlantCol[]> = {
     { key: 'Alarm_FlowLoss',    label: 'Flow Loss',bin: 'alarm' },
     // The capacity alarm: at full compressor and still losing the setpoint.
     { key: 'Alarm_HighCHWSupply', label: 'Hi CHWS', bin: 'alarm' },
+    // Head-pressure LIMIT: running and unloading against warm condenser water.
+    // Distinct from Hi Press, which is the latched cutout with the machine off.
+    { key: 'Alarm_CondPressLimit', label: 'Cond Limit', bin: 'alarm' },
   ],
   pump: [
     { key: 'Speed',             label: 'Speed',      unit: '%',  decimals: 0 },

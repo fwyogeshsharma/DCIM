@@ -57,8 +57,18 @@ PLANT_SPEC: Dict[str, dict] = {
         # High", York "Leaving Chilled Liquid Temp High"). Raised from the loop model
         # in device_state_store._compute_chw_loop rather than here, because the
         # condition is a property of the LOOP, not of one machine's random walk.
+        #
+        # Alarm_CondPressLimit is appended after it, for the same instance-stability
+        # reason. It is the CAPACITY LIMIT, which every chiller controller reports
+        # separately from the high-pressure CUTOUT: Trane "Condenser Pressure Limit",
+        # York "Discharge Pressure Limit", Carrier "Head Pressure Limit". The machine
+        # is running and healthy, unloading itself to hold head pressure down against
+        # warm condenser water. Alarm_HighPressure is the cutout — latched, machine
+        # off, manual reset. Carrying both meanings on the one point made the BMS
+        # demote a perfectly good lead machine for a condition its replacement
+        # inherited from the shared loop, so the lead swapped every tick.
         "bi": ["Chiller_Running", "Alarm_HighPressure", "Alarm_LowEvapTemp",
-               "Alarm_FlowLoss", "Alarm_HighCHWSupply"],
+               "Alarm_FlowLoss", "Alarm_HighCHWSupply", "Alarm_CondPressLimit"],
         "on": {"Chiller_Running"},
     },
     "pump": {
@@ -479,6 +489,14 @@ class PlantTelemetryEngine:
                 elif a == "Alarm_FlowLoss":           # evap flow lost → chiller sheds
                     mul("Cooling_Capacity", 1 - 0.70 * s); mul("Compressor_Load", 1 - 0.50 * s)
                     mul("Active_Power", 1 - 0.50 * s); add("Cond_Supply_Temp", 3.0 * s)
+                elif a == "Alarm_CondPressLimit":     # unloading to hold head down
+                    # The limit is the machine protecting itself, so the compressor
+                    # comes DOWN (the opposite of the cutout's pre-trip surge) and
+                    # capacity goes with it. Head pressure is elevated but below the
+                    # cutout — that is the whole definition of the limit band.
+                    add("Cond_Pressure", 90.0 * s)
+                    mul("Compressor_Load", 1 - 0.35 * s)
+                    mul("Cooling_Capacity", 1 - 0.35 * s); mul("COP", 1 - 0.15 * s)
                 elif a == "Alarm_HighCHWSupply":      # at full compressor, still losing
                     # Only the leaving-water temperatures move here. The machine is
                     # not faulted, it is outmatched — and when the condition is real

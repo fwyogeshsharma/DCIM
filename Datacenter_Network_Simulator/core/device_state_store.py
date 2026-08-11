@@ -94,14 +94,36 @@ _RUNNING_POINTS = frozenset({"Chiller_Running", "Run_Status", "Fan_Status",
 #     to the thermal ceiling on its own annunciation.
 #
 # Nor should the BMS demote a train for one: a chiller at full compressor is the
-# machine you most want running. Health alarms (high head pressure, flow loss,
+# machine you most want running. Health alarms (the high-pressure CUTOUT, flow loss,
 # actuator fault, leak) keep their existing meaning.
+#
+# Alarm_CondPressLimit is the third member, and it is here for a reason measured on
+# the live sim: it is a property of the SHARED CONDENSER LOOP, not of one machine.
+# After a genset restore the towers have been dark, condenser water is ~38 °C, and
+# whichever chiller is lead unloads and raises it. Read as a health fault, that
+# demotes the lead and promotes a standby — which inherits the same hot loop and
+# raises the same limit one tick later, while the demoted machine goes quiet and
+# looks healthy again. Measured: the lead ping-ponged CHL1↔CHL2 every 2–3 s for the
+# whole restore, each swap a real compressor start from 0 % load, until the tower
+# caught up and the condition cleared on its own. The cutout (Alarm_HighPressure,
+# latched, machine off) is NOT exempt and still demotes — that one really is the
+# machine.
 #
 # Kept deliberately small. Alarm_LowFlow is NOT here: on a pump that point means a
 # blocked strainer, a shut valve or a failed impeller, which genuinely does cost
 # cooling. A capacity alarm has to be a point that can ONLY mean "healthy but
 # outmatched" — otherwise exempting it would blind the store to a real fault.
-_CAPACITY_ALARMS = frozenset({"Alarm_HighCHWSupply", "Alarm_HighReturnAir"})
+_CAPACITY_ALARMS = frozenset({"Alarm_HighCHWSupply", "Alarm_HighReturnAir",
+                              "Alarm_CondPressLimit"})
+
+# Which of them _compute_chw_loop OWNS — the evaporator-side annunciations it
+# re-derives every pass, and therefore clears first so a cleared alarm cannot latch.
+# Alarm_CondPressLimit is deliberately NOT here: it belongs to the CONDENSER pass,
+# which runs earlier in the same tick. Clearing it here deleted the point one step
+# after it was published, so the limit never reached BACnet at all — the alarm
+# existed in the model and was invisible on the wire. Membership of _CAPACITY_ALARMS
+# answers "is this a health fault?"; membership here answers "whose key is it?".
+_CHW_OWNED_ALARMS = frozenset({"Alarm_HighCHWSupply", "Alarm_HighReturnAir"})
 
 # ── Plant header probes ───────────────────────────────────────────────────────
 # The chiller plant's headers carry instruments, not rack environmental probes:
@@ -240,6 +262,12 @@ class DeviceStateStore:
         self._chiller_derate: Dict[str, float] = {}   # chiller name → 0..1 capacity lost
         self._chiller_hp_lockout: set = set()         # chiller names latched out
         self._train_run_hours: Dict[str, float] = {}  # chiller name → accrued lead run-hours
+        # Anti-recycle timers for lead selection (see _LEAD_MIN_RUN_S). Seconds the
+        # machine has held lead without a break, and seconds since it lost it. A
+        # chiller that has never led is absent from both, which reads as "idle long
+        # enough" — a cold start must not have to wait out an anti-recycle timer.
+        self._train_lead_s: Dict[str, float] = {}
+        self._train_idle_s: Dict[str, float] = {}
         self._plant_auto_points: Dict[str, dict] = {} # device ip → {point: value}
         self._cond_trip_s: Dict[str, float] = {}      # chiller name → s above trip temp
         self._plant_ip_by_name: Dict[str, str] = {}   # plant device name → IP
@@ -3252,8 +3280,35 @@ class DeviceStateStore:
                         # period more than an idle peer hands over. Chiller lead/lag is
                         # rotated on a schedule in real plants, not continuously.
                         rh = self._train_run_hours.get(_ch, 0.0) if _ch else 0.0
-                        return (dead, bad,
-                                *rotation_rank(rh, running, self._TRAIN_ROTATE_H), i)
+                        # ANTI-RECYCLE — a compressor that has just stopped CANNOT be
+                        # started again yet. That is a property of the candidate, not
+                        # a preference, so it sorts ABOVE health: with a flapping
+                        # condition the alternative to a sick running machine is a
+                        # machine whose anti-recycle timer has not expired, and a real
+                        # plant keeps the sick one turning rather than short-cycling
+                        # its peer. Putting this below `bad` made the term inert —
+                        # an alternating fault simply ping-ponged through it.
+                        #
+                        # Only a train that HAS led and lost it carries the timer; a
+                        # machine that has never run is startable immediately, so
+                        # first-ever failover is not delayed by a cold-start timer.
+                        recycle = (_ch is not None
+                                   and _ch not in _prev_lead
+                                   and self._train_idle_s.get(_ch, 1e9)
+                                   < self._LEAD_MIN_OFF_S)
+                        # MINIMUM RUN — a final tiebreak, BELOW rotation. Scheduled
+                        # rotation is the one swap the plant is supposed to make, and
+                        # it is already chatter-proof (a whole period of runtime has
+                        # to separate the two machines), so the hold must not veto it:
+                        # sorting this above rotation stalled the weekly handover for
+                        # the length of the timer. Here it only decides between
+                        # candidates that rotation itself has tied.
+                        held = (_ch is not None and _ch in _prev_lead
+                                and self._train_lead_s.get(_ch, 0.0)
+                                < self._LEAD_MIN_RUN_S)
+                        return (dead, recycle, bad,
+                                *rotation_rank(rh, running, self._TRAIN_ROTATE_H),
+                                not held, i)
 
                     _order = [i for i, _ in sorted(enumerate(_trains), key=_fitness)]
                     _run_idx = set(_order[:_n_run])
@@ -3268,6 +3323,26 @@ class DeviceStateStore:
                     for i, tr in enumerate(_trains):
                         if i not in _run_idx:
                             self._plant_standby_names |= set(tr["members"])
+                    # Age the timers off the set just chosen. Lead time is CONTINUOUS
+                    # — losing the lead zeroes it, so a train cannot bank minimum-run
+                    # credit across a handover. The stopped timer starts the moment a
+                    # machine gives the lead up, and a train that has NEVER led stays
+                    # absent from it: no entry means startable, which is what a
+                    # never-run machine is. Reading a default of "just stopped" would
+                    # make every standby ineligible at boot and block first failover.
+                    for i, tr in enumerate(_trains):
+                        _ch = tr.get("chiller")
+                        if not _ch:
+                            continue
+                        if i in _run_idx:
+                            self._train_lead_s[_ch] = self._train_lead_s.get(_ch, 0.0) + self._dt
+                            self._train_idle_s.pop(_ch, None)
+                        else:
+                            self._train_lead_s[_ch] = 0.0
+                            if _ch in _prev_lead:
+                                self._train_idle_s[_ch] = 0.0      # just handed over
+                            elif _ch in self._train_idle_s:
+                                self._train_idle_s[_ch] += self._dt
                 # The header standby CHW pump only runs when a RUNNING train's own
                 # evaporator pump is out; otherwise it idles as the N+1 spare.
                 _need_spare = any(
@@ -3535,6 +3610,23 @@ class DeviceStateStore:
     # default for both chiller trains and heat-rejection cells.
     _TOWER_ROTATE_H = 168.0
     _TRAIN_ROTATE_H = 168.0
+
+    # MINIMUM RUN / ANTI-RECYCLE on the lead train. Runtime equalization is already
+    # bucketed (see rotation_rank) so it cannot chatter, but the health terms sort
+    # ABOVE it and could flip the lead every tick — any condition that comes and goes
+    # with the machine that has it produces a ping-pong, which is how the condenser
+    # limit did it before that point was split out. This is the general guard: once a
+    # train is lead it holds for _LEAD_MIN_RUN_S, and a demoted train is not eligible
+    # again for _LEAD_MIN_OFF_S. Every chiller controller enforces the same thing —
+    # a compressor anti-recycle timer capping starts at roughly 6/hour.
+    #
+    # A train that is DEAD (unpowered) or genuinely faulted outranks both timers, so
+    # failover stays immediate; the hold only suppresses discretionary swaps.
+    #
+    # Real timers are 15–30 min. Compressed to 5 min for the same reason TDEN is
+    # (core/power_transfer): a restore has to be observable end-to-end in a session.
+    _LEAD_MIN_RUN_S = 300.0
+    _LEAD_MIN_OFF_S = 300.0
 
     # The plant is installed for the fleet's ULTIMATE server cap and staged; sized
     # here so it never truly runs out of modules before the cap is hit.
@@ -4049,7 +4141,12 @@ class DeviceStateStore:
                     # Locked out: the machine is off and its capacity is gone.
                     self._chiller_derate[name] = 1.0
                     if ip:
+                        # The CUTOUT. Alarm_HighPressure means exactly this from here
+                        # on: latched out, compressor off, manual reset. The limit
+                        # band below publishes Alarm_CondPressLimit instead, and is
+                        # not asserted here — the machine is not unloading, it is off.
                         auto[ip] = {"Chiller_Running": 0.0, "Alarm_HighPressure": 1.0,
+                                    "Alarm_CondPressLimit": 0.0,
                                     "Cond_Pressure": round(cond_kpa_idle, 1),
                                     "Cond_Supply_Temp": round(cur, 1),
                                     # Locked out: no compressor heat into the condenser,
@@ -4060,13 +4157,17 @@ class DeviceStateStore:
 
                 if cur > lim_c:
                     # Capacity limit: unload linearly from full at the limit onset
-                    # down to the floor at the trip point.
+                    # down to the floor at the trip point. This is the machine
+                    # PROTECTING itself and still carrying load, so it annunciates on
+                    # the limit point, not the cutout — see _CAPACITY_ALARMS. The
+                    # distinction is what stops the BMS swapping lead machines over a
+                    # condition that belongs to the condenser loop they share.
                     span = max(0.1, trip_c - lim_c)
                     frac = min(1.0, (cur - lim_c) / span)
                     avail = 1.0 - (1.0 - self._CHILLER_MIN_LOAD) * frac
                     self._chiller_derate[name] = round(1.0 - avail, 3)
                     if ip:
-                        auto[ip] = {"Alarm_HighPressure": 1.0,
+                        auto[ip] = {"Alarm_CondPressLimit": 1.0,
                                     "Cond_Pressure": round(cond_kpa_run, 1),
                                     "Cond_Supply_Temp": round(cur, 1),
                                     "Cond_Return_Temp": round(
@@ -4619,7 +4720,7 @@ class DeviceStateStore:
         # forever the moment anything reorders the chain. Owning our own keys keeps
         # this pass correct on its own.
         for _pts in auto.values():
-            for _k in _CAPACITY_ALARMS:
+            for _k in _CHW_OWNED_ALARMS:
                 _pts.pop(_k, None)
 
         for dc, kinds in ctx["plant_by_dc"].items():

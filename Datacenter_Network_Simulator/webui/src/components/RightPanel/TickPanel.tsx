@@ -40,6 +40,7 @@ const PLANT_FLAG_GROUPS: { gid: string; title: string; points: [string, string][
     ['Run_Hours', 'Run Hours'], ['Chiller_Running', 'Chiller Running'],
     ['Alarm_HighPressure', 'Alarm: High Pressure'], ['Alarm_LowEvapTemp', 'Alarm: Low Evap Temp'],
     ['Alarm_FlowLoss', 'Alarm: Flow Loss'], ['Alarm_HighCHWSupply', 'Alarm: High CHW Supply'],
+    ['Alarm_CondPressLimit', 'Alarm: Cond Press Limit'],
   ]},
   { gid: 'pump', title: 'Pump', points: [
     ['Speed', 'Speed'], ['Flow', 'Flow'], ['Discharge_Pressure', 'Discharge Pressure'],
@@ -218,6 +219,7 @@ const PLANT_LIMIT_SPEC: Record<string, { title: string; num: PNum[]; bin: [strin
     ['Chiller_Running', 'Chiller Running'], ['Alarm_HighPressure', 'Alarm: High Pressure'],
     ['Alarm_LowEvapTemp', 'Alarm: Low Evap Temp'], ['Alarm_FlowLoss', 'Alarm: Flow Loss'],
     ['Alarm_HighCHWSupply', 'Alarm: High CHW Supply'],
+    ['Alarm_CondPressLimit', 'Alarm: Cond Press Limit'],
   ]},
   pump: { title: 'Pump', num: [
     ['Speed', 'Speed', '%', 0, 100, 1, 0],
