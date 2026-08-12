@@ -173,12 +173,11 @@ class TestTheLimitReachesTheWire:
     def test_limit_is_published_after_a_full_tick(self, plant2):
         fx, e, _cache = plant2
         lead = _lead(fx)[0]
-        ip = fx.store._plant_ip_by_name[lead]
-        assert not fx.store._plant_auto_points.get(ip, {}).get("Alarm_CondPressLimit")
+        assert not fx.store._plant_auto_points.get(lead, {}).get("Alarm_CondPressLimit")
 
         self._limit_band(fx)
         _tick(fx, e)
-        pts = fx.store._plant_auto_points.get(ip, {})
+        pts = fx.store._plant_auto_points.get(lead, {})
         assert pts.get("Alarm_CondPressLimit") == 1.0, "limit never reached the wire"
         assert not pts.get("Alarm_HighPressure"), "limit must not assert the cutout"
 
@@ -186,10 +185,10 @@ class TestTheLimitReachesTheWire:
         """The other half of the split: the evaporator alarms must still be owned
         and cleared by the pass that derives them, or a cleared one latches."""
         fx, e, _cache = plant2
-        ip = fx.store._plant_ip_by_name[_lead(fx)[0]]
-        fx.store._plant_auto_points.setdefault(ip, {})["Alarm_HighCHWSupply"] = 1.0
+        lead = _lead(fx)[0]
+        fx.store._plant_auto_points.setdefault(lead, {})["Alarm_HighCHWSupply"] = 1.0
         _tick(fx, e)
-        assert not fx.store._plant_auto_points.get(ip, {}).get("Alarm_HighCHWSupply")
+        assert not fx.store._plant_auto_points.get(lead, {}).get("Alarm_HighCHWSupply")
 
 
 class TestGensetRestore:

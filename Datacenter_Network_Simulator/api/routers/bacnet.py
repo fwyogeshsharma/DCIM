@@ -500,31 +500,39 @@ class PlantOverride(BaseModel):
     value:  float | None = None   # None = clear; alarm-on = 1.0; unit-off = 0.0
 
 
-def _device_ip(device_id: str) -> str | None:
-    """Resolve a topology device id to the IP the override map is keyed by — the
-    device's BACnet bind address, which the controller matches on (dev.device_ip).
-    Plant/EV2 devices are OT gear on the management plane, so that address is
-    mgmt_ip; their production ip_address is empty. Falling back to ip_address kept
-    keying them all under "" — a single colliding, never-matched bucket, so plant
-    fault injection silently did nothing and never showed ACTIVE."""
+def _device_name(device_id: str) -> str | None:
+    """Resolve a topology device id to the key the override map uses: its NAME.
+
+    This used to resolve to the device's BACnet bind IP, and getting that wrong
+    is a documented outage here — falling back to ip_address keyed every plant
+    device under "", a single colliding never-matched bucket, so plant fault
+    injection silently did nothing and never showed ACTIVE.
+
+    The name is the identity that cannot go stale that way. It survives a device
+    losing its address entirely, which is what happens when field gear moves
+    behind a BACnet/IP router or a Modbus gateway and stops being an IP node —
+    and the cooling model is already name-keyed throughout (plant_power_by_name,
+    plant_standby_names), so this makes one identity serve the whole subsystem
+    instead of two that must be kept in step.
+    """
     dm = _state().device_manager
     if dm is None:
         return None
     dev = dm.get_device(device_id)
     if dev is None:
         return None
-    return (getattr(dev, "mgmt_ip", None) or getattr(dev, "ip_address", None)) or None
+    return getattr(dev, "name", None) or None
 
 
 @router.get("/plant/overrides")
 def get_plant_overrides(device: str | None = None):
-    """Current per-device forced binary overrides (keyed by IP). With ?device=ID,
-    returns just that device's forced points; otherwise the whole map."""
+    """Current per-device forced binary overrides (keyed by device NAME). With
+    ?device=ID, returns just that device's forced points; otherwise the whole map."""
     st = getattr(_state(), "state_store", None)
     ov = getattr(st, "plant_alarm_overrides", {}) if st else {}
     if device is not None:
-        ip = _device_ip(device)
-        return {"device": device, "overrides": ov.get(ip, {}) if ip else {}}
+        nm = _device_name(device)
+        return {"device": device, "overrides": ov.get(nm, {}) if nm else {}}
     return {"overrides": ov}
 
 
@@ -533,19 +541,19 @@ def set_plant_override(body: PlantOverride):
     """Force (or clear) a single plant device's binary point. Forcing
     Alarm_* = 1.0 trips that one unit's fault physics + cascade; a running-status
     point = 0.0 stops it. value=null clears the override. The device is addressed
-    by its stable topology id (resolved to IP server-side)."""
+    by its stable topology id (resolved to its name server-side)."""
     st = getattr(_state(), "state_store", None)
     if st is None:
         raise HTTPException(status_code=503, detail="State store not initialized")
-    ip = _device_ip(body.device)
-    if ip is None:
+    nm = _device_name(body.device)
+    if nm is None:
         raise HTTPException(status_code=404, detail=f"Device '{body.device}' not found")
     ov = st.plant_alarm_overrides
-    dev = ov.setdefault(ip, {})
+    dev = ov.setdefault(nm, {})
     if body.value is None:
         dev.pop(body.point, None)
         if not dev:
-            ov.pop(ip, None)
+            ov.pop(nm, None)
         return OkResponse(message=f"Cleared {body.point}")
     dev[body.point] = float(body.value)
     return OkResponse(message=f"Set {body.point}={body.value}")

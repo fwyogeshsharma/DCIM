@@ -570,7 +570,13 @@ class BACnetController:
                 kind = getattr(dev, "kind", "ev2")
                 # Keyed by device IP — stable across renames (the BACnet device's
                 # name is fixed at creation, so name-matching would break on edit).
-                ovr = (plant_overrides or {}).get(getattr(dev, "device_ip", ""), {})
+                # Keyed by device NAME, not bind IP. A name is the identity that
+                # survives a device losing its address — which is exactly what
+                # happens when field gear moves behind a router/gateway and stops
+                # being an IP node. Keying this on the bind address is also what
+                # silently broke plant fault injection once before (see
+                # _device_name in api/routers/bacnet.py).
+                ovr = (plant_overrides or {}).get(getattr(dev, "device_name", ""), {})
                 # Manual alarm triggers: any plant binary the Limits tab locks
                 # "on" (type-wide) OR this device's per-device override drives that
                 # device's coupled fault physics (pressure/flow/temp shifts, and for

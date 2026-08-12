@@ -83,8 +83,9 @@ class PlantFixture:
 
     def auto_points(self, n):
         """Synthetic BACnet points the store publishes for device *n* this tick."""
-        ip = self.store._plant_ip_by_name.get(n, "")
-        return self.store._plant_auto_points.get(ip, {})
+        # Keyed by device NAME — the identity that survives field gear
+        # losing its address when it moves behind a router/gateway.
+        return self.store._plant_auto_points.get(n, {})
 
     def stage_on(self, dc=DC):
         return self.store._plant_stage_on.get(dc)
@@ -138,7 +139,7 @@ def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
     """Devices + cooling-layer wiring for ONE datacenter, into a SHARED dm/topo.
 
     *net* is the second IP octet, so two sites in one store never collide — the
-    store keys published plant points by IP (_plant_ip_by_name → _plant_auto_points)
+    store keys published plant points by device name (_plant_auto_points)
     and duplicate addresses would silently merge one site's telemetry into the
     other's, which is precisely the kind of cross-DC bleed these fixtures exist to
     catch. Device NAMES already carry the site segment, so they are unique anyway.

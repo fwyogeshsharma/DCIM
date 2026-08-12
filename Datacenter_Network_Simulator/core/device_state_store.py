@@ -279,9 +279,8 @@ class DeviceStateStore:
         # enough" — a cold start must not have to wait out an anti-recycle timer.
         self._train_lead_s: Dict[str, float] = {}
         self._train_idle_s: Dict[str, float] = {}
-        self._plant_auto_points: Dict[str, dict] = {} # device ip → {point: value}
+        self._plant_auto_points: Dict[str, dict] = {} # device NAME → {point: value}
         self._cond_trip_s: Dict[str, float] = {}      # chiller name → s above trip temp
-        self._plant_ip_by_name: Dict[str, str] = {}   # plant device name → IP
 
         # Per-rack cold-aisle supply temperature: {rack_key: [temp, last_tick]}.
         # All devices in a rack share one baseline (same cold aisle); it advances
@@ -381,7 +380,7 @@ class DeviceStateStore:
         # → {point: forced_value} — e.g. {"192.168.4.247": {"Alarm_FlowLoss": 1.0}}
         # trips just that one unit, independent of the type-wide Limits-tab lock.
         # Applied by the BACnet controller (matched on device_ip) atop the locks.
-        self.plant_alarm_overrides: Dict[str, Dict[str, float]] = {}
+        self.plant_alarm_overrides: Dict[str, Dict[str, float]] = {}   # device NAME -> {point: value}
 
         # Per-DEVICE live-metric overrides for servers / network gear, set from a
         # node's Metric Tick window. {device_id: {metric: value}} — forces a metric
@@ -1178,13 +1177,10 @@ class DeviceStateStore:
                 elif dt in (DeviceType.CHILLER, DeviceType.PUMP,
                             DeviceType.COOLING_TOWER, DeviceType.VALVE):
                     plant_by_dc.setdefault(d.datacenter, {}).setdefault(dt.value, []).append(d.name)
-                # Plant overrides are keyed by IP, so the head-pressure model needs
-                # a name → IP map to publish its synthetic points.
-                if dt in (DeviceType.CHILLER, DeviceType.PUMP, DeviceType.COOLING_TOWER,
-                          DeviceType.VALVE, DeviceType.CRAH, DeviceType.CDU):
-                    _ip = getattr(d, "mgmt_ip", None) or getattr(d, "ip_address", None)
-                    if _ip:
-                        self._plant_ip_by_name[d.name] = _ip
+                # (Plant overrides used to be keyed by IP, which needed a
+                # name → IP map here. They are keyed by device name now, so the
+                # head-pressure model publishes its synthetic points against the
+                # name it already has and no address lookup is involved.)
         except Exception:
             log.exception("[StateStore] cooling context build error")
         trains_by_dc: Dict[str, list] = {}
@@ -4091,7 +4087,7 @@ class DeviceStateStore:
             # pumps are VFD and track load, so the range stays near design).
             _cells_on = self._tower_running_now.get(dc) or set(towers)
             for _tn in towers:
-                _tip = self._plant_ip_by_name.get(_tn)
+                _tip = _tn
                 if _tip:
                     # A cell the bank has cycled OFF is valved out with its fan stopped:
                     # it rejects nothing, so its inlet, outlet and basin all sit at loop
@@ -4135,7 +4131,7 @@ class DeviceStateStore:
             for _cn2 in (kinds.get("chiller") or []):
                 if _cn2 not in self._plant_standby_names:
                     continue
-                _cip = self._plant_ip_by_name.get(_cn2)
+                _cip = _cn2
                 if _cip:
                     auto.setdefault(_cip, {}).update({
                         "Cond_Supply_Temp": round(cur, 1),
@@ -4147,7 +4143,7 @@ class DeviceStateStore:
             trip_c = max(self._COND_TRIP_C,  base + self._COND_TRIP_MARGIN_C)
             over = cur >= trip_c
             for name in chillers:
-                ip = self._plant_ip_by_name.get(name)
+                ip = name
                 latched = name in self._chiller_hp_lockout
 
                 if not latched and over:
@@ -4865,7 +4861,7 @@ class DeviceStateStore:
             if running_ch:
                 per_ch = flow / len(running_ch)
                 for name in running_ch:
-                    ip = self._plant_ip_by_name.get(name)
+                    ip = name
                     if not ip:
                         continue
                     pts = auto.setdefault(ip, {})
@@ -4922,7 +4918,7 @@ class DeviceStateStore:
                            and not self._run_unproven(p)]
                 per_pump = (total / len(turning)) if turning else 0.0
                 for name in _members:
-                    ip = self._plant_ip_by_name.get(name)
+                    ip = name
                     if not ip:
                         continue
                     if name not in turning:
@@ -4975,7 +4971,7 @@ class DeviceStateStore:
             if cells:
                 per_cell = makeup_flow_lpm(transferred_kw / len(cells))
                 for name in cells:
-                    ip = self._plant_ip_by_name.get(name)
+                    ip = name
                     if ip:
                         auto.setdefault(ip, {})["Makeup_Flow"] = round(per_cell, 2)
 
@@ -5014,7 +5010,7 @@ class DeviceStateStore:
                 if (name in self._plant_standby_names
                         or name in self._plant_unpowered_names):
                     continue
-                ip = self._plant_ip_by_name.get(name)
+                ip = name
                 if not ip:
                     continue
                 pts = auto.setdefault(ip, {})
@@ -5058,7 +5054,7 @@ class DeviceStateStore:
             _drift = max(0.0, self._chw_supply_c.get(dc, CHW_SETPOINT_C) - CHW_SETPOINT_C)
             _tcs = self._CDU_TCS_SETPOINT_C + _drift * self._CDU_FOLLOW_FRAC
             for name in _cdus:
-                ip = self._plant_ip_by_name.get(name)
+                ip = name
                 if not ip:
                     continue
                 pts = auto.setdefault(ip, {})
@@ -5225,15 +5221,15 @@ class DeviceStateStore:
                 # plant simply freezes, so the override is never read and every
                 # published value holds its last reading. See
                 # RuleEngine.get_rules_table_stats for the stall this caught.
-                _ovr_now = {ip: sorted(pts) for ip, pts in _plant_ovr.items() if pts}
+                _ovr_now = {nm: sorted(pts) for nm, pts in _plant_ovr.items() if pts}
                 if _ovr_now != getattr(self, "_ovr_seen_by_tick", None):
                     self._ovr_seen_by_tick = _ovr_now
                     log.warning("[StateStore] ticker sees operator overrides: %s",
                                 _ovr_now or "{}")
                 if self._plant_auto_points:
                     _plant_ovr = {ip: dict(pts) for ip, pts in _plant_ovr.items()}
-                    for _ip, _pts in self._plant_auto_points.items():
-                        _plant_ovr.setdefault(_ip, {}).update(_pts)
+                    for _nm, _pts in self._plant_auto_points.items():
+                        _plant_ovr.setdefault(_nm, {}).update(_pts)
                 self._bacnet_ctrl.tick(self._dt, self.metric_flags, self.metric_limits,
                                        _plant_ovr, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,

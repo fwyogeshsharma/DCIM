@@ -13,8 +13,7 @@ from tests.conftest import CITY, DC, build_plant
 
 def auto(plant, name):
     """Synthetic BACnet points the store published for a device this tick."""
-    ip = plant.store._plant_ip_by_name.get(name)
-    return plant.store._plant_auto_points.get(ip, {})
+    return plant.store._plant_auto_points.get(name, {})
 
 
 class TestLoopTemperature:
