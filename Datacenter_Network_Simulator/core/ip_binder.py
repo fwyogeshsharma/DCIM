@@ -50,7 +50,7 @@ def is_admin() -> bool:
 #  Interface enumeration                                               #
 # ------------------------------------------------------------------ #
 
-def get_interfaces() -> List[Tuple[str, str]]:
+def get_interfaces(apply_filter: bool = True) -> List[Tuple[str, str]]:
     """
     Return a list of (adapter_name, display_label) for every network adapter.
 
@@ -58,6 +58,12 @@ def get_interfaces() -> List[Tuple[str, str]]:
     only those adapters are returned — useful in headless deployments where the
     simulator binds to a single dedicated dummy NIC (e.g. dcim0) and the host's
     real NICs should never appear in the binding dropdown.
+
+    apply_filter=False bypasses that env filter. The orphan reaper needs it: the
+    filter narrows where the user may CREATE bindings, but addresses stranded by
+    an earlier run can sit on an adapter the filter now hides, and an adapter you
+    cannot see is an adapter you cannot clean. Safety there comes from the
+    managed-prefix check, not from this list.
     """
     if sys.platform == "win32":
         ifaces = _get_interfaces_windows()
@@ -65,7 +71,7 @@ def get_interfaces() -> List[Tuple[str, str]]:
         ifaces = _get_interfaces_linux()
 
     allow = os.environ.get("DCIM_ADAPTER_FILTER", "").strip()
-    if allow:
+    if allow and apply_filter:
         wanted = {n.strip() for n in allow.split(",") if n.strip()}
         ifaces = [(name, label) for name, label in ifaces if name in wanted]
 

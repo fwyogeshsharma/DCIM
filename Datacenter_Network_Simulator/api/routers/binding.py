@@ -188,6 +188,120 @@ async def get_bound_count():
     return {"total": len(set(s.bound_ips))}
 
 
+# Address space this app assigns. An alias outside these prefixes was not put on
+# the adapter by us — the host's own LAN address, WSL's loopback helper — and the
+# orphan reaper must never consider it, whatever adapter it sits on.
+MANAGED_PREFIXES = ("10.50.", "10.51.", "10.52.")
+
+
+def _orphan_ips(s) -> "dict[str, list[str]]":
+    """{adapter: [managed addresses no device claims]}, across EVERY adapter.
+
+    The mirror of snmprec_generator.reap_orphans, and it exists for the same
+    reason: snmpsim serves any file in its directory, and the host answers on any
+    address on any adapter, so a leftover from a previous topology is a live
+    endpoint for a device that no longer exists. It survives an unbind because
+    /binding/unbind only removes s.bound_ips — what THIS session bound — and a
+    device deleted from the topology falls out of that list while its address
+    stays on the NIC. That gap is how a retired address keeps answering.
+
+    Deliberately NOT scoped to the selected adapter. Bindings from earlier runs
+    outlive the adapter selection that created them: a run that bound the prod
+    plane to eth1 leaves those addresses there for good once the operator moves
+    on to a dedicated dcim0, and scoping the sweep to today's choice would leave
+    them answering forever with nothing able to see them.
+
+    Two guards do the real work, and neither is the adapter list:
+      * the address must be inside MANAGED_PREFIXES — this app's own space, so
+        the host's LAN address, WSL's loopback helper and any third-party
+        addressing are structurally out of reach;
+      * no device in the loaded topology may claim it.
+    Loopback is skipped outright: get_interfaces() already excludes it, and a
+    simulator address has no business being there in the first place.
+    """
+    from core.ip_binder import get_interfaces, get_interface_ips
+
+    if s.device_manager is None:
+        return {}
+    claimed = set()
+    for d in s.device_manager.get_all_devices():
+        for ip in (getattr(d, "ip_address", ""), getattr(d, "mgmt_ip", "")):
+            if ip:
+                claimed.add(ip)
+
+    out: "dict[str, list[str]]" = {}
+    # apply_filter=False: an adapter DCIM_ADAPTER_FILTER hides is still an
+    # adapter whose stranded addresses answer.
+    for name, _label in get_interfaces(apply_filter=False):
+        if name == "lo":
+            continue
+        managed = {ip for ip in get_interface_ips(name)
+                   if ip.startswith(MANAGED_PREFIXES)}
+        stranded = sorted(managed - claimed,
+                          key=lambda x: [int(o) for o in x.split(".")])
+        if stranded:
+            out[name] = stranded
+    return out
+
+
+@router.get("/orphans")
+def list_orphans():
+    """Managed addresses the host still answers on that no device claims."""
+    s = _state()
+    by_adapter = _orphan_ips(s)
+    return {"count": sum(len(v) for v in by_adapter.values()),
+            "adapters": by_adapter,
+            "selected_adapter": s.selected_adapter}
+
+
+@router.post("/reap-orphans", response_model=OkResponse)
+def reap_orphans(adapter: Optional[str] = None):
+    """Remove stranded managed addresses, on every adapter that carries them.
+
+    Pass ?adapter=<name> to confine the sweep to one. Removal is per-adapter
+    because that is how the OS deletes an address — an alias belongs to a NIC,
+    not to the host.
+
+    Safety is the managed-prefix check plus the topology claim check, not the
+    adapter list: nothing outside 10.50/10.51/10.52 is reachable from here, so
+    the host's own addressing cannot be touched however wide the sweep goes.
+    """
+    s = _state()
+    if s.device_manager is None:
+        raise HTTPException(status_code=503, detail="Topology not loaded")
+
+    by_adapter = _orphan_ips(s)
+    if adapter:
+        by_adapter = {k: v for k, v in by_adapter.items() if k == adapter}
+        if not by_adapter:
+            return OkResponse(message=f"No orphaned addresses on {adapter}")
+    if not by_adapter:
+        return OkResponse(message="No orphaned addresses on any adapter")
+
+    from core.ip_binder import remove_ips_fast
+    total_removed = total_failed = 0
+    parts = []
+    for name, ips in by_adapter.items():
+        removed, failed = remove_ips_fast(
+            name, ips, dict(s.nte_contexts),
+            log_cb=lambda msg, lvl="info": s.notify_ui("log", msg, lvl),
+        )
+        total_removed += removed
+        total_failed += failed
+        parts.append(f"{removed} from {name}"
+                     + (f" ({failed} failed)" if failed else ""))
+        s.notify_ui("log", f"Reaped {removed} orphaned address(es) from {name}",
+                    "success")
+
+    # Drop them from the tracked list too, in case one was still recorded there.
+    gone = {ip for ips in by_adapter.values() for ip in ips}
+    s.bound_ips = [ip for ip in s.bound_ips if ip not in gone]
+    s.nte_contexts = {k: v for k, v in s.nte_contexts.items() if k not in gone}
+
+    s.notify_ui("sync_binding")
+    return OkResponse(message="Removed " + ", ".join(parts))
+
+
 @router.get("/status", response_model=BindingStatusResponse)
 async def get_binding_status():
     """Full binding status — adapter, mask, bound IPs, active job."""
