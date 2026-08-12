@@ -15,7 +15,7 @@ import pytest
 import core.device_state_store as dss
 from core.modbus_register_map import (
     MODBUS_MAPS, WORD_BIG, WORD_SWAP,
-    decode_registers, encode_point, get_map,
+    decode_registers, encode_point, get_map, get_probe_map,
 )
 from simulator.modbus_controller import ModbusController
 
@@ -76,6 +76,87 @@ def test_every_map_declares_identity():
             f"{dtype}: map_id must mark these as simulator addresses, "
             f"not the vendor's published map")
         assert mm.vendor and mm.product
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Data validity
+#
+#  A Modbus register carries no quality flag, so "0 V" and "not sampled yet" are
+#  the same two bytes. These pin the separate status point that resolves it.
+# ─────────────────────────────────────────────────────────────────────────────
+def test_every_map_carries_a_validity_bit():
+    from simulator.modbus_device import ModbusSlave
+    for dtype, mm in MODBUS_MAPS.items():
+        names = [p.name for p in mm.points.get("discrete", [])]
+        assert "Data_Valid" in names, f"{dtype} has no validity bit"
+
+
+def _valid_bit(slave):
+    return [r for r in slave.snapshot()
+            if r["name"] in ("Data_Valid", "Reading_Valid")][0]["value"]
+
+
+def test_validity_is_zero_before_the_store_publishes_anything():
+    """The live case: a master polling in the first second after start reads
+    zeros, and without this bit cannot tell them from a de-energised board."""
+    from simulator.modbus_device import ModbusSlave
+    for dtype, mm in MODBUS_MAPS.items():
+        s = ModbusSlave("X", dtype, mm, unit_id=1)
+        s.apply_ext({})
+        assert _valid_bit(s) == 0, dtype
+
+
+def test_a_genuine_zero_reading_still_reads_valid():
+    """The distinction the whole point exists for: 0.0 published is a reading."""
+    from simulator.modbus_device import ModbusSlave
+    for dtype, mm in MODBUS_MAPS.items():
+        dv = next(p for p in mm.points["discrete"] if p.name == "Data_Valid")
+        s = ModbusSlave("X", dtype, mm, unit_id=1)
+        s.apply_ext({dv.presence_of: 0.0})
+        assert _valid_bit(s) == 1, dtype
+
+
+def test_transmitter_validity_tracks_presence_not_truthiness():
+    """Regression: Reading_Valid was written as `truthy=lambda v: v is not None`
+    and sat at 1 forever, because apply_ext substitutes the point's default for a
+    missing key long before any value predicate sees it."""
+    from simulator.modbus_device import ModbusSlave
+    s = ModbusSlave("CHWS-X", "sensor", get_probe_map("chw_supply"), unit_id=1)
+    s.apply_ext({})
+    assert _valid_bit(s) == 0
+    s.apply_ext({"water_temp": 0.0})
+    assert _valid_bit(s) == 1
+
+
+def test_validity_bit_is_keyed_on_a_quantity_that_is_live_at_rest():
+    """A stopped genset legitimately reports 0 kW and an ATS meters nothing, so
+    keying their validity on a power reading would mark healthy gear invalid."""
+    for dtype in ("generator", "ats", "ups"):
+        dv = next(p for p in MODBUS_MAPS[dtype].points["discrete"]
+                  if p.name == "Data_Valid")
+        assert "kw" not in dv.presence_of, f"{dtype} keys validity on power"
+
+
+def test_adding_the_validity_bit_moved_no_existing_address():
+    """Bit addresses are what a poller template binds to; an address that shifts
+    is an address every existing template now reads wrong. Pinned explicitly."""
+    pinned = {
+        "utility_feed": {"Service_Healthy": 0, "Data_Valid": 1},
+        "switchgear": {"Bus_Energized": 0, "Breaker_Closed": 1,
+                       "Source_Generator": 2, "Data_Valid": 3},
+        "mcc": {"Bus_Energized": 0, "Tie_Closed": 1, "Source_Tie": 2,
+                "Data_Valid": 3},
+        "mpp": {"Panel_Energized": 0, "Data_Valid": 1},
+        "generator": {"Engine_Running": 0, "Alarm_Low_Fuel": 1,
+                      "Battery_Fault": 5, "Data_Valid": 6},
+        "ats": {"Normal_Available": 0, "On_Emergency": 2,
+                "Fail_To_Transfer": 4, "Data_Valid": 5},
+        "ups": {"On_Battery": 0, "Phase_Fault": 7, "Data_Valid": 8},
+    }
+    for dtype, expect in pinned.items():
+        got = {p.name: p.addr for p in MODBUS_MAPS[dtype].points["discrete"]}
+        for name, addr in expect.items():
+            assert got.get(name) == addr, f"{dtype}/{name} moved to {got.get(name)}"
 
 
 def test_no_map_has_overlapping_addresses():

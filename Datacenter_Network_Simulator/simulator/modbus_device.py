@@ -112,9 +112,16 @@ class ModbusSlave:
                     for off, w in enumerate(words):
                         regs[space][p.addr + off] = w & 0xFFFF
                 else:
+                    # A validity bit asks whether the store has published this
+                    # quantity AT ALL, so it must be answered from the ext dict
+                    # itself — by the time `raw_val` exists a missing key has
+                    # already become the point's default, and "absent" is
+                    # indistinguishable from "genuinely zero".
+                    if p.presence_of:
+                        bits[space][p.addr] = 1 if p.presence_of in ext else 0
                     # A coil with no key is a command point: it has no telemetry
                     # to render, so it keeps whatever was last written to it.
-                    if space == SPACE_COIL and not p.key:
+                    elif space == SPACE_COIL and not p.key:
                         bits[space][p.addr] = self._bits.get(space, {}).get(p.addr, 0)
                     else:
                         bits[space][p.addr] = encode_bit(p, raw_val)
@@ -419,7 +426,11 @@ class ModbusSlave:
                     rows.append({"space": space, "addr": p.addr, "name": p.name,
                                  "dtype": "bit", "raw": [bits[space].get(p.addr, 0)],
                                  "value": bits[space].get(p.addr, 0),
-                                 "units": "", "key": p.key,
+                                 # A validity bit's provenance is presence_of,
+                                 # not key — without the fallback the register
+                                 # browser shows the one point whose meaning is
+                                 # least obvious as having no source at all.
+                                 "units": "", "key": p.key or p.presence_of,
                                  "writable": p.writable})
         rows.sort(key=lambda r: (r["space"], r["addr"]))
         return rows

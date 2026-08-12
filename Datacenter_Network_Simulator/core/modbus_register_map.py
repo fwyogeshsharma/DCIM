@@ -35,6 +35,35 @@ number for an unmodelled quantity is the exact failure mode that
 `snmprec_generator._probe_oids` was rewritten to prevent (a thermowell in a water
 header answering with a dew point).  Absent beats invented.
 
+DATA VALIDITY
+-------------
+A Modbus register carries no quality flag. Nothing in the protocol distinguishes
+"415.2 V, measured a moment ago" from "0, because I have not sampled yet" — the
+master reads two bytes and they look identical. Real integrations handle that
+with a separate status point, and real meters publish one: Schneider PM5000 has
+a Meter Status word, Eaton PXM a device-status register, CAT EMCP its status
+bits.
+
+So every map here carries a `Data_Valid` discrete, 1 once the store has actually
+published this device's telemetry. It is deliberately NOT a liveness check on the
+device: a native-TCP device that cannot answer does not answer at all, and you
+cannot read a bit out of silence. It answers the narrower and more useful
+question a master genuinely faces on the first poll after a start — "is this
+zero a reading, or an absence of one?"
+
+The bit is keyed on PRESENCE of an ext key, never on its value. A missing key
+renders as the point's default (0.0), so any value-based test would read a
+device that has published nothing exactly like a de-energised one — which is the
+bug this replaced: `Reading_Valid` on the transmitters was written as
+`truthy=lambda v: v is not None` and, because `apply_ext` had already
+substituted the default, sat at 1 forever including on a device with no state at
+all.
+
+Each map keys its bit on the quantity that proves its measurement subsystem is
+running, not on one that is legitimately zero at rest — hence `gen_status` and
+not `gen_kw` for a stopped genset, and `ats_position` for a switch that meters
+nothing.
+
 NO UNSOLICITED MESSAGING
 ------------------------
 Modbus has no traps, no COV, no I-Am — the master polls, and that is the entire
@@ -104,6 +133,12 @@ class ModbusPoint:
                 `ext` ("energized", "on_battery", ...).  Unlisted -> `enum_default`.
     truthy      for bit spaces: the ext value(s) that mean 1.  A callable gets the
                 raw ext value and returns bool.
+    presence_of for bit spaces: the bit is 1 iff this ext KEY EXISTS, regardless
+                of its value.  Distinct from `truthy`, which tests the value —
+                and it has to be, because a missing key renders as the point's
+                default (0.0) by the time a value predicate would see it, so
+                "absent" and "genuinely zero" are indistinguishable downstream.
+                This is how a validity bit is expressed; see DATA VALIDITY below.
     writable    holding/coil only.  A write lands in the override channel named by
                 `write_action`; it is NEVER written back into `ext`, because the
                 ticker owns `ext` and would overwrite it within one second.
@@ -117,6 +152,7 @@ class ModbusPoint:
     enum: Optional[Dict[str, int]] = None
     enum_default: int = 0
     truthy: Optional[Any] = None
+    presence_of: str = ""
     default: float = 0.0
     writable: bool = False
     write_action: str = ""
@@ -207,6 +243,7 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
             ],
             SPACE_DISCRETE: [
                 ModbusPoint(0, "Service_Healthy", "util_status", truthy="normal"),
+                ModbusPoint(1, "Data_Valid", presence_of="util_voltage"),
             ],
         },
     ),
@@ -243,6 +280,7 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
                 ModbusPoint(0, "Bus_Energized",   "swgr_bus_status",     truthy="energized"),
                 ModbusPoint(1, "Breaker_Closed",  "swgr_breaker_status", truthy="closed"),
                 ModbusPoint(2, "Source_Generator", "swgr_source",        truthy="generator"),
+                ModbusPoint(3, "Data_Valid", presence_of="swgr_voltage"),
             ],
         },
     ),
@@ -274,6 +312,7 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
                 ModbusPoint(0, "Bus_Energized", "mcc_status", truthy="energized"),
                 ModbusPoint(1, "Tie_Closed",    "mcc_tie",    truthy="closed"),
                 ModbusPoint(2, "Source_Tie",    "mcc_source", truthy="tie"),
+                ModbusPoint(3, "Data_Valid", presence_of="mcc_voltage"),
             ],
         },
     ),
@@ -307,6 +346,7 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
             ],
             SPACE_DISCRETE: [
                 ModbusPoint(0, "Panel_Energized", "mpp_status", truthy="energized"),
+                ModbusPoint(1, "Data_Valid", presence_of="mpp_voltage"),
             ],
         },
     ),
@@ -349,6 +389,7 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
                 ModbusPoint(3, "Alarm_High_Temp",  "gen_alarm_temp"),
                 ModbusPoint(4, "Alarm_Transfer",   "gen_alarm_transfer"),
                 ModbusPoint(5, "Battery_Fault",    "gen_battery_status", truthy="failure"),
+                ModbusPoint(6, "Data_Valid", presence_of="gen_status"),
             ],
         },
     ),
@@ -381,6 +422,7 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
                 # in Local/Manual refuses remote commands.
                 ModbusPoint(3, "Not_In_Auto",         "ats_not_in_auto"),
                 ModbusPoint(4, "Fail_To_Transfer",    "ats_fail_to_transfer"),
+                ModbusPoint(5, "Data_Valid", presence_of="ats_position"),
             ],
         },
     ),
@@ -415,6 +457,7 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
                 ModbusPoint(5, "Charger_Fault",     "ups_charger_status",   truthy="failure"),
                 ModbusPoint(6, "Rectifier_Fault",   "ups_rectifier_status", truthy="failure"),
                 ModbusPoint(7, "Phase_Fault",       "ups_phase_status",     truthy="failure"),
+                ModbusPoint(8, "Data_Valid", presence_of="ups_status"),
             ],
         },
     ),
@@ -445,8 +488,7 @@ _TEMP_TX = ModbusMap(
         SPACE_DISCRETE: [
             # A transmitter reporting a value it has not acquired is worse than
             # one reporting nothing: the BMS trends the placeholder as real.
-            ModbusPoint(0, "Reading_Valid", "water_temp",
-                        truthy=lambda v: v is not None),
+            ModbusPoint(0, "Reading_Valid", presence_of="water_temp"),
         ],
     },
 )
@@ -459,8 +501,7 @@ _FLOW_TX = ModbusMap(
             _P(0x0000, "Flow_Rate", "water_flow_lps", "u16", 100, "l/s"),
         ],
         SPACE_DISCRETE: [
-            ModbusPoint(0, "Reading_Valid", "water_flow_lps",
-                        truthy=lambda v: v is not None),
+            ModbusPoint(0, "Reading_Valid", presence_of="water_flow_lps"),
         ],
     },
 )

@@ -273,7 +273,12 @@ def modbus_map_export(device_type: str):
             w.writerow([space, p.addr, p.name,
                         p.dtype if space in REG_SPACES else "bit",
                         p.scale if space in REG_SPACES else "",
-                        p.units, "yes" if p.writable else "no", p.key])
+                        p.units, "yes" if p.writable else "no",
+                        # A validity bit is keyed on the PRESENCE of an ext key
+                        # rather than its value, so its provenance lives in
+                        # presence_of. Falling back keeps the exported map from
+                        # documenting the one point that needs it as sourceless.
+                        p.key or p.presence_of])
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]), media_type="text/csv",
