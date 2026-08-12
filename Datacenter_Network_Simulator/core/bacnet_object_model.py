@@ -360,10 +360,55 @@ def enc_ctx_close(ctx: int) -> bytes:
 #  NPDU builder
 # ─────────────────────────────────────────────────────────────────
 
-def build_npdu(apdu: bytes, expects_reply: bool = False) -> bytes:
-    """Wrap APDU in NPDU (no routing, no source specifier)."""
+def build_npdu(apdu: bytes, expects_reply: bool = False,
+               snet: "Optional[int]" = None, sadr: "Optional[bytes]" = None) -> bytes:
+    """Wrap APDU in NPDU, optionally carrying a SOURCE specifier.
+
+    A device that lives on an MS/TP trunk behind a BACnet/IP router is not
+    reachable at an IP of its own — the router's IP carries the packet and the
+    (network, MAC) pair inside the NPDU says which device on the trunk it came
+    from. Without SNET/SADR every reply from behind a router would look like it
+    originated at the router itself, which is exactly how a real integration
+    ends up seeing one device where there are eighteen.
+    """
     ctrl = 0x04 if expects_reply else 0x00
+    if snet is not None and sadr:
+        ctrl |= 0x08                                  # SNET/SADR present
+        src = bytes([(snet >> 8) & 0xFF, snet & 0xFF, len(sadr)]) + sadr
+        return bytes([0x01, ctrl]) + src + apdu
     return bytes([0x01, ctrl]) + apdu
+
+
+def with_source_route(frame: bytes, snet: int, sadr: bytes) -> bytes:
+    """Re-emit a finished BVLL frame as if it came from behind a router.
+
+    Applied by the router to a reply its MS/TP child already built. Doing it here
+    rather than threading snet/sadr through every build_* helper keeps the device
+    code identical whether a device owns an IP or sits on a trunk — the device
+    answers the same way it always did, and the router is what makes it a routed
+    packet. That mirrors the real split: an MS/TP device has no idea it is behind
+    a router.
+
+    Idempotent: a frame that already carries a source specifier is returned
+    unchanged, so double-wrapping cannot corrupt the header.
+    """
+    if len(frame) < 6 or frame[0] != BVLL_TYPE:
+        return frame
+    npdu = frame[4:]
+    if len(npdu) < 2 or npdu[0] != 0x01:
+        return frame
+    ctrl = npdu[1]
+    if ctrl & 0x08:                      # already routed
+        return frame
+    # Our replies never carry DNET, so the source specifier goes directly after
+    # the control octet — the order the spec fixes is DNET/DLEN/DADR/Hop then
+    # SNET/SLEN/SADR.
+    if ctrl & 0x20:
+        return frame                     # has DNET; not a shape we emit
+    src = bytes([(snet >> 8) & 0xFF, snet & 0xFF, len(sadr)]) + sadr
+    new_npdu = bytes([0x01, ctrl | 0x08]) + src + npdu[2:]
+    length = 4 + len(new_npdu)
+    return bytes([BVLL_TYPE, frame[1], length >> 8, length & 0xFF]) + new_npdu
 
 
 def build_bvll(npdu_data: bytes, broadcast: bool = False) -> bytes:
@@ -393,23 +438,41 @@ def parse_bvll(data: bytes):
 
 def parse_npdu(data: bytes):
     """Parse NPDU.  Returns (apdu_data) or None if network-layer message."""
+    parsed = parse_npdu_routed(data)
+    return None if parsed is None else parsed["apdu"]
+
+
+def parse_npdu_routed(data: bytes):
+    """Parse NPDU keeping the routing fields.
+
+    Returns {"apdu", "dnet", "dadr", "snet", "sadr"} or None for a network-layer
+    message. parse_npdu() discards DNET/DADR, which is fine for a device that
+    owns its IP but useless for a router: DADR is the only thing that says WHICH
+    device on the MS/TP trunk a request is addressed to.
+    """
     if len(data) < 2 or data[0] != 0x01:
         return None
     ctrl = data[1]
     if ctrl & 0x80:   # network layer message — not an APDU
         return None
     pos = 2
+    dnet = dadr = snet = sadr = None
     if ctrl & 0x20:   # DNET present
         if pos + 2 >= len(data):
             return None
+        dnet = (data[pos] << 8) | data[pos + 1]
         dlen = data[pos + 2]
+        dadr = bytes(data[pos + 3:pos + 3 + dlen])
         pos += 3 + dlen + 1   # DNET(2) + DLEN(1) + DADR(dlen) + hop-count(1)
     if ctrl & 0x08:   # SNET present
         if pos + 2 >= len(data):
             return None
+        snet = (data[pos] << 8) | data[pos + 1]
         slen = data[pos + 2]
+        sadr = bytes(data[pos + 3:pos + 3 + slen])
         pos += 3 + slen         # SNET(2) + SLEN(1) + SADR(slen)
-    return data[pos:]
+    return {"apdu": data[pos:], "dnet": dnet, "dadr": dadr,
+            "snet": snet, "sadr": sadr}
 
 
 def parse_apdu(data: bytes):

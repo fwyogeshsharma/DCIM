@@ -89365,38 +89365,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.15",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "893e478e",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "f2:bb:3b:95:90:31",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.15",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -89427,7 +89405,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 1,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -89441,38 +89422,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.16",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "c04f2280",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "d7:3a:73:f3:3c:c9",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.16",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -89503,7 +89462,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 2,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -89517,38 +89479,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.17",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "c9bf2418",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "11:e5:48:34:2e:e2",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.17",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -89579,7 +89519,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 3,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -89593,38 +89536,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.25",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos TP 100-360",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "b17bfd83",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "dc:b0:8c:70:db:53",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.25",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -89654,7 +89575,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 5,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -89668,38 +89592,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.26",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos TP 100-360",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "f0c4e963",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "be:58:3c:35:db:4a",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.26",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -89729,7 +89631,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 6,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -89893,38 +89798,16 @@
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.48",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Belimo PR..A-BAC",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "60d8fc26",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "8e:2c:09:fd:03:ea",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.48",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
         "ups_backup": "",
@@ -89954,7 +89837,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 20,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -89968,38 +89854,16 @@
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.49",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Belimo PR..A-BAC",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "69d174b4",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "77:ef:c2:5a:61:f7",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.49",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
         "ups_backup": "",
@@ -90029,7 +89893,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 21,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -91204,38 +91071,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.15",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "f8eb42ae",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "7e:07:7e:9a:13:1d",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.15",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -91266,7 +91111,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 1,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -91280,38 +91128,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.16",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "cc17f464",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "96:d2:9b:be:dd:87",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.16",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -91342,7 +91168,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 2,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -91356,38 +91185,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.17",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "53f15d15",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "fe:de:f3:4b:32:2c",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.17",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -91418,7 +91225,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 3,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -91432,38 +91242,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.25",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos TP 100-360",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "fa708342",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "3b:c1:38:d5:3f:f5",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.25",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -91493,7 +91281,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 5,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -91507,38 +91298,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.26",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos TP 100-360",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "96796119",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "9b:df:3e:b2:e0:93",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.26",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -91568,7 +91337,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 6,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -91732,38 +91504,16 @@
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.48",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Belimo PR..A-BAC",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "e13dfcba",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "8d:05:b2:4c:21:7b",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.48",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
         "ups_backup": "",
@@ -91793,7 +91543,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 20,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -91807,38 +91560,16 @@
         "device_type": "valve",
         "vendor": "Belimo",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.49",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Belimo PR..A-BAC",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "774f3d06",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "50:07:25:4c:e2:d2",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.49",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 0,
         "ups_backup": "",
@@ -91868,7 +91599,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 21,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -92128,38 +91862,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.18",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "79712904",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "e5:28:af:ab:d9:11",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.18",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -92190,7 +91902,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 4,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -92279,38 +91994,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.18",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos NB 100-200",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "97d819aa",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "85:22:bc:b5:a5:8c",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.18",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -92341,7 +92034,10 @@
         "floor_y": 0.6,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 4,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -144339,38 +144035,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.27",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos TP 100-360",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "824f3b10",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "4c:fa:f0:8b:66:45",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.27",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -144400,7 +144074,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2001,
+        "mstp_mac": 7,
+        "mstp_router_ip": "10.52.14.15"
       }
     },
     {
@@ -144489,38 +144166,16 @@
         "device_type": "pump",
         "vendor": "Grundfos",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.27",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Grundfos TP 100-360",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "dc38cb1c",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "a3:16:a5:64:10:e3",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.27",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 18500,
         "ups_backup": "",
@@ -144550,7 +144205,10 @@
         "floor_x": 0.3,
         "floor_y": 0.6,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mstp_net": 2002,
+        "mstp_mac": 7,
+        "mstp_router_ip": "10.52.24.15"
       }
     },
     {
@@ -157081,6 +156739,134 @@
         "rack_num": 1,
         "power_draw_w": 15,
         "rated_power_w": 25
+      }
+    },
+    {
+      "id": "brtrdc101",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "device": {
+        "name": "BRTR1-DC1-CP",
+        "device_type": "bacnet_router",
+        "vendor": "Loytec",
+        "model_name": "LOYTEC LINX-151",
+        "ip_address": "",
+        "mgmt_ip": "10.52.14.15",
+        "snmp_port": 0,
+        "snmp_community": "",
+        "metrics_enabled": false,
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "02:34:0e:0f:a5:02",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "mstp_net": 2001,
+        "mstp_children": [
+          "CHWP1-DC1-CP",
+          "CHWP2-DC1-CP",
+          "CHWP3-DC1-CP",
+          "CHWP4-DC1-CP",
+          "CWP1-DC1-CP",
+          "CWP2-DC1-CP",
+          "CWP3-DC1-CP",
+          "VCHW-DC1-CP",
+          "VCW-DC1-CP"
+        ],
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "country": "USA",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "power_draw_w": 12,
+        "rated_power_w": 20
+      }
+    },
+    {
+      "id": "brtrdc201",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "device": {
+        "name": "BRTR1-DC2-CP",
+        "device_type": "bacnet_router",
+        "vendor": "Loytec",
+        "model_name": "LOYTEC LINX-151",
+        "ip_address": "",
+        "mgmt_ip": "10.52.24.15",
+        "snmp_port": 0,
+        "snmp_community": "",
+        "metrics_enabled": false,
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "02:34:18:0f:a5:02",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "mstp_net": 2002,
+        "mstp_children": [
+          "CHWP1-DC2-CP",
+          "CHWP2-DC2-CP",
+          "CHWP3-DC2-CP",
+          "CHWP4-DC2-CP",
+          "CWP1-DC2-CP",
+          "CWP2-DC2-CP",
+          "CWP3-DC2-CP",
+          "VCHW-DC2-CP",
+          "VCW-DC2-CP"
+        ],
+        "datacenter": "DC2",
+        "datacenter_city": "New York",
+        "country": "USA",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "power_draw_w": 12,
+        "rated_power_w": 20
       }
     }
   ],

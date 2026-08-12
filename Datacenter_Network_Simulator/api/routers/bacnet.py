@@ -267,6 +267,11 @@ def bacnet_start(cfg: BACnetConfig):
     for d in s.device_manager.get_all_devices():
         if d.device_type not in _PLANT_TYPES:
             continue
+        # Field gear on an MS/TP trunk owns no IP by design — it is registered
+        # after start() against its router, not here. Counting it as an unbound
+        # plant device would report 18 phantom gaps on every start.
+        if getattr(d, "mstp_mac", 0):
+            continue
         _plant_total += 1
         ip = (d.ip_address if d.ip_address in _host_ips else None) \
             or (d.mgmt_ip if getattr(d, "mgmt_ip", None) in _host_ips else None)
@@ -311,6 +316,44 @@ def bacnet_start(cfg: BACnetConfig):
                    f"Another instance or BACnet tool may already own it.",
         )
 
+    # MS/TP trunks. Routers first — a trunk device cannot be registered until the
+    # router that carries its packets exists.
+    _routers, _mstp_ok, _mstp_skipped = 0, 0, []
+    _router_ip_by_name: dict = {}
+    for d in s.device_manager.get_all_devices():
+        if getattr(d.device_type, "value", "") != "bacnet_router":
+            continue
+        ip = (d.ip_address if d.ip_address in _host_ips else None) \
+            or (getattr(d, "mgmt_ip", "") if getattr(d, "mgmt_ip", "") in _host_ips else None)
+        if not ip:
+            _mstp_skipped.append(d.name)
+            continue
+        if s.bacnet.add_router_device(ip, d.name, int(getattr(d, "mstp_net", 0) or 0)):
+            _router_ip_by_name[d.name] = ip
+            _routers += 1
+
+    for d in s.device_manager.get_all_devices():
+        mac = int(getattr(d, "mstp_mac", 0) or 0)
+        if not mac:
+            continue
+        rip = getattr(d, "mstp_router_ip", "")
+        if rip not in set(_router_ip_by_name.values()):
+            _mstp_skipped.append(d.name)
+            continue
+        if s.bacnet.add_mstp_device(
+                rip, mac, int(getattr(d, "mstp_net", 0) or 0),
+                d.device_type.value, d.name,
+                rated_kw=(getattr(d, "power_draw_w", 0) or 0) / 1000.0):
+            _mstp_ok += 1
+        else:
+            _mstp_skipped.append(d.name)
+
+    if _mstp_skipped:
+        s.notify_ui("log_bacnet",
+                    f"[BACnet] Warning: {len(_mstp_skipped)} MS/TP device(s) skipped "
+                    f"— router unbound or MAC clash: {', '.join(_mstp_skipped[:8])}",
+                    "warning")
+
     if s.state_store and hasattr(s.state_store, "enable_bacnet"):
         s.state_store.enable_bacnet(s.bacnet)
 
@@ -318,7 +361,9 @@ def bacnet_start(cfg: BACnetConfig):
     # outright, so reaching here means every EV2 IP is on the host.
     s.notify_ui("console_log",
                 f"[BACnet] Started — {len(device_ips)} EV2 device(s), "
-                f"{len(plant_devices)} chiller-plant device(s).", "success")
+                f"{len(plant_devices)} chiller-plant device(s), "
+                f"{_routers} MS/TP router(s) carrying {_mstp_ok} field device(s).",
+                "success")
     s.notify_ui("sync_bacnet")
     return OkResponse(message="BACnet simulator started")
 

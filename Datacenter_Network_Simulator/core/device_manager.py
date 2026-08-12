@@ -37,6 +37,7 @@ class DeviceType(str, Enum):
     VALVE          = "valve"         # Control/isolation valve (actuator position) -- BACnet only
     CDU            = "cdu"           # Coolant Distribution Unit (direct-to-chip liquid cooling) -- SNMP + BACnet (native comm card)
     MODBUS_GATEWAY = "modbus_gateway"  # Modbus TCP/RTU gateway (Moxa MGate class) -- fronts an RS-485 trunk of field transmitters
+    BACNET_ROUTER  = "bacnet_router"    # BACnet/IP <-> MS/TP router (Loytec/Distech class) -- fronts an RS-485 trunk of field controllers
 
 
 # Floor-standing / plant equipment: located by room/area, NOT mounted in an IT rack.
@@ -61,6 +62,7 @@ FACILITY_TYPES = frozenset({
     DeviceType.ENERGY_MONITOR,
     # Wall/rack-mounted in the plant room, not in an IT rack.
     DeviceType.MODBUS_GATEWAY,
+    DeviceType.BACNET_ROUTER,
 })
 
 
@@ -109,6 +111,9 @@ class Vendor(str, Enum):
     # transmitters onto Ethernet. Moxa MGate is the commodity choice; Schneider
     # Link150 and Eaton PXG occupy the same slot.
     MOXA             = "Moxa"
+    # BACnet/IP <-> MS/TP routers. Loytec LINX is the commodity choice; Distech
+    # ECLYPSE and Contemporary Controls BASrouter fill the same slot.
+    LOYTEC           = "Loytec"
     JOHNSON_CONTROLS = "Johnson Controls"
     # Direct-to-chip CDU vendors
     COOLIT           = "CoolIT Systems"
@@ -222,6 +227,7 @@ FACILITY_MGMT_TYPES = frozenset({
     # or more RS-485 trunks. The Ethernet side is the only part that gets an
     # address, and it is the reason the trunk's instruments no longer need one.
     DeviceType.MODBUS_GATEWAY,
+    DeviceType.BACNET_ROUTER,
 })
 
 
@@ -1086,6 +1092,15 @@ class Device:
     modbus_gateway_ip: str = ""              # rtu_slave -> its gateway's IP
     modbus_children: List[str] = field(default_factory=list)   # gateway -> slave names
 
+    # BACnet MS/TP plane. A device with mstp_mac set sits on an RS-485 trunk
+    # behind a BACnet/IP router and owns NO address: mstp_router_ip is the
+    # router's, and (mstp_net, mstp_mac) is what identifies it on the wire.
+    # A Belimo "-BAC" actuator and a Grundfos CIM 300 pump card are exactly this.
+    mstp_net: int = 0
+    mstp_mac: int = 0
+    mstp_router_ip: str = ""
+    mstp_children: List[str] = field(default_factory=list)     # router -> device names
+
     # Power chain
     power_draw_w: int = 0   # typical power draw in watts
     # Nameplate THROUGHPUT rating (W) for power-distribution / backup gear
@@ -1180,7 +1195,8 @@ class Device:
             self.rated_power_w = rated_capacity_w(self.device_type, self.model_name)
         # Normalize interface_groups (str → InterfaceType)
         if (self.device_type in FACILITY_PASSIVE_TYPES
-                or self.modbus_role == "rtu_slave"):
+                or self.modbus_role == "rtu_slave"
+                or self.mstp_mac):
             # Passive panel — no monitoring card, so no port. Checked FIRST and it
             # discards whatever came in: topologies written before this carry a phantom
             # eth0 (no IP, cabled to nothing, no SNMP dataset generated) that made a
@@ -1194,6 +1210,10 @@ class Device:
             # it. Clearing the port here rather than in the migration tool is what
             # makes it stick: a saved topology's empty interface list is treated as
             # "generation stands", so the port would grow straight back.
+            #
+            # A BACnet MS/TP device lands here for the same reason: a Belimo
+            # actuator on an RS-485 trunk is two wires and a MAC, not a network
+            # node. Its router holds the only Ethernet port on the trunk.
             self.interface_groups = []
             self.interface_count = 0
             self.interfaces = []

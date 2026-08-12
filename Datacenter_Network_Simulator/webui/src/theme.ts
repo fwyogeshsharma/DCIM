@@ -36,6 +36,7 @@ export const NODE_COLOR: Record<string, string> = {
   mpp:            'var(--node-mpp)',
   energy_monitor: 'var(--node-energy-monitor)',
   modbus_gateway: 'var(--node-modbus-gateway)',
+  bacnet_router:  'var(--node-bacnet-router)',
   crah:           'var(--node-crah)',
   chiller:        'var(--node-chiller)',
   pump:           'var(--node-pump)',

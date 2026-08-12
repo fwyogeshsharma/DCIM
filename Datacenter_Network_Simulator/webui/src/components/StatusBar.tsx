@@ -80,6 +80,7 @@ const DEVICE_TYPE_SHORT: Record<string, string> = {
   sensor:        'SNS',
   energy_monitor:'EV2',
   modbus_gateway:'MBGW',
+  bacnet_router: 'BRTR',
   crah:          'CRAH',
   chiller:       'CHLR',
   pump:          'PMP',

@@ -133,10 +133,20 @@ class EV2BACnetDevice:
         object_tree:     Optional[Dict[Tuple[int, int], BACnetObject]] = None,
         name_to_key:     Optional[Dict[str, Tuple[int, int]]] = None,
         kind:            str = "ev2",
+        mstp_net:        Optional[int] = None,
+        mstp_mac:        Optional[int] = None,
     ):
         self.device_ip       = device_ip
         self.device_instance = device_instance
         self.device_name     = device_name
+        # MS/TP identity. When set, this device lives on an RS-485 trunk behind a
+        # BACnet/IP router and owns NO IP: device_ip is the ROUTER's address, and
+        # (mstp_net, mstp_mac) is what actually identifies it on the wire. The
+        # device itself is unaware — it builds replies exactly as an IP device
+        # does and the router stamps the source route on the way out, which is
+        # the same division of labour as the real thing.
+        self.mstp_net        = mstp_net
+        self.mstp_mac        = mstp_mac
         self.circuits        = circuits
         self.kind            = kind     # "ev2" | "plant:<device_type>"
         self._log_cb         = log_cb
@@ -170,9 +180,15 @@ class EV2BACnetDevice:
         # COV event log — last 100 dispatched notifications
         self._cov_events: collections.deque = collections.deque(maxlen=100)
 
-        # Send socket (bound to device IP so responses have correct source IP)
+        # Send socket (bound to device IP so responses have correct source IP).
+        # An MS/TP device has no socket and no address: it shares the router's,
+        # assigned by the controller after registration. Creating one here would
+        # try to bind the ROUTER's IP a second time, which is both wrong and a
+        # collision waiting to happen.
         self._send_sock: Optional[socket.socket] = None
-        self._init_send_socket()
+        self._owns_sock = mstp_mac is None
+        if self._owns_sock:
+            self._init_send_socket()
 
         self._log(f"[BACnet] Device {device_name} ({device_ip}:{port}) "
                   f"instance={device_instance} circuits={circuits}", "info")
@@ -214,6 +230,11 @@ class EV2BACnetDevice:
             self._send_sock = None
 
     def close(self):
+        # A trunk device borrows the router's socket; closing it here would take
+        # the whole trunk down with one device.
+        if not self._owns_sock:
+            self._send_sock = None
+            return
         if self._send_sock:
             try:
                 self._send_sock.close()
@@ -676,6 +697,12 @@ class EV2BACnetDevice:
         sock = self._send_sock or fallback_sock
         if sock is None:
             return
+        # An MS/TP device has no socket of its own — its reply leaves through the
+        # router's, carrying a source route so the client can tell the eighteen
+        # devices on the trunk apart instead of seeing one router.
+        if self.mstp_net is not None and self.mstp_mac is not None:
+            from core.bacnet_object_model import with_source_route
+            pkt = with_source_route(pkt, self.mstp_net, bytes([self.mstp_mac]))
         try:
             sock.sendto(pkt, addr)
         except Exception as exc:

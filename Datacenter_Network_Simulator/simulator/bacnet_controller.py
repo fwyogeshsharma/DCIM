@@ -84,6 +84,9 @@ class BACnetController:
         self._devices:     Dict[int, EV2BACnetDevice]      = {}
         # Also keyed by IP for Who-Is broadcast
         self._devices_by_ip: Dict[str, EV2BACnetDevice]    = {}
+        # MS/TP trunks: router IP -> {mac: device}. These devices own no address
+        # of their own; the router's IP carries them and the MAC selects one.
+        self._mstp: Dict[str, Dict[int, EV2BACnetDevice]]  = {}
 
         # Per-device telemetry engines
         self._telemetry: Dict[int, EV2TelemetryEngine]     = {}
@@ -419,6 +422,87 @@ class BACnetController:
             self._sockets_dirty = True
         self._log(f"[BACnet] hot-added {device_type} {name} @ {ip} (instance {inst})",
                   "success")
+        return True
+
+    def add_router_device(self, ip: str, name: str, net: int = 0) -> bool:
+        """Register a BACnet/IP <-> MS/TP router as an IP device.
+
+        A router is not plant: it has no sensors and no plant object tree, just a
+        Device object and a trunk. It exists here so its socket can carry the
+        devices behind it — add_mstp_device requires it to be present first.
+        """
+        if not self._running or not ip:
+            return False
+        with self._dev_lock:
+            if ip in self._devices_by_ip:
+                return True                     # already registered
+            inst = (max(self._devices) + 1) if self._devices else self._base_instance
+            try:
+                dev = EV2BACnetDevice(
+                    device_ip=ip, device_instance=inst, device_name=name,
+                    log_cb=self._log_cb, port=self._port,
+                    object_tree={}, name_to_key={}, kind="router")
+            except Exception as exc:
+                self._log(f"[BACnet] router {name} @ {ip} failed: {exc}", "warning")
+                return False
+            self._devices[inst] = dev
+            self._devices_by_ip[ip] = dev
+            self._mstp.setdefault(ip, {})
+            self._sockets_dirty = True
+        self._log(f"[BACnet] router {name} @ {ip} (network {net}, instance {inst})",
+                  "success")
+        return True
+
+    def add_mstp_device(self, router_ip: str, mac: int, net: int,
+                        device_type: str, name: str,
+                        rated_kw: float = 0.0) -> bool:
+        """Register a plant device on an MS/TP trunk behind a BACnet/IP router.
+
+        The device owns NO address. `router_ip` is the router's, `mac` selects it
+        on the trunk, and `net` is the trunk's network number — which together are
+        what a real MS/TP actuator or VFD is addressed by. It shares the router's
+        socket and stamps a source route on every reply, so a client sees the
+        eighteen devices on the trunk rather than one router.
+
+        The router itself must already be registered as an IP device.
+        """
+        if not router_ip or mac is None:
+            return False
+        with self._dev_lock:
+            router = self._devices_by_ip.get(router_ip)
+            if router is None:
+                self._log(f"[BACnet] MS/TP {name}: no router at {router_ip}", "warning")
+                return False
+            trunk = self._mstp.setdefault(router_ip, {})
+            if mac in trunk:
+                self._log(f"[BACnet] MS/TP MAC {mac} already used on {router_ip} "
+                          f"— {name} skipped", "warning")
+                return False
+            inst = (max(self._devices) + 1) if self._devices else self._base_instance
+            try:
+                tree, n2k = build_plant_object_tree(device_type, float(rated_kw or 0.0))
+            except KeyError:
+                self._log(f"[BACnet] Unknown plant device_type '{device_type}' "
+                          f"— {name} skipped.", "warning")
+                return False
+            try:
+                dev = EV2BACnetDevice(
+                    device_ip=router_ip, device_instance=inst, device_name=name,
+                    log_cb=self._log_cb, port=self._port,
+                    object_tree=tree, name_to_key=n2k,
+                    kind=f"plant:{device_type}", mstp_net=net, mstp_mac=mac)
+            except Exception as exc:
+                self._log(f"[BACnet] MS/TP add {name} failed: {exc}", "warning")
+                return False
+            # Share the router's socket — one router, one socket, N devices.
+            dev._send_sock = router._send_sock
+            self._devices[inst] = dev
+            trunk[mac] = dev
+            self._telemetry[inst] = PlantTelemetryEngine(
+                device_type, rated_kw=float(rated_kw or 0.0),
+                seed=(hash(name) & 0xFFFFFFFF))
+        self._log(f"[BACnet] MS/TP {device_type} {name} @ {router_ip} "
+                  f"net {net} MAC {mac} (instance {inst})", "success")
         return True
 
     def add_ev2_device(self, ip: str, name: Optional[str] = None,
@@ -857,9 +941,34 @@ class BACnetController:
         if bvlc_func is None:
             return
 
-        apdu_data = parse_npdu(npdu_data)
-        if apdu_data is None:
+        from core.bacnet_object_model import parse_npdu_routed
+        _routed = parse_npdu_routed(npdu_data)
+        if _routed is None:
             return
+        apdu_data = _routed["apdu"]
+
+        # A request carrying DNET/DADR is addressed THROUGH this router to one
+        # device on its MS/TP trunk. DADR is the only thing that says which, so
+        # resolve it here and hand the packet to that child — otherwise every
+        # read of the trunk would land on whichever device the object-instance
+        # search happened to match first, which is the same class of bug the
+        # per-device socket path was introduced to fix.
+        if _routed["dadr"]:
+            _router_ip = (target_dev.device_ip if target_dev is not None
+                          else (src_addr[0] if src_addr else ""))
+            with self._dev_lock:
+                _trunk = dict(self._mstp.get(_router_ip) or {})
+            if not _trunk:
+                # Only one trunk is configured per router; if the packet reached
+                # a router socket at all, serve it from that router's trunk.
+                with self._dev_lock:
+                    for _rip, _t in self._mstp.items():
+                        if target_dev is not None and _rip == target_dev.device_ip:
+                            _trunk = dict(_t)
+                            break
+            _child = _trunk.get(_routed["dadr"][0])
+            if _child is not None:
+                target_dev = _child
 
         pdu = parse_apdu(apdu_data)
         if pdu is None:
