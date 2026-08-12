@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.auth import require_auth
 from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow, bacnet, redfish
+from api.routers import modbus
 from api.routers import events, jobs, tick, fleet, floorplan
 from api.routers import auth as auth_router
 from api.routers import graph as graph_router
@@ -59,6 +60,7 @@ app.include_router(devices.router, prefix="/api", dependencies=_AUTH)
 app.include_router(sflow.router,   prefix="/api", dependencies=_AUTH)
 app.include_router(bacnet.router,  prefix="/api", dependencies=_AUTH)
 app.include_router(redfish.router, prefix="/api", dependencies=_AUTH)
+app.include_router(modbus.router,  prefix="/api", dependencies=_AUTH)
 # events router authenticates per-route via query param (EventSource has no headers)
 app.include_router(events.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api", dependencies=_AUTH)

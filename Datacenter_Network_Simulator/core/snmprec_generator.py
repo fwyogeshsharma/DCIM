@@ -478,6 +478,18 @@ class SNMPRecGenerator:
         if device.device_type in _NO_SNMP_TYPES:
             return
 
+        # A Modbus RTU slave is a field transmitter on an RS-485 drop. It has no
+        # IP, so it can have no SNMP agent — its reading reaches an NMS through
+        # the gateway's ENTITY-SENSOR table, not from here. Writing a file would
+        # be worse than useless: snmpsim serves any file in this directory, so an
+        # orphan is a live agent answering for a device that cannot exist.
+        if getattr(device, "modbus_role", "") == "rtu_slave":
+            return
+
+        # A gateway republishes every instrument on its trunk.
+        if device.device_type == DeviceType.MODBUS_GATEWAY:
+            entries += self._gateway_probe_entries(device)
+
         # Sort and write
         # Output layout:  datasets/snmp/<snmp_addr>.snmprec
         # SNMPSim routes community "<snmp_addr>" → this file.
@@ -746,6 +758,14 @@ class SNMPRecGenerator:
                 updates[f"{_CISCO_MEM_MIB}.6.1"] = ("2", str(mem_free // (1024 * 1024)))
 
             # Sensor environmental readings
+            # A gateway's republished trunk moves every tick and must be patched
+            # here for the same reason a directly-attached probe is: the patcher
+            # only rewrites lines that already exist, and generate_device wrote
+            # them, so this is what keeps them from freezing at build values.
+            if device.device_type == DeviceType.MODBUS_GATEWAY:
+                for _oid, _typ, _val in self._gateway_probe_entries(device):
+                    updates[_oid] = (_typ, _val)
+
             if device.device_type == DeviceType.SENSOR:
                 # Plant header instrument: one point, served on ENTITY-SENSOR-MIB.
                 # Must be patched here as well as generated, or a poll would keep
@@ -2329,13 +2349,28 @@ class SNMPRecGenerator:
         it with the real one.
         """
         # Circular at import time — device_state_store imports this module's siblings.
-        from core.device_state_store import _get_ext_state, _probe_role
+        from core.device_state_store import _probe_role
 
         role = _probe_role(device)
         if not role:
             return None
-        st = _get_ext_state(device.name)
+        return SNMPRecGenerator._probe_point_entries(device.name, role, 1)
+
+    @staticmethod
+    def _probe_point_entries(name: str, role: str, index: int) -> List[OidEntry]:
+        """One header instrument as an ENTITY-SENSOR row at `index`.
+
+        Split out of _plant_probe_entries so a Modbus gateway can publish its
+        whole RS-485 trunk as one indexed table. The instrument itself has no IP
+        and no agent — the gateway polls it over Modbus and republishes it here,
+        which is what a real BMS front end does and why ENTITY-SENSOR-MIB (one
+        instrument, one value, vendor-neutral) was the right MIB all along.
+        """
+        from core.device_state_store import _get_ext_state
+
+        st = _get_ext_state(name)
         b = _ENTITY_SENSOR
+        i = int(index)
         if role == "chw_flow":
             # entPhySensorType 12 = "other" (litres/second has no ENTITY enum),
             # scale 9 = units, precision 2.
@@ -2348,12 +2383,45 @@ class SNMPRecGenerator:
         else:
             value, oper = int(round(float(raw) * scale)), "1"
         return [
-            _oid_entry(f"{b}.1.1", "2", stype),        # entPhySensorType
-            _oid_entry(f"{b}.2.1", "2", "9"),          # entPhySensorScale = units
-            _oid_entry(f"{b}.3.1", "2", precision),    # entPhySensorPrecision
-            _oid_entry(f"{b}.4.1", "2", str(value)),   # entPhySensorValue
-            _oid_entry(f"{b}.5.1", "2", oper),         # entPhySensorOperStatus
+            _oid_entry(f"{b}.1.{i}", "2", stype),        # entPhySensorType
+            _oid_entry(f"{b}.2.{i}", "2", "9"),          # entPhySensorScale = units
+            _oid_entry(f"{b}.3.{i}", "2", precision),    # entPhySensorPrecision
+            _oid_entry(f"{b}.4.{i}", "2", str(value)),   # entPhySensorValue
+            _oid_entry(f"{b}.5.{i}", "2", oper),         # entPhySensorOperStatus
         ]
+
+    @staticmethod
+    def _gateway_probe_entries(device: Device) -> List[OidEntry]:
+        """A Modbus gateway's whole trunk, as one indexed ENTITY-SENSOR table.
+
+        Six indexed values with no names would be unusable — the poller cannot
+        tell index 3 from index 5. So each row also carries entPhysicalDescr and
+        entPhysicalName, which is exactly how a real gateway makes its trunk
+        interpretable, and how the instrument keeps its identity after losing its
+        IP address.
+
+        Index order is device.modbus_children order, which the migration tool
+        writes in unit-id order and must not reshuffle: an index that moves is an
+        index every existing poller template now reads wrong.
+        """
+        from core.device_state_store import _probe_role_by_name
+
+        children = list(getattr(device, "modbus_children", []) or [])
+        if not children:
+            return []
+        ent = "1.3.6.1.2.1.47.1.1.1.1"       # entPhysicalEntry
+        entries: List[OidEntry] = []
+        for idx, child in enumerate(children, start=1):
+            role = _probe_role_by_name(child)
+            if not role:
+                continue
+            entries += SNMPRecGenerator._probe_point_entries(child, role, idx)
+            entries += [
+                _oid_entry(f"{ent}.2.{idx}", "4", child),        # entPhysicalDescr
+                _oid_entry(f"{ent}.5.{idx}", "2", "8"),          # class = sensor
+                _oid_entry(f"{ent}.7.{idx}", "4", child),        # entPhysicalName
+            ]
+        return entries
 
     def _sensor_entries(self, device: Device) -> List[OidEntry]:
         """Return vendor-specific OIDs for temp, humidity, dewpoint, and airflow."""

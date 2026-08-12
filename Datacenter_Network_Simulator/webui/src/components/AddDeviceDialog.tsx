@@ -153,7 +153,7 @@ const BMC_PORT: Record<string, string> = {
 const FACILITY_MGMT_TYPES = new Set([
   'pdu', 'floor_pdu', 'ups', 'ats', 'mcc', 'mpp', 'switchgear',
   'utility_feed', 'generator', 'energy_monitor', 'sensor', 'crah', 'chiller',
-  'cooling_tower', 'pump', 'valve', 'cdu',
+  'cooling_tower', 'pump', 'valve', 'cdu', 'modbus_gateway',
 ])
 const FACILITY_REDUNDANT_MGMT_TYPES = new Set(['pdu', 'floor_pdu', 'ups', 'ats', 'switchgear'])
 

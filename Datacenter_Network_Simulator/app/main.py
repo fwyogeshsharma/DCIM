@@ -183,6 +183,7 @@ def _run_headless():
     from simulator.sflow_controller import SFlowController
     from simulator.bacnet_controller import BACnetController
     from simulator.redfish_controller import RedfishController
+    from simulator.modbus_controller import ModbusController
     from core.device_state_store import DeviceStateStore
     from core.trap_engine import TrapEngine
     from core.rule_engine import RuleEngine
@@ -202,6 +203,7 @@ def _run_headless():
     sflow          = SFlowController()
     bacnet         = BACnetController("datasets/bacnet")
     redfish        = RedfishController()
+    modbus         = ModbusController("datasets/modbus")
     state_store    = DeviceStateStore(
         device_manager, topology, snmp_dir, tick_interval=1.0, snmp_sync_every=5,
     )
@@ -281,6 +283,7 @@ def _run_headless():
         sflow=sflow,
         bacnet=bacnet,
         redfish=redfish,
+        modbus=modbus,
         state_store=state_store,
         rule_engine=rule_engine,
         trap_engine=trap_engine,

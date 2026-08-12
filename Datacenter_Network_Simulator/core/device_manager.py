@@ -36,6 +36,7 @@ class DeviceType(str, Enum):
     COOLING_TOWER  = "cooling_tower" # Cooling tower (fan + basin) -- BACnet only
     VALVE          = "valve"         # Control/isolation valve (actuator position) -- BACnet only
     CDU            = "cdu"           # Coolant Distribution Unit (direct-to-chip liquid cooling) -- SNMP + BACnet (native comm card)
+    MODBUS_GATEWAY = "modbus_gateway"  # Modbus TCP/RTU gateway (Moxa MGate class) -- fronts an RS-485 trunk of field transmitters
 
 
 # Floor-standing / plant equipment: located by room/area, NOT mounted in an IT rack.
@@ -58,6 +59,8 @@ FACILITY_TYPES = frozenset({
     # are rack-mounted, so sysLocation / Redfish Placement SHOULD emit Row/Rack/U.
     DeviceType.VALVE,
     DeviceType.ENERGY_MONITOR,
+    # Wall/rack-mounted in the plant room, not in an IT rack.
+    DeviceType.MODBUS_GATEWAY,
 })
 
 
@@ -102,6 +105,10 @@ class Vendor(str, Enum):
     BAC              = "Baltimore Aircoil Company"
     MARLEY           = "SPX Cooling (Marley)"
     BELIMO           = "Belimo"
+    # Modbus TCP/RTU gateways — the box that brings an RS-485 trunk of field
+    # transmitters onto Ethernet. Moxa MGate is the commodity choice; Schneider
+    # Link150 and Eaton PXG occupy the same slot.
+    MOXA             = "Moxa"
     JOHNSON_CONTROLS = "Johnson Controls"
     # Direct-to-chip CDU vendors
     COOLIT           = "CoolIT Systems"
@@ -211,6 +218,10 @@ FACILITY_MGMT_TYPES = frozenset({
     DeviceType.UTILITY_FEED, DeviceType.GENERATOR, DeviceType.ENERGY_MONITOR,
     DeviceType.SENSOR, DeviceType.CRAH, DeviceType.CHILLER,
     DeviceType.COOLING_TOWER, DeviceType.PUMP, DeviceType.VALVE, DeviceType.CDU,
+    # A Modbus gateway is one Ethernet port on the BMS management plane plus one
+    # or more RS-485 trunks. The Ethernet side is the only part that gets an
+    # address, and it is the reason the trunk's instruments no longer need one.
+    DeviceType.MODBUS_GATEWAY,
 })
 
 
@@ -1063,6 +1074,18 @@ class Device:
     mgmt_ip: str = ""      # OOB management IP (192.168.x.y)
     mgmt_vlan: int = 10    # VLAN tag for management segment
 
+    # Modbus plane.
+    #   "server"    native Modbus/TCP on this device's own IP
+    #   "gateway"   owns an IP and fronts an RS-485 trunk, addressed by unit id
+    #   "rtu_slave" a field transmitter ON that trunk. It has NO IP of its own —
+    #               that is the entire point. A chilled-water thermowell is two
+    #               wires into a transmitter, not a network node, and the gateway
+    #               is what the BMS and the NMS both actually talk to.
+    modbus_role: str = ""
+    modbus_unit_id: int = 0
+    modbus_gateway_ip: str = ""              # rtu_slave -> its gateway's IP
+    modbus_children: List[str] = field(default_factory=list)   # gateway -> slave names
+
     # Power chain
     power_draw_w: int = 0   # typical power draw in watts
     # Nameplate THROUGHPUT rating (W) for power-distribution / backup gear
@@ -1156,12 +1179,21 @@ class Device:
         if (not self.rated_power_w or self.rated_power_w <= 0):
             self.rated_power_w = rated_capacity_w(self.device_type, self.model_name)
         # Normalize interface_groups (str → InterfaceType)
-        if self.device_type in FACILITY_PASSIVE_TYPES:
+        if (self.device_type in FACILITY_PASSIVE_TYPES
+                or self.modbus_role == "rtu_slave"):
             # Passive panel — no monitoring card, so no port. Checked FIRST and it
             # discards whatever came in: topologies written before this carry a phantom
             # eth0 (no IP, cabled to nothing, no SNMP dataset generated) that made a
             # breaker panel look like a pollable network node. mgmt_vlan goes with it —
             # there is no port to tag.
+            #
+            # A Modbus RTU slave lands here for the same reason and by a different
+            # route: it is a field transmitter on an RS-485 drop — an RTD in a pipe
+            # wired to a two-wire trunk. It has no Ethernet port, no MAC and no IP,
+            # and the gateway that fronts the trunk is the only addressable thing on
+            # it. Clearing the port here rather than in the migration tool is what
+            # makes it stick: a saved topology's empty interface list is treated as
+            # "generation stands", so the port would grow straight back.
             self.interface_groups = []
             self.interface_count = 0
             self.interfaces = []

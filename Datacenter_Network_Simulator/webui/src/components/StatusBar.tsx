@@ -79,6 +79,7 @@ const DEVICE_TYPE_SHORT: Record<string, string> = {
   ups:           'UPS',
   sensor:        'SNS',
   energy_monitor:'EV2',
+  modbus_gateway:'MBGW',
   crah:          'CRAH',
   chiller:       'CHLR',
   pump:          'PMP',

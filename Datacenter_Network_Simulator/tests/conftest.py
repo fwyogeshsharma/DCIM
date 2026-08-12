@@ -166,6 +166,20 @@ def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
         # the "Plant …" model names, exactly as the shipped topology does — the
         # store reads the role off both, so a fixture that shortcut either would
         # test nothing about the dispatch.
+        #
+        # They carry NO address, and hang off a Modbus gateway by unit id, which
+        # is how the shipped topology models them: a thermowell is an RTD in a
+        # pipe, not a network node. Giving them IPs here would leave this harness
+        # — the one that has already caught two real bugs — modelling a world the
+        # simulator no longer has.
+        gw_ip = f"10.{net}.6.1"
+        gateway = _device(dm, f"MBGW1-{dc}-CP", "modbus_gateway", "", 15,
+                          model="Moxa MGate MB3480", room="Central Plant", dc=dc)
+        gateway.mgmt_ip = gw_ip
+        gateway.modbus_role = "gateway"
+        gateway.modbus_children = []
+        made["MBGW"] = gateway
+
         for j, (code, model) in enumerate((
                 ("CHWS", "Plant CHW Supply Temp"),
                 ("CHWR", "Plant CHW Return Temp"),
@@ -173,9 +187,13 @@ def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
                 ("CWS", "Plant CW Supply Temp"),
                 ("CWR", "Plant CW Return Temp"),
                 ("CTB", "Plant CT Basin Temp")), start=1):
-            made[code] = _device(dm, f"{code}-{dc}-CP", "sensor",
-                                 f"10.{net}.6.{j}", 0, model=model,
-                                 room="Central Plant", dc=dc)
+            probe = _device(dm, f"{code}-{dc}-CP", "sensor", "", 0, model=model,
+                            room="Central Plant", dc=dc)
+            probe.modbus_role = "rtu_slave"
+            probe.modbus_unit_id = j
+            probe.modbus_gateway_ip = gw_ip
+            gateway.modbus_children.append(probe.name)
+            made[code] = probe
 
     if valves:
         # Header control valves. The leading name segment carries the loop the

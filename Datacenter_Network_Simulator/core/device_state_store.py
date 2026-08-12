@@ -157,7 +157,18 @@ def _probe_role(device) -> "str | None":
     ordinary rack environmental probe."""
     if not str(getattr(device, "model_name", "")).startswith(_PROBE_MODEL_PREFIX):
         return None
-    return _PROBE_ROLES.get(str(getattr(device, "name", "")).split("-")[0].upper())
+    return _probe_role_by_name(getattr(device, "name", ""))
+
+
+def _probe_role_by_name(name: str) -> "str | None":
+    """Role from the name prefix alone, with no Device object.
+
+    A Modbus gateway republishes its trunk by NAME (device.modbus_children), and
+    the SNMP generator resolves those names against _ext_state_cache — which is
+    also name-keyed. Neither has a Device to hand, so the role lookup must work
+    off the identifier the same way _probe_role does.
+    """
+    return _PROBE_ROLES.get(str(name).split("-")[0].upper())
 
 
 # UPS status progression
@@ -289,6 +300,7 @@ class DeviceStateStore:
 
         # BACnet controller (optional — only active when BACnet sim is running)
         self._bacnet_ctrl: Optional["BACnetController"] = None
+        self._modbus_ctrl = None                 # ModbusController, optional
 
         # Background ticker
         self._thread: Optional[threading.Thread] = None
@@ -716,6 +728,22 @@ class DeviceStateStore:
         self._bacnet_ctrl = None
         _plant_state_cache.clear()
         self._log("[StateStore] BACnet telemetry sync disabled.", "info")
+
+    def enable_modbus(self, ctrl):
+        """Register the Modbus controller — its tick() runs every tick cycle.
+
+        Unlike BACnet this holds no telemetry of its own: the Modbus slaves
+        re-render straight from _ext_state_cache, the same dict snmprec_generator
+        renders into SNMP OIDs. There is deliberately no _publish_*_state()
+        counterpart, because there is nothing for Modbus to publish back.
+        """
+        self._modbus_ctrl = ctrl
+        self._log("[StateStore] Modbus telemetry sync enabled.", "info")
+
+    def disable_modbus(self):
+        """Deregister the Modbus controller."""
+        self._modbus_ctrl = None
+        self._log("[StateStore] Modbus telemetry sync disabled.", "info")
 
     def _publish_plant_state(self):
         """Publish live chiller-plant BACnet present-values to the module cache
@@ -5218,6 +5246,24 @@ class DeviceStateStore:
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
+
+        # Modbus register refresh. Runs AFTER the electrical/plant models above
+        # have written this tick's ext state, so a master polling at 1 Hz reads
+        # the same numbers the SNMP plane serves rather than last tick's.
+        #
+        # Only the PLANT unpowered set is passed, and that is deliberate. The v1
+        # Modbus devices are electrical gear whose trip units and comm cards run
+        # on control power, not on the bus they measure — a dead switchgear still
+        # answers, reporting Bus_Energized = 0. Killing its comms on a bus outage
+        # would hide the very reading an operator polls it for. Field devices on
+        # an RTU trunk are the ones that genuinely go silent, and they answer
+        # through the gateway as exception 0x0B.
+        if self._modbus_ctrl:
+            try:
+                self._modbus_ctrl.tick(self._dt,
+                                       unpowered_names=self._plant_unpowered_names)
+            except Exception:
+                log.exception("[StateStore] Modbus tick error")
 
         if self._tick_cb:
             try:

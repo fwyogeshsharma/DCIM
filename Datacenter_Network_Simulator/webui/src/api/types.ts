@@ -395,7 +395,7 @@ export interface ElectricalDeviceSnapshot {
 
 export interface LogEntry {
   id: number
-  tab: 'snmp' | 'gnmi' | 'sflow' | 'bacnet' | 'redfish'
+  tab: 'snmp' | 'gnmi' | 'sflow' | 'bacnet' | 'redfish' | 'modbus'
   msg: string
   level: string
   ts: number

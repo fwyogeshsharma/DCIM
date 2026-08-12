@@ -190,6 +190,8 @@
   /* passive sensing */
   --node-sensor:         #4d646e;
   --node-energy-monitor: #486471;
+  /* Modbus TCP/RTU gateway — the only node on the RS-485 trunk with an address */
+  --node-modbus-gateway: #5a5a7a;
   --node-default:        #50646c;   /* unknown device_type */
 
   /* Node chrome. The body is filled with the device-type colour above; these

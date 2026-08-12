@@ -90043,38 +90043,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.20",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CHW Supply Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "e667fbd5",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "5d:84:71:ed:a6:bd",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.20",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 9,
         "ups_backup": "",
@@ -90105,7 +90083,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 1,
+        "modbus_gateway_ip": "10.52.14.19"
       }
     },
     {
@@ -90119,38 +90100,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.19",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CHW Return Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "6b30c89c",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "52:db:48:5f:6d:87",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.19",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -90181,7 +90140,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 2,
+        "modbus_gateway_ip": "10.52.14.19"
       }
     },
     {
@@ -90195,38 +90157,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.36",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CHW Flow Meter",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "bea56af1",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "d2:18:ad:ac:ab:3e",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.36",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 7,
         "ups_backup": "",
@@ -90257,7 +90197,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 3,
+        "modbus_gateway_ip": "10.52.14.19"
       }
     },
     {
@@ -91939,38 +91882,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.20",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CHW Supply Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "77a2c912",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "0e:9c:2d:54:da:ca",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.20",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 6,
         "ups_backup": "",
@@ -92001,7 +91922,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 1,
+        "modbus_gateway_ip": "10.52.24.19"
       }
     },
     {
@@ -92015,38 +91939,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.19",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CHW Return Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "fa7bff58",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "5f:b7:9c:33:4e:c7",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.19",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 6,
         "ups_backup": "",
@@ -92077,7 +91979,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 2,
+        "modbus_gateway_ip": "10.52.24.19"
       }
     },
     {
@@ -92091,38 +91996,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.36",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CHW Flow Meter",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "85377da7",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "ce:21:12:6b:55:b7",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.36",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 7,
         "ups_backup": "",
@@ -92153,7 +92036,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 3,
+        "modbus_gateway_ip": "10.52.24.19"
       }
     },
     {
@@ -93805,38 +93691,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.29",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CW Supply Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "d396a795",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:d3:96:a7:95:46",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.29",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -93867,7 +93731,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 4,
+        "modbus_gateway_ip": "10.52.14.19"
       }
     },
     {
@@ -93881,38 +93748,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.28",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CW Return Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "3e4ddd2d",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:3e:4d:dd:2d:13",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.28",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -93943,7 +93788,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 5,
+        "modbus_gateway_ip": "10.52.14.19"
       }
     },
     {
@@ -93957,38 +93805,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.14.24",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CT Basin Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "b9dd5c5e",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:b9:dd:5c:5e:e7",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.14.24",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -94019,7 +93845,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 6,
+        "modbus_gateway_ip": "10.52.14.19"
       }
     },
     {
@@ -94033,38 +93862,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.29",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CW Supply Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "c8fd4d14",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:c8:fd:4d:14:dc",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.29",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -94095,7 +93902,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 4,
+        "modbus_gateway_ip": "10.52.24.19"
       }
     },
     {
@@ -94109,38 +93919,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.28",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CW Return Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "11992fa8",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:11:99:2f:a8:b9",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.28",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -94171,7 +93959,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 5,
+        "modbus_gateway_ip": "10.52.24.19"
       }
     },
     {
@@ -94185,38 +93976,16 @@
         "device_type": "sensor",
         "vendor": "Vertiv (Liebert)",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.24.24",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Plant CT Basin Temp",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "fc1ab32e",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:fc:1a:b3:2e:d2",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.24.24",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -94247,7 +94016,10 @@
         "floor_y": 0.6,
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "modbus_role": "rtu_slave",
+        "modbus_unit_id": 6,
+        "modbus_gateway_ip": "10.52.24.19"
       }
     },
     {
@@ -157187,6 +156959,128 @@
         "hot_aisle": "HA1",
         "outlets": [],
         "psus": []
+      }
+    },
+    {
+      "id": "mbgwdc101",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "device": {
+        "name": "MBGW1-DC1-CP",
+        "device_type": "modbus_gateway",
+        "vendor": "Moxa",
+        "model_name": "Moxa MGate MB3480",
+        "ip_address": "",
+        "mgmt_ip": "10.52.14.19",
+        "snmp_port": 161,
+        "snmp_community": "10.52.14.19",
+        "metrics_enabled": true,
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "02:34:0e:13:85:01",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "modbus_role": "gateway",
+        "modbus_children": [
+          "CHWS-DC1-CP",
+          "CHWR-DC1-CP",
+          "FLOW-DC1-CP",
+          "CWS-DC1-CP",
+          "CWR-DC1-CP",
+          "CTB-DC1-CP"
+        ],
+        "datacenter": "DC1",
+        "datacenter_city": "Chicago",
+        "country": "USA",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "power_draw_w": 15,
+        "rated_power_w": 25
+      }
+    },
+    {
+      "id": "mbgwdc201",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "device": {
+        "name": "MBGW1-DC2-CP",
+        "device_type": "modbus_gateway",
+        "vendor": "Moxa",
+        "model_name": "Moxa MGate MB3480",
+        "ip_address": "",
+        "mgmt_ip": "10.52.24.19",
+        "snmp_port": 161,
+        "snmp_community": "10.52.24.19",
+        "metrics_enabled": true,
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "02:34:18:13:85:01",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "modbus_role": "gateway",
+        "modbus_children": [
+          "CHWS-DC2-CP",
+          "CHWR-DC2-CP",
+          "FLOW-DC2-CP",
+          "CWS-DC2-CP",
+          "CWR-DC2-CP",
+          "CTB-DC2-CP"
+        ],
+        "datacenter": "DC2",
+        "datacenter_city": "New York",
+        "country": "USA",
+        "room": "Central Plant",
+        "floor": "1",
+        "rack_row": 1,
+        "rack_num": 1,
+        "power_draw_w": 15,
+        "rated_power_w": 25
       }
     }
   ],

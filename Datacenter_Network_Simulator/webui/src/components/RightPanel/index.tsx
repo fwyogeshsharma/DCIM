@@ -6,6 +6,7 @@ import GNMIPanel    from './GNMIPanel'
 import SFlowPanel   from './SFlowPanel'
 import BACnetPanel  from './BACnetPanel'
 import RedfishPanel from './RedfishPanel'
+import ModbusPanel  from './ModbusPanel'
 import TrapsPanel   from './TrapsPanel'
 import RulesPanel   from './RulesPanel'
 import ConsolePanel from './ConsolePanel'
@@ -36,6 +37,7 @@ const TABS: Tab[] = [
   { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
   { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
   { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
+  { id: 'modbus',  icon: '🔌',  label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },

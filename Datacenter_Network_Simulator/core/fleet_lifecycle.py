@@ -2577,6 +2577,24 @@ class FleetLifecycleEngine:
                                  circuits=self._RPP_POLES)
             except Exception as e:
                 self._log(f"[Fleet] BACnet EV2 commission {device.name}: {e}")
+        self._commission_modbus(device, mgmt)
+
+    # Facility electrical gear joins the running Modbus plane the same way. The
+    # type filter is the register map registry itself, so a type added there is
+    # commissioned here without a second list drifting out of step.
+    def _commission_modbus(self, device: Device, mgmt: str) -> None:
+        m = getattr(self.s, "modbus", None)
+        if m is None or not getattr(m, "_running", False):
+            return
+        from core.modbus_register_map import MODBUS_DEVICE_TYPES
+        dt = device.device_type.value
+        if dt not in MODBUS_DEVICE_TYPES:
+            return
+        try:
+            m.add_device(device.ip_address or mgmt, dt, name=device.name,
+                         unit_id=int(getattr(device, "modbus_unit_id", 1) or 1))
+        except Exception as e:
+            self._log(f"[Fleet] Modbus commission {device.name}: {e}")
 
     # Chiller-plant device types exposed over BACnet (mirror api/routers/bacnet.py).
     _BACNET_PLANT_TYPES = {DeviceType.CHILLER, DeviceType.PUMP,
@@ -2602,6 +2620,10 @@ class FleetLifecycleEngine:
             except Exception: pass
         if b is not None and device.device_type == DeviceType.ENERGY_MONITOR:
             try: b.remove_ev2_device(device.ip_address or bind_ip)
+            except Exception: pass
+        m = getattr(self.s, "modbus", None)
+        if m is not None:
+            try: m.remove_device(ip=device.ip_address or bind_ip, name=device.name)
             except Exception: pass
         self._unbind_ip(device.ip_address)
         if bind_ip and bind_ip != device.ip_address:

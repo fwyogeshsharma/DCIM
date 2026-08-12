@@ -59,6 +59,10 @@ class AppState:
         self.sflow:   Optional[Any] = None  # SFlowController (set by MainWindow)
         self.bacnet:  Optional[Any] = None  # BACnetController (set by MainWindow)
         self.redfish: Optional[Any] = None  # RedfishController (set by MainWindow)
+        # ModbusController. Stays None on the desktop path (ui/main_window.py does
+        # not construct one), which the router reports as 503 rather than failing
+        # obscurely — the web UI is the only surface that drives this plane.
+        self.modbus:  Optional[Any] = None
         self.state_store: Optional["DeviceStateStore"] = None
         self.rule_engine: Optional["RuleEngine"] = None
         self.trap_engine: Optional["TrapEngine"] = None
@@ -137,6 +141,7 @@ class AppState:
         sflow=None,
         bacnet=None,
         redfish=None,
+        modbus=None,
         state_store=None,
         rule_engine=None,
         trap_engine=None,
@@ -151,6 +156,7 @@ class AppState:
         self.sflow = sflow
         self.bacnet = bacnet
         self.redfish = redfish
+        self.modbus = modbus
         self.state_store = state_store
         self.rule_engine = rule_engine
         self.trap_engine = trap_engine
@@ -245,7 +251,8 @@ class AppState:
         sflow_on   = bool(self.sflow   and self.sflow.is_running())
         bacnet_on  = bool(self.bacnet  and self.bacnet.is_running())
         redfish_on = bool(self.redfish and self.redfish.is_running())
-        if not (snmp_on or gnmi_on or sflow_on or bacnet_on or redfish_on):
+        modbus_on  = bool(self.modbus  and self.modbus.is_running())
+        if not (snmp_on or gnmi_on or sflow_on or bacnet_on or redfish_on or modbus_on):
             self.state_store.stop()
 
     def reload_snmp(self, log_cb=None) -> bool:
@@ -550,7 +557,8 @@ class AppState:
 
     @staticmethod
     def _sse_event(event: str, *args) -> dict:
-        if event in ("log", "log_sflow", "log_gnmi", "log_bacnet", "log_redfish", "console_log") and len(args) >= 1:
+        if event in ("log", "log_sflow", "log_gnmi", "log_bacnet", "log_redfish",
+                     "log_modbus", "console_log") and len(args) >= 1:
             msg = args[0]
             level = args[1] if len(args) > 1 else "info"
             if event == "log_sflow":
@@ -561,6 +569,8 @@ class AppState:
                 tab = "bacnet"
             elif event == "log_redfish":
                 tab = "redfish"
+            elif event == "log_modbus":
+                tab = "modbus"
             else:
                 tab = "snmp"
                 if isinstance(msg, str) and "[gNMI]" in msg:
@@ -571,6 +581,8 @@ class AppState:
                     tab = "bacnet"
                 elif isinstance(msg, str) and "[Redfish]" in msg:
                     tab = "redfish"
+                elif isinstance(msg, str) and "[Modbus]" in msg:
+                    tab = "modbus"
             return {"type": "log", "tab": tab, "msg": str(msg), "level": str(level)}
         if event in ("snmp_progress", "gnmi_progress", "binding_progress"):
             done = args[0] if len(args) > 0 else 0

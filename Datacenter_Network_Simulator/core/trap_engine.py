@@ -87,13 +87,20 @@ def _trap_source_ip(device: Device, trap_type: Optional[TrapType] = None) -> str
     BMC platform events come from the server's BMC (mgmt IP). Server OS-agent
     traps come from the production IP — the OS owns the prod NIC. Everything
     else (NOS, UPS, PDU, sensors) answers on its mgmt IP when it has one.
+
+    A Modbus RTU field transmitter has neither, and that is not an omission:
+    Modbus has no unsolicited messaging at all, so a thermowell physically
+    cannot raise a trap. On a real site the BMS/gateway polls it and raises the
+    alarm on its behalf, which is exactly what falling back to the gateway IP
+    models. The condition is still detected on the instrument's own reading —
+    only the notification's source moves to the thing that can actually send it.
     """
     mgmt = getattr(device, "mgmt_ip", "") or ""
     if trap_type in (TrapType.SERVER_POWER_OFF, TrapType.SERVER_POWER_ON):
         return mgmt or device.ip_address
     if device.device_type == DeviceType.SERVER:
         return device.ip_address or mgmt
-    return mgmt or device.ip_address
+    return mgmt or device.ip_address or getattr(device, "modbus_gateway_ip", "") or ""
 
 
 class TrapEvent:

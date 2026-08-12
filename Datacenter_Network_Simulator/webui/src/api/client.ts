@@ -265,6 +265,22 @@ export const api = {
   resetChillerTrip: (device: string)      => post('/bacnet/plant/chiller-reset', { device }),
   plantStandby:     ()                    => get('/bacnet/plant/standby'),
 
+  // modbus — facility electrical plane (utility feed / switchgear / MCC / MPP /
+  // generator / ATS / UPS). No trap or COV endpoints: Modbus has no unsolicited
+  // messaging, the master polls.
+  modbusStatus:     ()                    => get('/modbus/status'),
+  modbusCandidates: ()                    => get('/modbus/candidates'),
+  modbusStart:      (cfg: { port: number; write_enabled: boolean }) =>
+    post('/modbus/start', cfg),
+  modbusStop:       ()                    => post('/modbus/stop'),
+  modbusRegisters:  (device: string)      => get('/modbus/registers?device=' + encodeURIComponent(device)),
+  modbusWrite:      (device: string, space: string, addr: number, value: number) =>
+    post('/modbus/write', { device, space, addr, value }),
+  modbusWriteEnable: (enabled: boolean, device = '') =>
+    post('/modbus/write-enable', { enabled, device }),
+  modbusMapExportUrl: (deviceType: string) =>
+    '/api/modbus/map/export?device_type=' + encodeURIComponent(deviceType),
+
   // redfish
   redfishStatus:   ()                     => get('/redfish/status'),
   redfishStart:    (cfg: { port: number; username: string; password: string }) =>
