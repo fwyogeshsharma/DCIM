@@ -6695,6 +6695,23 @@ class DeviceStateStore:
                 st["pdu_energy_kwh"] = round(st.get("pdu_energy_kwh", 0.0)
                                              + real_kw * self._dt / 3600.0, 3)
 
+        # ── Rack environmental probe — publish its air readings by NAME ──────
+        # A DPX2 plugs into a PDU's sensor port and is served from the PDU's
+        # agent, which only knows its children by name. These readings live on
+        # the Device object, so without publishing them here the PDU would have
+        # nothing to render its own external-sensor table from.
+        if device.device_type == DeviceType.SENSOR and not _probe_role(device):
+            st["probe_inlet_c"] = round(float(device.inlet_temp), 1)
+            st["probe_mid_c"] = round(float(device.mid_temp), 1)
+            st["probe_outlet_c"] = round(float(device.outlet_temp), 1)
+            st["probe_humidity_pct"] = round(float(device.humidity), 1)
+            st["probe_dewpoint_c"] = round(float(device.dewpoint), 1)
+            # Identity travels with the reading: the PDU renders its children by
+            # name and needs to know which model each is (how many slots it
+            # occupies and of what type) and where its chain position starts.
+            st["probe_model"] = device.model_name
+            st["probe_slot"] = int(getattr(device, "sensor_slot", 0) or 0)
+
         # Update module-level cache so snmprec_generator can read UPS/PDU states
         _ext_state_cache[name] = dict(st)
 

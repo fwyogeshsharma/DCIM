@@ -486,9 +486,18 @@ class SNMPRecGenerator:
         if getattr(device, "modbus_role", "") == "rtu_slave":
             return
 
+        # A DPX2 on a PDU's sensor port has no agent either — it is an RJ-12 lead
+        # and the PDU answers for it. Same reasoning as the RTU slave above.
+        if getattr(device, "host_pdu_ip", ""):
+            return
+
         # A gateway republishes every instrument on its trunk.
         if device.device_type == DeviceType.MODBUS_GATEWAY:
             entries += self._gateway_probe_entries(device)
+
+        # A PDU publishes every DPX2 chained off its sensor port.
+        if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            entries += self._pdu_sensor_entries(device)
 
         # Sort and write
         # Output layout:  datasets/snmp/<snmp_addr>.snmprec
@@ -764,6 +773,10 @@ class SNMPRecGenerator:
             # them, so this is what keeps them from freezing at build values.
             if device.device_type == DeviceType.MODBUS_GATEWAY:
                 for _oid, _typ, _val in self._gateway_probe_entries(device):
+                    updates[_oid] = (_typ, _val)
+
+            if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+                for _oid, _typ, _val in self._pdu_sensor_entries(device):
                     updates[_oid] = (_typ, _val)
 
             if device.device_type == DeviceType.SENSOR:
@@ -2421,6 +2434,66 @@ class SNMPRecGenerator:
                 _oid_entry(f"{ent}.5.{idx}", "2", "8"),          # class = sensor
                 _oid_entry(f"{ent}.7.{idx}", "4", child),        # entPhysicalName
             ]
+        return entries
+
+    @staticmethod
+    def _dpx2_slots(model_name: str) -> int:
+        """How many external-sensor slots a DPX2 unit occupies on the chain."""
+        if model_name == "Raritan DPX2-T3H1":
+            return 4          # inlet, mid, exhaust, humidity
+        if model_name == "Raritan DPX2-CC2":
+            return 2          # water rope, temperature
+        return 2              # T1H1: temperature, humidity
+
+    @staticmethod
+    def _pdu_sensor_entries(device: Device) -> List[OidEntry]:
+        """A PDU's external-sensor table: every DPX2 chained off its sensor port.
+
+        This is where the Raritan table actually belongs. A DPX2 is an RJ-12 lead
+        with no processor — the PX2 polls it and publishes it under
+        RARITAN-PX2-MIB, so an NMS reads the probe from the PDU's agent at the
+        probe's slot. Serving it from a per-probe agent (as this simulator used
+        to) invents a network node that does not exist.
+
+        Slots are assigned per child from sensor_slot and run consecutively for
+        the width of that model, which is how a daisy chain enumerates.
+        """
+        from core.device_state_store import _get_ext_state
+
+        children = list(getattr(device, "sensor_children", []) or [])
+        if not children:
+            return []
+        b = _RARITAN_SENSOR
+        entries: List[OidEntry] = []
+        for child in children:
+            st = _get_ext_state(child)
+            if not st:
+                continue
+            base = int(st.get("probe_slot", 0) or 0)
+            if not base:
+                continue
+            inlet = int(round(float(st.get("probe_inlet_c", 0.0)) * 10))
+            mid = int(round(float(st.get("probe_mid_c", 0.0)) * 10))
+            outlet = int(round(float(st.get("probe_outlet_c", 0.0)) * 10))
+            humid = int(round(float(st.get("probe_humidity_pct", 0.0)) * 10))
+            model = str(st.get("probe_model", ""))
+
+            if model == "Raritan DPX2-T3H1":
+                rows = [("10", inlet), ("10", mid), ("10", outlet), ("11", humid)]
+            elif model == "Raritan DPX2-CC2":
+                wet = 1 if st.get("water_detection", "dry") == "wet" else 0
+                rows = [("28", wet), ("10", inlet)]
+            else:
+                rows = [("10", inlet), ("11", humid)]
+
+            for off, (stype, val) in enumerate(rows):
+                slot = base + off
+                entries += [
+                    _oid_entry(f"{b}.2.1.{slot}", "2", str(slot)),
+                    _oid_entry(f"{b}.3.1.{slot}", "2", stype),
+                    _oid_entry(f"{b}.4.1.{slot}", "2", str(val)),
+                    _oid_entry(f"{b}.5.1.{slot}", "2", "4"),     # state=normal
+                ]
         return entries
 
     def _sensor_entries(self, device: Device) -> List[OidEntry]:

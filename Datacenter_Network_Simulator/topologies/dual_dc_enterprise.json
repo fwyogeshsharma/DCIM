@@ -80554,38 +80554,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.11.43",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "197fcc71",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 104570565,
-            "out_octets": 120411620,
-            "in_errors": 81,
-            "out_errors": 86,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "55:8d:a4:db:2a:b7",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.11.43",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -80619,7 +80597,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.11.30",
+        "sensor_slot": 3
       }
     },
     {
@@ -80633,38 +80613,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.11.46",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "1629fda9",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "38:2f:21:54:76:8f",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.11.46",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -80698,7 +80656,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.11.30",
+        "sensor_slot": 7
       }
     },
     {
@@ -80712,38 +80672,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.11.44",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "fe9a82a9",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 466163433,
-            "out_octets": 86137631,
-            "in_errors": 21,
-            "out_errors": 1,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "a0:4b:e5:0e:12:3d",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.11.44",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -80777,7 +80715,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.11.31",
+        "sensor_slot": 3
       }
     },
     {
@@ -80791,38 +80731,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.11.45",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "6c4f7c37",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 432958309,
-            "out_octets": 891151183,
-            "in_errors": 22,
-            "out_errors": 97,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "36:04:19:09:84:f9",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.11.45",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -80856,7 +80774,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.11.32",
+        "sensor_slot": 3
       }
     },
     {
@@ -80870,38 +80790,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.12.40",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "b4556fbc",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 134751225,
-            "out_octets": 653660868,
-            "in_errors": 66,
-            "out_errors": 63,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "39:6e:6d:3d:fb:4c",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.12.40",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -80935,7 +80833,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.12.27",
+        "sensor_slot": 1
       }
     },
     {
@@ -85287,38 +85187,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.21.41",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "d8f9fde3",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 585231251,
-            "out_octets": 368814410,
-            "in_errors": 20,
-            "out_errors": 17,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "55:6f:3e:21:9f:5e",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.21.41",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 7,
         "ups_backup": "",
@@ -85352,7 +85230,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.21.30",
+        "sensor_slot": 3
       }
     },
     {
@@ -85366,38 +85246,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.21.43",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "e26a32c8",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 854649462,
-            "out_octets": 37977050,
-            "in_errors": 59,
-            "out_errors": 30,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "57:35:ed:bb:10:e8",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.21.43",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -85431,7 +85289,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.21.30",
+        "sensor_slot": 7
       }
     },
     {
@@ -85445,38 +85305,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.21.42",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "075de7ee",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 337661470,
-            "out_octets": 78105074,
-            "in_errors": 59,
-            "out_errors": 49,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "fe:75:f4:4c:f8:57",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.21.42",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -85510,7 +85348,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.21.31",
+        "sensor_slot": 3
       }
     },
     {
@@ -85524,38 +85364,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.22.38",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "cd67c3be",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 957045987,
-            "out_octets": 48153589,
-            "in_errors": 17,
-            "out_errors": 52,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "db:e3:9e:5d:f2:a3",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.22.38",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -85589,7 +85407,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.22.27",
+        "sensor_slot": 1
       }
     },
     {
@@ -92597,38 +92417,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.12.42",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "b699b366",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:b6:99:b3:66:d0",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.12.42",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -92662,7 +92460,9 @@
         "hot_aisle": "HA1",
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.12.27",
+        "sensor_slot": 5
       }
     },
     {
@@ -92676,38 +92476,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.12.41",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "a9a85a82",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:a9:a8:5a:82:2b",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.12.41",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -92741,7 +92519,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.12.28",
+        "sensor_slot": 1
       }
     },
     {
@@ -92755,38 +92535,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.22.40",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "7c036924",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 742447343,
-            "out_octets": 171378635,
-            "in_errors": 61,
-            "out_errors": 94,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:7c:03:69:24:58",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.22.40",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 8,
         "ups_backup": "",
@@ -92820,7 +92578,9 @@
         "hot_aisle": "HA1",
         "mounting": "rack_front",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.22.27",
+        "sensor_slot": 5
       }
     },
     {
@@ -92834,38 +92594,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.22.39",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "07356413",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:07:35:64:13:14",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.22.39",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -92899,7 +92637,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.22.28",
+        "sensor_slot": 1
       }
     },
     {
@@ -92913,38 +92653,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.11.22",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-CC2",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "47e364b0",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:47:e3:64:b0:f7",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.11.22",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 9,
         "ups_backup": "",
@@ -92978,7 +92696,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.11.30",
+        "sensor_slot": 1
       }
     },
     {
@@ -92992,38 +92712,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.11.23",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-CC2",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "b0bc32c1",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:b0:bc:32:c1:71",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.11.23",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 9,
         "ups_backup": "",
@@ -93057,7 +92755,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.11.31",
+        "sensor_slot": 1
       }
     },
     {
@@ -93071,38 +92771,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.11.24",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-CC2",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "e9051e55",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:e9:05:1e:55:bc",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.11.24",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 9,
         "ups_backup": "",
@@ -93136,7 +92814,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.11.32",
+        "sensor_slot": 1
       }
     },
     {
@@ -93150,38 +92830,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.21.22",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-CC2",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "3a077722",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:3a:07:77:22:18",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.21.22",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 9,
         "ups_backup": "",
@@ -93215,7 +92873,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.21.30",
+        "sensor_slot": 1
       }
     },
     {
@@ -93229,38 +92889,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.21.23",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-CC2",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "921cfe39",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:92:1c:fe:39:ab",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.21.23",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 9,
         "ups_backup": "",
@@ -93294,7 +92932,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.21.31",
+        "sensor_slot": 1
       }
     },
     {
@@ -93308,38 +92948,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.21.24",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-CC2",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "efc2999b",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 499889754,
-            "out_octets": 550158961,
-            "in_errors": 96,
-            "out_errors": 50,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "02:ef:c2:99:9b:74",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.21.24",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 9,
         "ups_backup": "",
@@ -93373,7 +92991,9 @@
         "mounting": "rack_front",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.21.32",
+        "sensor_slot": 1
       }
     },
     {
@@ -99859,7 +99479,12 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "LEAK1-DC1-HA-R2-01",
+          "SEN1-DC1-HA-R2-01",
+          "SEN2-DC1-HA-R2-01"
+        ]
       }
     },
     {
@@ -100639,7 +100264,11 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "LEAK1-DC1-HA-R2-02",
+          "SEN1-DC1-HA-R2-02"
+        ]
       }
     },
     {
@@ -101419,7 +101048,11 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "LEAK1-DC1-HA-R2-03",
+          "SEN1-DC1-HA-R2-03"
+        ]
       }
     },
     {
@@ -103759,7 +103392,11 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HB-R2-01",
+          "SEN2-DC1-HB-R2-01"
+        ]
       }
     },
     {
@@ -104539,7 +104176,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HB-R2-02"
+        ]
       }
     },
     {
@@ -111505,7 +111145,12 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "LEAK1-DC2-HA-R2-01",
+          "SEN1-DC2-HA-R2-01",
+          "SEN2-DC2-HA-R2-01"
+        ]
       }
     },
     {
@@ -112285,7 +111930,11 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "LEAK1-DC2-HA-R2-02",
+          "SEN1-DC2-HA-R2-02"
+        ]
       }
     },
     {
@@ -113065,7 +112714,11 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "LEAK1-DC2-HA-R2-03",
+          "SEN1-DC2-HA-R2-03"
+        ]
       }
     },
     {
@@ -114625,7 +114278,11 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HB-R2-01",
+          "SEN2-DC2-HB-R2-01"
+        ]
       }
     },
     {
@@ -115405,7 +115062,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HB-R2-02"
+        ]
       }
     },
     {
@@ -156551,38 +156211,16 @@
         "device_type": "sensor",
         "vendor": "Raritan",
         "ip_address": "",
-        "snmp_port": 161,
+        "snmp_port": 0,
         "gnmi_port": 57400,
-        "snmp_community": "10.52.21.44",
-        "interface_count": 1,
-        "interface_groups": [
-          {
-            "iface_type": "Gigabit Ethernet (1 Gbps)",
-            "count": 1
-          }
-        ],
+        "snmp_community": "",
+        "interface_count": 0,
+        "interface_groups": [],
         "model_name": "Raritan DPX2-T3H1",
-        "metrics_enabled": true,
+        "metrics_enabled": false,
         "id": "a3f19c07",
-        "interfaces": [
-          {
-            "index": 1,
-            "name": "eth0",
-            "speed": 1000000000,
-            "oper_status": 1,
-            "in_octets": 391046622,
-            "out_octets": 55648465,
-            "in_errors": 33,
-            "out_errors": 18,
-            "in_discards": 0,
-            "out_discards": 0,
-            "mac_address": "6a:66:1c:fd:e7:2e",
-            "connected_to_device": null,
-            "connected_to_iface": null,
-            "role": "mgmt"
-          }
-        ],
-        "mgmt_ip": "10.52.21.44",
+        "interfaces": [],
+        "mgmt_ip": "",
         "mgmt_vlan": 10,
         "power_draw_w": 5,
         "ups_backup": "",
@@ -156616,7 +156254,9 @@
         "cold_aisle": "CA1",
         "hot_aisle": "HA1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "host_pdu_ip": "10.52.21.32",
+        "sensor_slot": 3
       }
     },
     {

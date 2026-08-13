@@ -1101,6 +1101,15 @@ class Device:
     mstp_router_ip: str = ""
     mstp_children: List[str] = field(default_factory=list)     # router -> device names
 
+    # Sensor-port plane. A Raritan DPX2 probe plugs into a PX2's RJ-12 SENSOR
+    # port and is read THROUGH that PDU's agent — it has no processor, no IP and
+    # no Ethernet. host_pdu_ip is the PDU that carries it; sensor_slot is its
+    # base index in that PDU's external-sensor table (DPX2 units daisy-chain, so
+    # a T3H1 occupies four consecutive slots and a CC2 two).
+    host_pdu_ip: str = ""
+    sensor_slot: int = 0
+    sensor_children: List[str] = field(default_factory=list)   # PDU -> probe names
+
     # Power chain
     power_draw_w: int = 0   # typical power draw in watts
     # Nameplate THROUGHPUT rating (W) for power-distribution / backup gear
@@ -1196,7 +1205,8 @@ class Device:
         # Normalize interface_groups (str → InterfaceType)
         if (self.device_type in FACILITY_PASSIVE_TYPES
                 or self.modbus_role == "rtu_slave"
-                or self.mstp_mac):
+                or self.mstp_mac
+                or self.host_pdu_ip):
             # Passive panel — no monitoring card, so no port. Checked FIRST and it
             # discards whatever came in: topologies written before this carry a phantom
             # eth0 (no IP, cabled to nothing, no SNMP dataset generated) that made a
@@ -1214,6 +1224,9 @@ class Device:
             # A BACnet MS/TP device lands here for the same reason: a Belimo
             # actuator on an RS-485 trunk is two wires and a MAC, not a network
             # node. Its router holds the only Ethernet port on the trunk.
+            #
+            # So does a DPX2 environmental probe: an RJ-12 lead into a PDU's
+            # sensor port. The PDU is what answers for it.
             self.interface_groups = []
             self.interface_count = 0
             self.interfaces = []
@@ -1554,6 +1567,49 @@ class Device:
         for iface in self.interfaces:
             iface.in_octets  += random.randint(1000, 10_000_000)
             iface.out_octets += random.randint(1000, 10_000_000)
+
+    def attach_to_mstp_trunk(self, net: int, mac: int, router_ip: str) -> None:
+        """Move an existing device onto a BACnet MS/TP trunk.
+
+        Assigning mstp_mac by hand is NOT enough: the portless rule lives in
+        __post_init__, which has already run by then, so the device keeps an
+        Ethernet port and an address it cannot have. That is a quiet failure —
+        the device works, it just reads as a network node in the canvas, the port
+        counts and the interface tables. Anything moving a device onto a trunk at
+        runtime (fleet commissioning, a fixture, a migration) should come through
+        here rather than setting the fields directly.
+        """
+        self.mstp_net = int(net)
+        self.mstp_mac = int(mac)
+        self.mstp_router_ip = router_ip
+        # Same strip __post_init__ applies — a trunk device is two wires and a
+        # MAC, so it has no port, no address and nothing to poll over IP.
+        self.interface_groups = []
+        self.interface_count = 0
+        self.interfaces = []
+        self.mgmt_vlan = 0
+        self.metrics_enabled = False
+        self.ip_address = ""
+        self.mgmt_ip = ""
+        self.snmp_port = 0
+
+    def attach_to_sensor_port(self, host_pdu_ip: str, slot: int) -> None:
+        """Plug this probe into a PDU's sensor port.
+
+        Same trap as attach_to_mstp_trunk: the portless rule runs in
+        __post_init__, so setting host_pdu_ip by hand on an existing device
+        leaves it holding an Ethernet port and an IP a DPX2 does not have.
+        """
+        self.host_pdu_ip = host_pdu_ip
+        self.sensor_slot = int(slot)
+        self.interface_groups = []
+        self.interface_count = 0
+        self.interfaces = []
+        self.mgmt_vlan = 0
+        self.metrics_enabled = False
+        self.ip_address = ""
+        self.mgmt_ip = ""
+        self.snmp_port = 0
 
     def to_dict(self) -> dict:
         d = asdict(self)

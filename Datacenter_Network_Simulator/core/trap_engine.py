@@ -94,13 +94,20 @@ def _trap_source_ip(device: Device, trap_type: Optional[TrapType] = None) -> str
     alarm on its behalf, which is exactly what falling back to the gateway IP
     models. The condition is still detected on the instrument's own reading —
     only the notification's source moves to the thing that can actually send it.
+
+    The same holds for a device behind a BACnet/IP router and for a DPX2 probe on
+    a PDU's sensor port: the carrier sends on its behalf, because the probe is an
+    RJ-12 lead with no agent of its own.
     """
     mgmt = getattr(device, "mgmt_ip", "") or ""
     if trap_type in (TrapType.SERVER_POWER_OFF, TrapType.SERVER_POWER_ON):
         return mgmt or device.ip_address
     if device.device_type == DeviceType.SERVER:
         return device.ip_address or mgmt
-    return mgmt or device.ip_address or getattr(device, "modbus_gateway_ip", "") or ""
+    return (mgmt or device.ip_address
+            or getattr(device, "modbus_gateway_ip", "")
+            or getattr(device, "mstp_router_ip", "")
+            or getattr(device, "host_pdu_ip", "") or "")
 
 
 class TrapEvent:

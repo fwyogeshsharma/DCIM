@@ -146,21 +146,54 @@ def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
     """
     made = {}
 
+    # BACnet/IP <-> MS/TP router. Pump VFD cards (Grundfos CIM 300) and header
+    # valve actuators (Belimo "-BAC") sit on its RS-485 trunk and own NO address,
+    # exactly as the shipped topology models them. A fixture that gave them IPs
+    # would leave this harness — the one that has already caught real bugs —
+    # testing a world the simulator no longer has.
+    mstp_net = 2000 + (net % 100)
+    # .9.x belongs to the rack probes below — the router takes its own octet.
+    router_ip = f"10.{net}.8.1"
+    router = _device(dm, f"BRTR1-{dc}-CP", "bacnet_router", "", 12,
+                     model="LOYTEC LINX-151", room="Central Plant", dc=dc)
+    router.mgmt_ip = router_ip
+    router.mstp_net = mstp_net
+    router.mstp_children = []
+    made["BRTR"] = router
+
+    def _mstp(device, mac):
+        """Put a field device on the trunk: no address, no port, MAC only.
+
+        Goes through attach_to_mstp_trunk rather than setting the fields, because
+        the portless rule runs in __post_init__ and has already fired by now —
+        assigning mstp_mac by hand leaves the device holding an Ethernet port it
+        cannot have.
+        """
+        device.attach_to_mstp_trunk(mstp_net, mac, router_ip)
+        router.mstp_children.append(device.name)
+        return device
+
+    # MS/TP master MACs. Separate bases per class so a pump and a valve can never
+    # land on the same address (mirrors tools/migrate_mstp_field_devices.py).
+    _PUMP_MAC, _VALVE_MAC = 1, 20
+
     for i in range(1, trains + 1):
         made[f"CHL{i}"] = _device(dm, f"CHL{i}-{dc}-CP", "chiller",
                                   f"10.{net}.1.{i}", CHILLER_W,
                                   model="chiller-1000t", dc=dc)
-        made[f"CHWP{i}"] = _device(dm, f"CHWP{i}-{dc}-CP", "pump",
-                                   f"10.{net}.2.{i}", PUMP_W, dc=dc)
-        made[f"CWP{i}"] = _device(dm, f"CWP{i}-{dc}-CP", "pump",
-                                  f"10.{net}.3.{i}", PUMP_W, dc=dc)
+        made[f"CHWP{i}"] = _mstp(_device(dm, f"CHWP{i}-{dc}-CP", "pump",
+                                         "", PUMP_W, dc=dc), _PUMP_MAC + i - 1)
+        made[f"CWP{i}"] = _mstp(_device(dm, f"CWP{i}-{dc}-CP", "pump",
+                                        "", PUMP_W, dc=dc),
+                                _PUMP_MAC + trains + i)
         made[f"CT{i}"] = _device(dm, f"CT{i}-{dc}-RF", "cooling_tower",
                                  f"10.{net}.4.{i}", TOWER_W, room="Roof", dc=dc)
     # Header standby CHW pump — index beyond the trains, so _build_trains leaves it
     # unclaimed and reports it as the N+1 spare.
     spare = trains + 1
-    made[f"CHWP{spare}"] = _device(dm, f"CHWP{spare}-{dc}-CP", "pump",
-                                   f"10.{net}.2.{spare}", PUMP_W, dc=dc)
+    made[f"CHWP{spare}"] = _mstp(_device(dm, f"CHWP{spare}-{dc}-CP", "pump",
+                                         "", PUMP_W, dc=dc),
+                                 _PUMP_MAC + spare - 1)
 
     if probes:
         # Plant header instruments. Named with the role code leading, and carrying
@@ -202,8 +235,9 @@ def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
         # which is the same role-in-the-prefix idiom the header probes use, and
         # which the store reads to decide which loop an actuator fault throttles.
         for j, code in enumerate(("VCHW", "VCW"), start=1):
-            made[code] = _device(dm, f"{code}-{dc}-CP", "valve",
-                                 f"10.{net}.7.{j}", 0, room="Central Plant", dc=dc)
+            made[code] = _mstp(_device(dm, f"{code}-{dc}-CP", "valve",
+                                       "", 0, room="Central Plant", dc=dc),
+                               _VALVE_MAC + j - 1)
 
     for i in range(1, crahs + 1):
         made[f"CRAH{i}"] = _device(dm, f"CRAH{i}-{dc}-HA-R1-01", "crah",
