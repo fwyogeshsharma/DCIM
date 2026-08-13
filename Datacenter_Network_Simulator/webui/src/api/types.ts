@@ -25,6 +25,12 @@ export interface DeviceInfo {
   // against the live /snmp/status endpoint list — see data/snmpView.ts.
   snmp_agent?: boolean
   snmp_ips?: string[]
+  // Carrier for gear with no address of its own (DPX2 probes on a PDU sensor
+  // port, plant transmitters on a Modbus gateway, VFDs/actuators on a BACnet
+  // router). host_index is the slot / unit id / MAC on that carrier.
+  host_ip?: string
+  host_via?: 'sensor port' | 'modbus' | 'mstp'
+  host_index?: number
   gnmi_port: number
   interface_count: number
   cpu_usage: number

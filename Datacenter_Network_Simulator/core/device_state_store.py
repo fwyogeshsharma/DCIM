@@ -6502,6 +6502,18 @@ class DeviceStateStore:
                     st["ups_bypass_status"] = "off"
                 st["ups_bypass_status"] = self._state_lock("ups_bypass_status", st["ups_bypass_status"])
 
+            # Operating mode is DERIVED from the two states above, and it is
+            # published into ext rather than computed at fact time so every plane
+            # reads one value. It used to exist only inside _publish_facts, which
+            # left the Modbus Operating_Mode register keyed on an ext entry that
+            # was never written — so it served "online" forever, including on a
+            # UPS that was on battery. A point that reports a plausible constant
+            # is worse than one that reports nothing.
+            st["ups_operating_mode"] = (
+                "bypass" if st.get("ups_bypass_status", "off") == "on"
+                else "battery" if st.get("ups_status", "normal") in ("on_battery", "low_battery")
+                else "online")
+
             # Battery health (state-of-health %): slow monotonic decay, faster on fault
             if mf["ups_battery_health"]:
                 hp = st.get("ups_battery_health", 100.0)
@@ -6842,10 +6854,10 @@ class DeviceStateStore:
                     ups_charger_status=ext.get("ups_charger_status", "ok"),
                     ups_rectifier_status=ext.get("ups_rectifier_status", "ok"),
                     ups_phase_status=ext.get("ups_phase_status", "ok"),
-                    ups_operating_mode=(
-                        "bypass" if ext.get("ups_bypass_status", "off") == "on"
-                        else "battery" if ext.get("ups_status", "normal") in ("on_battery", "low_battery")
-                        else "online"),
+                    # Read the published value rather than re-deriving it: two
+                    # copies of one rule drift, and the Modbus plane reads the
+                    # published one.
+                    ups_operating_mode=ext.get("ups_operating_mode", "online"),
                     ups_bypass_status=ext.get("ups_bypass_status", "off"),
                     ups_battery_health=float(ext.get("ups_battery_health", 100.0)),
                     ups_output_apparent_power=float(ext.get("ups_output_load", 0.0)) * 30.0,

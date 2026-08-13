@@ -854,8 +854,46 @@ function getSensorMetrics(model: string): SensorMetricCfg[] {
   ]
 }
 
-function SensorTable({ rows }: { rows: DeviceInfo[] }) {
+/**
+ * A sensor's carrier, resolved to a NAME.
+ *
+ * Sensors own no address: a Raritan DPX2 is an RJ-12 lead into a PDU's sensor
+ * port, and a plant thermowell is a transmitter on an RS-485 trunk behind a
+ * gateway. The API sends the carrier's IP; the name is far more useful in a
+ * table, and every carrier is itself in devices[], so resolve it there.
+ */
+function HostCell({ d, byIp }: { d: DeviceInfo; byIp: Map<string, DeviceInfo> }) {
+  if (!d.host_ip) {
+    // Not carrier-attached: fall back to its own address (rack probes on older
+    // topologies still have one).
+    const own = d.mgmt_ip || d.ip_address
+    return <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 10 }}>{own || <span style={{ color: 'var(--text-dim)' }}>—</span>}</td>
+  }
+  const host = byIp.get(d.host_ip)
+  const where = d.host_via === 'sensor port' ? `slot ${d.host_index}`
+              : d.host_via === 'modbus'      ? `unit ${d.host_index}`
+              : d.host_via === 'mstp'        ? `MAC ${d.host_index}`
+              : ''
+  return (
+    <td style={{ padding: '6px 10px', fontFamily: 'monospace', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 10 }} title={`${host?.name ?? d.host_ip} (${d.host_ip}) · ${d.host_via} ${where}`}>
+      <span style={{ color: 'var(--text)' }}>{host?.name ?? d.host_ip}</span>
+      {where && <span style={{ color: 'var(--text-dim)' }}> · {where}</span>}
+    </td>
+  )
+}
+
+function SensorTable({ rows, allDevices }: { rows: DeviceInfo[]; allDevices: DeviceInfo[] }) {
   const sort = useSortState('name')
+
+  // IP -> carrier device, so a sensor can show the PDU/gateway by name.
+  const byIp = useMemo(() => {
+    const m = new Map<string, DeviceInfo>()
+    for (const d of allDevices) {
+      if (d.mgmt_ip) m.set(d.mgmt_ip, d)
+      if (d.ip_address) m.set(d.ip_address, d)
+    }
+    return m
+  }, [allDevices])
 
   const groups = useMemo(() => {
     const map = new Map<string, DeviceInfo[]>()
@@ -867,7 +905,12 @@ function SensorTable({ rows }: { rows: DeviceInfo[] }) {
     const dir = sort.dir === 'asc' ? 1 : -1
     for (const devices of map.values()) {
       devices.sort((a, b) => {
-        if (sort.col === 'ip')     return (a.mgmt_ip || a.ip_address).localeCompare(b.mgmt_ip || b.ip_address) * dir
+        if (sort.col === 'host') {
+          const key = (x: DeviceInfo) =>
+            (x.host_ip ? (byIp.get(x.host_ip)?.name ?? x.host_ip) : (x.mgmt_ip || x.ip_address)) +
+            String(x.host_index ?? '').padStart(4, '0')
+          return key(a).localeCompare(key(b)) * dir
+        }
         if (sort.col === 'uptime') return (a.uptime - b.uptime) * dir
         return a.name.localeCompare(b.name) * dir
       })
@@ -889,7 +932,7 @@ function SensorTable({ rows }: { rows: DeviceInfo[] }) {
                 <tr>
                   <th style={{ width: 18, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border)' }} />
                   <SortTH label="Name"   id="name"   sort={sort} minW={140} />
-                  <SortTH label="IP"     id="ip"     sort={sort} />
+                  <SortTH label="Host"   id="host"   sort={sort} minW={150} />
                   {metrics.map(m => (
                     <SortTH key={String(m.key)} label={m.label} id={String(m.key)} sort={sort} align="right" minW={90} />
                   ))}
@@ -901,7 +944,7 @@ function SensorTable({ rows }: { rows: DeviceInfo[] }) {
                   <tr key={d.id} style={ROW_STYLE(i)}>
                     <td style={{ width: 18 }} />
                     <NameCell d={d} />
-                    <IpCell d={d} />
+                    <HostCell d={d} byIp={byIp} />
                     {metrics.map(m => (
                       <td key={String(m.key)} style={{ padding: '6px 10px', textAlign: 'right' }}>
                         <NumCell val={d[m.key] as number | undefined} unit={m.unit}
@@ -1668,7 +1711,7 @@ export default function LiveMetricsPage() {
             : tab === 'server'  ? <ServerTable  rows={filtered} />
             : tab === 'ups'     ? <UpsTable     rows={filtered} />
             : tab === 'pdu'     ? <PduTable     rows={filtered} />
-            :                     <SensorTable  rows={filtered} />
+            :                     <SensorTable  rows={filtered} allDevices={devices} />
         }
       </div>
 

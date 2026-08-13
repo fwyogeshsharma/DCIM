@@ -207,6 +207,13 @@ class DeviceInfo(BaseModel):
     # actually being served. No live port here on purpose: this payload refreshes
     # on topology change, so an embedded port would freeze at page-load time.
     snmp_ips: List[str] = []
+    # How a device with NO address of its own is reached. A DPX2 probe is an RJ-12
+    # lead into a PDU's sensor port; a plant thermowell is a transmitter on an
+    # RS-485 trunk behind a gateway. Neither has an IP, so the UI needs to show
+    # the carrier and the position on it instead of an empty address column.
+    host_ip: Optional[str] = None        # the PDU / gateway / router that carries it
+    host_via: Optional[str] = None       # "sensor port" | "modbus" | "mstp"
+    host_index: Optional[int] = None     # sensor slot, Modbus unit id, or MS/TP MAC
     gnmi_port: int
     interface_count: int
     cpu_usage: float

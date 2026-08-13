@@ -129,7 +129,24 @@ def _device_to_info(device) -> DeviceInfo:
     dt  = device.device_type.value
     sessions = ext.get("bgp_sessions", [])
     snmp_ips = snmp_agent_ips(device)
+    # Carrier for gear that owns no address. Checked in this order because a
+    # device only ever has one: a probe hangs off a PDU, a transmitter off a
+    # Modbus gateway, a VFD/actuator off a BACnet/IP router.
+    _host_ip = _host_via = None
+    _host_index = None
+    if getattr(device, "host_pdu_ip", ""):
+        _host_ip, _host_via = device.host_pdu_ip, "sensor port"
+        _host_index = getattr(device, "sensor_slot", 0) or None
+    elif getattr(device, "modbus_gateway_ip", ""):
+        _host_ip, _host_via = device.modbus_gateway_ip, "modbus"
+        _host_index = getattr(device, "modbus_unit_id", 0) or None
+    elif getattr(device, "mstp_router_ip", ""):
+        _host_ip, _host_via = device.mstp_router_ip, "mstp"
+        _host_index = getattr(device, "mstp_mac", 0) or None
     return DeviceInfo(
+        host_ip=_host_ip,
+        host_via=_host_via,
+        host_index=_host_index,
         id=device.id,
         name=device.name,
         device_type=dt,

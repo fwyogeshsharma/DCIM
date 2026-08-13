@@ -180,3 +180,51 @@ def test_attach_by_hand_leaves_the_port_behind():
     assert d.mgmt_ip and d.interface_count > 0
     d.attach_to_sensor_port("10.52.11.30", 3)
     assert not d.mgmt_ip and d.interface_count == 0 and d.snmp_port == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  API surfaces the carrier
+# ─────────────────────────────────────────────────────────────────────────────
+def test_every_sensor_reports_a_host_in_the_api(shipped):
+    """Sensors own no address, so the Live Metrics table has nothing to show in an
+    IP column. DeviceInfo carries the carrier instead — if this regresses the UI
+    silently renders a column of blanks."""
+    from api.routers.devices import _device_to_info
+    sensors = [d for d in shipped if d.device_type == DeviceType.SENSOR]
+    assert sensors
+    for d in sensors:
+        info = _device_to_info(d)
+        assert info.host_ip, f"{d.name} reports no carrier"
+        assert info.host_via in ("sensor port", "modbus", "mstp"), d.name
+        assert info.host_index, f"{d.name} has no position on its carrier"
+
+
+def test_host_ip_resolves_to_a_device_in_the_same_payload(shipped):
+    """The UI maps host_ip -> device name from devices[]; an unresolvable IP would
+    render as a bare address instead of the PDU/gateway name."""
+    from api.routers.devices import _device_to_info
+    addrs = {d.mgmt_ip for d in shipped if d.mgmt_ip} | {d.ip_address for d in shipped if d.ip_address}
+    for d in shipped:
+        if d.device_type != DeviceType.SENSOR:
+            continue
+        assert _device_to_info(d).host_ip in addrs, d.name
+
+
+def test_carrier_kind_matches_the_device_class(shipped):
+    from api.routers.devices import _device_to_info
+    for d in shipped:
+        if d.device_type != DeviceType.SENSOR:
+            continue
+        info = _device_to_info(d)
+        if d.host_pdu_ip:
+            assert info.host_via == "sensor port" and info.host_index == d.sensor_slot
+        elif d.modbus_role == "rtu_slave":
+            assert info.host_via == "modbus" and info.host_index == d.modbus_unit_id
+
+
+def test_addressed_devices_report_no_carrier(shipped):
+    """A PDU or gateway owns its address — it must not claim to hang off something."""
+    from api.routers.devices import _device_to_info
+    for d in shipped:
+        if d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU) and d.mgmt_ip:
+            assert _device_to_info(d).host_ip is None, d.name
