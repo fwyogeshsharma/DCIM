@@ -10,6 +10,7 @@ import NumberInput from '../NumberInput'
  * register reads 4152 and means nothing until someone tells you it is volts
  * scaled by ten. This panel is that vendor register map, rendered live, which
  * is the one thing the SNMP and BACnet panels never have to do.
+
  */
 
 const IconPlay = () => (
