@@ -29,6 +29,7 @@ const LAYER_BTN: { id: string; label: string; color: string }[] = [
   { id: 'management', label: 'Mgmt',  color: 'var(--layer-mgmt)' },
   { id: 'power',      label: 'Power', color: 'var(--layer-power)' },
   { id: 'cooling',    label: 'Cool',  color: 'var(--layer-cooling)' },
+  { id: 'fieldbus',   label: 'Field', color: 'var(--layer-fieldbus)' },
 ]
 
 // ── Icons ──────────────────────────────────────────────────

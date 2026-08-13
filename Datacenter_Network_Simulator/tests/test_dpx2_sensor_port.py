@@ -228,3 +228,72 @@ def test_addressed_devices_report_no_carrier(shipped):
     for d in shipped:
         if d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU) and d.mgmt_ip:
             assert _device_to_info(d).host_ip is None, d.name
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Graph wiring
+# ─────────────────────────────────────────────────────────────────────────────
+def _adjacency():
+    data = json.loads(TOPOLOGY.read_text(encoding="utf-8"))
+    ids = {n["id"]: n["device"] for n in data["nodes"]}
+    adj: dict = {i: [] for i in ids}
+    for e in data["edges"]:
+        adj[e["src"]].append((e["dst"], e.get("layer")))
+        adj[e["dst"]].append((e["src"], e.get("layer")))
+    return ids, adj
+
+
+def test_no_portless_device_holds_a_management_edge():
+    """A device with no Ethernet port cannot be cabled to an OOB switch. The
+    migrations stripped the ports but left these edges, so the graph drew 50
+    field devices wired to switches they have no port for."""
+    ids, adj = _adjacency()
+    bad = [d["name"] for i, d in ids.items()
+           if (d.get("host_pdu_ip") or d.get("modbus_gateway_ip") or d.get("mstp_router_ip"))
+           and any(layer == "management" for _, layer in adj[i])]
+    assert not bad, f"portless devices still on the management plane: {bad}"
+
+
+def test_every_portless_device_links_to_its_carrier():
+    ids, adj = _adjacency()
+    by_ip = {d.get("mgmt_ip"): i for i, d in ids.items() if d.get("mgmt_ip")}
+    for i, d in ids.items():
+        carrier = d.get("host_pdu_ip") or d.get("modbus_gateway_ip") or d.get("mstp_router_ip")
+        if not carrier:
+            continue
+        cid = by_ip.get(carrier)
+        assert cid is not None, d["name"]
+        assert (cid, "fieldbus") in adj[i], (
+            f"{d['name']} has no fieldbus link to its carrier")
+
+
+def test_carriers_are_connected_and_uplinked():
+    """A gateway/router is the one thing on the trunk WITH an Ethernet port, so
+    it carries the management uplink its children cannot."""
+    ids, adj = _adjacency()
+    carriers = [(i, d) for i, d in ids.items()
+                if d["device_type"] in ("modbus_gateway", "bacnet_router")]
+    assert carriers
+    for i, d in carriers:
+        assert adj[i], f"{d['name']} is an unconnected node"
+        mgmt = [p for p, layer in adj[i] if layer == "management"]
+        assert mgmt, f"{d['name']} has no management uplink"
+        assert ids[mgmt[0]]["device_type"] == "oob_switch", d["name"]
+        assert any(layer == "fieldbus" for _, layer in adj[i]), (
+            f"{d['name']} carries nothing")
+
+
+def test_fieldbus_is_not_an_ethernet_layer():
+    """TopologyEngine allocates an interface on both ends of an Ethernet layer.
+    Putting a sensor lead or RS-485 drop there would land it on eth0 of a device
+    with no ports - the 'lie that reads back as a real termination'."""
+    from core.topology_engine import TopologyEngine
+    assert "fieldbus" not in TopologyEngine.ETHERNET_LAYERS
+
+
+def test_fieldbus_edges_carry_no_interface():
+    data = json.loads(TOPOLOGY.read_text(encoding="utf-8"))
+    fb = [e for e in data["edges"] if e.get("layer") == "fieldbus"]
+    assert fb, "no fieldbus edges in the topology"
+    for e in fb:
+        assert e.get("src_iface") is None and e.get("dst_iface") is None, e

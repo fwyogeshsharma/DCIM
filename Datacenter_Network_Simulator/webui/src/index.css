@@ -218,6 +218,9 @@
   --layer-mgmt:    #a78bfa;   /* violet  — matches --node-oob */
   --layer-power:   #f59e0b;   /* amber   — matches the brass node arc */
   --layer-cooling: #22d3ee;   /* cyan    — matches the cooling node arc */
+  /* fieldbus — RS-485 / sensor-port drops. NOT Ethernet: these carry no IP and
+     no interface, so they are visually distinct from the mgmt plane. */
+  --layer-fieldbus: #a78bfa;  /* violet */
 
   /* Cooling-loop flow direction. */
   --flow-cold: #22d3ee;   /* chilled supply / cooled condenser return */

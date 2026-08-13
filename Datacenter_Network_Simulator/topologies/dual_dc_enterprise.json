@@ -159193,41 +159193,6 @@
       "layer": "management"
     },
     {
-      "src": "197fcc71",
-      "dst": "bbd65e8c",
-      "src_iface": 0,
-      "dst_iface": 10,
-      "layer": "management"
-    },
-    {
-      "src": "1629fda9",
-      "dst": "bbd65e8c",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "fe9a82a9",
-      "dst": "bbd65e8c",
-      "src_iface": 0,
-      "dst_iface": 20,
-      "layer": "management"
-    },
-    {
-      "src": "6c4f7c37",
-      "dst": "bbd65e8c",
-      "src_iface": 0,
-      "dst_iface": 21,
-      "layer": "management"
-    },
-    {
-      "src": "b4556fbc",
-      "dst": "66245f85",
-      "src_iface": 0,
-      "dst_iface": 11,
-      "layer": "management"
-    },
-    {
       "src": "efbee6c2",
       "dst": "431a7dbd",
       "src_iface": 0,
@@ -159253,34 +159218,6 @@
       "dst": "431a7dbd",
       "src_iface": 0,
       "dst_iface": 3,
-      "layer": "management"
-    },
-    {
-      "src": "d8f9fde3",
-      "dst": "2aaa46a5",
-      "src_iface": 0,
-      "dst_iface": 11,
-      "layer": "management"
-    },
-    {
-      "src": "e26a32c8",
-      "dst": "2aaa46a5",
-      "src_iface": 0,
-      "dst_iface": 49,
-      "layer": "management"
-    },
-    {
-      "src": "075de7ee",
-      "dst": "2aaa46a5",
-      "src_iface": 0,
-      "dst_iface": 20,
-      "layer": "management"
-    },
-    {
-      "src": "cd67c3be",
-      "dst": "1e3d0136",
-      "src_iface": 0,
-      "dst_iface": 49,
       "layer": "management"
     },
     {
@@ -159508,41 +159445,6 @@
       "layer": "management"
     },
     {
-      "src": "893e478e",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 3,
-      "layer": "management"
-    },
-    {
-      "src": "c04f2280",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 4,
-      "layer": "management"
-    },
-    {
-      "src": "c9bf2418",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 5,
-      "layer": "management"
-    },
-    {
-      "src": "b17bfd83",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 6,
-      "layer": "management"
-    },
-    {
-      "src": "f0c4e963",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 7,
-      "layer": "management"
-    },
-    {
       "src": "b04435fb",
       "dst": "1d31a3b3",
       "src_iface": 0,
@@ -159554,41 +159456,6 @@
       "dst": "1d31a3b3",
       "src_iface": 0,
       "dst_iface": 9,
-      "layer": "management"
-    },
-    {
-      "src": "60d8fc26",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 10,
-      "layer": "management"
-    },
-    {
-      "src": "69d174b4",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 11,
-      "layer": "management"
-    },
-    {
-      "src": "e667fbd5",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 12,
-      "layer": "management"
-    },
-    {
-      "src": "6b30c89c",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 13,
-      "layer": "management"
-    },
-    {
-      "src": "bea56af1",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 14,
       "layer": "management"
     },
     {
@@ -159606,41 +159473,6 @@
       "layer": "management"
     },
     {
-      "src": "f8eb42ae",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 3,
-      "layer": "management"
-    },
-    {
-      "src": "cc17f464",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 4,
-      "layer": "management"
-    },
-    {
-      "src": "53f15d15",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 5,
-      "layer": "management"
-    },
-    {
-      "src": "fa708342",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 6,
-      "layer": "management"
-    },
-    {
-      "src": "96796119",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 7,
-      "layer": "management"
-    },
-    {
       "src": "02407220",
       "dst": "f8b995ba",
       "src_iface": 0,
@@ -159655,41 +159487,6 @@
       "layer": "management"
     },
     {
-      "src": "e13dfcba",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 10,
-      "layer": "management"
-    },
-    {
-      "src": "774f3d06",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 11,
-      "layer": "management"
-    },
-    {
-      "src": "77a2c912",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 12,
-      "layer": "management"
-    },
-    {
-      "src": "fa7bff58",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 13,
-      "layer": "management"
-    },
-    {
-      "src": "85377da7",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 14,
-      "layer": "management"
-    },
-    {
       "src": "7ea9beb5",
       "dst": "1d31a3b3",
       "src_iface": 0,
@@ -159697,24 +159494,10 @@
       "layer": "management"
     },
     {
-      "src": "79712904",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 16,
-      "layer": "management"
-    },
-    {
       "src": "1ff1caaf",
       "dst": "f8b995ba",
       "src_iface": 0,
       "dst_iface": 15,
-      "layer": "management"
-    },
-    {
-      "src": "97d819aa",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 16,
       "layer": "management"
     },
     {
@@ -160486,118 +160269,6 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "cooling"
-    },
-    {
-      "src": "b699b366",
-      "dst": "66245f85",
-      "src_iface": 0,
-      "dst_iface": 18,
-      "layer": "management"
-    },
-    {
-      "src": "a9a85a82",
-      "dst": "66245f85",
-      "src_iface": 0,
-      "dst_iface": 17,
-      "layer": "management"
-    },
-    {
-      "src": "7c036924",
-      "dst": "1e3d0136",
-      "src_iface": 0,
-      "dst_iface": 17,
-      "layer": "management"
-    },
-    {
-      "src": "07356413",
-      "dst": "1e3d0136",
-      "src_iface": 0,
-      "dst_iface": 16,
-      "layer": "management"
-    },
-    {
-      "src": "47e364b0",
-      "dst": "bbd65e8c",
-      "src_iface": 0,
-      "dst_iface": 12,
-      "layer": "management"
-    },
-    {
-      "src": "b0bc32c1",
-      "dst": "bbd65e8c",
-      "src_iface": 0,
-      "dst_iface": 13,
-      "layer": "management"
-    },
-    {
-      "src": "e9051e55",
-      "dst": "bbd65e8c",
-      "src_iface": 0,
-      "dst_iface": 14,
-      "layer": "management"
-    },
-    {
-      "src": "3a077722",
-      "dst": "2aaa46a5",
-      "src_iface": 0,
-      "dst_iface": 12,
-      "layer": "management"
-    },
-    {
-      "src": "921cfe39",
-      "dst": "2aaa46a5",
-      "src_iface": 0,
-      "dst_iface": 13,
-      "layer": "management"
-    },
-    {
-      "src": "efc2999b",
-      "dst": "2aaa46a5",
-      "src_iface": 0,
-      "dst_iface": 14,
-      "layer": "management"
-    },
-    {
-      "src": "d396a795",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 30,
-      "layer": "management"
-    },
-    {
-      "src": "3e4ddd2d",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 29,
-      "layer": "management"
-    },
-    {
-      "src": "b9dd5c5e",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 27,
-      "layer": "management"
-    },
-    {
-      "src": "c8fd4d14",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 28,
-      "layer": "management"
-    },
-    {
-      "src": "11992fa8",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 27,
-      "layer": "management"
-    },
-    {
-      "src": "fc1ab32e",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 25,
-      "layer": "management"
     },
     {
       "src": "311e2148",
@@ -173513,14 +173184,6 @@
       "layer": "management"
     },
     {
-      "src": "824f3b10",
-      "dst": "1d31a3b3",
-      "src_iface": 0,
-      "dst_iface": 28,
-      "broken": false,
-      "layer": "management"
-    },
-    {
       "src": "85c24dde",
       "dst": "1d31a3b3",
       "src_iface": 0,
@@ -173845,14 +173508,6 @@
       "dst": "f8b995ba",
       "src_iface": 0,
       "dst_iface": 30,
-      "broken": false,
-      "layer": "management"
-    },
-    {
-      "src": "dc38cb1c",
-      "dst": "f8b995ba",
-      "src_iface": 0,
-      "dst_iface": 26,
       "broken": false,
       "layer": "management"
     },
@@ -178683,18 +178338,389 @@
       "layer": "cooling"
     },
     {
-      "src": "a3f19c07",
-      "dst": "2aaa46a5",
-      "src_iface": 0,
-      "dst_iface": 21,
-      "layer": "management"
-    },
-    {
       "src": "b77350ca",
       "dst": "a3f19c07",
       "src_iface": null,
       "dst_iface": null,
       "layer": "power"
+    },
+    {
+      "src": "57c700aa",
+      "dst": "197fcc71",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "57c700aa",
+      "dst": "1629fda9",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "bdc14f1f",
+      "dst": "fe9a82a9",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "dc570131",
+      "dst": "6c4f7c37",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "09cb3942",
+      "dst": "b4556fbc",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "b194990b",
+      "dst": "d8f9fde3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "b194990b",
+      "dst": "e26a32c8",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "075de7ee",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "6090d697",
+      "dst": "cd67c3be",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "893e478e",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "c04f2280",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "c9bf2418",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "b17bfd83",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "f0c4e963",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "60d8fc26",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "69d174b4",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc101",
+      "dst": "e667fbd5",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc101",
+      "dst": "6b30c89c",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc101",
+      "dst": "bea56af1",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "f8eb42ae",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "cc17f464",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "53f15d15",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "fa708342",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "96796119",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "e13dfcba",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "774f3d06",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc201",
+      "dst": "77a2c912",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc201",
+      "dst": "fa7bff58",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc201",
+      "dst": "85377da7",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "79712904",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "97d819aa",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "09cb3942",
+      "dst": "b699b366",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "d9178793",
+      "dst": "a9a85a82",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "6090d697",
+      "dst": "7c036924",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "d85480f0",
+      "dst": "07356413",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "57c700aa",
+      "dst": "47e364b0",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "bdc14f1f",
+      "dst": "b0bc32c1",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "dc570131",
+      "dst": "e9051e55",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "b194990b",
+      "dst": "3a077722",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "c1a6423b",
+      "dst": "921cfe39",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "8d605936",
+      "dst": "efc2999b",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc101",
+      "dst": "d396a795",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc101",
+      "dst": "3e4ddd2d",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc101",
+      "dst": "b9dd5c5e",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc201",
+      "dst": "c8fd4d14",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc201",
+      "dst": "11992fa8",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "mbgwdc201",
+      "dst": "fc1ab32e",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc101",
+      "dst": "824f3b10",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "brtrdc201",
+      "dst": "dc38cb1c",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "8d605936",
+      "dst": "a3f19c07",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "fieldbus"
+    },
+    {
+      "src": "1d31a3b3",
+      "dst": "mbgwdc101",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "management"
+    },
+    {
+      "src": "f8b995ba",
+      "dst": "mbgwdc201",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "management"
+    },
+    {
+      "src": "1d31a3b3",
+      "dst": "brtrdc101",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "management"
+    },
+    {
+      "src": "f8b995ba",
+      "dst": "brtrdc201",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "layer": "management"
     }
   ],
   "floorplan": {
