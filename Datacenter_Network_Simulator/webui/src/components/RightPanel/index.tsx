@@ -37,9 +37,13 @@ const TABS: Tab[] = [
   { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
   { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
   { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
-  // Square crop of the Modbus mark (assets/icons/modbus.png is a wide lockup that
-  // renders as an 8px strip in this rail). No iconInvert: it is a colour logo on
-  // transparency, and inverting would turn the orange/green brand palette blue.
+  // Square crop of the Modbus mark (assets/icons/modbus.png is a 3.1:1 lockup that
+  // renders as an 8px strip in this rail). Padded to 80% of its canvas so it
+  // carries the same visual weight as bacnet/snmp at the default 26px box —
+  // rules/tick fill their canvas instead and drop to iconSize 20 to compensate,
+  // and doing neither is what made this one overlap its neighbours.
+  // No iconInvert: it is a colour logo on transparency, and inverting would turn
+  // the orange/green brand palette blue.
   { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus-mark.png', label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
