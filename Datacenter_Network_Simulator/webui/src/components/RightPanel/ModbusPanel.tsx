@@ -156,7 +156,7 @@ export default function ModbusPanel() {
           src="/assets/icons/modbus.png"
           alt="Modbus/TCP"
           title="Modbus/TCP"
-          style={{ height: 18, width: 'auto', maxWidth: '65%',
+          style={{ height: 24, width: 'auto', maxWidth: '65%',
                    objectFit: 'contain', display: 'block' }}
         />
         <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
