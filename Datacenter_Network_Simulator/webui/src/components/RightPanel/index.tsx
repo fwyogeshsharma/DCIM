@@ -24,6 +24,11 @@ interface Tab {
   iconSrc?:     string    // if set, renders <img> instead of emoji
   iconWhiteBg?: boolean   // true = logo has white bg; wrap in white pill
   iconInvert?:  boolean   // true = dark icon on transparent bg; apply invert(1) for dark theme
+  iconNoFilter?: boolean  // true = full-colour brand logo; render it untouched.
+                          // The default contrast(2)/brightness() punch is tuned for
+                          // flat monochrome glyphs — on a colour logo it collapses
+                          // distinct hues into one (the Modbus orange disc merges
+                          // into its yellow dots and the blue M washes out).
   iconSize?:    number    // override rendered px size (default 22)
   iconColor?:   string    // override inactive text color
   label:        string
@@ -44,7 +49,7 @@ const TABS: Tab[] = [
   // and doing neither is what made this one overlap its neighbours.
   // No iconInvert: it is a colour logo on transparency, and inverting would turn
   // the orange/green brand palette blue.
-  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus-mark.png', label: 'Modbus/TCP', component: <ModbusPanel /> },
+  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus-mark.png', iconNoFilter: true, label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
@@ -101,13 +106,17 @@ function TabButton({
                 height: tab.iconSize ?? 26,
                 objectFit: 'contain',
                 opacity: active ? 1 : 0.93,
-                filter: tab.iconInvert
+                filter: tab.iconNoFilter
                   ? active
-                    ? 'invert(1) hue-rotate(180deg) brightness(1.1)'
-                    : 'invert(1) hue-rotate(180deg) brightness(1.4)'
-                  : active
-                    ? 'contrast(2) brightness(1.5) drop-shadow(0 0 2px rgba(255,255,255,0.2))'
-                    : 'contrast(2) brightness(1.8)',
+                    ? 'drop-shadow(0 0 2px rgba(255,255,255,0.25))'
+                    : 'none'
+                  : tab.iconInvert
+                    ? active
+                      ? 'invert(1) hue-rotate(180deg) brightness(1.1)'
+                      : 'invert(1) hue-rotate(180deg) brightness(1.4)'
+                    : active
+                      ? 'contrast(2) brightness(1.5) drop-shadow(0 0 2px rgba(255,255,255,0.2))'
+                      : 'contrast(2) brightness(1.8)',
               }} />
         : tab.icon
       }
