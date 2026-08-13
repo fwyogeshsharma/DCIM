@@ -149,7 +149,16 @@ export default function ModbusPanel() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '8px 10px', borderBottom: '1px solid var(--border)',
       }}>
-        <span style={{ fontSize: 11, color: 'var(--text)' }}>Modbus/TCP</span>
+        {/* The official Modbus logo, unmodified. It is 3.14:1 art, so it only
+            reads at a width the 44px icon rail cannot give it — here there is
+            room, and the wordmark is legible at its true proportions. */}
+        <img
+          src="/assets/icons/modbus.png"
+          alt="Modbus/TCP"
+          title="Modbus/TCP"
+          style={{ height: 18, width: 'auto', maxWidth: '65%',
+                   objectFit: 'contain', display: 'block' }}
+        />
         <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{
             width: 6, height: 6, borderRadius: '50%', background: badge.dot,

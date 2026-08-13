@@ -54,7 +54,11 @@ const TABS: Tab[] = [
   // wordmark, height drives how heavy it sits against its neighbours.
   // iconNoFilter: the rail's default contrast(2)/brightness() punch is for flat
   // monochrome glyphs and collapses this logo's orange disc into its yellow dots.
-  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus.png', iconNoFilter: true, iconWidth: 35, iconHeight: 14, label: 'Modbus/TCP', component: <ModbusPanel /> },
+  // Plain glyph, not the brand logo: "Modbus" is 3.14:1 art whose letters land
+  // ~6px tall in this 44px button, and no crop of it survives (the wordmark is
+  // drawn over the mark in the source). The real logo lives in the panel header,
+  // where there is width to render it unmodified and legible.
+  { id: 'modbus',  icon: '🔌',  label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
